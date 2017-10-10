@@ -68,6 +68,7 @@ namespace NpgsqlTypes
         MultiPolygonM = 2006,
         GeometryCollectionM = 2007,
         // 4D Geometry
+        // ReSharper disable InconsistentNaming (https://msdn.microsoft.com/en-us/library/ms229043%28v=vs.100%29.aspx)
         GeometryZM = 3000,
         PointZM = 3001,
         LineStringZM = 3002,
@@ -76,10 +77,11 @@ namespace NpgsqlTypes
         MultiLineStringZM = 3005,
         MultiPolygonZM = 3006,
         GeometryCollectionZM = 3007,
+        // ReSharper enable InconsistentNaming
     }
 
     /// <summary>
-    /// The modifiers used by postgis to extend the geomtry's binary representation
+    /// Modifiers used by postgis to extend the geomtry's binary representation
     /// </summary>
     [Flags]
     enum EwkbModifiers : uint
@@ -90,14 +92,9 @@ namespace NpgsqlTypes
     }
 
     /// <summary>
-    /// Interface to use as base for Coordinates. 
+    /// Class representing a 2D double precision floating point coordinate with X and Y axis.
     /// </summary>
-    public interface ICoordinate { }
-
-    /// <summary>
-    /// A structure representing a 2D double precision floating point coordinate;
-    /// </summary>
-    public class Coordinate2D : ICoordinate, IEquatable<Coordinate2D>
+    public class Coordinate2D : IEquatable<Coordinate2D>
     {
         /// <summary>
         /// X coordinate.
@@ -110,15 +107,14 @@ namespace NpgsqlTypes
         public double Y { get; }
 
         /// <summary>
-        /// Generates a new BBpoint with the specified coordinates.
+        /// Generates a new 2D point with the specified coordinates.
         /// </summary>
         /// <param name="x">X coordinate</param>
         /// <param name="y">Y coordinate</param>
         public Coordinate2D(double x, double y) { X = x; Y = y; }
 
         // ReSharper disable CompareOfFloatsByEqualityOperator
-        public bool Equals(Coordinate2D c)
-            => X == c.X && Y == c.Y;
+        public bool Equals(Coordinate2D other) => other != null && X == other.X && Y == other.Y;
         // ReSharper restore CompareOfFloatsByEqualityOperator
 
         public override int GetHashCode()
@@ -135,7 +131,7 @@ namespace NpgsqlTypes
     }
 
     /// <summary>
-    /// A structure representing a 3D double precision floating point coordinate;
+    /// Class representing a 3D double precision floating point coordinate with X, Y, and Z axis.
     /// </summary>
     public class Coordinate3DZ : Coordinate2D, IEquatable<Coordinate3DZ>
     {
@@ -150,11 +146,11 @@ namespace NpgsqlTypes
         /// <param name="x">X coordinate</param>
         /// <param name="y">Y coordinate</param>
         /// <param name="z">Z coordinate</param>
-        public Coordinate3DZ(double x, double y, double z) : base(x, y) { Z = z; }
+        public Coordinate3DZ(double x, double y, double z) : base(x, y) => Z = z;
 
         // ReSharper disable CompareOfFloatsByEqualityOperator
-        public bool Equals(Coordinate3DZ c)
-            => Z == c.Z && base.Equals(c);
+        public bool Equals(Coordinate3DZ other)
+            => other != null && Z == other.Z && base.Equals(other);
         // ReSharper restore CompareOfFloatsByEqualityOperator
 
         public override int GetHashCode()
@@ -171,7 +167,7 @@ namespace NpgsqlTypes
     }
 
     /// <summary>
-    /// A structure representing a XYM double precision floating point coordinate;
+    /// Class representing a 3D double precision floating point coordinate with X, Y, and M axis.
     /// </summary>
     public class Coordinate3DM : Coordinate2D, IEquatable<Coordinate3DM>
     {
@@ -186,11 +182,11 @@ namespace NpgsqlTypes
         /// <param name="x">X coordinate</param>
         /// <param name="y">Y coordinate</param>
         /// <param name="m">M coordinate</param>
-        public Coordinate3DM(double x, double y, double m) : base(x, y) { M = m; }
+        public Coordinate3DM(double x, double y, double m) : base(x, y) => M = m;
 
         // ReSharper disable CompareOfFloatsByEqualityOperator
         public bool Equals(Coordinate3DM other)
-            => M == other.M && base.Equals(other);
+            => other != null && M == other.M && base.Equals(other);
         // ReSharper restore CompareOfFloatsByEqualityOperator
 
         public override int GetHashCode()
@@ -207,7 +203,7 @@ namespace NpgsqlTypes
     }
 
     /// <summary>
-    /// A structure representing a XYZM double precision floating point coordinate;
+    /// Class representing a 4D double precision floating point coordinate with X, Y, Z, and M axis.
     /// </summary>
     public class Coordinate4D : Coordinate2D, IEquatable<Coordinate4D>
     {
@@ -232,7 +228,7 @@ namespace NpgsqlTypes
 
         // ReSharper disable CompareOfFloatsByEqualityOperator
         public bool Equals(Coordinate4D other)
-            => Z == other.Z && M == other.M && base.Equals(other);
+            => other != null && Z == other.Z && M == other.M && base.Equals(other);
         // ReSharper restore CompareOfFloatsByEqualityOperator
 
         public override int GetHashCode()
@@ -248,6 +244,9 @@ namespace NpgsqlTypes
             => !Equals(left, right);
     }
 
+    /// <summary>
+    /// Base Geometry class for all PostGIS types.
+    /// </summary>
     public abstract class PostgisGeometry
     {
         /// <summary>
@@ -257,14 +256,17 @@ namespace NpgsqlTypes
         protected abstract int GetLenHelper();
         internal abstract WkbIdentifier Identifier { get; }
 
-        internal int GetLen(bool includeSRID)
-        {
-            // header =
-            //      1 byte for the endianness of the structure
-            //    + 4 bytes for the type identifier
-            //   (+ 4 bytes for the SRID if present and included)
-            return 5 + (SRID == 0 || !includeSRID ? 0 : 4) + GetLenHelper();
-        }
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="includeSRID"></param>
+        /// <returns></returns>
+        /// <remarks>
+        /// header =
+        ///      1 byte for the endianness of the structure
+        ///    + 4 bytes for the type identifier
+        ///   (+ 4 bytes for the SRID if present and included)</remarks>
+        internal int GetLen(bool includeSRID) => 5 + (SRID == 0 || !includeSRID ? 0 : 4) + GetLenHelper();
 
         /// <summary>
         /// The Spatial Reference System Identifier of the geometry (0 if unspecified).
@@ -273,38 +275,37 @@ namespace NpgsqlTypes
     }
 
     /// <summary>
-    /// Represents an Postgis feature.
+    /// PostGIS base Geometry type with specified coordinate system.
     /// </summary>
-    public abstract class PostgisGeometry<T> : PostgisGeometry where T : ICoordinate
+    /// <typeparam name="T">Coordinate type for Geometry</typeparam>
+    public abstract class PostgisGeometry<T> : PostgisGeometry where T : Coordinate2D
     {
     }
 
     /// <summary>
-    /// Represents a base Postgis Point
+    /// PostGIS base Point type with specified coordinate system.
     /// </summary>
-    public abstract class PostgisPoint<T> : PostgisGeometry<T> where T : ICoordinate
+    /// <typeparam name="T">Coordinate type for Geometry</typeparam>
+    public abstract class PostgisPoint<T> : PostgisGeometry<T> where T : Coordinate2D
     {
-        internal abstract ICoordinate Coordinate { get; }
+        internal abstract Coordinate2D Coordinate { get; }
     }
 
     /// <summary>
-    /// Represents an Postgis 2D Point
+    /// Represents a 2D PostGIS point.
     /// </summary>
     public class PostgisPoint : PostgisPoint<Coordinate2D>, IEquatable<PostgisPoint>
     {
-        Coordinate2D _coord;
+        readonly Coordinate2D _coord;
 
         internal override WkbIdentifier Identifier => WkbIdentifier.Point;
         protected override int GetLenHelper() => 16;
 
-        public PostgisPoint(double x, double y)
-        {
-            _coord = new Coordinate2D(x, y);
-        }
+        public PostgisPoint(double x, double y) => _coord = new Coordinate2D(x, y);
 
         public double X => _coord.X;
         public double Y => _coord.Y;
-        internal override ICoordinate Coordinate => _coord;
+        internal override Coordinate2D Coordinate => _coord;
 
 
         public bool Equals([CanBeNull] PostgisPoint other)
@@ -321,24 +322,21 @@ namespace NpgsqlTypes
     }
 
     /// <summary>
-    /// Represents an Postgis 3D Point
+    /// Represents an PostGIS 3DZ Point
     /// </summary>
     public class PostgisPointZ : PostgisPoint<Coordinate3DZ>, IEquatable<PostgisPointZ>
     {
-        Coordinate3DZ _coord;
+        readonly Coordinate3DZ _coord;
 
         internal override WkbIdentifier Identifier => WkbIdentifier.PointZ;
         protected override int GetLenHelper() => 24;
 
-        public PostgisPointZ(double x, double y, double z)
-        {
-            _coord = new Coordinate3DZ(x, y, z);
-        }
+        public PostgisPointZ(double x, double y, double z) => _coord = new Coordinate3DZ(x, y, z);
 
         public double X => _coord.X;
         public double Y => _coord.Y;
         public double Z => _coord.Z;
-        internal override ICoordinate Coordinate => _coord;
+        internal override Coordinate2D Coordinate => _coord;
 
         public bool Equals([CanBeNull] PostgisPointZ other)
             => !ReferenceEquals(other, null) && _coord.Equals(other._coord);
@@ -354,24 +352,21 @@ namespace NpgsqlTypes
     }
 
     /// <summary>
-    /// Represents an Postgis 3D Point with M axis
+    /// Represents an PostGIS 3DM Point
     /// </summary>
     public class PostgisPointM : PostgisPoint<Coordinate3DM>, IEquatable<PostgisPointM>
     {
-        Coordinate3DM _coord;
+        readonly Coordinate3DM _coord;
 
         internal override WkbIdentifier Identifier => WkbIdentifier.PointM;
         protected override int GetLenHelper() => 24;
 
-        public PostgisPointM(double x, double y, double m)
-        {
-            _coord = new Coordinate3DM(x, y, m);
-        }
+        public PostgisPointM(double x, double y, double m) => _coord = new Coordinate3DM(x, y, m);
 
         public double X => _coord.X;
         public double Y => _coord.Y;
         public double M => _coord.M;
-        internal override ICoordinate Coordinate => _coord;
+        internal override Coordinate2D Coordinate => _coord;
 
         public bool Equals([CanBeNull] PostgisPointM other)
             => !ReferenceEquals(other, null) && _coord.Equals(other._coord);
@@ -387,25 +382,22 @@ namespace NpgsqlTypes
     }
 
     /// <summary>
-    /// Represents an Postgis 4D Point
+    /// Represents a PostGIS 4D Point
     /// </summary>
     public class PostgisPointZM : PostgisPoint<Coordinate4D>, IEquatable<PostgisPointZM>
     {
-        Coordinate4D _coord;
+        readonly Coordinate4D _coord;
 
         internal override WkbIdentifier Identifier => WkbIdentifier.PointZM;
         protected override int GetLenHelper() => 32;
 
-        public PostgisPointZM(double x, double y, double z, double m)
-        {
-            _coord = new Coordinate4D(x, y, z, m);
-        }
+        public PostgisPointZM(double x, double y, double z, double m) => _coord = new Coordinate4D(x, y, z, m);
 
         public double X => _coord.X;
         public double Y => _coord.Y;
         public double Z => _coord.Z;
         public double M => _coord.M;
-        internal override ICoordinate Coordinate => _coord;
+        internal override Coordinate2D Coordinate => _coord;
 
         public bool Equals([CanBeNull] PostgisPointZM other)
             => !ReferenceEquals(other, null) && _coord.Equals(other._coord);
@@ -420,7 +412,11 @@ namespace NpgsqlTypes
         public override int GetHashCode() => Z.GetHashCode() ^ base.GetHashCode();
     }
 
-    public abstract class PostgisLineString<T> : PostgisGeometry<T>, IEnumerable<T>, IEquatable<PostgisLineString<T>> where T : ICoordinate
+    /// <summary>
+    /// Base PostGIS LineString type of specified coordinates system.
+    /// </summary>
+    /// <typeparam name="T">Coordinate type for Geometry</typeparam>
+    public abstract class PostgisLineString<T> : PostgisGeometry<T>, IEnumerable<T>, IEquatable<PostgisLineString<T>> where T : Coordinate2D
     {
         protected T[] _points;
 
@@ -428,15 +424,9 @@ namespace NpgsqlTypes
 
         public T this[int index] => _points[index];
 
-        public IEnumerator<T> GetEnumerator()
-        {
-            return ((IEnumerable<T>)_points).GetEnumerator();
-        }
+        public IEnumerator<T> GetEnumerator() => ((IEnumerable<T>)_points).GetEnumerator();
 
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return ((IEnumerable<T>)_points).GetEnumerator();
-        }
+        IEnumerator IEnumerable.GetEnumerator() => ((IEnumerable<T>)_points).GetEnumerator();
 
         public bool Equals([CanBeNull] PostgisLineString<T> other)
         {
@@ -459,92 +449,68 @@ namespace NpgsqlTypes
 
         public static bool operator !=(PostgisLineString<T> left, PostgisLineString<T> right) => !(left == right);
 
-        public override int GetHashCode()
-        {
-            var ret = 266370105;//seed with something other than zero to make paths of all zeros hash differently.
-            foreach (var t in _points)
-                ret ^= PGUtil.RotateShift(t.GetHashCode(), ret % sizeof(int));
-            return ret;
-        }
+        //seed with something other than zero to make paths of all zeros hash differently.
+        public override int GetHashCode() =>
+            _points.Aggregate(266370105, (current, t) => current ^ PGUtil.RotateShift(t.GetHashCode(), current % sizeof(int)));
     }
 
     /// <summary>
-    /// Represents an Ogc 2D LineString
+    /// Represents a PostGIS 2D LineString.
     /// </summary>
     public class PostgisLineString : PostgisLineString<Coordinate2D>
     {
         internal override WkbIdentifier Identifier => WkbIdentifier.LineString;
         protected override int GetLenHelper() => 4 + _points.Length * 16;
 
-        public PostgisLineString(IEnumerable<Coordinate2D> points)
-        {
-            _points = points.ToArray();
-        }
+        public PostgisLineString(IEnumerable<Coordinate2D> points) => _points = points.ToArray();
 
-        public PostgisLineString(Coordinate2D[] points)
-        {
-            _points = points;
-        }
+        public PostgisLineString(Coordinate2D[] points) => _points = points;
     }
 
     /// <summary>
-    /// Represents a 3DZ LineString
+    /// Represents a PostGIS 3DZ LineString.
     /// </summary>
     public class PostgisLineStringZ : PostgisLineString<Coordinate3DZ>
     {
         internal override WkbIdentifier Identifier => WkbIdentifier.LineStringZ;
         protected override int GetLenHelper() => 4 + _points.Length * 24;
 
-        public PostgisLineStringZ(IEnumerable<Coordinate3DZ> points)
-        {
-            _points = points.ToArray();
-        }
+        public PostgisLineStringZ(IEnumerable<Coordinate3DZ> points) => _points = points.ToArray();
 
-        public PostgisLineStringZ(Coordinate3DZ[] points)
-        {
-            _points = points;
-        }
+        public PostgisLineStringZ(Coordinate3DZ[] points) => _points = points;
     }
 
     /// <summary>
-    /// Represents a 3DM LineString
+    /// Represents a PostGIS 3DM LineString
     /// </summary>
     public class PostgisLineStringM : PostgisLineString<Coordinate3DM>
     {
         internal override WkbIdentifier Identifier => WkbIdentifier.LineStringM;
         protected override int GetLenHelper() => 4 + _points.Length * 24;
 
-        public PostgisLineStringM(IEnumerable<Coordinate3DM> points)
-        {
-            _points = points.ToArray();
-        }
+        public PostgisLineStringM(IEnumerable<Coordinate3DM> points) => _points = points.ToArray();
 
-        public PostgisLineStringM(Coordinate3DM[] points)
-        {
-            _points = points;
-        }
+        public PostgisLineStringM(Coordinate3DM[] points) => _points = points;
     }
 
     /// <summary>
-    /// Represents a 4D LineString
+    /// Represents a PostGIS 4D LineString
     /// </summary>
     public class PostgisLineStringZM : PostgisLineString<Coordinate4D>
     {
         internal override WkbIdentifier Identifier => WkbIdentifier.LineStringZM;
         protected override int GetLenHelper() => 4 + _points.Length * 32;
 
-        public PostgisLineStringZM(IEnumerable<Coordinate4D> points)
-        {
-            _points = points.ToArray();
-        }
+        public PostgisLineStringZM(IEnumerable<Coordinate4D> points) => _points = points.ToArray();
 
-        public PostgisLineStringZM(Coordinate4D[] points)
-        {
-            _points = points;
-        }
+        public PostgisLineStringZM(Coordinate4D[] points) => _points = points;
     }
 
-    public abstract class PostgisPolygon<T> : PostgisGeometry<T>, IEquatable<PostgisPolygon<T>>, IEnumerable<IEnumerable<T>> where T : ICoordinate
+    /// <summary>
+    /// Base PostGIS Polygon type of specified coordinates system.
+    /// </summary>
+    /// <typeparam name="T">Coordinate type for Geometry</typeparam>
+    public abstract class PostgisPolygon<T> : PostgisGeometry<T>, IEquatable<PostgisPolygon<T>>, IEnumerable<IEnumerable<T>> where T : Coordinate2D
     {
         protected T[][] _rings;
 
@@ -596,82 +562,62 @@ namespace NpgsqlTypes
     }
 
     /// <summary>
-    /// Represents an Postgis 2D Polygon.
+    /// Represents an PostGIS 2D Polygon.
     /// </summary>
     public class PostgisPolygon : PostgisPolygon<Coordinate2D>
     {
         internal override WkbIdentifier Identifier => WkbIdentifier.Polygon;
         protected override int GetLenHelper() => 4 + _rings.Length * 4 + TotalPointCount * 16;
 
-        public PostgisPolygon(Coordinate2D[][] rings)
-        {
-            _rings = rings;
-        }
+        public PostgisPolygon(Coordinate2D[][] rings) => _rings = rings;
 
-        public PostgisPolygon(IEnumerable<IEnumerable<Coordinate2D>> rings)
-        {
-            _rings = rings.Select(x => x.ToArray()).ToArray();
-        }
+        public PostgisPolygon(IEnumerable<IEnumerable<Coordinate2D>> rings) => _rings = rings.Select(x => x.ToArray()).ToArray();
     }
 
     /// <summary>
-    /// Represents an Postgis 3DZ Polygon.
+    /// Represents an PostGIS 3DZ Polygon.
     /// </summary>
     public class PostgisPolygonZ : PostgisPolygon<Coordinate3DZ>
     {
         internal override WkbIdentifier Identifier => WkbIdentifier.PolygonZ;
         protected override int GetLenHelper() => 4 + _rings.Length * 4 + TotalPointCount * 24;
 
-        public PostgisPolygonZ(Coordinate3DZ[][] rings)
-        {
-            _rings = rings;
-        }
+        public PostgisPolygonZ(Coordinate3DZ[][] rings) => _rings = rings;
 
-        public PostgisPolygonZ(IEnumerable<IEnumerable<Coordinate3DZ>> rings)
-        {
-            _rings = rings.Select(x => x.ToArray()).ToArray();
-        }
+        public PostgisPolygonZ(IEnumerable<IEnumerable<Coordinate3DZ>> rings) => _rings = rings.Select(x => x.ToArray()).ToArray();
     }
 
     /// <summary>
-    /// Represents an Postgis 3DM Polygon.
+    /// Represents an PostGIS 3DM Polygon.
     /// </summary>
     public class PostgisPolygonM : PostgisPolygon<Coordinate3DM>
     {
         internal override WkbIdentifier Identifier => WkbIdentifier.PolygonM;
         protected override int GetLenHelper() => 4 + _rings.Length * 4 + TotalPointCount * 24;
 
-        public PostgisPolygonM(Coordinate3DM[][] rings)
-        {
-            _rings = rings;
-        }
+        public PostgisPolygonM(Coordinate3DM[][] rings) => _rings = rings;
 
-        public PostgisPolygonM(IEnumerable<IEnumerable<Coordinate3DM>> rings)
-        {
-            _rings = rings.Select(x => x.ToArray()).ToArray();
-        }
+        public PostgisPolygonM(IEnumerable<IEnumerable<Coordinate3DM>> rings) => _rings = rings.Select(x => x.ToArray()).ToArray();
     }
 
     /// <summary>
-    /// Represents an Postgis 4D Polygon.
+    /// Represents an PostGIS 4D Polygon.
     /// </summary>
     public class PostgisPolygonZM : PostgisPolygon<Coordinate4D>
     {
         internal override WkbIdentifier Identifier => WkbIdentifier.PolygonZM;
         protected override int GetLenHelper() => 4 + _rings.Length * 4 + TotalPointCount * 32;
 
-        public PostgisPolygonZM(Coordinate4D[][] rings)
-        {
-            _rings = rings;
-        }
+        public PostgisPolygonZM(Coordinate4D[][] rings) => _rings = rings;
 
-        public PostgisPolygonZM(IEnumerable<IEnumerable<Coordinate4D>> rings)
-        {
-            _rings = rings.Select(x => x.ToArray()).ToArray();
-        }
+        public PostgisPolygonZM(IEnumerable<IEnumerable<Coordinate4D>> rings) => _rings = rings.Select(x => x.ToArray()).ToArray();
     }
 
-    public abstract class PostgisMultiPoint<T> : PostgisGeometry<T>, IEquatable<PostgisMultiPoint<T>>, IEnumerable<T> where T : ICoordinate
+    /// <summary>
+    /// Base PostGIS MultiPoint type of specified coordinates system.
+    /// </summary>
+    /// <typeparam name="T">Coordinate type for Geometry</typeparam>
+    public abstract class PostgisMultiPoint<T> : PostgisGeometry<T>, IEquatable<PostgisMultiPoint<T>>, IEnumerable<T> where T : Coordinate2D
     {
         protected T[] _points;
 
@@ -701,19 +647,15 @@ namespace NpgsqlTypes
 
         public static bool operator !=(PostgisMultiPoint<T> left, PostgisMultiPoint<T> right) => !(left == right);
 
-        public override int GetHashCode()
-        {
-            var ret = 266370105;//seed with something other than zero to make paths of all zeros hash differently.
-            for (var i = 0; i < _points.Length; i++)
-                ret ^= PGUtil.RotateShift(_points[i].GetHashCode(), ret % sizeof(int));
-            return ret;
-        }
+        //seed with something other than zero to make paths of all zeros hash differently.
+        public override int GetHashCode() =>
+            _points.Aggregate(266370105, (current, t) =>current ^ PGUtil.RotateShift(t.GetHashCode(), current % sizeof(int)));
 
         public int PointCount => _points.Length;
     }
 
     /// <summary>
-    /// Represents a Postgis 2D MultiPoint
+    /// Represents a PostGIS 2D MultiPoint.
     /// </summary>
     public class PostgisMultiPoint : PostgisMultiPoint<Coordinate2D>
     {
@@ -722,24 +664,16 @@ namespace NpgsqlTypes
         //each point of a multipoint is a postgispoint, not a building block point.
         protected override int GetLenHelper() => 4 + _points.Length * 21;
 
-        public PostgisMultiPoint(Coordinate2D[] points)
-        {
-            _points = points;
-        }
+        public PostgisMultiPoint(Coordinate2D[] points) => _points = points;
 
-        public PostgisMultiPoint(IEnumerable<PostgisPoint<Coordinate2D>> points)
-        {
-            _points = points.Select(x => x.Coordinate).OfType<Coordinate2D>().ToArray();
-        }
+        public PostgisMultiPoint(IEnumerable<PostgisPoint<Coordinate2D>> points) =>
+            _points = points.Select(x => x.Coordinate).ToArray();
 
-        public PostgisMultiPoint(IEnumerable<Coordinate2D> points)
-        {
-            _points = points.ToArray();
-        }
+        public PostgisMultiPoint(IEnumerable<Coordinate2D> points) => _points = points.ToArray();
     }
 
     /// <summary>
-    /// Represents a Postgis 3DZ MultiPoint
+    /// Represents a PostGIS 3DZ MultiPoint.
     /// </summary>
     public class PostgisMultiPointZ : PostgisMultiPoint<Coordinate3DZ>
     {
@@ -748,24 +682,16 @@ namespace NpgsqlTypes
         //each point of a multipoint is a postgispoint, not a building block point.
         protected override int GetLenHelper() => 4 + _points.Length * 29;
 
-        public PostgisMultiPointZ(Coordinate3DZ[] points)
-        {
-            _points = points;
-        }
+        public PostgisMultiPointZ(Coordinate3DZ[] points) => _points = points;
 
-        public PostgisMultiPointZ(IEnumerable<PostgisPoint<Coordinate3DZ>> points)
-        {
+        public PostgisMultiPointZ(IEnumerable<PostgisPoint<Coordinate3DZ>> points) =>
             _points = points.Select(x => x.Coordinate).OfType<Coordinate3DZ>().ToArray();
-        }
 
-        public PostgisMultiPointZ(IEnumerable<Coordinate3DZ> points)
-        {
-            _points = points.ToArray();
-        }
+        public PostgisMultiPointZ(IEnumerable<Coordinate3DZ> points) => _points = points.ToArray();
     }
 
     /// <summary>
-    /// Represents a Postgis 3DM MultiPoint
+    /// Represents a PostGIS 3DM MultiPoint.
     /// </summary>
     public class PostgisMultiPointM : PostgisMultiPoint<Coordinate3DM>
     {
@@ -774,24 +700,16 @@ namespace NpgsqlTypes
         //each point of a multipoint is a postgispoint, not a building block point.
         protected override int GetLenHelper() => 4 + _points.Length * 29;
 
-        public PostgisMultiPointM(Coordinate3DM[] points)
-        {
-            _points = points;
-        }
+        public PostgisMultiPointM(Coordinate3DM[] points) => _points = points;
 
-        public PostgisMultiPointM(IEnumerable<PostgisPoint<Coordinate3DM>> points)
-        {
+        public PostgisMultiPointM(IEnumerable<PostgisPoint<Coordinate3DM>> points) =>
             _points = points.Select(x => x.Coordinate).OfType<Coordinate3DM>().ToArray();
-        }
 
-        public PostgisMultiPointM(IEnumerable<Coordinate3DM> points)
-        {
-            _points = points.ToArray();
-        }
+        public PostgisMultiPointM(IEnumerable<Coordinate3DM> points) => _points = points.ToArray();
     }
 
     /// <summary>
-    /// Represents a Postgis 4D MultiPoint
+    /// Represents a PostGIS 4D MultiPoint.
     /// </summary>
     public class PostgisMultiPointZM : PostgisMultiPoint<Coordinate4D>
     {
@@ -800,33 +718,23 @@ namespace NpgsqlTypes
         //each point of a multipoint is a postgispoint, not a building block point.
         protected override int GetLenHelper() => 4 + _points.Length * 37;
 
-        public PostgisMultiPointZM(Coordinate4D[] points)
-        {
-            _points = points;
-        }
+        public PostgisMultiPointZM(Coordinate4D[] points) => _points = points;
 
-        public PostgisMultiPointZM(IEnumerable<PostgisPoint<Coordinate4D>> points)
-        {
+        public PostgisMultiPointZM(IEnumerable<PostgisPoint<Coordinate4D>> points) =>
             _points = points.Select(x => x.Coordinate).OfType<Coordinate4D>().ToArray();
-        }
 
-        public PostgisMultiPointZM(IEnumerable<Coordinate4D> points)
-        {
-            _points = points.ToArray();
-        }
+        public PostgisMultiPointZM(IEnumerable<Coordinate4D> points) => _points = points.ToArray();
     }
 
-    public abstract class PostgisMultiLineString<T> : PostgisGeometry<T>, IEquatable<PostgisMultiLineString<T>>, IEnumerable<PostgisLineString<T>> where T : ICoordinate
+    /// <summary>
+    /// Base PostGIS MultiLineString type of specified coordinates system.
+    /// </summary>
+    /// <typeparam name="T">Coordinate type for Geometry</typeparam>
+    public abstract class PostgisMultiLineString<T> : PostgisGeometry<T>, IEquatable<PostgisMultiLineString<T>>, IEnumerable<PostgisLineString<T>> where T : Coordinate2D
     {
         protected PostgisLineString<T>[] _lineStrings;
 
-        protected override int GetLenHelper()
-        {
-            var n = 4;
-            for (var i = 0; i < _lineStrings.Length; i++)
-                n += _lineStrings[i].GetLen(false);
-            return n;
-        }
+        protected override int GetLenHelper() => 4 + _lineStrings.Sum(t => t.GetLen(false));
 
         public IEnumerator<PostgisLineString<T>> GetEnumerator() => ((IEnumerable<PostgisLineString<T>>)_lineStrings).GetEnumerator();
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
@@ -839,11 +747,7 @@ namespace NpgsqlTypes
                 return false;
 
             if (_lineStrings.Length != other._lineStrings.Length) return false;
-            for (var i = 0; i < _lineStrings.Length; i++)
-            {
-                if (_lineStrings[i] != other._lineStrings[i]) return false;
-            }
-            return true;
+            return !_lineStrings.Where((t, i) => t != other._lineStrings[i]).Any();
         }
 
         public override bool Equals([CanBeNull] object obj) => Equals(obj as PostgisMultiLineString<T>);
@@ -853,19 +757,15 @@ namespace NpgsqlTypes
 
         public static bool operator !=(PostgisMultiLineString<T> left, PostgisMultiLineString<T> right) => !(left == right);
 
-        public override int GetHashCode()
-        {
-            var ret = 266370105;//seed with something other than zero to make paths of all zeros hash differently.
-            for (var i = 0; i < _lineStrings.Length; i++)
-                ret ^= PGUtil.RotateShift(_lineStrings[i].GetHashCode(), ret % sizeof(int));
-            return ret;
-        }
+        //seed with something other than zero to make paths of all zeros hash differently.
+        public override int GetHashCode() =>
+            _lineStrings.Aggregate(266370105, (current, t) => current ^ PGUtil.RotateShift(t.GetHashCode(), current % sizeof(int)));
 
         public int LineCount => _lineStrings.Length;
     }
 
     /// <summary>
-    /// Represents a Postgis 2D MultiLineString
+    /// Represents a PostGIS 2D MultiLineString.
     /// </summary>
     public sealed class PostgisMultiLineString : PostgisMultiLineString<Coordinate2D>
     {
@@ -878,24 +778,16 @@ namespace NpgsqlTypes
 
         internal override WkbIdentifier Identifier => WkbIdentifier.MultiLineString;
 
-        public PostgisMultiLineString(PostgisLineString[] linestrings)
-        {
-            _lineStrings = linestrings;
-        }
+        public PostgisMultiLineString(PostgisLineString[] linestrings) => _lineStrings = linestrings;
 
-        public PostgisMultiLineString(IEnumerable<PostgisLineString> linestrings)
-        {
-            _lineStrings = linestrings.ToArray();
-        }
+        public PostgisMultiLineString(IEnumerable<PostgisLineString> linestrings) => _lineStrings = linestrings.ToArray();
 
-        public PostgisMultiLineString(IEnumerable<IEnumerable<Coordinate2D>> pointList)
-        {
+        public PostgisMultiLineString(IEnumerable<IEnumerable<Coordinate2D>> pointList) =>
             _lineStrings = pointList.Select(x => new PostgisLineString(x)).ToArray();
-        }
     }
 
     /// <summary>
-    /// Represents a Postgis 3DZ MultiLineString
+    /// Represents a PostGIS 3DZ MultiLineString.
     /// </summary>
     public sealed class PostgisMultiLineStringZ : PostgisMultiLineString<Coordinate3DZ>
     {
@@ -908,24 +800,16 @@ namespace NpgsqlTypes
 
         internal override WkbIdentifier Identifier => WkbIdentifier.MultiLineStringZ;
 
-        public PostgisMultiLineStringZ(PostgisLineStringZ[] linestrings)
-        {
-            _lineStrings = linestrings;
-        }
+        public PostgisMultiLineStringZ(PostgisLineStringZ[] linestrings) => _lineStrings = linestrings;
 
-        public PostgisMultiLineStringZ(IEnumerable<PostgisLineStringZ> linestrings)
-        {
-            _lineStrings = linestrings.ToArray();
-        }
+        public PostgisMultiLineStringZ(IEnumerable<PostgisLineStringZ> linestrings) => _lineStrings = linestrings.ToArray();
 
-        public PostgisMultiLineStringZ(IEnumerable<IEnumerable<Coordinate3DZ>> pointList)
-        {
+        public PostgisMultiLineStringZ(IEnumerable<IEnumerable<Coordinate3DZ>> pointList) =>
             _lineStrings = pointList.Select(x => new PostgisLineStringZ(x)).ToArray();
-        }
     }
 
     /// <summary>
-    /// Represents a Postgis 3DM MultiLineString
+    /// Represents a PostGIS 3DM MultiLineString.
     /// </summary>
     public sealed class PostgisMultiLineStringM : PostgisMultiLineString<Coordinate3DM>
     {
@@ -938,24 +822,16 @@ namespace NpgsqlTypes
 
         internal override WkbIdentifier Identifier => WkbIdentifier.MultiLineStringM;
 
-        public PostgisMultiLineStringM(PostgisLineStringM[] linestrings)
-        {
-            _lineStrings = linestrings;
-        }
+        public PostgisMultiLineStringM(PostgisLineStringM[] linestrings) => _lineStrings = linestrings;
 
-        public PostgisMultiLineStringM(IEnumerable<PostgisLineStringM> linestrings)
-        {
-            _lineStrings = linestrings.ToArray();
-        }
+        public PostgisMultiLineStringM(IEnumerable<PostgisLineStringM> linestrings) => _lineStrings = linestrings.ToArray();
 
-        public PostgisMultiLineStringM(IEnumerable<IEnumerable<Coordinate3DM>> pointList)
-        {
+        public PostgisMultiLineStringM(IEnumerable<IEnumerable<Coordinate3DM>> pointList) =>
             _lineStrings = pointList.Select(x => new PostgisLineStringM(x)).ToArray();
-        }
     }
 
     /// <summary>
-    /// Represents a Postgis 4D MultiLineString
+    /// Represents a PostGIS 4D MultiLineString.
     /// </summary>
     public sealed class PostgisMultiLineStringZM : PostgisMultiLineString<Coordinate4D>
     {
@@ -968,23 +844,19 @@ namespace NpgsqlTypes
 
         internal override WkbIdentifier Identifier => WkbIdentifier.MultiLineStringZM;
 
-        public PostgisMultiLineStringZM(PostgisLineStringZM[] linestrings)
-        {
-            _lineStrings = linestrings;
-        }
+        public PostgisMultiLineStringZM(PostgisLineStringZM[] linestrings) => _lineStrings = linestrings;
 
-        public PostgisMultiLineStringZM(IEnumerable<PostgisLineStringZM> linestrings)
-        {
-            _lineStrings = linestrings.ToArray();
-        }
+        public PostgisMultiLineStringZM(IEnumerable<PostgisLineStringZM> linestrings) => _lineStrings = linestrings.ToArray();
 
-        public PostgisMultiLineStringZM(IEnumerable<IEnumerable<Coordinate4D>> pointList)
-        {
+        public PostgisMultiLineStringZM(IEnumerable<IEnumerable<Coordinate4D>> pointList) =>
             _lineStrings = pointList.Select(x => new PostgisLineStringZM(x)).ToArray();
-        }
     }
 
-    public abstract class PostgisMultiPolygon<T> : PostgisGeometry<T>, IEquatable<PostgisMultiPolygon<T>>, IEnumerable<PostgisPolygon<T>> where T : ICoordinate
+    /// <summary>
+    /// Base PostGIS MultiPolygon type of specified coordinates system.
+    /// </summary>
+    /// <typeparam name="T">Coordinate type for Geometry</typeparam>
+    public abstract class PostgisMultiPolygon<T> : PostgisGeometry<T>, IEquatable<PostgisMultiPolygon<T>>, IEnumerable<PostgisPolygon<T>> where T : Coordinate2D
     {
         protected PostgisPolygon<T>[] _polygons;
 
@@ -999,9 +871,8 @@ namespace NpgsqlTypes
                 return false;
             if (_polygons.Length != other._polygons.Length)
                 return false;
-            for (var i = 0; i < _polygons.Length; i++)
-                if (_polygons[i] != other._polygons[i]) return false;
-            return true;
+
+            return !_polygons.Where((t, i) => t != other._polygons[i]).Any();
         }
 
         public override bool Equals([CanBeNull] object obj)
@@ -1012,119 +883,80 @@ namespace NpgsqlTypes
 
         public static bool operator !=(PostgisMultiPolygon<T> x, PostgisMultiPolygon<T> y) => !(x == y);
 
-        public override int GetHashCode()
-        {
-            var ret = 266370105;//seed with something other than zero to make paths of all zeros hash differently.
-            for (var i = 0; i < _polygons.Length; i++)
-                ret ^= PGUtil.RotateShift(_polygons[i].GetHashCode(), ret % sizeof(int));
-            return ret;
-        }
+        //seed with something other than zero to make paths of all zeros hash differently.
+        public override int GetHashCode() =>
+            _polygons.Aggregate(266370105, (current, t) => current ^ PGUtil.RotateShift(t.GetHashCode(), current % sizeof(int)));
 
-        protected override int GetLenHelper()
-        {
-            var n = 4;
-            for (var i = 0; i < _polygons.Length; i++)
-                n += _polygons[i].GetLen(false);
-            return n;
-        }
-
+        protected override int GetLenHelper() => 4 + _polygons.Sum(t => t.GetLen(false));
 
         public int PolygonCount => _polygons.Length;
     }
 
     /// <summary>
-    /// Represents a Postgis 2D MultiPolygon.
+    /// Represents a PostGIS 2D MultiPolygon.
     /// </summary>
     public class PostgisMultiPolygon : PostgisMultiPolygon<Coordinate2D>
     {
         internal override WkbIdentifier Identifier => WkbIdentifier.MultiPolygon;
 
-        public PostgisMultiPolygon(PostgisPolygon[] polygons)
-        {
-            _polygons = polygons;
-        }
+        public PostgisMultiPolygon(PostgisPolygon[] polygons) => _polygons = polygons;
 
-        public PostgisMultiPolygon(IEnumerable<PostgisPolygon> polygons)
-        {
-            _polygons = polygons.ToArray();
-        }
+        public PostgisMultiPolygon(IEnumerable<PostgisPolygon> polygons) => _polygons = polygons.ToArray();
 
-        public PostgisMultiPolygon(IEnumerable<IEnumerable<IEnumerable<Coordinate2D>>> ringList)
-        {
+        public PostgisMultiPolygon(IEnumerable<IEnumerable<IEnumerable<Coordinate2D>>> ringList) =>
             _polygons = ringList.Select(x => new PostgisPolygon(x)).ToArray();
-        }
     }
 
     /// <summary>
-    /// Represents a Postgis 3DZ MultiPolygon.
+    /// Represents a PostGIS 3DZ MultiPolygon.
     /// </summary>
     public class PostgisMultiPolygonZ : PostgisMultiPolygon<Coordinate3DZ>
     {
         internal override WkbIdentifier Identifier => WkbIdentifier.MultiPolygonZ;
 
-        public PostgisMultiPolygonZ(PostgisPolygonZ[] polygons)
-        {
-            _polygons = polygons;
-        }
+        public PostgisMultiPolygonZ(PostgisPolygonZ[] polygons) => _polygons = polygons;
 
-        public PostgisMultiPolygonZ(IEnumerable<PostgisPolygonZ> polygons)
-        {
-            _polygons = polygons.ToArray();
-        }
+        public PostgisMultiPolygonZ(IEnumerable<PostgisPolygonZ> polygons) => _polygons = polygons.ToArray();
 
-        public PostgisMultiPolygonZ(IEnumerable<IEnumerable<IEnumerable<Coordinate3DZ>>> ringList)
-        {
+        public PostgisMultiPolygonZ(IEnumerable<IEnumerable<IEnumerable<Coordinate3DZ>>> ringList) =>
             _polygons = ringList.Select(x => new PostgisPolygonZ(x)).ToArray();
-        }
     }
 
     /// <summary>
-    /// Represents a Postgis 3DM MultiPolygon.
+    /// Represents a PostGIS 3DM MultiPolygon.
     /// </summary>
     public class PostgisMultiPolygonM : PostgisMultiPolygon<Coordinate3DM>
     {
         internal override WkbIdentifier Identifier => WkbIdentifier.MultiPolygonM;
 
-        public PostgisMultiPolygonM(PostgisPolygonM[] polygons)
-        {
-            _polygons = polygons;
-        }
+        public PostgisMultiPolygonM(PostgisPolygonM[] polygons) => _polygons = polygons;
 
-        public PostgisMultiPolygonM(IEnumerable<PostgisPolygonM> polygons)
-        {
-            _polygons = polygons.ToArray();
-        }
+        public PostgisMultiPolygonM(IEnumerable<PostgisPolygonM> polygons) => _polygons = polygons.ToArray();
 
-        public PostgisMultiPolygonM(IEnumerable<IEnumerable<IEnumerable<Coordinate3DM>>> ringList)
-        {
+        public PostgisMultiPolygonM(IEnumerable<IEnumerable<IEnumerable<Coordinate3DM>>> ringList) =>
             _polygons = ringList.Select(x => new PostgisPolygonM(x)).ToArray();
-        }
     }
 
     /// <summary>
-    /// Represents a Postgis 4D MultiPolygon.
+    /// Represents a PostGIS 4D MultiPolygon.
     /// </summary>
     public class PostgisMultiPolygonZM : PostgisMultiPolygon<Coordinate4D>
     {
         internal override WkbIdentifier Identifier => WkbIdentifier.MultiPolygonZM;
 
-        public PostgisMultiPolygonZM(PostgisPolygonZM[] polygons)
-        {
-            _polygons = polygons;
-        }
+        public PostgisMultiPolygonZM(PostgisPolygonZM[] polygons) => _polygons = polygons;
 
-        public PostgisMultiPolygonZM(IEnumerable<PostgisPolygonZM> polygons)
-        {
-            _polygons = polygons.ToArray();
-        }
+        public PostgisMultiPolygonZM(IEnumerable<PostgisPolygonZM> polygons) => _polygons = polygons.ToArray();
 
-        public PostgisMultiPolygonZM(IEnumerable<IEnumerable<IEnumerable<Coordinate4D>>> ringList)
-        {
+        public PostgisMultiPolygonZM(IEnumerable<IEnumerable<IEnumerable<Coordinate4D>>> ringList) =>
             _polygons = ringList.Select(x => new PostgisPolygonZM(x)).ToArray();
-        }
     }
 
-    public abstract class PostgisGeometryCollection<T> : PostgisGeometry<T>, IEquatable<PostgisGeometryCollection<T>>, IEnumerable<PostgisGeometry<T>> where T : ICoordinate
+    /// <summary>
+    /// Base PostGIS GeometryCollection type of specified coordinates system.
+    /// </summary>
+    /// <typeparam name="T">Coordinate type for Geometry</typeparam>
+    public abstract class PostgisGeometryCollection<T> : PostgisGeometry<T>, IEquatable<PostgisGeometryCollection<T>>, IEnumerable<PostgisGeometry<T>> where T : Coordinate2D
     {
         protected PostgisGeometry<T>[] _geometries;
 
@@ -1152,94 +984,60 @@ namespace NpgsqlTypes
 
         public static bool operator !=(PostgisGeometryCollection<T> left, PostgisGeometryCollection<T> right) => !(left == right);
 
-        public override int GetHashCode()
-        {
-            var ret = 266370105;//seed with something other than zero to make paths of all zeros hash differently.
-            for (var i = 0; i < _geometries.Length; i++)
-                ret ^= PGUtil.RotateShift(_geometries[i].GetHashCode(), ret % sizeof(int));
-            return ret;
-        }
+        //seed with something other than zero to make paths of all zeros hash differently.
+        public override int GetHashCode() =>
+            _geometries.Aggregate(266370105, (current, t) => current ^ PGUtil.RotateShift(t.GetHashCode(), current % sizeof(int)));
 
-        protected override int GetLenHelper()
-        {
-            var n = 4;
-            for (var i = 0; i < _geometries.Length; i++)
-                n += _geometries[i].GetLen(true);
-            return n;
-        }
+        protected override int GetLenHelper() => 4 + _geometries.Sum(t => t.GetLen(true));
 
         public int GeometryCount => _geometries.Length;
     }
 
     /// <summary>
-    /// Represents a collection of 2D Postgis feature.
+    /// Represents a collection of PostGIS 2D Geometries.
     /// </summary>
     public class PostgisGeometryCollection : PostgisGeometryCollection<Coordinate2D>
     {
         internal override WkbIdentifier Identifier => WkbIdentifier.GeometryCollection;
 
-        public PostgisGeometryCollection(PostgisGeometry<Coordinate2D>[] geometries)
-        {
-            _geometries = geometries;
-        }
+        public PostgisGeometryCollection(PostgisGeometry<Coordinate2D>[] geometries) => _geometries = geometries;
 
-        public PostgisGeometryCollection(IEnumerable<PostgisGeometry<Coordinate2D>> geometries)
-        {
-            _geometries = geometries.ToArray();
-        }
+        public PostgisGeometryCollection(IEnumerable<PostgisGeometry<Coordinate2D>> geometries) => _geometries = geometries.ToArray();
     }
 
     /// <summary>
-    /// Represents a collection of 3DZ Postgis feature.
+    /// Represents a collection of PostGIS 3DZ Geometries.
     /// </summary>
     public class PostgisGeometryCollectionZ : PostgisGeometryCollection<Coordinate3DZ>
     {
         internal override WkbIdentifier Identifier => WkbIdentifier.GeometryCollectionZ;
 
-        public PostgisGeometryCollectionZ(PostgisGeometry<Coordinate3DZ>[] geometries)
-        {
-            _geometries = geometries;
-        }
+        public PostgisGeometryCollectionZ(PostgisGeometry<Coordinate3DZ>[] geometries) => _geometries = geometries;
 
-        public PostgisGeometryCollectionZ(IEnumerable<PostgisGeometry<Coordinate3DZ>> geometries)
-        {
-            _geometries = geometries.ToArray();
-        }
+        public PostgisGeometryCollectionZ(IEnumerable<PostgisGeometry<Coordinate3DZ>> geometries) => _geometries = geometries.ToArray();
     }
 
     /// <summary>
-    /// Represents a collection of 3DM Postgis feature.
+    /// Represents a collection of PostGIS 3DM Geometries.
     /// </summary>
     public class PostgisGeometryCollectionM : PostgisGeometryCollection<Coordinate3DM>
     {
         internal override WkbIdentifier Identifier => WkbIdentifier.GeometryCollectionM;
 
-        public PostgisGeometryCollectionM(PostgisGeometry<Coordinate3DM>[] geometries)
-        {
-            _geometries = geometries;
-        }
+        public PostgisGeometryCollectionM(PostgisGeometry<Coordinate3DM>[] geometries) => _geometries = geometries;
 
-        public PostgisGeometryCollectionM(IEnumerable<PostgisGeometry<Coordinate3DM>> geometries)
-        {
-            _geometries = geometries.ToArray();
-        }
+        public PostgisGeometryCollectionM(IEnumerable<PostgisGeometry<Coordinate3DM>> geometries) => _geometries = geometries.ToArray();
     }
 
     /// <summary>
-    /// Represents a collection of 4D Postgis feature.
+    /// Represents a collection of PostGIS 4D Geometries.
     /// </summary>
     public class PostgisGeometryCollectionZM : PostgisGeometryCollection<Coordinate4D>
     {
         internal override WkbIdentifier Identifier => WkbIdentifier.GeometryCollectionZM;
 
-        public PostgisGeometryCollectionZM(PostgisGeometry<Coordinate4D>[] geometries)
-        {
-            _geometries = geometries;
-        }
+        public PostgisGeometryCollectionZM(PostgisGeometry<Coordinate4D>[] geometries) => _geometries = geometries;
 
-        public PostgisGeometryCollectionZM(IEnumerable<PostgisGeometry<Coordinate4D>> geometries)
-        {
-            _geometries = geometries.ToArray();
-        }
+        public PostgisGeometryCollectionZM(IEnumerable<PostgisGeometry<Coordinate4D>> geometries) => _geometries = geometries.ToArray();
     }
 }
