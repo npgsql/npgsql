@@ -45,7 +45,11 @@ namespace Npgsql.TypeHandlers
         //3DZ Geometry
         typeof(PostgisPointZ), typeof(PostgisMultiPointZ), typeof(PostgisLineStringZ),
         typeof(PostgisMultiLineStringZ), typeof(PostgisPolygonZ), typeof(PostgisMultiPolygonZ),
-        typeof(PostgisGeometryCollectionZ)
+        typeof(PostgisGeometryCollectionZ),
+        //3DM Geometry
+        typeof(PostgisPointM), typeof(PostgisMultiPointM), typeof(PostgisLineStringM),
+        typeof(PostgisMultiLineStringM), typeof(PostgisPolygonM), typeof(PostgisMultiPolygonM),
+        typeof(PostgisGeometryCollectionM)
     })]
     class PostgisGeometryHandler : NpgsqlTypeHandler<PostgisGeometry>,
         //2D Geometry
@@ -58,6 +62,11 @@ namespace Npgsql.TypeHandlers
         INpgsqlTypeHandler<PostgisLineStringZ>, INpgsqlTypeHandler<PostgisMultiLineStringZ>,
         INpgsqlTypeHandler<PostgisPolygonZ>, INpgsqlTypeHandler<PostgisMultiPolygonZ>,
         INpgsqlTypeHandler<PostgisGeometryCollectionZ>,
+        //3DM Geometry
+        INpgsqlTypeHandler<PostgisPointM>, INpgsqlTypeHandler<PostgisMultiPointM>,
+        INpgsqlTypeHandler<PostgisLineStringM>, INpgsqlTypeHandler<PostgisMultiLineStringM>,
+        INpgsqlTypeHandler<PostgisPolygonM>, INpgsqlTypeHandler<PostgisMultiPolygonM>,
+        INpgsqlTypeHandler<PostgisGeometryCollectionM>,
         INpgsqlTypeHandler<byte[]>
     {
         [CanBeNull]
@@ -87,7 +96,7 @@ namespace Npgsql.TypeHandlers
             if ((id & (uint)EwkbModifiers.HasZDim) != 0 && (id & (uint)EwkbModifiers.HasMDim) != 0)
                 geom = await DoReadXYZ(buf, (WkbIdentifier)((id & 7) + 3000), bo, async);
             else if ((id & (uint)EwkbModifiers.HasMDim) != 0)
-                geom = await DoReadXYZ(buf, (WkbIdentifier)((id & 7) + 2000), bo, async);
+                geom = await DoReadXYM(buf, (WkbIdentifier)((id & 7) + 2000), bo, async);
             else if ((id & (uint)EwkbModifiers.HasZDim) != 0)
                 geom = await DoReadXYZ(buf, (WkbIdentifier)((id & 7) + 1000), bo, async);
             else
@@ -327,6 +336,121 @@ namespace Npgsql.TypeHandlers
             }
         }
 
+        async ValueTask<PostgisGeometry<Coordinate3DM>> DoReadXYM(NpgsqlReadBuffer buf, WkbIdentifier id, ByteOrder bo, bool async)
+        {
+            switch (id)
+            {
+                case WkbIdentifier.PointM:
+                    await buf.Ensure(24, async);
+                    return new PostgisPointM(buf.ReadDouble(bo), buf.ReadDouble(bo), buf.ReadDouble(bo));
+
+                case WkbIdentifier.LineStringM:
+                    {
+                        await buf.Ensure(4, async);
+                        var points = new Coordinate3DM[buf.ReadInt32(bo)];
+                        for (var ipts = 0; ipts < points.Length; ipts++)
+                        {
+                            await buf.Ensure(24, async);
+                            points[ipts] = new Coordinate3DM(buf.ReadDouble(bo), buf.ReadDouble(bo), buf.ReadDouble(bo));
+                        }
+                        return new PostgisLineStringM(points);
+                    }
+
+                case WkbIdentifier.PolygonM:
+                    {
+                        await buf.Ensure(4, async);
+                        var rings = new Coordinate3DM[buf.ReadInt32(bo)][];
+
+                        for (var irng = 0; irng < rings.Length; irng++)
+                        {
+                            await buf.Ensure(4, async);
+                            rings[irng] = new Coordinate3DM[buf.ReadInt32(bo)];
+                            for (var ipts = 0; ipts < rings[irng].Length; ipts++)
+                            {
+                                await buf.Ensure(24, async);
+                                rings[irng][ipts] = new Coordinate3DM(buf.ReadDouble(bo), buf.ReadDouble(bo), buf.ReadDouble(bo));
+                            }
+                        }
+                        return new PostgisPolygonM(rings);
+                    }
+
+                case WkbIdentifier.MultiPointM:
+                    {
+                        await buf.Ensure(4, async);
+                        var points = new Coordinate3DM[buf.ReadInt32(bo)];
+                        for (var ipts = 0; ipts < points.Length; ipts++)
+                        {
+                            await buf.Ensure(29, async);
+                            await buf.Skip(5, async);
+                            points[ipts] = new Coordinate3DM(buf.ReadDouble(bo), buf.ReadDouble(bo), buf.ReadDouble(bo));
+                        }
+                        return new PostgisMultiPointM(points);
+                    }
+
+                case WkbIdentifier.MultiLineStringM:
+                    {
+                        await buf.Ensure(4, async);
+                        var rings = new Coordinate3DM[buf.ReadInt32(bo)][];
+
+                        for (var irng = 0; irng < rings.Length; irng++)
+                        {
+                            await buf.Ensure(9, async);
+                            await buf.Skip(5, async);
+                            rings[irng] = new Coordinate3DM[buf.ReadInt32(bo)];
+                            for (var ipts = 0; ipts < rings[irng].Length; ipts++)
+                            {
+                                await buf.Ensure(24, async);
+                                rings[irng][ipts] = new Coordinate3DM(buf.ReadDouble(bo), buf.ReadDouble(bo), buf.ReadDouble(bo));
+                            }
+                        }
+                        return new PostgisMultiLineStringM(rings);
+                    }
+
+                case WkbIdentifier.MultiPolygonM:
+                    {
+                        await buf.Ensure(4, async);
+                        var pols = new Coordinate3DM[buf.ReadInt32(bo)][][];
+
+                        for (var ipol = 0; ipol < pols.Length; ipol++)
+                        {
+                            await buf.Ensure(9, async);
+                            await buf.Skip(5, async);
+                            pols[ipol] = new Coordinate3DM[buf.ReadInt32(bo)][];
+                            for (var irng = 0; irng < pols[ipol].Length; irng++)
+                            {
+                                await buf.Ensure(4, async);
+                                pols[ipol][irng] = new Coordinate3DM[buf.ReadInt32(bo)];
+                                for (var ipts = 0; ipts < pols[ipol][irng].Length; ipts++)
+                                {
+                                    await buf.Ensure(24, async);
+                                    pols[ipol][irng][ipts] = new Coordinate3DM(buf.ReadDouble(bo), buf.ReadDouble(bo), buf.ReadDouble(bo));
+                                }
+                            }
+                        }
+                        return new PostgisMultiPolygonM(pols);
+                    }
+
+                case WkbIdentifier.GeometryCollectionM:
+                    {
+                        await buf.Ensure(4, async);
+                        var g = new PostgisGeometry<Coordinate3DM>[buf.ReadInt32(bo)];
+
+                        for (var i = 0; i < g.Length; i++)
+                        {
+                            await buf.Ensure(5, async);
+                            var elemBo = (ByteOrder)buf.ReadByte();
+                            var elemId = (WkbIdentifier)((buf.ReadUInt32(bo) & 7) + 2000);
+
+                            g[i] = await DoReadXYM(buf, elemId, elemBo, async);
+                        }
+                        return new PostgisGeometryCollectionM(g);
+                    }
+
+                default:
+                    throw new InvalidOperationException("Unknown Postgis identifier.");
+            }
+        }
+
         #endregion Read
 
         #region Read concrete types
@@ -362,6 +486,22 @@ namespace Npgsql.TypeHandlers
             => (PostgisMultiPolygonZ)await Read(buf, len, async, fieldDescription);
         async ValueTask<PostgisGeometryCollectionZ> INpgsqlTypeHandler<PostgisGeometryCollectionZ>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
             => (PostgisGeometryCollectionZ)await Read(buf, len, async, fieldDescription);
+
+        //3DM Geometry
+        async ValueTask<PostgisPointM> INpgsqlTypeHandler<PostgisPointM>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+            => (PostgisPointM)await Read(buf, len, async, fieldDescription);
+        async ValueTask<PostgisMultiPointM> INpgsqlTypeHandler<PostgisMultiPointM>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+            => (PostgisMultiPointM)await Read(buf, len, async, fieldDescription);
+        async ValueTask<PostgisLineStringM> INpgsqlTypeHandler<PostgisLineStringM>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+            => (PostgisLineStringM)await Read(buf, len, async, fieldDescription);
+        async ValueTask<PostgisMultiLineStringM> INpgsqlTypeHandler<PostgisMultiLineStringM>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+            => (PostgisMultiLineStringM)await Read(buf, len, async, fieldDescription);
+        async ValueTask<PostgisPolygonM> INpgsqlTypeHandler<PostgisPolygonM>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+            => (PostgisPolygonM)await Read(buf, len, async, fieldDescription);
+        async ValueTask<PostgisMultiPolygonM> INpgsqlTypeHandler<PostgisMultiPolygonM>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+            => (PostgisMultiPolygonM)await Read(buf, len, async, fieldDescription);
+        async ValueTask<PostgisGeometryCollectionM> INpgsqlTypeHandler<PostgisGeometryCollectionM>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+            => (PostgisGeometryCollectionM)await Read(buf, len, async, fieldDescription);
 
         ValueTask<byte[]> INpgsqlTypeHandler<byte[]>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
         {
@@ -418,6 +558,28 @@ namespace Npgsql.TypeHandlers
             => value.GetLen(true);
 
         public int ValidateAndGetLength(PostgisGeometryCollectionZ value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+            => value.GetLen(true);
+
+        //3DM Geometry
+        public int ValidateAndGetLength(PostgisPointM value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+            => value.GetLen(true);
+
+        public int ValidateAndGetLength(PostgisMultiPointM value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+            => value.GetLen(true);
+
+        public int ValidateAndGetLength(PostgisLineStringM value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+            => value.GetLen(true);
+
+        public int ValidateAndGetLength(PostgisMultiLineStringM value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+            => value.GetLen(true);
+
+        public int ValidateAndGetLength(PostgisPolygonM value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+            => value.GetLen(true);
+
+        public int ValidateAndGetLength(PostgisMultiPolygonM value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+            => value.GetLen(true);
+
+        public int ValidateAndGetLength(PostgisGeometryCollectionM value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
             => value.GetLen(true);
 
         public int ValidateAndGetLength(byte[] value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
@@ -686,6 +848,130 @@ namespace Npgsql.TypeHandlers
                         await Write(x, buf, lengthCache, null, async);
                     return;
 
+                case WkbIdentifier.PointM:
+                    if (buf.WriteSpaceLeft < 24)
+                        await buf.Flush(async);
+                    var pm = (PostgisPointM)value;
+                    buf.WriteDouble(pm.X);
+                    buf.WriteDouble(pm.Y);
+                    buf.WriteDouble(pm.M);
+                    return;
+
+                case WkbIdentifier.LineStringM:
+                    var lm = (PostgisLineStringM)value;
+                    if (buf.WriteSpaceLeft < 4)
+                        await buf.Flush(async);
+                    buf.WriteInt32(lm.PointCount);
+                    for (var ipts = 0; ipts < lm.PointCount; ipts++)
+                    {
+                        if (buf.WriteSpaceLeft < 24)
+                            await buf.Flush(async);
+                        buf.WriteDouble(lm[ipts].X);
+                        buf.WriteDouble(lm[ipts].Y);
+                        buf.WriteDouble(lm[ipts].M);
+                    }
+                    return;
+
+                case WkbIdentifier.PolygonM:
+                    var polm = (PostgisPolygonM)value;
+                    if (buf.WriteSpaceLeft < 4)
+                        await buf.Flush(async);
+                    buf.WriteInt32(polm.RingCount);
+                    for (var irng = 0; irng < polm.RingCount; irng++)
+                    {
+                        if (buf.WriteSpaceLeft < 4)
+                            await buf.Flush(async);
+                        buf.WriteInt32(polm[irng].Length);
+                        for (var ipts = 0; ipts < polm[irng].Length; ipts++)
+                        {
+                            if (buf.WriteSpaceLeft < 24)
+                                await buf.Flush(async);
+                            buf.WriteDouble(polm[irng][ipts].X);
+                            buf.WriteDouble(polm[irng][ipts].Y);
+                            buf.WriteDouble(polm[irng][ipts].M);
+                        }
+                    }
+                    return;
+
+                case WkbIdentifier.MultiPointM:
+                    var mpm = (PostgisMultiPointM)value;
+                    if (buf.WriteSpaceLeft < 4)
+                        await buf.Flush(async);
+                    buf.WriteInt32(mpm.PointCount);
+                    for (var ipts = 0; ipts < mpm.PointCount; ipts++)
+                    {
+                        if (buf.WriteSpaceLeft < 29)
+                            await buf.Flush(async);
+                        buf.WriteByte(0);
+                        buf.WriteInt32((int)WkbIdentifier.PointM);
+                        buf.WriteDouble(mpm[ipts].X);
+                        buf.WriteDouble(mpm[ipts].Y);
+                        buf.WriteDouble(mpm[ipts].M);
+                    }
+                    return;
+
+                case WkbIdentifier.MultiLineStringM:
+                    var mlm = (PostgisMultiLineStringM)value;
+                    if (buf.WriteSpaceLeft < 4)
+                        await buf.Flush(async);
+                    buf.WriteInt32(mlm.LineCount);
+                    for (var irng = 0; irng < mlm.LineCount; irng++)
+                    {
+                        if (buf.WriteSpaceLeft < 9)
+                            await buf.Flush(async);
+                        buf.WriteByte(0);
+                        buf.WriteInt32((int)WkbIdentifier.LineStringM);
+                        buf.WriteInt32(mlm[irng].PointCount);
+                        for (var ipts = 0; ipts < mlm[irng].PointCount; ipts++)
+                        {
+                            if (buf.WriteSpaceLeft < 24)
+                                await buf.Flush(async);
+                            buf.WriteDouble(mlm[irng][ipts].X);
+                            buf.WriteDouble(mlm[irng][ipts].Y);
+                            buf.WriteDouble(mlm[irng][ipts].M);
+                        }
+                    }
+                    return;
+
+                case WkbIdentifier.MultiPolygonM:
+                    var mplm = (PostgisMultiPolygonM)value;
+                    if (buf.WriteSpaceLeft < 4)
+                        await buf.Flush(async);
+                    buf.WriteInt32(mplm.PolygonCount);
+                    for (var ipol = 0; ipol < mplm.PolygonCount; ipol++)
+                    {
+                        if (buf.WriteSpaceLeft < 9)
+                            await buf.Flush(async);
+                        buf.WriteByte(0);
+                        buf.WriteInt32((int)WkbIdentifier.PolygonM);
+                        buf.WriteInt32(mplm[ipol].RingCount);
+                        for (var irng = 0; irng < mplm[ipol].RingCount; irng++)
+                        {
+                            if (buf.WriteSpaceLeft < 4)
+                                await buf.Flush(async);
+                            buf.WriteInt32(mplm[ipol][irng].Length);
+                            for (var ipts = 0; ipts < mplm[ipol][irng].Length; ipts++)
+                            {
+                                if (buf.WriteSpaceLeft < 24)
+                                    await buf.Flush(async);
+                                buf.WriteDouble(mplm[ipol][irng][ipts].X);
+                                buf.WriteDouble(mplm[ipol][irng][ipts].Y);
+                                buf.WriteDouble(mplm[ipol][irng][ipts].M);
+                            }
+                        }
+                    }
+                    return;
+
+                case WkbIdentifier.GeometryCollectionM:
+                    var collm = (PostgisGeometryCollectionM)value;
+                    if (buf.WriteSpaceLeft < 4)
+                        await buf.Flush(async);
+                    buf.WriteInt32(collm.GeometryCount);
+
+                    foreach (var x in collm)
+                        await Write(x, buf, lengthCache, null, async);
+                    return;
+
                 default:
                     throw new InvalidOperationException("Unknown Postgis identifier.");
             }
@@ -734,6 +1020,28 @@ namespace Npgsql.TypeHandlers
 
         public Task Write(PostgisGeometryCollectionZ value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
             => Write((PostgisGeometry<Coordinate3DZ>)value, buf, lengthCache, parameter, async);
+
+        //3DM Geometry
+        public Task Write(PostgisPointM value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+            => Write((PostgisGeometry<Coordinate3DM>)value, buf, lengthCache, parameter, async);
+
+        public Task Write(PostgisMultiPointM value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+            => Write((PostgisGeometry<Coordinate3DM>)value, buf, lengthCache, parameter, async);
+
+        public Task Write(PostgisLineStringM value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+            => Write((PostgisGeometry<Coordinate3DM>)value, buf, lengthCache, parameter, async);
+
+        public Task Write(PostgisMultiLineStringM value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+            => Write((PostgisGeometry<Coordinate3DM>)value, buf, lengthCache, parameter, async);
+
+        public Task Write(PostgisPolygonM value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+            => Write((PostgisGeometry<Coordinate3DM>)value, buf, lengthCache, parameter, async);
+
+        public Task Write(PostgisMultiPolygonM value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+            => Write((PostgisGeometry<Coordinate3DM>)value, buf, lengthCache, parameter, async);
+
+        public Task Write(PostgisGeometryCollectionM value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+            => Write((PostgisGeometry<Coordinate3DM>)value, buf, lengthCache, parameter, async);
 
         public Task Write(byte[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
             => _byteaHandler == null
