@@ -87,6 +87,8 @@ namespace NpgsqlTypes
         HasZDim = 0x80000000
     }
 
+    #region Coordinates
+
     /// <summary>
     /// Class representing a 2D double precision floating point coordinate with X and Y axis.
     /// </summary>
@@ -240,6 +242,8 @@ namespace NpgsqlTypes
             => !Equals(left, right);
     }
 
+    #endregion
+
     /// <summary>
     /// Base Geometry class for all PostGIS types.
     /// </summary>
@@ -277,6 +281,8 @@ namespace NpgsqlTypes
     public abstract class PostgisGeometry<T> : PostgisGeometry where T : Coordinate2D
     {
     }
+
+    #region Points
 
     /// <summary>
     /// PostGIS base Point type with specified coordinate system.
@@ -408,6 +414,10 @@ namespace NpgsqlTypes
         public override int GetHashCode() => Z.GetHashCode() ^ base.GetHashCode();
     }
 
+    #endregion
+
+    #region Linestrings
+
     /// <summary>
     /// Base PostGIS LineString type of specified coordinates system.
     /// </summary>
@@ -502,6 +512,10 @@ namespace NpgsqlTypes
         public PostgisLineStringZM(Coordinate4D[] points) => _points = points;
     }
 
+    #endregion
+
+    #region Polygons
+
     /// <summary>
     /// Base PostGIS Polygon type of specified coordinates system.
     /// </summary>
@@ -551,8 +565,8 @@ namespace NpgsqlTypes
         {
             var ret = 266370105;//seed with something other than zero to make paths of all zeros hash differently.
             for (var i = 0; i < _rings.Length; i++)
-                for (var j = 0; j < _rings[i].Length; j++)
-                    ret ^= PGUtil.RotateShift(_rings[i][j].GetHashCode(), ret % sizeof(int));
+            for (var j = 0; j < _rings[i].Length; j++)
+                ret ^= PGUtil.RotateShift(_rings[i][j].GetHashCode(), ret % sizeof(int));
             return ret;
         }
     }
@@ -608,6 +622,10 @@ namespace NpgsqlTypes
 
         public PostgisPolygonZM(IEnumerable<IEnumerable<Coordinate4D>> rings) => _rings = rings.Select(x => x.ToArray()).ToArray();
     }
+
+    #endregion
+
+    #region MultiPoints
 
     /// <summary>
     /// Base PostGIS MultiPoint type of specified coordinates system.
@@ -721,6 +739,10 @@ namespace NpgsqlTypes
 
         public PostgisMultiPointZM(IEnumerable<Coordinate4D> points) => _points = points.ToArray();
     }
+
+    #endregion
+
+    #region MultiLineStrings
 
     /// <summary>
     /// Base PostGIS MultiLineString type of specified coordinates system.
@@ -848,6 +870,10 @@ namespace NpgsqlTypes
             _lineStrings = pointList.Select(x => new PostgisLineStringZM(x)).ToArray();
     }
 
+    #endregion
+
+    #region MultiPolygons
+
     /// <summary>
     /// Base PostGIS MultiPolygon type of specified coordinates system.
     /// </summary>
@@ -948,6 +974,10 @@ namespace NpgsqlTypes
             _polygons = ringList.Select(x => new PostgisPolygonZM(x)).ToArray();
     }
 
+    #endregion
+
+    #region GeometryCollections
+
     /// <summary>
     /// Base PostGIS GeometryCollection type of specified coordinates system.
     /// </summary>
@@ -1036,4 +1066,6 @@ namespace NpgsqlTypes
 
         public PostgisGeometryCollectionZM(IEnumerable<PostgisGeometry<Coordinate4D>> geometries) => _geometries = geometries.ToArray();
     }
+
+    #endregion
 }
