@@ -38,7 +38,7 @@ namespace NpgsqlTypes
     /// Represents the identifier of the Well Known Binary representation of a geographical feature specified by the OGC.
     /// http://portal.opengeospatial.org/files/?artifact_id=25355
     /// </summary>
-    enum WkbIdentifier : uint
+    enum WKBGeometryType : uint
     {
         // 2D Geometry
         Geometry = 0,
@@ -69,7 +69,6 @@ namespace NpgsqlTypes
         GeometryCollectionM = 2007,
         // 4D Geometry
         // ReSharper disable InconsistentNaming (https://msdn.microsoft.com/en-us/library/ms229043%28v=vs.100%29.aspx)
-        GeometryZM = 3000,
         PointZM = 3001,
         LineStringZM = 3002,
         PolygonZM = 3003,
@@ -254,7 +253,7 @@ namespace NpgsqlTypes
         /// </summary>
         /// <returns></returns>
         protected abstract int GetLenHelper();
-        internal abstract WkbIdentifier Identifier { get; }
+        internal abstract WKBGeometryType GeometryType { get; }
 
         /// <summary>
         /// 
@@ -298,7 +297,7 @@ namespace NpgsqlTypes
     {
         readonly Coordinate2D _coord;
 
-        internal override WkbIdentifier Identifier => WkbIdentifier.Point;
+        internal override WKBGeometryType GeometryType => WKBGeometryType.Point;
         protected override int GetLenHelper() => 16;
 
         public PostgisPoint(double x, double y) => _coord = new Coordinate2D(x, y);
@@ -328,7 +327,7 @@ namespace NpgsqlTypes
     {
         readonly Coordinate3DZ _coord;
 
-        internal override WkbIdentifier Identifier => WkbIdentifier.PointZ;
+        internal override WKBGeometryType GeometryType => WKBGeometryType.PointZ;
         protected override int GetLenHelper() => 24;
 
         public PostgisPointZ(double x, double y, double z) => _coord = new Coordinate3DZ(x, y, z);
@@ -358,7 +357,7 @@ namespace NpgsqlTypes
     {
         readonly Coordinate3DM _coord;
 
-        internal override WkbIdentifier Identifier => WkbIdentifier.PointM;
+        internal override WKBGeometryType GeometryType => WKBGeometryType.PointM;
         protected override int GetLenHelper() => 24;
 
         public PostgisPointM(double x, double y, double m) => _coord = new Coordinate3DM(x, y, m);
@@ -388,7 +387,7 @@ namespace NpgsqlTypes
     {
         readonly Coordinate4D _coord;
 
-        internal override WkbIdentifier Identifier => WkbIdentifier.PointZM;
+        internal override WKBGeometryType GeometryType => WKBGeometryType.PointZM;
         protected override int GetLenHelper() => 32;
 
         public PostgisPointZM(double x, double y, double z, double m) => _coord = new Coordinate4D(x, y, z, m);
@@ -459,7 +458,7 @@ namespace NpgsqlTypes
     /// </summary>
     public class PostgisLineString : PostgisLineString<Coordinate2D>
     {
-        internal override WkbIdentifier Identifier => WkbIdentifier.LineString;
+        internal override WKBGeometryType GeometryType => WKBGeometryType.LineString;
         protected override int GetLenHelper() => 4 + _points.Length * 16;
 
         public PostgisLineString(IEnumerable<Coordinate2D> points) => _points = points.ToArray();
@@ -472,7 +471,7 @@ namespace NpgsqlTypes
     /// </summary>
     public class PostgisLineStringZ : PostgisLineString<Coordinate3DZ>
     {
-        internal override WkbIdentifier Identifier => WkbIdentifier.LineStringZ;
+        internal override WKBGeometryType GeometryType => WKBGeometryType.LineStringZ;
         protected override int GetLenHelper() => 4 + _points.Length * 24;
 
         public PostgisLineStringZ(IEnumerable<Coordinate3DZ> points) => _points = points.ToArray();
@@ -485,7 +484,7 @@ namespace NpgsqlTypes
     /// </summary>
     public class PostgisLineStringM : PostgisLineString<Coordinate3DM>
     {
-        internal override WkbIdentifier Identifier => WkbIdentifier.LineStringM;
+        internal override WKBGeometryType GeometryType => WKBGeometryType.LineStringM;
         protected override int GetLenHelper() => 4 + _points.Length * 24;
 
         public PostgisLineStringM(IEnumerable<Coordinate3DM> points) => _points = points.ToArray();
@@ -498,7 +497,7 @@ namespace NpgsqlTypes
     /// </summary>
     public class PostgisLineStringZM : PostgisLineString<Coordinate4D>
     {
-        internal override WkbIdentifier Identifier => WkbIdentifier.LineStringZM;
+        internal override WKBGeometryType GeometryType => WKBGeometryType.LineStringZM;
         protected override int GetLenHelper() => 4 + _points.Length * 32;
 
         public PostgisLineStringZM(IEnumerable<Coordinate4D> points) => _points = points.ToArray();
@@ -566,7 +565,7 @@ namespace NpgsqlTypes
     /// </summary>
     public class PostgisPolygon : PostgisPolygon<Coordinate2D>
     {
-        internal override WkbIdentifier Identifier => WkbIdentifier.Polygon;
+        internal override WKBGeometryType GeometryType => WKBGeometryType.Polygon;
         protected override int GetLenHelper() => 4 + _rings.Length * 4 + TotalPointCount * 16;
 
         public PostgisPolygon(Coordinate2D[][] rings) => _rings = rings;
@@ -579,7 +578,7 @@ namespace NpgsqlTypes
     /// </summary>
     public class PostgisPolygonZ : PostgisPolygon<Coordinate3DZ>
     {
-        internal override WkbIdentifier Identifier => WkbIdentifier.PolygonZ;
+        internal override WKBGeometryType GeometryType => WKBGeometryType.PolygonZ;
         protected override int GetLenHelper() => 4 + _rings.Length * 4 + TotalPointCount * 24;
 
         public PostgisPolygonZ(Coordinate3DZ[][] rings) => _rings = rings;
@@ -592,7 +591,7 @@ namespace NpgsqlTypes
     /// </summary>
     public class PostgisPolygonM : PostgisPolygon<Coordinate3DM>
     {
-        internal override WkbIdentifier Identifier => WkbIdentifier.PolygonM;
+        internal override WKBGeometryType GeometryType => WKBGeometryType.PolygonM;
         protected override int GetLenHelper() => 4 + _rings.Length * 4 + TotalPointCount * 24;
 
         public PostgisPolygonM(Coordinate3DM[][] rings) => _rings = rings;
@@ -605,7 +604,7 @@ namespace NpgsqlTypes
     /// </summary>
     public class PostgisPolygonZM : PostgisPolygon<Coordinate4D>
     {
-        internal override WkbIdentifier Identifier => WkbIdentifier.PolygonZM;
+        internal override WKBGeometryType GeometryType => WKBGeometryType.PolygonZM;
         protected override int GetLenHelper() => 4 + _rings.Length * 4 + TotalPointCount * 32;
 
         public PostgisPolygonZM(Coordinate4D[][] rings) => _rings = rings;
@@ -659,7 +658,7 @@ namespace NpgsqlTypes
     /// </summary>
     public class PostgisMultiPoint : PostgisMultiPoint<Coordinate2D>
     {
-        internal override WkbIdentifier Identifier => WkbIdentifier.MultiPoint;
+        internal override WKBGeometryType GeometryType => WKBGeometryType.MultiPoint;
 
         //each point of a multipoint is a postgispoint, not a building block point.
         protected override int GetLenHelper() => 4 + _points.Length * 21;
@@ -677,7 +676,7 @@ namespace NpgsqlTypes
     /// </summary>
     public class PostgisMultiPointZ : PostgisMultiPoint<Coordinate3DZ>
     {
-        internal override WkbIdentifier Identifier => WkbIdentifier.MultiPointZ;
+        internal override WKBGeometryType GeometryType => WKBGeometryType.MultiPointZ;
 
         //each point of a multipoint is a postgispoint, not a building block point.
         protected override int GetLenHelper() => 4 + _points.Length * 29;
@@ -695,7 +694,7 @@ namespace NpgsqlTypes
     /// </summary>
     public class PostgisMultiPointM : PostgisMultiPoint<Coordinate3DM>
     {
-        internal override WkbIdentifier Identifier => WkbIdentifier.MultiPointM;
+        internal override WKBGeometryType GeometryType => WKBGeometryType.MultiPointM;
 
         //each point of a multipoint is a postgispoint, not a building block point.
         protected override int GetLenHelper() => 4 + _points.Length * 29;
@@ -713,7 +712,7 @@ namespace NpgsqlTypes
     /// </summary>
     public class PostgisMultiPointZM : PostgisMultiPoint<Coordinate4D>
     {
-        internal override WkbIdentifier Identifier => WkbIdentifier.MultiPointZM;
+        internal override WKBGeometryType GeometryType => WKBGeometryType.MultiPointZM;
 
         //each point of a multipoint is a postgispoint, not a building block point.
         protected override int GetLenHelper() => 4 + _points.Length * 37;
@@ -776,7 +775,7 @@ namespace NpgsqlTypes
                 _lineStrings[i] = new PostgisLineString(pointArray[i]);
         }
 
-        internal override WkbIdentifier Identifier => WkbIdentifier.MultiLineString;
+        internal override WKBGeometryType GeometryType => WKBGeometryType.MultiLineString;
 
         public PostgisMultiLineString(PostgisLineString[] linestrings) => _lineStrings = linestrings;
 
@@ -798,7 +797,7 @@ namespace NpgsqlTypes
                 _lineStrings[i] = new PostgisLineStringZ(pointArray[i]);
         }
 
-        internal override WkbIdentifier Identifier => WkbIdentifier.MultiLineStringZ;
+        internal override WKBGeometryType GeometryType => WKBGeometryType.MultiLineStringZ;
 
         public PostgisMultiLineStringZ(PostgisLineStringZ[] linestrings) => _lineStrings = linestrings;
 
@@ -820,7 +819,7 @@ namespace NpgsqlTypes
                 _lineStrings[i] = new PostgisLineStringM(pointArray[i]);
         }
 
-        internal override WkbIdentifier Identifier => WkbIdentifier.MultiLineStringM;
+        internal override WKBGeometryType GeometryType => WKBGeometryType.MultiLineStringM;
 
         public PostgisMultiLineStringM(PostgisLineStringM[] linestrings) => _lineStrings = linestrings;
 
@@ -842,7 +841,7 @@ namespace NpgsqlTypes
                 _lineStrings[i] = new PostgisLineStringZM(pointArray[i]);
         }
 
-        internal override WkbIdentifier Identifier => WkbIdentifier.MultiLineStringZM;
+        internal override WKBGeometryType GeometryType => WKBGeometryType.MultiLineStringZM;
 
         public PostgisMultiLineStringZM(PostgisLineStringZM[] linestrings) => _lineStrings = linestrings;
 
@@ -897,7 +896,7 @@ namespace NpgsqlTypes
     /// </summary>
     public class PostgisMultiPolygon : PostgisMultiPolygon<Coordinate2D>
     {
-        internal override WkbIdentifier Identifier => WkbIdentifier.MultiPolygon;
+        internal override WKBGeometryType GeometryType => WKBGeometryType.MultiPolygon;
 
         public PostgisMultiPolygon(PostgisPolygon[] polygons) => _polygons = polygons;
 
@@ -912,7 +911,7 @@ namespace NpgsqlTypes
     /// </summary>
     public class PostgisMultiPolygonZ : PostgisMultiPolygon<Coordinate3DZ>
     {
-        internal override WkbIdentifier Identifier => WkbIdentifier.MultiPolygonZ;
+        internal override WKBGeometryType GeometryType => WKBGeometryType.MultiPolygonZ;
 
         public PostgisMultiPolygonZ(PostgisPolygonZ[] polygons) => _polygons = polygons;
 
@@ -927,7 +926,7 @@ namespace NpgsqlTypes
     /// </summary>
     public class PostgisMultiPolygonM : PostgisMultiPolygon<Coordinate3DM>
     {
-        internal override WkbIdentifier Identifier => WkbIdentifier.MultiPolygonM;
+        internal override WKBGeometryType GeometryType => WKBGeometryType.MultiPolygonM;
 
         public PostgisMultiPolygonM(PostgisPolygonM[] polygons) => _polygons = polygons;
 
@@ -942,7 +941,7 @@ namespace NpgsqlTypes
     /// </summary>
     public class PostgisMultiPolygonZM : PostgisMultiPolygon<Coordinate4D>
     {
-        internal override WkbIdentifier Identifier => WkbIdentifier.MultiPolygonZM;
+        internal override WKBGeometryType GeometryType => WKBGeometryType.MultiPolygonZM;
 
         public PostgisMultiPolygonZM(PostgisPolygonZM[] polygons) => _polygons = polygons;
 
@@ -998,7 +997,7 @@ namespace NpgsqlTypes
     /// </summary>
     public class PostgisGeometryCollection : PostgisGeometryCollection<Coordinate2D>
     {
-        internal override WkbIdentifier Identifier => WkbIdentifier.GeometryCollection;
+        internal override WKBGeometryType GeometryType => WKBGeometryType.GeometryCollection;
 
         public PostgisGeometryCollection(PostgisGeometry<Coordinate2D>[] geometries) => _geometries = geometries;
 
@@ -1010,7 +1009,7 @@ namespace NpgsqlTypes
     /// </summary>
     public class PostgisGeometryCollectionZ : PostgisGeometryCollection<Coordinate3DZ>
     {
-        internal override WkbIdentifier Identifier => WkbIdentifier.GeometryCollectionZ;
+        internal override WKBGeometryType GeometryType => WKBGeometryType.GeometryCollectionZ;
 
         public PostgisGeometryCollectionZ(PostgisGeometry<Coordinate3DZ>[] geometries) => _geometries = geometries;
 
@@ -1022,7 +1021,7 @@ namespace NpgsqlTypes
     /// </summary>
     public class PostgisGeometryCollectionM : PostgisGeometryCollection<Coordinate3DM>
     {
-        internal override WkbIdentifier Identifier => WkbIdentifier.GeometryCollectionM;
+        internal override WKBGeometryType GeometryType => WKBGeometryType.GeometryCollectionM;
 
         public PostgisGeometryCollectionM(PostgisGeometry<Coordinate3DM>[] geometries) => _geometries = geometries;
 
@@ -1034,7 +1033,7 @@ namespace NpgsqlTypes
     /// </summary>
     public class PostgisGeometryCollectionZM : PostgisGeometryCollection<Coordinate4D>
     {
-        internal override WkbIdentifier Identifier => WkbIdentifier.GeometryCollectionZM;
+        internal override WKBGeometryType GeometryType => WKBGeometryType.GeometryCollectionZM;
 
         public PostgisGeometryCollectionZM(PostgisGeometry<Coordinate4D>[] geometries) => _geometries = geometries;
 
