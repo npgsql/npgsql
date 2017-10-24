@@ -997,13 +997,25 @@ namespace Npgsql
         /// <param name="behavior">An instance of <see cref="CommandBehavior"/>.</param>
         /// <param name="cancellationToken">A task representing the operation.</param>
         /// <returns></returns>
-        protected override Task<DbDataReader> ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
-            => SynchronizationContextSwitcher.NoContext(async () =>
+        protected override async Task<DbDataReader> ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
+        {
+            // Not using SynchronizationContextSwitcher to save allocating the switcher and the delegate.
+
+            var oldContext = SynchronizationContext.Current;
+
+            SynchronizationContext.SetSynchronizationContext(null);
+
+            try
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 using (cancellationToken.Register(Cancel))
                     return await ExecuteDbDataReader(behavior, true, cancellationToken);
-            });
+            }
+            finally
+            {
+                SynchronizationContext.SetSynchronizationContext(oldContext);
+            }
+        }
 
         /// <summary>
         /// Executes the command text against the connection.

@@ -137,7 +137,23 @@ namespace Npgsql
         /// <param name="cancellationToken">Ignored for now.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
         public override Task<bool> ReadAsync(CancellationToken cancellationToken)
-            => SynchronizationContextSwitcher.NoContext(async () => await Read(true));
+        {
+            // Not using SynchronizationContextSwitcher to save allocating the switcher
+            // and the delegate; also avoids the await in the delegate.
+
+            var oldContext = SynchronizationContext.Current;
+
+            SynchronizationContext.SetSynchronizationContext(null);
+
+            try
+            {
+                return Read(true);
+            }
+            finally
+            {
+                SynchronizationContext.SetSynchronizationContext(oldContext);
+            }
+        }
 
         async Task<bool> Read(bool async)
         {
@@ -275,20 +291,30 @@ namespace Npgsql
         /// <param name="cancellationToken">Currently ignored.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
         public override Task<bool> NextResultAsync(CancellationToken cancellationToken)
-            => SynchronizationContextSwitcher.NoContext(async () =>
+        {
+            // Not using SynchronizationContextSwitcher to save allocating the switcher
+            // and the delegate; also avoids the await in the delegate.
+
+            var oldContext = SynchronizationContext.Current;
+
+            SynchronizationContext.SetSynchronizationContext(null);
+
+            try
             {
-                try
-                {
-                    return IsSchemaOnly ? await NextResultSchemaOnly(true) : await NextResult(true);
-                }
-                catch (PostgresException e)
-                {
-                    State = ReaderState.Consumed;
-                    if (StatementIndex >= 0 && StatementIndex < _statements.Count)
-                        e.Statement = _statements[StatementIndex];
-                    throw;
-                }
-            });
+                return IsSchemaOnly ? NextResultSchemaOnly(true) : NextResult(true);
+            }
+            catch (PostgresException e)
+            {
+                State = ReaderState.Consumed;
+                if (StatementIndex >= 0 && StatementIndex < _statements.Count)
+                    e.Statement = _statements[StatementIndex];
+                throw;
+            }
+            finally
+            {
+                SynchronizationContext.SetSynchronizationContext(oldContext);
+            }
+        }
 
         internal virtual async Task<bool> NextResult(bool async)
         {
