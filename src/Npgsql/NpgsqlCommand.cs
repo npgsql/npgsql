@@ -905,18 +905,18 @@ namespace Npgsql
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <returns>A task representing the asynchronous operation, with the number of rows affected if known; -1 otherwise.</returns>
         public override Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken)
-            => SynchronizationContextSwitcher.NoContext(async () =>
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                using (cancellationToken.Register(Cancel))
-                    return await ExecuteNonQuery(true, cancellationToken);
-            });
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using (NoSynchronizationContextScope.Enter())
+                return ExecuteNonQuery(true, cancellationToken);
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         async Task<int> ExecuteNonQuery(bool async, CancellationToken cancellationToken)
         {
             var connector = CheckReadyAndGetConnector();
             using (connector.StartUserAction(this))
+            using (cancellationToken.Register(cmd => ((NpgsqlCommand)cmd).Cancel(), this))
             using (var reader = await Execute(CommandBehavior.Default, async, cancellationToken))
             {
                 while (async ? await reader.NextResultAsync(cancellationToken) : reader.NextResult()) {}
@@ -946,12 +946,11 @@ namespace Npgsql
         /// first row in the result set, or a null reference if the result set is empty.</returns>
         [ItemCanBeNull]
         public override Task<object> ExecuteScalarAsync(CancellationToken cancellationToken)
-            => SynchronizationContextSwitcher.NoContext(async () =>
-            {
-                cancellationToken.ThrowIfCancellationRequested()            ;
-                using (cancellationToken.Register(Cancel))
-                    return await ExecuteScalar(true, cancellationToken);
-            });
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using (NoSynchronizationContextScope.Enter())
+                return ExecuteScalar(true, cancellationToken).AsTask();
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         [ItemCanBeNull]
@@ -962,6 +961,7 @@ namespace Npgsql
             if (!Parameters.HasOutputParameters)
                 behavior |= CommandBehavior.SequentialAccess;
             using (connector.StartUserAction(this))
+            using (cancellationToken.Register(cmd => ((NpgsqlCommand)cmd).Cancel(), this))
             using (var reader = await Execute(behavior, async, cancellationToken))
                 return reader.Read() && reader.FieldCount != 0 ? reader.GetValue(0) : null;
         }
@@ -998,12 +998,11 @@ namespace Npgsql
         /// <param name="cancellationToken">A task representing the operation.</param>
         /// <returns></returns>
         protected override Task<DbDataReader> ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
-            => SynchronizationContextSwitcher.NoContext(async () =>
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                using (cancellationToken.Register(Cancel))
-                    return await ExecuteDbDataReader(behavior, true, cancellationToken);
-            });
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using (NoSynchronizationContextScope.Enter())
+                return ExecuteDbDataReader(behavior, true, cancellationToken).AsTask();
+        }
 
         /// <summary>
         /// Executes the command text against the connection.
@@ -1018,7 +1017,8 @@ namespace Npgsql
             connector.StartUserAction(this);
             try
             {
-                return await Execute(behavior, async, cancellationToken);
+                using (cancellationToken.Register(cmd => ((NpgsqlCommand)cmd).Cancel(), this))
+                    return await Execute(behavior, async, cancellationToken);
             }
             catch
             {
