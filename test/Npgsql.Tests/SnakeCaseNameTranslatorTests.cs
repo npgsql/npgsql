@@ -32,14 +32,14 @@ namespace Npgsql.Tests
     public class SnakeCaseNameTranslatorTests
     {
         [Test, TestCaseSource(typeof(SnakeCaseNameTranslatorTests), nameof(TestCases))]
-        public string TranslateTypeName(string value, bool compatibilityMode)
-            => new NpgsqlSnakeCaseNameTranslator(compatibilityMode).TranslateTypeName(value);
+        public string TranslateTypeName(string value, bool legacyMode)
+            => new NpgsqlSnakeCaseNameTranslator(legacyMode).TranslateTypeName(value);
 
         [Test, TestCaseSource(typeof(SnakeCaseNameTranslatorTests), nameof(TestCases))]
-        public string TranslateMemberName(string value, bool compatibilityMode)
-            => new NpgsqlSnakeCaseNameTranslator(compatibilityMode).TranslateMemberName(value);
+        public string TranslateMemberName(string value, bool legacyMode)
+            => new NpgsqlSnakeCaseNameTranslator(legacyMode).TranslateMemberName(value);
 
-        static IEnumerable<TestCaseData> TestCases => new (string value, string compatResult, string result)[]
+        static IEnumerable<TestCaseData> TestCases => new (string value, string legacyResult, string result)[]
         {
             ("Hi!! This is text. Time to test.", "hi!! _this is text. _time to test.", "hi!!_this_is_text._time_to_test."),
             ("9999-12-31T23:59:59.9999999Z", "9999-12-31_t23:59:59.9999999_z", "9999-12-31_t23:59:59.9999999_z"),
@@ -66,7 +66,7 @@ namespace Npgsql.Tests
             ("", "", ""),
         }.SelectMany(x => new[]
         {
-            new TestCaseData(x.value, true).Returns(x.compatResult),
+            new TestCaseData(x.value, true).Returns(x.legacyResult),
             new TestCaseData(x.value, false).Returns(x.result), 
         });
     }

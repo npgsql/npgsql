@@ -35,20 +35,20 @@ namespace Npgsql.NameTranslation
         /// <summary>
         /// Creates a new <see cref="NpgsqlSnakeCaseNameTranslator"/>.
         /// </summary>
-        public NpgsqlSnakeCaseNameTranslator() : this(compatibilityMode: false)
+        public NpgsqlSnakeCaseNameTranslator() : this(legacyMode: false)
         {
         }
 
         /// <summary>
         /// Creates a new <see cref="NpgsqlSnakeCaseNameTranslator"/>.
         /// </summary>
-        /// <param name="compatibilityMode">Uses the old naming convention if <c>true</c>, otherwise it uses the new naming convention.</param>
-        public NpgsqlSnakeCaseNameTranslator(bool compatibilityMode)
+        /// <param name="legacyMode">Uses the legacy naming convention if <c>true</c>, otherwise it uses the new naming convention.</param>
+        public NpgsqlSnakeCaseNameTranslator(bool legacyMode)
         {
-            CompatibilityMode = compatibilityMode;
+            LegacyMode = legacyMode;
         }
 
-        bool CompatibilityMode { get; }
+        bool LegacyMode { get; }
 
         /// <summary>
         /// Given a CLR type name (e.g class, struct, enum), translates its name to a database type name.
@@ -58,7 +58,7 @@ namespace Npgsql.NameTranslation
         /// <summary>
         /// Given a CLR member name (property or field), translates its name to a database type name.
         /// </summary>
-        public string TranslateMemberName(string clrName) => CompatibilityMode
+        public string TranslateMemberName(string clrName) => LegacyMode
             ? string.Concat(clrName.Select((c, i) => i > 0 && char.IsUpper(c) ? "_" + c.ToString() : c.ToString())).ToLower()
             : ConvertToSnakeCase(clrName);
 
