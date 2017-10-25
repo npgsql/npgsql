@@ -1,8 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Linq;
+using Npgsql.Util;
 
 namespace Npgsql.NameTranslation
 {
@@ -12,6 +9,17 @@ namespace Npgsql.NameTranslation
     /// </summary>
     public class NpgsqlSnakeCaseNameTranslator : INpgsqlNameTranslator
     {
+        public NpgsqlSnakeCaseNameTranslator() : this(compatibilityMode: true)
+        {
+        }
+
+        public NpgsqlSnakeCaseNameTranslator(bool compatibilityMode)
+        {
+            CompatibilityMode = compatibilityMode;
+        }
+
+        bool CompatibilityMode { get; }
+
         /// <summary>
         /// Given a CLR type name (e.g class, struct, enum), translates its name to a database type name.
         /// </summary>
@@ -22,7 +30,8 @@ namespace Npgsql.NameTranslation
         /// </summary>
         public string TranslateMemberName(string clrName) => ClrToDatabaseName(clrName);
 
-        static string ClrToDatabaseName(string clrName)
-            => string.Concat(clrName.Select((c, i) => i > 0 && char.IsUpper(c) ? "_" + c.ToString() : c.ToString())).ToLower();
+        string ClrToDatabaseName(string clrName) => CompatibilityMode
+            ? string.Concat(clrName.Select((c, i) => i > 0 && char.IsUpper(c) ? "_" + c.ToString() : c.ToString())).ToLower()
+            : clrName.ToSnakeCase();
     }
 }
