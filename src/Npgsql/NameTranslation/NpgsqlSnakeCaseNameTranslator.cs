@@ -33,9 +33,9 @@ namespace Npgsql.NameTranslation
     public class NpgsqlSnakeCaseNameTranslator : INpgsqlNameTranslator
     {
         /// <summary>
-        /// Creates a new <see cref="NpgsqlSnakeCaseNameTranslator"/> in compatibility mode.
+        /// Creates a new <see cref="NpgsqlSnakeCaseNameTranslator"/>.
         /// </summary>
-        public NpgsqlSnakeCaseNameTranslator() : this(compatibilityMode: true)
+        public NpgsqlSnakeCaseNameTranslator() : this(compatibilityMode: false)
         {
         }
 
