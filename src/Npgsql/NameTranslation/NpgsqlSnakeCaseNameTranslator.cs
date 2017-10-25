@@ -32,10 +32,17 @@ namespace Npgsql.NameTranslation
     /// </summary>
     public class NpgsqlSnakeCaseNameTranslator : INpgsqlNameTranslator
     {
+        /// <summary>
+        /// Creates a new <see cref="NpgsqlSnakeCaseNameTranslator"/> in compatibility mode.
+        /// </summary>
         public NpgsqlSnakeCaseNameTranslator() : this(compatibilityMode: true)
         {
         }
 
+        /// <summary>
+        /// Creates a new <see cref="NpgsqlSnakeCaseNameTranslator"/>.
+        /// </summary>
+        /// <param name="compatibilityMode">Uses the old naming convention if <c>true</c>, otherwise it uses the new naming convention.</param>
         public NpgsqlSnakeCaseNameTranslator(bool compatibilityMode)
         {
             CompatibilityMode = compatibilityMode;
