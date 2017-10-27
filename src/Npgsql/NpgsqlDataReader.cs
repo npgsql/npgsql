@@ -137,8 +137,12 @@ namespace Npgsql
         /// <param name="cancellationToken">Ignored for now.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
         public override Task<bool> ReadAsync(CancellationToken cancellationToken)
-            => SynchronizationContextSwitcher.NoContext(async () => await Read(true));
+        {
+            using (NoSynchronizationContextScope.Enter())
+                return Read(true);
+        }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         async Task<bool> Read(bool async)
         {
             switch (State)
@@ -275,22 +279,26 @@ namespace Npgsql
         /// <param name="cancellationToken">Currently ignored.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
         public override Task<bool> NextResultAsync(CancellationToken cancellationToken)
-            => SynchronizationContextSwitcher.NoContext(async () =>
+        {
+            try
             {
-                try
-                {
-                    return IsSchemaOnly ? await NextResultSchemaOnly(true) : await NextResult(true);
-                }
-                catch (PostgresException e)
-                {
-                    State = ReaderState.Consumed;
-                    if (StatementIndex >= 0 && StatementIndex < _statements.Count)
-                        e.Statement = _statements[StatementIndex];
-                    throw;
-                }
-            });
+                using (NoSynchronizationContextScope.Enter())
+                    return IsSchemaOnly ? NextResultSchemaOnly(true) : NextResult(true);
+            }
+            catch (PostgresException e)
+            {
+                State = ReaderState.Consumed;
+                if (StatementIndex >= 0 && StatementIndex < _statements.Count)
+                    e.Statement = _statements[StatementIndex];
+                throw;
+            }
+        }
 
-        internal virtual async Task<bool> NextResult(bool async)
+        /// <summary>
+        /// Internal implementation of NextResult
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected virtual async Task<bool> NextResult(bool async)
         {
             IBackendMessage msg;
             Debug.Assert(!IsSchemaOnly);
