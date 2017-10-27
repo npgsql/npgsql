@@ -393,7 +393,7 @@ namespace Npgsql
                 await WriteBuffer.Flush(async);
                 timeout.Check();
 
-                await Authenticate(username, timeout, async, cancellationToken);
+                await Authenticate(username, timeout, async);
 
                 // We treat BackendKeyData as optional because some PostgreSQL-like database
                 // don't send it (e.g. CockroachDB)
@@ -1140,11 +1140,11 @@ namespace Npgsql
 
         #region Transactions
 
-        internal Task Rollback(bool async, CancellationToken cancellationToken)
+        internal Task Rollback(bool async)
         {
             Log.Debug("Rolling back transaction", Id);
             using (StartUserAction())
-                return ExecuteInternalCommand(PregeneratedMessage.RollbackTransaction, async, cancellationToken);
+                return ExecuteInternalCommand(PregeneratedMessage.RollbackTransaction, async);
         }
 
         internal bool InTransaction
@@ -1488,7 +1488,7 @@ namespace Npgsql
                 break;
             case TransactionStatus.InTransactionBlock:
             case TransactionStatus.InFailedTransactionBlock:
-                Rollback(false, CancellationToken.None);
+                Rollback(false);
                 break;
             default:
                 throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {TransactionStatus} of enum {nameof(TransactionStatus)}. Please file a bug.");
@@ -1903,9 +1903,9 @@ namespace Npgsql
         #region Execute internal command
 
         internal void ExecuteInternalCommand(string query)
-            => ExecuteInternalCommand(QueryMessage.Populate(query), false, CancellationToken.None).Wait();
+            => ExecuteInternalCommand(QueryMessage.Populate(query), false).Wait();
 
-        internal async Task ExecuteInternalCommand(FrontendMessage message, bool async, CancellationToken cancellationToken)
+        internal async Task ExecuteInternalCommand(FrontendMessage message, bool async)
         {
             Debug.Assert(message is QueryMessage || message is PregeneratedMessage);
             Debug.Assert(_userLock.CurrentCount == 0, "Forgot to start a user action...");

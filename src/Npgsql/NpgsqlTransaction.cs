@@ -138,15 +138,15 @@ namespace Npgsql
         /// <summary>
         /// Commits the database transaction.
         /// </summary>
-        public override void Commit() => Commit(false, CancellationToken.None).GetAwaiter().GetResult();
+        public override void Commit() => Commit(false).GetAwaiter().GetResult();
 
-        async Task Commit(bool async, CancellationToken cancellationToken)
+        async Task Commit(bool async)
         {
             CheckReady();
             using (_connector.StartUserAction())
             {
                 Log.Debug("Committing transaction", _connector.Id);
-                await _connector.ExecuteInternalCommand(PregeneratedMessage.CommitTransaction, async, cancellationToken);
+                await _connector.ExecuteInternalCommand(PregeneratedMessage.CommitTransaction, async);
                 Clear();
             }
         }
@@ -159,7 +159,7 @@ namespace Npgsql
             => SynchronizationContextSwitcher.NoContext(async () =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                await Commit(true, cancellationToken);
+                await Commit(true);
             });
 
         /// <summary>
@@ -175,12 +175,12 @@ namespace Npgsql
         /// <summary>
         /// Rolls back a transaction from a pending state.
         /// </summary>
-        public override void Rollback() => Rollback(false, CancellationToken.None).GetAwaiter().GetResult();
+        public override void Rollback() => Rollback(false).GetAwaiter().GetResult();
 
-        async Task Rollback(bool async, CancellationToken cancellationToken)
+        async Task Rollback(bool async)
         {
             CheckReady();
-            await _connector.Rollback(async, cancellationToken);
+            await _connector.Rollback(async);
             Clear();
         }
 
@@ -192,7 +192,7 @@ namespace Npgsql
             => SynchronizationContextSwitcher.NoContext(async () =>
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                await Rollback(true, cancellationToken);
+                await Rollback(true);
             });
 
         /// <summary>

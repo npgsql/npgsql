@@ -98,6 +98,7 @@ namespace Npgsql
         /// <exception cref="PostgresException">If an oid is already in use</exception>
         public uint Create(uint preferredOid = 0) => Create(preferredOid, false).GetAwaiter().GetResult();
 
+        // Review unused parameters
         /// <summary>
         /// Create an empty large object in the database. If an oid is specified but is already in use, an PostgresException will be thrown.
         /// </summary>
@@ -105,7 +106,9 @@ namespace Npgsql
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>The oid for the large object created</returns>
         /// <exception cref="PostgresException">If an oid is already in use</exception>
+#pragma warning disable CA1801
         public Task<uint> CreateAsync(uint preferredOid, CancellationToken cancellationToken)
+#pragma warning restore CA1801 // Review unused parameters
             => Create(preferredOid, true);
 
         Task<uint> Create(uint preferredOid, bool async)

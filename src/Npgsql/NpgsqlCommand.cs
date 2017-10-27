@@ -418,7 +418,7 @@ namespace Npgsql
                 if (!needToPrepare)
                     return;
 
-                var sendTask = SendPrepare(false, CancellationToken.None);
+                var sendTask = SendPrepare(false);
 
                 // Loop over statements, skipping those that are already prepared (because they were persisted)
                 var isFirst = true;
@@ -475,7 +475,7 @@ namespace Npgsql
             Log.Debug("Closing command's prepared statements", connector.Id);
             using (connector.StartUserAction())
             {
-                var sendTask = SendClose(false, CancellationToken.None);
+                var sendTask = SendClose(false);
                 foreach (var statement in _statements.Where(s => s.PreparedStatement?.State == PreparedState.BeingUnprepared))
                 {
                     connector.ReadExpecting<CloseCompletedMessage>();
@@ -660,11 +660,11 @@ namespace Npgsql
                     // to prevents a dependency on the thread pool (which would also trigger deadlocks).
                     // The WriteBuffer notifies this command when the first buffer flush occurs, so that the
                     // send functions can switch to the special async mode when needed.
-                    sendTask = SendExecute(async, cancellationToken);
+                    sendTask = SendExecute(async);
                 }
                 else
                 {
-                    sendTask = SendExecuteSchemaOnly(async, cancellationToken);
+                    sendTask = SendExecuteSchemaOnly(async);
                 }
 
                 // The following is a hack. It raises an exception if one was thrown in the first phases
@@ -711,7 +711,7 @@ namespace Npgsql
                 SynchronizationContext.SetSynchronizationContext(null);
         }
 
-        async Task SendExecute(bool async, CancellationToken cancellationToken)
+        async Task SendExecute(bool async)
         {
             BeginSend();
             var connector = Connection.Connector;
@@ -770,7 +770,7 @@ namespace Npgsql
             CleanupSend();
         }
 
-        async Task SendExecuteSchemaOnly(bool async, CancellationToken cancellationToken)
+        async Task SendExecuteSchemaOnly(bool async)
         {
             BeginSend();
             var connector = Connection.Connector;
@@ -813,7 +813,7 @@ namespace Npgsql
             CleanupSend();
         }
 
-        async Task SendPrepare(bool async, CancellationToken cancellationToken)
+        async Task SendPrepare(bool async)
         {
             BeginSend();
             var connector = Connection.Connector;
@@ -863,7 +863,7 @@ namespace Npgsql
             CleanupSend();
         }
 
-        async Task SendClose(bool async, CancellationToken cancellationToken)
+        async Task SendClose(bool async)
         {
             BeginSend();
             var connector = Connection.Connector;

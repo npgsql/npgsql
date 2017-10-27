@@ -15,7 +15,7 @@ namespace Npgsql
 {
     partial class NpgsqlConnector
     {
-        async Task Authenticate(string username, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
+        async Task Authenticate(string username, NpgsqlTimeout timeout, bool async)
         {
             Log.Trace("Authenticating...", Id);
 
@@ -27,16 +27,16 @@ namespace Npgsql
                 return;
 
             case AuthenticationRequestType.AuthenticationCleartextPassword:
-                await AuthenticateCleartext(async, cancellationToken);
+                await AuthenticateCleartext(async);
                 return;
 
             case AuthenticationRequestType.AuthenticationMD5Password:
-                await AuthenticateMD5(username, ((AuthenticationMD5PasswordMessage)msg).Salt, async, cancellationToken);
+                await AuthenticateMD5(username, ((AuthenticationMD5PasswordMessage)msg).Salt, async);
                 return;
 
             case AuthenticationRequestType.AuthenticationGSS:
             case AuthenticationRequestType.AuthenticationSSPI:
-                await AuthenticateGSS(async, cancellationToken);
+                await AuthenticateGSS(async);
                 return;
 
             case AuthenticationRequestType.AuthenticationGSSContinue:
@@ -47,7 +47,7 @@ namespace Npgsql
             }
         }
 
-        async Task AuthenticateCleartext(bool async, CancellationToken cancellationToken)
+        async Task AuthenticateCleartext(bool async)
         {
             var passwd = Settings.Password;
 
@@ -72,7 +72,7 @@ namespace Npgsql
             await ReadExpecting<AuthenticationRequestMessage>(async);
         }
 
-        async Task AuthenticateMD5(string username, byte[] salt, bool async, CancellationToken cancellationToken)
+        async Task AuthenticateMD5(string username, byte[] salt, bool async)
         {
             var passwd = Settings.Password;
 
@@ -98,7 +98,7 @@ namespace Npgsql
         }
 
 #pragma warning disable 1998
-        async Task AuthenticateGSS(bool async, CancellationToken cancellationToken)
+        async Task AuthenticateGSS(bool async)
 #pragma warning restore 1998
         {
             if (!IntegratedSecurity)
