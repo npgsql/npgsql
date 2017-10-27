@@ -234,7 +234,7 @@ namespace NpgsqlTypes
         /// Corresponds to the PostgreSQL "timestamp with time zone" type.
         /// </summary>
         /// <remarks>See http://www.postgresql.org/docs/current/static/datatype-datetime.html</remarks>
-        [Obsolete("Use TimestampTz instead")]
+        [Obsolete("Use TimestampTz instead")]  // NOTE: Don't remove this (see #1694)
         TimestampTZ = 26,
 
         /// <summary>
@@ -253,7 +253,7 @@ namespace NpgsqlTypes
         /// Corresponds to the PostgreSQL "time with time zone" type.
         /// </summary>
         /// <remarks>See http://www.postgresql.org/docs/current/static/datatype-datetime.html</remarks>
-        [Obsolete("Use TimeTz instead")]
+        [Obsolete("Use TimeTz instead")]  // NOTE: Don't remove this (see #1694)
         TimeTZ = 31,
 
         /// <summary>
