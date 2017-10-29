@@ -61,14 +61,13 @@ namespace Npgsql.TypeHandling
         /// Constructs an <see cref="NpgsqlTypeHandler{TDefault}"/>.
         /// </summary>
         protected NpgsqlTypeHandler()
-        {
             // Get code-generated delegates for non-generic ValidateAndGetLength/WriteWithLengthInternal
+            =>
             (_nonGenericValidateAndGetLength, _nonGenericWriteWithLength) =
                 NonGenericDelegateCache.GetOrAdd(GetType(), t => (
                     GenerateNonGenericValidationMethod(GetType()),
                     GenerateNonGenericWriteMethod(GetType(), typeof(INpgsqlTypeHandler<>)))
                 );
-        }
 
         #region Read
 

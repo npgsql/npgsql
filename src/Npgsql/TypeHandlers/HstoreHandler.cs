@@ -48,9 +48,7 @@ namespace Npgsql.TypeHandlers
         readonly TextHandler _textHandler;
 
         internal HstoreHandler(NpgsqlConnection connection)
-        {
-            _textHandler = new TextHandler(connection);
-        }
+            => _textHandler = new TextHandler(connection);
 
         #region Write
 

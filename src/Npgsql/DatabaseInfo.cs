@@ -67,15 +67,13 @@ namespace Npgsql
         static readonly string TypesQueryWithRange = GenerateTypesQuery(true);
         static readonly string TypesQueryWithoutRange = GenerateTypesQuery(false);
 
+        // Select all types (base, array which is also base, enum, range, composite).
+        // Note that arrays are distinguished from primitive types through them having typreceive=array_recv.
+        // Order by primitives first, container later.
+        // For arrays and ranges, join in the element OID and type (to filter out arrays of unhandled
+        // types).
         static string GenerateTypesQuery(bool withRange)
-        {
-            // Select all types (base, array which is also base, enum, range, composite).
-            // Note that arrays are distinguished from primitive types through them having typreceive=array_recv.
-            // Order by primitives first, container later.
-            // For arrays and ranges, join in the element OID and type (to filter out arrays of unhandled
-            // types).
-            return
-                $@"SELECT ns.nspname, a.typname, a.oid, a.typrelid, a.typbasetype,
+            => $@"SELECT ns.nspname, a.typname, a.oid, a.typrelid, a.typbasetype,
 CASE WHEN pg_proc.proname='array_recv' THEN 'a' ELSE a.typtype END AS type,
 CASE
   WHEN pg_proc.proname='array_recv' THEN a.typelem
@@ -100,7 +98,6 @@ WHERE
   ) OR
   (a.typname IN ('record', 'void') AND a.typtype = 'p')
 ORDER BY ord";
-        }
 
         async Task LoadBackendTypes(NpgsqlConnector connector, NpgsqlTimeout timeout, bool async)
         {

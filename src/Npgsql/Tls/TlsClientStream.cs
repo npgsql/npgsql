@@ -1308,8 +1308,7 @@ namespace Npgsql.Tls
             var Qax = new EllipticCurve.BigInt(pkKey, 1, curve.curveByteLen);
             var Qay = new EllipticCurve.BigInt(pkKey, 1 + curve.curveByteLen, curve.curveByteLen);
 
-            byte[] preMasterSecret;
-            curve.Ecdh(Qax, Qay, _rng, out preMasterSecret, out var publicPoint);
+            curve.Ecdh(Qax, Qay, _rng, out var preMasterSecret, out var publicPoint);
 
             SetMasterSecret(preMasterSecret);
             _writeBuf[offset++] = (byte)(1 + 2 * curve.curveByteLen); // Point length
@@ -1630,9 +1629,7 @@ namespace Npgsql.Tls
         #region Alerts
 
         void SendAlertFatal(AlertDescription description, string message = null)
-        {
-            throw new ClientAlertException(description, message);
-        }
+            => throw new ClientAlertException(description, message);
 
         async Task WriteAlertFatal(AlertDescription description, bool async)
         {
@@ -1752,9 +1749,7 @@ namespace Npgsql.Tls
         #endregion
 
         void ResetWritePos()
-        {
-            _writePos = _connState.WriteStartPos;
-        }
+            => _writePos = _connState.WriteStartPos;
 	
         void CheckNotClosed()
         {
@@ -2166,22 +2161,20 @@ namespace Npgsql.Tls
         }
 
         public override long Seek(long offset, SeekOrigin origin)
-        {
-            throw new NotSupportedException();
-        }
+            => throw new NotSupportedException();
+
         public override long Position
         {
             get => throw new NotSupportedException();
             set => throw new NotSupportedException();
         }
+
         public override long Length => throw new NotSupportedException();
         public override bool CanRead => !_closed && _connState.IsAuthenticated && _baseStream.CanRead;
         public override bool CanWrite => !_closed && _connState.IsAuthenticated && _baseStream.CanWrite;
 
-        public override void SetLength(long value)
-        {
-            throw new NotSupportedException();
-        }
+        public override void SetLength(long value) => throw new NotSupportedException();
+
         public override bool CanSeek => false;
 
         #endregion
