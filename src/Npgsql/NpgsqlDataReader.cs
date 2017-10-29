@@ -266,7 +266,7 @@ namespace Npgsql
             catch (PostgresException e)
             {
                 State = ReaderState.Consumed;
-                if ((StatementIndex >= 0) && (StatementIndex < _statements.Count))
+                if (StatementIndex >= 0 && StatementIndex < _statements.Count)
                     e.Statement = _statements[StatementIndex];
                 throw;
             }
@@ -298,7 +298,7 @@ namespace Npgsql
         /// Internal implementation of NextResult
         /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected virtual async Task<bool> NextResult(bool async)
+        protected virtual async Task<bool> NextResult(bool async, bool isConsuming=false)
         {
             IBackendMessage msg;
             Debug.Assert(!IsSchemaOnly);
@@ -326,10 +326,9 @@ namespace Npgsql
             Debug.Assert(State == ReaderState.BetweenResults);
             _hasRows = false;
 
-            if ((_behavior & CommandBehavior.SingleResult) != 0 && StatementIndex == 0)
+            if ((_behavior & CommandBehavior.SingleResult) != 0 && StatementIndex == 0 && !isConsuming)
             {
-                if (State == ReaderState.BetweenResults)
-                    await Consume(async);
+                await Consume(async);
                 return false;
             }
 
@@ -544,36 +543,12 @@ namespace Npgsql
         /// </summary>
         async Task Consume(bool async)
         {
-            if (IsSchemaOnly && _statements.All(s => s.IsPrepared))
-            {
-                State = ReaderState.Consumed;
-                return;
-            }
-
-            switch (State)
-            {
-            case ReaderState.BeforeResult:
-            case ReaderState.InResult:
-                await ConsumeRow(async);
-                break;
-            }
-
-            // Skip over the other result sets, processing only CommandCompleted for RecordsAffected
-            while (true)
-            {
-                var msg = await Connector.SkipUntil(BackendMessageCode.CompletedResponse, BackendMessageCode.ReadyForQuery, async);
-                switch (msg.Code)
-                {
-                case BackendMessageCode.CompletedResponse:
-                    ProcessMessage(msg);
-                    continue;
-                case BackendMessageCode.ReadyForQuery:
-                    ProcessMessage(msg);
-                    return;
-                default:
-                    throw new NpgsqlException("Unexpected message of type " + msg.Code);
-                }
-            }
+            // Skip over the other result sets. Note that this does tally records affected
+            // from CommandComplete messages, and properly sets state for auto-prepared statements
+            if (IsSchemaOnly)
+                while (await NextResultSchemaOnly(async)) {}
+            else
+                while (await NextResult(async, true)) {}
         }
 
         /// <summary>
