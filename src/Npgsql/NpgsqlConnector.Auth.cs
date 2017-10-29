@@ -97,9 +97,8 @@ namespace Npgsql
             await ReadExpecting<AuthenticationRequestMessage>(async);
         }
 
-#pragma warning disable 1998
+#pragma warning disable CA1801 // Review unused parameters
         async Task AuthenticateGSS(bool async)
-#pragma warning restore 1998
         {
             if (!IntegratedSecurity)
                 throw new NpgsqlException("SSPI authentication but IntegratedSecurity not enabled");
@@ -114,7 +113,10 @@ namespace Npgsql
 #if NETSTANDARD1_3
                     await negotiateStream.AuthenticateAsClientAsync(CredentialCache.DefaultNetworkCredentials, targetName);
 #else
-                    negotiateStream.AuthenticateAsClient(CredentialCache.DefaultNetworkCredentials, targetName);
+                    if (async)
+                        negotiateStream.AuthenticateAsClient(CredentialCache.DefaultNetworkCredentials, targetName);
+                    else
+                        await negotiateStream.AuthenticateAsClientAsync(CredentialCache.DefaultNetworkCredentials, targetName);
 #endif
                 }
                 catch (AuthenticationCompleteException)
@@ -132,6 +134,7 @@ namespace Npgsql
             }
             throw new NpgsqlException("NegotiateStream.AuthenticateAsClient completed unexpectedly without signaling success");
         }
+#pragma warning restore CA1801 // Review unused parameters
 
         /// <summary>
         /// This Stream is placed between NegotiateStream and the socket's NetworkStream (or SSLStream). It intercepts
