@@ -81,7 +81,7 @@ namespace Npgsql.Tests
         public void RecordWithNonIntField()
         {
             using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT ('one', 2)", conn))
+            using (var cmd = new NpgsqlCommand("SELECT ('one'::TEXT, 2)", conn))
             using (var reader = cmd.ExecuteReader())
             {
                 reader.Read();
