@@ -239,6 +239,8 @@ namespace Npgsql.TypeHandlers
 
         #endregion
 
+#pragma warning disable CA2119 // Seal methods that satisfy private interfaces
         public virtual TextReader GetTextReader(Stream stream) => new StreamReader(stream);
+#pragma warning restore CA2119 // Seal methods that satisfy private interfaces
     }
 }

@@ -39,6 +39,8 @@ namespace Npgsql.TypeHandlers
         internal abstract Type GetElementPsvType(FieldDescription fieldDescription = null);
     }
 
+#pragma warning disable CA1061 // Do not hide base class methods
+#pragma warning disable CA1801 // Review unused parameters
     /// <summary>
     /// Base class for all type handlers which handle PostgreSQL arrays.
     /// </summary>
@@ -328,6 +330,8 @@ namespace Npgsql.TypeHandlers
 
         #endregion
     }
+#pragma warning restore CA1061 // Do not hide base class methods
+#pragma warning restore CA1801 // Review unused parameters
 
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/arrays.html

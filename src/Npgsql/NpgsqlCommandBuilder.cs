@@ -406,9 +406,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         }
 
         /// <summary>
-        /// Registers the <see cref="T:NpgsqlCommandBuilder" /> to handle the <see cref="E:NpgsqlDataAdapter.RowUpdating"/> event for a <see cref="T:NpgsqlDataAdapter" />.
+        /// Registers the <see cref="NpgsqlCommandBuilder" /> to handle the <see cref="NpgsqlDataAdapter.RowUpdating"/> event for a <see cref="NpgsqlDataAdapter" />.
         /// </summary>
-        /// <param name="adapter">The <see cref="T:System.Data.Common.DbDataAdapter" /> to be used for the update.</param>
+        /// <param name="adapter">The <see cref="System.Data.Common.DbDataAdapter" /> to be used for the update.</param>
         protected override void SetRowUpdatingHandler(DbDataAdapter adapter)
         {
             var npgsqlAdapter = adapter as NpgsqlDataAdapter;

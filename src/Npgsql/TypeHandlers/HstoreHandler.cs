@@ -39,6 +39,7 @@ namespace Npgsql.TypeHandlers
             => new HstoreHandler(conn);
     }
 
+#pragma warning disable CA1061 // Do not hide base class methods
     class HstoreHandler : NpgsqlTypeHandler<Dictionary<string, string>>, INpgsqlTypeHandler<IDictionary<string, string>>
     {
         /// <summary>
@@ -131,4 +132,5 @@ namespace Npgsql.TypeHandlers
 
         #endregion
     }
+#pragma warning restore CA1061 // Do not hide base class methods
 }
