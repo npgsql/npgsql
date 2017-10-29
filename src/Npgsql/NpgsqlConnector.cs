@@ -1744,6 +1744,12 @@ namespace Npgsql
 
         public Task WaitAsync(CancellationToken cancellationToken)
         {
+            using (NoSynchronizationContextScope.Enter())
+                return DoWaitAsync(cancellationToken);
+        }
+
+        async Task DoWaitAsync(CancellationToken cancellationToken)
+        {
             var keepaliveSent = false;
             var keepaliveLock = new SemaphoreSlim(1, 1);
 
@@ -1764,101 +1770,98 @@ namespace Npgsql
                 }
             };
 
-            return SynchronizationContextSwitcher.NoContext(async () =>
+            using (StartUserAction(ConnectorState.Waiting))
+            using (cancellationToken.Register(() => performKeepaliveMethod(null)))
             {
-                using (StartUserAction(ConnectorState.Waiting))
-                using (cancellationToken.Register(() => performKeepaliveMethod(null)))
+                // We may have prepended messages in the connection's write buffer - these need to be flushed now.
+                WriteBuffer.Flush();
+
+                Timer keepaliveTimer = null;
+                if (IsKeepAliveEnabled)
+                    keepaliveTimer = new Timer(performKeepaliveMethod, null, Settings.KeepAlive*1000, Timeout.Infinite);
+                try
                 {
-                    // We may have prepended messages in the connection's write buffer - these need to be flushed now.
-                    WriteBuffer.Flush();
-
-                    Timer keepaliveTimer = null;
-                    if (IsKeepAliveEnabled)
-                        keepaliveTimer = new Timer(performKeepaliveMethod, null, Settings.KeepAlive*1000, Timeout.Infinite);
-                    try
+                    while (true)
                     {
-                        while (true)
+                        cancellationToken.ThrowIfCancellationRequested();
+                        var msg = await ReadMessage(true, DataRowLoadingMode.NonSequential, true);
+                        if (!keepaliveSent)
                         {
-                            cancellationToken.ThrowIfCancellationRequested();
-                            var msg = await ReadMessage(true, DataRowLoadingMode.NonSequential, true);
-                            if (!keepaliveSent)
+                            if (msg != null)
                             {
-                                if (msg != null)
-                                {
-                                    Break();
-                                    throw new NpgsqlException($"Received unexpected message of type {msg.Code} while waiting");
-                                }
-                                return;
+                                Break();
+                                throw new NpgsqlException($"Received unexpected message of type {msg.Code} while waiting");
                             }
+                            return;
+                        }
 
-                            // A keepalive was sent. Consume the response (RowDescription, CommandComplete,
-                            // ReadyForQuery) while also keeping track if an async message was received in between.
-                            keepaliveLock.Wait();
-                            try
+                        // A keepalive was sent. Consume the response (RowDescription, CommandComplete,
+                        // ReadyForQuery) while also keeping track if an async message was received in between.
+                        keepaliveLock.Wait();
+                        try
+                        {
+                            var receivedNotification = false;
+                            var expectedMessageCode = BackendMessageCode.RowDescription;
+
+                            while (true)
                             {
-                                var receivedNotification = false;
-                                var expectedMessageCode = BackendMessageCode.RowDescription;
-
-                                while (true)
+                                while (msg == null)
                                 {
-                                    while (msg == null)
-                                    {
-                                        receivedNotification = true;
-                                        msg = await ReadMessage(true, DataRowLoadingMode.NonSequential, true);
-                                    }
+                                    receivedNotification = true;
+                                    msg = await ReadMessage(true, DataRowLoadingMode.NonSequential, true);
+                                }
 
-                                    if (msg.Code != expectedMessageCode)
-                                        throw new NpgsqlException($"Received unexpected message of type {msg.Code} while expecting {expectedMessageCode} as part of keepalive");
+                                if (msg.Code != expectedMessageCode)
+                                    throw new NpgsqlException($"Received unexpected message of type {msg.Code} while expecting {expectedMessageCode} as part of keepalive");
 
-                                    var finishedKeepalive = false;
-                                    switch (msg.Code)
-                                    {
-                                    case BackendMessageCode.RowDescription:
-                                        expectedMessageCode = BackendMessageCode.DataRow;
-                                        break;
-                                    case BackendMessageCode.DataRow:
-                                        // DataRow is usually consumed by a reader, here we have to skip it manually.
-                                        await ReadBuffer.Skip(((DataRowMessage)msg).Length, true);
-                                        expectedMessageCode = BackendMessageCode.CompletedResponse;
-                                        break;
-                                    case BackendMessageCode.CompletedResponse:
-                                        expectedMessageCode = BackendMessageCode.ReadyForQuery;
-                                        break;
-                                    case BackendMessageCode.ReadyForQuery:
-                                        finishedKeepalive = true;
-                                        break;
-                                    }
-
-                                    if (!finishedKeepalive)
-                                    {
-                                        msg = await ReadMessage(true, DataRowLoadingMode.NonSequential, true);
-                                        continue;
-                                    }
-
-                                    Log.Trace("Performed keepalive", Id);
-
-                                    if (receivedNotification)
-                                        return; // Notification was received during the keepalive
-
-                                    cancellationToken.ThrowIfCancellationRequested();
-                                    // Keepalive completed without notification, set up the next one and continue waiting
-                                    keepaliveTimer.Change(Settings.KeepAlive*1000, Timeout.Infinite);
-                                    keepaliveSent = false;
+                                var finishedKeepalive = false;
+                                switch (msg.Code)
+                                {
+                                case BackendMessageCode.RowDescription:
+                                    expectedMessageCode = BackendMessageCode.DataRow;
+                                    break;
+                                case BackendMessageCode.DataRow:
+                                    // DataRow is usually consumed by a reader, here we have to skip it manually.
+                                    await ReadBuffer.Skip(((DataRowMessage)msg).Length, true);
+                                    expectedMessageCode = BackendMessageCode.CompletedResponse;
+                                    break;
+                                case BackendMessageCode.CompletedResponse:
+                                    expectedMessageCode = BackendMessageCode.ReadyForQuery;
+                                    break;
+                                case BackendMessageCode.ReadyForQuery:
+                                    finishedKeepalive = true;
                                     break;
                                 }
-                            }
-                            finally
-                            {
-                                keepaliveLock.Release();
+
+                                if (!finishedKeepalive)
+                                {
+                                    msg = await ReadMessage(true, DataRowLoadingMode.NonSequential, true);
+                                    continue;
+                                }
+
+                                Log.Trace("Performed keepalive", Id);
+
+                                if (receivedNotification)
+                                    return; // Notification was received during the keepalive
+
+                                cancellationToken.ThrowIfCancellationRequested();
+                                // Keepalive completed without notification, set up the next one and continue waiting
+                                keepaliveTimer.Change(Settings.KeepAlive*1000, Timeout.Infinite);
+                                keepaliveSent = false;
+                                break;
                             }
                         }
-                    }
-                    finally
-                    {
-                        keepaliveTimer?.Dispose();
+                        finally
+                        {
+                            keepaliveLock.Release();
+                        }
                     }
                 }
-            });
+                finally
+                {
+                    keepaliveTimer?.Dispose();
+                }
+            }
         }
 
         #endregion

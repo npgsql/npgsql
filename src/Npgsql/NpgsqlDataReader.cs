@@ -137,8 +137,12 @@ namespace Npgsql
         /// <param name="cancellationToken">Ignored for now.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
         public override Task<bool> ReadAsync(CancellationToken cancellationToken)
-            => SynchronizationContextSwitcher.NoContext(async () => await Read(true));
+        {
+            using (NoSynchronizationContextScope.Enter())
+                return Read(true);
+        }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         async Task<bool> Read(bool async)
         {
             switch (State)
@@ -275,22 +279,26 @@ namespace Npgsql
         /// <param name="cancellationToken">Currently ignored.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
         public override Task<bool> NextResultAsync(CancellationToken cancellationToken)
-            => SynchronizationContextSwitcher.NoContext(async () =>
+        {
+            try
             {
-                try
-                {
-                    return IsSchemaOnly ? await NextResultSchemaOnly(true) : await NextResult(true);
-                }
-                catch (PostgresException e)
-                {
-                    State = ReaderState.Consumed;
-                    if (StatementIndex >= 0 && StatementIndex < _statements.Count)
-                        e.Statement = _statements[StatementIndex];
-                    throw;
-                }
-            });
+                using (NoSynchronizationContextScope.Enter())
+                    return IsSchemaOnly ? NextResultSchemaOnly(true) : NextResult(true);
+            }
+            catch (PostgresException e)
+            {
+                State = ReaderState.Consumed;
+                if (StatementIndex >= 0 && StatementIndex < _statements.Count)
+                    e.Statement = _statements[StatementIndex];
+                throw;
+            }
+        }
 
-        internal virtual async Task<bool> NextResult(bool async)
+        /// <summary>
+        /// Internal implementation of NextResult
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected virtual async Task<bool> NextResult(bool async)
         {
             IBackendMessage msg;
             Debug.Assert(!IsSchemaOnly);
@@ -875,17 +883,18 @@ namespace Npgsql
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The returned object.</returns>
         public Task<Stream> GetStreamAsync(int ordinal)
-            => SynchronizationContextSwitcher.NoContext(async () => await GetStream(ordinal, true));
+        {
+            using (NoSynchronizationContextScope.Enter())
+                return GetStream(ordinal, true).AsTask();
+        }
 
         ValueTask<Stream> GetStream(int ordinal, bool async)
         {
             CheckRowAndOrdinal(ordinal);
 
             var fieldDescription = RowDescription[ordinal];
-            var handler = fieldDescription.Handler as ByteaHandler;
-            if (handler == null)
+            if (!(fieldDescription.Handler is ByteaHandler))
                 throw new InvalidCastException($"GetStream() not supported for type {fieldDescription.Handler.PgDisplayName}");
-
             return GetStreamInternal(ordinal, async);
         }
 
@@ -978,7 +987,10 @@ namespace Npgsql
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The returned object.</returns>
         public Task<TextReader> GetTextReaderAsync(int ordinal)
-            => SynchronizationContextSwitcher.NoContext(async () => await GetTextReader(ordinal, true));
+        {
+            using (NoSynchronizationContextScope.Enter())
+                return GetTextReader(ordinal, true).AsTask();
+        }
 
         async ValueTask<TextReader> GetTextReader(int ordinal, bool async)
         {

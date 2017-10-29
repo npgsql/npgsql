@@ -135,11 +135,11 @@ namespace Npgsql
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>An NpgsqlLargeObjectStream</returns>
         public Task<NpgsqlLargeObjectStream> OpenReadAsync(uint oid, CancellationToken cancellationToken)
-            => SynchronizationContextSwitcher.NoContext(async () =>
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                return await OpenRead(oid, true);
-            });
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using (NoSynchronizationContextScope.Enter())
+                return OpenRead(oid, true);
+        }
 
         async Task<NpgsqlLargeObjectStream> OpenRead(uint oid, bool async)
         {
@@ -164,11 +164,11 @@ namespace Npgsql
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns>An NpgsqlLargeObjectStream</returns>
         public Task<NpgsqlLargeObjectStream> OpenReadWriteAsync(uint oid, CancellationToken cancellationToken)
-            => SynchronizationContextSwitcher.NoContext(async () =>
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                return await OpenReadWrite(oid, true);
-            });
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using (NoSynchronizationContextScope.Enter())
+                return OpenReadWrite(oid, true);
+        }
 
         async Task<NpgsqlLargeObjectStream> OpenReadWrite(uint oid, bool async)
         {
@@ -189,11 +189,11 @@ namespace Npgsql
         /// <param name="oid">Oid of the object to delete</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         public Task UnlinkAsync(uint oid, CancellationToken cancellationToken)
-            => SynchronizationContextSwitcher.NoContext(async () =>
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                await ExecuteFunction<object>("lo_unlink", true, (int)oid);
-            });
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using (NoSynchronizationContextScope.Enter())
+                return ExecuteFunction<object>("lo_unlink", true, (int)oid);
+        }
 
         /// <summary>
         /// Exports a large object stored in the database to a file on the backend. This requires superuser permissions.
@@ -210,11 +210,11 @@ namespace Npgsql
         /// <param name="path">Path to write the file on the backend</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         public Task ExportRemoteAsync(uint oid, string path, CancellationToken cancellationToken)
-            => SynchronizationContextSwitcher.NoContext(async () =>
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                await ExecuteFunction<object>("lo_export", true, (int)oid, path);
-            });
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using (NoSynchronizationContextScope.Enter())
+                return ExecuteFunction<object>("lo_export", true, (int)oid, path);
+        }
 
         /// <summary>
         /// Imports a large object to be stored as a large object in the database from a file stored on the backend. This requires superuser permissions.
@@ -231,11 +231,11 @@ namespace Npgsql
         /// <param name="oid">A preferred oid, or specify 0 if one should be automatically assigned</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         public Task ImportRemoteAsync(string path, uint oid, CancellationToken cancellationToken)
-            => SynchronizationContextSwitcher.NoContext(async () =>
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                await ExecuteFunction<object>("lo_import", true, path, (int)oid);
-            });
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using (NoSynchronizationContextScope.Enter())
+                return ExecuteFunction<object>("lo_import", true, path, (int)oid);
+        }
 
         /// <summary>
         /// Since PostgreSQL 9.3, large objects larger than 2GB can be handled, up to 4TB.

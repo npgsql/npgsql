@@ -62,7 +62,11 @@ namespace Npgsql
         }
 
         public override Task<T> GetFieldValueAsync<T>(int ordinal, CancellationToken cancellationToken)
-            => SynchronizationContextSwitcher.NoContext(async () => await GetFieldValue<T>(ordinal, true));
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using (NoSynchronizationContextScope.Enter())
+                return GetFieldValue<T>(ordinal, true).AsTask();
+        }
 
         public override T GetFieldValue<T>(int column)
             => GetFieldValue<T>(column, false).GetAwaiter().GetResult();
@@ -304,7 +308,11 @@ namespace Npgsql
         /// <param name="cancellationToken">Currently ignored.</param>
         /// <returns><b>true</b> if the specified column value is equivalent to <see cref="DBNull"/> otherwise <b>false</b>.</returns>
         public override Task<bool> IsDBNullAsync(int ordinal, CancellationToken cancellationToken)
-            => SynchronizationContextSwitcher.NoContext(async () => await IsDBNull(ordinal, true));
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using (NoSynchronizationContextScope.Enter())
+                return IsDBNull(ordinal, true);
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         // ReSharper disable once InconsistentNaming
@@ -365,24 +373,22 @@ namespace Npgsql
             }
 
             public override int Read(byte[] buffer, int offset, int count)
-            {
-                CheckDisposed();
-                count = Math.Min(count, _reader.ColumnLen - _reader.PosInColumn);
-                var read = _reader.Buffer.ReadAllBytes(buffer, offset, count, true, false).Result;
-                _reader.PosInColumn += read;
-                return read;
-            }
+                => Read(buffer, offset, count, false).GetAwaiter().GetResult();
 
             public override Task<int> ReadAsync([NotNull] byte[] buffer, int offset, int count, CancellationToken token)
             {
+                token.ThrowIfCancellationRequested();
+                using (NoSynchronizationContextScope.Enter())
+                    return Read(buffer, offset, count, true);
+            }
+
+            async Task<int> Read(byte[] buffer, int offset, int count, bool async)
+            {
                 CheckDisposed();
-                return SynchronizationContextSwitcher.NoContext(async () =>
-                {
-                    count = Math.Min(count, _reader.ColumnLen - _reader.PosInColumn);
-                    var read = await _reader.Buffer.ReadAllBytes(buffer, offset, count, true, true);
-                    _reader.PosInColumn += read;
-                    return read;
-                });
+                count = Math.Min(count, _reader.ColumnLen - _reader.PosInColumn);
+                var read = await _reader.Buffer.ReadAllBytes(buffer, offset, count, true, async);
+                _reader.PosInColumn += read;
+                return read;
             }
 
             public override long Length

@@ -44,7 +44,7 @@ namespace Npgsql
         internal override ValueTask<IBackendMessage> ReadMessage(bool async)
             => Connector.ReadMessage(async);
 
-        internal override Task<bool> NextResult(bool async)
+        protected override Task<bool> NextResult(bool async)
         {
             var task = base.NextResult(async);
 

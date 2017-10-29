@@ -82,13 +82,12 @@ namespace Npgsql
         /// <param name="count">The maximum number of bytes that should be read.</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>How many bytes actually read, or 0 if end of file was already reached.</returns>
-        public override Task<int> ReadAsync(byte[] buffer, int offset, int count,
-            CancellationToken cancellationToken)
-            => SynchronizationContextSwitcher.NoContext(async () =>
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                return await Read(buffer, offset, count, true);
-            });
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using (NoSynchronizationContextScope.Enter())
+                return Read(buffer, offset, count, true);
+        }
 
         async Task<int> Read(byte[] buffer, int offset, int count, bool async)
         {
@@ -136,11 +135,11 @@ namespace Npgsql
         /// <param name="count">The number of bytes to write.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-            => SynchronizationContextSwitcher.NoContext(async () =>
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                await Write(buffer, offset, count, true);
-            });
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using (NoSynchronizationContextScope.Enter())
+                return Write(buffer, offset, count, true);
+        }
 
         async Task Write(byte[] buffer, int offset, int count, bool async)
         {
@@ -217,7 +216,10 @@ namespace Npgsql
         /// Gets the length of the large object. This internally seeks to the end of the stream to retrieve the length, and then back again.
         /// </summary>
         public Task<long> GetLengthAsync()
-            => SynchronizationContextSwitcher.NoContext(async () => await GetLength(true));
+        {
+            using (NoSynchronizationContextScope.Enter())
+                return GetLength(true);
+        }
 
 #pragma warning disable CA1721 
         async Task<long> GetLength(bool async)
@@ -248,11 +250,11 @@ namespace Npgsql
         /// <param name="cancellationToken">Cancellation token.</param>
         /// <returns></returns>
         public Task<long> SeekAsync(long offset, SeekOrigin origin, CancellationToken cancellationToken)
-            => SynchronizationContextSwitcher.NoContext(async () =>
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                return await Seek(offset, origin, true);
-            });
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using (NoSynchronizationContextScope.Enter())
+                return Seek(offset, origin, true);
+        }
 
         async Task<long> Seek(long offset, SeekOrigin origin, bool async)
         {
@@ -289,11 +291,11 @@ namespace Npgsql
         /// <param name="value">Number of bytes to either truncate or enlarge the large object.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
         public Task SetLength(long value, CancellationToken cancellationToken)
-            => SynchronizationContextSwitcher.NoContext(async () =>
-            {
-                cancellationToken.ThrowIfCancellationRequested()            ;
-                await SetLength(value, true);
-            });
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using (NoSynchronizationContextScope.Enter())
+                return SetLength(value, true);
+        }
 
         async Task SetLength(long value, bool async)
         {
