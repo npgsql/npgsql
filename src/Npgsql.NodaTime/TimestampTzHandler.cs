@@ -65,7 +65,7 @@ namespace Npgsql.NodaTime
             else
             {
                 var value = buf.ReadDouble();
-                if (value == double.PositiveInfinity || value == double.NegativeInfinity)
+                if (double.IsPositiveInfinity(value) || double.IsNegativeInfinity(value))
                     throw new NpgsqlSafeReadException(new NotSupportedException("Infinity values not supported for timestamp with time zone"));
                 return TimestampHandler.DecodeZonedDateTimeUsingFloatingPointFormat(value).ToInstant();
             }
@@ -87,7 +87,7 @@ namespace Npgsql.NodaTime
                 else
                 {
                     var value = buf.ReadDouble();
-                    if (value == double.PositiveInfinity || value == double.NegativeInfinity)
+                    if (double.IsPositiveInfinity(value) || double.IsNegativeInfinity(value))
                         throw new NpgsqlSafeReadException(new NotSupportedException("Infinity values not supported for timestamp with time zone"));
                     var inUtc = TimestampHandler.DecodeZonedDateTimeUsingFloatingPointFormat(value);
                     var timezone = _dateTimeZoneProvider[buf.Connection.Timezone];

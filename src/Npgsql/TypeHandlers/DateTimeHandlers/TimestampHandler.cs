@@ -129,9 +129,9 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         NpgsqlDateTime ReadTimeStampUsingFloatingPointFormat(NpgsqlReadBuffer buf)
         {
             var value = buf.ReadDouble();
-            if (value == double.PositiveInfinity)
+            if (double.IsPositiveInfinity(value))
                 return NpgsqlDateTime.Infinity;
-            if (value == double.NegativeInfinity)
+            if (double.IsNegativeInfinity(value))
                 return NpgsqlDateTime.NegativeInfinity;
             if (value >= 0d) {
                 var date = (int)(value / 86400d);

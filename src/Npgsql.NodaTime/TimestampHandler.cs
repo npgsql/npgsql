@@ -80,9 +80,9 @@ namespace Npgsql.NodaTime
                 var value = buf.ReadDouble();
                 if (_convertInfinityDateTime)
                 {
-                    if (value == double.PositiveInfinity)
+                    if (double.IsPositiveInfinity(value))
                         return Instant.MaxValue;
-                    if (value == double.NegativeInfinity)
+                    if (double.IsNegativeInfinity(value))
                         return Instant.MinValue;
                 }
                 return DecodeZonedDateTimeUsingFloatingPointFormat(value).ToInstant();
@@ -101,7 +101,7 @@ namespace Npgsql.NodaTime
             else
             {
                 var value = buf.ReadDouble();
-                if (value == double.PositiveInfinity || value == double.NegativeInfinity)
+                if (double.IsPositiveInfinity(value) || double.IsNegativeInfinity(value))
                     throw new NpgsqlSafeReadException(new NotSupportedException("Infinity values not supported when reading ZonedDateTime, read as Instant instead"));
                 return DecodeZonedDateTimeUsingFloatingPointFormat(value).LocalDateTime;
             }
