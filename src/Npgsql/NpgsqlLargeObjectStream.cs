@@ -44,7 +44,7 @@ namespace Npgsql
         readonly bool _writeable;
         bool _disposed;
 
-        internal NpgsqlLargeObjectStream(NpgsqlLargeObjectManager manager, uint oid, int fd, bool writeable)
+        internal NpgsqlLargeObjectStream(NpgsqlLargeObjectManager manager, int fd, bool writeable)
         {
             _manager = manager;
             _fd = fd;

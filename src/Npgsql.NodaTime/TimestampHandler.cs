@@ -140,7 +140,7 @@ namespace Npgsql.NodaTime
         
         internal static ZonedDateTime DecodeZonedDateTimeUsingFloatingPointFormat(double value)
         {
-            Debug.Assert(value != double.PositiveInfinity && value != double.NegativeInfinity);
+            Debug.Assert(!double.IsPositiveInfinity(value) && !double.IsNegativeInfinity(value));
 
             if (value >= 0d)
             {

@@ -144,7 +144,7 @@ namespace Npgsql
         async Task<NpgsqlLargeObjectStream> OpenRead(uint oid, bool async)
         {
             var fd = await ExecuteFunction<int>("lo_open", async, (int)oid, INV_READ);
-            return new NpgsqlLargeObjectStream(this, oid, fd, false);
+            return new NpgsqlLargeObjectStream(this, fd, false);
         }
 
         /// <summary>
@@ -173,7 +173,7 @@ namespace Npgsql
         async Task<NpgsqlLargeObjectStream> OpenReadWrite(uint oid, bool async)
         {
             var fd = await ExecuteFunction<int>("lo_open", async, (int)oid, INV_READ | INV_WRITE);
-            return new NpgsqlLargeObjectStream(this, oid, fd, true);
+            return new NpgsqlLargeObjectStream(this, fd, true);
         }
 
         /// <summary>

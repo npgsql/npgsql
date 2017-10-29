@@ -1207,8 +1207,10 @@ namespace Npgsql
         /// </summary>
         internal bool IsSecure { get; private set; }
 
+#pragma warning disable CA1801 // Review unused parameters
         static bool DefaultUserCertificateValidationCallback(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
             => sslPolicyErrors == SslPolicyErrors.None;
+#pragma warning restore CA1801 // Review unused parameters
 
         #endregion SSL
 
@@ -1618,6 +1620,7 @@ namespace Npgsql
 
         #region Keepalive
 
+#pragma warning disable CA1801 // Review unused parameters
         void PerformKeepAlive(object state)
         {
             Debug.Assert(IsKeepAliveEnabled);
@@ -1654,6 +1657,7 @@ namespace Npgsql
                 Monitor.Exit(this);
             }
         }
+#pragma warning restore CA1801 // Review unused parameters
 
         #endregion
 

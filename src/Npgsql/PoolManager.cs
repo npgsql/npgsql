@@ -369,6 +369,7 @@ namespace Npgsql
                 _pruningTimer = new Timer(PruneIdleConnectors, null, _pruningInterval, _pruningInterval);
         }
 
+#pragma warning disable CA1801 // Review unused parameters
         void PruneIdleConnectors(object state)
         {
             if (Idle.Count + Busy <= _min)
@@ -417,6 +418,7 @@ namespace Npgsql
                 Monitor.Exit(_prunedConnectors);
             }
         }
+#pragma warning restore CA1801 // Review unused parameters
 
         internal void Clear()
         {

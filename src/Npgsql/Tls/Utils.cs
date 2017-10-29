@@ -313,7 +313,7 @@ namespace Npgsql.Tls
             return Regex.IsMatch(hostname, "^" + Regex.Escape(firstPart).Replace(@"\*", "[^.]*") + Regex.Escape(rest) + "$");
         }
 
-        public static byte[] DecodeDERSignature(byte[] signature, int offset, int len, int integerLength)
+        public static byte[] DecodeDERSignature(byte[] signature, int offset, int integerLength)
         {
             var decodedSignature = new byte[integerLength * 2];
             offset += 1; // Skip tag 0x30 (SEQUENCE)

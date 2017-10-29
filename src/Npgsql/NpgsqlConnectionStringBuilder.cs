@@ -1341,18 +1341,6 @@ namespace Npgsql
 
         #endregion
 
-        #region Attributes
-
-#if NETSTANDARD1_3
-        [AttributeUsage(AttributeTargets.Property)]
-        class DescriptionAttribute : Attribute
-        {
-            internal DescriptionAttribute(string description) { }
-        }
-#endif
-
-        #endregion
-
         internal static readonly string[] EmptyStringArray = new string[0];
     }
 

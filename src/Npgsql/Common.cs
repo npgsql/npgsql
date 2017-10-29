@@ -165,6 +165,7 @@ namespace Npgsql
     #region Component model attributes missing from CoreCLR
 
 #if NETSTANDARD1_3
+#pragma warning disable CA1801 // Review unused parameters
     [AttributeUsage(AttributeTargets.Property)]
     class DisplayNameAttribute : Attribute
     {
@@ -207,5 +208,6 @@ namespace Npgsql
     }
 #endif
 
+#pragma warning restore CA1801 // Review unused parameters
     #endregion
 }

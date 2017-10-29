@@ -1234,7 +1234,7 @@ namespace Npgsql.Tls
                 {
                     // We must decode from DER to two raw integers
                     // NOTE: DSACryptoServiceProvider can't handle keys larger than 1024 bits, neither can SslStream.
-                    var decodedSignature = Utils.DecodeDERSignature(signature, 0, signature.Length, Utils.GetHashLen(hashAlgorithm) >> 3);
+                    var decodedSignature = Utils.DecodeDERSignature(signature, 0, Utils.GetHashLen(hashAlgorithm) >> 3);
                     if (!dsa.VerifyHash(hash, Utils.HashNameToOID[hashAlgorithm.ToString()], decodedSignature))
                     {
                         SendAlertFatal(AlertDescription.DecryptError);

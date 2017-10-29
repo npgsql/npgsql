@@ -88,13 +88,12 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         protected override NpgsqlDateTime ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => ReadTimeStamp(buf, len, fieldDescription);
 
+#pragma warning disable CA1801 // Review unused parameters
         protected NpgsqlDateTime ReadTimeStamp(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
-        {
-            if (_integerFormat)
-                return ReadTimeStampUsingIntegerFormat(buf);
-            else
-                return ReadTimeStampUsingFloatingPointFormat(buf);
-        }
+            => _integerFormat
+                ? ReadTimeStampUsingIntegerFormat(buf)
+                : ReadTimeStampUsingFloatingPointFormat(buf);
+#pragma warning restore CA1801 // Review unused parameters
 
         NpgsqlDateTime ReadTimeStampUsingIntegerFormat(NpgsqlReadBuffer buf)
         {

@@ -49,6 +49,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
         public override IPAddress Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => ((INpgsqlSimpleTypeHandler<NpgsqlInet>)this).Read(buf, len, fieldDescription).Address;
 
+#pragma warning disable CA1801 // Review unused parameters
         internal static NpgsqlInet DoRead(NpgsqlReadBuffer buf, [CanBeNull] FieldDescription fieldDescription, int len, bool isCidrHandler)
         {
             buf.ReadByte();  // addressFamily
@@ -62,6 +63,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             }
             return new NpgsqlInet(new IPAddress(bytes), mask);
         }
+#pragma warning restore CA1801 // Review unused parameters
 
         protected override NpgsqlInet ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => DoRead(buf, fieldDescription, len, false);

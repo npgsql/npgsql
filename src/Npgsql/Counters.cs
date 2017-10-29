@@ -52,6 +52,7 @@ namespace Npgsql
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
+#pragma warning disable CA1801 // Review unused parameters
         internal static void Initialize(bool usePerfCounters)
         {
             lock (InitLock)
@@ -100,6 +101,7 @@ namespace Npgsql
             }
         }
     }
+#pragma warning restore CA1801 // Review unused parameters
 
     /// <summary>
     /// This class is currently a simple wrapper around System.Diagnostics.PerformanceCounter.
