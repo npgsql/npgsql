@@ -203,9 +203,16 @@ namespace Npgsql
                         await _connector.ReadExpecting<CommandCompleteMessage>(async);
                         await _connector.ReadExpecting<ReadyForQueryMessage>(async);
                         
-                        Debug.Assert(_connector.State == ConnectorState.Replication);
+                        lock (_writeSyncObject)
+                        {
+                            if (!_disposed)
+                            {
+                                if (_connector.State == ConnectorState.Replication)
+                                    _connector.EndUserAction();
+                                Cleanup();
+                            }
+                        }
                         EndOfStream = true;
-                        _connector.EndUserAction();
                         return NpgsqlReplicationStreamFetchStatus.Closed;
                     default:
                         throw _connector.UnexpectedMessageReceived(msg.Code);
@@ -420,11 +427,10 @@ namespace Npgsql
                 }
             }
 
-            while (FetchNext(true, false).Result == NpgsqlReplicationStreamFetchStatus.Data)
+            while (FetchNext(true, false).Result != NpgsqlReplicationStreamFetchStatus.Closed)
             {
                 // Receiving and skipping all pending messages.
             }
-            Cleanup();
         }
 
         void Cleanup()
