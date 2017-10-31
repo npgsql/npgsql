@@ -487,7 +487,12 @@ namespace Npgsql
         }
     }
 
+    /// <summary>
+    /// Provides status codes for <see cref="NpgsqlRawReplicationStream.FetchNext()"/> and <see cref="NpgsqlRawReplicationStream.FetchNextAsync"/>.
+    /// </summary>
+#pragma warning disable CA1717 //CA1717 (only FlagsAttribute enums should have plural names) false positive detection for the word 'Status'.
     public enum NpgsqlReplicationStreamFetchStatus
+#pragma warning restore CA1717
     {
         /// <summary>
         /// There are no pending messages in the underlying stream.
