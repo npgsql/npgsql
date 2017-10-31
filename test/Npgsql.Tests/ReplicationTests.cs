@@ -129,7 +129,7 @@ namespace Npgsql.Tests
                         const int expectedMessages = 19;
                         while (true)
                         {
-                            while (stream.FetchNext())
+                            while (stream.FetchNext() == NpgsqlReplicationStreamFetchStatus.Data)
                             {
                                 Assert.That(stream.StartLsn, Is.Not.Null);
                                 lastLsn = stream.StartLsn;

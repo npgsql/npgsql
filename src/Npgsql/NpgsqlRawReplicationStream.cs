@@ -120,32 +120,32 @@ namespace Npgsql
         /// <summary>
         /// Fetches the next message from the underlying connection. Any data which are not read will be skipped.
         /// </summary>
-        /// <returns><b>true</b> if there is at least one pending message. Otherwise <b>false</b>.</returns>
-        /// <remarks>This method returns <b>false</b> if the <see cref="EndOfStream">end of the stream</see> is reached.</remarks>
+        /// <returns>The operation status code. See <see cref="NpgsqlReplicationStreamFetchStatus"/> for details.</returns>
         [PublicAPI]
-        public bool FetchNext()
+        public NpgsqlReplicationStreamFetchStatus FetchNext()
         {
             return FetchNext(false, false).Result;
         }
 
         /// <inheritdoc cref="FetchNext()"/> 
         [PublicAPI]
-        public async ValueTask<bool> FetchNextAsync()
+        public async ValueTask<NpgsqlReplicationStreamFetchStatus> FetchNextAsync()
         {
             return await FetchNext(false, true);
         }
        
         [SuppressMessage("ReSharper", "InconsistentlySynchronizedField")]
-        async ValueTask<bool> FetchNext(bool waitCompletionConfirmation, bool async)
+        async ValueTask<NpgsqlReplicationStreamFetchStatus> FetchNext(bool waitCompletionConfirmation, bool async)
         {
             if (_bytesLeft > 0)
                 await Skip(_bytesLeft, async);
 
             if (EndOfStream)
-                return false;
+                return NpgsqlReplicationStreamFetchStatus.Closed;
 
             var dontWait = !waitCompletionConfirmation;
             var copyDone = false;
+            var status = NpgsqlReplicationStreamFetchStatus.None;
             while (true)
             {
                 if (_bytesLeft < 0)
@@ -155,7 +155,7 @@ namespace Npgsql
                     if (dontWait && !_connector.CanReadMore())
                     {
                         // There are no more pending incoming messages.
-                        return false;
+                        return status;
                     }
 
                     CheckDisposed();
@@ -184,9 +184,10 @@ namespace Npgsql
                     if (msg == null)
                     {
                         if (dontWait)
-                            return false;
+                            return status;
                         continue;
                     }
+                    status = NpgsqlReplicationStreamFetchStatus.None;
 
                     switch (msg.Code)
                     {
@@ -205,7 +206,7 @@ namespace Npgsql
                         Debug.Assert(_connector.State == ConnectorState.Replication);
                         EndOfStream = true;
                         _connector.EndUserAction();
-                        return false;
+                        return NpgsqlReplicationStreamFetchStatus.Closed;
                     default:
                         throw _connector.UnexpectedMessageReceived(msg.Code);
                     }
@@ -230,7 +231,7 @@ namespace Npgsql
                         continue;
                     }
                     StartLsn = _walDataResponse.StartLsn;
-                    return true;
+                    return NpgsqlReplicationStreamFetchStatus.Data;
 
                 case BackendMessageCode.PrimaryKeepAlive:
                     await _buffer.Ensure(_primaryKeepAliveResponse.MessageLength - 1, async);
@@ -244,6 +245,7 @@ namespace Npgsql
                         Flush(_standbyStatusUpdateRequest.LastWrittenLsn, _standbyStatusUpdateRequest.LastFlushedLsn, _standbyStatusUpdateRequest.LastAppliedLsn);
                         // TODO: autoflush mode
                     }
+                    status = NpgsqlReplicationStreamFetchStatus.KeepAlive;
                     Debug.Assert(_bytesLeft == 0);
                     continue;
 
@@ -418,7 +420,7 @@ namespace Npgsql
                 }
             }
 
-            while (FetchNext(true, false).Result)
+            while (FetchNext(true, false).Result == NpgsqlReplicationStreamFetchStatus.Data)
             {
                 // Receiving and skipping all pending messages.
             }
@@ -483,5 +485,30 @@ namespace Npgsql
 
             return result;
         }
+    }
+
+    public enum NpgsqlReplicationStreamFetchStatus
+    {
+        /// <summary>
+        /// There are no pending messages in the underlying stream.
+        /// </summary>
+        None,
+
+        /// <summary>
+        /// The header of a message was successfuly fetched from the underlying stream.
+        /// The replication stream is ready to read the message's content.
+        /// </summary>
+        Data,
+
+        /// <summary>
+        /// There are no pending WAL messages in the underlying stream, but the 'keep alive' message was received.
+        /// Values of properties <see cref="NpgsqlRawReplicationStream.EndLsn"/> and <see cref="NpgsqlRawReplicationStream.SystemClock"/> were updated.
+        /// </summary>
+        KeepAlive,
+
+        /// <summary>
+        /// The underlying stream was closed.
+        /// </summary>
+        Closed,
     }
 }
