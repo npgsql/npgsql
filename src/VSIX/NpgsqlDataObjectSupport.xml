@@ -173,15 +173,15 @@
         </Service>
       </Services>
     </Type>
-    <Type name="ConstraintColumns">
+    <Type name="ConstraintColumns" preferredOrdering="table_catalog, table_schema, table_name, constraint_name, ordinal_position">
       <Identifier>
         <Part name="table_catalog" />
         <Part name="table_schema" />
         <Part name="table_name" />
+        <Part name="constraint_name" />
         <Part name="column_name" />
         <Part name="constraint_catalog" />
         <Part name="constraint_schema" />
-        <Part name="constraint_name" />
       </Identifier>
       <Properties>
         <Property name="table_catalog" isIdentifierPart="true" />
@@ -214,14 +214,14 @@
               </Parameter>
               <Parameter>
                 <Parameter>
-                  <Parameter value="{6}" />
+                  <Parameter value="{3}" />
                   <Parameter />
                   <Parameter value="Index" />
                   <Parameter />
                   <Parameter />
                   <Parameter>
                     <Parameter>
-                      <Parameter value="{3}" />
+                      <Parameter value="{4}" />
                       <Parameter />
                       <Parameter value="Field" />
                     </Parameter>
@@ -401,12 +401,12 @@
       </Properties>
     </MappedType>
     <MappedType name="TableUniqueKeyColumn" underlyingType="ConstraintColumns">
-      <Selection restrictions="{Catalog}, {Schema}, {Table}, {UniqueKey}, {Name}" filter="constraint_type IN ('PRIMARY KEY', 'UNIQUE')" />
+      <Selection restrictions="{Catalog}, {Schema}, {Table}, {TableUniqueKey}, {Name}" filter="constraint_type IN ('PRIMARY KEY', 'UNIQUE')" />
       <Identifier>
         <Part name="Catalog" underlyingMember="table_catalog" />
         <Part name="Schema" underlyingMember="table_schema" />
         <Part name="Table" underlyingMember="table_name" />
-        <Part name="UniqueKey" underlyingMember="constraint_name" />
+        <Part name="TableUniqueKey" underlyingMember="constraint_name" />
         <Part name="Name" underlyingMember="column_name" />
       </Identifier>
       <Properties>
