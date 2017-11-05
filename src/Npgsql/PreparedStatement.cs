@@ -83,8 +83,6 @@ namespace Npgsql
         internal void SetParamTypes(List<NpgsqlParameter> parameters)
         {
             Debug.Assert(ParamTypes == null);
-            if (parameters.Count == 0)
-                ParamTypes = EmptyParamTypes;
             ParamTypes = new NpgsqlDbType[parameters.Count];
             for (var i = 0; i < parameters.Count; i++)
                 ParamTypes[i] = parameters[i].NpgsqlDbType;
