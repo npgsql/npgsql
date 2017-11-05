@@ -316,6 +316,46 @@ namespace Npgsql.Tests
             }
         }
 
+#if !NETCOREAPP1_1
+
+        [Test, Description("Tests parameter derivation a parameterized query (CommandType.Text) that is already auto-prepared.")]
+        public void DeriveParametersForAutoPreparedStatement()
+        {
+            const string query = "SELECT @p::integer";
+            const int answer = 42;
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                MaxAutoPrepare = 10,
+                AutoPrepareMinUsages = 2
+            };
+            using (var conn = OpenConnection(csb))
+            using (var checkCmd = new NpgsqlCommand(CountPreparedStatements, conn))
+            using (var cmd = new NpgsqlCommand(query, conn))
+            {
+                checkCmd.Prepare();
+                cmd.Parameters.AddWithValue("@p", NpgsqlDbType.Integer, answer);
+                cmd.ExecuteNonQuery(); cmd.ExecuteNonQuery(); // cmd1 is now autoprepared
+                Assert.That(checkCmd.ExecuteScalar(), Is.EqualTo(1));
+                Assert.That(conn.Connector.PreparedStatementManager.NumPrepared, Is.EqualTo(2));
+
+                // Derive parameters for the already autoprepared statement
+                NpgsqlCommandBuilder.DeriveParameters(cmd);
+                Assert.That(cmd.Parameters.Count, Is.EqualTo(1));
+                Assert.That(cmd.Parameters[0].CleanName, Is.EqualTo("p"));
+
+                // DeriveParameters should have silently unprepared the autoprepared statements
+                Assert.That(checkCmd.ExecuteScalar(), Is.EqualTo(0));
+                Assert.That(conn.Connector.PreparedStatementManager.NumPrepared, Is.EqualTo(1));
+
+                cmd.Parameters["@p"].Value = answer;
+                Assert.That(cmd.ExecuteScalar(), Is.EqualTo(answer));
+
+                conn.UnprepareAll();
+            }
+        }
+
+#endif
+
         // Exclude some internal Npgsql queries which include pg_type as well as the count statement itself
         const string CountPreparedStatements = @"
 SELECT COUNT(*) FROM pg_prepared_statements

@@ -43,7 +43,7 @@ namespace Npgsql.Tests
 {
     public class CommandTests : TestBase
     {
-        #region Multiple Commands
+        #region Multiple Statements in a Command
 
         /// <summary>
         /// Tests various configurations of queries and non-queries within a multiquery
@@ -55,7 +55,7 @@ namespace Npgsql.Tests
         [TestCase(new[] { false, false }, TestName = "TwoNonQueries")]
         [TestCase(new[] { false, true }, TestName = "NonQueryQuery")]
         [TestCase(new[] { true, false }, TestName = "QueryNonQuery")]
-        public void MultipleCommands(bool[] queries)
+        public void MultipleStatements(bool[] queries)
         {
             using (var conn = OpenConnection())
             {
@@ -86,7 +86,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void MultipleCommandsWithParameters([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
+        public void MultipleStatementsWithParameters([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
         {
             using (var conn = OpenConnection())
             {
@@ -114,7 +114,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void MultipleCommandsSingleRow([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
+        public void MultipleStatementsSingleRow([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
         {
             using (var conn = OpenConnection())
             {
@@ -135,7 +135,7 @@ namespace Npgsql.Tests
 
         [Test, Description("Makes sure a later command can depend on an earlier one")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/641")]
-        public void MultipleCommandsWithDependencies()
+        public void MultipleStatementsWithDependencies()
         {
             using (var conn = OpenConnection())
             {
@@ -146,7 +146,7 @@ namespace Npgsql.Tests
 
         [Test, Description("Forces async write mode when the first statement in a multi-statement command is big")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/641")]
-        public void MultipleCommandsLargeFirstCommand()
+        public void MultipleStatementsLargeFirstCommand()
         {
             using (var conn = OpenConnection())
             using (var cmd = new NpgsqlCommand($"SELECT repeat('X', {conn.Settings.WriteBufferSize}); SELECT @p", conn))
@@ -164,6 +164,48 @@ namespace Npgsql.Tests
                 }
             }
         }
+
+        #endregion
+
+        #region Prepare() corner cases
+
+        [Test]
+        public void PrepareMultipleCommandsWithParameters()
+        {
+            using (var conn = OpenConnection())
+            {
+                using (var cmd1 = new NpgsqlCommand("SELECT @p1;", conn))
+                using (var cmd2 = new NpgsqlCommand("SELECT @p1; SELECT @p2;", conn))
+                {
+                    var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Integer);
+                    var p21 = new NpgsqlParameter("p1", NpgsqlDbType.Text);
+                    var p22 = new NpgsqlParameter("p2", NpgsqlDbType.Text);
+                    cmd1.Parameters.Add(p1);
+                    cmd2.Parameters.Add(p21);
+                    cmd2.Parameters.Add(p22);
+                    cmd1.Prepare();
+                    cmd2.Prepare();
+                    p1.Value = 8;
+                    p21.Value = "foo";
+                    p22.Value = "bar";
+                    using (var reader1 = cmd1.ExecuteReader())
+                    {
+                        Assert.That(reader1.Read(), Is.True);
+                        Assert.That(reader1.GetInt32(0), Is.EqualTo(8));
+                    }
+                    using (var reader2 = cmd2.ExecuteReader())
+                    {
+                        Assert.That(reader2.Read(), Is.True);
+                        Assert.That(reader2.GetString(0), Is.EqualTo("foo"));
+                        Assert.That(reader2.NextResult(), Is.True);
+                        Assert.That(reader2.Read(), Is.True);
+                        Assert.That(reader2.GetString(0), Is.EqualTo("bar"));
+                    }
+                }
+            }
+        }
+
+
 
         #endregion
 
