@@ -38,6 +38,11 @@ namespace Npgsql
         int _bytesLeft;
         int _length;
 
+        // For details about copy-in mode (data transfer to the server) and copy-out mode (data transfer from the server)
+        // see https://www.postgresql.org/docs/current/static/protocol-flow.html#protocol-copy
+        volatile bool _copyInMode;
+        volatile bool _copyOutMode;
+
         volatile bool _disposed;
 
         /// <inheritdoc />
@@ -81,7 +86,7 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Indicates that the stream is reached the end and the server expecting next query.
+        /// Indicates that the stream is reached the end and the server is ready to receive next query.
         /// </summary>
         public bool EndOfStream { get; private set; }
 
@@ -108,6 +113,7 @@ namespace Npgsql
                 _connector.CurrentCancelableOperation = this;
                 _connector.SendQuery(replicationCommand);
                 _connector.ReadExpecting<CopyBothResponseMessage>();
+                _copyInMode = _copyOutMode = true;
             }
             catch
             {
@@ -135,7 +141,7 @@ namespace Npgsql
         }
        
         [SuppressMessage("ReSharper", "InconsistentlySynchronizedField")]
-        async ValueTask<NpgsqlReplicationStreamFetchStatus> FetchNext(bool waitCompletionConfirmation, bool async)
+        async ValueTask<NpgsqlReplicationStreamFetchStatus> FetchNext(bool waitForConfirmation, bool async)
         {
             if (_bytesLeft > 0)
                 await Skip(_bytesLeft, async);
@@ -143,8 +149,7 @@ namespace Npgsql
             if (EndOfStream)
                 return NpgsqlReplicationStreamFetchStatus.Closed;
 
-            var dontWait = !waitCompletionConfirmation;
-            var copyDone = false;
+            var dontWait = !waitForConfirmation && _copyOutMode;
             var status = NpgsqlReplicationStreamFetchStatus.None;
             while (true)
             {
@@ -196,15 +201,30 @@ namespace Npgsql
                         _length = _bytesLeft;
                         break;
                     case BackendMessageCode.CopyDone:
-                        copyDone = true;
+                        if (!_copyOutMode)
+                        {
+                            // Protocol violation. CopyDone received twice.
+                            throw _connector.UnexpectedMessageReceived(msg.Code);
+                        }
+                        lock (_writeSyncObject)
+                        {
+                            _copyOutMode = false;
+                            if (_copyInMode)
+                            {
+                                _connector.SendMessage(CopyDoneMessage.Instance);
+                                _copyInMode = false;
+                            }
+                        }
                         dontWait = false;
                         continue;
                     case BackendMessageCode.CompletedResponse:
                         await _connector.ReadExpecting<CommandCompleteMessage>(async);
                         await _connector.ReadExpecting<ReadyForQueryMessage>(async);
-                        
+
                         lock (_writeSyncObject)
                         {
+                            Debug.Assert(!_copyInMode && !_copyOutMode);
+
                             if (!_disposed)
                             {
                                 if (_connector.State == ConnectorState.Replication)
@@ -226,17 +246,17 @@ namespace Npgsql
                 switch (msgCode)
                 {
                 case BackendMessageCode.WalData:
+                    if (!_copyOutMode)
+                    {
+                        // Protocol violation. WalData received after CopyDone.
+                        throw _connector.UnexpectedMessageReceived(msgCode);
+                    }
+
                     await _buffer.Ensure(_walDataResponse.MessageLength - 1, async);
                     _walDataResponse.Load(_buffer);
                     _bytesLeft -= _walDataResponse.MessageLength;
                     EndLsn = _walDataResponse.EndLsn;
                     SystemClock = _walDataResponse.SystemClock;
-                    if (copyDone)
-                    {
-                        // CopyDone was received. Waiting for the completion confirmation.
-                        await Skip(_bytesLeft, async);
-                        continue;
-                    }
                     StartLsn = _walDataResponse.StartLsn;
                     return NpgsqlReplicationStreamFetchStatus.Data;
 
@@ -246,11 +266,10 @@ namespace Npgsql
                     _bytesLeft -= _primaryKeepAliveResponse.MessageLength;
                     EndLsn = _primaryKeepAliveResponse.EndLsn;
                     SystemClock = _primaryKeepAliveResponse.SystemClock;
-                    if (_primaryKeepAliveResponse.ReplyImmediately && !copyDone)
+                    if (_primaryKeepAliveResponse.ReplyImmediately)
                     {
                         // Repeat the last status update message.
-                        Flush(_standbyStatusUpdateRequest.LastWrittenLsn, _standbyStatusUpdateRequest.LastFlushedLsn, _standbyStatusUpdateRequest.LastAppliedLsn);
-                        // TODO: autoflush mode
+                        Flush(_standbyStatusUpdateRequest.LastWrittenLsn, _standbyStatusUpdateRequest.LastFlushedLsn, _standbyStatusUpdateRequest.LastAppliedLsn, false);
                     }
                     status = NpgsqlReplicationStreamFetchStatus.KeepAlive;
                     Debug.Assert(_bytesLeft == 0);
@@ -270,8 +289,23 @@ namespace Npgsql
         /// </remarks>
         public override void Flush()
         {
+            if (Flush(false))
+                return;
+               
+            CheckDisposed();
+            throw new NpgsqlException("The stream is in copy-out mode.");
+        }
+
+        /// <summary>
+        /// Confirms that the last message was recieved and the server may flush the replication slot.
+        /// </summary>
+        /// <param name="replyImmediately">If true, the client requests the server to reply to this message immediately. This can be used to ping the server, to test if the connection is still healthy.</param>
+        /// <returns>Returns <b>false</b> if the stream is either closed or in copy-out mode. Otherwise returns <b>true</b>.</returns>
+        [PublicAPI]
+        public bool Flush(bool replyImmediately)
+        {
             var lsn = StartLsn;
-            Flush(lsn, lsn, lsn);
+            return Flush(lsn, lsn, lsn, replyImmediately);
         }
 
         /// <summary>
@@ -280,19 +314,23 @@ namespace Npgsql
         /// <param name="lastWrittenLsn">The location of the last WAL byte + 1 received and written to disk in the standby.</param>
         /// <param name="lastFlushedLsn">The location of the last WAL byte + 1 flushed to disk in the standby.</param>
         /// <param name="lastAppliedLsn">The location of the last WAL byte + 1 applied in the standby.</param>
+        /// <param name="replyImmediately">If true, the client requests the server to reply to this message immediately. This can be used to ping the server, to test if the connection is still healthy.</param>
+        /// <returns>Returns <b>false</b> if the stream is either closed or in copy-out mode. Otherwise returns <b>true</b>.</returns>
         [PublicAPI]
-        public void Flush(NpgsqlLsn lastWrittenLsn, NpgsqlLsn lastFlushedLsn, NpgsqlLsn lastAppliedLsn)
+        public bool Flush(NpgsqlLsn lastWrittenLsn, NpgsqlLsn lastFlushedLsn, NpgsqlLsn lastAppliedLsn, bool replyImmediately)
         {
-            if (EndOfStream)
-                return;
-
-            CheckDisposed();
+            if (_disposed || !_copyInMode)
+                return false;
             
             lock (_writeSyncObject)
             {
-                CheckDisposed();
-                SendStandbyStatusUpdateRequest(lastWrittenLsn, lastFlushedLsn, lastAppliedLsn, false);
+                if (_disposed || !_copyInMode)
+                    return false;
+
+                SendStandbyStatusUpdateRequest(lastWrittenLsn, lastFlushedLsn, lastAppliedLsn, replyImmediately);
             }
+
+            return true;
         }
 
         /// <inheritdoc />
@@ -411,13 +449,12 @@ namespace Npgsql
                     return;
                 }
 
-                if (waitForConfirmation)
+                if (_copyInMode)
                 {
-                    // Repeating the last flush message with the confirmation request
-                    SendStandbyStatusUpdateRequest(_standbyStatusUpdateRequest.LastWrittenLsn, _standbyStatusUpdateRequest.LastFlushedLsn, _standbyStatusUpdateRequest.LastAppliedLsn, true);
+                    _connector.SendMessage(CopyDoneMessage.Instance);
+                    _copyInMode = false;
                 }
 
-                _connector.SendMessage(CopyDoneMessage.Instance);
                 if (!waitForConfirmation)
                 {
                     if (_connector.State == ConnectorState.Replication)
@@ -447,7 +484,7 @@ namespace Npgsql
         {
             try
             {
-                Close(disposing);
+                Close(true);
             }
             catch (Exception ex)
             {
