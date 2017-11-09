@@ -9,11 +9,6 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests
 {
-    // Some general notes on these tests...
-    // Care must be taken, since some "control" statements (checking the number of prepared statements, even the
-    // startup internal type loading query) may get prepared. This is why we never set minusages to 1, and explicitly
-    // prepare control statements.
-    [Ignore("These fail on Appveyor for some reason, but only on dev (hotfix/3.2.6 is OK)")]
     public class AutoPrepareTests : TestBase
     {
         [Test]
@@ -321,6 +316,20 @@ namespace Npgsql.Tests
             }
         }
 
-        const string CountPreparedStatements = "SELECT COUNT(*) FROM pg_prepared_statements WHERE statement NOT LIKE '%pg_prepared_statements%'";
+        // Exclude some internal Npgsql queries which include pg_type as well as the count statement itself
+        const string CountPreparedStatements = @"
+SELECT COUNT(*) FROM pg_prepared_statements
+    WHERE statement NOT LIKE '%pg_prepared_statements%'
+    AND statement NOT LIKE '%pg_type%'";
+
+        void DumpPreparedStatements(NpgsqlConnection conn)
+        {
+            using (var cmd = new NpgsqlCommand("SELECT name,statement FROM pg_prepared_statements", conn))
+            using (var reader = cmd.ExecuteReader())
+            {
+                while (reader.Read())
+                    Console.WriteLine($"{reader.GetString(0)}: {reader.GetString(1)}");
+            }
+        }
     }
 }
