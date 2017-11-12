@@ -579,7 +579,7 @@ namespace Npgsql
             Log.Trace("Closing connection...", connectorId);
             _wasBroken = wasBroken;
 
-            CloseOngoingOperations();
+            Connector.CloseOngoingOperations();
 
             if (!Settings.Pooling)
                 Connector.Close();
@@ -607,51 +607,6 @@ namespace Npgsql
             Connector = null;
 
             OnStateChange(new StateChangeEventArgs(ConnectionState.Open, ConnectionState.Closed));
-        }
-
-        /// <summary>
-        /// Closes ongoing operations, i.e. an open reader exists or a COPY operation still in progress, as
-        /// part of a connection close.
-        /// Does nothing if the thread has been aborted - the connector will be closed immediately.
-        /// </summary>
-        void CloseOngoingOperations()
-        {
-            if ((Thread.CurrentThread.ThreadState & (ThreadState.Aborted | ThreadState.AbortRequested)) != 0)
-                return;
-
-            Debug.Assert(Connector != null);
-            Connector.CurrentReader?.Close(true, false);
-            var currentCopyOperation = Connector.CurrentCopyOperation;
-            if (currentCopyOperation != null)
-            {
-                // TODO: There's probably a race condition as the COPY operation may finish on its own during the next few lines
-
-                // Note: we only want to cancel import operations, since in these cases cancel is safe.
-                // Export cancellations go through the PostgreSQL "asynchronous" cancel mechanism and are
-                // therefore vulnerable to the race condition in #615.
-                if (currentCopyOperation is NpgsqlBinaryImporter ||
-                    currentCopyOperation is NpgsqlCopyTextWriter ||
-                    (currentCopyOperation is NpgsqlRawCopyStream && ((NpgsqlRawCopyStream)currentCopyOperation).CanWrite))
-                {
-                    try
-                    {
-                        currentCopyOperation.Cancel();
-                    }
-                    catch (Exception e)
-                    {
-                        Log.Warn("Error while cancelling COPY on connector close", e, Connector.Id);
-                    }
-                }
-
-                try
-                {
-                    currentCopyOperation.Dispose();
-                }
-                catch (Exception e)
-                {
-                    Log.Warn("Error while disposing cancelled COPY on connector close", e, Connector.Id);
-                }
-            }
         }
 
         /// <summary>

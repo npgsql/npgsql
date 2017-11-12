@@ -188,6 +188,35 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1700")]
+        public void Bug1700()
+        {
+            Assert.That(() =>
+            {
+                using (var conn = OpenConnection())
+                using (var tx = conn.BeginTransaction())
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = "SELECT 1";
+                    var reader = cmd.ExecuteReader();
+
+                    while (reader.Read())
+                    {
+                        // Simulate exception whilst processing the data reader...
+                        throw new InvalidOperationException("Some problem parsing the returned data");
+
+                        // As this exception unwinds the stack, it calls Dispose on the NpgsqlTransaction
+                        // which then throws a NpgsqlOperationInProgressException as it tries to rollback
+                        // the transaction. This hides the underlying cause of the problem (in this case
+                        // our InvalidOperationException exception)
+                    }
+
+                    // Note, we never get here
+                    tx.Commit();
+                }
+            }, Throws.InvalidOperationException.With.Message.EqualTo("Some problem parsing the returned data"));
+        }
+
         #region Bug1285
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1285")]

@@ -270,15 +270,17 @@ namespace Npgsql
         #region Dispose
 
         /// <summary>
-        /// Dispose.
+        /// Disposes the transaction, rolling it back if it is still pending.
         /// </summary>
-        /// <param name="disposing"></param>
         protected override void Dispose(bool disposing)
         {
             if (_isDisposed) { return; }
 
             if (disposing && !IsCompleted)
+            {
+                _connector.CloseOngoingOperations();
                 Rollback();
+            }
 
             Clear();
 
