@@ -273,13 +273,11 @@ namespace Npgsql
         /// Dispose.
         /// </summary>
         /// <param name="disposing"></param>
-        protected override void Dispose(bool disposing) => Dispose(disposing, true);
-
-        internal void Dispose(bool disposing, bool doRollbackIfNeeded)
+        protected override void Dispose(bool disposing)
         {
             if (_isDisposed) { return; }
 
-            if (disposing && doRollbackIfNeeded && !IsCompleted)
+            if (disposing && !IsCompleted)
                 Rollback();
 
             Clear();
