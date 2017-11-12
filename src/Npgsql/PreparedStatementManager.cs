@@ -138,13 +138,14 @@ namespace Npgsql
 
             switch (pStatement.State)
             {
-                case PreparedState.Prepared:
                 case PreparedState.ToBePrepared:
-                // The statement has already been prepared (explicitly or automatically), or has been selected
-                // for preparation (earlier identical statement in the same command).
-                // We just need to check that the parameter types correspond, since prepared statements are
-                // only keyed by SQL (to prevent pointless allocations). If we have a mismatch, simply run unprepared.
-                return pStatement.DoParametersMatch(statement.InputParameters)
+                case PreparedState.BeingPrepared:
+                case PreparedState.Prepared:
+                    // The statement has already been prepared (explicitly or automatically), or has been selected
+                    // for preparation (earlier identical statement in the same command).
+                    // We just need to check that the parameter types correspond, since prepared statements are
+                    // only keyed by SQL (to prevent pointless allocations). If we have a mismatch, simply run unprepared.
+                    return pStatement.DoParametersMatch(statement.InputParameters)
                     ? pStatement
                     : null;
             }
@@ -200,8 +201,7 @@ namespace Npgsql
         void RemoveCandidate(PreparedStatement candidate)
         {
             Debug.Assert(_candidates != null);
-            var i = 0;
-            for (; i < _candidates.Length; i++)
+            for (var i = 0; i < _candidates.Length; i++)
             {
                 if (_candidates[i] == candidate)
                 {
@@ -209,7 +209,8 @@ namespace Npgsql
                     return;
                 }
             }
-            Debug.Assert(i < _candidates.Length);
+            Debug.Fail("Prepared statement candidate not found.",
+                "PreparedStatementManager.RemoveCandidate() is expected to be called in a state where its _candidates array contains the PreparedStatement candidate to be removed.");
         }
 
         internal void ClearAll()

@@ -83,8 +83,6 @@ namespace Npgsql
         internal void SetParamTypes(List<NpgsqlParameter> parameters)
         {
             Debug.Assert(ParamTypes == null);
-            if (parameters.Count == 0)
-                ParamTypes = EmptyParamTypes;
             ParamTypes = new NpgsqlDbType[parameters.Count];
             for (var i = 0; i < parameters.Count; i++)
                 ParamTypes[i] = parameters[i].NpgsqlDbType;
@@ -134,14 +132,13 @@ namespace Npgsql
         /// <summary>
         /// The statement has been selected for preparation, but the preparation hasn't started yet.
         /// This is a temporary state that only occurs during preparation.
-        /// Specifically, no protocol message (Parse) has been sent yet. Specifically, it means that
-        /// a Parse message for the statement has already been written to the write buffer.
+        /// Specifically, it means that no protocol message (Parse/Describe) has been written to the write buffer yet.
         /// </summary>
         ToBePrepared,
 
         /// <summary>
         /// The statement is in the process of being prepared. This is a temporary state that only occurs during
-        /// preparation. Specifically, it means that a Parse message for the statement has already been written
+        /// preparation. Specifically, it means that a Describe message for the statement has already been written
         /// to the write buffer.
         /// </summary>
         BeingPrepared,
