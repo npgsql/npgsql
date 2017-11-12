@@ -4,6 +4,7 @@ using System.Data;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
@@ -43,6 +44,32 @@ namespace Npgsql
 
         internal override ValueTask<IBackendMessage> ReadMessage(bool async)
             => Connector.ReadMessage(async);
+
+        protected override Task<bool> Read(bool async)
+        {
+            // This is an optimized execution path that avoids calling any async methods for the (usual)
+            // case where the next row (or CommandComplete) is already in memory.
+            if (State != ReaderState.InResult || (Behavior & CommandBehavior.SingleRow) != 0)
+                return base.Read(async);
+
+            ConsumeRow(false);
+
+            var readBuf = Connector.ReadBuffer;
+            if (readBuf.ReadBytesLeft < 5)
+                return base.Read(async);
+            var messageCode = (BackendMessageCode)readBuf.ReadByte();
+            var len = readBuf.ReadInt32() - 4;  // Transmitted length includes itself
+            if (messageCode != BackendMessageCode.DataRow || readBuf.ReadBytesLeft < len)
+            {
+                readBuf.Seek(-5, SeekOrigin.Current);
+                return base.Read(async);
+            }
+
+            var msg = Connector.ParseServerMessage(readBuf, messageCode, len, false);
+            ProcessMessage(msg);
+            return msg.Code == BackendMessageCode.DataRow
+                ? PGUtil.TrueTask : PGUtil.FalseTask;
+        }
 
         protected override Task<bool> NextResult(bool async, bool isConsuming=false)
         {
@@ -100,6 +127,7 @@ namespace Npgsql
             State = ReaderState.BeforeResult;  // Set the state back
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal override Task ConsumeRow(bool async)
         {
             Debug.Assert(State == ReaderState.InResult || State == ReaderState.BeforeResult);

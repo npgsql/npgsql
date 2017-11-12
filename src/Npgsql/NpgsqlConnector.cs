@@ -959,7 +959,7 @@ namespace Npgsql
         }
 
         [CanBeNull]
-        IBackendMessage ParseServerMessage(NpgsqlReadBuffer buf, BackendMessageCode code, int len, bool isPrependedMessage)
+        internal IBackendMessage ParseServerMessage(NpgsqlReadBuffer buf, BackendMessageCode code, int len, bool isPrependedMessage)
         {
             switch (code)
             {

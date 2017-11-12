@@ -59,7 +59,7 @@ namespace Npgsql
         internal NpgsqlCommand Command { get; }
         internal readonly NpgsqlConnector Connector;
         readonly NpgsqlConnection _connection;
-        readonly CommandBehavior _behavior;
+        protected readonly CommandBehavior Behavior;
         readonly Task _sendTask;
 
         internal ReaderState State;
@@ -104,7 +104,7 @@ namespace Npgsql
         /// </summary>
         public event EventHandler ReaderClosed;
 
-        bool IsSchemaOnly => (_behavior & CommandBehavior.SchemaOnly) != 0;
+        bool IsSchemaOnly => (Behavior & CommandBehavior.SchemaOnly) != 0;
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
@@ -113,7 +113,7 @@ namespace Npgsql
             Command = command;
             _connection = command.Connection;
             Connector = _connection.Connector;
-            _behavior = behavior;
+            Behavior = behavior;
             _statements = statements;
             StatementIndex = -1;
             _sendTask = sendTask;
@@ -143,7 +143,7 @@ namespace Npgsql
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        async Task<bool> Read(bool async)
+        protected virtual async Task<bool> Read(bool async)
         {
             switch (State)
             {
@@ -154,7 +154,7 @@ namespace Npgsql
 
             case ReaderState.InResult:
                 await ConsumeRow(async);
-                if ((_behavior & CommandBehavior.SingleRow) != 0)
+                if ((Behavior & CommandBehavior.SingleRow) != 0)
                 {
                     // TODO: See optimization proposal in #410
                     await Consume(async);
@@ -183,7 +183,7 @@ namespace Npgsql
             }
         }
 
-        void ProcessMessage(IBackendMessage msg)
+        internal void ProcessMessage(IBackendMessage msg)
         {
             Debug.Assert(msg != null);
 
@@ -326,7 +326,7 @@ namespace Npgsql
             Debug.Assert(State == ReaderState.BetweenResults);
             _hasRows = false;
 
-            if ((_behavior & CommandBehavior.SingleResult) != 0 && StatementIndex == 0 && !isConsuming)
+            if ((Behavior & CommandBehavior.SingleResult) != 0 && StatementIndex == 0 && !isConsuming)
             {
                 await Consume(async);
                 return false;
@@ -613,7 +613,7 @@ namespace Npgsql
 
             // If the reader is being closed as part of the connection closing, we don't apply
             // the reader's CommandBehavior.CloseConnection
-            if ((_behavior & CommandBehavior.CloseConnection) != 0 && !connectionClosing)
+            if ((Behavior & CommandBehavior.CloseConnection) != 0 && !connectionClosing)
                 _connection.Close();
 
             if (ReaderClosed != null)
@@ -1111,7 +1111,7 @@ namespace Npgsql
         /// </summary>
         /// <returns></returns>
         public ReadOnlyCollection<NpgsqlDbColumn> GetColumnSchema()
-            => new DbColumnSchemaGenerator(_connection, RowDescription, (_behavior & CommandBehavior.KeyInfo) != 0)
+            => new DbColumnSchemaGenerator(_connection, RowDescription, (Behavior & CommandBehavior.KeyInfo) != 0)
                 .GetColumnSchema();
 
 #if NETSTANDARD1_3
