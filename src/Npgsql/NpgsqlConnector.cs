@@ -1134,7 +1134,7 @@ namespace Npgsql
         }
 
         internal T ReadExpecting<T>() where T : class, IBackendMessage
-            => ReadExpecting<T>(false).Result;
+            => ReadExpecting<T>(false).GetAwaiter().GetResult();
 
         #endregion Backend message processing
 
