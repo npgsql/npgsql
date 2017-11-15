@@ -515,7 +515,7 @@ namespace Npgsql
         string _timezone;
 
         /// <summary>
-        /// Gets or sets the PostgreSQL target server, using multiple connection.
+        /// Gets or sets the PostgreSQL target server.
         /// </summary>
         [Category("Connection")]
         [Description("Gets or sets the PostgreSQL target server.")]

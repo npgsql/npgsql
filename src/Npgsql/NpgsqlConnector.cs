@@ -700,7 +700,6 @@ namespace Npgsql
 
         void ConnectMultiple(NpgsqlTimeout timeout)
         {
-            Exception lastSocketException = null;
             Stream stream = null;
 
             ServerPair primarysp = null;
@@ -711,17 +710,14 @@ namespace Npgsql
             ServerPair[] serverList = ServerListManager.getServerInfo(this);
             if (serverList.Length > 1)
             {
-                
-               
                 //NpgsqlNetworkStream stream = null;
                 var i = 0;
 
                 for (i = 0; i < serverList.Length; i++)
                 {
                     connServer = serverList[i];
-                    Settings.Host = connServer.host;
-                    Settings.Port = connServer.port;
-
+                    Settings.Host = connServer.DisplayedHost;
+                    Settings.Port = connServer.DisplayedPort;
 
                     try
                     {
@@ -755,15 +751,15 @@ namespace Npgsql
 
                         if (dbState.Equals("Run"))
                         {
-                            connServer.updateHostStatus(HostStatus.Master);
+                            connServer.updateHostStatus(NpgsqlServerListManager.Master);
                         }
                         else if (dbState.Equals("HotStandby"))
                         {
-                            connServer.updateHostStatus(HostStatus.Slave);
+                            connServer.updateHostStatus(NpgsqlServerListManager.Slave);
                         }
                         else
                         {
-                            connServer.updateHostStatus(HostStatus.Down);
+                            connServer.updateHostStatus(NpgsqlServerListManager.Down);
                         }
 
                         if (TargetServer == TargetServer.master && dbState.Equals("Run"))
@@ -783,24 +779,18 @@ namespace Npgsql
                             else if (dbState.Equals("Run"))
                             {
                                 primarysp = connServer;
-#if !NETSTANDARD1_3
-                                stream.Close();
-#endif
+                                stream.Dispose();
                                 stream = null;
                             }
                             else
                             {
-#if !NETSTANDARD1_3
-                                stream.Close();
-#endif
+                                stream.Dispose();
                                 stream = null;
                             }
                         }
                         else
                         {
-#if !NETSTANDARD1_3
-                                stream.Close();
-#endif
+                            stream.Dispose();
                             stream = null;
                         }
 
@@ -809,33 +799,31 @@ namespace Npgsql
                     {
                         if (stream != null)
                         {
-#if !NETSTANDARD1_3
-                                stream.Close();
-#endif
+                            stream.Dispose();
                             stream = null;
                         }
 
                     }
-#if !NETSTANDARD1_3
                     catch (SocketException e)
                     {
-                        lastSocketException = e;
+#if !NETSTANDARD1_3
                         if (e.ErrorCode == 10061)
+#else
+                        // TODO
+                        if (e.SocketErrorCode.ToString() == "10061")
+#endif
                         {
                             stream = null;
                         }
                     }
-#endif
-                    catch (Exception e)
+                    catch
                     {
-                        //lastSocketException = e;
                         if (_socket != null)
                         {
- #if !NETSTANDARD1_3
-                            _socket.Close();
-#endif
+                            _socket.Dispose();
                             _socket = null;
                         }
+                        stream = null;
                     }
                 }
                 
@@ -844,8 +832,8 @@ namespace Npgsql
                 if (stream == null && primarysp != null)
                 {
                     connServer = primarysp;
-                    Settings.Host = primarysp.host;
-                    Settings.Port = primarysp.port;
+                    Settings.Host = primarysp.DisplayedHost;
+                    Settings.Port = primarysp.DisplayedPort;
                     Connect(timeout);
                     if (_socket != null && _socket.Connected)
                     {
@@ -853,8 +841,21 @@ namespace Npgsql
                         {
                             stream = new NetworkStream(_socket, true);
                         }
-                        catch (IOException)
+                        catch
                         {
+                            try { stream?.Dispose(); }
+                            catch
+                            {
+                                // ignored
+                            }
+                            stream = null;
+                            try { _socket?.Dispose(); }
+                            catch
+                            {
+                                // ignored
+                            }
+                            _socket = null;
+                            throw;
                         }
                     }
                 }
@@ -869,23 +870,22 @@ namespace Npgsql
             else
             {
                 connServer = serverList[0];
-                Settings.Host = connServer.host;
-                Settings.Port = connServer.port;
+                Settings.Host = connServer.DisplayedHost;
+                Settings.Port = connServer.DisplayedPort;
                 try
                 {
                     Connect(timeout);
                 }
-                catch (Exception e)
+                catch
                 {
-                    if (_socket == null)
+                    if (_socket != null)
                     {
-                        throw e;
+                        _socket = null;
                     }
+                    throw;
                 }
                
             }
-
-            stream = null;
 
         }
 
