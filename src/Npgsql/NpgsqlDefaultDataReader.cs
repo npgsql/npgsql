@@ -298,14 +298,17 @@ namespace Npgsql
             return new ValueTask<Stream>(s);
         }
 
-        void SeekToColumn(int column) => SeekToColumn(column, false);
-
-        internal override Task SeekToColumn(int column, bool async)
+        void SeekToColumn(int column)
         {
             Buffer.Seek(_columnOffsets[column], SeekOrigin.Begin);
             ColumnLen = Buffer.ReadInt32();
             _column = column;
             PosInColumn = 0;
+        }
+
+        internal override Task SeekToColumn(int column, bool async)
+        {
+            SeekToColumn(column);
             return PGUtil.CompletedTask;
         }
 
