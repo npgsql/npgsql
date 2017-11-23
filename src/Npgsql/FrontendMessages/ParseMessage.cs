@@ -59,13 +59,20 @@ namespace Npgsql.FrontendMessages
 
         internal ParseMessage Populate(string sql, string statementName, List<NpgsqlParameter> inputParameters, ConnectorTypeMapper typeMapper)
         {
-            ParameterTypeOIDs.Clear();
-            Query = sql;
-            Statement = statementName;
-            foreach (var inputParam in inputParameters) {
+            Populate(sql, statementName);
+            foreach (var inputParam in inputParameters)
+            {
                 inputParam.ResolveHandler(typeMapper);
                 ParameterTypeOIDs.Add(inputParam.Handler.PostgresType.OID);
             }
+            return this;
+        }
+
+        internal ParseMessage Populate(string sql, string statementName)
+        {
+            ParameterTypeOIDs.Clear();
+            Query = sql;
+            Statement = statementName;
             return this;
         }
 

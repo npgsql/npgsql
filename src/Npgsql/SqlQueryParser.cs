@@ -46,12 +46,16 @@ namespace Npgsql
         /// </summary>
         /// <param name="sql">Raw user-provided query.</param>
         /// <param name="standardConformantStrings">Whether the PostgreSQL session is configured to use standard conformant strings.</param>
-        /// <param name="parameters">The parameters configured on the <see cref="NpgsqlCommand"/> of this query.</param>
+        /// <param name="parameters">The parameters configured on the <see cref="NpgsqlCommand"/> of this query
+        /// or an empty <see cref="NpgsqlParameterCollection"/> if deriveParameters is set to true.</param>
         /// <param name="statements">An empty list to be populated with the statements parsed by this method</param>
-        internal void ParseRawQuery(string sql, bool standardConformantStrings, NpgsqlParameterCollection parameters, List<NpgsqlStatement> statements)
+        /// <param name="deriveParameters">A bool indicating whether parameters contains a list of preconfigured parameters or an empty list to be filled with derived parameters.</param>
+        internal void ParseRawQuery(string sql, bool standardConformantStrings, NpgsqlParameterCollection parameters, List<NpgsqlStatement> statements, bool deriveParameters = false)
         {
             Debug.Assert(sql != null);
             Debug.Assert(statements != null);
+            Debug.Assert(parameters != null);
+            Debug.Assert(deriveParameters == false || parameters.Count == 0);
 
             _statements = statements;
             _statementIndex = -1;
@@ -148,17 +152,26 @@ namespace Npgsql
                 if (currCharOfs >= end || !IsParamNameChar(ch = sql[currCharOfs])) {
                     var paramName = sql.Substring(currTokenBeg, currCharOfs - currTokenBeg);
 
-                    if (!_paramIndexMap.TryGetValue(paramName, out var index)) {
+                    if (!_paramIndexMap.TryGetValue(paramName, out var index))
+                    {
                         // Parameter hasn't been seen before in this query
                         if (!parameters.TryGetValue(paramName, out var parameter))
                         {
-                            _rewrittenSql.Append(paramName);
-                            currTokenBeg = currCharOfs;
-                            if (currCharOfs >= end)
-                                goto Finish;
+                            if (deriveParameters)
+                            {
+                                parameter = new NpgsqlParameter() { ParameterName = paramName.Substring(1) };
+                                parameters.Add(parameter);
+                            }
+                            else
+                            {
+                                _rewrittenSql.Append(paramName);
+                                currTokenBeg = currCharOfs;
+                                if (currCharOfs >= end)
+                                    goto Finish;
 
-                            currCharOfs++;
-                            goto NoneContinue;
+                                currCharOfs++;
+                                goto NoneContinue;
+                            }
                         }
 
                         if (!parameter.IsInputDirection)
