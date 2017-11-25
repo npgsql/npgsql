@@ -32,6 +32,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Npgsql.NetTopologySuite", "
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Npgsql.GeoJSON", "src\Npgsql.GeoJSON\Npgsql.GeoJSON.csproj", "{F7C53EBD-0075-474F-A083-419257D04080}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Npgsql.Specification.Tests", "test\Npgsql.Specification.Tests\Npgsql.Specification.Tests.csproj", "{A77E5FAF-D775-4AB4-8846-8965C2104E60}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -120,6 +122,14 @@ Global
 		{F7C53EBD-0075-474F-A083-419257D04080}.Release|Any CPU.Build.0 = Release|Any CPU
 		{F7C53EBD-0075-474F-A083-419257D04080}.Release|x86.ActiveCfg = Release|Any CPU
 		{F7C53EBD-0075-474F-A083-419257D04080}.Release|x86.Build.0 = Release|Any CPU
+		{A77E5FAF-D775-4AB4-8846-8965C2104E60}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A77E5FAF-D775-4AB4-8846-8965C2104E60}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A77E5FAF-D775-4AB4-8846-8965C2104E60}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{A77E5FAF-D775-4AB4-8846-8965C2104E60}.Debug|x86.Build.0 = Debug|Any CPU
+		{A77E5FAF-D775-4AB4-8846-8965C2104E60}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A77E5FAF-D775-4AB4-8846-8965C2104E60}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A77E5FAF-D775-4AB4-8846-8965C2104E60}.Release|x86.ActiveCfg = Release|Any CPU
+		{A77E5FAF-D775-4AB4-8846-8965C2104E60}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -135,6 +145,7 @@ Global
 		{5BF3516D-5559-46A8-8362-0F4D931EEAB9} = {8537E50E-CF7F-49CB-B4EF-3E2A1B11F050}
 		{6CB12050-DC9B-4155-BADD-BFDD54CDD70F} = {8537E50E-CF7F-49CB-B4EF-3E2A1B11F050}
 		{F7C53EBD-0075-474F-A083-419257D04080} = {8537E50E-CF7F-49CB-B4EF-3E2A1B11F050}
+		{A77E5FAF-D775-4AB4-8846-8965C2104E60} = {ED612DB1-AB32-4603-95E7-891BACA71C39}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {C90AEECD-DB4C-4BE6-B506-16A449852FB8}
