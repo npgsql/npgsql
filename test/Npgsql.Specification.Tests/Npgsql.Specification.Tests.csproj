@@ -1,0 +1,13 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Npgsql/Npgsql.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AdoNet.Specification.Tests" Version="2.0.0-alpha3" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.0.1" />
+    <PackageReference Include="xunit" Version="2.4.1" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.4.1" />
+  </ItemGroup>
+</Project>
