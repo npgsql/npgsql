@@ -59,7 +59,12 @@ namespace Npgsql
         internal NpgsqlCommand Command { get; }
         internal readonly NpgsqlConnector Connector;
         readonly NpgsqlConnection _connection;
+
+        /// <summary>
+        /// The behavior of the command with which this reader was executed.
+        /// </summary>
         protected readonly CommandBehavior Behavior;
+
         readonly Task _sendTask;
 
         internal ReaderState State;
@@ -142,6 +147,9 @@ namespace Npgsql
                 return Read(true);
         }
 
+        /// <summary>
+        /// Implementation of read
+        /// </summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         protected virtual async Task<bool> Read(bool async)
         {

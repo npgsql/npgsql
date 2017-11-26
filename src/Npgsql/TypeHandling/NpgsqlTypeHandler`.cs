@@ -54,8 +54,10 @@ namespace Npgsql.TypeHandling
         readonly NonGenericValidateAndGetLength _nonGenericValidateAndGetLength;
         readonly NonGenericWriteWithLength _nonGenericWriteWithLength;
 
+#pragma warning disable CA1823
         static readonly ConcurrentDictionary<Type, (NonGenericValidateAndGetLength, NonGenericWriteWithLength)>
             NonGenericDelegateCache = new ConcurrentDictionary<Type, (NonGenericValidateAndGetLength, NonGenericWriteWithLength)>();
+#pragma warning restore CA1823
 
         /// <summary>
         /// Constructs an <see cref="NpgsqlTypeHandler{TDefault}"/>.

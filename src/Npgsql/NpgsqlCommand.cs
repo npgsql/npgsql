@@ -661,7 +661,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         /// <summary>
         /// Unprepares a command, closing server-side statements associated with it.
-        /// Note that this only affects commands explicitly prepared with <see cref="Prepare"/>, not
+        /// Note that this only affects commands explicitly prepared with <see cref="Prepare()"/>, not
         /// automatically prepared statements.
         /// </summary>
         public void Unprepare()
