@@ -552,43 +552,71 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         #region Prepare
 
         /// <summary>
-        /// Creates a prepared version of the command on a PostgreSQL server.
+        /// Creates a server-side prepared statement on the PostgreSQL server.
+        /// This will make repeated future executions of this command much faster.
         /// </summary>
-        public override void Prepare()
+        public override void Prepare() => Prepare(false).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Creates a server-side prepared statement on the PostgreSQL server.
+        /// This will make repeated future executions of this command much faster.
+        /// </summary>
+        public Task PrepareAsync() => PrepareAsync(CancellationToken.None);
+
+        /// <summary>
+        /// Creates a server-side prepared statement on the PostgreSQL server.
+        /// This will make repeated future executions of this command much faster.
+        /// </summary>
+#pragma warning disable CA1801 // Review unused parameters
+        public Task PrepareAsync(CancellationToken cancellationToken)
+#pragma warning restore CA1801 // Review unused parameters
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            using (NoSynchronizationContextScope.Enter())
+                return Prepare(true);
+        }
+
+        Task Prepare(bool async)
         {
             var connector = CheckReadyAndGetConnector();
+            for (var i = 0; i < Parameters.Count; i++)
+                if (!Parameters[i].IsTypeExplicitlySet)
+                    throw new InvalidOperationException(
+                        "The Prepare method requires all parameters to have an explicitly set type.");
+
+            ProcessRawQuery();
+            Log.Debug($"Preparing: {CommandText}", connector.Id);
+
+            var needToPrepare = false;
+            foreach (var statement in _statements)
+            {
+                if (statement.IsPrepared)
+                    continue;
+                statement.PreparedStatement = connector.PreparedStatementManager.GetOrAddExplicit(statement);
+                if (statement.PreparedStatement?.State == PreparedState.NotPrepared)
+                {
+                    statement.PreparedStatement.State = PreparedState.ToBePrepared;
+                    needToPrepare = true;
+                }
+            }
+
+            // It's possible the command was already prepared, or that presistent prepared statements were found for
+            // all statements. Nothing to do here, move along.
+            return needToPrepare
+                ? PrepareLong(connector, async)
+                : PGUtil.CompletedTask;
+        }
+
+        async Task PrepareLong(NpgsqlConnector connector, bool async)
+        {
             using (connector.StartUserAction())
             {
-                for (var i = 0; i < Parameters.Count; i++)
-                    if (!Parameters[i].IsTypeExplicitlySet)
-                        throw new InvalidOperationException("The Prepare method requires all parameters to have an explicitly set type.");
-
-                ProcessRawQuery();
-                Log.Debug($"Preparing: {CommandText}", connector.Id);
-
-                var needToPrepare = false;
-                foreach (var statement in _statements)
-                {
-                    if (statement.IsPrepared)
-                        continue;
-                    statement.PreparedStatement = connector.PreparedStatementManager.GetOrAddExplicit(statement);
-                    if (statement.PreparedStatement?.State == PreparedState.NotPrepared)
-                    {
-                        statement.PreparedStatement.State = PreparedState.ToBePrepared;
-                        needToPrepare = true;
-                    }
-                }
-
-                // It's possible the command was already prepared, or that presistent prepared statements were found for
-                // all statements. Nothing to do here, move along.
-                if (!needToPrepare)
-                    return;
-
-                var sendTask = SendPrepare(false);
+                var sendTask = SendPrepare(async);
 
                 // Loop over statements, skipping those that are already prepared (because they were persisted)
                 var isFirst = true;
-                foreach (var statement in _statements.Where(s => s.PreparedStatement?.State == PreparedState.BeingPrepared))
+                foreach (var statement in _statements.Where(s =>
+                    s.PreparedStatement?.State == PreparedState.BeingPrepared))
                 {
                     var pStatement = statement.PreparedStatement;
                     Debug.Assert(pStatement != null);
@@ -600,9 +628,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         pStatement.StatementBeingReplaced = null;
                     }
 
-                    connector.ReadExpecting<ParseCompleteMessage>();
-                    connector.ReadExpecting<ParameterDescriptionMessage>();
-                    var msg = connector.ReadMessage();
+                    await connector.ReadExpecting<ParseCompleteMessage>(async);
+                    await connector.ReadExpecting<ParameterDescriptionMessage>(async);
+                    var msg = await connector.ReadMessage(async);
                     switch (msg.Code)
                     {
                     case BackendMessageCode.RowDescription:
@@ -620,8 +648,12 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     isFirst = false;
                 }
 
-                connector.ReadExpecting<ReadyForQueryMessage>();
-                sendTask.GetAwaiter().GetResult();
+                await connector.ReadExpecting<ReadyForQueryMessage>(async);
+
+                if (async)
+                    await sendTask;
+                else
+                    sendTask.GetAwaiter().GetResult();
 
                 _connectorPreparedOn = connector;
             }
