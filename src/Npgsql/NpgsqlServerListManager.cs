@@ -43,7 +43,7 @@ namespace Npgsql
         public static ServerPair[] getServerInfo(NpgsqlConnector context)
         {
             var serverList = analyzeConnectionString(context.Settings.Host, context.Settings.Port);
-            var resultServerList = new List<ServerPair>(2);
+            var resultServerList = new List<ServerPair>(Servers.Values);
 
             lock (Servers)
             {
