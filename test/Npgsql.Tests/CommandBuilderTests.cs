@@ -123,7 +123,7 @@ namespace Npgsql.Tests
                               end
                               $BODY$
                               language 'plpgsql';");
-                var command = new NpgsqlCommand("pg_temp.\"FunctionCaseSensitive\"", conn);
+                var command = new NpgsqlCommand("pg_temp.\"FunctionCaseSensitive\"", conn) { CommandType = CommandType.StoredProcedure };
                 NpgsqlCommandBuilder.DeriveParameters(command);
                 Assert.AreEqual(NpgsqlDbType.Integer, command.Parameters[0].NpgsqlDbType);
                 Assert.AreEqual(NpgsqlDbType.Text, command.Parameters[1].NpgsqlDbType);
@@ -138,8 +138,8 @@ namespace Npgsql.Tests
                 conn.ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION pg_temp.testoutparameter2(x int, y int, out sum int, out product int) as 'select $1 + $2, $1 * $2' language 'sql';");
                 var command = new NpgsqlCommand("pg_temp.testoutparameter2", conn) { CommandType = CommandType.StoredProcedure };
                 NpgsqlCommandBuilder.DeriveParameters(command);
-                Assert.AreEqual(":x", command.Parameters[0].ParameterName);
-                Assert.AreEqual(":y", command.Parameters[1].ParameterName);
+                Assert.AreEqual("x", command.Parameters[0].ParameterName);
+                Assert.AreEqual("y", command.Parameters[1].ParameterName);
             }
         }
 
@@ -148,7 +148,7 @@ namespace Npgsql.Tests
         {
             using (var conn = OpenConnection())
             {
-                var invalidCommandName = new NpgsqlCommand("invalidfunctionname", conn);
+                var invalidCommandName = new NpgsqlCommand("invalidfunctionname", conn) { CommandType = CommandType.StoredProcedure };
                 Assert.That(() => NpgsqlCommandBuilder.DeriveParameters(invalidCommandName),
                     Throws.Exception.TypeOf<PostgresException>()
                         .With.Property(nameof(PostgresException.SqlState)).EqualTo("42883"));
@@ -440,6 +440,108 @@ $$ LANGUAGE SQL;
                 cmd.Parameters[0].Value = 1;
                 cmd.ExecuteNonQuery();
                 Assert.That(cmd.Parameters[0].Value, Is.EqualTo(1));
+            }
+        }
+
+        #endregion
+
+        #region CommandType.Text
+
+        [Test, Description("Tests parameter derivation for parameterized queries (CommandType.Text)")]
+        public void DeriveParametersCommandTypeTextOneParameterWithSameType()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE mytable(id int, val text);");
+                var cmd = new NpgsqlCommand(
+                    @"INSERT INTO mytable VALUES(:x, 'some value');
+                    UPDATE mytable SET val = 'changed value' WHERE id = :x;
+                    SELECT val FROM mytable WHERE id = :x;",
+                    conn);
+                NpgsqlCommandBuilder.DeriveParameters(cmd);
+                Assert.That(cmd.Parameters, Has.Count.EqualTo(1));
+                Assert.That(cmd.Parameters[0].Direction, Is.EqualTo(ParameterDirection.Input));
+                Assert.That(cmd.Parameters[0].ParameterName, Is.EqualTo("x"));
+                Assert.That(cmd.Parameters[0].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Integer));
+                cmd.Parameters[0].Value = 42;
+                var retVal = cmd.ExecuteScalar();
+                Assert.That(retVal, Is.EqualTo("changed value"));
+            }
+        }
+
+        [Test, Description("Tests parameter derivation for parameterized queries (CommandType.Text)")]
+        public void DeriveParametersCommandTypeTextOneParameterWithDifferentTypes()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE mytable(id int, val text);");
+                var cmd = new NpgsqlCommand(
+                    @"INSERT INTO mytable VALUES(:x, 'some value');
+                    UPDATE mytable SET val = 'changed value' WHERE id = :x::double precision;
+                    SELECT val FROM mytable WHERE id = :x::numeric;",
+                    conn);
+                var ex = Assert.Throws<NpgsqlException>(() => NpgsqlCommandBuilder.DeriveParameters(cmd));
+                Assert.That(ex.Message, Is.EqualTo("The backend parser inferred different types for parameters with the same name. Please try explicit casting within your SQL statement or batch or use different placeholder names."));
+            }
+        }
+
+        [Test, Description("Tests parameter derivation for parameterized queries (CommandType.Text) with multiple parameters")]
+        public void DeriveParametersCommandTypeTextMultipleParameters()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE mytable(id int, val text);");
+                var cmd = new NpgsqlCommand(
+                    @"INSERT INTO mytable VALUES(:x, 'some value');
+                    UPDATE mytable SET val = 'changed value' WHERE id = @y::double precision;
+                    SELECT val FROM mytable WHERE id = :z::numeric;",
+                    conn);
+                NpgsqlCommandBuilder.DeriveParameters(cmd);
+                Assert.That(cmd.Parameters, Has.Count.EqualTo(3));
+                Assert.That(cmd.Parameters[0].ParameterName, Is.EqualTo("x"));
+                Assert.That(cmd.Parameters[1].ParameterName, Is.EqualTo("y"));
+                Assert.That(cmd.Parameters[2].ParameterName, Is.EqualTo("z"));
+                Assert.That(cmd.Parameters[0].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Integer));
+                Assert.That(cmd.Parameters[1].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Double));
+                Assert.That(cmd.Parameters[2].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Numeric));
+
+                cmd.Parameters[0].Value = 42;
+                cmd.Parameters[1].Value = 42d;
+                cmd.Parameters[2].Value = 42;
+                var retVal = cmd.ExecuteScalar();
+                Assert.That(retVal, Is.EqualTo("changed value"));
+            }
+        }
+
+        [Test, Description("Tests parameter derivation a parameterized query (CommandType.Text) that is already prepared.")]
+        public void DeriveParametersForPreparedStatement()
+        {
+            const string query = "SELECT @p::integer";
+            const int answer = 42;
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand(query, conn))
+            {
+                cmd.Parameters.AddWithValue("@p", NpgsqlDbType.Integer, answer);
+                cmd.Prepare();
+                Assert.That(conn.Connector.PreparedStatementManager.NumPrepared, Is.EqualTo(1));
+
+                var ex = Assert.Throws<NpgsqlException>(() =>
+                {
+                    // Derive parameters for the already prepared statement
+                    NpgsqlCommandBuilder.DeriveParameters(cmd);
+
+                });
+
+                Assert.That(ex.Message, Is.EqualTo("Deriving parameters isn't supported for commands that are already prepared."));
+
+                // We leave the command intact when throwing so it should still be useable
+                Assert.That(cmd.Parameters.Count, Is.EqualTo(1));
+                Assert.That(cmd.Parameters[0].CleanName, Is.EqualTo("p"));
+                Assert.That(conn.Connector.PreparedStatementManager.NumPrepared, Is.EqualTo(1));
+                cmd.Parameters["@p"].Value = answer;
+                Assert.That(cmd.ExecuteScalar(), Is.EqualTo(answer));
+
+                conn.UnprepareAll();
             }
         }
 

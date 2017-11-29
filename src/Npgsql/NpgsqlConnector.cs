@@ -155,7 +155,7 @@ namespace Npgsql
         /// If the connector is currently in COPY mode, holds a reference to the importer/exporter object.
         /// Otherwise null.
         /// </summary>
-        internal ICancelable CurrentCopyOperation;
+        [CanBeNull] internal ICancelable CurrentCopyOperation;
 
         /// <summary>
         /// Holds all run-time parameters received from the backend (via ParameterStatus messages)
@@ -959,7 +959,7 @@ namespace Npgsql
         }
 
         [CanBeNull]
-        IBackendMessage ParseServerMessage(NpgsqlReadBuffer buf, BackendMessageCode code, int len, bool isPrependedMessage)
+        internal IBackendMessage ParseServerMessage(NpgsqlReadBuffer buf, BackendMessageCode code, int len, bool isPrependedMessage)
         {
             switch (code)
             {
@@ -1134,7 +1134,7 @@ namespace Npgsql
         }
 
         internal T ReadExpecting<T>() where T : class, IBackendMessage
-            => ReadExpecting<T>(false).Result;
+            => ReadExpecting<T>(false).GetAwaiter().GetResult();
 
         #endregion Backend message processing
 
@@ -1268,6 +1268,50 @@ namespace Npgsql
         #endregion Cancel
 
         #region Close / Reset
+
+        /// <summary>
+        /// Closes ongoing operations, i.e. an open reader exists or a COPY operation still in progress, as
+        /// part of a connection close.
+        /// Does nothing if the thread has been aborted - the connector will be closed immediately.
+        /// </summary>
+        internal void CloseOngoingOperations()
+        {
+            if ((Thread.CurrentThread.ThreadState & (System.Threading.ThreadState.Aborted | System.Threading.ThreadState.AbortRequested)) != 0)
+                return;
+
+            CurrentReader?.Close(true, false);
+            var currentCopyOperation = CurrentCopyOperation;
+            if (currentCopyOperation != null)
+            {
+                // TODO: There's probably a race condition as the COPY operation may finish on its own during the next few lines
+
+                // Note: we only want to cancel import operations, since in these cases cancel is safe.
+                // Export cancellations go through the PostgreSQL "asynchronous" cancel mechanism and are
+                // therefore vulnerable to the race condition in #615.
+                if (currentCopyOperation is NpgsqlBinaryImporter ||
+                    currentCopyOperation is NpgsqlCopyTextWriter ||
+                    (currentCopyOperation is NpgsqlRawCopyStream && ((NpgsqlRawCopyStream)currentCopyOperation).CanWrite))
+                {
+                    try
+                    {
+                        currentCopyOperation.Cancel();
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Warn("Error while cancelling COPY on connector close", e, Id);
+                    }
+                }
+
+                try
+                {
+                    currentCopyOperation.Dispose();
+                }
+                catch (Exception e)
+                {
+                    Log.Warn("Error while disposing cancelled COPY on connector close", e, Id);
+                }
+            }
+        }
 
         internal void Close()
         {

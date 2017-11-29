@@ -84,6 +84,8 @@ namespace Npgsql
         }
 
         internal static readonly Task CompletedTask = Task.FromResult(0);
+        internal static readonly Task<bool> TrueTask = Task.FromResult(true);
+        internal static readonly Task<bool> FalseTask = Task.FromResult(false);
 
 #if !NETSTANDARD1_3
         internal static StringComparer InvariantCaseIgnoringStringComparer => StringComparer.InvariantCultureIgnoreCase;

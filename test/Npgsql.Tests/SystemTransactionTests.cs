@@ -200,7 +200,7 @@ namespace Npgsql.Tests
             AssertNumberOfRows(0);
         }
 
-        [Test]
+        [Test, Ignore("Flaky")]
         public void DistributedRollback()
         {
             var disposedCalled = false;

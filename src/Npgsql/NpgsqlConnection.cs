@@ -183,35 +183,36 @@ namespace Npgsql
             lock (pools)
             {
                 if (pools.TryGetValue(_connectionString, out _pool))
-                    Settings = _pool.Settings;  // Great, we already have a pool
+                {
+                    Settings = _pool.Settings; // Great, we already have a pool
+                    return;
+                }
+
+                // Connection string hasn't been seen before. Parse it.
+                Settings = new NpgsqlConnectionStringBuilder(_connectionString);
+
+                if (!_countersInitialized)
+                {
+                    _countersInitialized = true;
+                    Counters.Initialize(Settings.UsePerfCounters);
+                }
+
+                // Maybe pooling is off
+                if (!Settings.Pooling)
+                    return;
+
+                // Connstring may be equivalent to one that has already been seen though (e.g. different
+                // ordering). Have NpgsqlConnectionStringBuilder produce a canonical string representation
+                // and recheck.
+                var canonical = Settings.ConnectionString;
+                if (pools.TryGetValue(canonical, out _pool))
+                    pools[_connectionString] = _pool;
                 else
                 {
-                    // Connection string hasn't been seen before. Parse it.
-                    Settings = new NpgsqlConnectionStringBuilder(_connectionString);
-
-                    if (!_countersInitialized)
-                    {
-                        _countersInitialized = true;
-                        Counters.Initialize(Settings.UsePerfCounters);
-                    }
-
-                    // Maybe pooling is off
-                    if (Settings.Pooling)
-                    {
-                        // Connstring may be equivalent to one that has already been seen though (e.g. different
-                        // ordering). Have NpgsqlConnectionStringBuilder produce a canonical string representation
-                        // and recheck.
-                        var canonical = Settings.ConnectionString;
-                        if (pools.TryGetValue(canonical, out _pool))
-                            pools[_connectionString] = _pool;
-                        else
-                        {
-                            // Really unseen, need to create a new pool
-                            _pool = pools[_connectionString] = new ConnectorPool(Settings, canonical);
-                            if (_connectionString != canonical)
-                                pools[canonical] = _pool;
-                        }
-                    }
+                    // Really unseen, need to create a new pool
+                    _pool = pools[_connectionString] = new ConnectorPool(Settings, canonical);
+                    if (_connectionString != canonical)
+                        pools[canonical] = _pool;
                 }
             }
         }
@@ -579,7 +580,7 @@ namespace Npgsql
             Log.Trace("Closing connection...", connectorId);
             _wasBroken = wasBroken;
 
-            CloseOngoingOperations();
+            Connector.CloseOngoingOperations();
 
             if (!Settings.Pooling)
                 Connector.Close();
@@ -607,51 +608,6 @@ namespace Npgsql
             Connector = null;
 
             OnStateChange(new StateChangeEventArgs(ConnectionState.Open, ConnectionState.Closed));
-        }
-
-        /// <summary>
-        /// Closes ongoing operations, i.e. an open reader exists or a COPY operation still in progress, as
-        /// part of a connection close.
-        /// Does nothing if the thread has been aborted - the connector will be closed immediately.
-        /// </summary>
-        void CloseOngoingOperations()
-        {
-            if ((Thread.CurrentThread.ThreadState & (ThreadState.Aborted | ThreadState.AbortRequested)) != 0)
-                return;
-
-            Debug.Assert(Connector != null);
-            Connector.CurrentReader?.Close(true, false);
-            var currentCopyOperation = Connector.CurrentCopyOperation;
-            if (currentCopyOperation != null)
-            {
-                // TODO: There's probably a race condition as the COPY operation may finish on its own during the next few lines
-
-                // Note: we only want to cancel import operations, since in these cases cancel is safe.
-                // Export cancellations go through the PostgreSQL "asynchronous" cancel mechanism and are
-                // therefore vulnerable to the race condition in #615.
-                if (currentCopyOperation is NpgsqlBinaryImporter ||
-                    currentCopyOperation is NpgsqlCopyTextWriter ||
-                    (currentCopyOperation is NpgsqlRawCopyStream && ((NpgsqlRawCopyStream)currentCopyOperation).CanWrite))
-                {
-                    try
-                    {
-                        currentCopyOperation.Cancel();
-                    }
-                    catch (Exception e)
-                    {
-                        Log.Warn("Error while cancelling COPY on connector close", e, Connector.Id);
-                    }
-                }
-
-                try
-                {
-                    currentCopyOperation.Dispose();
-                }
-                catch (Exception e)
-                {
-                    Log.Warn("Error while disposing cancelled COPY on connector close", e, Connector.Id);
-                }
-            }
         }
 
         /// <summary>

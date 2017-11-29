@@ -485,5 +485,19 @@ namespace Npgsql.TypeMapping
         }
 
         #endregion Binding
+
+        internal NpgsqlDbType GetNpgsqlTypeByOid(uint oid)
+        {
+            if (!DatabaseInfo.ByOID.TryGetValue(oid, out var pgType))
+                throw new InvalidOperationException($"Couldn't find PostgreSQL type with OID {oid}");
+
+            if (!Mappings.TryGetValue(pgType.Name, out var mapping) && !Mappings.TryGetValue(pgType.FullName, out mapping))
+                throw new InvalidOperationException($"No mapping found for PostgreSQL type {pgType.DisplayName}");
+
+            if (!mapping.NpgsqlDbType.HasValue)
+                throw new InvalidOperationException($"Invalid parameter type: {oid}");
+
+            return mapping.NpgsqlDbType.Value;
+        }
     }
 }

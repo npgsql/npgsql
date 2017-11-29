@@ -930,6 +930,22 @@ LANGUAGE plpgsql VOLATILE";
             }
         }
 
+        [Test, Description("Reads a lot of rows to make sure the long unoptimized path for Read() works")]
+        public void ManyReads()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand($"SELECT generate_series(1, {conn.Settings.ReadBufferSize})", conn))
+            using (var reader = cmd.ExecuteReader())
+            {
+                for (var i = 1; i <= conn.Settings.ReadBufferSize; i++)
+                {
+                    Assert.That(reader.Read(), Is.True);
+                    Assert.That(reader.GetInt32(0), Is.EqualTo(i));
+                }
+                Assert.That(reader.Read(), Is.False);
+            }
+        }
+
         #region GetBytes / GetStream
 
         [Test]

@@ -14,7 +14,7 @@ namespace Npgsql.TypeHandling
         /// Creates an instance of <see cref="NpgsqlSafeReadException"/>.
         /// </summary>
         /// <param name="innerException"></param>
-        public NpgsqlSafeReadException(Exception innerException) : base((string)"", innerException)
+        public NpgsqlSafeReadException(Exception innerException) : base("", innerException)
         {
             if (innerException == null)
                 throw new ArgumentNullException(nameof(innerException));
