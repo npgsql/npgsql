@@ -431,6 +431,9 @@ namespace Npgsql
         /// <value>One of the <see cref="NpgsqlTypes.NpgsqlDbType">NpgsqlDbType</see> values. The default is <b>Unknown</b>.</value>
         [DefaultValue(NpgsqlDbType.Unknown)]
         [Category("Data"), RefreshProperties(RefreshProperties.All)]
+#if !NETSTANDARD1_3
+        [DbProviderSpecificTypeProperty(true)]
+#endif
         public NpgsqlDbType NpgsqlDbType
         {
             get
