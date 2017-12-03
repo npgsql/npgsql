@@ -69,6 +69,9 @@ namespace Npgsql
         internal NpgsqlConnectionStringBuilder Settings { get; }
         internal string ConnectionString { get; }
 
+        [CanBeNull] ProvideClientCertificatesCallback ProvideClientCertificatesCallback { get; }
+        [CanBeNull] RemoteCertificateValidationCallback UserCertificateValidationCallback { get; }
+
         internal Encoding TextEncoding { get; private set; }
 
         /// <summary>
@@ -263,6 +266,15 @@ namespace Npgsql
         {
             Connection = connection;
             Connection.Connector = this;
+            ProvideClientCertificatesCallback = Connection.ProvideClientCertificatesCallback;
+            UserCertificateValidationCallback = Connection.UserCertificateValidationCallback;
+        }
+
+        NpgsqlConnector(NpgsqlConnector connector)
+            : this(connector.Settings, connector.ConnectionString)
+        {
+            ProvideClientCertificatesCallback = connector.ProvideClientCertificatesCallback;
+            UserCertificateValidationCallback = connector.UserCertificateValidationCallback;
         }
 
         /// <summary>
@@ -537,13 +549,13 @@ namespace Npgsql
                         break;
                     case 'S':
                         var clientCertificates = new X509CertificateCollection();
-                        Connection.ProvideClientCertificatesCallback?.Invoke(clientCertificates);
+                        ProvideClientCertificatesCallback?.Invoke(clientCertificates);
 
                         RemoteCertificateValidationCallback certificateValidationCallback;
                         if (Settings.TrustServerCertificate)
                             certificateValidationCallback = (sender, certificate, chain, errors) => true;
-                        else if (Connection.UserCertificateValidationCallback != null)
-                            certificateValidationCallback = Connection.UserCertificateValidationCallback;
+                        else if (UserCertificateValidationCallback != null)
+                            certificateValidationCallback = UserCertificateValidationCallback;
                         else
                             certificateValidationCallback = DefaultUserCertificateValidationCallback;
 
@@ -569,6 +581,7 @@ namespace Npgsql
                             _stream = sslStream;
                         }
                         timeout.Check();
+                        ReadBuffer.Clear();  // Reset to empty after reading single SSL char
                         ReadBuffer.Underlying = _stream;
                         WriteBuffer.Underlying = _stream;
                         IsSecure = true;
@@ -1225,8 +1238,8 @@ namespace Npgsql
             {
                 try
                 {
-                    var cancelConnector = new NpgsqlConnector(Settings, ConnectionString);
-                    cancelConnector.DoCancelRequest(BackendProcessId, _backendSecretKey, cancelConnector.ConnectionTimeout);
+                    var cancelConnector = new NpgsqlConnector(this);
+                    cancelConnector.DoCancelRequest(BackendProcessId, _backendSecretKey);
                 }
                 catch (Exception e)
                 {
@@ -1237,13 +1250,13 @@ namespace Npgsql
             }
         }
 
-        void DoCancelRequest(int backendProcessId, int backendSecretKey, int connectionTimeout)
+        void DoCancelRequest(int backendProcessId, int backendSecretKey)
         {
             Debug.Assert(State == ConnectorState.Closed);
 
             try
             {
-                RawOpen(new NpgsqlTimeout(TimeSpan.FromSeconds(connectionTimeout)), false, CancellationToken.None)
+                RawOpen(new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout)), false, CancellationToken.None)
                     .GetAwaiter().GetResult();
                 SendMessage(new CancelRequestMessage(backendProcessId, backendSecretKey));
 
