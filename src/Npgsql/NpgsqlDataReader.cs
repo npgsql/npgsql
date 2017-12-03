@@ -1159,7 +1159,7 @@ namespace Npgsql
             table.Columns.Add("BaseTableName", typeof(string));
             table.Columns.Add("DataType", typeof(Type));
             table.Columns.Add("AllowDBNull", typeof(bool));
-            table.Columns.Add("ProviderType", typeof(Type));
+            table.Columns.Add("ProviderType", typeof(int));
             table.Columns.Add("IsAliased", typeof(bool));
             table.Columns.Add("IsExpression", typeof(bool));
             table.Columns.Add("IsIdentity", typeof(bool));
@@ -1187,8 +1187,9 @@ namespace Npgsql
                 row["BaseColumnName"] = column.BaseColumnName;
                 row["BaseSchemaName"] = column.BaseSchemaName;
                 row["BaseTableName"] = column.BaseTableName;
-                row["DataType"] = row["ProviderType"] = column.DataType; // Non-standard
+                row["DataType"] = column.DataType;
                 row["AllowDBNull"] = (object)column.AllowDBNull ?? DBNull.Value;
+                row["ProviderType"] = column.NpgsqlDbType;
                 row["IsAliased"] = column.IsAliased == true;
                 row["IsExpression"] = column.IsExpression == true;
                 row["IsIdentity"] = column.IsIdentity == true;
