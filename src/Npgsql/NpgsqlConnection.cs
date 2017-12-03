@@ -582,13 +582,15 @@ namespace Npgsql
 
             Connector.CloseOngoingOperations();
 
-            if (!Settings.Pooling)
-                Connector.Close();
-            else
-            {
 #if NETSTANDARD1_3
+            // No support for System.Transactions, simply release or close
+            if (Settings.Pooling)
                 _pool.Release(Connector);
+            else
+                Connector.Close();
 #else
+            if (Settings.Pooling)
+            {
                 if (EnlistedTransaction == null)
                     _pool.Release(Connector);
                 else
@@ -600,8 +602,18 @@ namespace Npgsql
                     Connector.Connection = null;
                     EnlistedTransaction = null;
                 }
-#endif
             }
+            else  // Non-pooled connection
+            {
+                if (EnlistedTransaction == null)
+                    Connector.Close();
+                // If a non-pooled connection is being closed but is enlisted in an ongoing
+                // TransactionScope, simply detach the connector from the connection and leave
+                // it open. It will be closed when the TransactionScope is disposed.
+                Connector.Connection = null;
+                EnlistedTransaction = null;
+            }
+#endif
 
             Log.Debug("Connection closed", connectorId);
 
