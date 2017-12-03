@@ -306,6 +306,7 @@ namespace Npgsql
         string Host => Settings.Host;
         int Port => Settings.Port;
         string KerberosServiceName => Settings.KerberosServiceName;
+        TargetServer TargetServer => Settings.TargetServer;
         SslMode SslMode => Settings.SslMode;
         bool UseSslStream => Settings.UseSslStream;
         int ConnectionTimeout => Settings.Timeout;
@@ -518,9 +519,9 @@ namespace Npgsql
                 if (async)
                     await ConnectAsync(timeout, cancellationToken);
                 else
-                    Connect(timeout);
+                    ConnectMultiple(timeout);
 
-                Debug.Assert(_socket != null);
+
                 _baseStream = new NetworkStream(_socket, true);
                 _stream = _baseStream;
 
@@ -707,6 +708,198 @@ namespace Npgsql
                         throw;
                 }
             }
+        }
+
+
+        void ConnectMultiple(NpgsqlTimeout timeout)
+        {
+            Stream stream = null;
+
+            ServerPair primarysp = null;
+            ServerPair connServer = null;
+            var originHost = Host;
+            var originPort = Port;
+
+            ServerPair[] serverList = ServerListManager.getServerInfo(this);
+            if (serverList.Length > 1)
+            {
+                //NpgsqlNetworkStream stream = null;
+                var i = 0;
+
+                for (i = 0; i < serverList.Length; i++)
+                {
+                    connServer = serverList[i];
+                    Settings.Host = connServer.DisplayedHost;
+                    Settings.Port = connServer.DisplayedPort;
+
+                    try
+                    {
+                        Connect(timeout);
+
+                        if (_socket == null || !_socket.Connected)
+                        {
+                            continue;
+                        }
+
+                        if (TargetServer == TargetServer.any)
+                        {
+                            break;
+                        }
+
+                                stream = new NetworkStream(_socket, true);
+
+
+                        TextEncoding = Settings.Encoding == "UTF8"
+                    ? PGUtil.UTF8Encoding
+                    : Encoding.GetEncoding(Settings.Encoding, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback);
+                        ReadBuffer = new NpgsqlReadBuffer(this, stream, Settings.ReadBufferSize, TextEncoding);
+                        WriteBuffer = new NpgsqlWriteBuffer(this, stream, Settings.WriteBufferSize, TextEncoding);
+
+
+                        ServerStatusManage.Instance.WriteFully(WriteBuffer);
+                        WriteBuffer.Flush();
+
+                        ReadBuffer.Ensure(1);
+                        var dbState = ServerStatusManage.Instance.Load(ReadBuffer);
+
+                        if (dbState.Equals("Run"))
+                        {
+                            connServer.updateHostStatus(NpgsqlServerListManager.Master);
+                        }
+                        else if (dbState.Equals("HotStandby"))
+                        {
+                            connServer.updateHostStatus(NpgsqlServerListManager.Slave);
+                        }
+                        else
+                        {
+                            connServer.updateHostStatus(NpgsqlServerListManager.Down);
+                        }
+
+                        if (TargetServer == TargetServer.master && dbState.Equals("Run"))
+                        {
+                            break;
+                        }
+                        else if(TargetServer == TargetServer.slave && dbState.Equals("HotStandby"))
+                        {
+                            break;
+                        }
+                        else if (TargetServer == TargetServer.preferSlave)
+                        {
+                            if (dbState.Equals("HotStandby"))
+                            {
+                                break;
+                            }
+                            else if (dbState.Equals("Run"))
+                            {
+                                primarysp = connServer;
+                                stream.Dispose();
+                                stream = null;
+                            }
+                            else
+                            {
+                                stream.Dispose();
+                                stream = null;
+                            }
+                        }
+                        else
+                        {
+                            stream.Dispose();
+                            stream = null;
+                        }
+
+                    }
+                    catch (IOException)
+                    {
+                        if (stream != null)
+                        {
+                            stream.Dispose();
+                            stream = null;
+                        }
+
+                    }
+                    catch (SocketException e)
+                    {
+#if !NETSTANDARD1_3
+                        if (e.ErrorCode == 10061)
+#else
+                        // TODO
+                        if (e.SocketErrorCode.ToString() == "10061")
+#endif
+                        {
+                            stream = null;
+                        }
+                    }
+                    catch
+                    {
+                        if (_socket != null)
+                        {
+                            _socket.Dispose();
+                            _socket = null;
+                        }
+                        stream = null;
+                    }
+                }
+                
+
+                // connect to the prior found master host when target_server is preferSlave
+                if (stream == null && primarysp != null)
+                {
+                    connServer = primarysp;
+                    Settings.Host = primarysp.DisplayedHost;
+                    Settings.Port = primarysp.DisplayedPort;
+                    Connect(timeout);
+                    if (_socket != null && _socket.Connected)
+                    {
+                        try
+                        {
+                            stream = new NetworkStream(_socket, true);
+                        }
+                        catch
+                        {
+                            try { stream?.Dispose(); }
+                            catch
+                            {
+                                // ignored
+                            }
+                            stream = null;
+                            try { _socket?.Dispose(); }
+                            catch
+                            {
+                                // ignored
+                            }
+                            _socket = null;
+                            throw;
+                        }
+                    }
+                }
+                if ((stream == null && TargetServer != TargetServer.any) || _socket == null)
+                {
+                    // if no targetserver runnning, throw a error.
+                    Settings.Host = originHost;
+                    Settings.Port = originPort;
+                  throw new NpgsqlException("could not find a suitable target server.");
+                }
+            }
+            else
+            {
+                connServer = serverList[0];
+                Settings.Host = connServer.DisplayedHost;
+                Settings.Port = connServer.DisplayedPort;
+                try
+                {
+                    Connect(timeout);
+                }
+                catch
+                {
+                    if (_socket != null)
+                    {
+                        _socket = null;
+                    }
+                    throw;
+                }
+               
+            }
+
         }
 
         async Task ConnectAsync(NpgsqlTimeout timeout, CancellationToken cancellationToken)
