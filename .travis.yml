@@ -2,7 +2,7 @@ language: csharp
 dist: trusty
 sudo: false
 mono: none
-dotnet: 2.0.0
+dotnet: 2.0.3
 
 services:
   - postgresql
