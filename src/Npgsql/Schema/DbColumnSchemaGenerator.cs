@@ -144,13 +144,6 @@ ORDER BY attnum";
                             result[ordinal] = column;
                         }
                     }
-
-                    if (populatedColumns == fields.Count)
-                    {
-                        // All columns were regular table columns that got loaded, we're done
-                        Debug.Assert(result.All(c => c != null));
-                        return result.AsReadOnly();
-                    }
                 }
             }
 
@@ -158,12 +151,15 @@ ORDER BY attnum";
             // Fill in whatever info we have from the RowDescription itself
             for (var i = 0; i < fields.Count; i++)
             {
-                if (result[i] != null)
-                    continue;
-                var column = SetUpNonColumnField(fields[i]);
-                column.ColumnOrdinal = i;
-                result[i] = column;
-                populatedColumns++;
+                var field = fields[i];
+                if (result[i] == null)
+                {
+                    var column = SetUpNonColumnField(field);
+                    column.ColumnOrdinal = i;
+                    result[i] = column;
+                    populatedColumns++;
+                }
+                result[i].ColumnName = result[i].BaseColumnName = field.Name.StartsWith("?column?") ? null : field.Name;
             }
 
             if (populatedColumns != fields.Count)
@@ -174,16 +170,16 @@ ORDER BY attnum";
 
         NpgsqlDbColumn LoadColumnDefinition(NpgsqlDataReader reader, TypeHandlerRegistry registry)
         {
-            var columnName = reader.GetString(reader.GetOrdinal("attname"));
+            // Note: we don't set ColumnName and BaseColumnName. These should always contain the
+            // column alias rather than the table column name (i.e. in case of "SELECT foo AS foo_alias").
+            // It will be set later.
             var column = new NpgsqlDbColumn
             {
                 AllowDBNull = !reader.GetBoolean(reader.GetOrdinal("attnotnull")),
                 BaseCatalogName = _connection.Database,
-                BaseColumnName = columnName,
                 BaseSchemaName = reader.GetString(reader.GetOrdinal("nspname")),
                 BaseServerName = _connection.Host,
                 BaseTableName = reader.GetString(reader.GetOrdinal("relname")),
-                ColumnName = columnName,
                 ColumnOrdinal = reader.GetInt32(reader.GetOrdinal("attnum")) - 1,
                 ColumnAttributeNumber = (short)(reader.GetInt16(reader.GetOrdinal("attnum")) - 1),
                 IsKey = reader.GetBoolean(reader.GetOrdinal("isprimarykey")),
@@ -209,12 +205,10 @@ ORDER BY attnum";
 
         NpgsqlDbColumn SetUpNonColumnField(FieldDescription field)
         {
-            var columnName = field.Name.StartsWith("?column?") ? null : field.Name;
+            // ColumnName and BaseColumnName will be set later
             var column = new NpgsqlDbColumn
             {
-                ColumnName = columnName,
                 BaseCatalogName = _connection.Database,
-                BaseColumnName = columnName,
                 BaseServerName = _connection.Host,
                 IsReadOnly = true,
                 DataTypeName = field.PostgresType.DisplayName,

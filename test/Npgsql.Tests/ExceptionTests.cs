@@ -180,7 +180,7 @@ namespace Npgsql.Tests
             Assert.False(new PostgresException { SqlState = "0" }.IsTransient);
         }
 
-#if !NETCOREAPP1_1
+#if NET451
         [Test]
         public void Serialization()
         {

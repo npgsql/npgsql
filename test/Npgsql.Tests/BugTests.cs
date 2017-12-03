@@ -43,7 +43,7 @@ namespace Npgsql.Tests
         public void RecordWithNonIntField()
         {
             using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT ('one', 2)", conn))
+            using (var cmd = new NpgsqlCommand("SELECT ('one'::TEXT, 2)", conn))
             using (var reader = cmd.ExecuteReader())
             {
                 reader.Read();
@@ -127,6 +127,28 @@ namespace Npgsql.Tests
             }
         }
 #endif
+
+        [Test]
+        public void Bug1695()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Pooling = false,
+                MaxAutoPrepare = 10,
+                AutoPrepareMinUsages = 1
+            };
+            using (var conn = OpenConnection(csb))
+            {
+                using (var cmd = new NpgsqlCommand("SELECT 1; SELECT 2", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    // Both statements should get prepared. However, purposefully skip processing the
+                    // second resultset and make sure the second statement got prepared correctly.
+                }
+                Assert.That(conn.ExecuteScalar("SELECT 2"), Is.EqualTo(2));
+            }
+        }
 
         #region Bug1285
 

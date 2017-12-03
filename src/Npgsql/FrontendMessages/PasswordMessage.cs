@@ -26,11 +26,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 
 namespace Npgsql.FrontendMessages
 {
-    class PasswordMessage : SimpleFrontendMessage
+    class PasswordMessage : FrontendMessage
     {
         internal byte[] Payload { get; private set; }
         internal int PayloadOffset { get; private set; }
@@ -107,13 +109,22 @@ namespace Npgsql.FrontendMessages
             return this;
         }
 
-        internal override int Length => 1 + 4 + PayloadLength;
-
-        internal override void WriteFully(WriteBuffer buf)
+        internal override async Task Write(WriteBuffer buf, bool async, CancellationToken cancellationToken)
         {
+            if (buf.WriteSpaceLeft < 1 + 5)
+                await buf.Flush(async);
             buf.WriteByte(Code);
-            buf.WriteInt32(Length - 1);
-            buf.WriteBytes(Payload, PayloadOffset, Payload.Length);
+            buf.WriteInt32(4 + PayloadLength);
+
+            if (PayloadLength <= buf.WriteSpaceLeft)
+            {
+                // The entire array fits in our buffer, copy it into the buffer as usual.
+                buf.WriteBytes(Payload, PayloadOffset, Payload.Length);
+                return;
+            }
+
+            await buf.Flush(async);
+            buf.DirectWrite(Payload, PayloadOffset, PayloadLength);
         }
 
         public override string ToString() =>  "[Password]";

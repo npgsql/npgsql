@@ -19,4 +19,4 @@ using Microsoft.VisualStudio.Shell;
 // Specifically, the EF6 provider usuall depends on some old Npgsql, and trying to generate an EDM
 // model from an existing database will fail because of this. The following line redirects the EF6
 // to use our own Npgsql instead.
-[assembly: ProvideBindingRedirection(AssemblyName = "Npgsql", NewVersion = "3.2.5.0", OldVersionLowerBound = "0.0.0.0", OldVersionUpperBound = "3.2.5.0")]
+[assembly: ProvideBindingRedirection(AssemblyName = "Npgsql", NewVersion = "3.2.6.0", OldVersionLowerBound = "0.0.0.0", OldVersionUpperBound = "3.2.6.0")]

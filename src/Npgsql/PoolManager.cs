@@ -290,7 +290,7 @@ namespace Npgsql
                         var tcs2 = tcs;
                         var connector2 = connector;
 
-                        Task.Run(() => tcs2.SetResult(connector2));
+                        Task.Run(() => tcs2.TrySetResult(connector2));
                     }
                     else
                         tcs.SetResult(connector);
