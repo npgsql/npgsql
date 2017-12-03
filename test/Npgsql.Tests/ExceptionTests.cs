@@ -180,7 +180,7 @@ namespace Npgsql.Tests
             Assert.False(new PostgresException { SqlState = "0" }.IsTransient);
         }
 
-#if !NETCOREAPP1_1
+#if NET451
         [Test]
         [Ignore("DbException doesn't support serialization in .NET Core 2.0 (PlatformNotSupportedException)")]
         public void Serialization()
