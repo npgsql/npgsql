@@ -48,6 +48,8 @@ namespace Npgsql
         internal static readonly UTF8Encoding UTF8Encoding = new UTF8Encoding(false, true);
         internal static readonly UTF8Encoding RelaxedUTF8Encoding = new UTF8Encoding(false, false);
 
+        internal const int BitsInInt = sizeof(int) * 8;
+
         internal static void ValidateBackendMessageCode(BackendMessageCode code)
         {
             switch (code)
@@ -85,7 +87,7 @@ namespace Npgsql
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static int RotateShift(int val, int shift)
-            => (val << shift) | (val >> (sizeof(int) - shift));
+            => (val << shift) | (val >> (BitsInInt - shift));
 
         // All ReverseEndianness methods came from the System.Buffers.Binary.BinaryPrimitives class.
         // This takes advantage of the fact that the JIT can detect ROL32 / ROR32 patterns and output the correct intrinsic.
