@@ -43,6 +43,8 @@ namespace Npgsql
         internal static readonly UTF8Encoding UTF8Encoding = new UTF8Encoding(false, true);
         internal static readonly UTF8Encoding RelaxedUTF8Encoding = new UTF8Encoding(false, false);
 
+        internal const int BitsInInt = sizeof(int) * 8;
+
         internal static void ValidateBackendMessageCode(BackendMessageCode code)
         {
             switch (code)
@@ -80,7 +82,7 @@ namespace Npgsql
 
         public static int RotateShift(int val, int shift)
         {
-            return (val << shift) | (val >> (sizeof (int) - shift));
+            return (val << shift) | (val >> (BitsInInt - shift));
         }
 
         internal static readonly Task CompletedTask = Task.FromResult(0);
