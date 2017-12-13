@@ -29,6 +29,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Npgsql.NameTranslation;
 using Npgsql.TypeHandling;
 using NpgsqlTypes;
 
@@ -59,6 +60,7 @@ namespace Npgsql.TypeMapping
         internal GlobalTypeMapper()
         {
             Mappings = new Dictionary<string, NpgsqlTypeMapping>();
+            DefaultNameTranslator = new NpgsqlSnakeCaseNameTranslator();
         }
 
         #region Mapping management

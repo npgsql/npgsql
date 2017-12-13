@@ -91,6 +91,7 @@ namespace Npgsql.TypeMapping
             UnrecognizedTypeHandler = new UnknownTypeHandler(_connector.Connection);
             ClearBindings();
             ResetMappings();
+            DefaultNameTranslator = GlobalTypeMapper.Instance.DefaultNameTranslator;
             ChangeCounter = GlobalTypeMapper.Instance.ChangeCounter;
         }
 
@@ -180,8 +181,8 @@ namespace Npgsql.TypeMapping
             if (typeof(IEnumerable).IsAssignableFrom(type))
                 throw new NotSupportedException("Npgsql 3.x removed support for writing a parameter with an IEnumerable value, use .ToList()/.ToArray() instead");
 
-            throw new NotSupportedException($"The CLR type {type} isn't supported by Npgsql or your PostgreSQL. " +
-                                            "If you wish to map it to a PostgreSQL composite type you need to register it before usage, please refer to the documentation.");
+            throw new NotSupportedException($"The CLR type {type} isn't natively supported by Npgsql or your PostgreSQL. " +
+                                            $"To use it with a PostgreSQL composite you need to specify {nameof(NpgsqlParameter.DataTypeName)} or to map it, please refer to the documentation.");
         }
 
         [CanBeNull]
@@ -295,22 +296,26 @@ namespace Npgsql.TypeMapping
 
         void BindTypes()
         {
-            lock (DatabaseInfo)  // We lock because LoadComposite mutates the internal state
-            {
-                foreach (var mapping in Mappings.Values)
-                    BindType(mapping, _connector, false);
+            foreach (var mapping in Mappings.Values)
+                BindType(mapping, _connector, false);
 
-                // Expose unmapped enums as text
-                var textHandlerFactory = new TextHandlerFactory();
-                foreach (var e in DatabaseInfo.EnumTypes.Where(e => !_byOID.ContainsKey(e.OID)))
-                    BindType(textHandlerFactory.Create(e, _connector.Connection), e);
+#if !NETSTANDARD1_3
+            // Wire up (unmapped) composites as dynamic
+            var dynamicCompositeFactory = new UnmappedCompositeTypeHandlerFactory(DefaultNameTranslator);
+            foreach (var compType in DatabaseInfo.CompositeTypes.Where(e => !_byOID.ContainsKey(e.OID)))
+                BindType(dynamicCompositeFactory.Create(compType, _connector.Connection), compType);
+#endif
 
-                // Wire up any domains we find to their base type mappings, this is important
-                // for reading domain fields of composites
-                foreach (var domain in DatabaseInfo.DomainTypes)
-                    if (_byOID.TryGetValue(domain.BaseType.OID, out var baseTypeHandler))
-                        _byOID[domain.OID] = baseTypeHandler;
-            }
+            // Expose unmapped enums as text
+            var textHandlerFactory = new TextHandlerFactory();
+            foreach (var e in DatabaseInfo.EnumTypes.Where(e => !_byOID.ContainsKey(e.OID)))
+                BindType(textHandlerFactory.Create(e, _connector.Connection), e);
+
+            // Wire up any domains we find to their base type mappings, this is important
+            // for reading domain fields of composites
+            foreach (var domain in DatabaseInfo.DomainTypes)
+                if (_byOID.TryGetValue(domain.BaseType.OID, out var baseTypeHandler))
+                    _byOID[domain.OID] = baseTypeHandler;
         }
 
         void BindType(NpgsqlTypeMapping mapping, NpgsqlConnector connector, bool throwOnError)
@@ -334,27 +339,14 @@ namespace Npgsql.TypeMapping
         void DoBindType(NpgsqlTypeMapping mapping, NpgsqlConnector connector)
         {
             var pgName = mapping.PgTypeName;
-            var i = pgName.IndexOf('.');
-            var found = (i == -1)
+            var found = pgName.IndexOf('.') == -1
                 ? DatabaseInfo.ByName.TryGetValue(pgName, out var pgType)  // No dot, partial type name
                 : DatabaseInfo.ByFullName.TryGetValue(pgName, out pgType); // Full type name with namespace
 
             if (!found)
-            {
-                // We didn't find the type.
-
-                // DatabaseInfo in general contains all types in pg_type, but does not contain
-                // composite types. We don't load these eagerly because there could be a great deal
-                // of them (#1126). So we attempt to lazily load the missing type as a composite here.
-
-                if (!DatabaseInfo.TryGetComposite(mapping.PgTypeName, connector.Connection, out var compositeType))
-                    throw new ArgumentException($"A PostgreSQL type with the name {mapping.PgTypeName} was not found in the database");
-                pgType = compositeType;
-            }
-
+                throw new ArgumentException($"A PostgreSQL type with the name {mapping.PgTypeName} was not found in the database");
             if (pgType == null)
                 throw new ArgumentException($"More than one PostgreSQL type was found with the name {mapping.PgTypeName}, please specify a full name including schema");
-
             if (pgType is PostgresDomainType)
                 throw new NotSupportedException("Cannot add a mapping to a PostgreSQL domain type");
 

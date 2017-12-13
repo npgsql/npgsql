@@ -454,7 +454,7 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test]
+        [Test, NonParallelizable]
         public void DataTypeWithComposite()
         {
             if (IsRedshift)

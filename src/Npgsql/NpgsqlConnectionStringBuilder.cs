@@ -1124,6 +1124,24 @@ namespace Npgsql
         }
         bool _noResetOnClose;
 
+        /// <summary>
+        /// Load table composite type definitions, and not just free-standing composite types.
+        /// </summary>
+        [Category("Advanced")]
+        [Description("Load table composite type definitions, and not just free-standing composite types.")]
+        [DisplayName("Load Table Composites")]
+        [NpgsqlConnectionStringProperty]
+        public bool LoadTableComposites
+        {
+            get => _loadTableComposites;
+            set
+            {
+                _loadTableComposites = value;
+                SetValue(nameof(LoadTableComposites), value);
+            }
+        }
+        bool _loadTableComposites;
+
         #endregion
 
         #region Properties - Compatibility

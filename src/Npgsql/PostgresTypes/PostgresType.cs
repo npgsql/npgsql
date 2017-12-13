@@ -49,6 +49,8 @@ namespace Npgsql.PostgresTypes
         {
             Namespace = ns;
             Name = name;
+            FullName = Namespace + '.' + Name;
+            DisplayName = Namespace == "pg_catalog" || Namespace == "" ? Name : FullName;
             OID = oid;
         }
 
@@ -78,14 +80,14 @@ namespace Npgsql.PostgresTypes
         /// The full name of the backend type, including its namespace.
         /// </summary>
         [PublicAPI]
-        public string FullName => Namespace + '.' + Name;
+        public string FullName { get; }
 
         /// <summary>
         /// A display name for this backend type, suitable for display purposes.
         /// If the backend type is defined in the default namespace (pg_catalog), it will be omitted.
         /// </summary>
         [PublicAPI]
-        public string DisplayName => Namespace == "pg_catalog" || Namespace == "" ? Name : FullName;
+        public string DisplayName { get; }
 
         /// <summary>
         /// If a PostgreSQL array type exists for this type, it will be referenced here.
