@@ -18,8 +18,8 @@ namespace Npgsql
         /// <summary>
         /// Holds connector pools indexed by their connection strings.
         /// </summary>
-        internal static Dictionary<string, ConnectorPool> Pools { get; }
-            = new Dictionary<string, ConnectorPool>();
+        internal static ConcurrentDictionary<string, ConnectorPool> Pools { get; }
+            = new ConcurrentDictionary<string, ConnectorPool>();
 
         /// <summary>
         /// Maximum number of possible connections in the pool.
@@ -40,20 +40,14 @@ namespace Npgsql
         {
             Debug.Assert(connString != null);
 
-            lock (Pools)
-            {
-                if (Pools.TryGetValue(connString, out var pool))
-                    pool.Clear();
-            }
+            if (Pools.TryGetValue(connString, out var pool))
+                pool.Clear();
         }
 
         internal static void ClearAll()
         {
-            lock (Pools)
-            {
-                foreach (var kvp in Pools)
-                    kvp.Value.Clear();
-            }
+            foreach (var kvp in Pools)
+                kvp.Value.Clear();
         }
     }
 
