@@ -97,6 +97,8 @@ namespace Npgsql
         /// </summary>
         internal Version ServerVersion { get; private set; }
 
+        internal Version CrateDBVersion { get; private set; }
+
         /// <summary>
         /// The secret key of the backend for this connector, used for query cancellation.
         /// </summary>
@@ -1941,7 +1943,7 @@ namespace Npgsql
         /// </summary>
         internal string Timezone { get; private set; }
 
-        void ProcessServerVersion(string value)
+        string ProcessServerVersion(string value)
         {
             var versionString = value.Trim();
             for (var idx = 0; idx != versionString.Length; ++idx)
@@ -1955,7 +1957,7 @@ namespace Npgsql
             }
             if (!versionString.Contains('.'))
                 versionString += ".0";
-            ServerVersion = new Version(versionString);
+            return versionString;
         }
 
         /// <summary>
@@ -1966,7 +1968,7 @@ namespace Npgsql
         /// <summary>
         /// Whether the backend is a CrateDB instance
         /// </summary>
-        internal bool IsCrateDB => Settings.ServerCompatibilityMode == ServerCompatibilityMode.CrateDB;
+        internal bool IsCrateDB => (Settings.ServerCompatibilityMode == ServerCompatibilityMode.CrateDB) || CrateDBVersion >= new Version(2, 3, 0);
 
         #endregion Supported features and PostgreSQL settings
 
@@ -1999,7 +2001,7 @@ namespace Npgsql
             switch (name)
             {
             case "server_version":
-                ProcessServerVersion(value);
+                ServerVersion = new Version(ProcessServerVersion(value));
                 return;
 
             case "standard_conforming_strings":
@@ -2012,6 +2014,10 @@ namespace Npgsql
 
             case "TimeZone":
                 Timezone = value;
+                return;
+
+            case "crate_version":
+                CrateDBVersion = new Version(ProcessServerVersion(value));
                 return;
             }
         }
