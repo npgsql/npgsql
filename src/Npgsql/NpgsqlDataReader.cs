@@ -1189,7 +1189,7 @@ namespace Npgsql
                 row["BaseTableName"] = column.BaseTableName;
                 row["DataType"] = column.DataType;
                 row["AllowDBNull"] = (object)column.AllowDBNull ?? DBNull.Value;
-                row["ProviderType"] = column.NpgsqlDbType;
+                row["ProviderType"] = column.NpgsqlDbType ?? NpgsqlDbType.Unknown;
                 row["IsAliased"] = column.IsAliased == true;
                 row["IsExpression"] = column.IsExpression == true;
                 row["IsIdentity"] = column.IsIdentity == true;
