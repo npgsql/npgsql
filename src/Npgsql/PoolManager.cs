@@ -114,7 +114,6 @@ namespace Npgsql
             _prunedConnectors = new List<NpgsqlConnector>();
             Idle = new IdleConnectorList();
             _waiting = new Queue<WaitingOpenAttempt>();
-            Counters.NumberOfActiveConnectionPools.Increment();
         }
 
         void IncrementBusy()
