@@ -180,41 +180,52 @@ namespace Npgsql
         void GetPoolAndSettings()
         {
             var pools = PoolManager.Pools;
-            lock (pools)
+            if (pools.TryGetValue(_connectionString, out _pool))
             {
-                if (pools.TryGetValue(_connectionString, out _pool))
-                {
-                    Settings = _pool.Settings; // Great, we already have a pool
-                    return;
-                }
-
-                // Connection string hasn't been seen before. Parse it.
-                Settings = new NpgsqlConnectionStringBuilder(_connectionString);
-
-                if (!_countersInitialized)
-                {
-                    _countersInitialized = true;
-                    Counters.Initialize(Settings.UsePerfCounters);
-                }
-
-                // Maybe pooling is off
-                if (!Settings.Pooling)
-                    return;
-
-                // Connstring may be equivalent to one that has already been seen though (e.g. different
-                // ordering). Have NpgsqlConnectionStringBuilder produce a canonical string representation
-                // and recheck.
-                var canonical = Settings.ConnectionString;
-                if (pools.TryGetValue(canonical, out _pool))
-                    pools[_connectionString] = _pool;
-                else
-                {
-                    // Really unseen, need to create a new pool
-                    _pool = pools[_connectionString] = new ConnectorPool(Settings, canonical);
-                    if (_connectionString != canonical)
-                        pools[canonical] = _pool;
-                }
+                Settings = _pool.Settings;  // Great, we already have a pool
+                return;
             }
+                
+            // Connection string hasn't been seen before. Parse it.
+            Settings = new NpgsqlConnectionStringBuilder(_connectionString);
+
+            if (!_countersInitialized)
+            {
+                _countersInitialized = true;
+                Counters.Initialize(Settings.UsePerfCounters);
+            }
+
+            // Maybe pooling is off
+            if (!Settings.Pooling)
+            {
+                return;
+            }
+            
+            // Connstring may be equivalent to one that has already been seen though (e.g. different
+            // ordering). Have NpgsqlConnectionStringBuilder produce a canonical string representation
+            // and recheck.
+            var canonical = Settings.ConnectionString;
+
+            if (pools.TryGetValue(canonical, out _pool))
+            {
+                _pool = pools.GetOrAdd(_connectionString, _pool); // Assign the connection string the canonical pool. If someone beat us to it use whatever is there already.
+                return;
+            }
+                
+            // Really unseen, need to create a new pool
+            // The canonical pool is the 'base' pool so we need to set that up first. If someone beats us to it use what they put.
+            // The connection string pool can either be added here or above, if it's added above we should just use that.
+            var newPool = new ConnectorPool(Settings, canonical);
+            _pool = pools.GetOrAdd(canonical, newPool);
+
+            if (_pool == newPool)
+            {
+                // If the pool we created was the one that ened up being stored we need to increment the appropriate counter.
+                // Avoids a race condition where multiple threads will create a pool but only one will be stored.
+                Counters.NumberOfActiveConnectionPools.Increment();
+            }
+            
+            _pool = pools.GetOrAdd(_connectionString, _pool);
         }
 
         async Task Open(bool async, CancellationToken cancellationToken)
