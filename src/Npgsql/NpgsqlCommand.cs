@@ -600,6 +600,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 }
             }
 
+            _connectorPreparedOn = connector;
+
             // It's possible the command was already prepared, or that presistent prepared statements were found for
             // all statements. Nothing to do here, move along.
             return needToPrepare
@@ -654,8 +656,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     await sendTask;
                 else
                     sendTask.GetAwaiter().GetResult();
-
-                _connectorPreparedOn = connector;
             }
         }
 
