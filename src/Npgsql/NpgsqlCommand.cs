@@ -413,6 +413,8 @@ namespace Npgsql
                     }
                 }
 
+                _connectorPreparedOn = connector;
+
                 // It's possible the command was already prepared, or that presistent prepared statements were found for
                 // all statements. Nothing to do here, move along.
                 if (!needToPrepare)
@@ -456,8 +458,6 @@ namespace Npgsql
 
                 connector.ReadExpecting<ReadyForQueryMessage>();
                 sendTask.GetAwaiter().GetResult();
-
-                _connectorPreparedOn = connector;
             }
         }
 
