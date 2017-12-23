@@ -260,7 +260,40 @@ namespace Npgsql
 
         #endregion
 
-        #region Public Properties
+        #region Name
+
+        /// <summary>
+        /// Gets or sets The name of the <see cref="NpgsqlParameter">NpgsqlParameter</see>.
+        /// </summary>
+        /// <value>The name of the <see cref="NpgsqlParameter">NpgsqlParameter</see>.
+        /// The default is an empty string.</value>
+        [DefaultValue("")]
+        public override string ParameterName
+        {
+            get => _name;
+            set
+            {
+                _name = value;
+                if (value == null)
+                {
+                    _name = string.Empty;
+                }
+                // no longer prefix with : so that The name returned is The name set
+
+                _name = _name.Trim();
+
+                if (Collection != null)
+                {
+                    Collection.InvalidateHashLookups();
+                    ClearBind();
+                }
+                AutoAssignedName = false;
+            }
+        }
+
+        #endregion Name
+
+        #region Value
 
         /// <summary>
         /// Gets or sets the value of the parameter.
@@ -300,6 +333,123 @@ namespace Npgsql
                 ConvertedValue = null;
             }
         }
+
+        #endregion Value
+
+        #region Type
+
+        /// <summary>
+        /// Gets or sets the <see cref="System.Data.DbType">DbType</see> of the parameter.
+        /// </summary>
+        /// <value>One of the <see cref="System.Data.DbType">DbType</see> values. The default is <b>Object</b>.</value>
+        [DefaultValue(DbType.Object)]
+        [Category("Data"), RefreshProperties(RefreshProperties.All)]
+        public override DbType DbType
+        {
+            get
+            {
+                if (_dbType.HasValue) {
+                    return _dbType.Value;
+                }
+
+                if (_value != null) {   // Infer from value
+                    return GlobalTypeMapper.Instance.ToDbType(_value.GetType());
+                }
+
+                return DbType.Object;
+            }
+            set
+            {
+                ClearBind();
+                if (value == DbType.Object)
+                {
+                    _dbType = null;
+                    _npgsqlDbType = null;
+                }
+                else
+                {
+                    _dbType = value;
+                    _npgsqlDbType = GlobalTypeMapper.Instance.ToNpgsqlDbType(value);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the <see cref="NpgsqlTypes.NpgsqlDbType">NpgsqlDbType</see> of the parameter.
+        /// </summary>
+        /// <value>One of the <see cref="NpgsqlTypes.NpgsqlDbType">NpgsqlDbType</see> values. The default is <b>Unknown</b>.</value>
+        [DefaultValue(NpgsqlDbType.Unknown)]
+        [Category("Data"), RefreshProperties(RefreshProperties.All)]
+#if !NETSTANDARD1_3
+        [DbProviderSpecificTypeProperty(true)]
+#endif
+        public NpgsqlDbType NpgsqlDbType
+        {
+            get
+            {
+                if (_npgsqlDbType.HasValue) {
+                    return _npgsqlDbType.Value;
+                }
+
+                if (_value != null) {   // Infer from value
+                    return GlobalTypeMapper.Instance.ToNpgsqlDbType(_value);
+                }
+
+                return NpgsqlDbType.Unknown;
+            }
+            set
+            {
+                if (value == NpgsqlDbType.Array)
+                    throw new ArgumentOutOfRangeException(nameof(value), "Cannot set NpgsqlDbType to just Array, Binary-Or with the element type (e.g. Array of Box is NpgsqlDbType.Array | NpgsqlDbType.Box).");
+                if (value == NpgsqlDbType.Range)
+                    throw new ArgumentOutOfRangeException(nameof(value), "Cannot set NpgsqlDbType to just Range, Binary-Or with the element type (e.g. Range of integer is NpgsqlDbType.Range | NpgsqlDbType.Integer)");
+
+                ClearBind();
+                _npgsqlDbType = value;
+                _dbType = GlobalTypeMapper.Instance.ToDbType(value);
+            }
+        }
+
+        /// <summary>
+        /// Used in combination with NpgsqlDbType.Enum or NpgsqlDbType.Array | NpgsqlDbType.Enum to indicate the enum type.
+        /// For other NpgsqlDbTypes, this field is not used.
+        /// </summary>
+        [Obsolete("Use the SpecificType property instead")]
+        [PublicAPI]
+        public Type EnumType
+        {
+            get => SpecificType;
+            set => SpecificType = value;
+        }
+
+        /// <summary>
+        /// Used in combination with NpgsqlDbType.Enum or NpgsqlDbType.Composite to indicate the specific enum or composite type.
+        /// For other NpgsqlDbTypes, this field is not used.
+        /// </summary>
+        [PublicAPI]
+        public Type SpecificType
+        {
+            get {
+                if (_specificType != null)
+                    return _specificType;
+
+                // Try to infer type if NpgsqlDbType is Enum or has not been set
+                if ((!_npgsqlDbType.HasValue || _npgsqlDbType == NpgsqlDbType.Enum) && _value != null)
+                {
+                    var type = _value.GetType();
+                    if (type.GetTypeInfo().IsEnum)
+                        return type;
+                    if (type.IsArray && type.GetElementType().GetTypeInfo().IsEnum)
+                        return type.GetElementType();
+                }
+                return null;
+            }
+            set => _specificType = value;
+        }
+
+        #endregion Type
+
+        #region Other Properties
 
         /// <summary>
         /// Gets or sets a value that indicates whether the parameter accepts null values.
@@ -390,107 +540,6 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Gets or sets the <see cref="System.Data.DbType">DbType</see> of the parameter.
-        /// </summary>
-        /// <value>One of the <see cref="System.Data.DbType">DbType</see> values. The default is <b>Object</b>.</value>
-        [DefaultValue(DbType.Object)]
-        [Category("Data"), RefreshProperties(RefreshProperties.All)]
-        public override DbType DbType
-        {
-            get
-            {
-                if (_dbType.HasValue) {
-                    return _dbType.Value;
-                }
-
-                if (_value != null) {   // Infer from value
-                    return GlobalTypeMapper.Instance.ToDbType(_value.GetType());
-                }
-
-                return DbType.Object;
-            }
-            set
-            {
-                ClearBind();
-                if (value == DbType.Object)
-                {
-                    _dbType = null;
-                    _npgsqlDbType = null;
-                }
-                else
-                {
-                    _dbType = value;
-                    _npgsqlDbType = GlobalTypeMapper.Instance.ToNpgsqlDbType(value);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets the <see cref="NpgsqlTypes.NpgsqlDbType">NpgsqlDbType</see> of the parameter.
-        /// </summary>
-        /// <value>One of the <see cref="NpgsqlTypes.NpgsqlDbType">NpgsqlDbType</see> values. The default is <b>Unknown</b>.</value>
-        [DefaultValue(NpgsqlDbType.Unknown)]
-        [Category("Data"), RefreshProperties(RefreshProperties.All)]
-#if !NETSTANDARD1_3
-        [DbProviderSpecificTypeProperty(true)]
-#endif
-        public NpgsqlDbType NpgsqlDbType
-        {
-            get
-            {
-                if (_npgsqlDbType.HasValue) {
-                    return _npgsqlDbType.Value;
-                }
-
-                if (_value != null) {   // Infer from value
-                    return GlobalTypeMapper.Instance.ToNpgsqlDbType(_value);
-                }
-
-                return NpgsqlDbType.Unknown;
-            }
-            set
-            {
-                if (value == NpgsqlDbType.Array)
-                    throw new ArgumentOutOfRangeException(nameof(value), "Cannot set NpgsqlDbType to just Array, Binary-Or with the element type (e.g. Array of Box is NpgsqlDbType.Array | NpgsqlDbType.Box).");
-                if (value == NpgsqlDbType.Range)
-                    throw new ArgumentOutOfRangeException(nameof(value), "Cannot set NpgsqlDbType to just Range, Binary-Or with the element type (e.g. Range of integer is NpgsqlDbType.Range | NpgsqlDbType.Integer)");
-
-                ClearBind();
-                _npgsqlDbType = value;
-                _dbType = GlobalTypeMapper.Instance.ToDbType(value);
-            }
-        }
-
-        /// <summary>
-        /// Gets or sets The name of the <see cref="NpgsqlParameter">NpgsqlParameter</see>.
-        /// </summary>
-        /// <value>The name of the <see cref="NpgsqlParameter">NpgsqlParameter</see>.
-        /// The default is an empty string.</value>
-        [DefaultValue("")]
-        public override string ParameterName
-        {
-            get => _name;
-            set
-            {
-                _name = value;
-                if (value == null)
-                {
-                    _name = string.Empty;
-                }
-                // no longer prefix with : so that The name returned is The name set
-
-                _name = _name.Trim();
-
-                if (Collection != null)
-                {
-                    Collection.InvalidateHashLookups();
-                    ClearBind();
-                }
-                AutoAssignedName = false;
-            }
-        }
-
-        /// <summary>
         /// Gets or sets The name of the source column that is mapped to the
         /// DataSet and used for loading or
         /// returning the <see cref="Value">Value</see>.
@@ -518,50 +567,13 @@ namespace Npgsql
         public override bool SourceColumnNullMapping { get; set; }
 
         /// <summary>
-        /// Used in combination with NpgsqlDbType.Enum or NpgsqlDbType.Array | NpgsqlDbType.Enum to indicate the enum type.
-        /// For other NpgsqlDbTypes, this field is not used.
-        /// </summary>
-        [Obsolete("Use the SpecificType property instead")]
-        [PublicAPI]
-        public Type EnumType
-        {
-            get => SpecificType;
-            set => SpecificType = value;
-        }
-
-        /// <summary>
-        /// Used in combination with NpgsqlDbType.Enum or NpgsqlDbType.Composite to indicate the specific enum or composite type.
-        /// For other NpgsqlDbTypes, this field is not used.
-        /// </summary>
-        [PublicAPI]
-        public Type SpecificType
-        {
-            get {
-                if (_specificType != null)
-                    return _specificType;
-
-                // Try to infer type if NpgsqlDbType is Enum or has not been set
-                if ((!_npgsqlDbType.HasValue || _npgsqlDbType == NpgsqlDbType.Enum) && _value != null)
-                {
-                    var type = _value.GetType();
-                    if (type.GetTypeInfo().IsEnum)
-                        return type;
-                    if (type.IsArray && type.GetElementType().GetTypeInfo().IsEnum)
-                        return type.GetElementType();
-                }
-                return null;
-            }
-            set => _specificType = value;
-        }
-
-        /// <summary>
         /// The collection to which this parameter belongs, if any.
         /// </summary>
 #pragma warning disable CA2227
         public NpgsqlParameterCollection Collection { get; set; }
 #pragma warning restore CA2227
 
-        #endregion
+        #endregion Other Properties
 
         #region Internals
 
