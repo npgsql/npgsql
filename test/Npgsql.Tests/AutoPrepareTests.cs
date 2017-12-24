@@ -341,7 +341,7 @@ namespace Npgsql.Tests
                 // Derive parameters for the already autoprepared statement
                 NpgsqlCommandBuilder.DeriveParameters(cmd);
                 Assert.That(cmd.Parameters.Count, Is.EqualTo(1));
-                Assert.That(cmd.Parameters[0].CleanName, Is.EqualTo("p"));
+                Assert.That(cmd.Parameters[0].ParameterName, Is.EqualTo("p"));
 
                 // DeriveParameters should have silently unprepared the autoprepared statements
                 Assert.That(checkCmd.ExecuteScalar(), Is.EqualTo(0));

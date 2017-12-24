@@ -496,26 +496,15 @@ namespace Npgsql.Tests
 
             // Get by indexers.
 
-            Assert.AreEqual(":Parameter1", command.Parameters[":Parameter1"].ParameterName);
-            Assert.AreEqual(":Parameter2", command.Parameters[":Parameter2"].ParameterName);
-            Assert.AreEqual(":Parameter3", command.Parameters[":Parameter3"].ParameterName);
-            //Assert.AreEqual(":Parameter4", command.Parameters["Parameter4"].ParameterName); //Should this work?
+            Assert.AreEqual("Parameter1", command.Parameters["Parameter1"].ParameterName);
+            Assert.AreEqual("Parameter2", command.Parameters["Parameter2"].ParameterName);
+            Assert.AreEqual("Parameter3", command.Parameters["Parameter3"].ParameterName);
+            //Assert.AreEqual("Parameter4", command.Parameters["Parameter4"].ParameterName); //Should this work?
 
-            Assert.AreEqual(":Parameter1", command.Parameters[0].ParameterName);
-            Assert.AreEqual(":Parameter2", command.Parameters[1].ParameterName);
-            Assert.AreEqual(":Parameter3", command.Parameters[2].ParameterName);
+            Assert.AreEqual("Parameter1", command.Parameters[0].ParameterName);
+            Assert.AreEqual("Parameter2", command.Parameters[1].ParameterName);
+            Assert.AreEqual("Parameter3", command.Parameters[2].ParameterName);
             Assert.AreEqual("Parameter4", command.Parameters[3].ParameterName);
-        }
-
-        [Test]
-        public void ParameterNameWithSpace()
-        {
-            var command = new NpgsqlCommand();
-
-            // Add parameters.
-            command.Parameters.Add(new NpgsqlParameter(":Parameter1 ", DbType.Boolean));
-
-            Assert.AreEqual(":Parameter1", command.Parameters[0].ParameterName);
         }
 
         [Test]
@@ -563,16 +552,6 @@ namespace Npgsql.Tests
                 conn.ExecuteNonQuery("");
                 conn.ExecuteNonQuery(";");
             }
-        }
-
-        [Test]
-        public void NoNameParameterAdd()
-        {
-            var command = new NpgsqlCommand();
-            command.Parameters.Add(new NpgsqlParameter());
-            command.Parameters.Add(new NpgsqlParameter());
-            Assert.AreEqual(":Parameter1", command.Parameters[0].ParameterName);
-            Assert.AreEqual(":Parameter2", command.Parameters[1].ParameterName);
         }
 
         [Test]
@@ -748,16 +727,14 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void CaseSensitiveParameterNames()
+        public void CaseInsensitiveParameterNames()
         {
             using (var conn = OpenConnection())
+            using (var command = new NpgsqlCommand("select :p1", conn))
             {
-                using (var command = new NpgsqlCommand("select :p1", conn))
-                {
-                    command.Parameters.Add(new NpgsqlParameter("P1", NpgsqlDbType.Integer)).Value = 5;
-                    var result = command.ExecuteScalar();
-                    Assert.AreEqual(5, result);
-                }
+                command.Parameters.Add(new NpgsqlParameter("P1", NpgsqlDbType.Integer)).Value = 5;
+                var result = command.ExecuteScalar();
+                Assert.AreEqual(5, result);
             }
         }
 
