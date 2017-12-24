@@ -621,7 +621,7 @@ namespace Npgsql
         void Connect(NpgsqlTimeout timeout)
         {
             EndPoint[] endpoints;
-            if (Host.StartsWith("/", StringComparison.Ordinal))
+            if (!string.IsNullOrEmpty(Host) && Host[0] == '/')
             {
                 endpoints = new EndPoint[] { new UnixEndPoint(Path.Combine(Host, $".s.PGSQL.{Port}")) };
             }
@@ -712,7 +712,7 @@ namespace Npgsql
         async Task ConnectAsync(NpgsqlTimeout timeout, CancellationToken cancellationToken)
         {
             EndPoint[] endpoints;
-            if (Host.StartsWith("/", StringComparison.Ordinal))
+            if (!string.IsNullOrEmpty(Host) && Host[0] == '/')
             {
                 endpoints = new EndPoint[] { new UnixEndPoint(Path.Combine(Host, $".s.PGSQL.{Port}")) };
             }
