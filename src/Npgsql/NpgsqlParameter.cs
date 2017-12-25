@@ -389,18 +389,6 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Used in combination with NpgsqlDbType.Enum or NpgsqlDbType.Array | NpgsqlDbType.Enum to indicate the enum type.
-        /// For other NpgsqlDbTypes, this field is not used.
-        /// </summary>
-        [Obsolete("Use the SpecificType property instead")]
-        [PublicAPI, CanBeNull]
-        public Type EnumType
-        {
-            get => SpecificType;
-            set => SpecificType = value;
-        }
-
-        /// <summary>
         /// Used in combination with NpgsqlDbType.Enum or NpgsqlDbType.Composite to indicate the specific enum or composite type.
         /// For other NpgsqlDbTypes, this field is not used.
         /// </summary>
