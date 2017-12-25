@@ -102,11 +102,8 @@ namespace Npgsql.TypeMapping
         /// </summary>
         /// <param name="oid">A PostgreSQL type OID</param>
         /// <returns>A type handler that can be used to encode and decode values.</returns>
-        internal NpgsqlTypeHandler this[uint oid]
-        {
-            get => TryGetByOID(oid, out var result) ? result : UnrecognizedTypeHandler;
-            set => _byOID[oid] = value;
-        }
+        internal NpgsqlTypeHandler GetByOID(uint oid)
+            => TryGetByOID(oid, out var result) ? result : UnrecognizedTypeHandler;
 
         internal bool TryGetByOID(uint oid, out NpgsqlTypeHandler handler)
         {
@@ -116,105 +113,93 @@ namespace Npgsql.TypeMapping
             return false;
         }
 
-        internal NpgsqlTypeHandler this[NpgsqlDbType npgsqlDbType, Type specificType = null]
+        internal NpgsqlTypeHandler GetByNpgsqlDbType(NpgsqlDbType npgsqlDbType, Type specificType = null)
         {
-            get
+            if (specificType != null && (npgsqlDbType & NpgsqlDbType.Enum) == 0 && (npgsqlDbType & NpgsqlDbType.Composite) == 0)
+                throw new ArgumentException($"{nameof(specificType)} can only be used with {nameof(NpgsqlDbType.Enum)} or {nameof(NpgsqlDbType.Composite)}");
+
+            if (_byNpgsqlDbType.TryGetValue(npgsqlDbType, out var handler))
+                return handler;
+
+            if (specificType != null)  // Enum/composite
             {
-                if (specificType != null && (npgsqlDbType & NpgsqlDbType.Enum) == 0 && (npgsqlDbType & NpgsqlDbType.Composite) == 0)
-                    throw new ArgumentException($"{nameof(specificType)} can only be used with {nameof(NpgsqlDbType.Enum)} or {nameof(NpgsqlDbType.Composite)}");
-
-                if (_byNpgsqlDbType.TryGetValue(npgsqlDbType, out var handler))
-                    return handler;
-
-                if (specificType != null)  // Enum/composite
+                if ((npgsqlDbType & NpgsqlDbType.Array) == 0)
                 {
-                    if ((npgsqlDbType & NpgsqlDbType.Array) == 0)
-                    {
-                        if (_byClrType.TryGetValue(specificType, out handler))
-                            return handler;
-                    }
-                    else
-                    {
-                        // Array of enum/composite
-                        if (_arrayHandlerByClrType.TryGetValue(specificType, out handler))
-                            return handler;
-                    }
-                    throw new InvalidOperationException($"The CLR type {specificType.Name} must be mapped with Npgsql before usage, please refer to the documentation.");
+                    if (_byClrType.TryGetValue(specificType, out handler))
+                        return handler;
                 }
-
-                // Couldn't find already activated type, attempt to activate
-
-                if (npgsqlDbType == NpgsqlDbType.Enum || npgsqlDbType == NpgsqlDbType.Composite)
-                    throw new InvalidCastException($"When specifying NpgsqlDbType.{nameof(NpgsqlDbType.Enum)}, {nameof(NpgsqlParameter.SpecificType)} must be specified as well");
-
-                throw new NpgsqlException($"The NpgsqlDbType '{npgsqlDbType}' isn't present in your database. " +
-                                          "You may need to install an extension or upgrade to a newer version.");
+                else
+                {
+                    // Array of enum/composite
+                    if (_arrayHandlerByClrType.TryGetValue(specificType, out handler))
+                        return handler;
+                }
+                throw new InvalidOperationException($"The CLR type {specificType.Name} must be mapped with Npgsql before usage, please refer to the documentation.");
             }
+
+            // Couldn't find already activated type, attempt to activate
+
+            if (npgsqlDbType == NpgsqlDbType.Enum || npgsqlDbType == NpgsqlDbType.Composite)
+                throw new InvalidCastException($"When specifying NpgsqlDbType.{nameof(NpgsqlDbType.Enum)}, {nameof(NpgsqlParameter.SpecificType)} must be specified as well");
+
+            throw new NpgsqlException($"The NpgsqlDbType '{npgsqlDbType}' isn't present in your database. " +
+                                        "You may need to install an extension or upgrade to a newer version.");
         }
 
-        internal NpgsqlTypeHandler this[DbType dbType]
+        internal NpgsqlTypeHandler GetByDbType(DbType dbType)
         {
-            get
-            {
-                if (_byDbType.TryGetValue(dbType, out var handler))
-                    return handler;
-                throw new NotSupportedException("This DbType is not supported in Npgsql: " + dbType);
-            }
+            if (_byDbType.TryGetValue(dbType, out var handler))
+                return handler;
+            throw new NotSupportedException("This DbType is not supported in Npgsql: " + dbType);
         }
 
-        internal NpgsqlTypeHandler this[object value]
+        internal NpgsqlTypeHandler GetByValue(object value)
         {
-            get
+            Debug.Assert(value != null);
+
+            if (value is DateTime)
             {
-                Debug.Assert(value != null);
-
-                if (value is DateTime)
-                {
-                    return ((DateTime)value).Kind == DateTimeKind.Utc
-                        ? this[NpgsqlDbType.TimestampTz]
-                        : this[NpgsqlDbType.Timestamp];
-                }
-
-                if (value is NpgsqlDateTime)
-                {
-                    return ((NpgsqlDateTime)value).Kind == DateTimeKind.Utc
-                        ? this[NpgsqlDbType.TimestampTz]
-                        : this[NpgsqlDbType.Timestamp];
-                }
-
-                return this[value.GetType()];
+                return ((DateTime)value).Kind == DateTimeKind.Utc
+                    ? GetByNpgsqlDbType(NpgsqlDbType.TimestampTz)
+                    : GetByNpgsqlDbType(NpgsqlDbType.Timestamp);
             }
+
+            if (value is NpgsqlDateTime)
+            {
+                return ((NpgsqlDateTime)value).Kind == DateTimeKind.Utc
+                    ? GetByNpgsqlDbType(NpgsqlDbType.TimestampTz)
+                    : GetByNpgsqlDbType(NpgsqlDbType.Timestamp);
+            }
+
+            return GetByClrType(value.GetType());
         }
 
 #pragma warning disable CA1043
-        internal NpgsqlTypeHandler this[Type type]
+        internal NpgsqlTypeHandler GetByClrType(Type type)
 #pragma warning restore CA1043
         {
-            get
+            if (_byClrType.TryGetValue(type, out var handler))
+                return handler;
+
+            // Try to see if it is an array type
+            var arrayElementType = GetArrayElementType(type);
+            if (arrayElementType != null)
             {
-                if (_byClrType.TryGetValue(type, out var handler))
-                    return handler;
-
-                // Try to see if it is an array type
-                var arrayElementType = GetArrayElementType(type);
-                if (arrayElementType != null)
-                {
-                    if (_arrayHandlerByClrType.TryGetValue(arrayElementType, out var elementHandler))
-                        return elementHandler;
-                    throw new NotSupportedException($"The CLR array type {type} isn't supported by Npgsql or your PostgreSQL. " +
-                                                    "If you wish to map it to an  PostgreSQL composite type array you need to register it before usage, please refer to the documentation.");
-                }
-
-                // Nothing worked
-                if (type.GetTypeInfo().IsEnum)
-                    throw new NotSupportedException($"The CLR enum type {type.Name} must be registered with Npgsql before usage, please refer to the documentation.");
-
-                if (typeof(IEnumerable).IsAssignableFrom(type))
-                    throw new NotSupportedException("Npgsql 3.x removed support for writing a parameter with an IEnumerable value, use .ToList()/.ToArray() instead");
-
-                throw new NotSupportedException($"The CLR type {type} isn't supported by Npgsql or your PostgreSQL. " +
-                                                "If you wish to map it to a PostgreSQL composite type you need to register it before usage, please refer to the documentation.");
+                if (_arrayHandlerByClrType.TryGetValue(arrayElementType, out var elementHandler))
+                    return elementHandler;
+                throw new NotSupportedException($"The CLR array type {type} isn't supported by Npgsql or your PostgreSQL. " +
+                                                "If you wish to map it to an  PostgreSQL composite type array you need to register it before usage, please refer to the documentation.");
             }
+
+            // Nothing worked
+            if (type.GetTypeInfo().IsEnum)
+                throw new NotSupportedException($"The CLR enum type {type.Name} must be registered with Npgsql before usage, please refer to the documentation.");
+
+            if (typeof(IEnumerable).IsAssignableFrom(type))
+                throw new NotSupportedException("Npgsql 3.x removed support for writing a parameter with an IEnumerable value, use .ToList()/.ToArray() instead");
+
+            throw new NotSupportedException($"The CLR type {type} isn't supported by Npgsql or your PostgreSQL. " +
+                                            "If you wish to map it to a PostgreSQL composite type you need to register it before usage, please refer to the documentation.");
         }
 
         [CanBeNull]

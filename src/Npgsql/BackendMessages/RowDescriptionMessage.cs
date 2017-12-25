@@ -154,7 +154,7 @@ namespace Npgsql.BackendMessages
             TypeModifier = typeModifier;
             FormatCode = formatCode;
 
-            RealHandler = typeMapper[TypeOID];
+            RealHandler = typeMapper.GetByOID(TypeOID);
             ResolveHandler();
         }
 
@@ -222,7 +222,7 @@ namespace Npgsql.BackendMessages
         void ResolveHandler()
         {
             Handler = IsBinaryFormat
-                ? _typeMapper[TypeOID]
+                ? _typeMapper.GetByOID(TypeOID)
                 : _typeMapper.UnrecognizedTypeHandler;
         }
 
