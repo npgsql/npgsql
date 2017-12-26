@@ -9,7 +9,7 @@
     <VersionPrefix>3.3.0</VersionPrefix>
     <LangVersion>latest</LangVersion>
     <TargetFrameworks>net45;net451;netstandard1.3;netstandard2.0</TargetFrameworks>
-    <WarningsAsErrors>true</WarningsAsErrors>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <AssemblyOriginatorKeyFile>../../Npgsql.snk</AssemblyOriginatorKeyFile>
