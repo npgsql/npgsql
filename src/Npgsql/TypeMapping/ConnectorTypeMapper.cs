@@ -114,40 +114,12 @@ namespace Npgsql.TypeMapping
             return false;
         }
 
-        internal NpgsqlTypeHandler GetByNpgsqlDbType(NpgsqlDbType npgsqlDbType, Type specificType = null)
-        {
-            if (specificType != null && (npgsqlDbType & NpgsqlDbType.Enum) == 0 && (npgsqlDbType & NpgsqlDbType.Composite) == 0)
-                throw new ArgumentException($"{nameof(specificType)} can only be used with {nameof(NpgsqlDbType.Enum)} or {nameof(NpgsqlDbType.Composite)}");
+        internal NpgsqlTypeHandler GetByNpgsqlDbType(NpgsqlDbType npgsqlDbType)
+            => _byNpgsqlDbType.TryGetValue(npgsqlDbType, out var handler)
+                ? handler
+                : throw new NpgsqlException($"The NpgsqlDbType '{npgsqlDbType}' isn't present in your database. " +
+                                             "You may need to install an extension or upgrade to a newer version.");
 
-            if (_byNpgsqlDbType.TryGetValue(npgsqlDbType, out var handler))
-                return handler;
-
-            if (specificType != null)  // Enum/composite
-            {
-                if ((npgsqlDbType & NpgsqlDbType.Array) == 0)
-                {
-                    if (_byClrType.TryGetValue(specificType, out handler))
-                        return handler;
-                }
-                else
-                {
-                    // Array of enum/composite
-                    if (_arrayHandlerByClrType.TryGetValue(specificType, out handler))
-                        return handler;
-                }
-                throw new InvalidOperationException($"The CLR type {specificType.Name} must be mapped with Npgsql before usage, please refer to the documentation.");
-            }
-
-            // Couldn't find already activated type, attempt to activate
-
-#pragma warning disable CS0618 // Type or member is obsolete
-            if (npgsqlDbType == NpgsqlDbType.Enum || npgsqlDbType == NpgsqlDbType.Composite)
-                throw new InvalidCastException($"When specifying NpgsqlDbType.{nameof(NpgsqlDbType.Enum)}, {nameof(NpgsqlParameter.SpecificType)} must be specified as well");
-#pragma warning restore CS0618 // Type or member is obsolete
-
-            throw new NpgsqlException($"The NpgsqlDbType '{npgsqlDbType}' isn't present in your database. " +
-                                        "You may need to install an extension or upgrade to a newer version.");
-        }
 
         internal NpgsqlTypeHandler GetByDbType(DbType dbType)
         {

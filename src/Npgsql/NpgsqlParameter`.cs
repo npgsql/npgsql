@@ -71,7 +71,7 @@ namespace Npgsql
 
             // TODO: Better exceptions in case of cast failure etc.
             if (_npgsqlDbType.HasValue)
-                Handler = typeMapper.GetByNpgsqlDbType(_npgsqlDbType.Value, SpecificTypeInternal);
+                Handler = typeMapper.GetByNpgsqlDbType(_npgsqlDbType.Value);
             else if (_dataTypeName != null)
                 Handler = typeMapper.GetByDataTypeName(_dataTypeName);
             else if (_dbType.HasValue)

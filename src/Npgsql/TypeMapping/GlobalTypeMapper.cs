@@ -184,9 +184,6 @@ namespace Npgsql.TypeMapping
             if (ilist != null)
                 return NpgsqlDbType.Array | ToNpgsqlDbType(ilist.GetGenericArguments()[0]);
 
-            if (typeInfo.IsEnum)
-                return NpgsqlDbType.Enum;
-
             if (typeInfo.IsGenericType && type.GetGenericTypeDefinition() == typeof(NpgsqlRange<>))
                 return NpgsqlDbType.Range | ToNpgsqlDbType(type.GetGenericArguments()[0]);
 

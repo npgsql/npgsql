@@ -403,37 +403,6 @@ namespace Npgsql
             }
         }
 
-        /// <summary>
-        /// Used in combination with NpgsqlDbType.Enum or NpgsqlDbType.Composite to indicate the specific enum or composite type.
-        /// For other NpgsqlDbTypes, this field is not used.
-        /// </summary>
-        [PublicAPI, CanBeNull, Obsolete("Use " + nameof(DataTypeName) + " instead.")]
-        public Type SpecificType
-        {
-            get => SpecificTypeInternal;
-            set => SpecificTypeInternal = value;
-        }
-
-        private protected Type SpecificTypeInternal
-        {
-            get {
-                if (_specificType != null)
-                    return _specificType;
-
-                // Try to infer type if NpgsqlDbType is Enum or has not been set
-                if ((!_npgsqlDbType.HasValue || _npgsqlDbType == NpgsqlDbType.Enum) && _value != null)
-                {
-                    var type = _value.GetType();
-                    if (type.GetTypeInfo().IsEnum)
-                        return type;
-                    if (type.IsArray && type.GetElementType().GetTypeInfo().IsEnum)
-                        return type.GetElementType();
-                }
-                return null;
-            }
-            set => _specificType = value;
-        }
-
         #endregion Type
 
         #region Other Properties
@@ -551,7 +520,7 @@ namespace Npgsql
                 return;
 
             if (_npgsqlDbType.HasValue)
-                Handler = typeMapper.GetByNpgsqlDbType(_npgsqlDbType.Value, SpecificTypeInternal);
+                Handler = typeMapper.GetByNpgsqlDbType(_npgsqlDbType.Value);
             else if (_dataTypeName != null)
                 Handler = typeMapper.GetByDataTypeName(_dataTypeName);
             else if (_dbType.HasValue)
