@@ -38,7 +38,7 @@ using NUnit.Framework;
 namespace Npgsql.Tests
 {
     [TestFixture]
-    public class NpgsqlParameterTest
+    public class NpgsqlParameterTest : TestBase
     {
         [Test, Description("Makes sure that when NpgsqlDbType or Value/NpgsqlValue are set, DbType and NpgsqlDbType are set accordingly")]
         public void ImplicitSettingOfDbTypes()
@@ -66,6 +66,32 @@ namespace Npgsql.Tests
             p = new NpgsqlParameter("p", new int[0]);
             Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Array | NpgsqlDbType.Integer));
             Assert.That(p.DbType, Is.EqualTo(DbType.Object));
+        }
+
+        [Test]
+        public void TypeName()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+            {
+                var p1 = new NpgsqlParameter { ParameterName = "p", Value = 8, DataTypeName = "int4" };
+                cmd.Parameters.Add(p1);
+                Assert.That(cmd.ExecuteScalar(), Is.EqualTo(8));
+                // Purposefully try to send int as string, which should fail. This makes sure
+                // the above doesn't work simply because of type inference from the CLR type.
+                p1.DataTypeName = "text";
+                Assert.That(() => cmd.ExecuteScalar(), Throws.Exception.TypeOf<InvalidCastException>());
+
+                cmd.Parameters.Clear();
+
+                var p2 = new NpgsqlParameter<int> { ParameterName = "p", TypedValue = 8, DataTypeName = "int4" };
+                cmd.Parameters.Add(p2);
+                Assert.That(cmd.ExecuteScalar(), Is.EqualTo(8));
+                // Purposefully try to send int as string, which should fail. This makes sure
+                // the above doesn't work simply because of type inference from the CLR type.
+                p2.DataTypeName = "text";
+                Assert.That(() => cmd.ExecuteScalar(), Throws.Exception.TypeOf<InvalidCastException>());
+            }
         }
 
         // Older tests

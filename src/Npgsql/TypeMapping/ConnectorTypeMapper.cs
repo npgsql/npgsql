@@ -57,6 +57,7 @@ namespace Npgsql.TypeMapping
         readonly Dictionary<uint, NpgsqlTypeHandler> _byOID = new Dictionary<uint, NpgsqlTypeHandler>();
         readonly Dictionary<NpgsqlDbType, NpgsqlTypeHandler> _byNpgsqlDbType = new Dictionary<NpgsqlDbType, NpgsqlTypeHandler>();
         readonly Dictionary<DbType, NpgsqlTypeHandler> _byDbType = new Dictionary<DbType, NpgsqlTypeHandler>();
+        readonly Dictionary<string, NpgsqlTypeHandler> _byTypeName = new Dictionary<string, NpgsqlTypeHandler>();
 
         /// <summary>
         /// Maps CLR types to their type handlers.
@@ -139,8 +140,10 @@ namespace Npgsql.TypeMapping
 
             // Couldn't find already activated type, attempt to activate
 
+#pragma warning disable CS0618 // Type or member is obsolete
             if (npgsqlDbType == NpgsqlDbType.Enum || npgsqlDbType == NpgsqlDbType.Composite)
                 throw new InvalidCastException($"When specifying NpgsqlDbType.{nameof(NpgsqlDbType.Enum)}, {nameof(NpgsqlParameter.SpecificType)} must be specified as well");
+#pragma warning restore CS0618 // Type or member is obsolete
 
             throw new NpgsqlException($"The NpgsqlDbType '{npgsqlDbType}' isn't present in your database. " +
                                         "You may need to install an extension or upgrade to a newer version.");
@@ -151,6 +154,13 @@ namespace Npgsql.TypeMapping
             if (_byDbType.TryGetValue(dbType, out var handler))
                 return handler;
             throw new NotSupportedException("This DbType is not supported in Npgsql: " + dbType);
+        }
+
+        internal NpgsqlTypeHandler GetByDataTypeName(string typeName)
+        {
+            if (_byTypeName.TryGetValue(typeName, out var handler))
+                return handler;
+            throw new NotSupportedException("Could not find PostgreSQL type " + typeName);
         }
 
         internal NpgsqlTypeHandler GetByValue(object value)
@@ -383,6 +393,8 @@ namespace Npgsql.TypeMapping
         void BindType(NpgsqlTypeHandler handler, PostgresType pgType, NpgsqlDbType? npgsqlDbType = null, DbType[] dbTypes = null, Type[] clrTypes = null)
         {
             _byOID[pgType.OID] = handler;
+            _byTypeName[pgType.FullName] = handler;
+            _byTypeName[pgType.Name] = handler;
 
             if (npgsqlDbType.HasValue)
             {

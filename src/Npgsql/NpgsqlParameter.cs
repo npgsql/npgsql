@@ -49,6 +49,8 @@ namespace Npgsql
         // ReSharper disable InconsistentNaming
         private protected NpgsqlDbType? _npgsqlDbType;
         private protected DbType? _dbType;
+        [CanBeNull]
+        private protected string _dataTypeName;
         // ReSharper restore InconsistentNaming
         [CanBeNull]
         Type _specificType;
@@ -383,11 +385,36 @@ namespace Npgsql
         }
 
         /// <summary>
+        /// Used to specify which PostgreSQL type will be sent to the database for this parameter.
+        /// </summary>
+        [PublicAPI, CanBeNull]
+        public string DataTypeName
+        {
+            get
+            {
+                if (_dataTypeName != null)
+                    return _dataTypeName;
+                throw new NotImplementedException("Infer from others");
+            }
+            set
+            {
+                _dataTypeName = value;
+                Handler = null;
+            }
+        }
+
+        /// <summary>
         /// Used in combination with NpgsqlDbType.Enum or NpgsqlDbType.Composite to indicate the specific enum or composite type.
         /// For other NpgsqlDbTypes, this field is not used.
         /// </summary>
-        [PublicAPI, CanBeNull]
+        [PublicAPI, CanBeNull, Obsolete("Use " + nameof(DataTypeName) + " instead.")]
         public Type SpecificType
+        {
+            get => SpecificTypeInternal;
+            set => SpecificTypeInternal = value;
+        }
+
+        private protected Type SpecificTypeInternal
         {
             get {
                 if (_specificType != null)
@@ -524,7 +551,9 @@ namespace Npgsql
                 return;
 
             if (_npgsqlDbType.HasValue)
-                Handler = typeMapper.GetByNpgsqlDbType(_npgsqlDbType.Value, SpecificType);
+                Handler = typeMapper.GetByNpgsqlDbType(_npgsqlDbType.Value, SpecificTypeInternal);
+            else if (_dataTypeName != null)
+                Handler = typeMapper.GetByDataTypeName(_dataTypeName);
             else if (_dbType.HasValue)
                 Handler = typeMapper.GetByDbType(_dbType.Value);
             else if (_value != null)
@@ -566,6 +595,7 @@ namespace Npgsql
         {
             _dbType = null;
             _npgsqlDbType = null;
+            _dataTypeName = null;
             Value = Value;
             Handler = null;
         }
