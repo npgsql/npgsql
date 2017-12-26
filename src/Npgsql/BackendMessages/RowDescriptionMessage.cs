@@ -216,7 +216,11 @@ namespace Npgsql.BackendMessages
         /// </summary>
         internal NpgsqlTypeHandler RealHandler { get; private set; }
 
-        internal PostgresType PostgresType => RealHandler.PostgresType;
+        internal PostgresType PostgresType
+            => _typeMapper.DatabaseInfo.ByOID.TryGetValue(TypeOID, out var postgresType)
+                ? postgresType
+                : UnknownBackendType.Instance;
+
         internal Type FieldType => Handler.GetFieldType(this);
 
         void ResolveHandler()
