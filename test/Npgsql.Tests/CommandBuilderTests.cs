@@ -536,7 +536,7 @@ $$ LANGUAGE SQL;
 
                 // We leave the command intact when throwing so it should still be useable
                 Assert.That(cmd.Parameters.Count, Is.EqualTo(1));
-                Assert.That(cmd.Parameters[0].CleanName, Is.EqualTo("p"));
+                Assert.That(cmd.Parameters[0].ParameterName, Is.EqualTo("p"));
                 Assert.That(conn.Connector.PreparedStatementManager.NumPrepared, Is.EqualTo(1));
                 cmd.Parameters["@p"].Value = answer;
                 Assert.That(cmd.ExecuteScalar(), Is.EqualTo(answer));

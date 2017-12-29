@@ -1027,8 +1027,8 @@ namespace Npgsql.Tests
             }
         }
 
+#if NET451
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/392")]
-        [LinuxIgnore]  // TODO: Ignore on CoreCLR instead
         public void NonUTF8Encoding()
         {
             using (var adminConn = OpenConnection())
@@ -1074,6 +1074,7 @@ namespace Npgsql.Tests
                 }
             }
         }
+#endif
 
         [Test]
         public void OversizeBuffer()

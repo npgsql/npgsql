@@ -29,7 +29,7 @@ namespace Npgsql
                 {
                     if (_thread != null)
                         return;
-                    _thread = new Thread(WorkLoop) { Name = _threadName };
+                    _thread = new Thread(WorkLoop) { Name = _threadName, IsBackground = true };
                     _thread.Start();
                 }
             }

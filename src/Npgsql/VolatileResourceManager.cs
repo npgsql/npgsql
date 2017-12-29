@@ -314,12 +314,8 @@ namespace Npgsql
                 // These need to be closed now.
                 if (_connector.Settings.Pooling)
                 {
-                    ConnectorPool pool;
-                    lock (PoolManager.Pools)
-                    {
-                        var found = PoolManager.Pools.TryGetValue(_connector.ConnectionString, out pool);
-                        Debug.Assert(found);
-                    }
+                    var found = PoolManager.Pools.TryGetValue(_connector.ConnectionString, out var pool);
+                    Debug.Assert(found);
                     pool.TryRemovePendingEnlistedConnector(_connector, _transaction);
                     pool.Release(_connector);
                 }

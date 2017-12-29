@@ -600,6 +600,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 }
             }
 
+            _connectorPreparedOn = connector;
+
             // It's possible the command was already prepared, or that presistent prepared statements were found for
             // all statements. Nothing to do here, move along.
             return needToPrepare
@@ -654,8 +656,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     await sendTask;
                 else
                     sendTask.GetAwaiter().GetResult();
-
-                _connectorPreparedOn = connector;
             }
         }
 
@@ -725,12 +725,10 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 var hasWrittenFirst = false;
                 for (var i = 1; i <= numInput; i++) {
                     var param = inputList[i - 1];
-                    if (param.AutoAssignedName || param.CleanName == "")
+                    if (param.ParameterName == "")
                     {
                         if (hasWrittenFirst)
-                        {
                             sb.Append(',');
-                        }
                         sb.Append('$');
                         sb.Append(i);
                         hasWrittenFirst = true;
@@ -739,14 +737,12 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 for (var i = 1; i <= numInput; i++)
                 {
                     var param = inputList[i - 1];
-                    if (!param.AutoAssignedName && param.CleanName != "")
+                    if (param.ParameterName != "")
                     {
                         if (hasWrittenFirst)
-                        {
                             sb.Append(',');
-                        }
                         sb.Append('"');
-                        sb.Append(param.CleanName.Replace("\"", "\"\""));
+                        sb.Append(param.ParameterName.Replace("\"", "\"\""));
                         sb.Append("\" := ");
                         sb.Append('$');
                         sb.Append(i);

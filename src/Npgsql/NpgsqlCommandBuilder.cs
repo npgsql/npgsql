@@ -247,7 +247,8 @@ namespace Npgsql
                 /// <param name="whereClause">if set to <c>true</c> [where clause].</param>
         protected override void ApplyParameterInfo(DbParameter p, DataRow row, System.Data.StatementType statementType, bool whereClause)
         {
-            // TODO: We may need to set NpgsqlDbType, as well as other properties, on p
+            var param = (NpgsqlParameter)p;
+            param.NpgsqlDbType = (NpgsqlDbType)row[SchemaTableColumn.ProviderType];
         }
 
         /// <summary>

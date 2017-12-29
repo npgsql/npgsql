@@ -7,6 +7,7 @@
 # [FAQ](faq.md)
 # [Compatibility Notes](compatibility.md)
 # [Connection String Parameters](connection-string-parameters.md)
+# [Parameters](parameters.md)
 # [Security and Encryption](security.md)
 # Types
 ## [Basic Type Mapping](types/basic.md)

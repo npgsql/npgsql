@@ -773,7 +773,7 @@ namespace Npgsql.Tests
 
             // These should not throw exceptions
             Assert.AreEqual(0, command.Parameters.IndexOf(""));
-            Assert.AreEqual("", param.CleanName);
+            Assert.AreEqual("", param.ParameterName);
         }
     }
 }
