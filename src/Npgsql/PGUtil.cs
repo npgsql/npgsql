@@ -35,13 +35,60 @@ using System.Threading.Tasks;
 
 namespace Npgsql
 {
+     internal  class CustomDecoderFallback : DecoderFallback
+    {
+        public override int MaxCharCount => 1;
+
+        public override DecoderFallbackBuffer CreateFallbackBuffer()
+        {
+            return new CustomDecoderFallbackBuffer();
+        }
+    }
+
+    internal class CustomDecoderFallbackBuffer : DecoderFallbackBuffer
+    {
+
+        byte[] _unknow;
+        int fallbackCount;
+        int fallbackIndex;
+        public override int Remaining => (fallbackCount < 0) ? 0 : fallbackCount;
+
+        public override bool Fallback(byte[] bytesUnknown, int index)
+        {
+            _unknow = bytesUnknown;
+            fallbackCount = _unknow.Length;
+            fallbackIndex = -1;
+            return true;
+        }
+
+        public override char GetNextChar()
+        {
+            fallbackCount--;
+            fallbackIndex++;
+            if (fallbackCount < 0)
+                return default(char);
+            var tmp = Encoding.GetEncoding(0).GetChars(_unknow, fallbackIndex, 1);
+            return tmp[0];
+        }
+
+        public override bool MovePrevious()
+        {
+            if (fallbackCount >= -1 && fallbackIndex >= 0)
+            {
+                fallbackIndex--;
+                fallbackCount++;
+                return true;
+            }
+            return false;
+        }
+    }
     // ReSharper disable once InconsistentNaming
     static class PGUtil
     {
         internal static readonly byte[] EmptyBuffer = new byte[0];
 
         internal static readonly UTF8Encoding UTF8Encoding = new UTF8Encoding(false, true);
-        internal static readonly UTF8Encoding RelaxedUTF8Encoding = new UTF8Encoding(false, false);
+         internal static readonly Encoding RelaxedUTF8Encoding = Encoding.GetEncoding(Encoding.UTF8.CodePage, new EncoderReplacementFallback(), new CustomDecoderFallback());
 
         internal static void ValidateBackendMessageCode(BackendMessageCode code)
         {
