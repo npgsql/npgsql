@@ -18,6 +18,7 @@ install:
 services:
   - postgresql
 before_build:
+  - '"C:\Program Files\PostgreSQL\9.6\bin\psql" -c "CREATE EXTENSION citext"'
   - '"C:\Program Files\PostgreSQL\9.6\bin\psql" -c "CREATE EXTENSION postgis"'
   - appveyor-retry dotnet restore -v Minimal
   - appveyor-retry nuget restore Npgsql.sln   # For VSIX
