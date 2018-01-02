@@ -1234,10 +1234,7 @@ namespace Npgsql
         /// <summary>
         /// Returns the supported collections
         /// </summary>
-        public override DataTable GetSchema()
-        {
-            return NpgsqlSchema.GetMetaDataCollections();
-        }
+        public override DataTable GetSchema() => NpgsqlSchema.GetMetaDataCollections();
 
         /// <summary>
         /// Returns the schema collection specified by the collection name.
@@ -1245,9 +1242,7 @@ namespace Npgsql
         /// <param name="collectionName">The collection name.</param>
         /// <returns>The collection specified.</returns>
         public override DataTable GetSchema([CanBeNull] string collectionName)
-        {
-            return GetSchema(collectionName, null);
-        }
+            => GetSchema(collectionName, null);
 
         /// <summary>
         /// Returns the schema collection specified by the collection name filtered by the restrictions.
