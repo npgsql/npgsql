@@ -34,8 +34,8 @@ namespace Npgsql.Tls
         internal string Scheme { get; private set; }
         internal string UserName { get; private set; }
         internal string Password { get; set; }
-        internal string ClientSignature { get; set; }
-        internal string ServerSignature { get; set; }
+        internal string ClientSignature { get; private set; }
+        internal string ServerSignature { get; private set; }
         internal string ClientNonce { get; private set; }
         internal string ServerNonce { get; private set; }
         internal string ServerSalt { get; private set; }
@@ -46,22 +46,17 @@ namespace Npgsql.Tls
         internal SCRAM(string schemeName, string userName) {
             Scheme = schemeName;
             UserName = userName;
-            // TODO: Create random nonce
-            ClientNonce = "fyko+d2lbbFgONRv9qkxdawL";
+            ClientNonce = GetNonce();
         }
 
-        internal string GetClientFirstMessage()
+        #region SCRAM Messages
+
+        internal string getClientFirstMessage()
         {
             // Postgresql does not expect username in SCRAMFirst message, User name already provided in authentication request
             var userName = "*";
             var msg = "n,,n="+userName+",r=" + ClientNonce;
             return msg;
-        }
-
-        internal byte[] HMAC(byte[] data, string key)
-        {
-            var hmac = new HMACSHA256(data);
-            return hmac.ComputeHash(Encoding.UTF8.GetBytes(key));
         }
 
         internal byte[] getSaltedPassword(string salt, int count)
@@ -108,7 +103,7 @@ namespace Npgsql.Tls
                 throw new InvalidOperationException("[SCRAM] Malformed SCRAMServerFirst message");
         }
 
-        internal string CreateClientFinalMessage()
+        internal string getClientFinalMessage()
         {
             if (!ServerFirstReceived)
                 throw new InvalidOperationException("[SCRAM] SCRAMServerFirst not received");
@@ -130,37 +125,48 @@ namespace Npgsql.Tls
 
             var clientSignature = HMAC(storedKey, AuthMessage);
             var clientProofBytes = XOR(clientKey, clientSignature);
-            var serverKey = HMAC(saltedPassword, "Server Key");
-            var serverSignature = HMAC(serverKey, AuthMessage);
-
             var clientProof = Convert.ToBase64String(clientProofBytes);
+
+            var serverKey = HMAC(saltedPassword, "Server Key");
+            var serverSignatureBytes = HMAC(serverKey, AuthMessage);
+            ServerSignature = Convert.ToBase64String(serverSignatureBytes);
             
             var msg = client_final_message_without_proof + ",p=" + clientProof;
             return msg;
 
         }
 
-        internal void verifyServer(string payload)
+        internal void verifyServerSignature(string payload)
         {
             if (!payload.StartsWith("v="))
-                throw new InvalidOperationException("[SCRAM] Malformed SCRAMServerFinal message");
+                throw new NpgsqlException("[SCRAM] Malformed SCRAMServerFinal message");
+
             var v = payload.Substring(2);
+            if (String.IsNullOrEmpty(v))
+                throw new NpgsqlException("[SCRAM] Malformed SCRAMServerFinal message");
+
+            if (!v.Equals(ServerSignature))
+                throw new NpgsqlException("[SCRAM] Unable to verify SCRAM Server Proof");
 
         }
-        public static byte[] XOR(byte[] buffer1, byte[] buffer2)
+        #endregion
+
+        #region CryptUtils
+
+        internal static byte[] XOR(byte[] buffer1, byte[] buffer2)
         {
             for (var i = 0; i < buffer1.Length; i++)
                 buffer1[i] ^= buffer2[i];
             return buffer1;
         }
 
-        public static byte[] H(byte[] data)
+        internal static byte[] H(byte[] data)
         {
             var sha256 = SHA256.Create();
             return sha256.ComputeHash(data);
         }
 
-        public static byte[] Hi(string str, byte[] salt, int count)
+        internal static byte[] Hi(string str, byte[] salt, int count)
         {
             using (var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(str)))
             {
@@ -182,6 +188,23 @@ namespace Npgsql.Tls
                 return hi;
             }
         }
-        
+
+        internal static string GetNonce()
+        {
+            var nonceLength = 18;
+            var rncProvider = RandomNumberGenerator.Create();
+            var nonceBytes = new byte[nonceLength];
+            rncProvider.GetBytes(nonceBytes);
+            return Convert.ToBase64String(nonceBytes);
+        }
+
+        internal static byte[] HMAC(byte[] data, string key)
+        {
+            var hmac = new HMACSHA256(data);
+            return hmac.ComputeHash(Encoding.UTF8.GetBytes(key));
+        }
+
+        #endregion
+
     }
 }

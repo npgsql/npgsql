@@ -145,7 +145,7 @@ namespace Npgsql
         }
         void AuthenticateSASLFinal(SCRAM scram, string serverFinalMsg)
         {
-            scram.verifyServer(serverFinalMsg);
+            scram.verifyServerSignature(serverFinalMsg);
         }
 
         async Task AuthenticateMD5(string username, byte[] salt, bool async)

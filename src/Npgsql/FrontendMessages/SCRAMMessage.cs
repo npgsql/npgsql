@@ -43,7 +43,7 @@ namespace  Npgsql.FrontendMessages
         {
             var schemeBytes = PGUtil.UTF8Encoding.GetBytes(scram.Scheme);
 
-            var clientFirstMessage = scram.GetClientFirstMessage();
+            var clientFirstMessage = scram.getClientFirstMessage();
 
             var clientFirstMessageBytes = PGUtil.UTF8Encoding.GetBytes(clientFirstMessage);
 
@@ -68,7 +68,7 @@ namespace  Npgsql.FrontendMessages
 
         internal static SCRAMMessage CreateClientFinalMessage(SCRAM scram)
         {
-            var finalMessage = scram.CreateClientFinalMessage();
+            var finalMessage = scram.getClientFinalMessage();
             var encoded = new byte[finalMessage.Length + 1];
             var finalMessageBytes = PGUtil.UTF8Encoding.GetBytes(finalMessage);
             finalMessageBytes.CopyTo(encoded, 0);
