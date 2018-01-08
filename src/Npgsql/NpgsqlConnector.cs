@@ -1968,7 +1968,7 @@ namespace Npgsql
         /// <summary>
         /// Whether the backend is a CrateDB instance
         /// </summary>
-        internal bool IsCrateDB => (Settings.ServerCompatibilityMode == ServerCompatibilityMode.CrateDB) || CrateDBVersion >= new Version(2, 3, 0);
+        internal bool IsCrateDB => CrateDBVersion >= new Version(2, 3, 0);
 
         #endregion Supported features and PostgreSQL settings
 

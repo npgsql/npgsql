@@ -341,7 +341,7 @@ WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND ns.nspname = @sc
         public DatabaseInfo FromConnectionString(NpgsqlConnector connector)
         {
             var csb = new NpgsqlConnectionStringBuilder(connector.ConnectionString);
-            if ((csb.ServerCompatibilityMode == ServerCompatibilityMode.CrateDB) || connector.IsCrateDB)
+            if (connector.IsCrateDB)
                 return new Compatibility.CrateDB.CrateDBDatabaseInfo(csb.Host, csb.Port, csb.Database);
             return new DatabaseInfo(csb.Host, csb.Port, csb.Database);
         }
