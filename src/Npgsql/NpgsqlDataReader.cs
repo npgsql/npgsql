@@ -52,7 +52,7 @@ namespace Npgsql
 #pragma warning disable CA1010
     public abstract class NpgsqlDataReader : DbDataReader
 #pragma warning restore CA1010
-#if NETSTANDARD1_3 || NETSTANDARD2_0
+#if !NET45 && !NET451
         , IDbColumnSchemaGenerator
 #endif
     {
