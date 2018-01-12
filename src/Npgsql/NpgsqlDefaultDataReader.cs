@@ -9,7 +9,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
-using Npgsql.TypeHandlers;
 using Npgsql.TypeHandling;
 
 namespace Npgsql
@@ -176,15 +175,18 @@ namespace Npgsql
             CheckRowAndOrdinal(column);
 
             SeekToColumn(column);
+            GetValueHandlers<T>(out var read, out var _, out var canHandleNulls);
             if (ColumnLen == -1)
+            {
+                if (canHandleNulls)
+                    return default;
                 throw new InvalidCastException("Column is null");
+            }
 
             var fieldDescription = RowDescription[column];
             try
             {
-                return typeof(T) == typeof(object)
-                    ? (T)fieldDescription.Handler.ReadAsObject(Buffer, ColumnLen, fieldDescription)
-                    : fieldDescription.Handler.Read<T>(Buffer, ColumnLen, fieldDescription);
+                return read(fieldDescription, Buffer, ColumnLen);
             }
             catch (NpgsqlSafeReadException e)
             {

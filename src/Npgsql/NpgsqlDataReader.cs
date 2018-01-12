@@ -23,6 +23,7 @@
 
 using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Data;
@@ -30,6 +31,7 @@ using System.Data.Common;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -632,6 +634,78 @@ namespace Npgsql
         }
 
         #endregion
+
+        #region Generic value getters
+
+        internal delegate T ReadDelegate<T>(FieldDescription fieldDescription, NpgsqlReadBuffer buffer, int columnLen);
+
+        internal delegate ValueTask<T> ReadAsyncDelegate<T>(FieldDescription fieldDescription, NpgsqlReadBuffer buffer, int columnLen, bool async);
+
+        class NullableHandler
+        {
+            readonly MethodInfo _readMethod = new ReadDelegate<int?>(Read<int>).GetMethodInfo().GetGenericMethodDefinition();
+            readonly MethodInfo _readAsyncMethod = new ReadAsyncDelegate<int?>(Read<int>).GetMethodInfo().GetGenericMethodDefinition();
+
+            static T? Read<T>(FieldDescription fieldDescription, NpgsqlReadBuffer buffer, int columnLen) where T : struct
+                => fieldDescription.Handler.Read<T>(buffer, columnLen, fieldDescription);
+
+            static async ValueTask<T?> Read<T>(FieldDescription fieldDescription, NpgsqlReadBuffer buffer, int columnLen, bool async) where T : struct
+                => await fieldDescription.Handler.Read<T>(buffer, columnLen, async, fieldDescription);
+
+            readonly ConcurrentDictionary<Type, (Delegate, Delegate)> _handlerCache = new ConcurrentDictionary<Type, (Delegate, Delegate)>();
+
+            internal static readonly NullableHandler Instance = new NullableHandler();
+
+            internal bool TryGet<T>(out ReadDelegate<T> read, out ReadAsyncDelegate<T> readAsync)
+            {
+                var nullableType = typeof(T);
+                if (_handlerCache.TryGetValue(nullableType, out var handlers))
+                    goto ReturnHandlers;
+
+                var underlyingType = Nullable.GetUnderlyingType(nullableType);
+                if (underlyingType == null)
+                {
+                    read = null;
+                    readAsync = null;
+                    return false;
+                }
+                
+                handlers = _handlerCache.GetOrAdd(nullableType, (
+                    _readMethod.MakeGenericMethod(underlyingType).CreateDelegate(typeof(ReadDelegate<T>)),
+                    _readAsyncMethod.MakeGenericMethod(underlyingType).CreateDelegate(typeof(ReadAsyncDelegate<T>))));
+
+                ReturnHandlers:
+                read = (ReadDelegate<T>)handlers.Item1;
+                readAsync = (ReadAsyncDelegate<T>)handlers.Item2;
+                return true;
+            }
+        }
+
+        internal static void GetValueHandlers<T>(out ReadDelegate<T> read, out ReadAsyncDelegate<T> readAsync, out bool canHandleNulls)
+        {
+            if (default(T) != null)
+                canHandleNulls = false;
+            else
+            if (canHandleNulls = NullableHandler.Instance.TryGet(out read, out readAsync))
+                return;
+
+            if (typeof(T) == typeof(object))
+            {
+                read = (fieldDescription, buffer, columnLen)
+                    => (T)fieldDescription.Handler.ReadAsObject(buffer, columnLen, fieldDescription);
+                readAsync = async (fieldDescription, buffer, columnLen, async)
+                    => (T)await fieldDescription.Handler.ReadAsObject(buffer, columnLen, async, fieldDescription);
+            }
+            else
+            {
+                read = (fieldDescription, buffer, columnLen)
+                    => fieldDescription.Handler.Read<T>(buffer, columnLen, fieldDescription);
+                readAsync = (fieldDescription, buffer, columnLen, async)
+                    => fieldDescription.Handler.Read<T>(buffer, columnLen, async, fieldDescription);
+            }
+        }
+
+        #endregion Generic value getters
 
         #region Simple value getters
 
