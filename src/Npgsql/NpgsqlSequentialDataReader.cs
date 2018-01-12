@@ -3,9 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
@@ -72,11 +70,23 @@ namespace Npgsql
             await SeekToColumn(column, async);
             CheckColumnStart();
             if (ColumnLen == -1)
-                throw new InvalidCastException("Column is null");
+            {
+                if (NullableHandler<T>.Exists)
+                    return default;
+                else
+                    throw new InvalidCastException("Column is null");
+            }
 
             var fieldDescription = RowDescription[column];
             try
             {
+                if (NullableHandler<T>.Exists)
+                {
+                    return ColumnLen <= Buffer.ReadBytesLeft
+                        ? NullableHandler<T>.Read(Buffer, ColumnLen, fieldDescription)
+                        : await NullableHandler<T>.ReadAsync(Buffer, ColumnLen, async, fieldDescription);
+                }
+
                 if (typeof(T) == typeof(object))
                 {
                     return ColumnLen <= Buffer.ReadBytesLeft

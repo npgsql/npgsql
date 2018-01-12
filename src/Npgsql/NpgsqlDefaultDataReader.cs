@@ -4,12 +4,12 @@ using System.Data;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
-using Npgsql.TypeHandlers;
 using Npgsql.TypeHandling;
 
 namespace Npgsql
@@ -180,11 +180,19 @@ namespace Npgsql
 
             SeekToColumn(column);
             if (ColumnLen == -1)
-                throw new InvalidCastException("Column is null");
+            {
+                if (NullableHandler<T>.Exists)
+                    return default;
+                else
+                    throw new InvalidCastException("Column is null");
+            }
 
             var fieldDescription = RowDescription[column];
             try
             {
+                if (NullableHandler<T>.Exists)
+                    return NullableHandler<T>.Read(Buffer, ColumnLen, fieldDescription);
+
                 return typeof(T) == typeof(object)
                     ? (T)fieldDescription.Handler.ReadAsObject(Buffer, ColumnLen, fieldDescription)
                     : fieldDescription.Handler.Read<T>(Buffer, ColumnLen, fieldDescription);
