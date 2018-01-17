@@ -300,16 +300,16 @@ namespace Npgsql.TypeMapping
                 BindType(mapping, _connector, false);
 
 #if !NETSTANDARD1_3
-            // Wire up (unmapped) composites as dynamic
+            // Composites
             var dynamicCompositeFactory = new UnmappedCompositeTypeHandlerFactory(DefaultNameTranslator);
             foreach (var compType in DatabaseInfo.CompositeTypes.Where(e => !_byOID.ContainsKey(e.OID)))
                 BindType(dynamicCompositeFactory.Create(compType, _connector.Connection), compType);
 #endif
 
-            // Expose unmapped enums as text
-            var textHandlerFactory = new TextHandlerFactory();
+            // Enums
+            var enumFactory = new UnmappedEnumTypeHandlerFactory(DefaultNameTranslator);
             foreach (var e in DatabaseInfo.EnumTypes.Where(e => !_byOID.ContainsKey(e.OID)))
-                BindType(textHandlerFactory.Create(e, _connector.Connection), e);
+                BindType(enumFactory.Create(e, _connector.Connection), e);
 
             // Wire up any domains we find to their base type mappings, this is important
             // for reading domain fields of composites

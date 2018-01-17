@@ -38,6 +38,64 @@ namespace Npgsql.Tests.Types
     {
         enum Mood { Sad, Ok, Happy };
 
+        [Test]
+        public void UnmappedEnum()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ApplicationName = nameof(UnmappedEnum),
+                Pooling = false
+            };
+            using (var conn = OpenConnection(csb))
+            {
+                conn.ExecuteNonQuery("CREATE TYPE pg_temp.unmapped_enum AS ENUM ('sad', 'ok', 'happy')");
+                conn.ReloadTypes();
+                var tempSchema = conn.ExecuteScalar("SELECT nspname FROM pg_namespace WHERE oid = pg_my_temp_schema()");
+
+                using (var cmd = new NpgsqlCommand("SELECT @scalar1, @scalar2, @scalar3, @scalar4", conn))
+                {
+                    cmd.Parameters.Add(new NpgsqlParameter
+                    {
+                        ParameterName = "scalar1",
+                        Value = Mood.Happy,
+                        DataTypeName = $"{tempSchema}.unmapped_enum"
+                    });
+                    cmd.Parameters.Add(new NpgsqlParameter
+                    {
+                        ParameterName = "scalar2",
+                        Value = "happy",
+                        DataTypeName = $"{tempSchema}.unmapped_enum"
+                    });
+                    cmd.Parameters.Add(new NpgsqlParameter<Mood>
+                    {
+                        ParameterName = "scalar3",
+                        TypedValue = Mood.Happy,
+                        DataTypeName = $"{tempSchema}.unmapped_enum"
+                    });
+                    cmd.Parameters.Add(new NpgsqlParameter<string>
+                    {
+                        ParameterName = "scalar4",
+                        TypedValue = "happy",
+                        DataTypeName = $"{tempSchema}.unmapped_enum"
+                    });
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        reader.Read();
+
+                        for (var i = 0; i < 4; i++)
+                        {
+                            Assert.That(reader.GetDataTypeName(i),
+                                Does.StartWith("pg_temp") & Does.EndWith(".unmapped_enum"));
+
+                            Assert.That(reader.GetFieldValue<Mood>(i), Is.EqualTo(Mood.Happy));
+                            Assert.That(reader.GetFieldValue<string>(i), Is.EqualTo("happy"));
+                            Assert.That(reader.GetValue(i), Is.EqualTo("happy"));
+                        }
+                    }
+                }
+            }
+        }
+
         [Test, Description("Resolves an enum type handler via the different pathways, with global mapping")]
         public void EnumTypeResolutionWithGlobalMapping()
         {
