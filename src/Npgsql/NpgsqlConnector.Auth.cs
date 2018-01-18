@@ -108,16 +108,10 @@ namespace Npgsql
                 try
                 {
                     var targetName = $"{KerberosServiceName}/{Host}";
-                    // AuthenticateAsClientAsync doesn't exist in .NET 4.5/4.5.1 (only introduced in 4.6)
-                    // Conversely, no sync in .NET Standard 1.3 :/
-#if NETSTANDARD1_3
-                    await negotiateStream.AuthenticateAsClientAsync(CredentialCache.DefaultNetworkCredentials, targetName);
-#else
                     if (async)
                         negotiateStream.AuthenticateAsClient(CredentialCache.DefaultNetworkCredentials, targetName);
                     else
                         await negotiateStream.AuthenticateAsClientAsync(CredentialCache.DefaultNetworkCredentials, targetName);
-#endif
                 }
                 catch (AuthenticationCompleteException)
                 {

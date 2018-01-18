@@ -118,13 +118,7 @@ namespace Npgsql.BackendMessages
             public bool Equals([NotNull] string x, [NotNull] string y)
                 => CompareInfo.Compare(x, y, CompareOptions.IgnoreWidth) == 0;
             public int GetHashCode([NotNull] string o)
-            {
-#if NETSTANDARD1_3
-                return CompareInfo.GetHashCode(o, CompareOptions.IgnoreWidth);
-#else
-                return CompareInfo.GetSortKey(o, CompareOptions.IgnoreWidth).GetHashCode();
-#endif
-            }
+                => CompareInfo.GetSortKey(o, CompareOptions.IgnoreWidth).GetHashCode();
         }
 
         sealed class KanaWidthCaseInsensitiveComparer : IEqualityComparer<string>
@@ -134,13 +128,7 @@ namespace Npgsql.BackendMessages
             public bool Equals([NotNull] string x, [NotNull] string y)
                 => CompareInfo.Compare(x, y, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase) == 0;
             public int GetHashCode([NotNull] string o)
-            {
-#if NETSTANDARD1_3
-                return CompareInfo.GetHashCode(o, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase);
-#else
-                return CompareInfo.GetSortKey(o, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase).GetHashCode();
-#endif
-            }
+                => CompareInfo.GetSortKey(o, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase).GetHashCode();
         }
 
         #endregion

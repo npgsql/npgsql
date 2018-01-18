@@ -336,10 +336,8 @@ namespace Npgsql
 
         #region IList Member
 
-#if !NETSTANDARD1_3
         /// <inheritdoc />
         public override bool IsReadOnly => false;
-#endif
 
         /// <summary>
         /// Removes the specified <see cref="NpgsqlParameter">NpgsqlParameter</see> from the collection using a specific index.
@@ -453,19 +451,15 @@ namespace Npgsql
             return Count - 1;
         }
 
-#if !NETSTANDARD1_3
         /// <inheritdoc />
         public override bool IsFixedSize => false;
-#endif
 
         #endregion
 
         #region ICollection Member
 
-#if !NETSTANDARD1_3
         /// <inheritdoc />
         public override bool IsSynchronized => (_internalList as ICollection).IsSynchronized;
-#endif
 
         /// <summary>
         /// Gets the number of <see cref="NpgsqlParameter">NpgsqlParameter</see> objects in the collection.

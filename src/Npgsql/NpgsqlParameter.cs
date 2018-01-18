@@ -38,11 +38,7 @@ namespace Npgsql
     ///<summary>
     /// This class represents a parameter to a command that will be sent to server
     ///</summary>
-#if NETSTANDARD1_3
-    public class NpgsqlParameter : DbParameter
-#else
     public class NpgsqlParameter : DbParameter, ICloneable
-#endif
     {
         #region Fields and Properties
 
@@ -86,9 +82,7 @@ namespace Npgsql
         {
             SourceColumn = string.Empty;
             Direction = ParameterDirection.Input;
-#if !NETSTANDARD1_3
             SourceVersion = DataRowVersion.Current;
-#endif
         }
 
         /// <summary>
@@ -187,7 +181,6 @@ namespace Npgsql
             SourceColumn = sourceColumn;
         }
 
-#if !NETSTANDARD1_3
         /// <summary>
         /// Initializes a new instance of the <see cref="NpgsqlParameter">NpgsqlParameter</see>.
         /// </summary>
@@ -256,7 +249,6 @@ namespace Npgsql
             Value = value;
             DbType = parameterType;
         }
-#endif
 
         #endregion
 
@@ -289,9 +281,7 @@ namespace Npgsql
         #region Value
 
         /// <inheritdoc />
-#if !NETSTANDARD1_3
         [TypeConverter(typeof(StringConverter)), Category("Data")]
-#endif
         [CanBeNull]
         public override object Value
         {
@@ -370,9 +360,7 @@ namespace Npgsql
         /// <value>One of the <see cref="NpgsqlTypes.NpgsqlDbType">NpgsqlDbType</see> values. The default is <b>Unknown</b>.</value>
         [DefaultValue(NpgsqlDbType.Unknown)]
         [Category("Data"), RefreshProperties(RefreshProperties.All)]
-#if !NETSTANDARD1_3
         [DbProviderSpecificTypeProperty(true)]
-#endif
         public NpgsqlDbType NpgsqlDbType
         {
             get
@@ -523,11 +511,9 @@ namespace Npgsql
         [Category("Data")]
         public sealed override string SourceColumn { get; set; }
 
-#if !NETSTANDARD1_3
         /// <inheritdoc />
         [Category("Data"), DefaultValue(DataRowVersion.Current)]
         public sealed override DataRowVersion SourceVersion { get; set; }
-#endif
 
         /// <inheritdoc />
         public sealed override bool SourceColumnNullMapping { get; set; }
@@ -631,9 +617,7 @@ namespace Npgsql
                 IsNullable = IsNullable,
                 _name = _name,
                 SourceColumn = SourceColumn,
-#if !NETSTANDARD1_3
                 SourceVersion = SourceVersion,
-#endif
                 _value = _value,
                 _npgsqlValue = _npgsqlValue,
                 SourceColumnNullMapping = SourceColumnNullMapping,
@@ -641,9 +625,8 @@ namespace Npgsql
             return clone;
         }
 
-#if !NETSTANDARD1_3
         object ICloneable.Clone() => Clone();
-#endif
+      
         #endregion
     }
 }

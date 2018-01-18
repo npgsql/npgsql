@@ -21,8 +21,6 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-#if !NETSTANDARD1_3
-
 using System;
 using System.Data;
 using System.Globalization;
@@ -552,4 +550,3 @@ and n.nspname not in ('pg_catalog', 'pg_toast')");
         #endregion Reserved Keywords
     }
 }
-#endif

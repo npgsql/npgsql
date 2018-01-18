@@ -9,9 +9,7 @@ using System.Linq;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandlers;
-#if !NETSTANDARD1_3
 using System.Transactions;
-#endif
 
 namespace Npgsql.Schema
 {
@@ -119,12 +117,8 @@ ORDER BY attnum";
                     ? GenerateColumnsQuery(columnFieldFilter)
                     : GenerateOldColumnsQuery(columnFieldFilter);
 
-#if NETSTANDARD1_3
-                using (var connection = _connection.Clone())
-#else
                 using (new TransactionScope(TransactionScopeOption.Suppress))
                 using (var connection = (NpgsqlConnection)((ICloneable)_connection).Clone())
-#endif
                 {
                     connection.Open();
 

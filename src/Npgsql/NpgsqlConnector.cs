@@ -495,11 +495,9 @@ namespace Npgsql
                     return username;
             }
 
-#if !NETSTANDARD1_3
             username = Environment.UserName;
             if (!string.IsNullOrEmpty(username))
                 return username;
-#endif
 
             username = Environment.GetEnvironmentVariable("USERNAME") ?? Environment.GetEnvironmentVariable("USER");
             if (!string.IsNullOrEmpty(username))
@@ -572,16 +570,10 @@ namespace Npgsql
                         else
                         {
                             var sslStream = new SslStream(_stream, false, certificateValidationCallback);
-#if NETSTANDARD1_3
-                            // CoreCLR removed sync methods from SslStream, see https://github.com/dotnet/corefx/pull/4868.
-                            // Consider exactly what to do here.
-                            sslStream.AuthenticateAsClientAsync(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, Settings.CheckCertificateRevocation).Wait();
-#else
                             if (async)
                                 await sslStream.AuthenticateAsClientAsync(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, Settings.CheckCertificateRevocation);
                             else
                                 sslStream.AuthenticateAsClient(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, Settings.CheckCertificateRevocation);
-#endif
                             _stream = sslStream;
                         }
                         timeout.Check();
@@ -627,14 +619,9 @@ namespace Npgsql
             }
             else
             {
-#if NETSTANDARD1_3
-                // .NET Standard 1.3 didn't have sync DNS methods
-                endpoints = Dns.GetHostAddressesAsync(Host).Result.Select(a => new IPEndPoint(a, Port)).ToArray();
-#else
                 // Note that there aren't any timeoutable DNS methods, and we want to use sync-only
                 // methods (not to rely on any TP threads etc.)
                 endpoints = Dns.GetHostAddresses(Host).Select(a => new IPEndPoint(a, Port)).ToArray();
-#endif
                 timeout.Check();
             }
 
@@ -741,11 +728,7 @@ namespace Npgsql
                 Log.Trace($"Attempting to connect to {endpoint}");
                 var protocolType = endpoint.AddressFamily == AddressFamily.InterNetwork ? ProtocolType.Tcp : ProtocolType.IP;
                 var socket = new Socket(endpoint.AddressFamily, SocketType.Stream, protocolType);
-#if NETSTANDARD1_3
-                var connectTask = socket.ConnectAsync(endpoint);
-#else
                 var connectTask = Task.Factory.FromAsync(socket.BeginConnect, socket.EndConnect, endpoint, null);
-#endif
                 try
                 {
                     try
