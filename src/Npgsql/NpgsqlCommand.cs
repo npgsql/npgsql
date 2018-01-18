@@ -786,102 +786,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             }
         }
 
-        async ValueTask<NpgsqlDataReader> Execute(CommandBehavior behavior, bool async, CancellationToken cancellationToken)
-        {
-            ValidateParameters();
-            if ((behavior & CommandBehavior.SequentialAccess) != 0 && Parameters.HasOutputParameters)
-                throw new NotSupportedException("Output parameters aren't supported with SequentialAccess");
-
-            var connector = Connection.Connector;
-            Debug.Assert(connector != null);
-
-            if (IsExplicitlyPrepared)
-            {
-                Debug.Assert(_connectorPreparedOn != null);
-                if (_connectorPreparedOn != Connection.Connector)
-                {
-                    // The command was prepared, but since then the connector has changed. Detach all prepared statements.
-                    foreach (var s in _statements)
-                        s.PreparedStatement = null;
-                    ResetExplicitPreparation();
-                    ProcessRawQuery();
-                }
-            }
-            else
-            {
-                ProcessRawQuery();
-            }
-
-            State = CommandState.InProgress;
-            try
-            {
-                if (Log.IsEnabled(NpgsqlLogLevel.Debug))
-                    LogCommand();
-                Task sendTask;
-
-                // If a cancellation is in progress, wait for it to "complete" before proceeding (#615)
-                lock (connector.CancelLock) { }
-
-                connector.UserTimeout = CommandTimeout * 1000;
-
-                if ((behavior & CommandBehavior.SchemaOnly) == 0)
-                {
-                    if (connector.Settings.MaxAutoPrepare > 0)
-                    {
-                        foreach (var statement in _statements)
-                        {
-                            // If this statement isn't prepared, see if it gets implicitly prepared.
-                            // Note that this may return null (not enough usages for automatic preparation).
-                            if (!statement.IsPrepared)
-                                statement.PreparedStatement =
-                                    connector.PreparedStatementManager.TryGetAutoPrepared(statement);
-                            if (statement.PreparedStatement != null)
-                                statement.PreparedStatement.LastUsed = DateTime.UtcNow;
-                        }
-                        _connectorPreparedOn = connector;
-                    }
-
-                    // We do not wait for the entire send to complete before proceeding to reading -
-                    // the sending continues in parallel with the user's reading. Waiting for the
-                    // entire send to complete would trigger a deadlock for multistatement commands,
-                    // where PostgreSQL sends large results for the first statement, while we're sending large
-                    // parameter data for the second. See #641.
-                    // Instead, all sends for non-first statements and for non-first buffers are performed
-                    // asynchronously (even if the user requested sync), in a special synchronization context
-                    // to prevents a dependency on the thread pool (which would also trigger deadlocks).
-                    // The WriteBuffer notifies this command when the first buffer flush occurs, so that the
-                    // send functions can switch to the special async mode when needed.
-                    sendTask = SendExecute(async);
-                }
-                else
-                {
-                    sendTask = SendExecuteSchemaOnly(async);
-                }
-
-                // The following is a hack. It raises an exception if one was thrown in the first phases
-                // of the send (i.e. in parts of the send that executed synchronously). Exceptions may
-                // still happen later and aren't properly handled. See #1323.
-                if (sendTask.IsFaulted)
-                    sendTask.GetAwaiter().GetResult();
-
-                //var reader = new NpgsqlDataReader(this, behavior, _statements, sendTask);
-                var reader = (behavior & CommandBehavior.SequentialAccess) == 0
-                    ? (NpgsqlDataReader)new NpgsqlDefaultDataReader(this, behavior, _statements, sendTask)
-                    : new NpgsqlSequentialDataReader(this, behavior, _statements, sendTask);
-                connector.CurrentReader = reader;
-                if (async)
-                    await reader.NextResultAsync(cancellationToken);
-                else
-                    reader.NextResult();
-                return reader;
-            }
-            catch
-            {
-                State = CommandState.Idle;
-                throw;
-            }
-        }
-
         #endregion
 
         #region Message Creation / Population
@@ -1120,10 +1024,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         async Task<int> ExecuteNonQuery(bool async, CancellationToken cancellationToken)
         {
-            var connector = CheckReadyAndGetConnector();
-            using (connector.StartUserAction(this))
-            using (cancellationToken.Register(cmd => ((NpgsqlCommand)cmd).Cancel(), this))
-            using (var reader = await Execute(CommandBehavior.Default, async, cancellationToken))
+            using (var reader = await ExecuteDbDataReader(CommandBehavior.Default, async, cancellationToken))
             {
                 while (async ? await reader.NextResultAsync(cancellationToken) : reader.NextResult()) {}
                 reader.Close();
@@ -1162,13 +1063,10 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         [ItemCanBeNull]
         async ValueTask<object> ExecuteScalar(bool async, CancellationToken cancellationToken)
         {
-            var connector = CheckReadyAndGetConnector();
             var behavior = CommandBehavior.SingleRow;
             if (!Parameters.HasOutputParameters)
                 behavior |= CommandBehavior.SequentialAccess;
-            using (connector.StartUserAction(this))
-            using (cancellationToken.Register(cmd => ((NpgsqlCommand)cmd).Cancel(), this))
-            using (var reader = await Execute(behavior, async, cancellationToken))
+            using (var reader = await ExecuteDbDataReader(behavior, async, cancellationToken))
                 return reader.Read() && reader.FieldCount != 0 ? reader.GetValue(0) : null;
         }
 
@@ -1216,7 +1114,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         [NotNull]
         protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior) => ExecuteDbDataReader(behavior, false, CancellationToken.None).GetAwaiter().GetResult();
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         async ValueTask<DbDataReader> ExecuteDbDataReader(CommandBehavior behavior, bool async, CancellationToken cancellationToken)
         {
             var connector = CheckReadyAndGetConnector();
@@ -1224,10 +1121,92 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             try
             {
                 using (cancellationToken.Register(cmd => ((NpgsqlCommand)cmd).Cancel(), this))
-                    return await Execute(behavior, async, cancellationToken);
+                {
+                    ValidateParameters();
+                    if ((behavior & CommandBehavior.SequentialAccess) != 0 && Parameters.HasOutputParameters)
+                        throw new NotSupportedException("Output parameters aren't supported with SequentialAccess");
+
+                    if (IsExplicitlyPrepared)
+                    {
+                        Debug.Assert(_connectorPreparedOn != null);
+                        if (_connectorPreparedOn != Connection.Connector)
+                        {
+                            // The command was prepared, but since then the connector has changed. Detach all prepared statements.
+                            foreach (var s in _statements)
+                                s.PreparedStatement = null;
+                            ResetExplicitPreparation();
+                            ProcessRawQuery();
+                        }
+                    }
+                    else
+                        ProcessRawQuery();
+
+                    State = CommandState.InProgress;
+
+                    if (Log.IsEnabled(NpgsqlLogLevel.Debug))
+                        LogCommand();
+                    Task sendTask;
+
+                    // If a cancellation is in progress, wait for it to "complete" before proceeding (#615)
+                    lock (connector.CancelLock) { }
+
+                    connector.UserTimeout = CommandTimeout * 1000;
+
+                    if ((behavior & CommandBehavior.SchemaOnly) == 0)
+                    {
+                        if (connector.Settings.MaxAutoPrepare > 0)
+                        {
+                            foreach (var statement in _statements)
+                            {
+                                // If this statement isn't prepared, see if it gets implicitly prepared.
+                                // Note that this may return null (not enough usages for automatic preparation).
+                                if (!statement.IsPrepared)
+                                    statement.PreparedStatement =
+                                        connector.PreparedStatementManager.TryGetAutoPrepared(statement);
+                                if (statement.PreparedStatement != null)
+                                    statement.PreparedStatement.LastUsed = DateTime.UtcNow;
+                            }
+                            _connectorPreparedOn = connector;
+                        }
+
+                        // We do not wait for the entire send to complete before proceeding to reading -
+                        // the sending continues in parallel with the user's reading. Waiting for the
+                        // entire send to complete would trigger a deadlock for multistatement commands,
+                        // where PostgreSQL sends large results for the first statement, while we're sending large
+                        // parameter data for the second. See #641.
+                        // Instead, all sends for non-first statements and for non-first buffers are performed
+                        // asynchronously (even if the user requested sync), in a special synchronization context
+                        // to prevents a dependency on the thread pool (which would also trigger deadlocks).
+                        // The WriteBuffer notifies this command when the first buffer flush occurs, so that the
+                        // send functions can switch to the special async mode when needed.
+                        sendTask = SendExecute(async);
+                    }
+                    else
+                    {
+                        sendTask = SendExecuteSchemaOnly(async);
+                    }
+
+                    // The following is a hack. It raises an exception if one was thrown in the first phases
+                    // of the send (i.e. in parts of the send that executed synchronously). Exceptions may
+                    // still happen later and aren't properly handled. See #1323.
+                    if (sendTask.IsFaulted)
+                        sendTask.GetAwaiter().GetResult();
+
+                    //var reader = new NpgsqlDataReader(this, behavior, _statements, sendTask);
+                    var reader = (behavior & CommandBehavior.SequentialAccess) == 0
+                        ? (NpgsqlDataReader)new NpgsqlDefaultDataReader(this, behavior, _statements, sendTask)
+                        : new NpgsqlSequentialDataReader(this, behavior, _statements, sendTask);
+                    connector.CurrentReader = reader;
+                    if (async)
+                        await reader.NextResultAsync(cancellationToken);
+                    else
+                        reader.NextResult();
+                    return reader;
+                }
             }
             catch
             {
+                State = CommandState.Idle;
                 Connection.Connector?.EndUserAction();
 
                 // Close connection if requested even when there is an error.
