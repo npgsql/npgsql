@@ -1383,7 +1383,7 @@ namespace Npgsql
         /// <summary>
         /// The server is an Amazon Redshift instance.
         /// </summary>
-        Redshift,
+        Redshift
     }
 
     /// <summary>

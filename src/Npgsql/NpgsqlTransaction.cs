@@ -101,7 +101,8 @@ namespace Npgsql
             _connector.Transaction = this;
             _connector.TransactionStatus = TransactionStatus.Pending;
 
-            switch (isolationLevel) {
+            switch (isolationLevel)
+            {
                 case IsolationLevel.RepeatableRead:
                 case IsolationLevel.Snapshot:
                     _connector.PrependInternalMessage(PregeneratedMessage.BeginTrans);

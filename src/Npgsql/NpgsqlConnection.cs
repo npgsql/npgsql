@@ -506,6 +506,12 @@ namespace Npgsql
             var connector = CheckReadyAndGetConnector();
             Debug.Assert(Connector != null);
 
+            // If connected to a backend that does not support transactions, ignore the
+            // call to BeginTransaction silently. Some layers (e.g. Entity Framework) may
+            // automatically start transactions and we want to avoid errors for that.
+            if (!connector.SupportsTransactions)
+                return null;
+
             // Note that beginning a transaction doesn't actually send anything to the backend
             // (only prepends), so strictly speaking we don't have to start a user action.
             // However, we do this for consistency as if we did (for the checks and exceptions)

@@ -302,6 +302,8 @@ namespace Npgsql.TypeMapping
             ResetMappings();
             BindTypes();
             IsModified = false;
+
+            DatabaseInfo.AddVendorSpecificTypeMappings(this);
         }
 
         #endregion Mapping management
@@ -324,6 +326,8 @@ namespace Npgsql.TypeMapping
 
             mapper.DatabaseInfo = database;
             mapper.BindTypes();
+
+            database.AddVendorSpecificTypeMappings(mapper);
         }
 
         void BindTypes()
@@ -371,7 +375,7 @@ namespace Npgsql.TypeMapping
             var found = (i == -1)
                 ? DatabaseInfo.ByName.TryGetValue(pgName, out var pgType)  // No dot, partial type name
                 : DatabaseInfo.ByFullName.TryGetValue(pgName, out pgType); // Full type name with namespace
-
+            
             if (!found)
             {
                 // We didn't find the type.

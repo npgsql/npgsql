@@ -11,6 +11,7 @@ using JetBrains.Annotations;
 using Npgsql.Logging;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
+using Npgsql.TypeMapping;
 
 namespace Npgsql
 {
@@ -43,7 +44,9 @@ namespace Npgsql
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
-        DatabaseInfo(string host, int port, string databaseName)
+        static readonly DatabaseInfoFactory Factory = new DatabaseInfoFactory();
+
+        internal DatabaseInfo(string host, int port, string databaseName)
         {
             Host = host;
             Port = port;
@@ -58,8 +61,7 @@ namespace Npgsql
 
         internal static async Task<DatabaseInfo> Load(NpgsqlConnector connector, NpgsqlTimeout timeout, bool async)
         {
-            var csb = new NpgsqlConnectionStringBuilder(connector.ConnectionString);
-            var db = new DatabaseInfo(csb.Host, csb.Port, csb.Database);
+            var db = Factory.FromConnectionString(connector);
             await db.LoadBackendTypes(connector, timeout, async);
             return db;
         }
@@ -99,7 +101,7 @@ WHERE
   (a.typname IN ('record', 'void') AND a.typtype = 'p')
 ORDER BY ord";
 
-        async Task LoadBackendTypes(NpgsqlConnector connector, NpgsqlTimeout timeout, bool async)
+        protected virtual async Task LoadBackendTypes(NpgsqlConnector connector, NpgsqlTimeout timeout, bool async)
         {
             var commandTimeout = 0;  // Default to infinity
             if (timeout.IsSet)
@@ -124,7 +126,7 @@ ORDER BY ord";
             }
         }
 
-        void LoadBackendType(DbDataReader reader, NpgsqlConnector connector)
+        protected void LoadBackendType(DbDataReader reader, NpgsqlConnector connector)
         {
             var ns = reader.GetString(reader.GetOrdinal("nspname"));
             var name = reader.GetString(reader.GetOrdinal("typname"));
@@ -205,7 +207,7 @@ ORDER BY ord";
         /// Attempts to load the given type as a composite type. Composite types aren't eagerly loaded as the other
         /// types.
         /// </summary>
-        internal bool TryGetComposite(string pgName, NpgsqlConnection connection, out PostgresCompositeType compositeType)
+        internal virtual bool TryGetComposite(string pgName, NpgsqlConnection connection, out PostgresCompositeType compositeType)
         {
             // First check if the composite type definition has already been loaded from the database
             if (pgName.IndexOf('.') == -1
@@ -326,6 +328,22 @@ WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND ns.nspname = @sc
                 ? null
                 : pgType;
 
+        }
+
+        /// <summary>
+        /// Allow inherited classes to add type mappings for a specific PostgreSQL-like database. (like CrateDB)
+        /// </summary>
+        internal virtual void AddVendorSpecificTypeMappings(INpgsqlTypeMapper mapper) { }
+    }
+
+    class DatabaseInfoFactory
+    {
+        public DatabaseInfo FromConnectionString(NpgsqlConnector connector)
+        {
+            var csb = new NpgsqlConnectionStringBuilder(connector.ConnectionString);
+            if (connector.IsCrateDB)
+                return new Compatibility.CrateDB.CrateDBDatabaseInfo(csb.Host, csb.Port, csb.Database);
+            return new DatabaseInfo(csb.Host, csb.Port, csb.Database);
         }
     }
 }
