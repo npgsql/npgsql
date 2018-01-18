@@ -318,8 +318,22 @@ namespace Npgsql
             case ReaderState.BeforeResult:
             case ReaderState.InResult:
                 await ConsumeRow(async);
-                var completedMsg = await Connector.SkipUntil(BackendMessageCode.CompletedResponse, BackendMessageCode.EmptyQueryResponse, async);
-                ProcessMessage(completedMsg);
+                while (true)
+                {
+                    var completedMsg = await Connector.ReadMessage(async, DataRowLoadingMode.Skip);
+                    switch (completedMsg.Code)
+                    {
+                    case BackendMessageCode.CompletedResponse:
+                    case BackendMessageCode.EmptyQueryResponse:
+                        ProcessMessage(completedMsg);
+                        break;
+                    default:
+                        continue;
+                    }
+
+                    break;
+                }
+
                 break;
 
             case ReaderState.BetweenResults:
