@@ -39,6 +39,7 @@ using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
 using Npgsql.Logging;
 using NpgsqlTypes;
+using static Npgsql.Statics;
 
 namespace Npgsql
 {
@@ -504,8 +505,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                 foreach (var statement in _statements)
                 {
-                    connector.ReadExpecting<ParseCompleteMessage>();
-                    var paramTypeOIDs = connector.ReadExpecting<ParameterDescriptionMessage>().TypeOIDs;
+                    Expect<ParseCompleteMessage>(connector.ReadMessage());
+                    var paramTypeOIDs = Expect<ParameterDescriptionMessage>(connector.ReadMessage()).TypeOIDs;
 
                     if (statement.InputParameters.Count != paramTypeOIDs.Count)
                     {
@@ -538,7 +539,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     }
                 }
 
-                connector.ReadExpecting<ReadyForQueryMessage>();
+                Expect<ReadyForQueryMessage>(connector.ReadMessage());
                 sendTask.GetAwaiter().GetResult();
             }
         }
@@ -621,13 +622,13 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     Debug.Assert(pStatement.Description == null);
                     if (pStatement.StatementBeingReplaced != null)
                     {
-                        connector.ReadExpecting<CloseCompletedMessage>();
+                        Expect<CloseCompletedMessage>(await connector.ReadMessage(async));
                         pStatement.StatementBeingReplaced.CompleteUnprepare();
                         pStatement.StatementBeingReplaced = null;
                     }
 
-                    await connector.ReadExpecting<ParseCompleteMessage>(async);
-                    await connector.ReadExpecting<ParameterDescriptionMessage>(async);
+                    Expect<ParseCompleteMessage>(await connector.ReadMessage(async));
+                    Expect<ParameterDescriptionMessage>(await connector.ReadMessage(async));
                     var msg = await connector.ReadMessage(async);
                     switch (msg.Code)
                     {
@@ -646,7 +647,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     isFirst = false;
                 }
 
-                await connector.ReadExpecting<ReadyForQueryMessage>(async);
+                Expect<ReadyForQueryMessage>(await connector.ReadMessage(async));
 
                 if (async)
                     await sendTask;
@@ -672,12 +673,12 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 var sendTask = SendClose(false);
                 foreach (var statement in _statements.Where(s => s.PreparedStatement?.State == PreparedState.BeingUnprepared))
                 {
-                    connector.ReadExpecting<CloseCompletedMessage>();
+                    Expect<CloseCompletedMessage>(connector.ReadMessage());
                     Debug.Assert(statement.PreparedStatement != null);
                     statement.PreparedStatement.CompleteUnprepare();
                     statement.PreparedStatement = null;
                 }
-                connector.ReadExpecting<ReadyForQueryMessage>();
+                Expect<ReadyForQueryMessage>(connector.ReadMessage());
                 sendTask.GetAwaiter().GetResult();
             }
         }

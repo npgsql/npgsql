@@ -41,6 +41,7 @@ using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
 using Npgsql.Logging;
 using Npgsql.TypeMapping;
+using static Npgsql.Statics;
 
 namespace Npgsql
 {
@@ -1129,27 +1130,6 @@ namespace Npgsql
             }
         }
 
-        /// <summary>
-        /// Reads a single message, expecting it to be of type <typeparamref name="T"/>.
-        /// Any other message causes an exception to be raised and the connector to be broken.
-        /// Asynchronous messages (e.g. Notice) are treated and ignored. ErrorResponses raise an
-        /// exception but do not cause the connector to break.
-        /// </summary>
-        internal async ValueTask<T> ReadExpecting<T>(bool async) where T : class, IBackendMessage
-        {
-            var msg = await ReadMessage(async);
-            var asExpected = msg as T;
-            if (asExpected == null)
-            {
-                Break();
-                throw new NpgsqlException($"Received backend message {msg.Code} while expecting {typeof(T).Name}. Please file a bug.");
-            }
-            return asExpected;
-        }
-
-        internal T ReadExpecting<T>() where T : class, IBackendMessage
-            => ReadExpecting<T>(false).GetAwaiter().GetResult();
-
         #endregion Backend message processing
 
         #region Transactions
@@ -1997,8 +1977,8 @@ namespace Npgsql
 
             await message.Write(WriteBuffer, async);
             await WriteBuffer.Flush(async);
-            await ReadExpecting<CommandCompleteMessage>(async);
-            await ReadExpecting<ReadyForQueryMessage>(async);
+            Expect<CommandCompleteMessage>(await ReadMessage(async));
+            Expect<ReadyForQueryMessage>(await ReadMessage(async));
         }
 
         #endregion

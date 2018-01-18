@@ -41,6 +41,7 @@ using Npgsql.Schema;
 using Npgsql.TypeHandlers;
 using Npgsql.TypeHandling;
 using NpgsqlTypes;
+using static Npgsql.Statics;
 
 #pragma warning disable CA2222 // Do not decrease inherited member visibility
 
@@ -348,7 +349,7 @@ namespace Npgsql
                 var statement = _statements[StatementIndex];
                 if (statement.IsPrepared)
                 {
-                    await Connector.ReadExpecting<BindCompleteMessage>(async);
+                    Expect<BindCompleteMessage>(await Connector.ReadMessage(async));
                     RowDescription = statement.Description;
                 }
                 else  // Non-prepared flow
@@ -360,14 +361,14 @@ namespace Npgsql
                         Debug.Assert(pStatement.Description == null);
                         if (pStatement.StatementBeingReplaced != null)
                         {
-                            await Connector.ReadExpecting<CloseCompletedMessage>(async);
+                            Expect<CloseCompletedMessage>(await Connector.ReadMessage(async));
                             pStatement.StatementBeingReplaced.CompleteUnprepare();
                             pStatement.StatementBeingReplaced = null;
                         }
                     }
 
-                    await Connector.ReadExpecting<ParseCompleteMessage>(async);
-                    await Connector.ReadExpecting<BindCompleteMessage>(async);
+                    Expect<ParseCompleteMessage>(await Connector.ReadMessage(async));
+                    Expect<BindCompleteMessage>(await Connector.ReadMessage(async));
                     msg = await Connector.ReadMessage(async);
                     switch (msg.Code)
                     {
@@ -422,7 +423,7 @@ namespace Npgsql
             }
 
             // There are no more queries, we're done. Read to the RFQ.
-            ProcessMessage(Connector.ReadExpecting<ReadyForQueryMessage>());
+            ProcessMessage(Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async)));
             RowDescription = null;
             return false;
         }
@@ -446,8 +447,8 @@ namespace Npgsql
                 }
                 else
                 {
-                    await Connector.ReadExpecting<ParseCompleteMessage>(async);
-                    await Connector.ReadExpecting<ParameterDescriptionMessage>(async);
+                    Expect<ParseCompleteMessage>(await Connector.ReadMessage(async));
+                    Expect<ParameterDescriptionMessage>(await Connector.ReadMessage(async));
                     var msg = await Connector.ReadMessage(async);
                     switch (msg.Code)
                     {
@@ -472,7 +473,7 @@ namespace Npgsql
             // There are no more queries, we're done. Read to the RFQ.
             if (!_statements.All(s => s.IsPrepared))
             {
-                ProcessMessage(await Connector.ReadExpecting<ReadyForQueryMessage>(async));
+                ProcessMessage(Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async)));
                 RowDescription = null;
             }
             return false;
