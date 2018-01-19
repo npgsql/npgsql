@@ -26,7 +26,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
@@ -46,6 +45,12 @@ namespace Npgsql
         internal readonly NpgsqlConnector Connector;
 
         internal Stream Underlying { private get; set; }
+
+        /// <summary>
+        /// Wraps SocketAsyncEventArgs for better async I/O as long as we're not doing SSL.
+        /// </summary>
+        [CanBeNull]
+        internal AwaitableSocket AwaitableSocket { private get; set; }
 
         /// <summary>
         /// The total byte length of the buffer.
@@ -110,8 +115,16 @@ namespace Npgsql
             try
             {
                 if (async)
-                    await Underlying.WriteAsync(_buf, 0, _writePosition);
-                else
+                {
+                    if (AwaitableSocket == null)  // SSL
+                        await Underlying.WriteAsync(_buf, 0, _writePosition);
+                    else  // Non-SSL async I/O, optimized
+                    {
+                        AwaitableSocket.SetBuffer(_buf, 0, _writePosition);
+                        await AwaitableSocket.SendAsync();
+                    }
+                }
+                else  // Sync I/O
                     Underlying.Write(_buf, 0, _writePosition);
             }
             catch (Exception e)

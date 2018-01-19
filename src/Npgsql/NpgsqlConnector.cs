@@ -586,6 +586,12 @@ namespace Npgsql
                     }
                 }
 
+                if (!IsSecure)
+                {
+                    WriteBuffer.AwaitableSocket = new AwaitableSocket(new SocketAsyncEventArgs(), _socket);
+                    ReadBuffer.AwaitableSocket = new AwaitableSocket(new SocketAsyncEventArgs(), _socket);
+                }
+
                 Log.Trace($"Socket connected to {Host}:{Port}");
             }
             catch
