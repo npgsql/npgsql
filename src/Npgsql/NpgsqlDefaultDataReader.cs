@@ -4,6 +4,7 @@ using System.Data;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -175,18 +176,23 @@ namespace Npgsql
             CheckRowAndOrdinal(column);
 
             SeekToColumn(column);
-            GetValueHandlers<T>(out var read, out var _, out var canHandleNulls);
             if (ColumnLen == -1)
             {
-                if (canHandleNulls)
+                if (NullableHandler<T>.Exists)
                     return default;
-                throw new InvalidCastException("Column is null");
+                else
+                    throw new InvalidCastException("Column is null");
             }
 
             var fieldDescription = RowDescription[column];
             try
             {
-                return read(fieldDescription, Buffer, ColumnLen);
+                if (NullableHandler<T>.Exists)
+                    return NullableHandler<T>.Read(Buffer, ColumnLen, fieldDescription);
+
+                return typeof(T) == typeof(object)
+                    ? (T)fieldDescription.Handler.ReadAsObject(Buffer, ColumnLen, fieldDescription)
+                    : fieldDescription.Handler.Read<T>(Buffer, ColumnLen, fieldDescription);
             }
             catch (NpgsqlSafeReadException e)
             {

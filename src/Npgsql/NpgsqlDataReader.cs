@@ -632,71 +632,42 @@ namespace Npgsql
 
         #region Generic value getters
 
-        internal delegate T ReadDelegate<T>(FieldDescription fieldDescription, NpgsqlReadBuffer buffer, int columnLen);
+        internal delegate T ReadDelegate<T>(NpgsqlReadBuffer buffer, int columnLen, FieldDescription fieldDescription);
 
-        internal delegate ValueTask<T> ReadAsyncDelegate<T>(FieldDescription fieldDescription, NpgsqlReadBuffer buffer, int columnLen, bool async);
+        internal delegate ValueTask<T> ReadAsyncDelegate<T>(NpgsqlReadBuffer buffer, int columnLen, bool async, FieldDescription fieldDescription);
 
-        class NullableHandler
+        internal static class NullableHandler<T>
         {
-            readonly MethodInfo _readMethod = new ReadDelegate<int?>(Read<int>).GetMethodInfo().GetGenericMethodDefinition();
-            readonly MethodInfo _readAsyncMethod = new ReadAsyncDelegate<int?>(Read<int>).GetMethodInfo().GetGenericMethodDefinition();
+            public static readonly ReadDelegate<T> Read;
+            public static readonly ReadAsyncDelegate<T> ReadAsync;
+            public static bool Exists;
 
-            static T? Read<T>(FieldDescription fieldDescription, NpgsqlReadBuffer buffer, int columnLen) where T : struct
-                => fieldDescription.Handler.Read<T>(buffer, columnLen, fieldDescription);
-
-            static async ValueTask<T?> Read<T>(FieldDescription fieldDescription, NpgsqlReadBuffer buffer, int columnLen, bool async) where T : struct
-                => await fieldDescription.Handler.Read<T>(buffer, columnLen, async, fieldDescription);
-
-            readonly ConcurrentDictionary<Type, (Delegate, Delegate)> _handlerCache = new ConcurrentDictionary<Type, (Delegate, Delegate)>();
-
-            internal static readonly NullableHandler Instance = new NullableHandler();
-
-            internal bool TryGet<T>(out ReadDelegate<T> read, out ReadAsyncDelegate<T> readAsync)
+            static NullableHandler()
             {
-                var nullableType = typeof(T);
-                if (_handlerCache.TryGetValue(nullableType, out var handlers))
-                    goto ReturnHandlers;
-
-                var underlyingType = Nullable.GetUnderlyingType(nullableType);
-                if (underlyingType == null)
-                {
-                    read = null;
-                    readAsync = null;
-                    return false;
-                }
+                var underlyingType = Nullable.GetUnderlyingType(typeof(T));
+                if (underlyingType == null) return;
                 
-                handlers = _handlerCache.GetOrAdd(nullableType, (
-                    _readMethod.MakeGenericMethod(underlyingType).CreateDelegate(typeof(ReadDelegate<T>)),
-                    _readAsyncMethod.MakeGenericMethod(underlyingType).CreateDelegate(typeof(ReadAsyncDelegate<T>))));
-
-                ReturnHandlers:
-                read = (ReadDelegate<T>)handlers.Item1;
-                readAsync = (ReadAsyncDelegate<T>)handlers.Item2;
-                return true;
+                NullableHandler.Construct(out Read, out ReadAsync);
+                Exists = true;
             }
         }
 
-        internal static void GetValueHandlers<T>(out ReadDelegate<T> read, out ReadAsyncDelegate<T> readAsync, out bool canHandleNulls)
+        static class NullableHandler
         {
-            if (default(T) != null)
-                canHandleNulls = false;
-            else
-            if (canHandleNulls = NullableHandler.Instance.TryGet(out read, out readAsync))
-                return;
+            static readonly MethodInfo _readNullableMethod = new ReadDelegate<int?>(ReadNullable<int>).GetMethodInfo().GetGenericMethodDefinition();
+            static readonly MethodInfo _readNullableAsyncMethod = new ReadAsyncDelegate<int?>(ReadNullable<int>).GetMethodInfo().GetGenericMethodDefinition();
 
-            if (typeof(T) == typeof(object))
+            static T? ReadNullable<T>(NpgsqlReadBuffer buffer, int columnLen, FieldDescription fieldDescription) where T : struct
+                => fieldDescription.Handler.Read<T>(buffer, columnLen, fieldDescription);
+
+            static async ValueTask<T?> ReadNullable<T>(NpgsqlReadBuffer buffer, int columnLen, bool async, FieldDescription fieldDescription) where T : struct
+                => await fieldDescription.Handler.Read<T>(buffer, columnLen, async, fieldDescription);
+
+            public static void Construct<T>(out ReadDelegate<T> read, out ReadAsyncDelegate<T> readAsync)
             {
-                read = (fieldDescription, buffer, columnLen)
-                    => (T)fieldDescription.Handler.ReadAsObject(buffer, columnLen, fieldDescription);
-                readAsync = async (fieldDescription, buffer, columnLen, async)
-                    => (T)await fieldDescription.Handler.ReadAsObject(buffer, columnLen, async, fieldDescription);
-            }
-            else
-            {
-                read = (fieldDescription, buffer, columnLen)
-                    => fieldDescription.Handler.Read<T>(buffer, columnLen, fieldDescription);
-                readAsync = (fieldDescription, buffer, columnLen, async)
-                    => fieldDescription.Handler.Read<T>(buffer, columnLen, async, fieldDescription);
+                var underlyingType = Nullable.GetUnderlyingType(typeof(T));
+                read = (ReadDelegate<T>)_readNullableMethod.MakeGenericMethod(underlyingType).CreateDelegate(typeof(ReadDelegate<T>));
+                readAsync = (ReadAsyncDelegate<T>)_readNullableAsyncMethod.MakeGenericMethod(underlyingType).CreateDelegate(typeof(ReadAsyncDelegate<T>));
             }
         }
 
