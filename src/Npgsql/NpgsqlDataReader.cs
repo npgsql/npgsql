@@ -640,16 +640,7 @@ namespace Npgsql
         {
             public static readonly ReadDelegate<T> Read;
             public static readonly ReadAsyncDelegate<T> ReadAsync;
-            public static bool Exists;
-
-            static NullableHandler()
-            {
-                var underlyingType = Nullable.GetUnderlyingType(typeof(T));
-                if (underlyingType == null) return;
-                
-                NullableHandler.Construct(out Read, out ReadAsync);
-                Exists = true;
-            }
+            public static bool Exists = NullableHandler.Construct(out Read, out ReadAsync);
         }
 
         static class NullableHandler
@@ -663,11 +654,21 @@ namespace Npgsql
             static async ValueTask<T?> ReadNullable<T>(NpgsqlReadBuffer buffer, int columnLen, bool async, FieldDescription fieldDescription) where T : struct
                 => await fieldDescription.Handler.Read<T>(buffer, columnLen, async, fieldDescription);
 
-            public static void Construct<T>(out ReadDelegate<T> read, out ReadAsyncDelegate<T> readAsync)
+            public static bool Construct<T>(out ReadDelegate<T> read, out ReadAsyncDelegate<T> readAsync)
             {
                 var underlyingType = Nullable.GetUnderlyingType(typeof(T));
-                read = (ReadDelegate<T>)_readNullableMethod.MakeGenericMethod(underlyingType).CreateDelegate(typeof(ReadDelegate<T>));
-                readAsync = (ReadAsyncDelegate<T>)_readNullableAsyncMethod.MakeGenericMethod(underlyingType).CreateDelegate(typeof(ReadAsyncDelegate<T>));
+                if (underlyingType != null)
+                {
+                    read = (ReadDelegate<T>)_readNullableMethod.MakeGenericMethod(underlyingType).CreateDelegate(typeof(ReadDelegate<T>));
+                    readAsync = (ReadAsyncDelegate<T>)_readNullableAsyncMethod.MakeGenericMethod(underlyingType).CreateDelegate(typeof(ReadAsyncDelegate<T>));
+                    return true;
+                }
+                else
+                {
+                    read = null;
+                    readAsync = null;
+                    return false;
+                }
             }
         }
 
