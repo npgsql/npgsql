@@ -25,11 +25,10 @@ namespace Npgsql
         /// The number of columns in the current row
         /// </summary>
         int _column;
-        List<(int Offset, int Length)> _columns;
+        readonly List<(int Offset, int Length)> _columns = new List<(int Offset, int Length)>();
         int _dataMsgEnd;
 
-        internal NpgsqlDefaultDataReader(NpgsqlCommand command, CommandBehavior behavior, List<NpgsqlStatement> statements, Task sendTask)
-            : base(command, behavior, statements, sendTask) {}
+        internal NpgsqlDefaultDataReader(NpgsqlConnector connector) : base(connector) {}
 
         internal override ValueTask<IBackendMessage> ReadMessage(bool async)
             => Connector.ReadMessage(async);
@@ -161,9 +160,7 @@ namespace Npgsql
             Buffer.ReadPosition += 2;
 #endif
             _column = -1;
-            dataMsg.Columns.Clear();
-            // TODO: Don't do this every time
-            _columns = dataMsg.Columns;
+            _columns.Clear();
 
             // Initialize our columns array with the offset and length of the first column
             var len = Buffer.ReadInt32();

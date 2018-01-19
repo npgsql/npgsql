@@ -1265,6 +1265,30 @@ LANGUAGE plpgsql VOLATILE";
             }
         }
 
+        [Test]
+        public void ReaderIsReused()
+        {
+            using (var conn = OpenConnection())
+            {
+                NpgsqlDataReader reader1;
+
+                using (var cmd = new NpgsqlCommand("SELECT 8", conn))
+                using (reader1 = cmd.ExecuteReader(Behavior))
+                {
+                    reader1.Read();
+                    Assert.That(reader1.GetInt32(0), Is.EqualTo(8));
+                }
+
+                using (var cmd = new NpgsqlCommand("SELECT 9", conn))
+                using (var reader2 = cmd.ExecuteReader(Behavior))
+                {
+                    Assert.That(reader2, Is.SameAs(reader1));
+                    reader2.Read();
+                    Assert.That(reader2.GetInt32(0), Is.EqualTo(9));
+                }
+            }
+        }
+
         #endregion GetChars / GetTextReader
 
 #if DEBUG

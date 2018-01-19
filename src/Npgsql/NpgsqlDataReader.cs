@@ -58,16 +58,16 @@ namespace Npgsql
         , IDbColumnSchemaGenerator
 #endif
     {
-        internal NpgsqlCommand Command { get; }
-        internal readonly NpgsqlConnector Connector;
-        readonly NpgsqlConnection _connection;
+        internal NpgsqlCommand Command { get; private set; }
+        internal NpgsqlConnector Connector { get; }
+        NpgsqlConnection _connection;
 
         /// <summary>
         /// The behavior of the command with which this reader was executed.
         /// </summary>
-        protected readonly CommandBehavior Behavior;
+        protected CommandBehavior Behavior;
 
-        readonly Task _sendTask;
+        Task _sendTask;
 
         internal ReaderState State;
 
@@ -76,7 +76,7 @@ namespace Npgsql
         /// <summary>
         /// Holds the list of statements being executed by this reader.
         /// </summary>
-        readonly List<NpgsqlStatement> _statements;
+        List<NpgsqlStatement> _statements;
 
         /// <summary>
         /// The index of the current query resultset we're processing (within a multiquery)
@@ -122,16 +122,22 @@ namespace Npgsql
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
-        internal NpgsqlDataReader(NpgsqlCommand command, CommandBehavior behavior, List<NpgsqlStatement> statements, Task sendTask)
+        internal NpgsqlDataReader(NpgsqlConnector connector)
+        {
+            Connector = connector;
+        }
+
+        internal virtual void Init(NpgsqlCommand command, CommandBehavior behavior, List<NpgsqlStatement> statements, Task sendTask)
         {
             Command = command;
+            Debug.Assert(command.Connection == Connector.Connection);
             _connection = command.Connection;
-            Connector = _connection.Connector;
             Behavior = behavior;
             _statements = statements;
             StatementIndex = -1;
             _sendTask = sendTask;
             State = ReaderState.BetweenResults;
+            _recordsAffected = null;
         }
 
         #region Read

@@ -41,8 +41,6 @@ namespace Npgsql.BackendMessages
 
         internal int Length { get; private set; }
 
-        internal List<(int, int)> Columns { get; } = new List<(int, int)>();
-
         internal DataRowMessage Load(int len)
         {
             Length = len;

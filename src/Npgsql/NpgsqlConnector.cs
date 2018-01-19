@@ -260,6 +260,9 @@ namespace Npgsql
 
         #endregion
 
+        internal NpgsqlDefaultDataReader DefaultDataReader { get; }
+        internal NpgsqlSequentialDataReader SequentialDataReader { get; }
+
         #region Constructors
 
         internal NpgsqlConnector(NpgsqlConnection connection)
@@ -300,6 +303,9 @@ namespace Npgsql
                 _userLock = new SemaphoreSlim(1, 1);
                 _keepAliveTimer = new Timer(PerformKeepAlive, null, Timeout.Infinite, Timeout.Infinite);
             }
+
+            DefaultDataReader = new NpgsqlDefaultDataReader(this);
+            SequentialDataReader = new NpgsqlSequentialDataReader(this);
 
             // TODO: Not just for automatic preparation anymore...
             PreparedStatementManager = new PreparedStatementManager(this);

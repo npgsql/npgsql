@@ -1194,8 +1194,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                     //var reader = new NpgsqlDataReader(this, behavior, _statements, sendTask);
                     var reader = (behavior & CommandBehavior.SequentialAccess) == 0
-                        ? (NpgsqlDataReader)new NpgsqlDefaultDataReader(this, behavior, _statements, sendTask)
-                        : new NpgsqlSequentialDataReader(this, behavior, _statements, sendTask);
+                        ? (NpgsqlDataReader)connector.DefaultDataReader
+                        : connector.SequentialDataReader;
+                    reader.Init(this, behavior, _statements, sendTask);
                     connector.CurrentReader = reader;
                     if (async)
                         await reader.NextResultAsync(cancellationToken);
