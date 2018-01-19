@@ -42,20 +42,17 @@ namespace Npgsql.BackendMessages
     {
         public List<FieldDescription> Fields { get; }
         readonly Dictionary<string, int> _nameIndex;
-        readonly Dictionary<string, int> _caseInsensitiveNameIndex;
 
         internal RowDescriptionMessage()
         {
             Fields = new List<FieldDescription>();
-            _nameIndex = new Dictionary<string, int>(KanaWidthInsensitiveComparer.Instance);
-            _caseInsensitiveNameIndex = new Dictionary<string, int>(KanaWidthCaseInsensitiveComparer.Instance);
+            _nameIndex = new Dictionary<string, int>();
         }
 
         internal RowDescriptionMessage Load(NpgsqlReadBuffer buf, ConnectorTypeMapper typeMapper)
         {
             Fields.Clear();
             _nameIndex.Clear();
-            _caseInsensitiveNameIndex.Clear();
 
             var numFields = buf.ReadInt16();
             for (var i = 0; i != numFields; ++i)
@@ -75,11 +72,7 @@ namespace Npgsql.BackendMessages
 
                 Fields.Add(field);
                 if (!_nameIndex.ContainsKey(field.Name))
-                {
                     _nameIndex.Add(field.Name, i);
-                    if (!_caseInsensitiveNameIndex.ContainsKey(field.Name))
-                        _caseInsensitiveNameIndex.Add(field.Name, i);
-                }
             }
             return this;
         }
@@ -92,46 +85,17 @@ namespace Npgsql.BackendMessages
         /// Given a string name, returns the field's ordinal index in the row.
         /// </summary>
         internal int GetFieldIndex(string name)
-        {
-            if (_nameIndex.TryGetValue(name, out var ret) || _caseInsensitiveNameIndex.TryGetValue(name, out ret))
-                return ret;
-            throw new IndexOutOfRangeException("Field not found in row: " + name);
-        }
+            => _nameIndex.TryGetValue(name, out var ret)
+                ? ret
+                : throw new IndexOutOfRangeException("Field not found in row: " + name);
 
         /// <summary>
         /// Given a string name, returns the field's ordinal index in the row.
         /// </summary>
         internal bool TryGetFieldIndex(string name, out int fieldIndex)
-            => _nameIndex.TryGetValue(name, out fieldIndex) ||
-               _caseInsensitiveNameIndex.TryGetValue(name, out fieldIndex);
+            => _nameIndex.TryGetValue(name, out fieldIndex);
 
         public BackendMessageCode Code => BackendMessageCode.RowDescription;
-
-        #region Kana comparers
-
-        static readonly CompareInfo CompareInfo = CultureInfo.InvariantCulture.CompareInfo;
-
-        sealed class KanaWidthInsensitiveComparer : IEqualityComparer<string>
-        {
-            public static readonly KanaWidthInsensitiveComparer Instance = new KanaWidthInsensitiveComparer();
-            KanaWidthInsensitiveComparer() { }
-            public bool Equals([NotNull] string x, [NotNull] string y)
-                => CompareInfo.Compare(x, y, CompareOptions.IgnoreWidth) == 0;
-            public int GetHashCode([NotNull] string o)
-                => CompareInfo.GetSortKey(o, CompareOptions.IgnoreWidth).GetHashCode();
-        }
-
-        sealed class KanaWidthCaseInsensitiveComparer : IEqualityComparer<string>
-        {
-            public static readonly KanaWidthCaseInsensitiveComparer Instance = new KanaWidthCaseInsensitiveComparer();
-            KanaWidthCaseInsensitiveComparer() { }
-            public bool Equals([NotNull] string x, [NotNull] string y)
-                => CompareInfo.Compare(x, y, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase) == 0;
-            public int GetHashCode([NotNull] string o)
-                => CompareInfo.GetSortKey(o, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase).GetHashCode();
-        }
-
-        #endregion
     }
 
     /// <summary>
