@@ -24,13 +24,9 @@ namespace Npgsql
         /// <summary>
         /// The number of columns in the current row
         /// </summary>
-        int _numColumns;
-
-        [CanBeNull]
-        List<int> _columnOffsets;
-        int _endOffset;
-
         int _column;
+        List<(int Offset, int Length)> _columns;
+        int _dataMsgEnd;
 
         /// <summary>
         /// List of all streams that have been opened on the current row, and need to be disposed of
@@ -117,7 +113,7 @@ namespace Npgsql
                 else
                     pending.Enqueue(p);
             }
-            for (var i = 0; pending.Count != 0 && i != _numColumns; ++i)
+            for (var i = 0; pending.Count != 0 && i != RowDescription.NumFields; ++i)
             {
                 // TODO: Need to get the provider-specific value based on the out param's type
                 if (!taken.Contains(i))
@@ -131,7 +127,7 @@ namespace Npgsql
         internal override Task ConsumeRow(bool async)
         {
             Debug.Assert(State == ReaderState.InResult || State == ReaderState.BeforeResult);
-            Buffer.Seek(_endOffset, SeekOrigin.Begin);
+            Buffer.ReadPosition = _dataMsgEnd;
             if (_streams != null)
             {
                 foreach (var stream in _streams)
@@ -148,23 +144,23 @@ namespace Npgsql
             // reading in non-sequential mode, a new oversize buffer is allocated. We thus have to
             // recapture the connector's buffer on each new DataRow.
             Buffer = Connector.ReadBuffer;
+            _dataMsgEnd = Buffer.ReadPosition + dataMsg.Length;
 
-            _numColumns = Buffer.ReadInt16();
+            // We currently assume that the row's number of columns is identical to the description's
+#if DEBUG
+            var numColumns = Buffer.ReadInt16();
+            Debug.Assert(RowDescription.NumFields == numColumns);
+#else
+            Buffer.ReadPosition += 2;
+#endif
             _column = -1;
-            Debug.Assert(RowDescription.NumFields == _numColumns);
-            if (_columnOffsets == null)
-                _columnOffsets = new List<int>(_numColumns);
-            else
-                _columnOffsets.Clear();
+            dataMsg.Columns.Clear();
+            // TODO: Don't do this every time
+            _columns = dataMsg.Columns;
 
-            for (var i = 0; i < _numColumns; i++)
-            {
-                _columnOffsets.Add(Buffer.ReadPosition);
-                var len = Buffer.ReadInt32();
-                if (len != -1)
-                    Buffer.Seek(len, SeekOrigin.Current);
-            }
-            _endOffset = Buffer.ReadPosition;
+            // Initialize our columns array with the offset and length of the first column
+            var len = Buffer.ReadInt32();
+            _columns.Add((Buffer.ReadPosition, len));
         }
 
         // We know the entire row is buffered in memory (non-sequential reader), so no I/O will be performed
@@ -300,8 +296,17 @@ namespace Npgsql
 
         void SeekToColumn(int column)
         {
-            Buffer.Seek(_columnOffsets[column], SeekOrigin.Begin);
-            ColumnLen = Buffer.ReadInt32();
+            for (var lastColumnRead = _columns.Count; column >= lastColumnRead; lastColumnRead++)
+            {
+                int lastColumnLen;
+                (Buffer.ReadPosition, lastColumnLen) = _columns[lastColumnRead-1];
+                if (lastColumnLen != -1)
+                    Buffer.ReadPosition += lastColumnLen;
+                var len = Buffer.ReadInt32();
+                _columns.Add((Buffer.ReadPosition, len));
+            }
+
+            (Buffer.ReadPosition, ColumnLen) = _columns[column];
             _column = column;
             PosInColumn = 0;
         }
@@ -316,7 +321,7 @@ namespace Npgsql
         {
             if (posInColumn > ColumnLen)
                 posInColumn = ColumnLen;
-            Buffer.Seek(_columnOffsets[_column] + 4 + posInColumn, SeekOrigin.Begin);
+            Buffer.ReadPosition = _columns[_column].Offset + posInColumn;
             PosInColumn = posInColumn;
             return PGUtil.CompletedTask;
         }

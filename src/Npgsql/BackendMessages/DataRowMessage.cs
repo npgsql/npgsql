@@ -22,9 +22,11 @@
 #endregion
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using JetBrains.Annotations;
 
 namespace Npgsql.BackendMessages
 {
@@ -38,6 +40,8 @@ namespace Npgsql.BackendMessages
         public BackendMessageCode Code => BackendMessageCode.DataRow;
 
         internal int Length { get; private set; }
+
+        internal List<(int, int)> Columns { get; } = new List<(int, int)>();
 
         internal DataRowMessage Load(int len)
         {
