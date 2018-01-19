@@ -75,20 +75,36 @@ namespace Npgsql
 
             await SeekToColumn(column, async);
             CheckColumnStart();
-            GetValueHandlers<T>(out var read, out var readAsync, out var canHandleNulls);
             if (ColumnLen == -1)
             {
-                if (canHandleNulls)
+                if (NullableHandler<T>.Exists)
                     return default;
-                throw new InvalidCastException("Column is null");
+                else
+                    throw new InvalidCastException("Column is null");
             }
 
             var fieldDescription = RowDescription[column];
             try
             {
-                return ColumnLen <= Buffer.ReadBytesLeft
-                    ? read(fieldDescription, Buffer, ColumnLen)
-                    : await readAsync(fieldDescription, Buffer, ColumnLen, async);
+                if (NullableHandler<T>.Exists)
+                {
+                    return ColumnLen <= Buffer.ReadBytesLeft
+                        ? NullableHandler<T>.Read(Buffer, ColumnLen, fieldDescription)
+                        : await NullableHandler<T>.ReadAsync(Buffer, ColumnLen, async, fieldDescription);
+                }
+
+                if (typeof(T) == typeof(object))
+                {
+                    return ColumnLen <= Buffer.ReadBytesLeft
+                        ? (T)fieldDescription.Handler.ReadAsObject(Buffer, ColumnLen, fieldDescription)
+                        : (T)await fieldDescription.Handler.ReadAsObject(Buffer, ColumnLen, async, fieldDescription);
+                }
+                else
+                {
+                    return ColumnLen <= Buffer.ReadBytesLeft
+                        ? fieldDescription.Handler.Read<T>(Buffer, ColumnLen, fieldDescription)
+                        : await fieldDescription.Handler.Read<T>(Buffer, ColumnLen, async, fieldDescription);
+                }
             }
             catch (NpgsqlSafeReadException e)
             {
