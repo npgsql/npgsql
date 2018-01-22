@@ -48,10 +48,10 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             => buf.ReadInt32();
 
         byte INpgsqlSimpleTypeHandler<byte>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
-            => (byte)Read(buf, len, fieldDescription);
+            => checked((byte)Read(buf, len, fieldDescription));
 
         short INpgsqlSimpleTypeHandler<short>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
-            => (short)Read(buf, len, fieldDescription);
+            => checked((short)Read(buf, len, fieldDescription));
 
         long INpgsqlSimpleTypeHandler<long>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => Read(buf, len, fieldDescription);
@@ -94,13 +94,13 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         public void Write(short value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
             => buf.WriteInt32(value);
         public void Write(long value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
-            => buf.WriteInt32((int)value);
+            => buf.WriteInt32(checked((int)value));
         public void Write(byte value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
             => buf.WriteInt32(value);
         public void Write(float value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
-            => buf.WriteInt32((int)value);
+            => buf.WriteInt32(checked((int)value));
         public void Write(double value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
-            => buf.WriteInt32((int)value);
+            => buf.WriteInt32(checked((int)value));
         public void Write(decimal value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
             => buf.WriteInt32((int)value);
         public void Write(string value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)

@@ -355,6 +355,80 @@ namespace Npgsql.Tests.Types
             }
         }
 
+        [Test, Description("Tests handling of numeric overflow when writing data")]
+        [TestCase(NpgsqlDbType.Smallint, 1 + short.MaxValue)]
+        [TestCase(NpgsqlDbType.Smallint, 1L + short.MaxValue)]
+        [TestCase(NpgsqlDbType.Smallint, 1F + short.MaxValue)]
+        [TestCase(NpgsqlDbType.Smallint, 1D + short.MaxValue)]
+        [TestCase(NpgsqlDbType.Integer, 1L + int.MaxValue)]
+        [TestCase(NpgsqlDbType.Integer, 1F + int.MaxValue)]
+        [TestCase(NpgsqlDbType.Integer, 1D + int.MaxValue)]
+        [TestCase(NpgsqlDbType.Bigint, 1F + long.MaxValue)]
+        [TestCase(NpgsqlDbType.Bigint, 1D + long.MaxValue)]
+        public void WriteOverflow(NpgsqlDbType type, object value)
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT @p1", conn))
+            {
+                var p1 = new NpgsqlParameter("p1", type)
+                {
+                    Value = value
+                };
+                cmd.Parameters.Add(p1);
+                Assert.Throws<OverflowException>(() =>
+                {
+                    using (var reader = cmd.ExecuteReader()) { }
+                });
+            }
+        }
+
+        static IEnumerable<TestCaseData> ReadOverflowTestCases
+        {
+            get
+            {
+                yield return new TestCaseData(NpgsqlDbType.Smallint, 1D + byte.MaxValue){ };
+            }
+        }
+        [Test, Description("Tests handling of numeric overflow when reading data")]
+        [TestCase((byte)0, NpgsqlDbType.Smallint, 1D + byte.MaxValue)]
+        [TestCase((sbyte)0, NpgsqlDbType.Smallint, 1D + sbyte.MaxValue)]
+        [TestCase((byte)0, NpgsqlDbType.Integer, 1D + byte.MaxValue)]
+        [TestCase((short)0, NpgsqlDbType.Integer, 1D + short.MaxValue)]
+        [TestCase((byte)0, NpgsqlDbType.Bigint, 1D + byte.MaxValue)]
+        [TestCase((short)0, NpgsqlDbType.Bigint, 1D + short.MaxValue)]
+        [TestCase(0, NpgsqlDbType.Bigint, 1D + int.MaxValue)]
+        public void ReadOverflow<T>(T readingType, NpgsqlDbType type, double value)
+        {
+            var typeString = GetTypeAsString(type);
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand($"SELECT {value}::{typeString}", conn))
+            {
+                Assert.Throws<OverflowException>(() =>
+                {
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        Assert.True(reader.Read());
+                        reader.GetFieldValue<T>(0);
+                    }
+                });
+            }
+
+            string GetTypeAsString(NpgsqlDbType dbType)
+            {
+                switch (dbType)
+                {
+                case NpgsqlDbType.Smallint:
+                    return "int2";
+                case NpgsqlDbType.Integer:
+                    return "int4";
+                case NpgsqlDbType.Bigint:
+                    return "int8";
+                default:
+                    throw new NotSupportedException();
+                }
+            }
+        }
+
         // Older tests
 
         [Test]
