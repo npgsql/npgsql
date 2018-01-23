@@ -130,7 +130,8 @@ namespace Npgsql
         /// Initializes a new instance of the
         /// <see cref="NpgsqlConnection">NpgsqlConnection</see> class.
         /// </summary>
-        public NpgsqlConnection() : this("") {}
+        public NpgsqlConnection()
+            => GC.SuppressFinalize(this);
 
         /// <summary>
         /// Initializes a new instance of <see cref="NpgsqlConnection"/> with the given connection string.
@@ -138,7 +139,6 @@ namespace Npgsql
         /// <param name="connectionString">The connection used to open the PostgreSQL database.</param>
         public NpgsqlConnection(string connectionString)
         {
-            GC.SuppressFinalize(this);
             ConnectionString = connectionString;
 
             // Fix authentication problems. See https://bugzilla.novell.com/show_bug.cgi?id=MONO77559 and
