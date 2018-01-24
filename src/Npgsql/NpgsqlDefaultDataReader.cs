@@ -45,10 +45,24 @@ namespace Npgsql
         {
             // This is an optimized execution path that avoids calling any async methods for the (usual)
             // case where the next row (or CommandComplete) is already in memory.
-            if (State != ReaderState.InResult || (Behavior & CommandBehavior.SingleRow) != 0)
+
+            if ((Behavior & CommandBehavior.SingleRow) != 0)
                 return base.Read(async);
 
-            ConsumeRow(false);
+            switch (State)
+            {
+            case ReaderState.BeforeResult:
+                // First Read() after NextResult. Data row has already been processed.
+                State = ReaderState.InResult;
+                return PGUtil.TrueTask;
+            case ReaderState.InResult:
+                ConsumeRow(false);
+                break;
+            case ReaderState.BetweenResults:
+            case ReaderState.Consumed:
+            case ReaderState.Closed:
+                return PGUtil.FalseTask;
+            }
 
             var readBuf = Connector.ReadBuffer;
             if (readBuf.ReadBytesLeft < 5)
