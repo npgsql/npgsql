@@ -263,11 +263,8 @@ namespace Npgsql
                     // Since this pooled connector was opened, global mappings may have
                     // changed. Bring this up to date if needed.
                     var mapper = Connector.TypeMapper;
-                    if (mapper.IsModified ||
-                        mapper.ChangeCounter != TypeMapping.GlobalTypeMapper.Instance.ChangeCounter)
-                    {
+                    if (mapper.ChangeCounter != TypeMapping.GlobalTypeMapper.Instance.ChangeCounter)
                         mapper.Reset();
-                    }
                 }
 
                 // We may have gotten an already enlisted pending connector above, no need to enlist in that case
