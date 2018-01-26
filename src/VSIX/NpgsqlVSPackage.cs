@@ -12,6 +12,7 @@ using System.Data.Common;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Shell.Interop;
 
 namespace Npgsql.VSIX
 {
@@ -39,6 +40,7 @@ namespace Npgsql.VSIX
     [ProvideBindingPath]  // Necessary for loading Npgsqlvia DbProviderFactories.GetProvider()
     [NpgsqlProviderRegistration]
     [Guid(NpgsqlVSPackage.PackageGuidString)]
+    [ProvideAutoLoad(UIContextGuids80.DataSourceWindowAutoVisible), ProvideAutoLoad(UIContextGuids80.DataSourceWindowSupported)]
     [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1650:ElementDocumentationMustBeSpelledCorrectly", Justification = "pkgdef, VS and vsixmanifest are valid VS terms")]
     public sealed class NpgsqlVSPackage : Package
     {
