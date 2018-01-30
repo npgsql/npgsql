@@ -230,6 +230,24 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
+        public void GlobalMappingWhenTypeNotFound()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("DROP TYPE IF EXISTS pg_temp.mood5");
+                NpgsqlConnection.MapEnumGlobally<Mood>("mood5");
+                try
+                {
+                    Assert.That(conn.ReloadTypes, Throws.Nothing);
+                }
+                finally
+                {
+                    NpgsqlConnection.UnmapEnumGlobally<Mood>("mood5");
+                }
+            }
+        }
+
+        [Test]
         public void Array()
         {
             using (var conn = OpenConnection())
