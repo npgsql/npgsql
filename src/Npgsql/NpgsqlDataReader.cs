@@ -645,8 +645,8 @@ namespace Npgsql
 
         static class NullableHandler
         {
-            static readonly MethodInfo _readNullableMethod = new ReadDelegate<int?>(ReadNullable<int>).GetMethodInfo().GetGenericMethodDefinition();
-            static readonly MethodInfo _readNullableAsyncMethod = new ReadAsyncDelegate<int?>(ReadNullable<int>).GetMethodInfo().GetGenericMethodDefinition();
+            static readonly MethodInfo _readNullableMethod = new ReadDelegate<int?>(ReadNullable<int>).Method.GetGenericMethodDefinition();
+            static readonly MethodInfo _readNullableAsyncMethod = new ReadAsyncDelegate<int?>(ReadNullable<int>).Method.GetGenericMethodDefinition();
 
             static T? ReadNullable<T>(NpgsqlReadBuffer buffer, int columnLen, FieldDescription fieldDescription) where T : struct
                 => fieldDescription.Handler.Read<T>(buffer, columnLen, fieldDescription);
