@@ -41,7 +41,6 @@ using Npgsql.TypeMapping;
 using NpgsqlTypes;
 using System.Transactions;
 using IsolationLevel = System.Data.IsolationLevel;
-using ThreadState = System.Threading.ThreadState;
 
 namespace Npgsql
 {

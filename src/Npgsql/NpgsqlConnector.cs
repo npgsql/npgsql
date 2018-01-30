@@ -1284,9 +1284,6 @@ namespace Npgsql
         /// </summary>
         internal void CloseOngoingOperations()
         {
-            if ((Thread.CurrentThread.ThreadState & (System.Threading.ThreadState.Aborted | System.Threading.ThreadState.AbortRequested)) != 0)
-                return;
-
             CurrentReader?.Close(true, false);
             var currentCopyOperation = CurrentCopyOperation;
             if (currentCopyOperation != null)
