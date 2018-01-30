@@ -1362,6 +1362,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             return clone;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         NpgsqlConnector CheckReadyAndGetConnector()
         {
             if (State == CommandState.Disposed)

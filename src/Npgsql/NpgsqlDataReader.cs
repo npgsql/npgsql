@@ -1197,12 +1197,14 @@ namespace Npgsql
 
         #region Checks
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void CheckRowAndOrdinal(int ordinal)
         {
             CheckRow();
             CheckColumn(ordinal);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void CheckRow()
         {
             if (!IsOnRow)
@@ -1210,12 +1212,14 @@ namespace Npgsql
         }
 
         // ReSharper disable once UnusedParameter.Local
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void CheckColumn(int column)
         {
             if (column < 0 || column >= FieldCount)
                 throw new IndexOutOfRangeException($"Column must be between {0} and {(FieldCount - 1)}");
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void CheckResultSet()
         {
             if (FieldCount == 0)
