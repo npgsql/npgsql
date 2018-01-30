@@ -138,13 +138,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="connectionString">The connection used to open the PostgreSQL database.</param>
         public NpgsqlConnection(string connectionString)
-        {
-            ConnectionString = connectionString;
-
-            // Fix authentication problems. See https://bugzilla.novell.com/show_bug.cgi?id=MONO77559 and
-            // http://pgfoundry.org/forum/message.php?msg_id=1002377 for more info.
-            RSACryptoServiceProvider.UseMachineKeyStore = true;
-        }
+            => ConnectionString = connectionString;
 
         /// <summary>
         /// Opens a database connection with the property settings specified by the
