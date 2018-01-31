@@ -21,6 +21,10 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
+using System;
+using System.Collections.Generic;
+using Npgsql.Logging;
+
 namespace Npgsql.BackendMessages
 {
     abstract class AuthenticationRequestMessage : IBackendMessage
@@ -71,44 +75,6 @@ namespace Npgsql.BackendMessages
             Salt = salt;
         }
     }
-    class AuthenticationSASLMessage : AuthenticationRequestMessage
-    {
-        internal override AuthenticationRequestType AuthRequestType => State;
-
-        internal AuthenticationRequestType State { get; private set; }
-        internal string ProposedScheme { get; private set; }
-        internal string ServerFirst { get; private set; }
-        internal string ServerProof { get; private set; }
-
-        internal static AuthenticationSASLMessage Load(ReadBuffer buf, int len, AuthenticationRequestType state)
-        {
-            var payload = buf.ReadString(len);
-            return new AuthenticationSASLMessage(state, payload);
-        }
-
-        AuthenticationSASLMessage(AuthenticationRequestType state, string value)
-        {
-            State = state;
-            if (State == AuthenticationRequestType.AuthenticationSASLInit)
-                // Resolve -2, strip last two spaces 
-                ProposedScheme = value.Substring(0, value.Length - 2);
-            else if (State == AuthenticationRequestType.AuthenticationSCRAMFirst)
-                ServerFirst = value;
-            else if (State == AuthenticationRequestType.AuthenticationSCRAMFinal)
-                ServerProof = value;
-            else
-                throw new NpgsqlException("Invalid SASL State");
-        }
-
-        public enum STATE
-        {
-            INIT = 0,
-            CONTINUE = 1,
-            FINAL = 2,
-            INVALID = -1
-        }
-    }
-
 
     class AuthenticationSCMCredentialMessage : AuthenticationRequestMessage
     {
@@ -154,6 +120,106 @@ namespace Npgsql.BackendMessages
         AuthenticationSSPIMessage() { }
     }
 
+    #region SASL
+
+    class AuthenticationSASLMessage : AuthenticationRequestMessage
+    {
+        internal override AuthenticationRequestType AuthRequestType => AuthenticationRequestType.AuthenticationSASL;
+        internal List<string> Mechanisms { get; } = new List<string>();
+
+        internal AuthenticationSASLMessage(ReadBuffer buf)
+        {
+            while (buf.Buffer[buf.ReadPosition] != 0)
+                Mechanisms.Add(buf.ReadNullTerminatedString());
+            buf.ReadByte();
+            if (Mechanisms.Count == 0)
+                throw new NpgsqlException("Received AuthenticationSASL message with 0 mechanisms!");
+        }
+    }
+
+    class AuthenticationSASLContinueMessage : AuthenticationRequestMessage
+    {
+        internal override AuthenticationRequestType AuthRequestType => AuthenticationRequestType.AuthenticationSASLContinue;
+        internal byte[] Payload { get; }
+
+        internal AuthenticationSASLContinueMessage(ReadBuffer buf, int len)
+        {
+            Payload = new byte[len];
+            buf.ReadBytes(Payload, 0, len);
+        }
+    }
+
+    class AuthenticationSCRAMServerFirstMessage
+    {
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+
+        internal string Nonce { get; }
+        internal string Salt { get; }
+        internal int Iteration { get; } = -1;
+
+        internal AuthenticationSCRAMServerFirstMessage(byte[] bytes)
+        {
+            var data = PGUtil.UTF8Encoding.GetString(bytes);
+
+            foreach (var part in data.Split(','))
+            {
+                if (part.StartsWith("r="))
+                    Nonce = part.Substring(2);
+                else if (part.StartsWith("s="))
+                    Salt = part.Substring(2);
+                else if (part.StartsWith("i="))
+                    Iteration = int.Parse(part.Substring(2));
+                else
+                    Log.Debug("Unknown part in SCRAM server-first message:" + part);
+            }
+
+            if (Nonce == null)
+                throw new NpgsqlException("Server nonce not received in SCRAM server-first message");
+            if (Salt == null)
+                throw new NpgsqlException("Server salt not received in SCRAM server-first message");
+            if (Iteration == -1)
+                throw new NpgsqlException("Server iterations not received in SCRAM server-first message");
+        }
+    }
+
+    class AuthenticationSASLFinalMessage : AuthenticationRequestMessage
+    {
+        internal override AuthenticationRequestType AuthRequestType => AuthenticationRequestType.AuthenticationSASLFinal;
+        internal byte[] Payload { get; }
+
+        internal AuthenticationSASLFinalMessage(ReadBuffer buf, int len)
+        {
+            Payload = new byte[len];
+            buf.ReadBytes(Payload, 0, len);
+        }
+    }
+
+    class AuthenticationSCRAMServerFinalMessage
+    {
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+
+        internal string ServerSignature { get; }
+
+        internal AuthenticationSCRAMServerFinalMessage(byte[] bytes)
+        {
+            var data = PGUtil.UTF8Encoding.GetString(bytes);
+
+            foreach (var part in data.Split(','))
+            {
+                if (part.StartsWith("v="))
+                    ServerSignature = part.Substring(2);
+                else
+                    Log.Debug("Unknown part in SCRAM server-first message:" + part);
+            }
+
+            if (ServerSignature == null)
+                throw new NpgsqlException("Server signature not received in SCRAM server-final message");
+        }
+    }
+
+    #endregion SASL
+
+    // TODO: Remove Authentication prefix from everything
     enum AuthenticationRequestType
     {
         AuthenticationOk = 0,
@@ -166,8 +232,8 @@ namespace Npgsql.BackendMessages
         AuthenticationGSS = 7,
         AuthenticationGSSContinue = 8,
         AuthenticationSSPI = 9,
-        AuthenticationSASLInit = 10,
-        AuthenticationSCRAMFirst = 11,
-        AuthenticationSCRAMFinal = 12
+        AuthenticationSASL = 10,
+        AuthenticationSASLContinue = 11,
+        AuthenticationSASLFinal = 12
     }
 }
