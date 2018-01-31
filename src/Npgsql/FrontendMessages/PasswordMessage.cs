@@ -27,6 +27,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 
 namespace Npgsql.FrontendMessages
@@ -128,4 +129,123 @@ namespace Npgsql.FrontendMessages
 
         public override string ToString() =>  "[Password]";
     }
+
+    #region SASL
+
+    // TODO: Refactor above password messages into different classes to harmonize, clean up
+    class SASLInitialResponseMessage : SimpleFrontendMessage
+    {
+        const byte Code = (byte)'p';
+        readonly string _mechanism;
+        [CanBeNull]
+        readonly byte[] _initialResponse;
+
+        internal SASLInitialResponseMessage(string mechanism, byte[] initialResponse)
+        {
+            _mechanism = mechanism;
+            _initialResponse = initialResponse;
+        }
+
+        internal override int Length =>
+            1 + 4 +
+            PGUtil.UTF8Encoding.GetByteCount(_mechanism) + 1 +
+            4 + _initialResponse?.Length ?? 0;
+
+        internal override void WriteFully(NpgsqlWriteBuffer buf)
+        {
+            buf.WriteByte(Code);
+            buf.WriteInt32(Length - 1);
+
+            buf.WriteString(_mechanism);
+            buf.WriteByte(0);   // null terminator
+            if (_initialResponse == null)
+                buf.WriteInt32(-1);
+            else
+            {
+                buf.WriteInt32(_initialResponse.Length);
+                buf.WriteBytes(_initialResponse);
+            }
+        }
+    }
+
+    class SCRAMClientFinalMessage : SimpleFrontendMessage
+    {
+        const byte Code = (byte)'p';
+
+        readonly string _messageStr;
+
+        const string ClientKey = "Client Key";
+        const string ServerKey = "Server Key";
+
+        internal byte[] ServerSignature { get; }
+
+        internal SCRAMClientFinalMessage(string password, string serverNonce, string salt, int serverIteration, string clientNonce)
+        {
+            var saltBytes = Convert.FromBase64String(salt);
+            var saltedPassword = Hi(password.Normalize(NormalizationForm.FormKC), saltBytes, serverIteration);
+
+            var clientKey = HMAC(saltedPassword, ClientKey);
+            var storedKey = SHA256.Create().ComputeHash(clientKey);
+
+            var clientFirstMessageBare = "n=*,r=" + clientNonce;
+            var serverFirstMessage = $"r={serverNonce},s={salt},i={serverIteration}";
+            var clientFinalMessageWithoutProof = "c=biws,r=" + serverNonce;
+
+            var authMessage = $"{clientFirstMessageBare},{serverFirstMessage},{clientFinalMessageWithoutProof}";
+
+            var clientSignature = HMAC(storedKey, authMessage);
+            var clientProofBytes = XOR(clientKey, clientSignature);
+            var clientProof = Convert.ToBase64String(clientProofBytes);
+
+            var serverKey = HMAC(saltedPassword, ServerKey);
+            var serverSignatureBytes = HMAC(serverKey, authMessage);
+            ServerSignature = serverSignatureBytes;
+
+            _messageStr = $"{clientFinalMessageWithoutProof},p={clientProof}";
+        }
+
+        internal override int Length => 1 + 4 + PGUtil.UTF8Encoding.GetByteCount(_messageStr);
+
+        internal override void WriteFully(NpgsqlWriteBuffer buf)
+        {
+            buf.WriteByte(Code);
+            buf.WriteInt32(Length - 1);
+            buf.WriteString(_messageStr);
+        }
+
+        static byte[] Hi(string str, byte[] salt, int count)
+        {
+            using (var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(str)))
+            {
+                var salt1 = new byte[salt.Length + 4];
+                byte[] hi, u1;
+
+                Buffer.BlockCopy(salt, 0, salt1, 0, salt.Length);
+                salt1[salt1.Length - 1] = (byte)1;
+
+                hi = u1 = hmac.ComputeHash(salt1);
+
+                for (var i = 1; i < count; i++)
+                {
+                    var u2 = hmac.ComputeHash(u1);
+                    XOR(hi, u2);
+                    u1 = u2;
+                }
+
+                return hi;
+            }
+        }
+
+        static byte[] XOR(byte[] buffer1, byte[] buffer2)
+        {
+            for (var i = 0; i < buffer1.Length; i++)
+                buffer1[i] ^= buffer2[i];
+            return buffer1;
+        }
+
+        static byte[] HMAC(byte[] data, string key)
+           => new HMACSHA256(data).ComputeHash(Encoding.UTF8.GetBytes(key));
+    }
+
+    #endregion SASL
 }
