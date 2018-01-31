@@ -1032,6 +1032,10 @@ namespace Npgsql
                             return AuthenticationSSPIMessage.Instance;
                         case AuthenticationRequestType.AuthenticationGSSContinue:
                             return AuthenticationGSSContinueMessage.Load(buf, len);
+                        case AuthenticationRequestType.AuthenticationSASLInit:
+                        case AuthenticationRequestType.AuthenticationSCRAMFirst:
+                        case AuthenticationRequestType.AuthenticationSCRAMFinal:
+                            return AuthenticationSASLMessage.Load(buf, len - 4, authType);
                         default:
                             throw new NotSupportedException($"Authentication method not supported (Received: {authType})");
                     }

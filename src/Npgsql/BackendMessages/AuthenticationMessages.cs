@@ -71,6 +71,44 @@ namespace Npgsql.BackendMessages
             Salt = salt;
         }
     }
+    class AuthenticationSASLMessage : AuthenticationRequestMessage
+    {
+        internal override AuthenticationRequestType AuthRequestType => State;
+
+        internal AuthenticationRequestType State { get; private set; }
+        internal string ProposedScheme { get; private set; }
+        internal string ServerFirst { get; private set; }
+        internal string ServerProof { get; private set; }
+
+        internal static AuthenticationSASLMessage Load(ReadBuffer buf, int len, AuthenticationRequestType state)
+        {
+            var payload = buf.ReadString(len);
+            return new AuthenticationSASLMessage(state, payload);
+        }
+
+        AuthenticationSASLMessage(AuthenticationRequestType state, string value)
+        {
+            State = state;
+            if (State == AuthenticationRequestType.AuthenticationSASLInit)
+                // Resolve -2, strip last two spaces 
+                ProposedScheme = value.Substring(0, value.Length - 2);
+            else if (State == AuthenticationRequestType.AuthenticationSCRAMFirst)
+                ServerFirst = value;
+            else if (State == AuthenticationRequestType.AuthenticationSCRAMFinal)
+                ServerProof = value;
+            else
+                throw new NpgsqlException("Invalid SASL State");
+        }
+
+        public enum STATE
+        {
+            INIT = 0,
+            CONTINUE = 1,
+            FINAL = 2,
+            INVALID = -1
+        }
+    }
+
 
     class AuthenticationSCMCredentialMessage : AuthenticationRequestMessage
     {
@@ -127,6 +165,9 @@ namespace Npgsql.BackendMessages
         AuthenticationSCMCredential = 6,
         AuthenticationGSS = 7,
         AuthenticationGSSContinue = 8,
-        AuthenticationSSPI = 9
+        AuthenticationSSPI = 9,
+        AuthenticationSASLInit = 10,
+        AuthenticationSCRAMFirst = 11,
+        AuthenticationSCRAMFinal = 12
     }
 }

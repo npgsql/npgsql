@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
 using Npgsql.Logging;
+using Npgsql.Tls;
 
 namespace Npgsql
 {
@@ -32,6 +33,10 @@ namespace Npgsql
 
             case AuthenticationRequestType.AuthenticationMD5Password:
                 await AuthenticateMD5(username, ((AuthenticationMD5PasswordMessage)msg).Salt, async, cancellationToken);
+                return;
+
+            case AuthenticationRequestType.AuthenticationSASLInit:
+                await AuthenticateSASL(username, ((AuthenticationSASLMessage)msg).ProposedScheme, async, cancellationToken);
                 return;
 
             case AuthenticationRequestType.AuthenticationGSS:
@@ -70,6 +75,79 @@ namespace Npgsql
                 .Write(WriteBuffer, async, cancellationToken);
             await WriteBuffer.Flush(async);
             await ReadExpecting<AuthenticationRequestMessage>(async);
+        }
+
+        async Task AuthenticateSASL(string username, string scheme, bool async, CancellationToken cancellationToken)
+        {
+            // Postgresql >= 10.0 support only SCRAM-SHA-256
+            if (scheme == "SCRAM-SHA-256")
+            {
+                await AuthenticateSCRAM(username, scheme, async, cancellationToken);
+            }
+            else
+                throw new NpgsqlException("SASL authentication scheme [" + scheme + "] not supported");
+        }
+
+        async Task AuthenticateSCRAM(string username, string scheme, bool async, CancellationToken cancellationToken)
+        {
+            var scram = new SCRAM(scheme, username);
+            await SCRAMMessage
+                 .CreateClientFirstMessage(scram)
+                 .Write(WriteBuffer, async, cancellationToken);
+            await WriteBuffer.Flush(async);
+
+            var msg = await ReadExpecting<AuthenticationRequestMessage>(async);
+
+
+            // Expecting SCRAMServerFirst message
+            if (((AuthenticationSASLMessage)msg).AuthRequestType == AuthenticationRequestType.AuthenticationSCRAMFirst)
+            {
+                scram.parseServerFirstMessage(((AuthenticationSASLMessage)msg).ServerFirst);
+                await AuthenticateSASLContinue(scram, async, cancellationToken);
+            }
+            else
+                throw new NpgsqlException("[SCRAM] SCRAMServerFirst message expected");
+        }
+
+        async Task AuthenticateSASLContinue(SCRAM scram, bool async, CancellationToken cancellationToken)
+        {
+            var passwd = Settings.Password;
+            if (passwd == null)
+            {
+                // No password was provided. Attempt to pull the password from the pgpass file.
+                var matchingEntry = PgPassFile.LoadDefaultFile()?.GetFirstMatchingEntry(Settings.Host, Settings.Port, Settings.Database, Settings.Username);
+                if (matchingEntry != null)
+                {
+                    Log.Trace("Taking password from pgpass file");
+                    passwd = matchingEntry.Password;
+                }
+            }
+
+            if (passwd == null)
+                throw new NpgsqlException("No password has been provided but the backend requires one (in SCRAM-SHA-256)");
+
+            scram.Password = passwd;
+
+            await SCRAMMessage
+                .CreateClientFinalMessage(scram)
+                .Write(WriteBuffer, async, cancellationToken);
+            await WriteBuffer.Flush(async);
+
+            var msg = await ReadExpecting<AuthenticationRequestMessage>(async);
+            // Expecting SCRAMServerFinal message
+            if (((AuthenticationSASLMessage)msg).AuthRequestType == AuthenticationRequestType.AuthenticationSCRAMFinal)
+            {
+                AuthenticateSASLFinal(scram, ((AuthenticationSASLMessage)msg).ServerProof);
+            }
+            else
+                throw new NpgsqlException("[SCRAM] SCRAMServerFinal message expected");
+
+            await ReadExpecting<AuthenticationRequestMessage>(async);
+        }
+
+        void AuthenticateSASLFinal(SCRAM scram, string serverFinalMsg)
+        {
+            scram.verifyServerSignature(serverFinalMsg);
         }
 
         async Task AuthenticateMD5(string username, byte[] salt, bool async, CancellationToken cancellationToken)
