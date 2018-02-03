@@ -379,6 +379,7 @@ namespace Npgsql.Tests
                         writer.StartRow();
                         writer.Write(data, NpgsqlDbType.Bytea);
                     }
+                    writer.Commit();
                 }
 
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(iterations));

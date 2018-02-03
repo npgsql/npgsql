@@ -22,6 +22,7 @@
 #endregion
 
 using System;
+using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
@@ -144,7 +145,15 @@ namespace Npgsql
         /// corruption will occur. If in doubt, use <see cref="Write{T}(T, NpgsqlDbType)"/> to manually
         /// specify the type.
         /// </typeparam>
-        public void Write<T>(T value) => DoWrite(value, null);
+        public void Write<T>(T value) => DoWrite(value, null).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Asynchronously writes a single column in the current row.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="value"></param>
+        /// <returns></returns>
+        public ValueTask<T> WriteAsync<T>(T value) => DoWrite(value, null, true);
 
         /// <summary>
         /// Writes a single column in the current row as type <paramref name="npgsqlDbType"/>.
@@ -157,9 +166,9 @@ namespace Npgsql
         /// <paramref name="npgsqlDbType"/> must be specified as <see cref="NpgsqlDbType.Jsonb"/>.
         /// </param>
         /// <typeparam name="T">The .NET type of the column to be written.</typeparam>
-        public void Write<T>(T value, NpgsqlDbType npgsqlDbType) => DoWrite(value, npgsqlDbType);
+        public void Write<T>(T value, NpgsqlDbType npgsqlDbType) => DoWrite(value, npgsqlDbType).GetAwaiter().GetResult();
 
-        void DoWrite<T>([CanBeNull] T value, NpgsqlDbType? npgsqlDbType)
+        async ValueTask<T> DoWrite<T>([CanBeNull] T value, NpgsqlDbType? npgsqlDbType, bool async = false)
         {
             CheckReady();
             if (_column == -1)
@@ -168,7 +177,7 @@ namespace Npgsql
             if (value == null || value is DBNull)
             {
                 WriteNull();
-                return;
+                return value;
             }
 
             var untypedParam = _params[_column];
@@ -191,7 +200,7 @@ namespace Npgsql
                 untypedParam.ResolveHandler(_connector.TypeMapper);
                 untypedParam.ValidateAndGetLength();
                 untypedParam.LengthCache?.Rewind();
-                untypedParam.WriteWithLength(_buf, false);
+                await untypedParam.WriteWithLength(_buf, async);
                 untypedParam.LengthCache?.Clear();
             }
             else
@@ -207,10 +216,11 @@ namespace Npgsql
                 param.ResolveHandler(_connector.TypeMapper);
                 param.ValidateAndGetLength();
                 param.LengthCache?.Rewind();
-                param.WriteWithLength(_buf, false);
+                await param.WriteWithLength(_buf, async);
                 param.LengthCache?.Clear();
             }
             _column++;
+            return value;
         }
 
         /// <summary>
@@ -251,6 +261,15 @@ namespace Npgsql
         /// </summary>
         public void Commit()
         {
+            CommitAsync().GetAwaiter().GetResult();
+        }
+
+        /// <summary>
+        /// Asynchronously commits the import operation. The writer is unusable after this operation.
+        /// </summary>
+        /// <returns></returns>
+        public async Task CommitAsync()
+        {
             CheckReady();
 
             if (InMiddleOfRow)
@@ -266,8 +285,8 @@ namespace Npgsql
                 _buf.EndCopyMode();
 
                 _connector.SendMessage(CopyDoneMessage.Instance);
-                _connector.ReadExpecting<CommandCompleteMessage>();
-                _connector.ReadExpecting<ReadyForQueryMessage>();
+                await _connector.ReadExpecting<CommandCompleteMessage>(true);
+                await _connector.ReadExpecting<ReadyForQueryMessage>(true);
 
                 _state = ImporterState.Committed;
             }
