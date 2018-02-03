@@ -75,6 +75,9 @@ namespace Npgsql
                                           "Mechanisms received from server: " + string.Join(", ", mechanisms));
             var mechanism = "SCRAM-SHA-256";
 
+            var passwd = GetPassword() ??
+                         throw new NpgsqlException($"No password has been provided but the backend requires one (in SASL/{mechanism})");
+
             // Assumption: the write buffer is big enough to contain all our outgoing messages
             var clientNonce = GetNonce();
 
@@ -88,9 +91,6 @@ namespace Npgsql
             var firstServerMsg = new AuthenticationSCRAMServerFirstMessage(saslContinueMsg.Payload);
             if (!firstServerMsg.Nonce.StartsWith(clientNonce))
                 throw new InvalidOperationException("[SCRAM] Malformed SCRAMServerFirst message: server nonce doesn't start with client nonce");
-
-            var passwd = GetPassword() ??
-                         throw new NpgsqlException("No password has been provided but the backend requires one (in SCRAM-SHA-256)");
 
             var scramFinalClientMsg = new SCRAMClientFinalMessage(passwd, firstServerMsg.Nonce, firstServerMsg.Salt, firstServerMsg.Iteration, clientNonce);
             await scramFinalClientMsg.Write(WriteBuffer, async, cancellationToken);
