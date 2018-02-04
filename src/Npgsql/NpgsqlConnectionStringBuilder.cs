@@ -703,8 +703,8 @@ namespace Npgsql
             get => _minPoolSize;
             set
             {
-                if (value < 0 || value > PoolManager.PoolSizeLimit)
-                    throw new ArgumentOutOfRangeException(nameof(value), value, "MinPoolSize must be between 0 and " + PoolManager.PoolSizeLimit);
+                if (value < 0 || value > ConnectorPool.PoolSizeLimit)
+                    throw new ArgumentOutOfRangeException(nameof(value), value, "MinPoolSize must be between 0 and " + ConnectorPool.PoolSizeLimit);
 
                 _minPoolSize = value;
                 SetValue(nameof(MinPoolSize), value);
@@ -725,8 +725,8 @@ namespace Npgsql
             get => _maxPoolSize;
             set
             {
-                if (value < 0 || value > PoolManager.PoolSizeLimit)
-                    throw new ArgumentOutOfRangeException(nameof(value), value, "MaxPoolSize must be between 0 and " + PoolManager.PoolSizeLimit);
+                if (value < 0 || value > ConnectorPool.PoolSizeLimit)
+                    throw new ArgumentOutOfRangeException(nameof(value), value, "MaxPoolSize must be between 0 and " + ConnectorPool.PoolSizeLimit);
 
                 _maxPoolSize = value;
                 SetValue(nameof(MaxPoolSize), value);
@@ -740,7 +740,7 @@ namespace Npgsql
         /// </summary>
         /// <value>The time (in seconds) to wait. The default value is 300.</value>
         [Category("Pooling")]
-        [Description("The time to wait before closing unused connections in the pool if the count of all connections exeeds MinPoolSize.")]
+        [Description("The time to wait before closing unused connections in the pool if the count of all connections exceeds MinPoolSize.")]
         [DisplayName("Connection Idle Lifetime")]
         [NpgsqlConnectionStringProperty]
         [DefaultValue(300)]

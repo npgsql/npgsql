@@ -357,7 +357,7 @@ Exception {2}",
                             eventQueue.Enqueue(new TransactionEvent("Scope completed"));
                         }
                         eventQueue.Enqueue(new TransactionEvent("Scope disposed"));
- 
+
                         Assert.DoesNotThrow(() => conn1.ExecuteScalar(@"SELECT COUNT(*) FROM data"));
                     }
                 }
@@ -401,7 +401,7 @@ Exception {2}",
 
                             Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1), "Unexpected first insert rowcount");
                             eventQueue.Enqueue(new TransactionEvent("Insert done"));
-                            
+
                             eventQueue.Enqueue(new TransactionEvent("Scope not completed"));
                         }
                         eventQueue.Enqueue(new TransactionEvent("Scope disposed"));
@@ -513,8 +513,8 @@ Exception {2}",
                 scope.Complete();
             }
             AssertNumberOfRows(1);
-            var pool = PoolManager.Pools[connString];
-            Assert.That(pool.Idle, Has.Count.EqualTo(1));
+            Assert.That(PoolManager.TryGetValue(ConnectionString, out var pool), Is.True);
+            Assert.That(pool.State.Idle, Is.EqualTo(1));
 
             using (var conn = new NpgsqlConnection(connString))
                 NpgsqlConnection.ClearPool(conn);
