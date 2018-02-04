@@ -261,8 +261,6 @@ namespace Npgsql
                     else  // No enlist
                         Connector = await _pool.Allocate(this, timeout, async, cancellationToken);
 
-                    Counters.SoftConnectsPerSecond.Increment();
-
                     // Since this pooled connector was opened, global mappings may have
                     // changed. Bring this up to date if needed.
                     var mapper = Connector.TypeMapper;

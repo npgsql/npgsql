@@ -739,7 +739,7 @@ namespace Npgsql
         /// </summary>
         /// <value>The time (in seconds) to wait. The default value is 300.</value>
         [Category("Pooling")]
-        [Description("The time to wait before closing unused connections in the pool if the count of all connections exeeds MinPoolSize.")]
+        [Description("The time to wait before closing unused connections in the pool if the count of all connections exceeds MinPoolSize.")]
         [DisplayName("Connection Idle Lifetime")]
         [NpgsqlConnectionStringProperty]
         [DefaultValue(300)]
