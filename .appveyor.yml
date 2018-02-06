@@ -21,7 +21,7 @@ before_build:
   - '"C:\Program Files\PostgreSQL\9.6\bin\psql" -c "CREATE EXTENSION citext"'
   - '"C:\Program Files\PostgreSQL\9.6\bin\psql" -c "CREATE EXTENSION postgis"'
   - appveyor-retry dotnet restore -v Minimal
-  - appveyor-retry nuget restore Npgsql.sln   # For VSIX
+  - appveyor-retry nuget restore Npgsql.all.sln   # For VSIX
 build_script:
   - dotnet build "src\Npgsql" -c ReleaseOptimizedCryptography
   - dotnet build "src\Npgsql.Json.NET" -c Release
