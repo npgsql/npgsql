@@ -62,8 +62,6 @@ namespace Npgsql
 
         public int WriteSpaceLeft => Size - _writePosition;
 
-        internal long TotalBytesFlushed { get; private set; }
-
         readonly byte[] _buf;
         readonly Encoder _textEncoder;
 
@@ -146,7 +144,6 @@ namespace Npgsql
                 throw new NpgsqlException("Exception while flushing stream", e);
             }
 
-            TotalBytesFlushed += _writePosition;
             _writePosition = 0;
             if (CurrentCommand != null)
             {
@@ -476,11 +473,6 @@ namespace Npgsql
             var buf = new byte[_writePosition];
             Array.Copy(_buf, buf, _writePosition);
             return buf;
-        }
-
-        internal void ResetTotalBytesFlushed()
-        {
-            TotalBytesFlushed = 0;
         }
 
         #endregion
