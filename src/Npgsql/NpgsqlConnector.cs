@@ -857,20 +857,21 @@ namespace Npgsql
         #region Backend message processing
 
         internal IBackendMessage ReadMessage(DataRowLoadingMode dataRowLoadingMode=DataRowLoadingMode.NonSequential)
-            => ReadMessage(false, dataRowLoadingMode).Result;
+            => ReadMessage(false, dataRowLoadingMode).GetAwaiter().GetResult();
 
         [ItemCanBeNull]
         internal async ValueTask<IBackendMessage> ReadMessage(
             bool async,
             DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential,
             bool readingNotifications = false,
-            bool isPrependedMessage = false)
+            bool isReadingPrependedMessage = false)
         {
             // First read the responses of any prepended messages.
-            if (!isPrependedMessage && _pendingPrependedResponses > 0)
+            if (_pendingPrependedResponses > 0 && !isReadingPrependedMessage)
             {
                 try
                 {
+                    // TODO: There could be room for optimization here, rather than the async call(s)
                     ReceiveTimeout = InternalCommandTimeout;
                     for (; _pendingPrependedResponses > 0; _pendingPrependedResponses--)
                         await ReadMessage(async, DataRowLoadingMode.Skip, false, true);
@@ -916,7 +917,7 @@ namespace Npgsql
                         await ReadBuffer.Ensure(len, async);
                     }
 
-                    var msg = ParseServerMessage(ReadBuffer, messageCode, len, isPrependedMessage);
+                    var msg = ParseServerMessage(ReadBuffer, messageCode, len, isReadingPrependedMessage);
 
                     switch (messageCode)
                     {
