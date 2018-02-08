@@ -122,6 +122,9 @@ namespace Npgsql
 
         static bool _countersInitialized;
 
+        static readonly StateChangeEventArgs ClosedToOpenEventArgs = new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open);
+        static readonly StateChangeEventArgs OpenToClosedEventArgs = new StateChangeEventArgs(ConnectionState.Open, ConnectionState.Closed);
+
         #endregion Fields
 
         #region Constructors / Init / Open
@@ -277,7 +280,7 @@ namespace Npgsql
                 throw;
             }
             Log.Debug("Connection opened", Connector.Id);
-            OnStateChange(new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open));
+            OnStateChange(ClosedToOpenEventArgs);
         }
 
         #endregion Open / Init
@@ -599,7 +602,7 @@ namespace Npgsql
 
             Connector = null;
 
-            OnStateChange(new StateChangeEventArgs(ConnectionState.Open, ConnectionState.Closed));
+            OnStateChange(OpenToClosedEventArgs);
         }
 
         /// <summary>
