@@ -61,7 +61,7 @@ namespace Npgsql
             var len = readBuf.ReadInt32() - 4;  // Transmitted length includes itself
             if (messageCode != BackendMessageCode.DataRow || readBuf.ReadBytesLeft < len)
             {
-                readBuf.Seek(-5, SeekOrigin.Current);
+                readBuf.ReadPosition -= 5;
                 return base.Read(async);
             }
 

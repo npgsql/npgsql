@@ -61,7 +61,7 @@ namespace Npgsql
 
         internal Encoding TextEncoding { get; }
 
-        internal int ReadPosition { get; private set; }
+        internal int ReadPosition { get; set; }
         internal int ReadBytesLeft => _filledBytes - ReadPosition;
 
         internal readonly byte[] Buffer;
@@ -506,32 +506,6 @@ namespace Npgsql
         #endregion
 
         #region Misc
-
-        /// <summary>
-        /// Seeks within the current in-memory data. Does not read any data from the underlying.
-        /// </summary>
-        /// <param name="offset"></param>
-        /// <param name="origin"></param>
-        internal void Seek(int offset, SeekOrigin origin)
-        {
-            int absoluteOffset;
-            switch (origin)
-            {
-                case SeekOrigin.Begin:
-                    absoluteOffset = offset;
-                    break;
-                case SeekOrigin.Current:
-                    absoluteOffset = ReadPosition + offset;
-                    break;
-                case SeekOrigin.End:
-                    throw new NotImplementedException();
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(origin));
-            }
-            Debug.Assert(absoluteOffset >= 0 && absoluteOffset <= _filledBytes);
-
-            ReadPosition = absoluteOffset;
-        }
 
         internal void Clear()
         {
