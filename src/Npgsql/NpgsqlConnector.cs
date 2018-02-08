@@ -193,7 +193,9 @@ namespace Npgsql
 
         /// <summary>
         /// A lock that's taken while a user action is in progress, e.g. a command being executed.
+        /// Only used when keepalive is enabled, otherwise null.
         /// </summary>
+        [CanBeNull]
         SemaphoreSlim _userLock;
 
         /// <summary>
@@ -203,6 +205,8 @@ namespace Npgsql
         /// </summary>
         internal object CancelLock { get; }
 
+        readonly int _keepAlive;
+        readonly bool _isKeepAliveEnabled;
         readonly Timer _keepAliveTimer;
 
         /// <summary>
@@ -289,11 +293,15 @@ namespace Npgsql
             ConnectionString = connectionString;
             BackendParams = new Dictionary<string, string>();
 
-            _userLock = new SemaphoreSlim(1, 1);
             CancelLock = new object();
 
-            if (IsKeepAliveEnabled)
+            _isKeepAliveEnabled = Settings.KeepAlive > 0;
+            if (_isKeepAliveEnabled)
+            {
+                _keepAlive = Settings.KeepAlive * 1000;
+                _userLock = new SemaphoreSlim(1, 1);
                 _keepAliveTimer = new Timer(PerformKeepAlive, null, Timeout.Infinite, Timeout.Infinite);
+            }
 
             // TODO: Not just for automatic preparation anymore...
             PreparedStatementManager = new PreparedStatementManager(this);
@@ -309,8 +317,6 @@ namespace Npgsql
         SslMode SslMode => Settings.SslMode;
         bool UseSslStream => Settings.UseSslStream;
         int ConnectionTimeout => Settings.Timeout;
-        int KeepAlive => Settings.KeepAlive;
-        bool IsKeepAliveEnabled => KeepAlive > 0;
         bool IntegratedSecurity => Settings.IntegratedSecurity;
         internal bool ConvertInfinityDateTime => Settings.ConvertInfinityDateTime;
 
@@ -1439,11 +1445,10 @@ namespace Npgsql
             ServerVersion = null;
             _currentCommand = null;
 
-            _userLock.Dispose();
-            _userLock = null;
-
-            if (IsKeepAliveEnabled)
+            if (_isKeepAliveEnabled)
             {
+                _userLock.Dispose();
+                _userLock = null;
                 _keepAliveTimer.Change(Timeout.Infinite, Timeout.Infinite);
                 _keepAliveTimer.Dispose();
             }
@@ -1513,9 +1518,6 @@ namespace Npgsql
                 throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {State} of enum {nameof(ConnectorState)}. Please file a bug.");
             }
 
-            if (IsInUserAction)
-                EndUserAction();
-
             // Our buffer may contain unsent prepended messages (such as BeginTransaction), clear it out completely
             WriteBuffer.Clear();
             _pendingPrependedResponses = 0;
@@ -1578,45 +1580,34 @@ namespace Npgsql
 
         internal UserAction StartUserAction(ConnectorState newState=ConnectorState.Executing, NpgsqlCommand command=null)
         {
+            // If keepalive is enabled, we must protect state transitions with a SemaphoreSlim
+            // (which itself must be protected by a lock, since its dispose isn't threadsafe).
+            // This will make the keepalive abort safely if a user query is in progress, and make
+            // the user query wait if a keepalive is in progress.
+
+            // If keepalive isn't enabled, we don't use the semaphore and rely only on the connector's
+            // state (updated via Interlocked.Exchange) to detect concurrent use, on a best-effort basis.
+            if (!_isKeepAliveEnabled)
+                return DoStartUserAction();
+
             lock (this)
             {
                 if (!_userLock.Wait(0))
                 {
-                    throw _currentCommand == null
+                    var currentCommand = _currentCommand;
+                    throw currentCommand == null
                         ? new NpgsqlOperationInProgressException(State)
-                        : new NpgsqlOperationInProgressException(_currentCommand);
+                        : new NpgsqlOperationInProgressException(currentCommand);
                 }
 
                 try
                 {
                     // Disable keepalive, it will be restarted at the end of the user action
-                    if (IsKeepAliveEnabled)
-                        _keepAliveTimer.Change(Timeout.Infinite, Timeout.Infinite);
+                    _keepAliveTimer.Change(Timeout.Infinite, Timeout.Infinite);
 
                     // We now have both locks and are sure nothing else is running.
                     // Check that the connector is ready.
-                    switch (State)
-                    {
-                    case ConnectorState.Ready:
-                        break;
-                    case ConnectorState.Closed:
-                    case ConnectorState.Broken:
-                        throw new InvalidOperationException("Connection is not open");
-                    case ConnectorState.Executing:
-                    case ConnectorState.Fetching:
-                    case ConnectorState.Waiting:
-                    case ConnectorState.Connecting:
-                    case ConnectorState.Copy:
-                        throw new InvalidOperationException("Internal Npgsql error, please report: acquired both locks and connector is in state " + State);
-                    default:
-                        throw new ArgumentOutOfRangeException(nameof(State), State, "Invalid connector state: " + State);
-                    }
-
-                    Debug.Assert(IsReady);
-                    Log.Trace("Start user action", Id);
-                    State = newState;
-                    _currentCommand = command;
-                    return new UserAction(this);
+                    return DoStartUserAction();
                 }
                 catch
                 {
@@ -1624,31 +1615,67 @@ namespace Npgsql
                     throw;
                 }
             }
+
+            UserAction DoStartUserAction()
+            {
+                switch (State)
+                {
+                case ConnectorState.Ready:
+                    break;
+                case ConnectorState.Closed:
+                case ConnectorState.Broken:
+                    throw new InvalidOperationException("Connection is not open");
+                case ConnectorState.Executing:
+                case ConnectorState.Fetching:
+                case ConnectorState.Waiting:
+                case ConnectorState.Connecting:
+                case ConnectorState.Copy:
+                    var currentCommand = _currentCommand;
+                    throw currentCommand == null
+                        ? new NpgsqlOperationInProgressException(State)
+                        : new NpgsqlOperationInProgressException(currentCommand);
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(State), State, "Invalid connector state: " + State);
+                }
+
+                Debug.Assert(IsReady);
+                Log.Trace("Start user action", Id);
+                State = newState;
+                _currentCommand = command;
+                return new UserAction(this);
+            }
         }
 
         internal void EndUserAction()
         {
             Debug.Assert(CurrentReader == null);
 
-            lock (this)
+            if (_isKeepAliveEnabled)
+            {
+                lock (this)
+                {
+                    if (IsReady || !IsConnected)
+                        return;
+
+                    var keepAlive = Settings.KeepAlive * 1000;
+                    _keepAliveTimer.Change(keepAlive, keepAlive);
+
+                    Log.Trace("End user action", Id);
+                    _currentCommand = null;
+                    _userLock.Release();
+                    State = ConnectorState.Ready;
+                }
+            }
+            else
             {
                 if (IsReady || !IsConnected)
                     return;
 
-                if (IsKeepAliveEnabled)
-                {
-                    var keepAlive = KeepAlive * 1000;
-                    _keepAliveTimer.Change(keepAlive, keepAlive);
-                }
-
                 Log.Trace("End user action", Id);
                 _currentCommand = null;
-                _userLock.Release();
                 State = ConnectorState.Ready;
             }
         }
-
-        bool IsInUserAction => _userLock.CurrentCount == 0;
 
         /// <summary>
         /// An IDisposable wrapper around <see cref="EndUserAction"/>.
@@ -1672,7 +1699,7 @@ namespace Npgsql
 #pragma warning disable CA1801 // Review unused parameters
         void PerformKeepAlive(object state)
         {
-            Debug.Assert(IsKeepAliveEnabled);
+            Debug.Assert(_isKeepAliveEnabled);
 
             // SemaphoreSlim.Dispose() isn't threadsafe - it may be in progress so we shouldn't try to wait on it;
             // we need a standard lock to protect it.
@@ -1725,7 +1752,7 @@ namespace Npgsql
                 var keepaliveMs = Settings.KeepAlive * 1000;
                 while (true)
                 {
-                    var timeoutForKeepalive = IsKeepAliveEnabled && (timeout == 0 || timeout == -1 || keepaliveMs < timeout);
+                    var timeoutForKeepalive = _isKeepAliveEnabled && (timeout == 0 || timeout == -1 || keepaliveMs < timeout);
                     UserTimeout = timeoutForKeepalive ? keepaliveMs : timeout;
                     try
                     {
@@ -1826,7 +1853,7 @@ namespace Npgsql
                 WriteBuffer.Flush();
 
                 Timer keepaliveTimer = null;
-                if (IsKeepAliveEnabled)
+                if (_isKeepAliveEnabled)
                     keepaliveTimer = new Timer(performKeepaliveMethod, null, Settings.KeepAlive*1000, Timeout.Infinite);
                 try
                 {
@@ -1964,7 +1991,7 @@ namespace Npgsql
         internal async Task ExecuteInternalCommand(FrontendMessage message, bool async)
         {
             Debug.Assert(message is QueryMessage || message is PregeneratedMessage);
-            Debug.Assert(_userLock.CurrentCount == 0, "Forgot to start a user action...");
+            Debug.Assert(State != ConnectorState.Ready, "Forgot to start a user action...");
 
             Log.Trace($"Executing internal command: {message}", Id);
 
