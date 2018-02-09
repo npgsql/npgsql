@@ -1118,11 +1118,22 @@ namespace Npgsql.Tests
         }
 
         [Test, Explicit, Description("Turns on TCP keepalive and sleeps forever, good for wiresharking")]
-        public void TcpKeepalive()
+        public void TcpKeepaliveTime()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 TcpKeepAliveTime = 2000
+            };
+            using (OpenConnection(csb))
+                Thread.Sleep(Timeout.Infinite);
+        }
+
+        [Test, Explicit, Description("Turns on TCP keepalive and sleeps forever, good for wiresharking")]
+        public void TcpKeepalive()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                TcpKeepAlive = true
             };
             using (OpenConnection(csb))
                 Thread.Sleep(Timeout.Infinite);
