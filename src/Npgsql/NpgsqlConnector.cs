@@ -831,11 +831,11 @@ namespace Npgsql
                     : Settings.TcpKeepAliveTime;
 
                 // For the following see https://msdn.microsoft.com/en-us/library/dd877220.aspx
-                var dummy = 0u;
-                var inOptionValues = new byte[Marshal.SizeOf(dummy) * 3];
+                var uintSize = Marshal.SizeOf(typeof(uint));
+                var inOptionValues = new byte[uintSize * 3];
                 BitConverter.GetBytes((uint)1).CopyTo(inOptionValues, 0);
-                BitConverter.GetBytes((uint)time).CopyTo(inOptionValues, Marshal.SizeOf(dummy));
-                BitConverter.GetBytes((uint)interval).CopyTo(inOptionValues, Marshal.SizeOf(dummy) * 2);
+                BitConverter.GetBytes((uint)time).CopyTo(inOptionValues, uintSize);
+                BitConverter.GetBytes((uint)interval).CopyTo(inOptionValues, uintSize * 2);
                 var result = socket.IOControl(IOControlCode.KeepAliveValues, inOptionValues, null);
                 if (result != 0)
                     throw new NpgsqlException($"Got non-zero value when trying to set TCP keepalive: {result}");
