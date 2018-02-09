@@ -922,6 +922,24 @@ namespace Npgsql
         int _keepAlive;
 
         /// <summary>
+        /// Whether to use TCP keepalive with system defaults if overrides isn't specified.
+        /// </summary>
+        [Category("Advanced")]
+        [Description("Whether to use TCP keepalive with system defaults if overrides isn't specified.")]
+        [DisplayName("TCP Keepalive")]
+        [NpgsqlConnectionStringProperty]
+        public bool TcpKeepAlive
+        {
+            get => _tcpKeepAlive;
+            set
+            {
+                _tcpKeepAlive = value;
+                SetValue(nameof(TcpKeepAlive), value);
+            }
+        }
+        bool _tcpKeepAlive;
+
+        /// <summary>
         /// The number of seconds of connection inactivity before a TCP keepalive query is sent.
         /// Use of this option is discouraged, use <see cref="KeepAlive"/> instead if possible.
         /// Set to 0 (the default) to disable. Supported only on Windows.

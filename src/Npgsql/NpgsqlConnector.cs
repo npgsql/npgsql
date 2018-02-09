@@ -814,6 +814,8 @@ namespace Npgsql
             if (Settings.SocketSendBufferSize > 0)
                 socket.SendBufferSize = Settings.SocketSendBufferSize;
 
+            if (Settings.TcpKeepAlive)
+                socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
             if (Settings.TcpKeepAliveInterval > 0 && Settings.TcpKeepAliveTime == 0)
                 throw new ArgumentException("If TcpKeepAliveInterval is defined, TcpKeepAliveTime must be defined as well");
             if (Settings.TcpKeepAliveTime > 0)
@@ -821,7 +823,7 @@ namespace Npgsql
                 if (!PGUtil.IsWindows)
                     throw new PlatformNotSupportedException(
                         "Npgsql management of TCP keepalive is supported only on Windows. " +
-                        "TCP keepalives can still be used on other systems but are configured globally for the machine, see the relevant docs.");
+                        "TCP keepalives can still be used on other systems but are enabled via the TcpKeepAlive option or configured globally for the machine, see the relevant docs.");
 
                 var time = Settings.TcpKeepAliveTime;
                 var interval = Settings.TcpKeepAliveInterval > 0
