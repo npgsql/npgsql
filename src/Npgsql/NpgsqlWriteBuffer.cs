@@ -317,10 +317,6 @@ namespace Npgsql
             }
             else
             {
-#if NETSTANDARD1_3
-                await WriteChars(s.ToCharArray(), 0, charLen, byteLen, async);
-                return;
-#else
                 var charPos = 0;
                 while (true)
                 {
@@ -330,7 +326,6 @@ namespace Npgsql
                     await Flush(async);
                     charPos += charsUsed;
                 }
-#endif
             }
         }
 
@@ -383,6 +378,8 @@ namespace Npgsql
             _writePosition += TextEncoding.GetBytes(chars, offset, len == 0 ? chars.Length : len, _buf, _writePosition);
         }
 
+        public void WriteBytes(byte[] buf) => WriteBytes(buf, 0, buf.Length);
+
         public void WriteBytes(byte[] buf, int offset, int count)
         {
             Debug.Assert(count <= WriteSpaceLeft);
@@ -417,7 +414,6 @@ namespace Npgsql
             _writePosition += bytesUsed;
         }
 
-#if !NETSTANDARD1_3
         internal unsafe void WriteStringChunked(string s, int charIndex, int charCount,
                                                 bool flush, out int charsUsed, out bool completed)
         {
@@ -439,7 +435,6 @@ namespace Npgsql
 
             _writePosition += bytesUsed;
         }
-#endif
 
         #endregion
 

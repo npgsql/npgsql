@@ -90,16 +90,6 @@ namespace NpgsqlTypes
 
         #endregion
 
-        #region Enumerated Types
-
-        /// <summary>
-        /// Corresponds to the PostgreSQL "enum" type.
-        /// </summary>
-        /// <remarks>See http://www.postgresql.org/docs/current/static/datatype-enum.html</remarks>
-        Enum = 47,
-
-        #endregion
-
         #region Geometric types
 
         /// <summary>
@@ -385,16 +375,6 @@ namespace NpgsqlTypes
         /// </summary>
         /// <remarks>See http://www.postgresql.org/docs/current/static/arrays.html</remarks>
         Array = int.MinValue,
-
-        #endregion
-
-        #region Composite Types
-
-        /// <summary>
-        /// Corresponds to the PostgreSQL "composite" type.
-        /// </summary>
-        /// <remarks>See http://www.postgresql.org/docs/current/static/rowtypes.html</remarks>
-        Composite = 48,
 
         #endregion
 

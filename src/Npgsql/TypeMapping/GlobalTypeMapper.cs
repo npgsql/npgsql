@@ -29,6 +29,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Npgsql.NameTranslation;
 using Npgsql.TypeHandling;
 using NpgsqlTypes;
 
@@ -59,6 +60,7 @@ namespace Npgsql.TypeMapping
         internal GlobalTypeMapper()
         {
             Mappings = new Dictionary<string, NpgsqlTypeMapping>();
+            DefaultNameTranslator = new NpgsqlSnakeCaseNameTranslator();
         }
 
         #region Mapping management
@@ -183,9 +185,6 @@ namespace Npgsql.TypeMapping
             var ilist = typeInfo.ImplementedInterfaces.FirstOrDefault(x => x.GetTypeInfo().IsGenericType && x.GetGenericTypeDefinition() == typeof(IList<>));
             if (ilist != null)
                 return NpgsqlDbType.Array | ToNpgsqlDbType(ilist.GetGenericArguments()[0]);
-
-            if (typeInfo.IsEnum)
-                return NpgsqlDbType.Enum;
 
             if (typeInfo.IsGenericType && type.GetGenericTypeDefinition() == typeof(NpgsqlRange<>))
                 return NpgsqlDbType.Range | ToNpgsqlDbType(type.GetGenericArguments()[0]);

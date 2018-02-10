@@ -38,11 +38,7 @@ namespace Npgsql
     ///<summary>
     /// This class represents a parameter to a command that will be sent to server
     ///</summary>
-#if NETSTANDARD1_3
-    public class NpgsqlParameter : DbParameter
-#else
     public class NpgsqlParameter : DbParameter, ICloneable
-#endif
     {
         #region Fields and Properties
 
@@ -53,13 +49,14 @@ namespace Npgsql
         // ReSharper disable InconsistentNaming
         private protected NpgsqlDbType? _npgsqlDbType;
         private protected DbType? _dbType;
+        [CanBeNull]
+        private protected string _dataTypeName;
         // ReSharper restore InconsistentNaming
         [CanBeNull]
         Type _specificType;
         string _name = string.Empty;
         [CanBeNull]
         object _value;
-        object _npgsqlValue;
 
         /// <summary>
         /// Can be used to communicate a value from the validation phase to the writing phase.
@@ -86,9 +83,7 @@ namespace Npgsql
         {
             SourceColumn = string.Empty;
             Direction = ParameterDirection.Input;
-#if !NETSTANDARD1_3
             SourceVersion = DataRowVersion.Current;
-#endif
         }
 
         /// <summary>
@@ -187,7 +182,6 @@ namespace Npgsql
             SourceColumn = sourceColumn;
         }
 
-#if !NETSTANDARD1_3
         /// <summary>
         /// Initializes a new instance of the <see cref="NpgsqlParameter">NpgsqlParameter</see>.
         /// </summary>
@@ -256,7 +250,6 @@ namespace Npgsql
             Value = value;
             DbType = parameterType;
         }
-#endif
 
         #endregion
 
@@ -289,9 +282,7 @@ namespace Npgsql
         #region Value
 
         /// <inheritdoc />
-#if !NETSTANDARD1_3
         [TypeConverter(typeof(StringConverter)), Category("Data")]
-#endif
         [CanBeNull]
         public override object Value
         {
@@ -301,7 +292,6 @@ namespace Npgsql
                 if (_value == null || value == null || _value.GetType() != value.GetType())
                     Handler = null;
                 _value = value;
-                _npgsqlValue = value;
                 ConvertedValue = null;
             }
         }
@@ -313,15 +303,11 @@ namespace Npgsql
         /// The default value is null.</value>
         [Category("Data")]
         [TypeConverter(typeof(StringConverter))]
+        [CanBeNull]
         public object NpgsqlValue
         {
-            get => _npgsqlValue;
-            set {
-                Handler = null;
-                _value = value;
-                _npgsqlValue = value;
-                ConvertedValue = null;
-            }
+            get => Value;
+            set => Value = value;
         }
 
         #endregion Value
@@ -370,9 +356,7 @@ namespace Npgsql
         /// <value>One of the <see cref="NpgsqlTypes.NpgsqlDbType">NpgsqlDbType</see> values. The default is <b>Unknown</b>.</value>
         [DefaultValue(NpgsqlDbType.Unknown)]
         [Category("Data"), RefreshProperties(RefreshProperties.All)]
-#if !NETSTANDARD1_3
         [DbProviderSpecificTypeProperty(true)]
-#endif
         public NpgsqlDbType NpgsqlDbType
         {
             get
@@ -401,40 +385,22 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Used in combination with NpgsqlDbType.Enum or NpgsqlDbType.Array | NpgsqlDbType.Enum to indicate the enum type.
-        /// For other NpgsqlDbTypes, this field is not used.
-        /// </summary>
-        [Obsolete("Use the SpecificType property instead")]
-        [PublicAPI, CanBeNull]
-        public Type EnumType
-        {
-            get => SpecificType;
-            set => SpecificType = value;
-        }
-
-        /// <summary>
-        /// Used in combination with NpgsqlDbType.Enum or NpgsqlDbType.Composite to indicate the specific enum or composite type.
-        /// For other NpgsqlDbTypes, this field is not used.
+        /// Used to specify which PostgreSQL type will be sent to the database for this parameter.
         /// </summary>
         [PublicAPI, CanBeNull]
-        public Type SpecificType
+        public string DataTypeName
         {
-            get {
-                if (_specificType != null)
-                    return _specificType;
-
-                // Try to infer type if NpgsqlDbType is Enum or has not been set
-                if ((!_npgsqlDbType.HasValue || _npgsqlDbType == NpgsqlDbType.Enum) && _value != null)
-                {
-                    var type = _value.GetType();
-                    if (type.GetTypeInfo().IsEnum)
-                        return type;
-                    if (type.IsArray && type.GetElementType().GetTypeInfo().IsEnum)
-                        return type.GetElementType();
-                }
-                return null;
+            get
+            {
+                if (_dataTypeName != null)
+                    return _dataTypeName;
+                throw new NotImplementedException("Infer from others");
             }
-            set => _specificType = value;
+            set
+            {
+                _dataTypeName = value;
+                Handler = null;
+            }
         }
 
         #endregion Type
@@ -523,11 +489,9 @@ namespace Npgsql
         [Category("Data")]
         public sealed override string SourceColumn { get; set; }
 
-#if !NETSTANDARD1_3
         /// <inheritdoc />
         [Category("Data"), DefaultValue(DataRowVersion.Current)]
         public sealed override DataRowVersion SourceVersion { get; set; }
-#endif
 
         /// <inheritdoc />
         public sealed override bool SourceColumnNullMapping { get; set; }
@@ -556,11 +520,13 @@ namespace Npgsql
                 return;
 
             if (_npgsqlDbType.HasValue)
-                Handler = typeMapper[_npgsqlDbType.Value, SpecificType];
+                Handler = typeMapper.GetByNpgsqlDbType(_npgsqlDbType.Value);
+            else if (_dataTypeName != null)
+                Handler = typeMapper.GetByDataTypeName(_dataTypeName);
             else if (_dbType.HasValue)
-                Handler = typeMapper[_dbType.Value];
+                Handler = typeMapper.GetByDbType(_dbType.Value);
             else if (_value != null)
-                Handler = typeMapper[_value];
+                Handler = typeMapper.GetByValue(_value);
             else
                 throw new InvalidOperationException($"Parameter '{ParameterName}' must have its value set");
         }
@@ -598,6 +564,7 @@ namespace Npgsql
         {
             _dbType = null;
             _npgsqlDbType = null;
+            _dataTypeName = null;
             Value = Value;
             Handler = null;
         }
@@ -631,19 +598,15 @@ namespace Npgsql
                 IsNullable = IsNullable,
                 _name = _name,
                 SourceColumn = SourceColumn,
-#if !NETSTANDARD1_3
                 SourceVersion = SourceVersion,
-#endif
                 _value = _value,
-                _npgsqlValue = _npgsqlValue,
                 SourceColumnNullMapping = SourceColumnNullMapping,
             };
             return clone;
         }
 
-#if !NETSTANDARD1_3
         object ICloneable.Clone() => Clone();
-#endif
+      
         #endregion
     }
 }

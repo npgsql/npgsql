@@ -39,25 +39,18 @@ using Npgsql.Logging;
 using Npgsql.NameTranslation;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
+using System.Transactions;
 using IsolationLevel = System.Data.IsolationLevel;
 using ThreadState = System.Threading.ThreadState;
-
-#if !NETSTANDARD1_3
-using System.Transactions;
-#endif
 
 namespace Npgsql
 {
     /// <summary>
     /// This class represents a connection to a PostgreSQL server.
     /// </summary>
-#if NETSTANDARD1_3
-    public sealed class NpgsqlConnection : DbConnection
-#else
     // ReSharper disable once RedundantNameQualifier
     [System.ComponentModel.DesignerCategory("")]
     public sealed class NpgsqlConnection : DbConnection, ICloneable
-#endif
     {
         #region Fields
 
@@ -92,10 +85,8 @@ namespace Npgsql
 
         bool _wasBroken;
 
-#if !NETSTANDARD1_3
         [CanBeNull]
         internal Transaction EnlistedTransaction { get; set; }
-#endif
 
         /// <summary>
         /// The global type mapper, which contains defaults used by all new connections.
@@ -150,11 +141,9 @@ namespace Npgsql
             GC.SuppressFinalize(this);
             ConnectionString = connectionString;
 
-#if !NETSTANDARD1_3
             // Fix authentication problems. See https://bugzilla.novell.com/show_bug.cgi?id=MONO77559 and
             // http://pgfoundry.org/forum/message.php?msg_id=1002377 for more info.
             RSACryptoServiceProvider.UseMachineKeyStore = true;
-#endif
         }
 
         /// <summary>
@@ -255,7 +244,6 @@ namespace Npgsql
                 {
                     _userFacingConnectionString = _pool.UserFacingConnectionString;
 
-#if !NETSTANDARD1_3
                     if (Settings.Enlist)
                     {
                         if (Transaction.Current != null)
@@ -271,8 +259,7 @@ namespace Npgsql
                             Connector = await _pool.Allocate(this, timeout, async, cancellationToken);
                     }
                     else  // No enlist
-#endif
-                    Connector = await _pool.Allocate(this, timeout, async, cancellationToken);
+                        Connector = await _pool.Allocate(this, timeout, async, cancellationToken);
 
                     Counters.SoftConnectsPerSecond.Increment();
 
@@ -286,11 +273,9 @@ namespace Npgsql
                     }
                 }
 
-#if !NETSTANDARD1_3
                 // We may have gotten an already enlisted pending connector above, no need to enlist in that case
                 if (Settings.Enlist && Transaction.Current != null && EnlistedTransaction == null)
                     EnlistTransaction(Transaction.Current);
-#endif
             }
             catch
             {
@@ -533,7 +518,6 @@ namespace Npgsql
             }
         }
 
-#if !NETSTANDARD1_3
         /// <summary>
         /// Enlist transation.
         /// </summary>
@@ -571,7 +555,6 @@ namespace Npgsql
             transaction.EnlistVolatile(new VolatileResourceManager(this, transaction), EnlistmentOptions.None);
             Log.Debug($"Enlisted volatile resource manager (localid={transaction.TransactionInformation.LocalIdentifier})", connector.Id);
         }
-#endif
 
         #endregion
 
@@ -593,13 +576,6 @@ namespace Npgsql
 
             Connector.CloseOngoingOperations();
 
-#if NETSTANDARD1_3
-            // No support for System.Transactions, simply release or close
-            if (Settings.Pooling)
-                _pool.Release(Connector);
-            else
-                Connector.Close();
-#else
             if (Settings.Pooling)
             {
                 if (EnlistedTransaction == null)
@@ -624,7 +600,6 @@ namespace Npgsql
                 Connector.Connection = null;
                 EnlistedTransaction = null;
             }
-#endif
 
             Log.Debug("Connection closed", connectorId);
 
@@ -1230,14 +1205,11 @@ namespace Npgsql
         #endregion State checks
 
         #region Schema operations
-#if !NETSTANDARD1_3
+
         /// <summary>
         /// Returns the supported collections
         /// </summary>
-        public override DataTable GetSchema()
-        {
-            return NpgsqlSchema.GetMetaDataCollections();
-        }
+        public override DataTable GetSchema() => NpgsqlSchema.GetMetaDataCollections();
 
         /// <summary>
         /// Returns the schema collection specified by the collection name.
@@ -1245,9 +1217,7 @@ namespace Npgsql
         /// <param name="collectionName">The collection name.</param>
         /// <returns>The collection specified.</returns>
         public override DataTable GetSchema([CanBeNull] string collectionName)
-        {
-            return GetSchema(collectionName, null);
-        }
+            => GetSchema(collectionName, null);
 
         /// <summary>
         /// Returns the schema collection specified by the collection name filtered by the restrictions.
@@ -1304,7 +1274,6 @@ namespace Npgsql
             }
         }
 
-#endif
         #endregion Schema operations
 
         #region Misc
@@ -1312,11 +1281,7 @@ namespace Npgsql
         /// <summary>
         /// Creates a closed connection with the connection string and authentication details of this message.
         /// </summary>
-#if !NETSTANDARD1_3
         object ICloneable.Clone()
-#else
-        public NpgsqlConnection Clone()
-#endif
         {
             CheckDisposed();
             var conn = new NpgsqlConnection(_connectionString) {
@@ -1370,12 +1335,10 @@ namespace Npgsql
             Open();
         }
 
-#if !NETSTANDARD1_3
         /// <summary>
         /// DB provider factory.
         /// </summary>
         protected override DbProviderFactory DbProviderFactory => NpgsqlFactory.Instance;
-#endif
 
         /// <summary>
         /// Clear connection pool.

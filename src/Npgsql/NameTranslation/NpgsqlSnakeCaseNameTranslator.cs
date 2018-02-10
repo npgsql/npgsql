@@ -35,18 +35,14 @@ namespace Npgsql.NameTranslation
         /// <summary>
         /// Creates a new <see cref="NpgsqlSnakeCaseNameTranslator"/>.
         /// </summary>
-        public NpgsqlSnakeCaseNameTranslator() : this(legacyMode: false)
-        {
-        }
+        public NpgsqlSnakeCaseNameTranslator() : this(false) {}
 
         /// <summary>
         /// Creates a new <see cref="NpgsqlSnakeCaseNameTranslator"/>.
         /// </summary>
         /// <param name="legacyMode">Uses the legacy naming convention if <c>true</c>, otherwise it uses the new naming convention.</param>
         public NpgsqlSnakeCaseNameTranslator(bool legacyMode)
-        {
-            LegacyMode = legacyMode;
-        }
+            => LegacyMode = legacyMode;
 
         bool LegacyMode { get; }
 
@@ -73,9 +69,7 @@ namespace Npgsql.NameTranslation
         public static string ConvertToSnakeCase(string value)
         {
             if (string.IsNullOrEmpty(value))
-            {
                 return value;
-            }
 
             var sb = new StringBuilder();
             var state = SnakeCaseState.Start;
@@ -85,29 +79,27 @@ namespace Npgsql.NameTranslation
                 if (value[i] == ' ')
                 {
                     if (state != SnakeCaseState.Start)
-                    {
                         state = SnakeCaseState.NewWord;
-                    }
                 }
                 else if (char.IsUpper(value[i]))
                 {
                     switch (state)
                     {
-                        case SnakeCaseState.Upper:
-                            var hasNext = (i + 1 < value.Length);
-                            if (i > 0 && hasNext)
+                    case SnakeCaseState.Upper:
+                        var hasNext = (i + 1 < value.Length);
+                        if (i > 0 && hasNext)
+                        {
+                            var nextChar = value[i + 1];
+                            if (!char.IsUpper(nextChar) && nextChar != '_')
                             {
-                                var nextChar = value[i + 1];
-                                if (!char.IsUpper(nextChar) && nextChar != '_')
-                                {
-                                    sb.Append('_');
-                                }
+                                sb.Append('_');
                             }
-                            break;
-                        case SnakeCaseState.Lower:
-                        case SnakeCaseState.NewWord:
-                            sb.Append('_');
-                            break;
+                        }
+                        break;
+                    case SnakeCaseState.Lower:
+                    case SnakeCaseState.NewWord:
+                        sb.Append('_');
+                        break;
                     }
 
                     sb.Append(char.ToLowerInvariant(value[i]));
@@ -121,9 +113,7 @@ namespace Npgsql.NameTranslation
                 else
                 {
                     if (state == SnakeCaseState.NewWord)
-                    {
                         sb.Append('_');
-                    }
 
                     sb.Append(value[i]);
                     state = SnakeCaseState.Lower;

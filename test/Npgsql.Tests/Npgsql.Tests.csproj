@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
 
   <PropertyGroup>
-    <TargetFrameworks>net451;netcoreapp1.1;netcoreapp2.0</TargetFrameworks>
+    <TargetFrameworks>net451;netcoreapp2.0</TargetFrameworks>
     <DebugType>portable</DebugType>
     <AssemblyOriginatorKeyFile>../../Npgsql.snk</AssemblyOriginatorKeyFile>
     <SignAssembly>true</SignAssembly>
@@ -15,12 +15,17 @@
   <ItemGroup>
     <PackageReference Include="NUnit" Version="3.7.1" />
     <PackageReference Include="NLog" Version="5.0.0-beta06" />
+    <PackageReference Include="Microsoft.CSharp" Version="4.4.1" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.0.0" />
     <PackageReference Include="NUnit3TestAdapter" Version="3.8.0-alpha1" />
   </ItemGroup>
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'net451' ">
     <Reference Include="System.Transactions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Microsoft.CSharp" />
   </ItemGroup>
 
 </Project>

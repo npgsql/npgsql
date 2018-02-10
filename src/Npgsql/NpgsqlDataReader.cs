@@ -52,7 +52,7 @@ namespace Npgsql
 #pragma warning disable CA1010
     public abstract class NpgsqlDataReader : DbDataReader
 #pragma warning restore CA1010
-#if NETSTANDARD1_3
+#if !NET45 && !NET451
         , IDbColumnSchemaGenerator
 #endif
     {
@@ -567,12 +567,7 @@ namespace Npgsql
         /// <summary>
         /// Closes the <see cref="NpgsqlDataReader"/> reader, allowing a new command to be executed.
         /// </summary>
-#if NETSTANDARD1_3
-        public void Close()
-#else
-        public override void Close()
-#endif
-            => Close(false, false).GetAwaiter().GetResult();
+        public override void Close() => Close(false, false).GetAwaiter().GetResult();
 
         /// <summary>
         /// Closes the <see cref="NpgsqlDataReader"/> reader, allowing a new command to be executed.
@@ -1104,13 +1099,7 @@ namespace Npgsql
         /// </summary>
         /// <returns>An <see cref="IEnumerator"/> that can be used to iterate through the rows in the data reader.</returns>
         public override IEnumerator GetEnumerator()
-        {
-#if NETSTANDARD1_3
-            throw new NotSupportedException("GetEnumerator not yet supported in .NET Core");
-#else
-            return new DbEnumerator(this);
-#endif
-        }
+            => new DbEnumerator(this);
 
         #region New (CoreCLR) schema API
 
@@ -1122,7 +1111,7 @@ namespace Npgsql
             => new DbColumnSchemaGenerator(_connection, RowDescription, (Behavior & CommandBehavior.KeyInfo) != 0)
                 .GetColumnSchema();
 
-#if NETSTANDARD1_3
+#if !NET45 && !NET451
         ReadOnlyCollection<DbColumn> IDbColumnSchemaGenerator.GetColumnSchema()
             => new ReadOnlyCollection<DbColumn>(GetColumnSchema().Cast<DbColumn>().ToList());
 #endif
@@ -1130,7 +1119,6 @@ namespace Npgsql
         #endregion
 
         #region Schema metadata table
-#if !NETSTANDARD1_3
 
         /// <summary>
         /// Returns a System.Data.DataTable that describes the column metadata of the DataReader.
@@ -1205,7 +1193,6 @@ namespace Npgsql
             return table;
         }
 
-#endif
         #endregion Schema metadata table
 
         #region Checks

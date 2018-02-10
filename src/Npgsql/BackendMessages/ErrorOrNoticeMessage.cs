@@ -23,15 +23,11 @@
 
 using System;
 using Npgsql.Logging;
-#if !NETSTANDARD1_3
 using System.Runtime.Serialization;
-#endif
 
 namespace Npgsql.BackendMessages
 {
-#if !NETSTANDARD1_3
     [Serializable]
-#endif
     class ErrorOrNoticeMessage
     {
         internal string Severity { get; private set; }

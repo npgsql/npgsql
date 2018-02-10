@@ -57,6 +57,7 @@ namespace Npgsql.TypeMapping
         readonly Dictionary<uint, NpgsqlTypeHandler> _byOID = new Dictionary<uint, NpgsqlTypeHandler>();
         readonly Dictionary<NpgsqlDbType, NpgsqlTypeHandler> _byNpgsqlDbType = new Dictionary<NpgsqlDbType, NpgsqlTypeHandler>();
         readonly Dictionary<DbType, NpgsqlTypeHandler> _byDbType = new Dictionary<DbType, NpgsqlTypeHandler>();
+        readonly Dictionary<string, NpgsqlTypeHandler> _byTypeName = new Dictionary<string, NpgsqlTypeHandler>();
 
         /// <summary>
         /// Maps CLR types to their type handlers.
@@ -90,6 +91,7 @@ namespace Npgsql.TypeMapping
             UnrecognizedTypeHandler = new UnknownTypeHandler(_connector.Connection);
             ClearBindings();
             ResetMappings();
+            DefaultNameTranslator = GlobalTypeMapper.Instance.DefaultNameTranslator;
             ChangeCounter = GlobalTypeMapper.Instance.ChangeCounter;
         }
 
@@ -102,11 +104,8 @@ namespace Npgsql.TypeMapping
         /// </summary>
         /// <param name="oid">A PostgreSQL type OID</param>
         /// <returns>A type handler that can be used to encode and decode values.</returns>
-        internal NpgsqlTypeHandler this[uint oid]
-        {
-            get => TryGetByOID(oid, out var result) ? result : UnrecognizedTypeHandler;
-            set => _byOID[oid] = value;
-        }
+        internal NpgsqlTypeHandler GetByOID(uint oid)
+            => TryGetByOID(oid, out var result) ? result : UnrecognizedTypeHandler;
 
         internal bool TryGetByOID(uint oid, out NpgsqlTypeHandler handler)
         {
@@ -116,105 +115,74 @@ namespace Npgsql.TypeMapping
             return false;
         }
 
-        internal NpgsqlTypeHandler this[NpgsqlDbType npgsqlDbType, Type specificType = null]
+        internal NpgsqlTypeHandler GetByNpgsqlDbType(NpgsqlDbType npgsqlDbType)
+            => _byNpgsqlDbType.TryGetValue(npgsqlDbType, out var handler)
+                ? handler
+                : throw new NpgsqlException($"The NpgsqlDbType '{npgsqlDbType}' isn't present in your database. " +
+                                             "You may need to install an extension or upgrade to a newer version.");
+
+
+        internal NpgsqlTypeHandler GetByDbType(DbType dbType)
         {
-            get
-            {
-                if (specificType != null && (npgsqlDbType & NpgsqlDbType.Enum) == 0 && (npgsqlDbType & NpgsqlDbType.Composite) == 0)
-                    throw new ArgumentException($"{nameof(specificType)} can only be used with {nameof(NpgsqlDbType.Enum)} or {nameof(NpgsqlDbType.Composite)}");
-
-                if (_byNpgsqlDbType.TryGetValue(npgsqlDbType, out var handler))
-                    return handler;
-
-                if (specificType != null)  // Enum/composite
-                {
-                    if ((npgsqlDbType & NpgsqlDbType.Array) == 0)
-                    {
-                        if (_byClrType.TryGetValue(specificType, out handler))
-                            return handler;
-                    }
-                    else
-                    {
-                        // Array of enum/composite
-                        if (_arrayHandlerByClrType.TryGetValue(specificType, out handler))
-                            return handler;
-                    }
-                    throw new InvalidOperationException($"The CLR type {specificType.Name} must be mapped with Npgsql before usage, please refer to the documentation.");
-                }
-
-                // Couldn't find already activated type, attempt to activate
-
-                if (npgsqlDbType == NpgsqlDbType.Enum || npgsqlDbType == NpgsqlDbType.Composite)
-                    throw new InvalidCastException($"When specifying NpgsqlDbType.{nameof(NpgsqlDbType.Enum)}, {nameof(NpgsqlParameter.SpecificType)} must be specified as well");
-
-                throw new NpgsqlException($"The NpgsqlDbType '{npgsqlDbType}' isn't present in your database. " +
-                                          "You may need to install an extension or upgrade to a newer version.");
-            }
+            if (_byDbType.TryGetValue(dbType, out var handler))
+                return handler;
+            throw new NotSupportedException("This DbType is not supported in Npgsql: " + dbType);
         }
 
-        internal NpgsqlTypeHandler this[DbType dbType]
+        internal NpgsqlTypeHandler GetByDataTypeName(string typeName)
         {
-            get
-            {
-                if (_byDbType.TryGetValue(dbType, out var handler))
-                    return handler;
-                throw new NotSupportedException("This DbType is not supported in Npgsql: " + dbType);
-            }
+            if (_byTypeName.TryGetValue(typeName, out var handler))
+                return handler;
+            throw new NotSupportedException("Could not find PostgreSQL type " + typeName);
         }
 
-        internal NpgsqlTypeHandler this[object value]
+        internal NpgsqlTypeHandler GetByValue(object value)
         {
-            get
+            Debug.Assert(value != null);
+
+            if (value is DateTime)
             {
-                Debug.Assert(value != null);
-
-                if (value is DateTime)
-                {
-                    return ((DateTime)value).Kind == DateTimeKind.Utc
-                        ? this[NpgsqlDbType.TimestampTz]
-                        : this[NpgsqlDbType.Timestamp];
-                }
-
-                if (value is NpgsqlDateTime)
-                {
-                    return ((NpgsqlDateTime)value).Kind == DateTimeKind.Utc
-                        ? this[NpgsqlDbType.TimestampTz]
-                        : this[NpgsqlDbType.Timestamp];
-                }
-
-                return this[value.GetType()];
+                return ((DateTime)value).Kind == DateTimeKind.Utc
+                    ? GetByNpgsqlDbType(NpgsqlDbType.TimestampTz)
+                    : GetByNpgsqlDbType(NpgsqlDbType.Timestamp);
             }
+
+            if (value is NpgsqlDateTime)
+            {
+                return ((NpgsqlDateTime)value).Kind == DateTimeKind.Utc
+                    ? GetByNpgsqlDbType(NpgsqlDbType.TimestampTz)
+                    : GetByNpgsqlDbType(NpgsqlDbType.Timestamp);
+            }
+
+            return GetByClrType(value.GetType());
         }
 
 #pragma warning disable CA1043
-        internal NpgsqlTypeHandler this[Type type]
+        internal NpgsqlTypeHandler GetByClrType(Type type)
 #pragma warning restore CA1043
         {
-            get
+            if (_byClrType.TryGetValue(type, out var handler))
+                return handler;
+
+            // Try to see if it is an array type
+            var arrayElementType = GetArrayElementType(type);
+            if (arrayElementType != null)
             {
-                if (_byClrType.TryGetValue(type, out var handler))
-                    return handler;
-
-                // Try to see if it is an array type
-                var arrayElementType = GetArrayElementType(type);
-                if (arrayElementType != null)
-                {
-                    if (_arrayHandlerByClrType.TryGetValue(arrayElementType, out var elementHandler))
-                        return elementHandler;
-                    throw new NotSupportedException($"The CLR array type {type} isn't supported by Npgsql or your PostgreSQL. " +
-                                                    "If you wish to map it to an  PostgreSQL composite type array you need to register it before usage, please refer to the documentation.");
-                }
-
-                // Nothing worked
-                if (type.GetTypeInfo().IsEnum)
-                    throw new NotSupportedException($"The CLR enum type {type.Name} must be registered with Npgsql before usage, please refer to the documentation.");
-
-                if (typeof(IEnumerable).IsAssignableFrom(type))
-                    throw new NotSupportedException("Npgsql 3.x removed support for writing a parameter with an IEnumerable value, use .ToList()/.ToArray() instead");
-
-                throw new NotSupportedException($"The CLR type {type} isn't supported by Npgsql or your PostgreSQL. " +
-                                                "If you wish to map it to a PostgreSQL composite type you need to register it before usage, please refer to the documentation.");
+                if (_arrayHandlerByClrType.TryGetValue(arrayElementType, out var elementHandler))
+                    return elementHandler;
+                throw new NotSupportedException($"The CLR array type {type} isn't supported by Npgsql or your PostgreSQL. " +
+                                                "If you wish to map it to an  PostgreSQL composite type array you need to register it before usage, please refer to the documentation.");
             }
+
+            // Nothing worked
+            if (type.GetTypeInfo().IsEnum)
+                throw new NotSupportedException($"The CLR enum type {type.Name} must be registered with Npgsql before usage, please refer to the documentation.");
+
+            if (typeof(IEnumerable).IsAssignableFrom(type))
+                throw new NotSupportedException("Npgsql 3.x removed support for writing a parameter with an IEnumerable value, use .ToList()/.ToArray() instead");
+
+            throw new NotSupportedException($"The CLR type {type} isn't natively supported by Npgsql or your PostgreSQL. " +
+                                            $"To use it with a PostgreSQL composite you need to specify {nameof(NpgsqlParameter.DataTypeName)} or to map it, please refer to the documentation.");
         }
 
         [CanBeNull]
@@ -328,22 +296,26 @@ namespace Npgsql.TypeMapping
 
         void BindTypes()
         {
-            lock (DatabaseInfo)  // We lock because LoadComposite mutates the internal state
-            {
-                foreach (var mapping in Mappings.Values)
-                    BindType(mapping, _connector, false);
+            foreach (var mapping in Mappings.Values)
+                BindType(mapping, _connector, false);
 
-                // Expose unmapped enums as text
-                var textHandlerFactory = new TextHandlerFactory();
-                foreach (var e in DatabaseInfo.EnumTypes.Where(e => !_byOID.ContainsKey(e.OID)))
-                    BindType(textHandlerFactory.Create(e, _connector.Connection), e);
+#if !NETSTANDARD1_3
+            // Composites
+            var dynamicCompositeFactory = new UnmappedCompositeTypeHandlerFactory(DefaultNameTranslator);
+            foreach (var compType in DatabaseInfo.CompositeTypes.Where(e => !_byOID.ContainsKey(e.OID)))
+                BindType(dynamicCompositeFactory.Create(compType, _connector.Connection), compType);
+#endif
 
-                // Wire up any domains we find to their base type mappings, this is important
-                // for reading domain fields of composites
-                foreach (var domain in DatabaseInfo.DomainTypes)
-                    if (_byOID.TryGetValue(domain.BaseType.OID, out var baseTypeHandler))
-                        _byOID[domain.OID] = baseTypeHandler;
-            }
+            // Enums
+            var enumFactory = new UnmappedEnumTypeHandlerFactory(DefaultNameTranslator);
+            foreach (var e in DatabaseInfo.EnumTypes.Where(e => !_byOID.ContainsKey(e.OID)))
+                BindType(enumFactory.Create(e, _connector.Connection), e);
+
+            // Wire up any domains we find to their base type mappings, this is important
+            // for reading domain fields of composites
+            foreach (var domain in DatabaseInfo.DomainTypes)
+                if (_byOID.TryGetValue(domain.BaseType.OID, out var baseTypeHandler))
+                    _byOID[domain.OID] = baseTypeHandler;
         }
 
         void BindType(NpgsqlTypeMapping mapping, NpgsqlConnector connector, bool throwOnError)
@@ -367,27 +339,14 @@ namespace Npgsql.TypeMapping
         void DoBindType(NpgsqlTypeMapping mapping, NpgsqlConnector connector)
         {
             var pgName = mapping.PgTypeName;
-            var i = pgName.IndexOf('.');
-            var found = (i == -1)
+            var found = pgName.IndexOf('.') == -1
                 ? DatabaseInfo.ByName.TryGetValue(pgName, out var pgType)  // No dot, partial type name
                 : DatabaseInfo.ByFullName.TryGetValue(pgName, out pgType); // Full type name with namespace
 
             if (!found)
-            {
-                // We didn't find the type.
-
-                // DatabaseInfo in general contains all types in pg_type, but does not contain
-                // composite types. We don't load these eagerly because there could be a great deal
-                // of them (#1126). So we attempt to lazily load the missing type as a composite here.
-
-                if (!DatabaseInfo.TryGetComposite(mapping.PgTypeName, connector.Connection, out var compositeType))
-                    throw new ArgumentException($"A PostgreSQL type with the name {mapping.PgTypeName} was not found in the database");
-                pgType = compositeType;
-            }
-
+                throw new ArgumentException($"A PostgreSQL type with the name {mapping.PgTypeName} was not found in the database");
             if (pgType == null)
                 throw new ArgumentException($"More than one PostgreSQL type was found with the name {mapping.PgTypeName}, please specify a full name including schema");
-
             if (pgType is PostgresDomainType)
                 throw new NotSupportedException("Cannot add a mapping to a PostgreSQL domain type");
 
@@ -398,6 +357,8 @@ namespace Npgsql.TypeMapping
         void BindType(NpgsqlTypeHandler handler, PostgresType pgType, NpgsqlDbType? npgsqlDbType = null, DbType[] dbTypes = null, Type[] clrTypes = null)
         {
             _byOID[pgType.OID] = handler;
+            _byTypeName[pgType.FullName] = handler;
+            _byTypeName[pgType.Name] = handler;
 
             if (npgsqlDbType.HasValue)
             {

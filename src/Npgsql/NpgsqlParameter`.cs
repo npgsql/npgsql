@@ -71,17 +71,19 @@ namespace Npgsql
 
             // TODO: Better exceptions in case of cast failure etc.
             if (_npgsqlDbType.HasValue)
-                Handler = typeMapper[_npgsqlDbType.Value, SpecificType];
+                Handler = typeMapper.GetByNpgsqlDbType(_npgsqlDbType.Value);
+            else if (_dataTypeName != null)
+                Handler = typeMapper.GetByDataTypeName(_dataTypeName);
             else if (_dbType.HasValue)
-                Handler = typeMapper[_dbType.Value];
+                Handler = typeMapper.GetByDbType(_dbType.Value);
             else if (TypedValue != null)
             {
                 // DateTime/NpgsqlDateTime are mapped to timestamp/timestamptz based on their
                 // Kind, so we need a special hack here
                 if (typeof(T) == typeof(DateTime) || typeof(T) == typeof(NpgsqlDateTime))
-                    Handler = typeMapper[TypedValue];   // Yeah, this boxes
+                    Handler = typeMapper.GetByValue(TypedValue);   // Yeah, this boxes
                 else
-                    Handler = typeMapper[typeof(T)];
+                    Handler = typeMapper.GetByClrType(typeof(T));
             }
             else
                 throw new InvalidOperationException($"Parameter '{ParameterName}' must have its value set");

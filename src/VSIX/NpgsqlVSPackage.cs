@@ -8,10 +8,10 @@ using System;
 using System.ComponentModel.Design;
 using System.Configuration;
 using System.Data;
-using System.Data.Common;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Shell.Interop;
 
 namespace Npgsql.VSIX
 {
@@ -36,9 +36,10 @@ namespace Npgsql.VSIX
     [InstalledProductRegistration("#110", "#112", "1.0", IconResourceID = 400)] // Info on this package for Help/About
     [ProvideMenuResource("Menus.ctmenu", 1)]
     [ProvideService(typeof(NpgsqlProviderObjectFactory), ServiceName = "PostgreSQL Provider Object Factory")]
-    [ProvideBindingPath]  // Necessary for loading Npgsqlvia DbProviderFactories.GetProvider()
+    [ProvideBindingPath]  // Necessary for loading Npgsql via DbProviderFactories.GetProvider()
     [NpgsqlProviderRegistration]
-    [Guid(NpgsqlVSPackage.PackageGuidString)]
+    [Guid(PackageGuidString)]
+    [ProvideAutoLoad(UIContextGuids80.DataSourceWindowAutoVisible), ProvideAutoLoad(UIContextGuids80.DataSourceWindowSupported)]
     [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1650:ElementDocumentationMustBeSpelledCorrectly", Justification = "pkgdef, VS and vsixmanifest are valid VS terms")]
     public sealed class NpgsqlVSPackage : Package
     {
@@ -71,8 +72,7 @@ namespace Npgsql.VSIX
 
         void SetupNpgsqlProviderFactory()
         {
-            var systemData = ConfigurationManager.GetSection("system.data") as DataSet;
-            if (systemData == null)
+            if (!(ConfigurationManager.GetSection("system.data") is DataSet systemData))
                 throw new Exception("No system.data section found in configuration manager!");
 
             DataTable factoriesTable;

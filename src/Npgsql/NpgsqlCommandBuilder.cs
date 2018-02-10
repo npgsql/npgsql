@@ -21,8 +21,6 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-#if !NETSTANDARD1_3
-
 using System;
 using System.Data;
 using System.Data.Common;
@@ -375,4 +373,3 @@ namespace Npgsql
         }
     }
 }
-#endif

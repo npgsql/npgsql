@@ -46,13 +46,9 @@ namespace Npgsql
     /// Represents a SQL statement or function (stored procedure) to execute
     /// against a PostgreSQL database. This class cannot be inherited.
     /// </summary>
-#if NETSTANDARD1_3
-    public sealed class NpgsqlCommand : DbCommand
-#else
     // ReSharper disable once RedundantNameQualifier
     [System.ComponentModel.DesignerCategory("")]
     public sealed class NpgsqlCommand : DbCommand, ICloneable
-#endif
     {
         #region Fields
 
@@ -1345,16 +1341,11 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             Log.Debug(sb.ToString(), Connection.Connector.Id);
         }
 
-#if !NETSTANDARD1_3
         /// <summary>
         /// Create a new command based on this one.
         /// </summary>
         /// <returns>A new NpgsqlCommand object.</returns>
-        object ICloneable.Clone()
-        {
-            return Clone();
-        }
-#endif
+        object ICloneable.Clone() => Clone();
 
         /// <summary>
         /// Create a new command based on this one.

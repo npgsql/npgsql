@@ -1,16 +1,11 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
-using JetBrains.Annotations;
 using Npgsql.Logging;
 using Npgsql.PostgresTypes;
-using NpgsqlTypes;
 
 namespace Npgsql
 {
@@ -50,11 +45,12 @@ namespace Npgsql
             DatabaseName = databaseName;
         }
 
-        internal readonly List<PostgresBaseType> BaseTypes = new List<PostgresBaseType>();
-        internal readonly List<PostgresArrayType> ArrayTypes = new List<PostgresArrayType>();
-        internal readonly List<PostgresRangeType> RangeTypes = new List<PostgresRangeType>();
-        internal readonly List<PostgresEnumType> EnumTypes = new List<PostgresEnumType>();
-        internal readonly List<PostgresDomainType> DomainTypes = new List<PostgresDomainType>();
+        internal readonly List<PostgresBaseType>      BaseTypes      = new List<PostgresBaseType>();
+        internal readonly List<PostgresArrayType>     ArrayTypes     = new List<PostgresArrayType>();
+        internal readonly List<PostgresRangeType>     RangeTypes     = new List<PostgresRangeType>();
+        internal readonly List<PostgresEnumType>      EnumTypes      = new List<PostgresEnumType>();
+        internal readonly List<PostgresCompositeType> CompositeTypes = new List<PostgresCompositeType>();
+        internal readonly List<PostgresDomainType>    DomainTypes    = new List<PostgresDomainType>();
 
         internal static async Task<DatabaseInfo> Load(NpgsqlConnector connector, NpgsqlTimeout timeout, bool async)
         {
@@ -64,16 +60,15 @@ namespace Npgsql
             return db;
         }
 
-        static readonly string TypesQueryWithRange = GenerateTypesQuery(true);
-        static readonly string TypesQueryWithoutRange = GenerateTypesQuery(false);
-
         // Select all types (base, array which is also base, enum, range, composite).
         // Note that arrays are distinguished from primitive types through them having typreceive=array_recv.
         // Order by primitives first, container later.
         // For arrays and ranges, join in the element OID and type (to filter out arrays of unhandled
         // types).
-        static string GenerateTypesQuery(bool withRange)
-            => $@"SELECT ns.nspname, a.typname, a.oid, a.typrelid, a.typbasetype,
+        static string GenerateTypesQuery(bool withRange, bool loadTableComposites)
+            => $@"
+/*** Load all supported types ***/
+SELECT ns.nspname, a.typname, a.oid, a.typrelid, a.typbasetype,
 CASE WHEN pg_proc.proname='array_recv' THEN 'a' ELSE a.typtype END AS type,
 CASE
   WHEN pg_proc.proname='array_recv' THEN a.typelem
@@ -89,15 +84,32 @@ END AS ord
 FROM pg_type AS a
 JOIN pg_namespace AS ns ON (ns.oid = a.typnamespace)
 JOIN pg_proc ON pg_proc.oid = a.typreceive
+LEFT OUTER JOIN pg_class AS cls ON (cls.oid = a.typrelid)
 LEFT OUTER JOIN pg_type AS b ON (b.oid = a.typelem)
+LEFT OUTER JOIN pg_class AS elemcls ON (elemcls.oid = b.typrelid)
 {(withRange ? "LEFT OUTER JOIN pg_range ON (pg_range.rngtypid = a.oid) " : "")}
 WHERE
-  (
-    a.typtype IN ('b', 'r', 'e', 'd') AND
-    (b.typtype IS NULL OR b.typtype IN ('b', 'r', 'e', 'd'))  /* Either non-array or array of supported element type */
-  ) OR
-  (a.typname IN ('record', 'void') AND a.typtype = 'p')
-ORDER BY ord";
+  a.typtype IN ('b', 'r', 'e', 'd') OR         /* Base, range, enum, domain */
+  (a.typtype = 'c' AND {(loadTableComposites ? "ns.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')" : "cls.relkind='c'")}) OR /* User-defined free-standing composites (not table composites) by default */
+  (pg_proc.proname='array_recv' AND (
+    b.typtype IN ('b', 'r', 'e', 'd') OR       /* Array of base, range, enum domain */
+    (b.typtype = 'c' AND elemcls.relkind='c')  /* Array of user-defined free-standing composites (not table composites) */
+  )) OR
+  (a.typtype = 'p' AND a.typname IN ('record', 'void'))  /* Some special supported pseudo-types */
+ORDER BY ord;
+
+/*** Load field definitions for (free-standing) composite types ***/
+SELECT ns.nspname, typ.typname, att.attname, att.atttypid
+FROM pg_type AS typ
+JOIN pg_namespace AS ns ON (ns.oid = typ.typnamespace)
+JOIN pg_class AS cls ON (cls.oid = typ.typrelid)
+JOIN pg_attribute AS att ON (att.attrelid = typ.typrelid)
+WHERE
+  (typ.typtype = 'c' AND {(loadTableComposites ? "ns.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')" : "cls.relkind='c'")}) AND
+  attnum > 0 AND     /* Don't load system attributes */
+  NOT attisdropped
+ORDER BY typ.typname, att.attnum;
+";
 
         async Task LoadBackendTypes(NpgsqlConnector connector, NpgsqlTimeout timeout, bool async)
         {
@@ -109,17 +121,28 @@ ORDER BY ord";
                     throw new TimeoutException();
             }
 
-            using (var command = new NpgsqlCommand(connector.SupportsRangeTypes ? TypesQueryWithRange : TypesQueryWithoutRange, connector.Connection))
+            var typeLoadingQuery = GenerateTypesQuery(connector.SupportsRangeTypes, connector.Settings.LoadTableComposites);
+
+            using (var command = new NpgsqlCommand(typeLoadingQuery, connector.Connection))
             {
                 command.CommandTimeout = commandTimeout;
                 command.AllResultTypesAreUnknown = true;
                 using (var reader = async ? await command.ExecuteReaderAsync() : command.ExecuteReader())
                 {
+                    // First load the types themselves
                     while (async ? await reader.ReadAsync() : reader.Read())
                     {
                         timeout.Check();
                         LoadBackendType(reader, connector);
                     }
+
+                    if (async)
+                        await reader.NextResultAsync();
+                    else
+                        reader.NextResult();
+
+                    // Now load the composite types' fields
+                    LoadCompositeFields(reader);
                 }
             }
         }
@@ -133,59 +156,69 @@ ORDER BY ord";
             Debug.Assert(name != null);
             Debug.Assert(oid != 0);
 
-            uint elementOID;
             var typeChar = reader.GetString(reader.GetOrdinal("type"))[0];
             switch (typeChar)
             {
             case 'b':  // Normal base type
                 var baseType = new PostgresBaseType(ns, name, oid);
-                Add(ns, name, oid, baseType);
+                Add(baseType);
                 BaseTypes.Add(baseType);
                 return;
 
-            case 'a':   // Array
-                elementOID = Convert.ToUInt32(reader[reader.GetOrdinal("elemoid")]);
+            case 'a': // Array
+            {
+                var elementOID = Convert.ToUInt32(reader[reader.GetOrdinal("elemoid")]);
                 Debug.Assert(elementOID > 0);
                 if (!ByOID.TryGetValue(elementOID, out var elementPostgresType))
                 {
                     Log.Trace($"Array type '{name}' refers to unknown element with OID {elementOID}, skipping", connector.Id);
                     return;
                 }
+
                 var arrayType = new PostgresArrayType(ns, name, oid, elementPostgresType);
-                Add(ns, name, oid, arrayType);
+                Add(arrayType);
                 ArrayTypes.Add(arrayType);
                 return;
+            }
 
-            case 'r':   // Range
-                elementOID = Convert.ToUInt32(reader[reader.GetOrdinal("elemoid")]);
+            case 'r': // Range
+            {
+                var elementOID = Convert.ToUInt32(reader[reader.GetOrdinal("elemoid")]);
                 Debug.Assert(elementOID > 0);
-                if (!ByOID.TryGetValue(elementOID, out elementPostgresType))
+                if (!ByOID.TryGetValue(elementOID, out var subtypePostgresType))
                 {
                     Log.Trace($"Range type '{name}' refers to unknown subtype with OID {elementOID}, skipping", connector.Id);
                     return;
                 }
-                var rangeType = new PostgresRangeType(ns, name, oid, elementPostgresType);
-                Add(ns, name, oid, rangeType);
+
+                var rangeType = new PostgresRangeType(ns, name, oid, subtypePostgresType);
+                Add(rangeType);
                 RangeTypes.Add(rangeType);
                 return;
+            }
 
             case 'e':   // Enum
                 var enumType = new PostgresEnumType(ns, name, oid);
-                Add(ns, name, oid, enumType);
+                Add(enumType);
                 EnumTypes.Add(enumType);
+                return;
+
+            case 'c':   // Composite
+                var compositeType = new PostgresCompositeType(ns, name, oid);
+                Add(compositeType);
+                CompositeTypes.Add(compositeType);
                 return;
 
             case 'd':   // Domain
                 var baseTypeOID = Convert.ToUInt32(reader[reader.GetOrdinal("typbasetype")]);
                 Debug.Assert(baseTypeOID > 0);
-                PostgresType basePostgresType;
-                if (!ByOID.TryGetValue(baseTypeOID, out basePostgresType))
+                if (!ByOID.TryGetValue(baseTypeOID, out var basePostgresType))
                 {
                     Log.Trace($"Domain type '{name}' refers to unknown base type with OID {baseTypeOID}, skipping", connector.Id);
                     return;
                 }
                 var domainType = new PostgresDomainType(ns, name, oid, basePostgresType);
-                Add(ns, name, oid, domainType);
+                Add(domainType);
                 DomainTypes.Add(domainType);
                 return;
 
@@ -193,139 +226,70 @@ ORDER BY ord";
                 // Hack this as a base type
                 goto case 'b';
 
-            // Note that composite types are only loaded on-demand because of their potential large number
-            // (a composite exists for each table, see #1126)
-
             default:
                 throw new ArgumentOutOfRangeException($"Unknown typtype for type '{name}' in pg_type: {typeChar}");
             }
         }
 
-        /// <summary>
-        /// Attempts to load the given type as a composite type. Composite types aren't eagerly loaded as the other
-        /// types.
-        /// </summary>
-        internal bool TryGetComposite(string pgName, NpgsqlConnection connection, out PostgresCompositeType compositeType)
+        void LoadCompositeFields(DbDataReader reader)
         {
-            // First check if the composite type definition has already been loaded from the database
-            if (pgName.IndexOf('.') == -1
-                ? ByName.TryGetValue(pgName, out var postgresType)
-                : ByFullName.TryGetValue(pgName, out postgresType))
+            PostgresCompositeType currentComposite = null;
+            while (reader.Read())
             {
-                compositeType = postgresType as PostgresCompositeType;
-                if (compositeType == null)
-                    throw new ArgumentException($"Type {pgName} was found but is not a composite");
-                return true;
-            }
-
-            // This is the first time the composite is mapped, the type definition needs to be loaded
-            string name, schema;
-            var i = pgName.IndexOf('.');
-            if (i == -1)
-            {
-                schema = null;
-                name = pgName;
-            }
-            else
-            {
-                schema = pgName.Substring(0, i);
-                name = pgName.Substring(i + 1);
-            }
-
-            using (var cmd = new NpgsqlCommand(GenerateLoadCompositeQuery(schema != null), connection))
-            {
-                // The "text" type handler (required for writing string parameters) may have not been loaded yet,
-                // so we send the name parameter as unknown.
-                cmd.Parameters.AddWithValue("name", NpgsqlDbType.Unknown, name);
-                if (schema != null)
-                    cmd.Parameters.AddWithValue("schema", NpgsqlDbType.Unknown, schema);
-                using (var reader = cmd.ExecuteReader())
+                var ns = reader.GetString(reader.GetOrdinal("nspname"));
+                var name = reader.GetString(reader.GetOrdinal("typname"));
+                var fullName = $"{ns}.{name}";
+                if (fullName != currentComposite?.FullName)
                 {
-                    if (!reader.Read())
+                    currentComposite = ByFullName[fullName] as PostgresCompositeType;
+                    if (currentComposite == null)
                     {
-                        compositeType = null;
-                        return false;
+                        Log.Error($"Ignoring non-composite type {fullName} when trying to load composite fields");
+                        continue;
                     }
-
-                    // Load some info on the composite type itself, do some checks
-                    var ns = reader.GetString(0);
-                    Debug.Assert(schema == null || ns == schema);
-                    var oid = reader.GetFieldValue<uint>(1);
-                    var typeChar = reader.GetChar(2);
-                    if (typeChar != 'c')
-                        throw new ArgumentException($"Type {pgName} was found in the database but is not a composite");
-                    if (reader.Read())
-                    {
-                        // More than one composite type matched, the user didn't specify a schema and the same name
-                        // exists in more than one schema
-                        Debug.Assert(schema == null);
-                        var ns2 = reader.GetString(0);
-                        throw new ArgumentException($"More than one composite types with name {name} where found (in schemas {ns} and {ns2}). Please qualify with a schema.");
-                    }
-
-                    reader.NextResult(); // Load the fields
-
-                    var fields = new List<PostgresCompositeType.Field>();
-                    while (reader.Read())
-                    {
-                        fields.Add(new PostgresCompositeType.Field
-                        {
-                            PgName = reader.GetString(0),
-                            TypeOID = reader.GetFieldValue<uint>(1)
-                        });
-                    }
-
-                    compositeType = new PostgresCompositeType(ns, name, oid, fields);
-                    Add(ns, name, oid, compositeType);
-
-                    reader.NextResult(); // Load the array type
-
-                    if (reader.Read())
-                    {
-                        var arrayNs = reader.GetString(0);
-                        var arrayName = reader.GetString(1);
-                        var arrayOID = reader.GetFieldValue<uint>(2);
-
-                        Add(arrayNs, arrayName, arrayOID,
-                            new PostgresArrayType(arrayNs, arrayName, arrayOID, compositeType));
-                    }
-                    else
-                        Log.Warn($"Could not find array type corresponding to composite {pgName}");
-
-                    return true;
                 }
+                currentComposite.Fields.Add(new PostgresCompositeType.Field
+                {
+                    PgName = reader.GetString(reader.GetOrdinal("attname")),
+                    TypeOID = Convert.ToUInt32(reader[reader.GetOrdinal("atttypid")])
+                });
+            }
+
+            // Our pass above loaded composite fields with their type OID only, do a second
+            // pass to resolve them to PostgresType references (since types can come in any order)
+            foreach (var compositeType in CompositeTypes.ToArray())
+            {
+                foreach (var field in compositeType.Fields)
+                {
+                    if (!ByOID.TryGetValue(field.TypeOID, out field.Type))
+                    {
+                        Log.Error($"Skipping composite type {compositeType.DisplayName} with field {field.PgName} with type OID {field.TypeOID}, which could not be resolved to a PostgreSQL type.");
+                        Remove(compositeType);
+                        CompositeTypes.Remove(compositeType);
+                        goto outer;
+                    }
+                }
+                // ReSharper disable once RedundantJumpStatement
+                outer: continue;
             }
         }
 
-        static string GenerateLoadCompositeQuery(bool withSchema) =>
-            $@"SELECT ns.nspname, typ.oid, typ.typtype
-FROM pg_type AS typ
-JOIN pg_namespace AS ns ON (ns.oid = typ.typnamespace)
-WHERE (typ.typname = @name{(withSchema ? " AND ns.nspname = @schema" : "")});
-
-SELECT att.attname, att.atttypid
-FROM pg_type AS typ
-JOIN pg_namespace AS ns ON (ns.oid = typ.typnamespace)
-JOIN pg_attribute AS att ON (att.attrelid = typ.typrelid)
-WHERE
-  typ.typname = @name{(withSchema ? " AND ns.nspname = @schema" : "")} AND
-  attnum > 0 AND     /* Don't load system attributes */
-  NOT attisdropped;
-
-SELECT ns.nspname, a.typname, a.oid
-FROM pg_type AS a
-JOIN pg_type AS b ON (b.oid = a.typelem)
-JOIN pg_namespace AS ns ON (ns.oid = b.typnamespace)
-WHERE a.typtype = 'b' AND b.typname = @name{(withSchema ? " AND ns.nspname = @schema" : "")}";
-
-        void Add(string ns, string name, uint oid, PostgresType pgType)
+        void Add(PostgresType pgType)
         {
-            ByOID[oid] = pgType;
-            ByFullName[$"{ns}.{name}"] = pgType;
-            ByName[name] = ByName.ContainsKey(name)
+            ByOID[pgType.OID] = pgType;
+            ByFullName[pgType.FullName] = pgType;
+            // If more than one type exists with the same partial name, we place a null value.
+            // This allows us to detect this case later and force the user to use full names only.
+            ByName[pgType.Name] = ByName.ContainsKey(pgType.Name)
                 ? null
                 : pgType;
+        }
 
+        void Remove(PostgresType pgType)
+        {
+            ByOID.Remove(pgType.OID);
+            ByName.Remove(pgType.Name);
+            ByFullName.Remove(pgType.FullName);
         }
     }
 }
