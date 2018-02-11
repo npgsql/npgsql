@@ -178,9 +178,6 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-#if NETCOREAPP1_0
-        [Ignore("See https://github.com/dotnet/corefx/pull/8413")]
-#endif
         public void Macaddr()
         {
             using (var conn = OpenConnection())
@@ -206,10 +203,40 @@ namespace Npgsql.Tests.Types
             }
         }
 
+        [Test]
+        public void Macaddr8()
+        {
+            using (var conn = OpenConnection())
+            {
+                if (conn.PostgreSqlVersion < new Version(10, 0))
+                    Assert.Ignore("macaddr8 only supported on PostgreSQL 10 and above");
+
+                using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn))
+                {
+                    var send6 = PhysicalAddress.Parse("08-00-2B-01-02-03");
+                    var expected6 = PhysicalAddress.Parse("08-00-2B-FF-FE-01-02-03");  // 6-byte macaddr8 gets FF and FE inserted in the middle
+                    var expected8 = PhysicalAddress.Parse("08-00-2B-01-02-03-04-05");
+                    cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.MacAddr8) { Value = send6 });
+                    cmd.Parameters.Add(new NpgsqlParameter("p2", NpgsqlDbType.MacAddr8) { Value = expected8 });
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        reader.Read();
+
+                        Assert.That(reader.GetFieldValue<PhysicalAddress>(0), Is.EqualTo(expected6));
+                        Assert.That(reader.GetValue(0), Is.EqualTo(expected6));
+                        Assert.That(reader.GetString(0), Is.EqualTo(expected6.ToString()));
+                        Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(PhysicalAddress)));
+
+                        Assert.That(reader.GetFieldValue<PhysicalAddress>(1), Is.EqualTo(expected8));
+                        Assert.That(reader.GetValue(1), Is.EqualTo(expected8));
+                        Assert.That(reader.GetString(1), Is.EqualTo(expected8.ToString()));
+                        Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(PhysicalAddress)));
+                    }
+                }
+            }
+        }
+
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/835")]
-#if NETCOREAPP1_0
-        [Ignore("See https://github.com/dotnet/corefx/pull/8413")]
-#endif
         public void MacaddrMultiple()
         {
             using (var conn = OpenConnection())
