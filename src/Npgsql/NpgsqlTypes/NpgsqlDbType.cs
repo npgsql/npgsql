@@ -277,6 +277,12 @@ namespace NpgsqlTypes
         /// <remarks>See http://www.postgresql.org/docs/current/static/datatype-net-types.html</remarks>
         MacAddr = 34,
 
+        /// <summary>
+        /// Corresponds to the PostgreSQL "macaddr8" type, a field storing a 6-byte or 8-byte physical address.
+        /// </summary>
+        /// <remarks>See http://www.postgresql.org/docs/current/static/datatype-net-types.html</remarks>
+        MacAddr8 = 54,
+
         #endregion
 
         #region Bit String Types
