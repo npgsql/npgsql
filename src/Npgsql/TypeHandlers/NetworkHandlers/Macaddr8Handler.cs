@@ -35,18 +35,18 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-net-types.html
     /// </remarks>
-    [TypeMapping("macaddr", NpgsqlDbType.MacAddr, typeof(PhysicalAddress))]
-    class MacaddrHandler : NpgsqlSimpleTypeHandler<PhysicalAddress>, INpgsqlSimpleTypeHandler<string>
+    [TypeMapping("macaddr8", NpgsqlDbType.MacAddr8)]
+    class Macaddr8Handler : NpgsqlSimpleTypeHandler<PhysicalAddress>, INpgsqlSimpleTypeHandler<string>
     {
         #region Read
 
         public override PhysicalAddress Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
-            Debug.Assert(len == 6);
+            Debug.Assert(len == 6 || len == 8);
 
-            var bytes = new byte[6];
+            var bytes = new byte[len];
 
-            buf.ReadBytes(bytes, 0, 6);
+            buf.ReadBytes(bytes, 0, len);
             return new PhysicalAddress(bytes);
         }
 
@@ -58,15 +58,26 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
         #region Write
 
         public override int ValidateAndGetLength(PhysicalAddress value, NpgsqlParameter parameter)
-             => value.GetAddressBytes().Length == 6
-                 ? 6
-                 : throw new FormatException("MAC addresses must have length 6 in PostgreSQL");
+        {
+            switch (value.GetAddressBytes().Length)
+            {
+            case 6:
+                return 6;
+            case 8:
+                return 8;
+            default:
+                throw new FormatException("MAC addresses must have length 6 in PostgreSQL");
+            }
+        }
 
         public int ValidateAndGetLength(string value, NpgsqlParameter parameter)
             => ValidateAndGetLength(PhysicalAddress.Parse(value), parameter);
 
         public override void Write(PhysicalAddress value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
-            => buf.WriteBytes(value.GetAddressBytes(), 0, 6);
+        {
+            var bytes = value.GetAddressBytes();
+            buf.WriteBytes(bytes, 0, bytes.Length);
+        }
 
         public void Write(string value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
             => Write(PhysicalAddress.Parse(value), buf, parameter);

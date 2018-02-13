@@ -17,7 +17,7 @@ before_script:
   - psql -U postgres -c "CREATE DATABASE npgsql_tests OWNER npgsql_tests"
   - psql -U postgres -c "CREATE EXTENSION citext" npgsql_tests
   - psql -U postgres -c "CREATE EXTENSION postgis" npgsql_tests
-  - dotnet restore -v Minimal
+  - dotnet restore -v Minimal Npgsql.sln
 script:
   - dotnet build "test/Npgsql.Tests" -c Debug -f netcoreapp2.0
   - dotnet build "test/Npgsql.PluginTests" -c Debug -f netcoreapp2.0
