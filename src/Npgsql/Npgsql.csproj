@@ -3,7 +3,7 @@
   <PropertyGroup>
     <Description>Npgsql is the open source .NET data provider for PostgreSQL.</Description>
     <Authors>Shay Rojansky;Emil Lenngren;Francisco Figueiredo Jr.;Kenji Uno</Authors>
-    <Copyright>Copyright 2017 © The Npgsql Development Team</Copyright>
+    <Copyright>Copyright 2018 © The Npgsql Development Team</Copyright>
     <Company>Npgsql</Company>
     <PackageTags>npgsql postgresql postgres ado ado.net database sql</PackageTags>
     <VersionPrefix>3.3.0</VersionPrefix>
