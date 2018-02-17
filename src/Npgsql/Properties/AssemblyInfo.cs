@@ -6,10 +6,7 @@ using System.Security;
 [assembly: CLSCompliant(false)]
 [assembly: AllowPartiallyTrustedCallers]
 [assembly: AssemblyTrademark("")]
-
-#if !NETSTANDARD1_3
 [assembly: SecurityRules(SecurityRuleSet.Level1)]
-#endif
 
 [assembly: InternalsVisibleTo("Npgsql.EntityFrameworkCore.PostgreSQL, PublicKey=" +
 "0024000004800000940000000602000000240000525341310004000001000100" +

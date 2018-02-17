@@ -21,8 +21,6 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-#if !NETSTANDARD1_3
-
 using System;
 using System.Data;
 using System.Globalization;
@@ -35,7 +33,7 @@ namespace Npgsql
     /// <summary>
     /// Provides the underlying mechanism for reading schema information.
     /// </summary>
-    internal static class NpgsqlSchema
+    static class NpgsqlSchema
     {
         const string MetaDataResourceName = "Npgsql.NpgsqlMetaData.xml";
 
@@ -62,9 +60,7 @@ namespace Npgsql
         }
 
         static NpgsqlCommand BuildCommand(NpgsqlConnection conn, StringBuilder query, [CanBeNull] string[] restrictions, [CanBeNull] params string[] names)
-        {
-            return BuildCommand(conn, query, restrictions, true, names);
-        }
+            => BuildCommand(conn, query, restrictions, true, names);
 
         static NpgsqlCommand BuildCommand(NpgsqlConnection conn, StringBuilder query, [CanBeNull] string[] restrictions, bool addWhere, [CanBeNull] params string[] names)
         {
@@ -72,7 +68,7 @@ namespace Npgsql
 
             if (restrictions != null && names != null)
             {
-                for (int i = 0; i < restrictions.Length && i < names.Length; ++i)
+                for (var i = 0; i < restrictions.Length && i < names.Length; ++i)
                 {
                     if (restrictions[i] != null && restrictions[i].Length != 0)
                     {
@@ -101,9 +97,7 @@ namespace Npgsql
         }
 
         static string RemoveSpecialChars(string paramName)
-        {
-            return paramName.Replace("(", "").Replace(")", "").Replace(".", "");
-        }
+            => paramName.Replace("(", "").Replace(")", "").Replace(".", "");
 
         /// <summary>
         /// Returns the Databases that contains a list of all accessable databases.
@@ -241,7 +235,7 @@ namespace Npgsql
             getViews.Append("SELECT table_catalog, table_schema, table_name, check_option, is_updatable FROM information_schema.views");
 
             using (var command = BuildCommand(conn, getViews, restrictions, "table_catalog", "table_schema", "table_name"))
-            using (NpgsqlDataAdapter adapter = new NpgsqlDataAdapter(command))
+            using (var adapter = new NpgsqlDataAdapter(command))
                 adapter.Fill(views);
 
             return views;
@@ -556,4 +550,3 @@ and n.nspname not in ('pg_catalog', 'pg_toast')");
         #endregion Reserved Keywords
     }
 }
-#endif

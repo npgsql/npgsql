@@ -105,7 +105,7 @@ namespace Npgsql
 
     /// <summary>
     /// This class is currently a simple wrapper around System.Diagnostics.PerformanceCounter.
-    /// Since these aren't supported in netstandard13, all the ifdef'ing happens here.
+    /// Since these aren't supported in .NET Standard, all the ifdef'ing happens here.
     /// When an alternative performance counter API emerges for netstandard, it can be added here.
     /// </summary>
     sealed class Counter : IDisposable

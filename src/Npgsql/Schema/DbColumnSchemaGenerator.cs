@@ -9,9 +9,7 @@ using System.Linq;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandlers;
-#if !NETSTANDARD1_3
 using System.Transactions;
-#endif
 
 namespace Npgsql.Schema
 {
@@ -30,9 +28,13 @@ namespace Npgsql.Schema
 
         #region Columns queries
 
-        static string GenerateColumnsQuery(string columnFieldFilter) =>
+        static string GenerateColumnsQuery(Version pgVersion, string columnFieldFilter) =>
+            pgVersion < new Version(8, 2)
+                ? GenerateOldColumnsQuery(columnFieldFilter)
+                :
 $@"SELECT
      typ.oid AS typoid, nspname, relname, attname, typ.typname, attrelid, attnum, attnotnull,
+     {(pgVersion >= new Version(10, 0) ? "attidentity != ''" : "FALSE")} AS isidentity,
      CASE WHEN typ.typtype = 'd' THEN typ.typtypmod ELSE atttypmod END AS typmod,
      CASE WHEN atthasdef THEN (SELECT pg_get_expr(adbin, cls.oid) FROM pg_attrdef WHERE adrelid = cls.oid AND adnum = attr.attnum) ELSE NULL END AS default,
      CASE WHEN col.is_updatable = 'YES' THEN true ELSE false END AS is_updatable,
@@ -115,16 +117,10 @@ ORDER BY attnum";
 
             if (_fetchAdditionalInfo && columnFieldFilter != "")
             {
-                var query = _connection.PostgreSqlVersion >= new Version(8, 2)
-                    ? GenerateColumnsQuery(columnFieldFilter)
-                    : GenerateOldColumnsQuery(columnFieldFilter);
+                var query = GenerateColumnsQuery(_connection.PostgreSqlVersion, columnFieldFilter);
 
-#if NETSTANDARD1_3
-                using (var connection = _connection.Clone())
-#else
                 using (new TransactionScope(TransactionScopeOption.Suppress))
                 using (var connection = (NpgsqlConnection)((ICloneable)_connection).Clone())
-#endif
                 {
                     connection.Open();
 
@@ -196,7 +192,8 @@ ORDER BY attnum";
             var defaultValueOrdinal = reader.GetOrdinal("default");
             column.DefaultValue = reader.IsDBNull(defaultValueOrdinal) ? null : reader.GetString(defaultValueOrdinal);
 
-            column.IsAutoIncrement = column.DefaultValue != null && column.DefaultValue.StartsWith("nextval(");
+            column.IsAutoIncrement = reader.GetBoolean(reader.GetOrdinal("isidentity")) ||
+                column.DefaultValue != null && column.DefaultValue.StartsWith("nextval(");
 
             ColumnPostConfig(column, reader.GetInt32(reader.GetOrdinal("typmod")));
 
@@ -247,7 +244,7 @@ ORDER BY attnum";
             {
                 column.IsLong = handler is ByteaHandler;
 
-                if (handler is ICompositeHandler)
+                if (handler is IMappedCompositeHandler)
                     column.UdtAssemblyQualifiedName = column.DataType.AssemblyQualifiedName;
             }
 

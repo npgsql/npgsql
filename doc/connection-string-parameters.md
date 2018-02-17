@@ -69,6 +69,7 @@ Parameter keywords are case-insensitive.
 | Client Encoding          | Gets or sets the client_encoding parameter. Since 3.1.                                          |           |
 | Timezone                 | Gets or sets the session timezone, PGTZ environment variable can be used instead. Since 3.3.    |           |
 | EF Template Database     | The database template to specify when creating a database in Entity Framework.                  | template1 |
+| Load Table Composites    | Load table composite type definitions, and not just free-standing composite types.              | false     |
 
 ## Compatibility
 

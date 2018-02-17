@@ -72,7 +72,7 @@ namespace Npgsql.TypeHandlers
                 var fieldLen = buf.ReadInt32();
                 if (fieldLen == -1)  // Null field, simply skip it and leave at default
                     continue;
-                result[i] = await _typeMapper[typeOID].ReadAsObject(buf, fieldLen, async);
+                result[i] = await _typeMapper.GetByOID(typeOID).ReadAsObject(buf, fieldLen, async);
             }
 
             return result;

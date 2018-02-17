@@ -66,13 +66,11 @@ namespace Npgsql
         /// </summary>
         public NpgsqlConnectionStringBuilder() { Init(); }
 
-#if !NETSTANDARD1_3
         /// <summary>
         /// Initializes a new instance of the NpgsqlConnectionStringBuilder class, optionally using ODBC rules for quoting values.
         /// </summary>
         /// <param name="useOdbcRules">true to use {} to delimit fields; false to use quotation marks.</param>
         public NpgsqlConnectionStringBuilder(bool useOdbcRules) : base(useOdbcRules) { Init(); }
-#endif
 
         /// <summary>
         /// Initializes a new instance of the NpgsqlConnectionStringBuilder class and sets its <see cref="DbConnectionStringBuilder.ConnectionString"/>.
@@ -1145,6 +1143,24 @@ namespace Npgsql
         }
         bool _noResetOnClose;
 
+        /// <summary>
+        /// Load table composite type definitions, and not just free-standing composite types.
+        /// </summary>
+        [Category("Advanced")]
+        [Description("Load table composite type definitions, and not just free-standing composite types.")]
+        [DisplayName("Load Table Composites")]
+        [NpgsqlConnectionStringProperty]
+        public bool LoadTableComposites
+        {
+            get => _loadTableComposites;
+            set
+            {
+                _loadTableComposites = value;
+                SetValue(nameof(LoadTableComposites), value);
+            }
+        }
+        bool _loadTableComposites;
+
         #endregion
 
         #region Properties - Compatibility
@@ -1327,17 +1343,10 @@ namespace Npgsql
                 yield return new KeyValuePair<string, object>(k, this[k]);
         }
 
-#if NETSTANDARD1_3
-        /// <summary>
-        /// Gets a value indicating whether the ICollection{T} is read-only.
-        /// </summary>
-        public bool IsReadOnly => false;
-#endif
         #endregion IDictionary<string, object>
 
         #region ICustomTypeDescriptor
 
-#if !NETSTANDARD1_3
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
         protected override void GetProperties(Hashtable propertyDescriptors)
         {
@@ -1356,7 +1365,6 @@ namespace Npgsql
                 propertyDescriptors.Remove(o.DisplayName);
         }
 #pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
-#endif
 
         #endregion
 

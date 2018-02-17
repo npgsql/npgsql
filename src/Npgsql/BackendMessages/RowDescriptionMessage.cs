@@ -118,13 +118,7 @@ namespace Npgsql.BackendMessages
             public bool Equals([NotNull] string x, [NotNull] string y)
                 => CompareInfo.Compare(x, y, CompareOptions.IgnoreWidth) == 0;
             public int GetHashCode([NotNull] string o)
-            {
-#if NETSTANDARD1_3
-                return CompareInfo.GetHashCode(o, CompareOptions.IgnoreWidth);
-#else
-                return CompareInfo.GetSortKey(o, CompareOptions.IgnoreWidth).GetHashCode();
-#endif
-            }
+                => CompareInfo.GetSortKey(o, CompareOptions.IgnoreWidth).GetHashCode();
         }
 
         sealed class KanaWidthCaseInsensitiveComparer : IEqualityComparer<string>
@@ -134,13 +128,7 @@ namespace Npgsql.BackendMessages
             public bool Equals([NotNull] string x, [NotNull] string y)
                 => CompareInfo.Compare(x, y, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase) == 0;
             public int GetHashCode([NotNull] string o)
-            {
-#if NETSTANDARD1_3
-                return CompareInfo.GetHashCode(o, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase);
-#else
-                return CompareInfo.GetSortKey(o, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase).GetHashCode();
-#endif
-            }
+                => CompareInfo.GetSortKey(o, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase).GetHashCode();
         }
 
         #endregion
@@ -166,7 +154,7 @@ namespace Npgsql.BackendMessages
             TypeModifier = typeModifier;
             FormatCode = formatCode;
 
-            RealHandler = typeMapper[TypeOID];
+            RealHandler = typeMapper.GetByOID(TypeOID);
             ResolveHandler();
         }
 
@@ -228,13 +216,17 @@ namespace Npgsql.BackendMessages
         /// </summary>
         internal NpgsqlTypeHandler RealHandler { get; private set; }
 
-        internal PostgresType PostgresType => RealHandler.PostgresType;
+        internal PostgresType PostgresType
+            => _typeMapper.DatabaseInfo.ByOID.TryGetValue(TypeOID, out var postgresType)
+                ? postgresType
+                : UnknownBackendType.Instance;
+
         internal Type FieldType => Handler.GetFieldType(this);
 
         void ResolveHandler()
         {
             Handler = IsBinaryFormat
-                ? _typeMapper[TypeOID]
+                ? _typeMapper.GetByOID(TypeOID)
                 : _typeMapper.UnrecognizedTypeHandler;
         }
 

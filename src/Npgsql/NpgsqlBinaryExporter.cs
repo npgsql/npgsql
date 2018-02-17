@@ -188,7 +188,7 @@ namespace Npgsql
             var type = typeof(T);
             var handler = _typeHandlerCache[_column];
             if (handler == null)
-                handler = _typeHandlerCache[_column] = _typeMapper[type];
+                handler = _typeHandlerCache[_column] = _typeMapper.GetByClrType(type);
             return DoRead<T>(handler);
         }
 
@@ -214,7 +214,7 @@ namespace Npgsql
 
             var handler = _typeHandlerCache[_column];
             if (handler == null)
-                handler = _typeHandlerCache[_column] = _typeMapper[type];
+                handler = _typeHandlerCache[_column] = _typeMapper.GetByNpgsqlDbType(type);
             return DoRead<T>(handler);
         }
 

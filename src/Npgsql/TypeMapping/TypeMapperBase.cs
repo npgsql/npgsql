@@ -22,19 +22,8 @@
 #endregion
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Data;
-using System.Diagnostics;
-using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using JetBrains.Annotations;
-using Npgsql.Logging;
-using Npgsql.NameTranslation;
-using Npgsql.PostgresTypes;
 using Npgsql.TypeHandlers;
 using NpgsqlTypes;
 
@@ -44,7 +33,7 @@ namespace Npgsql.TypeMapping
     {
         internal Dictionary<string, NpgsqlTypeMapping> Mappings { get; set; }
 
-        internal static readonly INpgsqlNameTranslator DefaultNameTranslator = new NpgsqlSnakeCaseNameTranslator();
+        public INpgsqlNameTranslator DefaultNameTranslator { get; set; }
 
         #region Mapping management
 
@@ -121,7 +110,7 @@ namespace Npgsql.TypeMapping
             {
                 PgTypeName = pgName,
                 ClrTypes = new[] { typeof(T) },
-                TypeHandlerFactory = new CompositeTypeHandlerFactory<T>(nameTranslator)
+                TypeHandlerFactory = new MappedCompositeTypeHandlerFactory<T>(nameTranslator)
             }.Build());
         }
 
