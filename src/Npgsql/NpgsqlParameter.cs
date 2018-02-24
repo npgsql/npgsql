@@ -47,10 +47,11 @@ namespace Npgsql
         int _size;
 
         // ReSharper disable InconsistentNaming
-        private protected NpgsqlDbType? _npgsqlDbType;
-        private protected DbType? _dbType;
+        // TODO: Switch to private protected once mono's msbuild/csc supports C# 7.2
+        internal NpgsqlDbType? _npgsqlDbType;
+        internal DbType? _dbType;
         [CanBeNull]
-        private protected string _dataTypeName;
+        internal     string _dataTypeName;
         // ReSharper restore InconsistentNaming
         [CanBeNull]
         Type _specificType;
