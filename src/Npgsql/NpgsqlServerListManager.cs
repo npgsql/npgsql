@@ -39,38 +39,87 @@ namespace Npgsql
         /// Parse host property. And move the prefer host to the head of resultServerList for performance.
         /// Then get current connection info (host and port) from memory.
         /// </summary>
-        /// <param name="context"></param>
+        /// <param name="settings"></param>
 
-        public static ServerPair[] getServerInfo(NpgsqlConnector context)
+        public static ServerPair[] getServerInfo(NpgsqlConnectionStringBuilder settings)
         {
-            var serverList = analyzeConnectionString(context.Settings.Host, context.Settings.Port);
+            string[] serverList;
             var resultServerList = new List<ServerPair>();
 
-            lock (Servers)
+            // When port is not set by user, Npgsql set port to default value. 
+            if (settings.Host == null)
             {
-                foreach (ServerPair sp in serverList)
-                {
-                    var key = sp.toString();
+                throw new ArgumentException();
+            }
+            serverList = settings.Host.Split(',');
 
-                    if (!Servers.ContainsKey(key))
+            for (var i = 0; i < serverList.Length; i++)
+            {
+                serverList[i] = serverList[i].Trim();
+
+                if (serverList[i].Length == 0)
+                {
+                    throw new ArgumentException("Connection string argument missing!");
+                }
+
+                var portIdx = serverList[i].LastIndexOf(':');
+
+                if (portIdx != -1 && serverList[i].LastIndexOf(']') < portIdx)
+                {
+                    var portStr = serverList[i].Substring(portIdx + 1);
+                    var hostStr = serverList[i].Substring(0, portIdx).Trim();
+
+                    if (hostStr.Length == 0)
                     {
-                        Servers.Add(key, sp);
-                        resultServerList.Add(sp);
+                        throw new ArgumentException("Connection string argument missing!");
                     }
-                    else
+
+                    try
                     {
-                        resultServerList.Add(Servers[key]);
+                        var key = hostStr + ":" + portStr;
+                        lock (Servers)
+                        {
+                            if (!Servers.ContainsKey(key))
+                            {
+                                Servers.Add(key, new ServerPair(hostStr, Convert.ToInt32(portStr)));
+                                resultServerList.Add(new ServerPair(hostStr, Convert.ToInt32(portStr)));
+                            }
+                            else
+                                resultServerList.Add(Servers[key]);
+                        }
+                    }
+                    catch (FormatException exception)
+                    {
+                        throw new ArgumentException("Connection string argument missing!", exception);
+                    }
+                    catch (OverflowException exception)
+                    {
+                        throw new ArgumentException("Connection string argument missing!", exception);
+                    }
+                }
+                else
+                {
+                    var key = serverList[i] + ":" + settings.Port;
+                    lock (Servers)
+                    {
+                        if (!Servers.ContainsKey(key))
+                        {
+                            Servers.Add(key, new ServerPair(serverList[i], settings.Port));
+                            resultServerList.Add(new ServerPair(serverList[i], settings.Port));
+                        }
+                        else
+                            resultServerList.Add(Servers[key]);
                     }
                 }
             }
 
             NpgsqlServerListManager preferStatus;
 
-            if (context.Settings.TargetServerType == TargetServerType.any)
+            if (settings.TargetServerType == TargetServerType.any)
             {
                 return resultServerList.ToArray();
             }
-            else if (context.Settings.TargetServerType == TargetServerType.master)
+            else if (settings.TargetServerType == TargetServerType.master)
             {
                 preferStatus = NpgsqlServerListManager.Master;
             }
@@ -100,8 +149,7 @@ namespace Npgsql
              * if TargetServerType is set to preferSlave, move the master host to the last of the result.
              * Server to avoid connet to master host twice
             */
-
-            if (context.Settings.TargetServerType == TargetServerType.preferSlave)
+            if (settings.TargetServerType == TargetServerType.preferSlave)
             {
                 if (resultServerList[0].HostStatus == NpgsqlServerListManager.Master)
                 {
@@ -119,116 +167,46 @@ namespace Npgsql
         /// </summary>
         /// <param name="connection">Connection</param>
         /// <param name="targetserver">Target Host and Port parameter</param>
-        /// <param name="settings"></param>
         /// <param name="primarysv"></param>
-        public static bool IsTargetServer(NpgsqlConnection connection, ServerPair targetserver, NpgsqlConnectionStringBuilder settings, ref NpgsqlConnection primarysv)
+        public static bool IsTargetServer(NpgsqlConnection connection, ServerPair targetserver, ref NpgsqlConnection primarysv)
         {
             // check if the server is master or slave by sending "SHOW transaction_read_only"
             DbCommand sendMsg = connection.CreateCommand();
             sendMsg.CommandText = "SHOW transaction_read_only";
             var isSlave = sendMsg.ExecuteScalar();
 
-            if (connection.Settings.TargetServerType == TargetServerType.any)
+            Servers[connection.Settings.Host + ":" + connection.Settings.Port] = targetserver;
+            if (isSlave.Equals("off"))
             {
-                return true;
-            }
-            else if (connection.Settings.TargetServerType == TargetServerType.master)
-            {
-                if (isSlave.Equals("off"))
+                targetserver.UpdateHostStatus(NpgsqlServerListManager.Master);
+                if (connection.Settings.TargetServerType == TargetServerType.master ||
+                    connection.Settings.TargetServerType == TargetServerType.any)
                 {
-                    targetserver.updateHostStatus(NpgsqlServerListManager.Master);
                     return true;
                 }
-            }
-            else if (connection.Settings.TargetServerType == TargetServerType.slave)
-            {
-                if (isSlave.Equals("on"))
+                else if (connection.Settings.TargetServerType == TargetServerType.preferSlave)
                 {
-                    targetserver.updateHostStatus(NpgsqlServerListManager.Slave);
-                    return true;
-                }
-            }
-            else if (connection.Settings.TargetServerType == TargetServerType.preferSlave)
-            {
-                if (isSlave.Equals("on"))
-                {
-                    targetserver.updateHostStatus(NpgsqlServerListManager.Slave);
-                    return true;
-                }
-                else
-                {
-                    targetserver.updateHostStatus(NpgsqlServerListManager.Master);
                     primarysv = connection.CloneWith(connection.ConnectionString);
-                    primarysv.Settings.Host = settings.Host;
-                    primarysv.Settings.Port = settings.Port;
+                    primarysv.Settings.Host = connection.Settings.Host;
+                    primarysv.Settings.Port = connection.Settings.Port;
+                }
+            }
+            else if (isSlave.Equals("on"))
+            {
+                targetserver.UpdateHostStatus(NpgsqlServerListManager.Slave);
+                if (connection.Settings.TargetServerType == TargetServerType.slave || 
+                    connection.Settings.TargetServerType == TargetServerType.preferSlave ||
+                    connection.Settings.TargetServerType == TargetServerType.any)
+                {
+                    return true;
                 }
             }
             else
-            {
-                targetserver.updateHostStatus(NpgsqlServerListManager.Down);
-            }
+                targetserver.UpdateHostStatus(NpgsqlServerListManager.Down);
+            
             return false;
         }
-
-        /// <summary>
-        /// Parse Host property.
-        /// </summary>
-        /// <param name="host"></param>
-        /// <param name="port"></param>
-
-        private static List<ServerPair> analyzeConnectionString(string host, int port)
-        {
-            var tmpServerList = new List<ServerPair>();
-            string[] serverList;
-
-            // When port is not set by user, Npgsql set port to default value. 
-            if (host == null)
-            {
-                throw new System.ArgumentException();
-            }
-            serverList = host.Split(',');
-
-            for (var i = 0; i < serverList.Length; i++)
-            {
-                serverList[i] = serverList[i].Trim();
-
-                if (serverList[i].Length == 0)
-                {
-                    throw new ArgumentException("Connection string argument missing!");
-                }
-
-                var portIdx = serverList[i].LastIndexOf(':');
-
-                if (portIdx != -1 && serverList[i].LastIndexOf(']') < portIdx)
-                {
-                    var portStr = serverList[i].Substring(portIdx + 1);
-                    var hostStr = serverList[i].Substring(0, portIdx).Trim();
-
-                    if (hostStr.Length == 0)
-                    {
-                        throw new ArgumentException("Connection string argument missing!");
-                    }
-
-                    try
-                    {
-                        tmpServerList.Add(new ServerPair(hostStr, Convert.ToInt32(portStr)));
-                    }
-                    catch (FormatException exception)
-                    {
-                        throw new ArgumentException("Connection string argument missing!", exception);
-                    }
-                    catch (OverflowException exception)
-                    {
-                        throw new ArgumentException("Connection string argument missing!", exception);
-                    }
-                }
-                else
-                {
-                    tmpServerList.Add(new ServerPair(serverList[i], port));
-                }
-            }
-            return tmpServerList;
-        }
+        
     }
 
     internal enum NpgsqlServerListManager
@@ -269,7 +247,7 @@ namespace Npgsql
         public string DisplayedHost { get => displayedHost; set => displayedHost = value; }
         public int DisplayedPort { get => displayedPort; set => displayedPort = value; }
 
-        public void updateHostStatus(NpgsqlServerListManager status)
+        public void UpdateHostStatus(NpgsqlServerListManager status)
         {
             this.status = status;
         }

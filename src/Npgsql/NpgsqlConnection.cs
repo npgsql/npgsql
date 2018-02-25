@@ -240,59 +240,52 @@ namespace Npgsql
 
                     // Try to connect targeted server.
                     // If the connected server is not intended, close the connection and try to connect next server.
-                    ServerPair[] serverList = ServerListManager.getServerInfo(Connector);
+                    ServerPair[] serverList = ServerListManager.getServerInfo(Connector.Settings);
 
-                    if (serverList.Length == 1)
+                    NpgsqlConnection primarysv = null;
+                    var onRunning = false;
+                    for (var i = 0; i < serverList.Length; i++)
                     {
+                        {
+                            Settings.Host = serverList[i].Host;
+                            Settings.Port = serverList[i].Port;
+                            try
+                            {
+                                await Connector.Open(timeout, async, cancellationToken);
+                                onRunning = ServerListManager.IsTargetServer(this, serverList[i], ref primarysv);
+
+                                // If TargetServerType parameter is set to "preferSlave", continue this loop by finding slave server.
+                                if (onRunning)
+                                {
+                                    break;
+                                }
+                            }
+                            catch (SocketException e)
+                            {
+                                if ((e.SocketErrorCode != SocketError.TimedOut || e.SocketErrorCode != SocketError.ConnectionRefused) && serverList.Length > 1)
+                                {
+                                    // nothing to do because try to check other servers
+                                }
+                                else
+                                    throw;
+                            }
+                            catch (PostgresException)
+                            {
+                                throw;
+                            }
+                            // If connector is not closed, connection is remained.
+                            Connector.Close();
+                            Connector = new NpgsqlConnector(this);
+                        }
+                    }
+
+                    if (primarysv != null && onRunning == false)
+                    {
+                        Connector = new NpgsqlConnector(primarysv);
                         await Connector.Open(timeout, async, cancellationToken);
                     }
-                    else
-                    {
-                        NpgsqlConnection primarysv = null;
-                        var onRunning = false;
-                        for (var i = 0; i < serverList.Length; i++)
-                        {
-                            {
-                                Settings.Host = serverList[i].Host;
-                                Settings.Port = serverList[i].Port;
-                                try
-                                {
-                                    await Connector.Open(timeout, async, cancellationToken);
-                                    onRunning = ServerListManager.IsTargetServer(this, serverList[i], Settings, ref primarysv);
-
-                                    // If TargetServerType parameter is set to "preferSlave", continue this loop by finding slave server.
-                                    if (onRunning)
-                                    {
-                                        break;
-                                    }
-                                }
-                                catch (SocketException e)
-                                {
-                                    if (e.SocketErrorCode != SocketError.TimedOut || e.SocketErrorCode != SocketError.ConnectionRefused)
-                                    {
-                                        // nothing to do because try to check other servers
-                                    }
-                                    else
-                                        throw;
-                                }
-                                catch (PostgresException)
-                                {
-                                    throw;
-                                }
-                                // If connector is not closed, connection is remained.
-                                Connector.Close();
-                                Connector = new NpgsqlConnector(this);
-                            }
-                        }
-
-                        if (primarysv != null && onRunning ==false)
-                        {
-                            Connector = new NpgsqlConnector(primarysv);
-                            await Connector.Open(timeout, async, cancellationToken);
-                        }
-                        else if (!onRunning)
-                            throw new NpgsqlException("Could not find a suitable target server.");
-                    }
+                    else if (!onRunning)
+                        throw new NpgsqlException("Could not find a suitable target server.");
 
                     Counters.NumberOfNonPooledConnections.Increment();
                 }
