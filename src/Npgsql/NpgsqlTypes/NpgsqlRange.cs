@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -33,7 +33,7 @@ namespace NpgsqlTypes
     public struct NpgsqlRange<T> : IEquatable<NpgsqlRange<T>>
     {
 #pragma warning disable CA1000
-        public static NpgsqlRange<T> Empty { get; private set; } = new NpgsqlRange<T>(default(T), default(T), RangeFlags.Empty);
+        public static NpgsqlRange<T> Empty { get; } = new NpgsqlRange<T>(default, default, RangeFlags.Empty);
 #pragma warning restore CA1000
 
         public T LowerBound { get; }
@@ -43,7 +43,7 @@ namespace NpgsqlTypes
 
         public bool LowerBoundIsInclusive
         {
-            get { return (Flags & RangeFlags.LowerBoundInclusive) != 0; }
+            get => (Flags & RangeFlags.LowerBoundInclusive) != 0;
             private set
             {
                 if (value)
@@ -55,7 +55,7 @@ namespace NpgsqlTypes
 
         public bool UpperBoundIsInclusive
         {
-            get { return (Flags & RangeFlags.UpperBoundInclusive) != 0; }
+            get => (Flags & RangeFlags.UpperBoundInclusive) != 0;
             private set
             {
                 if (value)
@@ -67,7 +67,7 @@ namespace NpgsqlTypes
 
         public bool LowerBoundInfinite
         {
-            get { return (Flags & RangeFlags.LowerBoundInfinite) != 0; }
+            get => (Flags & RangeFlags.LowerBoundInfinite) != 0;
             private set
             {
                 if (value)
@@ -79,7 +79,7 @@ namespace NpgsqlTypes
 
         public bool UpperBoundInfinite
         {
-            get { return (Flags & RangeFlags.UpperBoundInfinite) != 0; }
+            get => (Flags & RangeFlags.UpperBoundInfinite) != 0;
             private set
             {
                 if (value)
