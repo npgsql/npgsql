@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -30,19 +30,26 @@ using System.Threading;
 using System.Threading.Tasks;
 using Npgsql;
 using NUnit.Framework;
+using System.Text.RegularExpressions;
+
+
 
 namespace Npgsql.Tests
 {
     public class MultipleHostTests : TestBase
     {
+        // If you try to run these tests, ConnectionString must have multiple hosts and ports
+        // for target servers like "Server=localhost:5432,localhost:5433;".
+
         [Test]
         public void MultipleHostConnectMasterWithPort([Values(true, false)] bool pooling)
         {
-            var csb = new NpgsqlConnectionStringBuilder(MultipleConnectionString)
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 TargetServerType = TargetServerType.master,
                 Pooling = pooling,
             };
+            CheckMultipleHosts(csb);
             using (var conn = OpenConnection(csb))
             using (var cmd = new NpgsqlCommand("SHOW transaction_read_only", conn))
             {
@@ -50,14 +57,16 @@ namespace Npgsql.Tests
                 Assert.That(isSlave, Is.EqualTo("off"));
             }
         }
+
         [Test]
         public void MultipleHostConnectSlaveWithPort([Values(true, false)] bool pooling)
         {
-            var csb = new NpgsqlConnectionStringBuilder(MultipleConnectionString)
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 TargetServerType = TargetServerType.slave,
                 Pooling = pooling,
             };
+            CheckMultipleHosts(csb);
             using (var conn = OpenConnection(csb))
             using (var cmd = new NpgsqlCommand("SHOW transaction_read_only", conn))
             {
@@ -65,14 +74,16 @@ namespace Npgsql.Tests
                 Assert.That(isSlave, Is.EqualTo("on"));
             }
         }
+
         [Test]
         public void MultipleHostConnectPreferSlaveWithPort([Values(true, false)] bool pooling)
         {
-            var csb = new NpgsqlConnectionStringBuilder(MultipleConnectionString)
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 TargetServerType = TargetServerType.preferSlave,
                 Pooling = pooling,
             };
+            CheckMultipleHosts(csb);
             using (var conn = OpenConnection(csb))
             using (var cmd = new NpgsqlCommand("SHOW transaction_read_only", conn))
             {
@@ -80,14 +91,17 @@ namespace Npgsql.Tests
                 Assert.That(isSlave, Is.EqualTo("on"));
             }
         }
+
         [Test]
         public void MultipleHostConnectMasterWithoutPort([Values(true, false)] bool pooling)
         {
-            var csb = new NpgsqlConnectionStringBuilder(MultipleConnectionStringNoPort)
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 TargetServerType = TargetServerType.master,
                 Pooling = pooling,
             };
+            RemovePort(csb);
+            CheckMultipleHosts(csb);
             using (var conn = OpenConnection(csb))
             using (var cmd = new NpgsqlCommand("SHOW transaction_read_only", conn))
             {
@@ -95,34 +109,53 @@ namespace Npgsql.Tests
                 Assert.That(isSlave, Is.EqualTo("off"));
             }
         }
+
         [Test]
         public void MultipleHostConnectSlaveWithoutPort()
         {
-            var csb = new NpgsqlConnectionStringBuilder(MultipleConnectionStringNoPort)
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 TargetServerType = TargetServerType.slave,
                 Pooling = false,
-            }.ToString();
-
-            using (var conn = new NpgsqlConnection(csb))
+            };
+            RemovePort(csb);
+            CheckMultipleHosts(csb);
+            var cs = csb.ToString();
+            using (var conn = new NpgsqlConnection(cs))
             {
                 Assert.That(() => conn.Open(), Throws.Exception.TypeOf<NpgsqlException>());
             }
         }
+
         [Test]
         public void MultipleHostConnectPreferSlaveWithoutPort([Values(true, false)] bool pooling)
         {
-            var csb = new NpgsqlConnectionStringBuilder(MultipleConnectionStringNoPort)
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 TargetServerType = TargetServerType.preferSlave,
                 Pooling = pooling,
             };
+            RemovePort(csb);
+            CheckMultipleHosts(csb);
             using (var conn = OpenConnection(csb))
             using (var cmd = new NpgsqlCommand("SHOW transaction_read_only", conn))
             {
                 var isSlave = cmd.ExecuteScalar();
                 Assert.That(isSlave, Is.EqualTo("off"));
             }
+        }
+
+        private void CheckMultipleHosts(NpgsqlConnectionStringBuilder sb)
+        {
+            var isMultiple = sb.Host.Contains(",");
+            if (!isMultiple)
+                Assert.Ignore("ConnectionString must have multiple hosts when this test is run. ");
+        }
+
+        private void RemovePort(NpgsqlConnectionStringBuilder sb)
+        {
+            var pattern = @":[0-9]*";
+            sb.Host = Regex.Replace(sb.Host, pattern, string.Empty, RegexOptions.Singleline);
         }
     }
 }

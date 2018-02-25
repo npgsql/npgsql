@@ -38,35 +38,12 @@ namespace Npgsql.Tests
         /// </summary>
         public static string ConnectionString =>
             Environment.GetEnvironmentVariable("NPGSQL_TEST_DB") ?? DefaultConnectionString;
-
-        /// <summary>
-        /// The connection string that will be used on testing Multiple Hosts feature.
-        /// </summary>
-        public static string MultipleConnectionString =>
-            Environment.GetEnvironmentVariable("NPGSQL_TEST_DB") ?? DefaultMultipleConnectionString;
-        public static string MultipleConnectionStringNoPort =>
-            Environment.GetEnvironmentVariable("NPGSQL_TEST_DB") ?? DefaultMultipleConnectionStringNoPort;
-
-
+        
         /// <summary>
         /// Unless the NPGSQL_TEST_DB environment variable is defined, this is used as the connection string for the
         /// test database.
         /// </summary>
-        const string DefaultConnectionString = "Server=localhost;Port=5432;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;Timeout=0;Command Timeout=0";
-
-        /// <summary>
-        /// Unless the NPGSQL_TEST_DB environment variable is defined, this is used as the connection string for the
-        /// test database.
-        /// "Server" is set to "MasterHost:MasterPort,SlaveHost:SlavePort".
-        /// </summary>
-        const string DefaultMultipleConnectionString = "Server=localhost:5432,localhost:5433;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;Timeout=0;Command Timeout=0";
-
-        /// <summary>
-        /// Unless the NPGSQL_TEST_DB environment variable is defined, this is used as the connection string for the
-        /// test database.
-        /// "Server" is set to "MasterHost,SlaveHost".
-        /// </summary>
-        const string DefaultMultipleConnectionStringNoPort = "Server=localhost,localhost;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;Timeout=0;Command Timeout=0";
+        const string DefaultConnectionString = "Server=localhost:5432;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;Timeout=0;Command Timeout=0";
 
         #region Utilities for use by tests
 
