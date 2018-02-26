@@ -21,15 +21,14 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
+using JetBrains.Annotations;
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.Net;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
-using JetBrains.Annotations;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
@@ -59,7 +58,7 @@ namespace Npgsql
         internal int ReadPosition { get; private set; }
         internal int ReadBytesLeft => _filledBytes - ReadPosition;
 
-        internal byte[] Buffer { get; }
+        internal readonly byte[] Buffer;
         int _filledBytes;
         readonly Decoder _textDecoder;
 
@@ -83,7 +82,8 @@ namespace Npgsql
 
         internal NpgsqlReadBuffer([CanBeNull] NpgsqlConnector connector, Stream stream, int size, Encoding textEncoding)
         {
-            if (size < MinimumSize) {
+            if (size < MinimumSize)
+            {
                 throw new ArgumentOutOfRangeException(nameof(size), size, "Buffer size must be at least " + MinimumSize);
             }
 
@@ -116,16 +116,19 @@ namespace Npgsql
         internal Task Ensure(int count, bool async, bool dontBreakOnTimeouts)
             => count <= ReadBytesLeft ? PGUtil.CompletedTask : EnsureLong(count, async, dontBreakOnTimeouts);
 
-        async Task EnsureLong(int count, bool async, bool dontBreakOnTimeouts=false)
+        async Task EnsureLong(int count, bool async, bool dontBreakOnTimeouts = false)
         {
             Debug.Assert(count <= Size);
             Debug.Assert(count > ReadBytesLeft);
             count -= ReadBytesLeft;
             if (count <= 0) { return; }
 
-            if (ReadPosition == _filledBytes) {
+            if (ReadPosition == _filledBytes)
+            {
                 Clear();
-            } else if (count > Size - _filledBytes) {
+            }
+            else if (count > Size - _filledBytes)
+            {
                 Array.Copy(Buffer, ReadPosition, Buffer, 0, ReadBytesLeft);
                 _filledBytes = ReadBytesLeft;
                 ReadPosition = 0;
@@ -207,90 +210,152 @@ namespace Npgsql
 
         #region Read Simple
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public sbyte ReadSByte()
+        {
+            Debug.Assert(ReadBytesLeft >= sizeof(sbyte));
+            return (sbyte)Buffer[ReadPosition++];
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public byte ReadByte()
         {
             Debug.Assert(ReadBytesLeft >= sizeof(byte));
             return Buffer[ReadPosition++];
         }
 
-        public short ReadInt16()
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public short ReadInt16() => ReadInt16(BitConverter.IsLittleEndian);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public unsafe short ReadInt16(bool littleEndian)
         {
             Debug.Assert(ReadBytesLeft >= sizeof(short));
-            var result = IPAddress.NetworkToHostOrder(BitConverter.ToInt16(Buffer, ReadPosition));
-            ReadPosition += 2;
-            return result;
-        }
-
-        public ushort ReadUInt16()
-        {
-            Debug.Assert(ReadBytesLeft >= sizeof(short));
-            var result = (ushort)IPAddress.NetworkToHostOrder(BitConverter.ToInt16(Buffer, ReadPosition));
-            ReadPosition += 2;
-            return result;
-        }
-
-        public int ReadInt32()
-        {
-            Debug.Assert(ReadBytesLeft >= sizeof(int));
-            var result = IPAddress.NetworkToHostOrder(BitConverter.ToInt32(Buffer, ReadPosition));
-            ReadPosition += 4;
-            return result;
-        }
-
-        public uint ReadUInt32()
-        {
-            Debug.Assert(ReadBytesLeft >= sizeof(int));
-            var result = (uint)IPAddress.NetworkToHostOrder(BitConverter.ToInt32(Buffer, ReadPosition));
-            ReadPosition += 4;
-            return result;
-        }
-
-        public long ReadInt64()
-        {
-            Debug.Assert(ReadBytesLeft >= sizeof(long));
-            var result = IPAddress.NetworkToHostOrder(BitConverter.ToInt64(Buffer, ReadPosition));
-            ReadPosition += 8;
-            return result;
-        }
-
-        public  float ReadSingle()
-        {
-            Debug.Assert(ReadBytesLeft >= sizeof(float));
-            if (BitConverter.IsLittleEndian)
+            fixed (byte* buf = Buffer)
             {
-                _workspace[3] = Buffer[ReadPosition++];
-                _workspace[2] = Buffer[ReadPosition++];
-                _workspace[1] = Buffer[ReadPosition++];
-                _workspace[0] = Buffer[ReadPosition++];
-                return BitConverter.ToSingle(_workspace, 0);
-            }
-            else
-            {
-                var result = BitConverter.ToSingle(Buffer, ReadPosition);
-                ReadPosition += 4;
+                var result = *((short*)(buf + ReadPosition));
+                if (littleEndian)
+                    result = PGUtil.ReverseEndianness(result);
+                ReadPosition += sizeof(short);
                 return result;
             }
         }
 
-        public double ReadDouble()
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ushort ReadUInt16() => ReadUInt16(BitConverter.IsLittleEndian);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public unsafe ushort ReadUInt16(bool littleEndian)
+        {
+            Debug.Assert(ReadBytesLeft >= sizeof(ushort));
+            fixed (byte* buf = Buffer)
+            {
+                var result = *((ushort*)(buf + ReadPosition));
+                if (littleEndian)
+                    result = PGUtil.ReverseEndianness(result);
+                ReadPosition += sizeof(ushort);
+                return result;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int ReadInt32() => ReadInt32(BitConverter.IsLittleEndian);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public unsafe int ReadInt32(bool littleEndian)
+        {
+            Debug.Assert(ReadBytesLeft >= sizeof(int));
+            fixed (byte* buf = Buffer)
+            {
+                var result = *((int*)(buf + ReadPosition));
+                if (littleEndian)
+                    result = PGUtil.ReverseEndianness(result);
+                ReadPosition += sizeof(int);
+                return result;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public uint ReadUInt32() => ReadUInt32(BitConverter.IsLittleEndian);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public unsafe uint ReadUInt32(bool littleEndian)
+        {
+            Debug.Assert(ReadBytesLeft >= sizeof(uint));
+            fixed (byte* buf = Buffer)
+            {
+                var result = *((uint*)(buf + ReadPosition));
+                if (littleEndian)
+                    result = PGUtil.ReverseEndianness(result);
+                ReadPosition += sizeof(uint);
+                return result;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public long ReadInt64() => ReadInt64(BitConverter.IsLittleEndian);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public unsafe long ReadInt64(bool littleEndian)
+        {
+            Debug.Assert(ReadBytesLeft >= sizeof(long));
+            fixed (byte* buf = Buffer)
+            {
+                var result = *((long*)(buf + ReadPosition));
+                if (littleEndian)
+                    result = PGUtil.ReverseEndianness(result);
+                ReadPosition += sizeof(long);
+                return result;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ulong ReadUInt64() => ReadUInt64(BitConverter.IsLittleEndian);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public unsafe ulong ReadUInt64(bool littleEndian)
+        {
+            Debug.Assert(ReadBytesLeft >= sizeof(ulong));
+            fixed (byte* buf = Buffer)
+            {
+                var result = *((ulong*)(buf + ReadPosition));
+                if (littleEndian)
+                    result = PGUtil.ReverseEndianness(result);
+                ReadPosition += sizeof(ulong);
+                return result;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public float ReadSingle() => ReadSingle(BitConverter.IsLittleEndian);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public unsafe float ReadSingle(bool littleEndian)
+        {
+            Debug.Assert(ReadBytesLeft >= sizeof(float));
+            fixed (byte* buf = Buffer)
+            {
+                var result = *((float*)(buf + ReadPosition));
+                if (littleEndian)
+                    result = PGUtil.ReverseEndianness(result);
+                ReadPosition += sizeof(float);
+                return result;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public double ReadDouble() => ReadDouble(BitConverter.IsLittleEndian);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public unsafe double ReadDouble(bool littleEndian)
         {
             Debug.Assert(ReadBytesLeft >= sizeof(double));
-            if (BitConverter.IsLittleEndian)
+            fixed (byte* buf = Buffer)
             {
-                _workspace[7] = Buffer[ReadPosition++];
-                _workspace[6] = Buffer[ReadPosition++];
-                _workspace[5] = Buffer[ReadPosition++];
-                _workspace[4] = Buffer[ReadPosition++];
-                _workspace[3] = Buffer[ReadPosition++];
-                _workspace[2] = Buffer[ReadPosition++];
-                _workspace[1] = Buffer[ReadPosition++];
-                _workspace[0] = Buffer[ReadPosition++];
-                return BitConverter.ToDouble(_workspace, 0);
-            }
-            else
-            {
-                var result = BitConverter.ToDouble(Buffer, ReadPosition);
-                ReadPosition += 8;
+                var result = *((double*)(buf + ReadPosition));
+                if (littleEndian)
+                    result = PGUtil.ReverseEndianness(result);
+                ReadPosition += sizeof(double);
                 return result;
             }
         }
@@ -448,74 +513,6 @@ namespace Npgsql
                 ReadAllChars(_tempCharBuf, 0, Math.Min(charCount, _tempCharBuf.Length), byteCount, out var bSkipped, out var cSkipped);
                 charsSkipped += cSkipped;
                 bytesSkipped += bSkipped;
-            }
-        }
-
-        #endregion
-
-        #region Read PostGIS
-
-        internal int ReadInt32(ByteOrder bo)
-        {
-            Debug.Assert(ReadBytesLeft >= sizeof(int));
-            int result;
-            if (BitConverter.IsLittleEndian == (bo == ByteOrder.LSB))
-            {
-                result = BitConverter.ToInt32(Buffer, ReadPosition);
-                ReadPosition += 4;
-            }
-            else
-            {
-                _workspace[3] = Buffer[ReadPosition++];
-                _workspace[2] = Buffer[ReadPosition++];
-                _workspace[1] = Buffer[ReadPosition++];
-                _workspace[0] = Buffer[ReadPosition++];
-                result = BitConverter.ToInt32(_workspace, 0);
-            }
-            return result;
-        }
-
-        internal uint ReadUInt32(ByteOrder bo)
-        {
-            Debug.Assert(ReadBytesLeft >= sizeof(int));
-            uint result;
-            if (BitConverter.IsLittleEndian == (bo == ByteOrder.LSB))
-            {
-                result = BitConverter.ToUInt32(Buffer, ReadPosition);
-                ReadPosition += 4;
-            }
-            else
-            {
-                _workspace[3] = Buffer[ReadPosition++];
-                _workspace[2] = Buffer[ReadPosition++];
-                _workspace[1] = Buffer[ReadPosition++];
-                _workspace[0] = Buffer[ReadPosition++];
-                result = BitConverter.ToUInt32(_workspace, 0);
-            }
-            return result;
-        }
-
-        internal double ReadDouble(ByteOrder bo)
-        {
-            Debug.Assert(ReadBytesLeft >= sizeof(double));
-
-            if (BitConverter.IsLittleEndian == (ByteOrder.LSB == bo))
-            {
-                var result = BitConverter.ToDouble(Buffer, ReadPosition);
-                ReadPosition += 8;
-                return result;
-            }
-            else
-            {
-                _workspace[7] = Buffer[ReadPosition++];
-                _workspace[6] = Buffer[ReadPosition++];
-                _workspace[5] = Buffer[ReadPosition++];
-                _workspace[4] = Buffer[ReadPosition++];
-                _workspace[3] = Buffer[ReadPosition++];
-                _workspace[2] = Buffer[ReadPosition++];
-                _workspace[1] = Buffer[ReadPosition++];
-                _workspace[0] = Buffer[ReadPosition++];
-                return BitConverter.ToDouble(_workspace, 0);
             }
         }
 
