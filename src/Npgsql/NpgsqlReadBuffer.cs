@@ -213,151 +213,112 @@ namespace Npgsql
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public sbyte ReadSByte()
         {
-            Debug.Assert(ReadBytesLeft >= sizeof(sbyte));
+            Debug.Assert(sizeof(sbyte) <= ReadBytesLeft);
             return (sbyte)Buffer[ReadPosition++];
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public byte ReadByte()
         {
-            Debug.Assert(ReadBytesLeft >= sizeof(byte));
+            Debug.Assert(sizeof(byte) <= ReadBytesLeft);
             return Buffer[ReadPosition++];
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public short ReadInt16() => ReadInt16(BitConverter.IsLittleEndian);
+        public short ReadInt16()
+            => ReadInt16(BitConverter.IsLittleEndian);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public unsafe short ReadInt16(bool littleEndian)
+        public short ReadInt16(bool littleEndian)
         {
-            Debug.Assert(ReadBytesLeft >= sizeof(short));
-            fixed (byte* buf = Buffer)
-            {
-                var result = *((short*)(buf + ReadPosition));
-                if (littleEndian)
-                    result = PGUtil.ReverseEndianness(result);
-                ReadPosition += sizeof(short);
-                return result;
-            }
+            var result = Read<short>();
+            return littleEndian ? PGUtil.ReverseEndianness(result) : result;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ushort ReadUInt16() => ReadUInt16(BitConverter.IsLittleEndian);
+        public ushort ReadUInt16()
+            => ReadUInt16(BitConverter.IsLittleEndian);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public unsafe ushort ReadUInt16(bool littleEndian)
+        public ushort ReadUInt16(bool littleEndian)
         {
-            Debug.Assert(ReadBytesLeft >= sizeof(ushort));
-            fixed (byte* buf = Buffer)
-            {
-                var result = *((ushort*)(buf + ReadPosition));
-                if (littleEndian)
-                    result = PGUtil.ReverseEndianness(result);
-                ReadPosition += sizeof(ushort);
-                return result;
-            }
+            var result = Read<ushort>();
+            return littleEndian ? PGUtil.ReverseEndianness(result) : result;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public int ReadInt32() => ReadInt32(BitConverter.IsLittleEndian);
+        public int ReadInt32()
+            => ReadInt32(BitConverter.IsLittleEndian);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public unsafe int ReadInt32(bool littleEndian)
+        public int ReadInt32(bool littleEndian)
         {
-            Debug.Assert(ReadBytesLeft >= sizeof(int));
-            fixed (byte* buf = Buffer)
-            {
-                var result = *((int*)(buf + ReadPosition));
-                if (littleEndian)
-                    result = PGUtil.ReverseEndianness(result);
-                ReadPosition += sizeof(int);
-                return result;
-            }
+            var result = Read<int>();
+            return littleEndian ? PGUtil.ReverseEndianness(result) : result;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public uint ReadUInt32() => ReadUInt32(BitConverter.IsLittleEndian);
+        public uint ReadUInt32()
+            => ReadUInt32(BitConverter.IsLittleEndian);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public unsafe uint ReadUInt32(bool littleEndian)
+        public uint ReadUInt32(bool littleEndian)
         {
-            Debug.Assert(ReadBytesLeft >= sizeof(uint));
-            fixed (byte* buf = Buffer)
-            {
-                var result = *((uint*)(buf + ReadPosition));
-                if (littleEndian)
-                    result = PGUtil.ReverseEndianness(result);
-                ReadPosition += sizeof(uint);
-                return result;
-            }
+            var result = Read<uint>();
+            return littleEndian ? PGUtil.ReverseEndianness(result) : result;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public long ReadInt64() => ReadInt64(BitConverter.IsLittleEndian);
+        public long ReadInt64()
+            => ReadInt64(BitConverter.IsLittleEndian);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public unsafe long ReadInt64(bool littleEndian)
+        public long ReadInt64(bool littleEndian)
         {
-            Debug.Assert(ReadBytesLeft >= sizeof(long));
-            fixed (byte* buf = Buffer)
-            {
-                var result = *((long*)(buf + ReadPosition));
-                if (littleEndian)
-                    result = PGUtil.ReverseEndianness(result);
-                ReadPosition += sizeof(long);
-                return result;
-            }
+            var result = Read<long>();
+            return littleEndian ? PGUtil.ReverseEndianness(result) : result;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public ulong ReadUInt64() => ReadUInt64(BitConverter.IsLittleEndian);
+        public ulong ReadUInt64()
+            => ReadUInt64(BitConverter.IsLittleEndian);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public unsafe ulong ReadUInt64(bool littleEndian)
+        public ulong ReadUInt64(bool littleEndian)
         {
-            Debug.Assert(ReadBytesLeft >= sizeof(ulong));
-            fixed (byte* buf = Buffer)
-            {
-                var result = *((ulong*)(buf + ReadPosition));
-                if (littleEndian)
-                    result = PGUtil.ReverseEndianness(result);
-                ReadPosition += sizeof(ulong);
-                return result;
-            }
+            var result = Read<ulong>();
+            return littleEndian ? PGUtil.ReverseEndianness(result) : result;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public float ReadSingle() => ReadSingle(BitConverter.IsLittleEndian);
+        public float ReadSingle()
+            => ReadSingle(BitConverter.IsLittleEndian);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public unsafe float ReadSingle(bool littleEndian)
+        public float ReadSingle(bool littleEndian)
         {
-            Debug.Assert(ReadBytesLeft >= sizeof(float));
-            fixed (byte* buf = Buffer)
-            {
-                var result = *((float*)(buf + ReadPosition));
-                if (littleEndian)
-                    result = PGUtil.ReverseEndianness(result);
-                ReadPosition += sizeof(float);
-                return result;
-            }
+            var result = Read<float>();
+            return littleEndian ? PGUtil.ReverseEndianness(result) : result;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public double ReadDouble() => ReadDouble(BitConverter.IsLittleEndian);
+        public double ReadDouble()
+            => ReadDouble(BitConverter.IsLittleEndian);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public unsafe double ReadDouble(bool littleEndian)
+        public double ReadDouble(bool littleEndian)
         {
-            Debug.Assert(ReadBytesLeft >= sizeof(double));
-            fixed (byte* buf = Buffer)
-            {
-                var result = *((double*)(buf + ReadPosition));
-                if (littleEndian)
-                    result = PGUtil.ReverseEndianness(result);
-                ReadPosition += sizeof(double);
-                return result;
-            }
+            var result = Read<double>();
+            return littleEndian ? PGUtil.ReverseEndianness(result) : result;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private T Read<T>()
+        {
+            Debug.Assert(Unsafe.SizeOf<T>() <= ReadBytesLeft);
+            var result = Unsafe.ReadUnaligned<T>(ref Buffer[ReadPosition]);
+            ReadPosition += Unsafe.SizeOf<T>();
+            return result;
         }
 
         public string ReadString(int byteLen)
