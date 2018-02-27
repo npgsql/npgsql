@@ -226,90 +226,98 @@ namespace Npgsql
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public short ReadInt16()
-            => ReadInt16(BitConverter.IsLittleEndian);
+            => ReadInt16(false);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public short ReadInt16(bool littleEndian)
         {
             var result = Read<short>();
-            return littleEndian ? PGUtil.ReverseEndianness(result) : result;
+            return littleEndian == BitConverter.IsLittleEndian
+                ? result : PGUtil.ReverseEndianness(result);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ushort ReadUInt16()
-            => ReadUInt16(BitConverter.IsLittleEndian);
+            => ReadUInt16(false);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ushort ReadUInt16(bool littleEndian)
         {
             var result = Read<ushort>();
-            return littleEndian ? PGUtil.ReverseEndianness(result) : result;
+            return littleEndian == BitConverter.IsLittleEndian
+                ? result : PGUtil.ReverseEndianness(result);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int ReadInt32()
-            => ReadInt32(BitConverter.IsLittleEndian);
+            => ReadInt32(false);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int ReadInt32(bool littleEndian)
         {
             var result = Read<int>();
-            return littleEndian ? PGUtil.ReverseEndianness(result) : result;
+            return littleEndian == BitConverter.IsLittleEndian
+                ? result : PGUtil.ReverseEndianness(result);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public uint ReadUInt32()
-            => ReadUInt32(BitConverter.IsLittleEndian);
+            => ReadUInt32(false);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public uint ReadUInt32(bool littleEndian)
         {
             var result = Read<uint>();
-            return littleEndian ? PGUtil.ReverseEndianness(result) : result;
+            return littleEndian == BitConverter.IsLittleEndian
+                ? result : PGUtil.ReverseEndianness(result);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public long ReadInt64()
-            => ReadInt64(BitConverter.IsLittleEndian);
+            => ReadInt64(false);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public long ReadInt64(bool littleEndian)
         {
             var result = Read<long>();
-            return littleEndian ? PGUtil.ReverseEndianness(result) : result;
+            return littleEndian == BitConverter.IsLittleEndian
+                ? result : PGUtil.ReverseEndianness(result);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ulong ReadUInt64()
-            => ReadUInt64(BitConverter.IsLittleEndian);
+            => ReadUInt64(false);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ulong ReadUInt64(bool littleEndian)
         {
             var result = Read<ulong>();
-            return littleEndian ? PGUtil.ReverseEndianness(result) : result;
+            return littleEndian == BitConverter.IsLittleEndian
+                ? result : PGUtil.ReverseEndianness(result);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public float ReadSingle()
-            => ReadSingle(BitConverter.IsLittleEndian);
+            => ReadSingle(false);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public float ReadSingle(bool littleEndian)
         {
             var result = Read<float>();
-            return littleEndian ? PGUtil.ReverseEndianness(result) : result;
+            return littleEndian == BitConverter.IsLittleEndian
+                ? result : PGUtil.ReverseEndianness(result);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public double ReadDouble()
-            => ReadDouble(BitConverter.IsLittleEndian);
+            => ReadDouble(false);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public double ReadDouble(bool littleEndian)
         {
             var result = Read<double>();
-            return littleEndian ? PGUtil.ReverseEndianness(result) : result;
+            return littleEndian == BitConverter.IsLittleEndian
+                ? result : PGUtil.ReverseEndianness(result);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
