@@ -514,7 +514,7 @@ Exception {2}",
             }
             AssertNumberOfRows(1);
             var pool = PoolManager.Pools[connString];
-            Assert.That(pool.Idle, Has.Count.EqualTo(1));
+            Assert.That(pool.IdleCount, Is.EqualTo(1));
 
             using (var conn = new NpgsqlConnection(connString))
                 NpgsqlConnection.ClearPool(conn);
