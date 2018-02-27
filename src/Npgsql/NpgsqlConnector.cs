@@ -617,7 +617,7 @@ namespace Npgsql
         void Connect(NpgsqlTimeout timeout)
         {
             EndPoint[] endpoints;
-            if (Host.StartsWith("/"))
+            if (!string.IsNullOrEmpty(Host) && Host[0] == '/')
             {
                 endpoints = new EndPoint[] { new UnixEndPoint(Path.Combine(Host, $".s.PGSQL.{Port}")) };
             }
@@ -708,7 +708,7 @@ namespace Npgsql
         async Task ConnectAsync(NpgsqlTimeout timeout, CancellationToken cancellationToken)
         {
             EndPoint[] endpoints;
-            if (Host.StartsWith("/"))
+            if (!string.IsNullOrEmpty(Host) && Host[0] == '/')
             {
                 endpoints = new EndPoint[] { new UnixEndPoint(Path.Combine(Host, $".s.PGSQL.{Port}")) };
             }
@@ -1032,6 +1032,12 @@ namespace Npgsql
                             return AuthenticationSSPIMessage.Instance;
                         case AuthenticationRequestType.AuthenticationGSSContinue:
                             return AuthenticationGSSContinueMessage.Load(buf, len);
+                        case AuthenticationRequestType.AuthenticationSASL:
+                            return new AuthenticationSASLMessage(buf);
+                        case AuthenticationRequestType.AuthenticationSASLContinue:
+                            return new AuthenticationSASLContinueMessage(buf, len - 4);
+                        case AuthenticationRequestType.AuthenticationSASLFinal:
+                            return new AuthenticationSASLFinalMessage(buf, len - 4);
                         default:
                             throw new NotSupportedException($"Authentication method not supported (Received: {authType})");
                     }

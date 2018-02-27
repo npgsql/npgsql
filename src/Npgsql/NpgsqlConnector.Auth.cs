@@ -4,12 +4,15 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Security;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
 using Npgsql.Logging;
+using Npgsql.Tls;
 
 namespace Npgsql
 {
@@ -34,6 +37,10 @@ namespace Npgsql
                 await AuthenticateMD5(username, ((AuthenticationMD5PasswordMessage)msg).Salt, async, cancellationToken);
                 return;
 
+            case AuthenticationRequestType.AuthenticationSASL:
+                await AuthenticateSASL(((AuthenticationSASLMessage)msg).Mechanisms, async, cancellationToken);
+                return;
+
             case AuthenticationRequestType.AuthenticationGSS:
             case AuthenticationRequestType.AuthenticationSSPI:
                 await AuthenticateGSS(async, cancellationToken);
@@ -49,19 +56,7 @@ namespace Npgsql
 
         async Task AuthenticateCleartext(bool async, CancellationToken cancellationToken)
         {
-            var passwd = Settings.Password;
-
-            if (passwd == null)
-            {
-                // No password was provided. Attempt to pull the password from the pgpass file.
-                var matchingEntry = PgPassFile.LoadDefaultFile()?.GetFirstMatchingEntry(Settings.Host, Settings.Port, Settings.Database, Settings.Username);
-                if (matchingEntry != null)
-                {
-                    Log.Trace("Taking password from pgpass file");
-                    passwd = matchingEntry.Password;
-                }
-            }
-
+            var passwd = GetPassword();
             if (passwd == null)
                 throw new NpgsqlException("No password has been provided but the backend requires one (in cleartext)");
 
@@ -72,20 +67,60 @@ namespace Npgsql
             await ReadExpecting<AuthenticationRequestMessage>(async);
         }
 
+        async Task AuthenticateSASL(List<string> mechanisms, bool async, CancellationToken cancellationToken)
+        {
+            // At the time of writing PostgreSQL only supports SCRAM-SHA-256
+            if (!mechanisms.Contains("SCRAM-SHA-256"))
+                throw new NpgsqlException("No supported SASL mechanism found (only SCRAM-SHA-256 is supported for now). " +
+                                          "Mechanisms received from server: " + string.Join(", ", mechanisms));
+            var mechanism = "SCRAM-SHA-256";
+
+            var passwd = GetPassword() ??
+                         throw new NpgsqlException($"No password has been provided but the backend requires one (in SASL/{mechanism})");
+
+            // Assumption: the write buffer is big enough to contain all our outgoing messages
+            var clientNonce = GetNonce();
+
+            await new SASLInitialResponseMessage(mechanism, PGUtil.UTF8Encoding.GetBytes("n,,n=*,r=" + clientNonce))
+                .Write(WriteBuffer, async, cancellationToken);
+            await WriteBuffer.Flush(async, cancellationToken);
+
+            var saslContinueMsg = await ReadExpecting<AuthenticationSASLContinueMessage>(async);
+            if (saslContinueMsg.AuthRequestType != AuthenticationRequestType.AuthenticationSASLContinue)
+                throw new NpgsqlException("[SASL] AuthenticationSASLFinal message expected");
+            var firstServerMsg = new AuthenticationSCRAMServerFirstMessage(saslContinueMsg.Payload);
+            if (!firstServerMsg.Nonce.StartsWith(clientNonce))
+                throw new InvalidOperationException("[SCRAM] Malformed SCRAMServerFirst message: server nonce doesn't start with client nonce");
+
+            var scramFinalClientMsg = new SCRAMClientFinalMessage(passwd, firstServerMsg.Nonce, firstServerMsg.Salt, firstServerMsg.Iteration, clientNonce);
+            await scramFinalClientMsg.Write(WriteBuffer, async, cancellationToken);
+            await WriteBuffer.Flush(async, cancellationToken);
+
+            var saslFinalServerMsg = await ReadExpecting<AuthenticationSASLFinalMessage>(async);
+            if (saslFinalServerMsg.AuthRequestType != AuthenticationRequestType.AuthenticationSASLFinal)
+                throw new NpgsqlException("[SASL] AuthenticationSASLFinal message expected");
+            var scramFinalServerMsg = new AuthenticationSCRAMServerFinalMessage(saslFinalServerMsg.Payload);
+
+            if (scramFinalServerMsg.ServerSignature != Convert.ToBase64String(scramFinalClientMsg.ServerSignature))
+                throw new NpgsqlException("[SCRAM] Unable to verify server signature");
+
+            var okMsg = await ReadExpecting<AuthenticationRequestMessage>(async);
+            if (okMsg.AuthRequestType != AuthenticationRequestType.AuthenticationOk)
+                throw new NpgsqlException("[SASL] Expected AuthenticationOK message");
+
+            string GetNonce()
+            {
+                var nonceLength = 18;
+                var rncProvider = RandomNumberGenerator.Create();
+                var nonceBytes = new byte[nonceLength];
+                rncProvider.GetBytes(nonceBytes);
+                return Convert.ToBase64String(nonceBytes);
+            }
+        }
+
         async Task AuthenticateMD5(string username, byte[] salt, bool async, CancellationToken cancellationToken)
         {
-            var passwd = Settings.Password;
-            if (passwd == null)
-            {
-                // No password was provided. Attempt to pull the password from the pgpass file.
-                var matchingEntry = PgPassFile.LoadDefaultFile()?.GetFirstMatchingEntry(Settings.Host, Settings.Port, Settings.Database, Settings.Username);
-                if (matchingEntry != null)
-                {
-                    Log.Trace("Taking password from pgpass file");
-                    passwd = matchingEntry.Password;
-                }
-            }
-
+            var passwd = GetPassword();
             if (passwd == null)
                 throw new NpgsqlException("No password has been provided but the backend requires one (in MD5)");
 
@@ -243,5 +278,23 @@ namespace Npgsql
         }
 
         class AuthenticationCompleteException : Exception { }
+
+        [CanBeNull]
+        string GetPassword()
+        {
+            var passwd = Settings.Password;
+            if (passwd != null)
+                return passwd;
+
+            // No password was provided. Attempt to pull the password from the pgpass file.
+            var matchingEntry = PgPassFile.LoadDefaultFile()?.GetFirstMatchingEntry(Settings.Host, Settings.Port, Settings.Database, Settings.Username);
+            if (matchingEntry != null)
+            {
+                Log.Trace("Taking password from pgpass file");
+                return matchingEntry.Password;
+            }
+
+            return null;
+        }
     }
 }

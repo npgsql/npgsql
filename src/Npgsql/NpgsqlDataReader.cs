@@ -49,7 +49,7 @@ namespace Npgsql
 #pragma warning disable CA1010
     public sealed class NpgsqlDataReader : DbDataReader
 #pragma warning restore CA1010
-#if NETSTANDARD1_3
+#if !NET45 && !NET451
         , IDbColumnSchemaGenerator
 #endif
     {
@@ -1380,7 +1380,7 @@ namespace Npgsql
             => new DbColumnSchemaGenerator(_connection, _rowDescription, (_behavior & CommandBehavior.KeyInfo) != 0)
                 .GetColumnSchema();
 
-#if NETSTANDARD1_3
+#if !NET45 && !NET451
         ReadOnlyCollection<DbColumn> IDbColumnSchemaGenerator.GetColumnSchema()
             => new ReadOnlyCollection<DbColumn>(GetColumnSchema().Cast<DbColumn>().ToList());
 #endif

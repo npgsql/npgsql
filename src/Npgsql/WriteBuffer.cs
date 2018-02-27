@@ -381,6 +381,8 @@ namespace Npgsql
             _writePosition += TextEncoding.GetBytes(chars, offset, len == 0 ? chars.Length : len, _buf, _writePosition);
         }
 
+        public void WriteBytes(byte[] buf) => WriteBytes(buf, 0, buf.Length);
+
         public void WriteBytes(byte[] buf, int offset, int count)
         {
             Debug.Assert(count <= WriteSpaceLeft);

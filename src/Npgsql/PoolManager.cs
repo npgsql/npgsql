@@ -290,7 +290,16 @@ namespace Npgsql
                         var tcs2 = tcs;
                         var connector2 = connector;
 
-                        Task.Run(() => tcs2.TrySetResult(connector2));
+                        Task.Run(() =>
+                        {
+                            if (!tcs2.TrySetResult(connector2))
+                            {
+                                // Race condition: the waiter timed out between our IsCanceled check above and here
+                                // Recursively call Release again, this will dequeue another open attempt and retry.
+                                Debug.Assert(tcs2.Task.IsCanceled);
+                                Release(connector2);
+                            }
+                        });
                     }
                     else
                         tcs.SetResult(connector);

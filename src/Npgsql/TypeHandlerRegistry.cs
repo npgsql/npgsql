@@ -140,14 +140,21 @@ namespace Npgsql
 
             foreach (var kv in _globalEnumMappings)
             {
-                var backendType = GetBackendTypeByName(kv.Key);
-                var backendEnumType = backendType as PostgresEnumType;
-                if (backendEnumType == null)
+                try
                 {
-                    Log.Warn($"While attempting to activate global enum mappings, PostgreSQL type {kv.Key} was found but is not an enum. Skipping it.", Connector.Id);
-                    continue;
+                    var backendType = GetBackendTypeByName(kv.Key);
+                    if (!(backendType is PostgresEnumType backendEnumType))
+                    {
+                        Log.Warn($"While attempting to activate global enum mappings, PostgreSQL type {kv.Key} was found but is not an enum. Skipping it.", Connector.Id);
+                        continue;
+                    }
+
+                    backendEnumType.Activate(this, kv.Value);
                 }
-                backendEnumType.Activate(this, kv.Value);
+                catch (Exception e)
+                {
+                    Log.Warn("Caught an exception while attempting to activate global enum mappings", e, Connector.Id);
+                }
             }
 
             foreach (var kv in _globalCompositeMappings)
