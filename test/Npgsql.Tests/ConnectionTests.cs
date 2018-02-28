@@ -148,12 +148,9 @@ namespace Npgsql.Tests
             using (var conn = new NpgsqlConnection(csb)) {
                 Assert.That(() => conn.Open(), Throws.Exception
                     .TypeOf<SocketException>()
-#if !NETCOREAPP1_1
-// CoreCLR currently has an issue which causes the wrong SocketErrorCode to be set on Linux:
-// https://github.com/dotnet/corefx/issues/8464
-
+                    // CoreCLR currently has an issue which causes the wrong SocketErrorCode to be set on Linux:
+                    // https://github.com/dotnet/corefx/issues/8464
                     .With.Property(nameof(SocketException.SocketErrorCode)).EqualTo(SocketError.ConnectionRefused)
-#endif
                 );
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
             }
@@ -876,11 +873,7 @@ namespace Npgsql.Tests
                 conn.UserCertificateValidationCallback = callback2;
 
                 conn.Open();
-#if NETCOREAPP1_1
-                using (var conn2 = conn.Clone())
-#else
                 using (var conn2 = (NpgsqlConnection)((ICloneable)conn).Clone())
-#endif
                 {
                     Assert.That(conn2.ConnectionString, Is.EqualTo(conn.ConnectionString));
                     Assert.That(conn2.ProvideClientCertificatesCallback, Is.SameAs(callback1));

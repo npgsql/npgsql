@@ -21,8 +21,6 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-#if !NETCOREAPP1_1
-
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -206,5 +204,3 @@ namespace Npgsql.Tests
         }
     }
 }
-
-#endif

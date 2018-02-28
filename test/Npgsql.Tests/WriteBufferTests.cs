@@ -42,11 +42,9 @@ namespace Npgsql.Tests
 
             int charsUsed;
             bool completed;
-#if !NETCOREAPP1_1
             WriteBuffer.WriteStringChunked("hello", 0, 5, true, out charsUsed, out completed);
             Assert.That(charsUsed, Is.Zero);
             Assert.That(completed, Is.False);
-#endif
             WriteBuffer.WriteStringChunked("hello".ToCharArray(), 0, 5, true, out charsUsed, out completed);
             Assert.That(charsUsed, Is.Zero);
             Assert.That(completed, Is.False);

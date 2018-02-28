@@ -26,10 +26,7 @@ using System.Data;
 using System.IO;
 using System.Net.Sockets;
 using NUnit.Framework;
-
-#if !NETCOREAPP1_1
 using System.Runtime.Serialization.Formatters.Binary;
-#endif
 
 namespace Npgsql.Tests
 {

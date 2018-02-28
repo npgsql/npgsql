@@ -124,30 +124,14 @@ namespace Npgsql.Tests
             Assert.AreEqual(DbType.Object, p.DbType, "DbType");
             Assert.AreEqual(ParameterDirection.Input, p.Direction, "Direction");
             Assert.IsFalse(p.IsNullable, "IsNullable");
-#if NET_2_0
-            //Assert.AreEqual (0, p.LocaleId, "LocaleId");
-#endif
             Assert.AreEqual(string.Empty, p.ParameterName, "ParameterName");
             Assert.AreEqual(0, p.Precision, "Precision");
             Assert.AreEqual(0, p.Scale, "Scale");
             Assert.AreEqual(0, p.Size, "Size");
             Assert.AreEqual(string.Empty, p.SourceColumn, "SourceColumn");
-#if NET_2_0
-            Assert.IsFalse(p.SourceColumnNullMapping, "SourceColumnNullMapping");
-#endif
-#if !NETCOREAPP1_1
             Assert.AreEqual(DataRowVersion.Current, p.SourceVersion, "SourceVersion");
-#endif
             Assert.AreEqual(NpgsqlDbType.Unknown, p.NpgsqlDbType, "NpgsqlDbType");
-#if NET_2_0
-            Assert.IsNull(p.NpgsqlValue, "NpgsqlValue");
-#endif
             Assert.IsNull(p.Value, "Value");
-#if NET_2_0
-            //Assert.AreEqual (string.Empty, p.XmlSchemaCollectionDatabase, "XmlSchemaCollectionDatabase");
-            //Assert.AreEqual (string.Empty, p.XmlSchemaCollectionName, "XmlSchemaCollectionName");
-            //Assert.AreEqual (string.Empty, p.XmlSchemaCollectionOwningSchema, "XmlSchemaCollectionOwningSchema");
-#endif
         }
 
         [Test]
@@ -159,31 +143,14 @@ namespace Npgsql.Tests
             Assert.AreEqual(DbType.DateTime, p.DbType, "B:DbType");
             Assert.AreEqual(ParameterDirection.Input, p.Direction, "B:Direction");
             Assert.IsFalse(p.IsNullable, "B:IsNullable");
-#if NET_2_0
-            //Assert.AreEqual (0, p.LocaleId, "B:LocaleId");
-#endif
             Assert.AreEqual("address", p.ParameterName, "B:ParameterName");
             Assert.AreEqual(0, p.Precision, "B:Precision");
             Assert.AreEqual(0, p.Scale, "B:Scale");
             //Assert.AreEqual (0, p.Size, "B:Size");
             Assert.AreEqual(string.Empty, p.SourceColumn, "B:SourceColumn");
-#if NET_2_0
-            Assert.IsFalse(p.SourceColumnNullMapping, "B:SourceColumnNullMapping");
-#endif
-#if !NETCOREAPP1_1
             Assert.AreEqual(DataRowVersion.Current, p.SourceVersion, "B:SourceVersion");
-#endif
             Assert.AreEqual(NpgsqlDbType.Timestamp, p.NpgsqlDbType, "B:NpgsqlDbType");
-#if NET_2_0
-            // FIXME
-            //Assert.AreEqual (new SqlDateTime (value), p.NpgsqlValue, "B:NpgsqlValue");
-#endif
             Assert.AreEqual(value, p.Value, "B:Value");
-#if NET_2_0
-            //Assert.AreEqual (string.Empty, p.XmlSchemaCollectionDatabase, "B:XmlSchemaCollectionDatabase");
-            //Assert.AreEqual (string.Empty, p.XmlSchemaCollectionName, "B:XmlSchemaCollectionName");
-            //Assert.AreEqual (string.Empty, p.XmlSchemaCollectionOwningSchema, "B:XmlSchemaCollectionOwningSchema");
-#endif
         }
 
         [Test]
@@ -193,31 +160,14 @@ namespace Npgsql.Tests
             Assert.AreEqual(DbType.Object, p.DbType, "B:DbType");
             Assert.AreEqual(ParameterDirection.Input, p.Direction, "B:Direction");
             Assert.IsFalse(p.IsNullable, "B:IsNullable");
-#if NET_2_0
-            //Assert.AreEqual (0, p.LocaleId, "B:LocaleId");
-#endif
             Assert.AreEqual("address", p.ParameterName, "B:ParameterName");
             Assert.AreEqual(0, p.Precision, "B:Precision");
             Assert.AreEqual(0, p.Scale, "B:Scale");
             Assert.AreEqual(0, p.Size, "B:Size");
             Assert.AreEqual(string.Empty, p.SourceColumn, "B:SourceColumn");
-#if NET_2_0
-            Assert.IsFalse(p.SourceColumnNullMapping, "B:SourceColumnNullMapping");
-#endif
-#if !NETCOREAPP1_1
             Assert.AreEqual(DataRowVersion.Current, p.SourceVersion, "B:SourceVersion");
-#endif
             Assert.AreEqual(NpgsqlDbType.Unknown, p.NpgsqlDbType, "B:NpgsqlDbType");
-#if NET_2_0
-            // FIXME
-            //Assert.AreEqual (SqlString.Null, p.NpgsqlValue, "B:NpgsqlValue");
-#endif
             Assert.AreEqual(DBNull.Value, p.Value, "B:Value");
-#if NET_2_0
-            //Assert.AreEqual (string.Empty, p.XmlSchemaCollectionDatabase, "B:XmlSchemaCollectionDatabase");
-            //Assert.AreEqual (string.Empty, p.XmlSchemaCollectionName, "B:XmlSchemaCollectionName");
-            //Assert.AreEqual (string.Empty, p.XmlSchemaCollectionOwningSchema, "B:XmlSchemaCollectionOwningSchema");
-#endif
         }
 
         [Test]
@@ -227,34 +177,16 @@ namespace Npgsql.Tests
             Assert.AreEqual(DbType.Object, p.DbType, "A:DbType");
             Assert.AreEqual(ParameterDirection.Input, p.Direction, "A:Direction");
             Assert.IsFalse(p.IsNullable, "A:IsNullable");
-#if NET_2_0
-            //Assert.AreEqual (0, p.LocaleId, "A:LocaleId");
-#endif
             Assert.AreEqual("address", p.ParameterName, "A:ParameterName");
             Assert.AreEqual(0, p.Precision, "A:Precision");
             Assert.AreEqual(0, p.Scale, "A:Scale");
             Assert.AreEqual(0, p.Size, "A:Size");
             Assert.AreEqual(string.Empty, p.SourceColumn, "A:SourceColumn");
-#if NET_2_0
-            Assert.IsFalse(p.SourceColumnNullMapping, "A:SourceColumnNullMapping");
-#endif
-#if !NETCOREAPP1_1
             Assert.AreEqual(DataRowVersion.Current, p.SourceVersion, "A:SourceVersion");
-#endif
             Assert.AreEqual(NpgsqlDbType.Unknown, p.NpgsqlDbType, "A:NpgsqlDbType");
-#if NET_2_0
-            Assert.IsNull(p.NpgsqlValue, "A:NpgsqlValue");
-#endif
             Assert.IsNull(p.Value, "A:Value");
-#if NET_2_0
-            //Assert.AreEqual (string.Empty, p.XmlSchemaCollectionDatabase, "A:XmlSchemaCollectionDatabase");
-            //Assert.AreEqual (string.Empty, p.XmlSchemaCollectionName, "A:XmlSchemaCollectionName");
-            //Assert.AreEqual (string.Empty, p.XmlSchemaCollectionOwningSchema, "A:XmlSchemaCollectionOwningSchema");
-#endif
         }
 
-#if NET_2_0
-#if !NETCOREAPP1_1
         [Test]
         //.ctor (String, NpgsqlDbType, Int32, String, ParameterDirection, bool, byte, byte, DataRowVersion, object)
         public void Constructor7()
@@ -280,8 +212,6 @@ namespace Npgsql.Tests
             //Assert.AreEqual ("name", p1.XmlSchemaCollectionName, "XmlSchemaCollectionName");
             //Assert.AreEqual ("schema", p1.XmlSchemaCollectionOwningSchema, "XmlSchemaCollectionOwningSchema");
         }
-#endif
-#endif
 
         #endregion
 
@@ -763,9 +693,7 @@ namespace Npgsql.Tests
             param.IsNullable = true;
             param.ParameterName = "parameterName";
             param.SourceColumn = "source_column";
-#if !NETCOREAPP1_1
             param.SourceVersion = DataRowVersion.Current;
-#endif
             param.NpgsqlValue = 5;
             param.SourceColumnNullMapping = false;
 
@@ -779,9 +707,7 @@ namespace Npgsql.Tests
             Assert.AreEqual(param.IsNullable, newParam.IsNullable);
             Assert.AreEqual(param.ParameterName, newParam.ParameterName);
             Assert.AreEqual(param.SourceColumn, newParam.SourceColumn);
-#if !NETCOREAPP1_1
             Assert.AreEqual(param.SourceVersion, newParam.SourceVersion);
-#endif
             Assert.AreEqual(param.NpgsqlValue, newParam.NpgsqlValue);
             Assert.AreEqual(param.SourceColumnNullMapping, newParam.SourceColumnNullMapping);
             Assert.AreEqual(param.NpgsqlValue, newParam.NpgsqlValue);

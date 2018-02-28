@@ -60,7 +60,6 @@ namespace Npgsql.Tests.Types
 
         #endregion
 
-#if !NETCOREAPP1_1
         [Test]
         public void UnmappedComposite()
         {
@@ -179,7 +178,6 @@ namespace Npgsql.Tests.Types
                 }
             }
         }
-#endif
 
         [Test]
         public void PostgresType()
