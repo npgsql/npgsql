@@ -46,163 +46,26 @@ namespace Npgsql.TypeHandlers
         typeof(PostgisMultiPolygon),
         typeof(PostgisGeometryCollection),
     })]
-    class PostgisGeometryHandler : NpgsqlTypeHandler<PostgisGeometry>,
+    class PostgisGeometryHandler : PostgisHandler<PostgisGeometry>,
         INpgsqlTypeHandler<PostgisPoint>, INpgsqlTypeHandler<PostgisMultiPoint>,
         INpgsqlTypeHandler<PostgisLineString>, INpgsqlTypeHandler<PostgisMultiLineString>,
         INpgsqlTypeHandler<PostgisPolygon>, INpgsqlTypeHandler<PostgisMultiPolygon>,
-        INpgsqlTypeHandler<PostgisGeometryCollection>,
-        INpgsqlTypeHandler<byte[]>
+        INpgsqlTypeHandler<PostgisGeometryCollection>
     {
-        [CanBeNull]
-        readonly ByteaHandler _byteaHandler;
 
-        public PostgisGeometryHandler()
-        {
-            _byteaHandler = new ByteaHandler();
-        }
+        #region Template Methods
 
-        #region Read
+        protected override PostgisGeometry newPoint(double x, double y) => new PostgisPoint(x, y);
+        protected override PostgisGeometry newLineString(Coordinate2D[] points) => new PostgisLineString(points);
+        protected override PostgisGeometry newPolygon(Coordinate2D[][] rings) => new PostgisPolygon(rings);
+        protected override PostgisGeometry newMultiPoint(Coordinate2D[] points) => new PostgisMultiPoint(points);
+        protected override PostgisGeometry newMultiLineString(Coordinate2D[][] rings) => new PostgisMultiLineString(rings);
+        protected override PostgisGeometry newMultiPolygon(Coordinate2D[][][] pols) => new PostgisMultiPolygon(pols);
+        protected override PostgisGeometry newCollection(PostgisGeometry[] postGisTypes) => new PostgisGeometryCollection(postGisTypes);
 
-        public override async ValueTask<PostgisGeometry> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
-        {
-            await buf.Ensure(5, async);
-            var bo = (ByteOrder)buf.ReadByte();
-            var id = buf.ReadUInt32(bo);
+        protected override void setSRID(PostgisGeometry geom, uint srid) => geom.SRID = srid;
 
-            var srid = 0u;
-            if ((id & (uint)EwkbModifiers.HasSRID) != 0)
-            {
-                await buf.Ensure(4, async);
-                srid = buf.ReadUInt32(bo);
-            }
-
-            var geom = await DoRead(buf, (WkbIdentifier)(id & 7), bo, async);
-            geom.SRID = srid;
-            return geom;
-        }
-
-        async ValueTask<PostgisGeometry> DoRead(NpgsqlReadBuffer buf, WkbIdentifier id, ByteOrder bo, bool async)
-        {
-            switch (id)
-            {
-            case WkbIdentifier.Point:
-                await buf.Ensure(16, async);
-                return new PostgisPoint(buf.ReadDouble(bo), buf.ReadDouble(bo));
-
-            case WkbIdentifier.LineString:
-            {
-                await buf.Ensure(4, async);
-                var points = new Coordinate2D[buf.ReadInt32(bo)];
-                for (var ipts = 0; ipts < points.Length; ipts++)
-                {
-                    await buf.Ensure(16, async);
-                    points[ipts] = new Coordinate2D(buf.ReadDouble(bo), buf.ReadDouble(bo));
-                }
-                return new PostgisLineString(points);
-            }
-
-            case WkbIdentifier.Polygon:
-            {
-                await buf.Ensure(4, async);
-                var rings = new Coordinate2D[buf.ReadInt32(bo)][];
-
-                for (var irng = 0; irng < rings.Length; irng++)
-                {
-                    await buf.Ensure(4, async);
-                    rings[irng] = new Coordinate2D[buf.ReadInt32(bo)];
-                    for (var ipts = 0; ipts < rings[irng].Length; ipts++)
-                    {
-                        await buf.Ensure(16, async);
-                        rings[irng][ipts] = new Coordinate2D(buf.ReadDouble(bo), buf.ReadDouble(bo));
-                    }
-                }
-                return new PostgisPolygon(rings);
-            }
-
-            case WkbIdentifier.MultiPoint:
-            {
-                await buf.Ensure(4, async);
-                var points = new Coordinate2D[buf.ReadInt32(bo)];
-                for (var ipts = 0; ipts < points.Length; ipts++)
-                {
-                    await buf.Ensure(21, async);
-                    await buf.Skip(5, async);
-                    points[ipts] = new Coordinate2D(buf.ReadDouble(bo), buf.ReadDouble(bo));
-                }
-                return new PostgisMultiPoint(points);
-            }
-
-            case WkbIdentifier.MultiLineString:
-            {
-                await buf.Ensure(4, async);
-                var rings = new Coordinate2D[buf.ReadInt32(bo)][];
-
-                for (var irng = 0; irng < rings.Length; irng++)
-                {
-                    await buf.Ensure(9, async);
-                    await buf.Skip(5, async);
-                    rings[irng] = new Coordinate2D[buf.ReadInt32(bo)];
-                    for (var ipts = 0; ipts < rings[irng].Length; ipts++)
-                    {
-                        await buf.Ensure(16, async);
-                        rings[irng][ipts] = new Coordinate2D(buf.ReadDouble(bo), buf.ReadDouble(bo));
-                    }
-                }
-                return new PostgisMultiLineString(rings);
-            }
-
-            case WkbIdentifier.MultiPolygon:
-            {
-                await buf.Ensure(4, async);
-                var pols = new Coordinate2D[buf.ReadInt32(bo)][][];
-
-                for (var ipol = 0; ipol < pols.Length; ipol++)
-                {
-                    await buf.Ensure(9, async);
-                    await buf.Skip(5, async);
-                    pols[ipol] = new Coordinate2D[buf.ReadInt32(bo)][];
-                    for (var irng = 0; irng < pols[ipol].Length; irng++)
-                    {
-                        await buf.Ensure(4, async);
-                        pols[ipol][irng] = new Coordinate2D[buf.ReadInt32(bo)];
-                        for (var ipts = 0; ipts < pols[ipol][irng].Length; ipts++)
-                        {
-                            await buf.Ensure(16, async);
-                            pols[ipol][irng][ipts] = new Coordinate2D(buf.ReadDouble(bo), buf.ReadDouble(bo));
-                        }
-                    }
-                }
-                return new PostgisMultiPolygon(pols);
-            }
-
-            case WkbIdentifier.GeometryCollection:
-            {
-                await buf.Ensure(4, async);
-                var g = new PostgisGeometry[buf.ReadInt32(bo)];
-
-                for (var i = 0; i < g.Length; i++)
-                {
-                    await buf.Ensure(5, async);
-                    var elemBo = (ByteOrder)buf.ReadByte();
-                    var elemId = (WkbIdentifier)(buf.ReadUInt32(bo) & 7);
-
-                    g[i] = await DoRead(buf, elemId, elemBo, async);
-                }
-                return new PostgisGeometryCollection(g);
-            }
-
-            default:
-                throw new InvalidOperationException("Unknown Postgis identifier.");
-            }
-        }
-
-        ValueTask<byte[]> INpgsqlTypeHandler<byte[]>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
-        {
-            Debug.Assert(_byteaHandler != null);
-            return _byteaHandler.Read(buf, len, async, fieldDescription);
-        }
-
-        #endregion Read
+        #endregion Template Methods
 
         #region Read concrete types
 
@@ -248,9 +111,6 @@ namespace Npgsql.TypeHandlers
 
         public int ValidateAndGetLength(PostgisGeometryCollection value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
             => value.GetLen(true);
-
-        public int ValidateAndGetLength(byte[] value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
-            => value.Length;
 
         public override async Task Write(PostgisGeometry value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
@@ -417,11 +277,7 @@ namespace Npgsql.TypeHandlers
         public Task Write(PostgisGeometryCollection value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
             => Write((PostgisGeometry)value, buf, lengthCache, parameter, async);
 
-        public Task Write(byte[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-            => _byteaHandler == null
-                ? throw new NpgsqlException("Bytea handler was not found during initialization of PostGIS handler")
-                : _byteaHandler.Write(value, buf, lengthCache, parameter, async);
-
         #endregion Write
     }
+
 }
