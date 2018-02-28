@@ -25,6 +25,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -62,8 +63,6 @@ namespace Npgsql
         readonly Encoder _textEncoder;
 
         int _writePosition;
-
-        BitConverterUnion _bitConverterUnion;
 
         /// <summary>
         /// The minimum buffer size possible.
@@ -183,113 +182,94 @@ namespace Npgsql
 
         #region Write Simple
 
-        public void WriteByte(byte b)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void WriteSByte(sbyte value)
         {
-            Debug.Assert(WriteSpaceLeft >= sizeof(byte));
-            _buf[_writePosition++] = b;
+            Debug.Assert(sizeof(sbyte) <= WriteSpaceLeft);
+            _buf[_writePosition++] = (byte)value;
         }
 
-        public void WriteInt16(int i)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void WriteByte(byte value)
         {
-            Debug.Assert(WriteSpaceLeft >= sizeof(short));
-            _buf[_writePosition++] = (byte)(i >> 8);
-            _buf[_writePosition++] = (byte)i;
+            Debug.Assert(sizeof(byte) <= WriteSpaceLeft);
+            _buf[_writePosition++] = value;
         }
 
-        public void WriteUInt16(int i)
-        {
-            Debug.Assert(WriteSpaceLeft >= sizeof(ushort));
-            _buf[_writePosition++] = (byte)(i >> 8);
-            _buf[_writePosition++] = (byte)i;
-        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void WriteInt16(int value)
+            => WriteInt16((short)value, false);
 
-        public void WriteInt32(int i)
-        {
-            Debug.Assert(WriteSpaceLeft >= sizeof(int));
-            var pos = _writePosition;
-            _buf[pos++] = (byte)(i >> 24);
-            _buf[pos++] = (byte)(i >> 16);
-            _buf[pos++] = (byte)(i >> 8);
-            _buf[pos++] = (byte)i;
-            _writePosition = pos;
-        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void WriteInt16(short value)
+            => WriteInt16(value, false);
 
-        public void WriteUInt32(uint i)
-        {
-            Debug.Assert(WriteSpaceLeft >= sizeof(uint));
-            var pos = _writePosition;
-            _buf[pos++] = (byte)(i >> 24);
-            _buf[pos++] = (byte)(i >> 16);
-            _buf[pos++] = (byte)(i >> 8);
-            _buf[pos++] = (byte)i;
-            _writePosition = pos;
-        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void WriteInt16(short value, bool littleEndian)
+            => Write(littleEndian == BitConverter.IsLittleEndian ? value : PGUtil.ReverseEndianness(value));
 
-        public void WriteInt64(long i)
-        {
-            Debug.Assert(WriteSpaceLeft >= sizeof(long));
-            var pos = _writePosition;
-            _buf[pos++] = (byte)(i >> 56);
-            _buf[pos++] = (byte)(i >> 48);
-            _buf[pos++] = (byte)(i >> 40);
-            _buf[pos++] = (byte)(i >> 32);
-            _buf[pos++] = (byte)(i >> 24);
-            _buf[pos++] = (byte)(i >> 16);
-            _buf[pos++] = (byte)(i >> 8);
-            _buf[pos++] = (byte)i;
-            _writePosition = pos;
-        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void WriteUInt16(ushort value)
+            => WriteUInt16(value, false);
 
-        public void WriteSingle(float f)
-        {
-            Debug.Assert(WriteSpaceLeft >= sizeof(float));
-            _bitConverterUnion.float4 = f;
-            var pos = _writePosition;
-            if (BitConverter.IsLittleEndian)
-            {
-                _buf[pos++] = _bitConverterUnion.b3;
-                _buf[pos++] = _bitConverterUnion.b2;
-                _buf[pos++] = _bitConverterUnion.b1;
-                _buf[pos++] = _bitConverterUnion.b0;
-            }
-            else
-            {
-                _buf[pos++] = _bitConverterUnion.b0;
-                _buf[pos++] = _bitConverterUnion.b1;
-                _buf[pos++] = _bitConverterUnion.b2;
-                _buf[pos++] = _bitConverterUnion.b3;
-            }
-            _writePosition = pos;
-        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void WriteUInt16(ushort value, bool littleEndian)
+            => Write(littleEndian == BitConverter.IsLittleEndian ? value : PGUtil.ReverseEndianness(value));
 
-        public void WriteDouble(double d)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void WriteInt32(int value)
+            => WriteInt32(value, false);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void WriteInt32(int value, bool littleEndian)
+            => Write(littleEndian == BitConverter.IsLittleEndian ? value : PGUtil.ReverseEndianness(value));
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void WriteUInt32(uint value)
+            => WriteUInt32(value, false);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void WriteUInt32(uint value, bool littleEndian)
+            => Write(littleEndian == BitConverter.IsLittleEndian ? value : PGUtil.ReverseEndianness(value));
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void WriteInt64(long value)
+            => WriteInt64(value, false);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void WriteInt64(long value, bool littleEndian)
+            => Write(littleEndian == BitConverter.IsLittleEndian ? value : PGUtil.ReverseEndianness(value));
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void WriteUInt64(ulong value)
+            => WriteUInt64(value, false);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void WriteUInt64(ulong value, bool littleEndian)
+            => Write(littleEndian == BitConverter.IsLittleEndian ? value : PGUtil.ReverseEndianness(value));
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void WriteSingle(float value)
+            => WriteSingle(value, false);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void WriteSingle(float value, bool littleEndian)
+            => Write(littleEndian == BitConverter.IsLittleEndian ? value : PGUtil.ReverseEndianness(value));
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void WriteDouble(double value)
+            => WriteDouble(value, false);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void WriteDouble(double value, bool littleEndian)
+            => Write(littleEndian == BitConverter.IsLittleEndian ? value : PGUtil.ReverseEndianness(value));
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void Write<T>(T value)
         {
-            Debug.Assert(WriteSpaceLeft >= sizeof(double));
-            _bitConverterUnion.float8 = d;
-            var pos = _writePosition;
-            if (BitConverter.IsLittleEndian)
-            {
-                _buf[pos++] = _bitConverterUnion.b7;
-                _buf[pos++] = _bitConverterUnion.b6;
-                _buf[pos++] = _bitConverterUnion.b5;
-                _buf[pos++] = _bitConverterUnion.b4;
-                _buf[pos++] = _bitConverterUnion.b3;
-                _buf[pos++] = _bitConverterUnion.b2;
-                _buf[pos++] = _bitConverterUnion.b1;
-                _buf[pos++] = _bitConverterUnion.b0;
-            }
-            else
-            {
-                _buf[pos++] = _bitConverterUnion.b0;
-                _buf[pos++] = _bitConverterUnion.b1;
-                _buf[pos++] = _bitConverterUnion.b2;
-                _buf[pos++] = _bitConverterUnion.b3;
-                _buf[pos++] = _bitConverterUnion.b4;
-                _buf[pos++] = _bitConverterUnion.b5;
-                _buf[pos++] = _bitConverterUnion.b6;
-                _buf[pos++] = _bitConverterUnion.b7;
-            }
-            _writePosition = pos;
+            Debug.Assert(Unsafe.SizeOf<T>() <= WriteSpaceLeft);
+            Unsafe.WriteUnaligned(ref _buf[_writePosition], value);
+            _writePosition += Unsafe.SizeOf<T>();
         }
 
         public Task WriteString(string s, int byteLen, bool async)
@@ -489,24 +469,6 @@ namespace Npgsql
         {
             TotalBytesFlushed = 0;
         }
-
-#pragma warning disable CA1051 // Do not declare visible instance fields
-        [StructLayout(LayoutKind.Explicit, Size = 8)]
-        struct BitConverterUnion
-        {
-            [FieldOffset(0)] public readonly byte b0;
-            [FieldOffset(1)] public readonly byte b1;
-            [FieldOffset(2)] public readonly byte b2;
-            [FieldOffset(3)] public readonly byte b3;
-            [FieldOffset(4)] public readonly byte b4;
-            [FieldOffset(5)] public readonly byte b5;
-            [FieldOffset(6)] public readonly byte b6;
-            [FieldOffset(7)] public readonly byte b7;
-
-            [FieldOffset(0)] public float float4;
-            [FieldOffset(0)] public double float8;
-        }
-#pragma warning restore CA1051 // Do not declare visible instance fields
 
         #endregion
     }

@@ -22,12 +22,8 @@
 #endregion
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Data;
 using System.Globalization;
-using System.IO;
-using System.Net;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
@@ -78,9 +74,53 @@ namespace Npgsql
             }
         }
 
-        public static int RotateShift(int val, int shift)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static int RotateShift(int val, int shift)
+            => (val << shift) | (val >> (sizeof(int) - shift));
+
+        // All ReverseEndianness methods came from the System.Buffers.Binary.BinaryPrimitives class.
+        // This takes advantage of the fact that the JIT can detect ROL32 / ROR32 patterns and output the correct intrinsic.
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static short ReverseEndianness(short value)
+            => (short)ReverseEndianness((ushort)value);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static int ReverseEndianness(int value)
+            => (int)ReverseEndianness((uint)value);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static long ReverseEndianness(long value)
+            => (long)ReverseEndianness((ulong)value);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static ushort ReverseEndianness(ushort value)
+            => (ushort)((value >> 8) + (value << 8));
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static uint ReverseEndianness(uint value)
         {
-            return (val << shift) | (val >> (sizeof (int) - shift));
+            var mask_xx_zz = (value & 0x00FF00FFU);
+            var mask_ww_yy = (value & 0xFF00FF00U);
+            return ((mask_xx_zz >> 8) | (mask_xx_zz << 24))
+                 + ((mask_ww_yy << 8) | (mask_ww_yy >> 24));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static ulong ReverseEndianness(ulong value)
+            => ((ulong)ReverseEndianness((uint)value) << 32) + ReverseEndianness((uint)(value >> 32));
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal unsafe static float ReverseEndianness(float value)
+        {
+            var result = ReverseEndianness(*(int*)(&value));
+            return *(float*)(&result);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal unsafe static double ReverseEndianness(double value)
+        {
+            var result = ReverseEndianness(*(long*)(&value));
+            return *(double*)(&result);
         }
 
         internal static readonly Task CompletedTask = Task.FromResult(0);
