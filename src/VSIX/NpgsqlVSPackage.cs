@@ -41,6 +41,7 @@ namespace Npgsql.VSIX
     [Guid(PackageGuidString)]
     [ProvideAutoLoad(UIContextGuids80.DataSourceWindowAutoVisible), ProvideAutoLoad(UIContextGuids80.DataSourceWindowSupported)]
     [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1650:ElementDocumentationMustBeSpelledCorrectly", Justification = "pkgdef, VS and vsixmanifest are valid VS terms")]
+    [ProvideAutoLoad(Microsoft.VisualStudio.Shell.Interop.UIContextGuids80.NoSolution)]
     public sealed class NpgsqlVSPackage : Package
     {
         /// <summary>
