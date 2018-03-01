@@ -48,10 +48,10 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             => buf.ReadInt16();
 
         byte INpgsqlSimpleTypeHandler<byte>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
-            => (byte)Read(buf, len, fieldDescription);
+            => checked((byte)Read(buf, len, fieldDescription));
 
         sbyte INpgsqlSimpleTypeHandler<sbyte>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
-            => (sbyte)Read(buf, len, fieldDescription);
+            => checked((sbyte)Read(buf, len, fieldDescription));
 
         int INpgsqlSimpleTypeHandler<int>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => Read(buf, len, fieldDescription);
@@ -96,9 +96,9 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         public override void Write(short value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
             => buf.WriteInt16(value);
         public void Write(int value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
-            => buf.WriteInt16((short)value);
+            => buf.WriteInt16(checked((short)value));
         public void Write(long value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
-            => buf.WriteInt16((short)value);
+            => buf.WriteInt16(checked((short)value));
         public void Write(byte value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
             => buf.WriteInt16(value);
         public void Write(sbyte value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
@@ -106,9 +106,9 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         public void Write(decimal value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
             => buf.WriteInt16((short)value);
         public void Write(double value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
-            => buf.WriteInt16((short)value);
+            => buf.WriteInt16(checked((short)value));
         public void Write(float value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
-            => buf.WriteInt16((short)value);
+            => buf.WriteInt16(checked((short)value));
 
         public void Write(string value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
