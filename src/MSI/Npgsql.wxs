@@ -2,13 +2,14 @@
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
      xmlns:util="http://schemas.microsoft.com/wix/UtilExtension"
   >
+  <?define UPGCOD = "DF971E89-5E78-4142-9ED2-179C0255A800" ?>
 
   <Product Id="*"
            Name="Npgsql $(var.Version)"
            Language="1033"
            Version="$(var.Version)"
            Manufacturer="The Npgsql Development Team"
-           UpgradeCode="df971e89-5e78-4142-9ed2-179c0255a800">
+           UpgradeCode="$(var.UPGCOD)">
 
     <Package InstallerVersion="200"
              Compressed="yes"
@@ -17,8 +18,6 @@
 
     <Icon Id="postgresql.ico" SourceFile="postgresql.ico"/>
     <Property Id="ARPPRODUCTICON" Value="postgresql.ico" />
-
-    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
 
     <MediaTemplate EmbedCab="yes" />
 
@@ -185,5 +184,32 @@
         </Directory>
       </Directory>
     </DirectoryRef>
+<!-- Upgrade -->
+    <Upgrade Id="$(var.UPGCOD)">
+      <UpgradeVersion OnlyDetect='yes' Property='SELFFOUND'
+		    Minimum="$(var.Version)" IncludeMinimum='yes'
+		    Maximum="$(var.Version)" IncludeMaximum='yes' />
+      <UpgradeVersion OnlyDetect='yes' Property='NEWERFOUND'
+		    Minimum="$(var.Version)" IncludeMinimum='no' />
+      <UpgradeVersion OnlyDetect='no' Property='UPGRADEFOUND'
+		    Maximum="$(var.Version)" IncludeMaximum='no' />
+    </Upgrade>
+
+    <CustomAction Id='AlreadyUpdated'
+                Error="the same version of [ProductName] is already installed" />
+    <CustomAction Id='NoDowngrade'
+                Error="a newer version of [ProductName] is already installed" />
+    <CustomAction Id='NoMinorUpgrade'
+                Error="REINSTALL unavailable. Major upgrade is needed." />
+    <CustomAction Id='NoReinstall'
+                Error="REINSTALL unavailable. Install the package first." />
+
+  <InstallExecuteSequence>
+    <Custom Action='AlreadyUpdated' After='FindRelatedProducts'>SELFFOUND AND NOT Installed</Custom>
+    <Custom Action='NoDowngrade' After='FindRelatedProducts'>NEWERFOUND AND NOT Installed</Custom>
+    <Custom Action='NoReinstall' Before='ValidateProductID'>REINSTALLMODE AND NOT Installed</Custom>
+    <Custom Action='NoMinorUpgrade' After='FindRelatedProducts'>UPGRADEFOUND AND REINSTALLMODE</Custom>
+    <RemoveExistingProducts After='InstallFinalize'>UPGRADEFOUND AND NOT Installed</RemoveExistingProducts>
+  </InstallExecuteSequence>
   </Product>
 </Wix>
