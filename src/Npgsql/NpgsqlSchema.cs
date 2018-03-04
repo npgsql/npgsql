@@ -502,6 +502,7 @@ and n.nspname not in ('pg_catalog', 'pg_toast')");
             "IS",
             "ISNULL",
             "JOIN",
+            "LATERAL",
             "LEADING",
             "LEFT",
             "LIKE",
