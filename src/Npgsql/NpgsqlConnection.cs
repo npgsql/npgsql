@@ -30,6 +30,7 @@ using System.IO;
 using System.Net.Security;
 using System.Net.Sockets;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
@@ -41,7 +42,6 @@ using Npgsql.TypeMapping;
 using NpgsqlTypes;
 using System.Transactions;
 using IsolationLevel = System.Data.IsolationLevel;
-using ThreadState = System.Threading.ThreadState;
 
 namespace Npgsql
 {
@@ -122,6 +122,9 @@ namespace Npgsql
 
         static bool _countersInitialized;
 
+        static readonly StateChangeEventArgs ClosedToOpenEventArgs = new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open);
+        static readonly StateChangeEventArgs OpenToClosedEventArgs = new StateChangeEventArgs(ConnectionState.Open, ConnectionState.Closed);
+
         #endregion Fields
 
         #region Constructors / Init / Open
@@ -130,21 +133,15 @@ namespace Npgsql
         /// Initializes a new instance of the
         /// <see cref="NpgsqlConnection">NpgsqlConnection</see> class.
         /// </summary>
-        public NpgsqlConnection() : this("") {}
+        public NpgsqlConnection()
+            => GC.SuppressFinalize(this);
 
         /// <summary>
         /// Initializes a new instance of <see cref="NpgsqlConnection"/> with the given connection string.
         /// </summary>
         /// <param name="connectionString">The connection used to open the PostgreSQL database.</param>
         public NpgsqlConnection(string connectionString)
-        {
-            GC.SuppressFinalize(this);
-            ConnectionString = connectionString;
-
-            // Fix authentication problems. See https://bugzilla.novell.com/show_bug.cgi?id=MONO77559 and
-            // http://pgfoundry.org/forum/message.php?msg_id=1002377 for more info.
-            RSACryptoServiceProvider.UseMachineKeyStore = true;
-        }
+            => ConnectionString = connectionString;
 
         /// <summary>
         /// Opens a database connection with the property settings specified by the
@@ -266,11 +263,8 @@ namespace Npgsql
                     // Since this pooled connector was opened, global mappings may have
                     // changed. Bring this up to date if needed.
                     var mapper = Connector.TypeMapper;
-                    if (mapper.IsModified ||
-                        mapper.ChangeCounter != TypeMapping.GlobalTypeMapper.Instance.ChangeCounter)
-                    {
+                    if (mapper.ChangeCounter != TypeMapping.GlobalTypeMapper.Instance.ChangeCounter)
                         mapper.Reset();
-                    }
                 }
 
                 // We may have gotten an already enlisted pending connector above, no need to enlist in that case
@@ -283,7 +277,7 @@ namespace Npgsql
                 throw;
             }
             Log.Debug("Connection opened", Connector.Id);
-            OnStateChange(new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open));
+            OnStateChange(ClosedToOpenEventArgs);
         }
 
         #endregion Open / Init
@@ -605,7 +599,7 @@ namespace Npgsql
 
             Connector = null;
 
-            OnStateChange(new StateChangeEventArgs(ConnectionState.Open, ConnectionState.Closed));
+            OnStateChange(OpenToClosedEventArgs);
         }
 
         /// <summary>
@@ -1169,6 +1163,7 @@ namespace Npgsql
 
         #region State checks
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void CheckConnectionOpen()
         {
             CheckDisposed();
@@ -1176,6 +1171,7 @@ namespace Npgsql
                 throw new InvalidOperationException("Connection is not open");
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void CheckConnectionClosed()
         {
             CheckDisposed();
@@ -1183,12 +1179,14 @@ namespace Npgsql
                 throw new InvalidOperationException("Connection already open");
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void CheckDisposed()
         {
             if (_disposed)
                 throw new ObjectDisposedException(typeof(NpgsqlConnection).Name);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal NpgsqlConnector CheckReadyAndGetConnector()
         {
             CheckDisposed();

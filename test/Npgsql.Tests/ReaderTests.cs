@@ -689,38 +689,6 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void FieldNameKanaWidthWideRequestForNarrowFieldName()
-        {
-            if (IsSequential)
-                Assert.Pass("Not supported in sequential mode");
-            using (var conn = OpenConnection())
-            using (var command = new NpgsqlCommand("select 123 as ｦｧｨｩｪｫｬ, 124 as ヲァィゥェォャ", conn))
-            using (var dr = command.ExecuteReader(Behavior))
-            {
-                dr.Read();
-                // Should ignore Kana width and hence find the first of these two fields
-                Assert.AreEqual(dr["ｦｧｨｩｪｫｬ"], 123);
-                Assert.AreEqual(dr["ヲァィゥェォャ"], 123);// Wide version.
-            }
-        }
-
-        [Test]
-        public void FieldNameKanaWidthNarrowRequestForWideFieldName()
-        {
-            if (IsSequential)
-                Assert.Pass("Not supported in sequential mode");
-            using (var conn = OpenConnection())
-            using (var command = new NpgsqlCommand("select 123 as ヲァィゥェォャ, 124 as ｦｧｨｩｪｫｬ", conn))
-            using (var dr = command.ExecuteReader(Behavior))
-            {
-                dr.Read();
-                Assert.AreEqual(dr["ヲァィゥェォャ"], 123);
-                // Should ignore Kana width and hence find the first of these two fields
-                Assert.AreEqual(dr["ｦｧｨｩｪｫｬ"], 123);// Narrow version.
-            }
-        }
-
-        [Test]
         public void FieldIndexDoesntExist()
         {
             using (var conn = OpenConnection())

@@ -41,6 +41,7 @@ using Npgsql.Schema;
 using Npgsql.TypeHandlers;
 using Npgsql.TypeHandling;
 using NpgsqlTypes;
+using static Npgsql.Statics;
 
 #pragma warning disable CA2222 // Do not decrease inherited member visibility
 
@@ -317,8 +318,22 @@ namespace Npgsql
             case ReaderState.BeforeResult:
             case ReaderState.InResult:
                 await ConsumeRow(async);
-                var completedMsg = await Connector.SkipUntil(BackendMessageCode.CompletedResponse, BackendMessageCode.EmptyQueryResponse, async);
-                ProcessMessage(completedMsg);
+                while (true)
+                {
+                    var completedMsg = await Connector.ReadMessage(async, DataRowLoadingMode.Skip);
+                    switch (completedMsg.Code)
+                    {
+                    case BackendMessageCode.CompletedResponse:
+                    case BackendMessageCode.EmptyQueryResponse:
+                        ProcessMessage(completedMsg);
+                        break;
+                    default:
+                        continue;
+                    }
+
+                    break;
+                }
+
                 break;
 
             case ReaderState.BetweenResults:
@@ -348,7 +363,7 @@ namespace Npgsql
                 var statement = _statements[StatementIndex];
                 if (statement.IsPrepared)
                 {
-                    await Connector.ReadExpecting<BindCompleteMessage>(async);
+                    Expect<BindCompleteMessage>(await Connector.ReadMessage(async));
                     RowDescription = statement.Description;
                 }
                 else  // Non-prepared flow
@@ -360,14 +375,14 @@ namespace Npgsql
                         Debug.Assert(pStatement.Description == null);
                         if (pStatement.StatementBeingReplaced != null)
                         {
-                            await Connector.ReadExpecting<CloseCompletedMessage>(async);
+                            Expect<CloseCompletedMessage>(await Connector.ReadMessage(async));
                             pStatement.StatementBeingReplaced.CompleteUnprepare();
                             pStatement.StatementBeingReplaced = null;
                         }
                     }
 
-                    await Connector.ReadExpecting<ParseCompleteMessage>(async);
-                    await Connector.ReadExpecting<BindCompleteMessage>(async);
+                    Expect<ParseCompleteMessage>(await Connector.ReadMessage(async));
+                    Expect<BindCompleteMessage>(await Connector.ReadMessage(async));
                     msg = await Connector.ReadMessage(async);
                     switch (msg.Code)
                     {
@@ -422,7 +437,7 @@ namespace Npgsql
             }
 
             // There are no more queries, we're done. Read to the RFQ.
-            ProcessMessage(Connector.ReadExpecting<ReadyForQueryMessage>());
+            ProcessMessage(Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async)));
             RowDescription = null;
             return false;
         }
@@ -446,8 +461,8 @@ namespace Npgsql
                 }
                 else
                 {
-                    await Connector.ReadExpecting<ParseCompleteMessage>(async);
-                    await Connector.ReadExpecting<ParameterDescriptionMessage>(async);
+                    Expect<ParseCompleteMessage>(await Connector.ReadMessage(async));
+                    Expect<ParameterDescriptionMessage>(await Connector.ReadMessage(async));
                     var msg = await Connector.ReadMessage(async);
                     switch (msg.Code)
                     {
@@ -472,7 +487,7 @@ namespace Npgsql
             // There are no more queries, we're done. Read to the RFQ.
             if (!_statements.All(s => s.IsPrepared))
             {
-                ProcessMessage(await Connector.ReadExpecting<ReadyForQueryMessage>(async));
+                ProcessMessage(Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async)));
                 RowDescription = null;
             }
             return false;
@@ -1197,12 +1212,14 @@ namespace Npgsql
 
         #region Checks
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void CheckRowAndOrdinal(int ordinal)
         {
             CheckRow();
             CheckColumn(ordinal);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void CheckRow()
         {
             if (!IsOnRow)
@@ -1210,12 +1227,14 @@ namespace Npgsql
         }
 
         // ReSharper disable once UnusedParameter.Local
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void CheckColumn(int column)
         {
             if (column < 0 || column >= FieldCount)
                 throw new IndexOutOfRangeException($"Column must be between {0} and {(FieldCount - 1)}");
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void CheckResultSet()
         {
             if (FieldCount == 0)

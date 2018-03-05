@@ -26,7 +26,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
@@ -48,6 +47,12 @@ namespace Npgsql
         internal Stream Underlying { private get; set; }
 
         /// <summary>
+        /// Wraps SocketAsyncEventArgs for better async I/O as long as we're not doing SSL.
+        /// </summary>
+        [CanBeNull]
+        internal AwaitableSocket AwaitableSocket { private get; set; }
+
+        /// <summary>
         /// The total byte length of the buffer.
         /// </summary>
         internal int Size { get; private set; }
@@ -56,8 +61,6 @@ namespace Npgsql
         internal Encoding TextEncoding { get; }
 
         public int WriteSpaceLeft => Size - _writePosition;
-
-        internal long TotalBytesFlushed { get; private set; }
 
         readonly byte[] _buf;
         readonly Encoder _textEncoder;
@@ -110,8 +113,16 @@ namespace Npgsql
             try
             {
                 if (async)
-                    await Underlying.WriteAsync(_buf, 0, _writePosition);
-                else
+                {
+                    if (AwaitableSocket == null)  // SSL
+                        await Underlying.WriteAsync(_buf, 0, _writePosition);
+                    else  // Non-SSL async I/O, optimized
+                    {
+                        AwaitableSocket.SetBuffer(_buf, 0, _writePosition);
+                        await AwaitableSocket.SendAsync();
+                    }
+                }
+                else  // Sync I/O
                     Underlying.Write(_buf, 0, _writePosition);
             }
             catch (Exception e)
@@ -133,7 +144,6 @@ namespace Npgsql
                 throw new NpgsqlException("Exception while flushing stream", e);
             }
 
-            TotalBytesFlushed += _writePosition;
             _writePosition = 0;
             if (CurrentCommand != null)
             {
@@ -463,11 +473,6 @@ namespace Npgsql
             var buf = new byte[_writePosition];
             Array.Copy(_buf, buf, _writePosition);
             return buf;
-        }
-
-        internal void ResetTotalBytesFlushed()
-        {
-            TotalBytesFlushed = 0;
         }
 
         #endregion

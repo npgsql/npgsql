@@ -30,6 +30,7 @@ using System.Text;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
 using Npgsql.Logging;
+using static Npgsql.Statics;
 
 #pragma warning disable 1591
 
@@ -173,8 +174,8 @@ namespace Npgsql
                     _leftToReadInDataMsg = ((CopyDataMessage)msg).Length;
                     break;
                 case BackendMessageCode.CopyDone:
-                    _connector.ReadExpecting<CommandCompleteMessage>();
-                    _connector.ReadExpecting<ReadyForQueryMessage>();
+                    Expect<CommandCompleteMessage>(_connector.ReadMessage());
+                    Expect<ReadyForQueryMessage>(_connector.ReadMessage());
                     _isConsumed = true;
                     return 0;
                 default:
@@ -253,8 +254,8 @@ namespace Npgsql
                     Flush();
                     _writeBuf.EndCopyMode();
                     _connector.SendMessage(CopyDoneMessage.Instance);
-                    _connector.ReadExpecting<CommandCompleteMessage>();
-                    _connector.ReadExpecting<ReadyForQueryMessage>();
+                    Expect<CommandCompleteMessage>(_connector.ReadMessage());
+                    Expect<ReadyForQueryMessage>(_connector.ReadMessage());
                 }
                 else
                 {

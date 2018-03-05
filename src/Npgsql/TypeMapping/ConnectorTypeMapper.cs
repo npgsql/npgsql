@@ -71,15 +71,10 @@ namespace Npgsql.TypeMapping
 
         /// <summary>
         /// Copy of <see cref="GlobalTypeMapper.ChangeCounter"/> at the time when this
-        /// mapper was created.
+        /// mapper was created, to detect mapping changes. If changes are made to this connection's
+        /// mapper, the change counter is set to -1.
         /// </summary>
-        internal int ChangeCounter { get; }
-
-        /// <summary>
-        /// Whether any mappings have been modified on this concrete type mapper - if so
-        /// we must discard it when the pooled connector is reused
-        /// </summary>
-        internal bool IsModified { get; private set; }
+        internal int ChangeCounter { get; private set; }
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
@@ -92,7 +87,6 @@ namespace Npgsql.TypeMapping
             ClearBindings();
             ResetMappings();
             DefaultNameTranslator = GlobalTypeMapper.Instance.DefaultNameTranslator;
-            ChangeCounter = GlobalTypeMapper.Instance.ChangeCounter;
         }
 
         #endregion Constructors
@@ -212,7 +206,7 @@ namespace Npgsql.TypeMapping
 
             base.AddMapping(mapping);
             BindType(mapping, _connector, true);
-            IsModified = true;
+            ChangeCounter = -1;
             return this;
         }
 
@@ -228,7 +222,7 @@ namespace Npgsql.TypeMapping
             // existing dictionaries because it's complex to remove arrays, ranges...
             ClearBindings();
             BindTypes();
-            IsModified = true;
+            ChangeCounter = -1;
             return true;
         }
 
@@ -250,6 +244,7 @@ namespace Npgsql.TypeMapping
             {
                 globalMapper.Lock.ExitReadLock();
             }
+            ChangeCounter = GlobalTypeMapper.Instance.ChangeCounter;
         }
 
         void ClearBindings()
@@ -269,7 +264,6 @@ namespace Npgsql.TypeMapping
             ClearBindings();
             ResetMappings();
             BindTypes();
-            IsModified = false;
         }
 
         #endregion Mapping management

@@ -49,13 +49,19 @@ namespace Npgsql
         internal Stream Underlying { private get; set; }
 
         /// <summary>
+        /// Wraps SocketAsyncEventArgs for better async I/O as long as we're not doing SSL.
+        /// </summary>
+        [CanBeNull]
+        internal AwaitableSocket AwaitableSocket { private get; set; }
+
+        /// <summary>
         /// The total byte length of the buffer.
         /// </summary>
         internal int Size { get; }
 
         internal Encoding TextEncoding { get; }
 
-        internal int ReadPosition { get; private set; }
+        internal int ReadPosition { get; set; }
         internal int ReadBytesLeft => _filledBytes - ReadPosition;
 
         internal readonly byte[] Buffer;
@@ -139,9 +145,21 @@ namespace Npgsql
                 while (count > 0)
                 {
                     var toRead = Size - _filledBytes;
-                    var read = async
-                        ? await Underlying.ReadAsync(Buffer, _filledBytes, toRead)
-                        : Underlying.Read(Buffer, _filledBytes, toRead);
+
+                    int read;
+                    if (async)
+                    {
+                        if (AwaitableSocket == null)  // SSL
+                            read = await Underlying.ReadAsync(Buffer, _filledBytes, toRead);
+                        else  // Non-SSL async I/O, optimized
+                        {
+                            AwaitableSocket.SetBuffer(Buffer, _filledBytes, toRead);
+                            await AwaitableSocket.ReceiveAsync();
+                            read = AwaitableSocket.BytesTransferred;
+                        }
+                    } else  // Sync I/O
+                        read = Underlying.Read(Buffer, _filledBytes, toRead);
+
                     if (read == 0)
                         throw new EndOfStreamException();
                     count -= read;
@@ -488,32 +506,6 @@ namespace Npgsql
         #endregion
 
         #region Misc
-
-        /// <summary>
-        /// Seeks within the current in-memory data. Does not read any data from the underlying.
-        /// </summary>
-        /// <param name="offset"></param>
-        /// <param name="origin"></param>
-        internal void Seek(int offset, SeekOrigin origin)
-        {
-            int absoluteOffset;
-            switch (origin)
-            {
-                case SeekOrigin.Begin:
-                    absoluteOffset = offset;
-                    break;
-                case SeekOrigin.Current:
-                    absoluteOffset = ReadPosition + offset;
-                    break;
-                case SeekOrigin.End:
-                    throw new NotImplementedException();
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(origin));
-            }
-            Debug.Assert(absoluteOffset >= 0 && absoluteOffset <= _filledBytes);
-
-            ReadPosition = absoluteOffset;
-        }
 
         internal void Clear()
         {

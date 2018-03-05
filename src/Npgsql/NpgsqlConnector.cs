@@ -41,6 +41,7 @@ using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
 using Npgsql.Logging;
 using Npgsql.TypeMapping;
+using static Npgsql.Statics;
 
 namespace Npgsql
 {
@@ -193,7 +194,9 @@ namespace Npgsql
 
         /// <summary>
         /// A lock that's taken while a user action is in progress, e.g. a command being executed.
+        /// Only used when keepalive is enabled, otherwise null.
         /// </summary>
+        [CanBeNull]
         SemaphoreSlim _userLock;
 
         /// <summary>
@@ -203,6 +206,8 @@ namespace Npgsql
         /// </summary>
         internal object CancelLock { get; }
 
+        readonly int _keepAlive;
+        readonly bool _isKeepAliveEnabled;
         readonly Timer _keepAliveTimer;
 
         /// <summary>
@@ -289,11 +294,15 @@ namespace Npgsql
             ConnectionString = connectionString;
             BackendParams = new Dictionary<string, string>();
 
-            _userLock = new SemaphoreSlim(1, 1);
             CancelLock = new object();
 
-            if (IsKeepAliveEnabled)
+            _isKeepAliveEnabled = Settings.KeepAlive > 0;
+            if (_isKeepAliveEnabled)
+            {
+                _keepAlive = Settings.KeepAlive * 1000;
+                _userLock = new SemaphoreSlim(1, 1);
                 _keepAliveTimer = new Timer(PerformKeepAlive, null, Timeout.Infinite, Timeout.Infinite);
+            }
 
             // TODO: Not just for automatic preparation anymore...
             PreparedStatementManager = new PreparedStatementManager(this);
@@ -309,8 +318,6 @@ namespace Npgsql
         SslMode SslMode => Settings.SslMode;
         bool UseSslStream => Settings.UseSslStream;
         int ConnectionTimeout => Settings.Timeout;
-        int KeepAlive => Settings.KeepAlive;
-        bool IsKeepAliveEnabled => KeepAlive > 0;
         bool IntegratedSecurity => Settings.IntegratedSecurity;
         internal bool ConvertInfinityDateTime => Settings.ConvertInfinityDateTime;
 
@@ -586,6 +593,12 @@ namespace Npgsql
                     }
                 }
 
+                if (!IsSecure)
+                {
+                    WriteBuffer.AwaitableSocket = new AwaitableSocket(new SocketAsyncEventArgs(), _socket);
+                    ReadBuffer.AwaitableSocket = new AwaitableSocket(new SocketAsyncEventArgs(), _socket);
+                }
+
                 Log.Trace($"Socket connected to {Host}:{Port}");
             }
             catch
@@ -844,25 +857,141 @@ namespace Npgsql
         #region Backend message processing
 
         internal IBackendMessage ReadMessage(DataRowLoadingMode dataRowLoadingMode=DataRowLoadingMode.NonSequential)
-            => ReadMessage(false, dataRowLoadingMode).Result;
+            => ReadMessage(false, dataRowLoadingMode).GetAwaiter().GetResult();
 
         [ItemCanBeNull]
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal async ValueTask<IBackendMessage> ReadMessage(
+        internal ValueTask<IBackendMessage> ReadMessage(
             bool async,
             DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential,
-            bool readingNotifications = false
-        )
+            bool readingNotifications = false)
+        {
+            if (_pendingPrependedResponses > 0 ||
+                dataRowLoadingMode != DataRowLoadingMode.NonSequential ||
+                readingNotifications ||
+                ReadBuffer.ReadBytesLeft < 5)
+            {
+                return ReadMessageLong(async, dataRowLoadingMode, readingNotifications);
+            }
+
+            var messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
+            switch (messageCode)
+            {
+            case BackendMessageCode.NoticeResponse:
+            case BackendMessageCode.NotificationResponse:
+            case BackendMessageCode.ParameterStatus:
+            case BackendMessageCode.ErrorResponse:
+                ReadBuffer.ReadPosition--;
+                return ReadMessageLong(async, dataRowLoadingMode, readingNotifications);
+            }
+
+            PGUtil.ValidateBackendMessageCode(messageCode);
+            var len = ReadBuffer.ReadInt32() - 4; // Transmitted length includes itself
+            if (len > ReadBuffer.ReadBytesLeft)
+            {
+                ReadBuffer.ReadPosition -= 5;
+                return ReadMessageLong(async, dataRowLoadingMode, readingNotifications);
+            }
+
+            return new ValueTask<IBackendMessage>(ParseServerMessage(ReadBuffer, messageCode, len, false));
+        }
+
+        [ItemCanBeNull]
+        async ValueTask<IBackendMessage> ReadMessageLong(
+            bool async,
+            DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential,
+            bool readingNotifications = false,
+            bool isReadingPrependedMessage = false)
         {
             // First read the responses of any prepended messages.
-            if (_pendingPrependedResponses > 0)
-                await ReadPrependedMessages(async);
+            if (_pendingPrependedResponses > 0 && !isReadingPrependedMessage)
+            {
+                try
+                {
+                    // TODO: There could be room for optimization here, rather than the async call(s)
+                    ReceiveTimeout = InternalCommandTimeout;
+                    for (; _pendingPrependedResponses > 0; _pendingPrependedResponses--)
+                        await ReadMessageLong(async, DataRowLoadingMode.Skip, false, true);
+                }
+                catch (PostgresException)
+                {
+                    Break();
+                    throw;
+                }
+            }
 
-            // Now read a non-prepended message
             try
             {
                 ReceiveTimeout = UserTimeout;
-                return await DoReadMessage(async, dataRowLoadingMode, readingNotifications);
+                PostgresException error = null;
+
+                while (true)
+                {
+                    await ReadBuffer.Ensure(5, async, readingNotifications);
+                    var messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
+                    PGUtil.ValidateBackendMessageCode(messageCode);
+                    var len = ReadBuffer.ReadInt32() - 4; // Transmitted length includes itself
+
+                    if ((messageCode == BackendMessageCode.DataRow &&
+                         dataRowLoadingMode != DataRowLoadingMode.NonSequential) ||
+                        messageCode == BackendMessageCode.CopyData)
+                    {
+                        if (dataRowLoadingMode == DataRowLoadingMode.Skip)
+                        {
+                            await ReadBuffer.Skip(len, async);
+                            continue;
+                        }
+                    }
+                    else if (len > ReadBuffer.ReadBytesLeft)
+                    {
+                        if (len > ReadBuffer.Size)
+                        {
+                            if (_origReadBuffer == null)
+                                _origReadBuffer = ReadBuffer;
+                            ReadBuffer = ReadBuffer.AllocateOversize(len);
+                        }
+
+                        await ReadBuffer.Ensure(len, async);
+                    }
+
+                    var msg = ParseServerMessage(ReadBuffer, messageCode, len, isReadingPrependedMessage);
+
+                    switch (messageCode)
+                    {
+                    case BackendMessageCode.ErrorResponse:
+                        Debug.Assert(msg == null);
+
+                        // An ErrorResponse is (almost) always followed by a ReadyForQuery. Save the error
+                        // and throw it as an exception when the ReadyForQuery is received (next).
+                        error = new PostgresException(ReadBuffer);
+
+                        if (State == ConnectorState.Connecting)
+                        {
+                            // During the startup/authentication phase, an ErrorResponse isn't followed by
+                            // an RFQ. Instead, the server closes the connection immediately
+                            throw error;
+                        }
+
+                        continue;
+
+                    case BackendMessageCode.ReadyForQuery:
+                        if (error != null)
+                            throw error;
+                        break;
+
+                    // Asynchronous messages which can come anytime, they have already been handled
+                    // in ParseServerMessage. Read the next message.
+                    case BackendMessageCode.NoticeResponse:
+                    case BackendMessageCode.NotificationResponse:
+                    case BackendMessageCode.ParameterStatus:
+                        Debug.Assert(msg == null);
+                        if (!readingNotifications)
+                            continue;
+                        return null;
+                    }
+
+                    Debug.Assert(msg != null, "Message is null for code: " + messageCode);
+                    return msg;
+                }
             }
             catch (PostgresException)
             {
@@ -876,81 +1005,6 @@ namespace Npgsql
                     EndUserAction();
                 }
                 throw;
-            }
-        }
-
-        [ItemCanBeNull]
-        async ValueTask<IBackendMessage> DoReadMessage(
-            bool async,
-            DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential,
-            bool readingNotifications = false,
-            bool isPrependedMessage = false)
-        {
-            PostgresException error = null;
-
-            while (true)
-            {
-                await ReadBuffer.Ensure(5, async, readingNotifications);
-                var messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
-                PGUtil.ValidateBackendMessageCode(messageCode);
-                var len = ReadBuffer.ReadInt32() - 4;  // Transmitted length includes itself
-
-                if ((messageCode == BackendMessageCode.DataRow && dataRowLoadingMode != DataRowLoadingMode.NonSequential) ||
-                     messageCode == BackendMessageCode.CopyData)
-                {
-                    if (dataRowLoadingMode == DataRowLoadingMode.Skip)
-                    {
-                        await ReadBuffer.Skip(len, async);
-                        continue;
-                    }
-                }
-                else if (len > ReadBuffer.ReadBytesLeft)
-                {
-                    if (len > ReadBuffer.Size)
-                    {
-                        if (_origReadBuffer == null)
-                            _origReadBuffer = ReadBuffer;
-                        ReadBuffer = ReadBuffer.AllocateOversize(len);
-                    }
-                    await ReadBuffer.Ensure(len, async);
-                }
-
-                var msg = ParseServerMessage(ReadBuffer, messageCode, len, isPrependedMessage);
-
-                switch (messageCode) {
-                case BackendMessageCode.ErrorResponse:
-                    Debug.Assert(msg == null);
-
-                    // An ErrorResponse is (almost) always followed by a ReadyForQuery. Save the error
-                    // and throw it as an exception when the ReadyForQuery is received (next).
-                    error = new PostgresException(ReadBuffer);
-
-                    if (State == ConnectorState.Connecting) {
-                        // During the startup/authentication phase, an ErrorResponse isn't followed by
-                        // an RFQ. Instead, the server closes the connection immediately
-                        throw error;
-                    }
-
-                    continue;
-
-                case BackendMessageCode.ReadyForQuery:
-                    if (error != null)
-                        throw error;
-                    break;
-
-                // Asynchronous messages which can come anytime, they have already been handled
-                // in ParseServerMessage. Read the next message.
-                case BackendMessageCode.NoticeResponse:
-                case BackendMessageCode.NotificationResponse:
-                case BackendMessageCode.ParameterStatus:
-                    Debug.Assert(msg == null);
-                    if (!readingNotifications)
-                        continue;
-                    return null;
-                }
-
-                Debug.Assert(msg != null, "Message is null for code: " + messageCode);
-                return msg;
             }
         }
 
@@ -1063,80 +1117,24 @@ namespace Npgsql
             }
         }
 
-        async Task ReadPrependedMessages(bool async)
-        {
-            Debug.Assert(_pendingPrependedResponses > 0);
-            try
-            {
-                ReceiveTimeout = InternalCommandTimeout;
-                for (; _pendingPrependedResponses > 0; _pendingPrependedResponses--)
-                    await DoReadMessage(async, DataRowLoadingMode.Skip, false, true);
-            }
-            catch (PostgresException)
-            {
-                Break();
-                throw;
-            }
-        }
-
         /// <summary>
         /// Reads backend messages and discards them, stopping only after a message of the given type has
-        /// been seen.
+        /// been seen. Only a sync I/O version of this method exists - in async flows we inline the loop
+        /// rather than calling an additional async method, in order to avoid the overhead.
         /// </summary>
-        internal async ValueTask<IBackendMessage> SkipUntil(BackendMessageCode stopAt, bool async)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal IBackendMessage SkipUntil(BackendMessageCode stopAt)
         {
             Debug.Assert(stopAt != BackendMessageCode.DataRow, "Shouldn't be used for rows, doesn't know about sequential");
 
             while (true)
             {
-                var msg = await ReadMessage(async, DataRowLoadingMode.Skip);
+                var msg = ReadMessage(false, DataRowLoadingMode.Skip).GetAwaiter().GetResult();
                 Debug.Assert(!(msg is DataRowMessage));
-                if (msg.Code == stopAt) {
+                if (msg.Code == stopAt)
                     return msg;
-                }
             }
         }
-
-        internal IBackendMessage SkipUntil(BackendMessageCode stopAt) => SkipUntil(stopAt, false).Result;
-
-        /// <summary>
-        /// Reads backend messages and discards them, stopping only after a message of the given types has
-        /// been seen.
-        /// </summary>
-        internal async ValueTask<IBackendMessage> SkipUntil(BackendMessageCode stopAt1, BackendMessageCode stopAt2, bool async)
-        {
-            Debug.Assert(stopAt1 != BackendMessageCode.DataRow, "Shouldn't be used for rows, doesn't know about sequential");
-            Debug.Assert(stopAt2 != BackendMessageCode.DataRow, "Shouldn't be used for rows, doesn't know about sequential");
-
-            while (true) {
-                var msg = await ReadMessage(async, DataRowLoadingMode.Skip);
-                Debug.Assert(!(msg is DataRowMessage));
-                if (msg.Code == stopAt1 || msg.Code == stopAt2) {
-                    return msg;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Reads a single message, expecting it to be of type <typeparamref name="T"/>.
-        /// Any other message causes an exception to be raised and the connector to be broken.
-        /// Asynchronous messages (e.g. Notice) are treated and ignored. ErrorResponses raise an
-        /// exception but do not cause the connector to break.
-        /// </summary>
-        internal async ValueTask<T> ReadExpecting<T>(bool async) where T : class, IBackendMessage
-        {
-            var msg = await ReadMessage(async);
-            var asExpected = msg as T;
-            if (asExpected == null)
-            {
-                Break();
-                throw new NpgsqlException($"Received backend message {msg.Code} while expecting {typeof(T).Name}. Please file a bug.");
-            }
-            return asExpected;
-        }
-
-        internal T ReadExpecting<T>() where T : class, IBackendMessage
-            => ReadExpecting<T>(false).GetAwaiter().GetResult();
 
         #endregion Backend message processing
 
@@ -1278,9 +1276,6 @@ namespace Npgsql
         /// </summary>
         internal void CloseOngoingOperations()
         {
-            if ((Thread.CurrentThread.ThreadState & (System.Threading.ThreadState.Aborted | System.Threading.ThreadState.AbortRequested)) != 0)
-                return;
-
             CurrentReader?.Close(true, false);
             var currentCopyOperation = CurrentCopyOperation;
             if (currentCopyOperation != null)
@@ -1436,11 +1431,10 @@ namespace Npgsql
             ServerVersion = null;
             _currentCommand = null;
 
-            _userLock.Dispose();
-            _userLock = null;
-
-            if (IsKeepAliveEnabled)
+            if (_isKeepAliveEnabled)
             {
+                _userLock.Dispose();
+                _userLock = null;
                 _keepAliveTimer.Change(Timeout.Infinite, Timeout.Infinite);
                 _keepAliveTimer.Dispose();
             }
@@ -1510,9 +1504,6 @@ namespace Npgsql
                 throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {State} of enum {nameof(ConnectorState)}. Please file a bug.");
             }
 
-            if (IsInUserAction)
-                EndUserAction();
-
             // Our buffer may contain unsent prepended messages (such as BeginTransaction), clear it out completely
             WriteBuffer.Clear();
             _pendingPrependedResponses = 0;
@@ -1575,45 +1566,34 @@ namespace Npgsql
 
         internal UserAction StartUserAction(ConnectorState newState=ConnectorState.Executing, NpgsqlCommand command=null)
         {
+            // If keepalive is enabled, we must protect state transitions with a SemaphoreSlim
+            // (which itself must be protected by a lock, since its dispose isn't threadsafe).
+            // This will make the keepalive abort safely if a user query is in progress, and make
+            // the user query wait if a keepalive is in progress.
+
+            // If keepalive isn't enabled, we don't use the semaphore and rely only on the connector's
+            // state (updated via Interlocked.Exchange) to detect concurrent use, on a best-effort basis.
+            if (!_isKeepAliveEnabled)
+                return DoStartUserAction();
+
             lock (this)
             {
                 if (!_userLock.Wait(0))
                 {
-                    throw _currentCommand == null
+                    var currentCommand = _currentCommand;
+                    throw currentCommand == null
                         ? new NpgsqlOperationInProgressException(State)
-                        : new NpgsqlOperationInProgressException(_currentCommand);
+                        : new NpgsqlOperationInProgressException(currentCommand);
                 }
 
                 try
                 {
                     // Disable keepalive, it will be restarted at the end of the user action
-                    if (IsKeepAliveEnabled)
-                        _keepAliveTimer.Change(Timeout.Infinite, Timeout.Infinite);
+                    _keepAliveTimer.Change(Timeout.Infinite, Timeout.Infinite);
 
                     // We now have both locks and are sure nothing else is running.
                     // Check that the connector is ready.
-                    switch (State)
-                    {
-                    case ConnectorState.Ready:
-                        break;
-                    case ConnectorState.Closed:
-                    case ConnectorState.Broken:
-                        throw new InvalidOperationException("Connection is not open");
-                    case ConnectorState.Executing:
-                    case ConnectorState.Fetching:
-                    case ConnectorState.Waiting:
-                    case ConnectorState.Connecting:
-                    case ConnectorState.Copy:
-                        throw new InvalidOperationException("Internal Npgsql error, please report: acquired both locks and connector is in state " + State);
-                    default:
-                        throw new ArgumentOutOfRangeException(nameof(State), State, "Invalid connector state: " + State);
-                    }
-
-                    Debug.Assert(IsReady);
-                    Log.Trace("Start user action", Id);
-                    State = newState;
-                    _currentCommand = command;
-                    return new UserAction(this);
+                    return DoStartUserAction();
                 }
                 catch
                 {
@@ -1621,31 +1601,67 @@ namespace Npgsql
                     throw;
                 }
             }
+
+            UserAction DoStartUserAction()
+            {
+                switch (State)
+                {
+                case ConnectorState.Ready:
+                    break;
+                case ConnectorState.Closed:
+                case ConnectorState.Broken:
+                    throw new InvalidOperationException("Connection is not open");
+                case ConnectorState.Executing:
+                case ConnectorState.Fetching:
+                case ConnectorState.Waiting:
+                case ConnectorState.Connecting:
+                case ConnectorState.Copy:
+                    var currentCommand = _currentCommand;
+                    throw currentCommand == null
+                        ? new NpgsqlOperationInProgressException(State)
+                        : new NpgsqlOperationInProgressException(currentCommand);
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(State), State, "Invalid connector state: " + State);
+                }
+
+                Debug.Assert(IsReady);
+                Log.Trace("Start user action", Id);
+                State = newState;
+                _currentCommand = command;
+                return new UserAction(this);
+            }
         }
 
         internal void EndUserAction()
         {
             Debug.Assert(CurrentReader == null);
 
-            lock (this)
+            if (_isKeepAliveEnabled)
+            {
+                lock (this)
+                {
+                    if (IsReady || !IsConnected)
+                        return;
+
+                    var keepAlive = Settings.KeepAlive * 1000;
+                    _keepAliveTimer.Change(keepAlive, keepAlive);
+
+                    Log.Trace("End user action", Id);
+                    _currentCommand = null;
+                    _userLock.Release();
+                    State = ConnectorState.Ready;
+                }
+            }
+            else
             {
                 if (IsReady || !IsConnected)
                     return;
 
-                if (IsKeepAliveEnabled)
-                {
-                    var keepAlive = KeepAlive * 1000;
-                    _keepAliveTimer.Change(keepAlive, keepAlive);
-                }
-
                 Log.Trace("End user action", Id);
                 _currentCommand = null;
-                _userLock.Release();
                 State = ConnectorState.Ready;
             }
         }
-
-        bool IsInUserAction => _userLock.CurrentCount == 0;
 
         /// <summary>
         /// An IDisposable wrapper around <see cref="EndUserAction"/>.
@@ -1669,7 +1685,7 @@ namespace Npgsql
 #pragma warning disable CA1801 // Review unused parameters
         void PerformKeepAlive(object state)
         {
-            Debug.Assert(IsKeepAliveEnabled);
+            Debug.Assert(_isKeepAliveEnabled);
 
             // SemaphoreSlim.Dispose() isn't threadsafe - it may be in progress so we shouldn't try to wait on it;
             // we need a standard lock to protect it.
@@ -1684,7 +1700,7 @@ namespace Npgsql
 
                 Log.Trace("Performed keepalive", Id);
                 SendMessage(PregeneratedMessage.KeepAlive);
-                SkipUntil(BackendMessageCode.ReadyForQuery, false).GetAwaiter().GetResult();
+                SkipUntil(BackendMessageCode.ReadyForQuery);
             }
             catch (Exception e)
             {
@@ -1722,7 +1738,7 @@ namespace Npgsql
                 var keepaliveMs = Settings.KeepAlive * 1000;
                 while (true)
                 {
-                    var timeoutForKeepalive = IsKeepAliveEnabled && (timeout == 0 || timeout == -1 || keepaliveMs < timeout);
+                    var timeoutForKeepalive = _isKeepAliveEnabled && (timeout == 0 || timeout == -1 || keepaliveMs < timeout);
                     UserTimeout = timeoutForKeepalive ? keepaliveMs : timeout;
                     try
                     {
@@ -1823,7 +1839,7 @@ namespace Npgsql
                 WriteBuffer.Flush();
 
                 Timer keepaliveTimer = null;
-                if (IsKeepAliveEnabled)
+                if (_isKeepAliveEnabled)
                     keepaliveTimer = new Timer(performKeepaliveMethod, null, Settings.KeepAlive*1000, Timeout.Infinite);
                 try
                 {
@@ -1961,14 +1977,14 @@ namespace Npgsql
         internal async Task ExecuteInternalCommand(FrontendMessage message, bool async)
         {
             Debug.Assert(message is QueryMessage || message is PregeneratedMessage);
-            Debug.Assert(_userLock.CurrentCount == 0, "Forgot to start a user action...");
+            Debug.Assert(State != ConnectorState.Ready, "Forgot to start a user action...");
 
             Log.Trace($"Executing internal command: {message}", Id);
 
             await message.Write(WriteBuffer, async);
             await WriteBuffer.Flush(async);
-            await ReadExpecting<CommandCompleteMessage>(async);
-            await ReadExpecting<ReadyForQueryMessage>(async);
+            Expect<CommandCompleteMessage>(await ReadMessage(async));
+            Expect<ReadyForQueryMessage>(await ReadMessage(async));
         }
 
         #endregion
