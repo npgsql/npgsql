@@ -202,5 +202,19 @@ namespace Npgsql.Tests
                 Assert.That(text["numeric_scale"], Is.EqualTo(DBNull.Value));
             }
         }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1831")]
+        public void NoSystemTables()
+        {
+            using (var conn = OpenConnection())
+            {
+                var tables = conn.GetSchema("Tables").Rows
+                    .Cast<DataRow>()
+                    .Select(r => (string)r["TABLE_NAME"])
+                    .ToList();
+                Assert.That(tables, Does.Not.Contain("pg_type"));  // schema pg_catalog
+                Assert.That(tables, Does.Not.Contain("tables"));   // schema information_schema
+            }
+        }
     }
 }
