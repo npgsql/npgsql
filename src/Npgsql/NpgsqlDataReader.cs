@@ -111,6 +111,13 @@ namespace Npgsql
         public event EventHandler ReaderClosed;
 
         bool IsSchemaOnly => (Behavior & CommandBehavior.SchemaOnly) != 0;
+        bool IsSequential => (Behavior & CommandBehavior.SequentialAccess) != 0;
+
+        /// <summary>
+        /// A stream that has been opened on a column.
+        /// </summary>
+        [CanBeNull]
+        protected Stream ColumnStream;
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
@@ -254,7 +261,6 @@ namespace Npgsql
         internal abstract void ProcessDataMessage(DataRowMessage dataMsg);
         internal abstract Task SeekToColumn(int column, bool async);
         internal abstract Task SeekInColumn(int posInColumn, bool async);
-        internal abstract ValueTask<Stream> GetStreamInternal(int column, bool async);
         internal abstract Task ConsumeRow(bool async);
 
         #endregion
@@ -853,14 +859,22 @@ namespace Npgsql
             if (buffer == null)
                 return ColumnLen;
 
-            var offset = (int)dataOffset;
-            SeekInColumn(offset, false).GetAwaiter().GetResult();
+            var dataOffset2 = (int)dataOffset;
+            SeekInColumn(dataOffset2, false).GetAwaiter().GetResult();
 
             // Attempt to read beyond the end of the column
-            if (offset + length > ColumnLen)
-                length = ColumnLen - offset;
+            if (dataOffset2 + length > ColumnLen)
+                length = ColumnLen - dataOffset2;
 
-            return Buffer.ReadAllBytes(buffer, bufferOffset, length, false, false).Result;
+            var left = length;
+            while (left > 0)
+            {
+                var read = Buffer.ReadBytes(buffer, bufferOffset, left, false).GetAwaiter().GetResult();
+                bufferOffset += read;
+                left -= read;
+            }
+
+            return length;
         }
 
         /// <summary>
@@ -888,7 +902,32 @@ namespace Npgsql
             var fieldDescription = RowDescription[ordinal];
             if (!(fieldDescription.Handler is ByteaHandler))
                 throw new InvalidCastException($"GetStream() not supported for type {fieldDescription.Handler.PgDisplayName}");
+
             return GetStreamInternal(ordinal, async);
+        }
+
+        ValueTask<Stream> GetStreamInternal(int ordinal, bool async)
+        {
+            if (ColumnStream != null)
+                throw new InvalidOperationException("A stream is already open for this reader");
+
+            var t = SeekToColumn(ordinal, async);
+            if (!t.IsCompleted)
+                return new ValueTask<Stream>(GetStreamLong(t));
+
+            if (ColumnLen == -1)
+                throw new InvalidCastException("Column is null");
+            PosInColumn += ColumnLen;
+            return new ValueTask<Stream>(ColumnStream = Buffer.GetStream(ColumnLen, !IsSequential));
+
+            async Task<Stream> GetStreamLong(Task seekTask)
+            {
+                await seekTask;
+                if (ColumnLen == -1)
+                    throw new InvalidCastException("Column is null");
+                PosInColumn += ColumnLen;
+                return ColumnStream = Buffer.GetStream(ColumnLen, !IsSequential);
+            }
         }
 
         #endregion
@@ -990,8 +1029,7 @@ namespace Npgsql
             CheckRowAndOrdinal(ordinal);
 
             var fieldDescription = RowDescription[ordinal];
-            var handler = fieldDescription.Handler as ITextReaderHandler;
-            if (handler == null)
+            if (!(fieldDescription.Handler is ITextReaderHandler handler))
                 throw new InvalidCastException($"GetTextReader() not supported for type {fieldDescription.Handler.PgDisplayName}");
 
             var stream = async

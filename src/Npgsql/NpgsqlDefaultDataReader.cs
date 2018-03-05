@@ -28,13 +28,6 @@ namespace Npgsql
         List<(int Offset, int Length)> _columns;
         int _dataMsgEnd;
 
-        /// <summary>
-        /// List of all streams that have been opened on the current row, and need to be disposed of
-        /// when the row is consumed.
-        /// </summary>
-        [CanBeNull]
-        List<IDisposable> _streams;
-
         internal NpgsqlDefaultDataReader(NpgsqlCommand command, CommandBehavior behavior, List<NpgsqlStatement> statements, Task sendTask)
             : base(command, behavior, statements, sendTask) {}
 
@@ -141,13 +134,13 @@ namespace Npgsql
         internal override Task ConsumeRow(bool async)
         {
             Debug.Assert(State == ReaderState.InResult || State == ReaderState.BeforeResult);
-            Buffer.ReadPosition = _dataMsgEnd;
-            if (_streams != null)
+
+            if (ColumnStream != null)
             {
-                foreach (var stream in _streams)
-                    stream.Dispose();
-                _streams.Clear();
+                ColumnStream.Dispose();
+                ColumnStream = null;
             }
+            Buffer.ReadPosition = _dataMsgEnd;
             return PGUtil.CompletedTask;
         }
 
@@ -295,21 +288,15 @@ namespace Npgsql
             return ColumnLen == -1;
         }
 
-        internal override ValueTask<Stream> GetStreamInternal(int column, bool async)
-        {
-            SeekToColumn(column);
-            if (ColumnLen == -1)
-                throw new InvalidCastException("Column is null");
-
-            var s = new MemoryStream(Buffer.Buffer, Buffer.ReadPosition, ColumnLen, false, false);
-            if (_streams == null)
-                _streams = new List<IDisposable>();
-            _streams.Add(s);
-            return new ValueTask<Stream>(s);
-        }
-
         void SeekToColumn(int column)
         {
+            // Shut down any streaming going on on the column
+            if (ColumnStream != null)
+            {
+                ColumnStream.Dispose();
+                ColumnStream = null;
+            }
+
             for (var lastColumnRead = _columns.Count; column >= lastColumnRead; lastColumnRead++)
             {
                 int lastColumnLen;

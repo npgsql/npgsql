@@ -68,7 +68,8 @@ namespace Npgsql
         int _filledBytes;
         readonly Decoder _textDecoder;
 
-        readonly byte[] _workspace;
+        [CanBeNull]
+        ColumnStream _columnStream;
 
         /// <summary>
         /// Used for internal temporary purposes
@@ -99,7 +100,6 @@ namespace Npgsql
             Buffer = new byte[Size];
             TextEncoding = textEncoding;
             _textDecoder = TextEncoding.GetDecoder();
-            _workspace = new byte[8];
         }
 
         #endregion
@@ -374,40 +374,46 @@ namespace Npgsql
 
         #region Read Complex
 
-        internal async ValueTask<int> ReadAllBytes(byte[] output, int outputOffset, int len, bool readOnce, bool async)
+        public ValueTask<int> ReadBytes(byte[] output, int outputOffset, int len, bool async)
         {
-            if (len <= ReadBytesLeft)
+            var readFromBuffer = Math.Min(ReadBytesLeft, len);
+            if (readFromBuffer > 0)
             {
-                Array.Copy(Buffer, ReadPosition, output, outputOffset, len);
+                System.Buffer.BlockCopy(Buffer, ReadPosition, output, outputOffset, readFromBuffer);
                 ReadPosition += len;
-                return len;
+                return new ValueTask<int>(readFromBuffer);
             }
 
-            Array.Copy(Buffer, ReadPosition, output, outputOffset, ReadBytesLeft);
-            var offset = outputOffset + ReadBytesLeft;
-            var totalRead = ReadBytesLeft;
-            Clear();
-            try
+            return new ValueTask<int>(ReadBytesLong());
+
+            async Task<int> ReadBytesLong()
             {
-                while (totalRead < len)
+                Debug.Assert(ReadPosition == 0);
+                Clear();
+                try
                 {
                     var read = async
-                        ? await Underlying.ReadAsync(output, offset, len - totalRead)
-                        : Underlying.Read(output, offset, len - totalRead);
+                        ? await Underlying.ReadAsync(output, outputOffset, len)
+                        : Underlying.Read(output, outputOffset, len);
                     if (read == 0)
                         throw new EndOfStreamException();
-                    totalRead += read;
-                    if (readOnce)
-                        return totalRead;
-                    offset += read;
+                    return read;
+                }
+                catch (Exception e)
+                {
+                    Connector.Break();
+                    throw new NpgsqlException("Exception while reading from stream", e);
                 }
             }
-            catch (Exception e)
-            {
-                Connector.Break();
-                throw new NpgsqlException("Exception while reading from stream", e);
-            }
-            return len;
+        }
+
+        public Stream GetStream(int len, bool canSeek)
+        {
+            if (_columnStream == null)
+                _columnStream = new ColumnStream(this);
+
+            _columnStream.Init(len, canSeek);
+            return _columnStream;
         }
 
         /// <summary>
