@@ -201,6 +201,7 @@
             this.Controls.Add(this.credentialsGroupBox);
             this.Name = "NpgsqlConnectionUIControl";
             this.Size = new System.Drawing.Size(496, 363);
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.credentialsGroupBox.ResumeLayout(false);
             this.credentialsGroupBox.PerformLayout();
             this.connectionGroupBox.ResumeLayout(false);
