@@ -22,6 +22,7 @@
 #endregion
 
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
@@ -709,7 +710,7 @@ namespace Npgsql
             {
                 CheckConnectionOpen();
                 Debug.Assert(Connector != null);
-                return Connector.ServerVersion;
+                return Connector.DatabaseInfo.Version;
             }
         }
 
@@ -747,7 +748,7 @@ namespace Npgsql
             {
                 CheckConnectionOpen();
                 Debug.Assert(Connector != null);
-                return Connector.IntegerDateTimes;
+                return Connector.DatabaseInfo.HasIntegerDateTimes;
             }
         }
 
@@ -763,6 +764,22 @@ namespace Npgsql
                 CheckConnectionOpen();
                 Debug.Assert(Connector != null);
                 return Connector.Timezone;
+            }
+        }
+
+        /// <summary>
+        /// Holds all PostgreSQL parameters received for this connection. Is updated if the values change
+        /// (e.g. as a result of a SET command).
+        /// </summary>
+        [Browsable(false)]
+        [PublicAPI]
+        public IReadOnlyDictionary<string, string> PostgresParameters
+        {
+            get
+            {
+                CheckConnectionOpen();
+                Debug.Assert(Connector != null);
+                return Connector.PostgresParameters;
             }
         }
 
@@ -1366,9 +1383,8 @@ namespace Npgsql
         public void ReloadTypes()
         {
             var conn = CheckReadyAndGetConnector();
-            DatabaseInfo.Cache.TryRemove(_connectionString, out var _);
-            ConnectorTypeMapper.Bind(conn, new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout)), false)
-                .GetAwaiter().GetResult();
+            NpgsqlDatabaseInfo.Cache.TryRemove(_connectionString, out var _);
+            conn.LoadDatabaseInfo(NpgsqlTimeout.Infinite, false).GetAwaiter().GetResult();
         }
 
         #endregion Misc

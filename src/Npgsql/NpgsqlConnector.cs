@@ -94,11 +94,6 @@ namespace Npgsql
         internal NpgsqlWriteBuffer WriteBuffer { get; private set; }
 
         /// <summary>
-        /// Version of backend server this connector is connected to.
-        /// </summary>
-        internal Version ServerVersion { get; private set; }
-
-        /// <summary>
         /// The secret key of the backend for this connector, used for query cancellation.
         /// </summary>
         int _backendSecretKey;
@@ -112,6 +107,8 @@ namespace Npgsql
         /// A unique ID identifying this connector, used for logging. Currently mapped to BackendProcessId
         /// </summary>
         internal int Id => BackendProcessId;
+
+        internal NpgsqlDatabaseInfo DatabaseInfo { get; private set; }
 
         internal ConnectorTypeMapper TypeMapper { get; set; }
 
@@ -164,7 +161,7 @@ namespace Npgsql
         /// <summary>
         /// Holds all run-time parameters received from the backend (via ParameterStatus messages)
         /// </summary>
-        internal readonly Dictionary<string, string> BackendParams;
+        internal readonly Dictionary<string, string> PostgresParameters;
 
         /// <summary>
         /// The timeout for reading messages that are part of the user's command
@@ -292,7 +289,7 @@ namespace Npgsql
             TransactionStatus = TransactionStatus.Idle;
             Settings = settings;
             ConnectionString = connectionString;
-            BackendParams = new Dictionary<string, string>();
+            PostgresParameters = new Dictionary<string, string>();
 
             CancelLock = new object();
 
@@ -415,7 +412,7 @@ namespace Npgsql
                 await Authenticate(username, timeout, async);
 
                 // We treat BackendKeyData as optional because some PostgreSQL-like database
-                // don't send it (e.g. CockroachDB)
+                // don't send it (CockroachDB, CrateDB)
                 var msg = await ReadMessage(async);
                 if (msg.Code == BackendMessageCode.BackendKeyData)
                 {
@@ -429,9 +426,9 @@ namespace Npgsql
 
                 State = ConnectorState.Ready;
 
-                await ConnectorTypeMapper.Bind(this, timeout, async);
+                await LoadDatabaseInfo(timeout, async);
 
-                if (Settings.Pooling && SupportsDiscard)
+                if (Settings.Pooling && DatabaseInfo.SupportsDiscard)
                     GenerateResetMessage();
                 Counters.HardConnectsPerSecond.Increment();
                 Log.Trace($"Opened connection to {Host}:{Port}");
@@ -441,6 +438,19 @@ namespace Npgsql
                 Break();
                 throw;
             }
+        }
+
+        internal async Task LoadDatabaseInfo(NpgsqlTimeout timeout, bool async)
+        {
+            // The type loading below will need to send queries to the database, and that depends on a type mapper
+            // being set up (even if its empty)
+            TypeMapper = new ConnectorTypeMapper(this);
+
+            if (!NpgsqlDatabaseInfo.Cache.TryGetValue(ConnectionString, out var database))
+                NpgsqlDatabaseInfo.Cache[ConnectionString] = database = await NpgsqlDatabaseInfo.Load(Connection, timeout, async);
+
+            DatabaseInfo = database;
+            TypeMapper.Bind(DatabaseInfo);
         }
 
         void WriteStartupMessage(string username)
@@ -1427,8 +1437,7 @@ namespace Npgsql
             ReadBuffer = null;
             WriteBuffer = null;
             Connection = null;
-            BackendParams.Clear();
-            ServerVersion = null;
+            PostgresParameters.Clear();
             _currentCommand = null;
 
             if (_isKeepAliveEnabled)
@@ -1444,27 +1453,27 @@ namespace Npgsql
         {
             var sb = new StringBuilder("SET SESSION AUTHORIZATION DEFAULT;RESET ALL;");
             var responseMessages = 2;
-            if (SupportsCloseAll)
+            if (DatabaseInfo.SupportsCloseAll)
             {
                 sb.Append("CLOSE ALL;");
                 responseMessages++;
             }
-            if (SupportsUnlisten)
+            if (DatabaseInfo.SupportsUnlisten)
             {
                 sb.Append("UNLISTEN *;");
                 responseMessages++;
             }
-            if (SupportsAdvisoryLocks)
+            if (DatabaseInfo.SupportsAdvisoryLocks)
             {
                 sb.Append("SELECT pg_advisory_unlock_all();");
                 responseMessages += 2;
             }
-            if (SupportsDiscardSequences)
+            if (DatabaseInfo.SupportsDiscardSequences)
             {
                 sb.Append("DISCARD SEQUENCES;");
                 responseMessages++;
             }
-            if (SupportsDiscardTemp)
+            if (DatabaseInfo.SupportsDiscardTemp)
             {
                 sb.Append("DISCARD TEMP");
                 responseMessages++;
@@ -1533,7 +1542,7 @@ namespace Npgsql
                 throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {TransactionStatus} of enum {nameof(TransactionStatus)}. Please file a bug.");
             }
 
-            if (!Settings.NoResetOnClose && SupportsDiscard)
+            if (!Settings.NoResetOnClose && DatabaseInfo.SupportsDiscard)
             {
                 if (PreparedStatementManager.NumPrepared > 0)
                 {
@@ -1930,41 +1939,13 @@ namespace Npgsql
 
         #region Supported features and PostgreSQL settings
 
-        bool SupportsCloseAll => ServerVersion >= new Version(8, 3, 0);
-        bool SupportsAdvisoryLocks => ServerVersion >= new Version(8, 2, 0);
-        bool SupportsDiscardSequences => ServerVersion >= new Version(9, 4, 0);
-        bool SupportsUnlisten => ServerVersion >= new Version(6, 4, 0) && !IsRedshift;
-        bool SupportsDiscardTemp => ServerVersion >= new Version(8, 3, 0);
-        bool SupportsDiscard => ServerVersion >= new Version(8, 3, 0); // Redshift is 8.0.2
-        internal bool SupportsRangeTypes => ServerVersion >= new Version(9, 2, 0);
         internal bool UseConformantStrings { get; private set; }
-        internal bool IntegerDateTimes { get; private set; }
 
         /// <summary>
         /// The connection's timezone as reported by PostgreSQL, in the IANA/Olson database format.
         /// </summary>
         internal string Timezone { get; private set; }
 
-        void ProcessServerVersion(string value)
-        {
-            var versionString = value.Trim();
-            for (var idx = 0; idx != versionString.Length; ++idx)
-            {
-                var c = value[idx];
-                if (!char.IsDigit(c) && c != '.')
-                {
-                    versionString = versionString.Substring(0, idx);
-                    break;
-                }
-            }
-            if (!versionString.Contains('.'))
-                versionString += ".0";
-            ServerVersion = new Version(versionString);
-        }
-
-        /// <summary>
-        /// Whether the backend is an AWS Redshift instance
-        /// </summary>
         bool IsRedshift => Settings.ServerCompatibilityMode == ServerCompatibilityMode.Redshift;
 
         #endregion Supported features and PostgreSQL settings
@@ -1993,20 +1974,12 @@ namespace Npgsql
 
         void HandleParameterStatus(string name, string value)
         {
-            BackendParams[name] = value;
+            PostgresParameters[name] = value;
 
             switch (name)
             {
-            case "server_version":
-                ProcessServerVersion(value);
-                return;
-
             case "standard_conforming_strings":
                 UseConformantStrings = (value == "on");
-                return;
-
-            case "integer_datetimes":
-                IntegerDateTimes = value == "on";
                 return;
 
             case "TimeZone":

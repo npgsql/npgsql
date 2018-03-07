@@ -884,19 +884,26 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/824")]
-        [Explicit("Failing for some inexplicable reason on the build server on Linux only")]
         public void ReloadTypes()
         {
             using (var conn = OpenConnection())
             {
                 Assert.That(conn.ExecuteScalar("SELECT EXISTS (SELECT * FROM pg_type WHERE typname='reload_types_enum')"), Is.False);
                 conn.ExecuteNonQuery("CREATE TYPE pg_temp.reload_types_enum AS ENUM ('First', 'Second')");
-                Assert.That(() => conn.TypeMapper.MapEnum<ReloadTypesEnum>(), Throws.Exception.TypeOf<NpgsqlException>());
+                Assert.That(() => conn.TypeMapper.MapEnum<ReloadTypesEnum>(), Throws.Exception.TypeOf<ArgumentException>());
                 conn.ReloadTypes();
                 conn.TypeMapper.MapEnum<ReloadTypesEnum>();
             }
         }
         enum ReloadTypesEnum { First, Second };
+
+        [Test]
+        public void DatabaseInfoIsShared()
+        {
+            using (var conn1 = OpenConnection())
+            using (var conn2 = OpenConnection())
+                Assert.That(conn1.Connector.DatabaseInfo, Is.SameAs(conn2.Connector.DatabaseInfo));
+        }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/736")]
         public void ManyOpenClose()

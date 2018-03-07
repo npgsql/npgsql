@@ -164,7 +164,7 @@ ORDER BY attnum";
             return result.AsReadOnly();
         }
 
-        NpgsqlDbColumn LoadColumnDefinition(NpgsqlDataReader reader, DatabaseInfo databaseInfo)
+        NpgsqlDbColumn LoadColumnDefinition(NpgsqlDataReader reader, NpgsqlDatabaseInfo databaseInfo)
         {
             // Note: we don't set ColumnName and BaseColumnName. These should always contain the
             // column alias rather than the table column name (i.e. in case of "SELECT foo AS foo_alias").

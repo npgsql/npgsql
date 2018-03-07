@@ -163,7 +163,7 @@ namespace Npgsql
     /// <summary>
     /// Represents a timeout that will expire at some point.
     /// </summary>
-    internal struct NpgsqlTimeout
+    public struct NpgsqlTimeout
     {
         readonly DateTime _expiration;
         internal DateTime Expiration => _expiration;

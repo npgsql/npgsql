@@ -50,7 +50,7 @@ namespace Npgsql.TypeMapping
         /// <summary>
         /// Type information for the database of this mapper. Null for the global mapper.
         /// </summary>
-        internal DatabaseInfo DatabaseInfo { get; set; }
+        internal NpgsqlDatabaseInfo DatabaseInfo { get; set; }
 
         internal NpgsqlTypeHandler UnrecognizedTypeHandler { get; }
 
@@ -270,35 +270,16 @@ namespace Npgsql.TypeMapping
 
         #region Binding
 
-        internal static async Task Bind(NpgsqlConnector connector, NpgsqlTimeout timeout, bool async)
+        internal void Bind(NpgsqlDatabaseInfo databaseInfo)
         {
-            // Note that there's a chicken and egg problem here - PostgresDatabase.Load below needs a functional
-            // connector to load the types, hence the strange initialization code here
-
-            var mapper = new ConnectorTypeMapper(connector);
-            connector.TypeMapper = mapper;
-
-            // If we've connected to this specific database before, we have a PostgresDatabase instance
-            // (containing all type information)
-            var connString = connector.ConnectionString;
-            if (!DatabaseInfo.Cache.TryGetValue(connString, out var database))
-                DatabaseInfo.Cache[connString] = database = await DatabaseInfo.Load(connector, timeout, async);
-
-            mapper.DatabaseInfo = database;
-            mapper.BindTypes();
+            DatabaseInfo = databaseInfo;
+            BindTypes();
         }
 
         void BindTypes()
         {
             foreach (var mapping in Mappings.Values)
                 BindType(mapping, _connector, false);
-
-#if !NETSTANDARD1_3
-            // Composites
-            var dynamicCompositeFactory = new UnmappedCompositeTypeHandlerFactory(DefaultNameTranslator);
-            foreach (var compType in DatabaseInfo.CompositeTypes.Where(e => !_byOID.ContainsKey(e.OID)))
-                BindType(dynamicCompositeFactory.Create(compType, _connector.Connection), compType);
-#endif
 
             // Enums
             var enumFactory = new UnmappedEnumTypeHandlerFactory(DefaultNameTranslator);
@@ -310,6 +291,11 @@ namespace Npgsql.TypeMapping
             foreach (var domain in DatabaseInfo.DomainTypes)
                 if (_byOID.TryGetValue(domain.BaseType.OID, out var baseTypeHandler))
                     _byOID[domain.OID] = baseTypeHandler;
+
+            // Composites
+            var dynamicCompositeFactory = new UnmappedCompositeTypeHandlerFactory(DefaultNameTranslator);
+            foreach (var compType in DatabaseInfo.CompositeTypes.Where(e => !_byOID.ContainsKey(e.OID)))
+                BindType(dynamicCompositeFactory.Create(compType, _connector.Connection), compType);
         }
 
         void BindType(NpgsqlTypeMapping mapping, NpgsqlConnector connector, bool throwOnError)
