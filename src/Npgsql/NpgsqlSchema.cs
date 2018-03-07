@@ -179,7 +179,7 @@ SELECT table_catalog, table_schema, table_name, table_type
 FROM information_schema.tables
 WHERE table_type = 'BASE TABLE' AND table_schema NOT IN ('pg_catalog', 'information_schema')");
 
-            using (var command = BuildCommand(conn, getTables, restrictions, "table_catalog", "table_schema", "table_name", "table_type"))
+            using (var command = BuildCommand(conn, getTables, restrictions, false, "table_catalog", "table_schema", "table_name", "table_type"))
             using (var adapter = new NpgsqlDataAdapter(command))
                 adapter.Fill(tables);
 
@@ -242,7 +242,7 @@ SELECT table_catalog, table_schema, table_name, check_option, is_updatable
 FROM information_schema.views
 WHERE table_schema NOT IN ('pg_catalog', 'information_schema')");
 
-            using (var command = BuildCommand(conn, getViews, restrictions, "table_catalog", "table_schema", "table_name"))
+            using (var command = BuildCommand(conn, getViews, restrictions, false, "table_catalog", "table_schema", "table_name"))
             using (var adapter = new NpgsqlDataAdapter(command))
                 adapter.Fill(views);
 
