@@ -215,6 +215,16 @@ namespace Npgsql.Tests
                 Assert.That(tables, Does.Not.Contain("pg_type"));  // schema pg_catalog
                 Assert.That(tables, Does.Not.Contain("tables"));   // schema information_schema
             }
+
+            using (var conn = OpenConnection())
+            {
+                var views = conn.GetSchema("Views").Rows
+                    .Cast<DataRow>()
+                    .Select(r => (string)r["TABLE_NAME"])
+                    .ToList();
+                Assert.That(views, Does.Not.Contain("pg_user"));  // schema pg_catalog
+                Assert.That(views, Does.Not.Contain("views"));    // schema information_schema
+            }
         }
     }
 }

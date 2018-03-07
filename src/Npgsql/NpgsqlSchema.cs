@@ -236,7 +236,11 @@ WHERE table_type = 'BASE TABLE' AND table_schema NOT IN ('pg_catalog', 'informat
 
             var getViews = new StringBuilder();
 
-            getViews.Append("SELECT table_catalog, table_schema, table_name, check_option, is_updatable FROM information_schema.views");
+            //getViews.Append("SELECT table_catalog, table_schema, table_name, check_option, is_updatable FROM information_schema.views WHERE table_schema NOT IN ('pg_catalog', 'information_schema')");
+            getViews.Append(@"
+SELECT table_catalog, table_schema, table_name, check_option, is_updatable
+FROM information_schema.views
+WHERE table_schema NOT IN ('pg_catalog', 'information_schema')");
 
             using (var command = BuildCommand(conn, getViews, restrictions, "table_catalog", "table_schema", "table_name"))
             using (var adapter = new NpgsqlDataAdapter(command))
