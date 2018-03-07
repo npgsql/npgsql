@@ -25,6 +25,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data.Common;
+using System.Runtime.InteropServices.ComTypes;
 using System.Threading.Tasks;
 using Npgsql.PostgresTypes;
 
@@ -105,6 +106,11 @@ namespace Npgsql
         /// Reports whether the backend uses the newer integer timestamp representation.
         /// </summary>
         public virtual bool HasIntegerDateTimes { get; protected set; } = true;
+
+        /// <summary>
+        /// Whether the database supports transactions.
+        /// </summary>
+        public virtual bool SupportsTransactions { get; protected set; } = true;
 
         #endregion Supported capabilities and features
 
@@ -246,6 +252,13 @@ namespace Npgsql
 
             // Should never be here
             throw new NpgsqlException("No DatabaseInfoFactory could be found for this connection");
+        }
+
+        // For tests
+        internal static void ResetFactories()
+        {
+            Factories.Clear();
+            Factories.Add(new PostgresDatabaseInfoFactory());
         }
 
         #endregion Factory management
