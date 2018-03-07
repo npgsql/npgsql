@@ -1009,6 +1009,27 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, Description("Some pseudo-PG database don't support pg_type loading, we have a minimal DatabaseInfo for this")]
+        public void NoTypeLoading()
+        {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ApplicationName = nameof(NoTypeLoading),
+                ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
+                Pooling = false
+            }.ToString();
+
+            using (var conn = OpenConnection(connString))
+            {
+                // Arrays should not be supported in this mode
+                Assert.That(() => conn.ExecuteScalar("SELECT '{1,2,3}'::INTEGER[]"), Throws.Exception.TypeOf<NotSupportedException>());
+                // Test that some basic types do work
+                Assert.That(conn.ExecuteScalar("SELECT 8"), Is.EqualTo(8));
+                Assert.That(conn.ExecuteScalar("SELECT 'foo'"), Is.EqualTo("foo"));
+                Assert.That(conn.ExecuteScalar("SELECT TRUE"), Is.EqualTo(true));
+            }
+        }
+
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1158")]
         public void TableNamedRecord()
         {

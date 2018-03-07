@@ -37,6 +37,8 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     [TypeMapping("money", NpgsqlDbType.Money, dbType: DbType.Currency)]
     class MoneyHandler : NpgsqlSimpleTypeHandler<decimal>
     {
+        internal const uint TypeOID = 790;
+
         public override decimal Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => buf.ReadInt64() / 100m;
 

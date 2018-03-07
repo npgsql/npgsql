@@ -43,6 +43,8 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         INpgsqlSimpleTypeHandler<float>, INpgsqlSimpleTypeHandler<double>,
         INpgsqlSimpleTypeHandler<string>
     {
+        internal const uint TypeOID = 1700;
+
         #region Read
 
         static readonly decimal[] Decimals = {

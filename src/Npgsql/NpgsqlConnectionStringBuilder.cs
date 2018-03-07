@@ -1402,6 +1402,11 @@ namespace Npgsql
         /// The server is an Amazon Redshift instance.
         /// </summary>
         Redshift,
+        /// <summary>
+        /// The server is doesn't support full type loading from the PostgreSQL catalogs, support the basic set
+        /// of types via information hardcoded inside Npgsql.
+        /// </summary>
+        NoTypeLoading,
     }
 
     /// <summary>

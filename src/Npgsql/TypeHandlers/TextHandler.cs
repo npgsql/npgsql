@@ -59,6 +59,10 @@ namespace Npgsql.TypeHandlers
     public class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler<char[]>, INpgsqlTypeHandler<ArraySegment<char>>,
         INpgsqlTypeHandler<char>, ITextReaderHandler
     {
+        internal const uint TextTypeOID    = 25;
+        internal const uint VarcharTypeOID = 1043;
+        internal const uint CharTypeOID    = 18;
+
         // Text types are handled a bit more efficiently when sent as text than as binary
         // see https://github.com/npgsql/npgsql/issues/1210#issuecomment-235641670
         internal override bool PreferTextWrite => true;

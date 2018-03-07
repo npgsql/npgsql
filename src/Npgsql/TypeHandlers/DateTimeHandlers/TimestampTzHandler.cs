@@ -44,6 +44,8 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// </remarks>
     class TimestampTzHandler : TimestampHandler
     {
+        internal new const uint TypeOID = 1184;
+
         public TimestampTzHandler(bool integerFormat, bool convertInfinityDateTime)
             : base(integerFormat, convertInfinityDateTime) {}
 

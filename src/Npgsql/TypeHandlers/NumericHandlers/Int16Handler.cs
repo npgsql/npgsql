@@ -42,6 +42,8 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         INpgsqlSimpleTypeHandler<float>, INpgsqlSimpleTypeHandler<double>, INpgsqlSimpleTypeHandler<decimal>,
         INpgsqlSimpleTypeHandler<string>
     {
+        internal const uint TypeOID = 21;
+
         #region Read
 
         public override short Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)

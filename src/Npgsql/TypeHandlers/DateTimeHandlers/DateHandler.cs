@@ -43,6 +43,8 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// </remarks>
     class DateHandler : NpgsqlSimpleTypeHandlerWithPsv<DateTime, NpgsqlDate>
     {
+        internal const uint TypeOID = 1082;
+
         internal const int PostgresEpochJdate = 2451545; // == date2j(2000, 1, 1)
         internal const int MonthsPerYear = 12;
 

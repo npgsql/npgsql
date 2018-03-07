@@ -44,6 +44,7 @@ namespace Npgsql
 
         static readonly List<INpgsqlDatabaseInfoFactory> Factories = new List<INpgsqlDatabaseInfoFactory>
         {
+            new PostgresMinimalDatabaseInfoFactory(),
             new PostgresDatabaseInfoFactory()
         };
 
@@ -258,6 +259,7 @@ namespace Npgsql
         internal static void ResetFactories()
         {
             Factories.Clear();
+            Factories.Add(new PostgresMinimalDatabaseInfoFactory());
             Factories.Add(new PostgresDatabaseInfoFactory());
         }
 

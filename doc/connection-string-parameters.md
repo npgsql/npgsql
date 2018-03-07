@@ -75,5 +75,5 @@ Parameter keywords are case-insensitive.
 
 | Parameter                 | Description                                                                                       | Default |
 |---------------------------|---------------------------------------------------------------------------------------------------|---------|
-| Server Compatibility Mode | A compatibility mode for special PostgreSQL server types. Currently only "Redshift" is supported. | none    |
+| Server Compatibility Mode | A compatibility mode for special PostgreSQL server types. Currently "Redshift" is supported, as well as "NoTypeLoading", which will bypass the normal type loading mechanism from the PostgreSQL catalog tables and supports a hardcoded list of basic types . | none    |
 | Convert Infinity DateTime | Makes MaxValue and MinValue timestamps and dates readable as infinity and negative infinity.      | false   |

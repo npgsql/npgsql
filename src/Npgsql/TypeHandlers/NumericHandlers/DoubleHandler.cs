@@ -37,6 +37,8 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     [TypeMapping("float8", NpgsqlDbType.Double, DbType.Double, typeof(double))]
     class DoubleHandler : NpgsqlSimpleTypeHandler<double>
     {
+        internal const uint TypeOID = 701;
+
         public override double Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => buf.ReadDouble();
 

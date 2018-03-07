@@ -36,6 +36,8 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     [TypeMapping("float4", NpgsqlDbType.Real, DbType.Single, typeof(float))]
     class SingleHandler : NpgsqlSimpleTypeHandler<float>, INpgsqlSimpleTypeHandler<double>
     {
+        internal const uint TypeOID = 700;
+
         #region Read
 
         public override float Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
