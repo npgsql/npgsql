@@ -204,53 +204,6 @@ namespace Npgsql.Tests
                 Assert.That(text["numeric_scale"], Is.EqualTo(DBNull.Value));
             }
         }
-
-        [Test]
-        public void GetSchemaWithRestrictions()
-        {
-            // We can't use temporary tables because GetSchema filters out that in WHERE clause.
-            using (var conn = OpenConnection())
-            {
-                conn.ExecuteNonQuery("DROP TABLE IF EXISTS data");
-                conn.ExecuteNonQuery("CREATE TABLE data (bar INTEGER)");
-
-                try
-                {
-                    string[] restrictions = { null, null, "data" };
-                    var dt = conn.GetSchema("Tables", restrictions);
-                    foreach (DataRow row in dt.Rows)
-                    {
-                        var d = row["table_name"];
-                        Assert.That(row["table_name"], Is.EqualTo("data"));
-                    }
-                }
-                finally
-                {
-                    conn.ExecuteNonQuery("DROP TABLE IF EXISTS data");
-                }
-            }
-
-            using (var conn = OpenConnection())
-            {
-                conn.ExecuteNonQuery("DROP VIEW IF EXISTS view");
-                conn.ExecuteNonQuery("CREATE VIEW view AS SELECT 8 AS foo");
-
-                try
-                {
-                    string[] restrictions = { null, null, "view" };
-                    var dt = conn.GetSchema("Views", restrictions);
-                    foreach (DataRow row in dt.Rows)
-                    {
-                        var d = row["table_name"];
-                        Assert.That(row["table_name"], Is.EqualTo("view"));
-                    }
-                }
-                finally
-                {
-                    conn.ExecuteNonQuery("DROP VIEW IF EXISTS view");
-                }
-            }
-        }
     }
 }
 
