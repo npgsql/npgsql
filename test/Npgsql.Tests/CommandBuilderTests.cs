@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -20,8 +20,6 @@
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
-
-#if !NETCOREAPP1_1
 
 using System;
 using System.Data;
@@ -536,7 +534,7 @@ $$ LANGUAGE SQL;
 
                 // We leave the command intact when throwing so it should still be useable
                 Assert.That(cmd.Parameters.Count, Is.EqualTo(1));
-                Assert.That(cmd.Parameters[0].CleanName, Is.EqualTo("p"));
+                Assert.That(cmd.Parameters[0].ParameterName, Is.EqualTo("p"));
                 Assert.That(conn.Connector.PreparedStatementManager.NumPrepared, Is.EqualTo(1));
                 cmd.Parameters["@p"].Value = answer;
                 Assert.That(cmd.ExecuteScalar(), Is.EqualTo(answer));
@@ -548,6 +546,3 @@ $$ LANGUAGE SQL;
         #endregion
     }
 }
-
-#endif
-

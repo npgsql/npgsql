@@ -1,7 +1,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -94,9 +94,12 @@ namespace Npgsql
             Debug.Assert(conn != null);
             Debug.Assert(isolationLevel != IsolationLevel.Chaos);
 
-
             Connection = conn;
             _connector = Connection.CheckReadyAndGetConnector();
+
+            if (!_connector.DatabaseInfo.SupportsTransactions)
+                return;
+
             Log.Debug($"Beginning transaction with isolation level {isolationLevel}", _connector.Id);
             _connector.Transaction = this;
             _connector.TransactionStatus = TransactionStatus.Pending;
@@ -143,6 +146,10 @@ namespace Npgsql
         async Task Commit(bool async)
         {
             CheckReady();
+
+            if (!_connector.DatabaseInfo.SupportsTransactions)
+                return;
+
             using (_connector.StartUserAction())
             {
                 Log.Debug("Committing transaction", _connector.Id);
@@ -180,6 +187,8 @@ namespace Npgsql
         async Task Rollback(bool async)
         {
             CheckReady();
+            if (!_connector.DatabaseInfo.SupportsTransactions)
+                return;
             await _connector.Rollback(async);
             Clear();
         }
@@ -218,6 +227,8 @@ namespace Npgsql
                 throw new ArgumentException("name can't contain a semicolon");
 
             CheckReady();
+            if (!_connector.DatabaseInfo.SupportsTransactions)
+                return;
             using (_connector.StartUserAction())
             {
                 Log.Debug($"Creating savepoint {name}", _connector.Id);
@@ -238,6 +249,8 @@ namespace Npgsql
                 throw new ArgumentException("name can't contain a semicolon");
 
             CheckReady();
+            if (!_connector.DatabaseInfo.SupportsTransactions)
+                return;
             using (_connector.StartUserAction())
             {
                 Log.Debug($"Rolling back savepoint {name}", _connector.Id);
@@ -258,6 +271,8 @@ namespace Npgsql
                 throw new ArgumentException("name can't contain a semicolon");
 
             CheckReady();
+            if (!_connector.DatabaseInfo.SupportsTransactions)
+                return;
             using (_connector.StartUserAction())
             {
                 Log.Debug($"Releasing savepoint {name}", _connector.Id);

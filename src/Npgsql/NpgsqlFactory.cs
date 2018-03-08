@@ -1,7 +1,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -31,9 +31,7 @@ namespace Npgsql
     /// <summary>
     /// A factory to create instances of various Npgsql objects.
     /// </summary>
-#if !NETSTANDARD1_3
     [Serializable]
-#endif
     public sealed class NpgsqlFactory : DbProviderFactory, IServiceProvider
     {
         /// <summary>
@@ -64,7 +62,6 @@ namespace Npgsql
         /// </summary>
         [NotNull] public override DbConnectionStringBuilder CreateConnectionStringBuilder() => new NpgsqlConnectionStringBuilder();
 
-#if !NETSTANDARD1_3
         /// <summary>
         /// Returns a strongly typed <see cref="DbCommandBuilder"/> instance.
         /// </summary>
@@ -74,7 +71,6 @@ namespace Npgsql
         /// Returns a strongly typed <see cref="DbDataAdapter"/> instance.
         /// </summary>
         [NotNull] public override DbDataAdapter CreateDataAdapter() => new NpgsqlDataAdapter();
-#endif
 
         #region IServiceProvider Members
 

@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -689,38 +689,6 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void FieldNameKanaWidthWideRequestForNarrowFieldName()
-        {
-            if (IsSequential)
-                Assert.Pass("Not supported in sequential mode");
-            using (var conn = OpenConnection())
-            using (var command = new NpgsqlCommand("select 123 as ｦｧｨｩｪｫｬ, 124 as ヲァィゥェォャ", conn))
-            using (var dr = command.ExecuteReader(Behavior))
-            {
-                dr.Read();
-                // Should ignore Kana width and hence find the first of these two fields
-                Assert.AreEqual(dr["ｦｧｨｩｪｫｬ"], 123);
-                Assert.AreEqual(dr["ヲァィゥェォャ"], 123);// Wide version.
-            }
-        }
-
-        [Test]
-        public void FieldNameKanaWidthNarrowRequestForWideFieldName()
-        {
-            if (IsSequential)
-                Assert.Pass("Not supported in sequential mode");
-            using (var conn = OpenConnection())
-            using (var command = new NpgsqlCommand("select 123 as ヲァィゥェォャ, 124 as ｦｧｨｩｪｫｬ", conn))
-            using (var dr = command.ExecuteReader(Behavior))
-            {
-                dr.Read();
-                Assert.AreEqual(dr["ヲァィゥェォャ"], 123);
-                // Should ignore Kana width and hence find the first of these two fields
-                Assert.AreEqual(dr["ｦｧｨｩｪｫｬ"], 123);// Narrow version.
-            }
-        }
-
-        [Test]
         public void FieldIndexDoesntExist()
         {
             using (var conn = OpenConnection())
@@ -1029,18 +997,7 @@ LANGUAGE plpgsql VOLATILE";
                     stream.Read(actual, 0, 2);
                     Assert.That(actual[0], Is.EqualTo(expected[0]));
                     Assert.That(actual[1], Is.EqualTo(expected[1]));
-                    if (Behavior == CommandBehavior.Default)
-                    {
-                        var stream2 = await streamGetter(reader, 0);
-                        var actual2 = new byte[2];
-                        stream2.Read(actual2, 0, 2);
-                        Assert.That(actual2[0], Is.EqualTo(expected[0]));
-                        Assert.That(actual2[1], Is.EqualTo(expected[1]));
-                    }
-                    else
-                    {
-                        Assert.That(async () => await streamGetter(reader, 0), Throws.Exception.TypeOf<InvalidOperationException>(), "Sequential stream twice on same column");
-                    }
+                    Assert.That(async () => await streamGetter(reader, 0), Throws.Exception.TypeOf<InvalidOperationException>());
                     stream.Read(actual, 2, 1);
                     Assert.That(actual[2], Is.EqualTo(expected[2]));
                     stream.Dispose();
@@ -1073,10 +1030,7 @@ LANGUAGE plpgsql VOLATILE";
                     var stream = await streamGetter(reader, 0);
                     // ReSharper disable once UnusedVariable
                     var v = reader.GetValue(1);
-                    if (IsSequential)
-                        Assert.That(() => stream.ReadByte(), Throws.Exception.TypeOf<ObjectDisposedException>());
-                    else
-                        Assert.That(stream.ReadByte(), Is.EqualTo(1));
+                    Assert.That(() => stream.ReadByte(), Throws.Exception.TypeOf<ObjectDisposedException>());
                 }
             }
         }
@@ -1095,17 +1049,8 @@ LANGUAGE plpgsql VOLATILE";
                 {
                     reader.Read();
                     var s1 = await streamGetter(reader, 0);
-                    Stream s2 = null;
-
-                    if (IsSequential)
-                        Assert.That(async () => s2 = await streamGetter(reader, 0), Throws.Exception.TypeOf<InvalidOperationException>());
-                    else
-                        s2 = await streamGetter(reader, 0);
-
                     reader.Read();
                     Assert.That(() => s1.ReadByte(), Throws.Exception.TypeOf<ObjectDisposedException>());
-                    if (!IsSequential)
-                        Assert.That(() => s2.ReadByte(), Throws.Exception.TypeOf<ObjectDisposedException>());
                 }
             }
         }
@@ -1133,11 +1078,9 @@ LANGUAGE plpgsql VOLATILE";
         }
 
         static Func<NpgsqlDataReader, int, Task<Stream>> BuildStreamGetter(bool isAsync)
-        {
-            if (isAsync)
-                return (r, index) => r.GetStreamAsync(index);
-            return (r, index) => Task.FromResult(r.GetStream(index));
-        }
+            => isAsync
+                ? (Func<NpgsqlDataReader, int, Task<Stream>>)((r, index) => r.GetStreamAsync(index))
+                : (r, index) => Task.FromResult(r.GetStream(index));
 
         #endregion GetBytes / GetStream
 
@@ -1219,20 +1162,9 @@ LANGUAGE plpgsql VOLATILE";
                     textReader.Read(actual, 0, 2);
                     Assert.That(actual[0], Is.EqualTo(expected[0]));
                     Assert.That(actual[1], Is.EqualTo(expected[1]));
-                    if (IsSequential)
-                    {
-                        Assert.That(async () => await textReaderGetter(reader, 0),
-                            Throws.Exception.TypeOf<InvalidOperationException>(),
-                            "Sequential text reader twice on same column");
-                    }
-                    else
-                    {
-                        var textReader2 = await textReaderGetter(reader, 0);
-                        var actual2 = new char[2];
-                        textReader2.Read(actual2, 0, 2);
-                        Assert.That(actual2[0], Is.EqualTo(expected[0]));
-                        Assert.That(actual2[1], Is.EqualTo(expected[1]));
-                    }
+                    Assert.That(async () => await textReaderGetter(reader, 0),
+                        Throws.Exception.TypeOf<InvalidOperationException>(),
+                        "Sequential text reader twice on same column");
                     textReader.Read(actual, 2, 1);
                     Assert.That(actual[2], Is.EqualTo(expected[2]));
                     textReader.Dispose();
@@ -1261,15 +1193,12 @@ LANGUAGE plpgsql VOLATILE";
                 var textReader = reader.GetTextReader(0);
                 // ReSharper disable once UnusedVariable
                 var v = reader.GetValue(1);
-                if (IsSequential)
-                    Assert.That(() => textReader.Peek(), Throws.Exception.TypeOf<ObjectDisposedException>());
-                else
-                    Assert.That(textReader.Peek(), Is.EqualTo('s'));
+                Assert.That(() => textReader.Peek(), Throws.Exception.TypeOf<ObjectDisposedException>());
             }
         }
 
         [Test]
-        public void OpenStreamWhenChangingRows()
+        public void OpenReaderWhenChangingRows()
         {
             using (var conn = OpenConnection())
             using (var cmd = new NpgsqlCommand(@"SELECT 'some_text', 'some_text'", conn))
@@ -1277,17 +1206,8 @@ LANGUAGE plpgsql VOLATILE";
             {
                 reader.Read();
                 var tr1 = reader.GetTextReader(0);
-                TextReader tr2 = null;
-
-                if (IsSequential)
-                    Assert.That(() => tr2 = reader.GetTextReader(0), Throws.Exception.TypeOf<InvalidOperationException>());
-                else
-                    tr2 = reader.GetTextReader(0);
-
                 reader.Read();
                 Assert.That(() => tr1.Peek(), Throws.Exception.TypeOf<ObjectDisposedException>());
-                if (!IsSequential)
-                    Assert.That(() => tr2.Peek(), Throws.Exception.TypeOf<ObjectDisposedException>());
             }
         }
 

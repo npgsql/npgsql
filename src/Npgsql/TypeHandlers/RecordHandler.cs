@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -72,7 +72,7 @@ namespace Npgsql.TypeHandlers
                 var fieldLen = buf.ReadInt32();
                 if (fieldLen == -1)  // Null field, simply skip it and leave at default
                     continue;
-                result[i] = await _typeMapper[typeOID].ReadAsObject(buf, fieldLen, async);
+                result[i] = await _typeMapper.GetByOID(typeOID).ReadAsObject(buf, fieldLen, async);
             }
 
             return result;

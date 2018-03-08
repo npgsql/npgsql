@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -21,15 +21,14 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
+using JetBrains.Annotations;
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.Net;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
-using JetBrains.Annotations;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
@@ -50,20 +49,27 @@ namespace Npgsql
         internal Stream Underlying { private get; set; }
 
         /// <summary>
+        /// Wraps SocketAsyncEventArgs for better async I/O as long as we're not doing SSL.
+        /// </summary>
+        [CanBeNull]
+        internal AwaitableSocket AwaitableSocket { private get; set; }
+
+        /// <summary>
         /// The total byte length of the buffer.
         /// </summary>
         internal int Size { get; }
 
         internal Encoding TextEncoding { get; }
 
-        internal int ReadPosition { get; private set; }
+        internal int ReadPosition { get; set; }
         internal int ReadBytesLeft => _filledBytes - ReadPosition;
 
-        internal byte[] Buffer { get; }
+        internal readonly byte[] Buffer;
         int _filledBytes;
         readonly Decoder _textDecoder;
 
-        readonly byte[] _workspace;
+        [CanBeNull]
+        ColumnStream _columnStream;
 
         /// <summary>
         /// Used for internal temporary purposes
@@ -83,7 +89,8 @@ namespace Npgsql
 
         internal NpgsqlReadBuffer([CanBeNull] NpgsqlConnector connector, Stream stream, int size, Encoding textEncoding)
         {
-            if (size < MinimumSize) {
+            if (size < MinimumSize)
+            {
                 throw new ArgumentOutOfRangeException(nameof(size), size, "Buffer size must be at least " + MinimumSize);
             }
 
@@ -93,7 +100,6 @@ namespace Npgsql
             Buffer = new byte[Size];
             TextEncoding = textEncoding;
             _textDecoder = TextEncoding.GetDecoder();
-            _workspace = new byte[8];
         }
 
         #endregion
@@ -116,16 +122,19 @@ namespace Npgsql
         internal Task Ensure(int count, bool async, bool dontBreakOnTimeouts)
             => count <= ReadBytesLeft ? PGUtil.CompletedTask : EnsureLong(count, async, dontBreakOnTimeouts);
 
-        async Task EnsureLong(int count, bool async, bool dontBreakOnTimeouts=false)
+        async Task EnsureLong(int count, bool async, bool dontBreakOnTimeouts = false)
         {
             Debug.Assert(count <= Size);
             Debug.Assert(count > ReadBytesLeft);
             count -= ReadBytesLeft;
             if (count <= 0) { return; }
 
-            if (ReadPosition == _filledBytes) {
+            if (ReadPosition == _filledBytes)
+            {
                 Clear();
-            } else if (count > Size - _filledBytes) {
+            }
+            else if (count > Size - _filledBytes)
+            {
                 Array.Copy(Buffer, ReadPosition, Buffer, 0, ReadBytesLeft);
                 _filledBytes = ReadBytesLeft;
                 ReadPosition = 0;
@@ -136,9 +145,21 @@ namespace Npgsql
                 while (count > 0)
                 {
                     var toRead = Size - _filledBytes;
-                    var read = async
-                        ? await Underlying.ReadAsync(Buffer, _filledBytes, toRead)
-                        : Underlying.Read(Buffer, _filledBytes, toRead);
+
+                    int read;
+                    if (async)
+                    {
+                        if (AwaitableSocket == null)  // SSL
+                            read = await Underlying.ReadAsync(Buffer, _filledBytes, toRead);
+                        else  // Non-SSL async I/O, optimized
+                        {
+                            AwaitableSocket.SetBuffer(Buffer, _filledBytes, toRead);
+                            await AwaitableSocket.ReceiveAsync();
+                            read = AwaitableSocket.BytesTransferred;
+                        }
+                    } else  // Sync I/O
+                        read = Underlying.Read(Buffer, _filledBytes, toRead);
+
                     if (read == 0)
                         throw new EndOfStreamException();
                     count -= read;
@@ -207,92 +228,123 @@ namespace Npgsql
 
         #region Read Simple
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public sbyte ReadSByte()
+        {
+            Debug.Assert(sizeof(sbyte) <= ReadBytesLeft);
+            return (sbyte)Buffer[ReadPosition++];
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public byte ReadByte()
         {
-            Debug.Assert(ReadBytesLeft >= sizeof(byte));
+            Debug.Assert(sizeof(byte) <= ReadBytesLeft);
             return Buffer[ReadPosition++];
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public short ReadInt16()
+            => ReadInt16(false);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public short ReadInt16(bool littleEndian)
         {
-            Debug.Assert(ReadBytesLeft >= sizeof(short));
-            var result = IPAddress.NetworkToHostOrder(BitConverter.ToInt16(Buffer, ReadPosition));
-            ReadPosition += 2;
-            return result;
+            var result = Read<short>();
+            return littleEndian == BitConverter.IsLittleEndian
+                ? result : PGUtil.ReverseEndianness(result);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ushort ReadUInt16()
+            => ReadUInt16(false);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ushort ReadUInt16(bool littleEndian)
         {
-            Debug.Assert(ReadBytesLeft >= sizeof(short));
-            var result = (ushort)IPAddress.NetworkToHostOrder(BitConverter.ToInt16(Buffer, ReadPosition));
-            ReadPosition += 2;
-            return result;
+            var result = Read<ushort>();
+            return littleEndian == BitConverter.IsLittleEndian
+                ? result : PGUtil.ReverseEndianness(result);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public int ReadInt32()
+            => ReadInt32(false);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public int ReadInt32(bool littleEndian)
         {
-            Debug.Assert(ReadBytesLeft >= sizeof(int));
-            var result = IPAddress.NetworkToHostOrder(BitConverter.ToInt32(Buffer, ReadPosition));
-            ReadPosition += 4;
-            return result;
+            var result = Read<int>();
+            return littleEndian == BitConverter.IsLittleEndian
+                ? result : PGUtil.ReverseEndianness(result);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public uint ReadUInt32()
+            => ReadUInt32(false);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public uint ReadUInt32(bool littleEndian)
         {
-            Debug.Assert(ReadBytesLeft >= sizeof(int));
-            var result = (uint)IPAddress.NetworkToHostOrder(BitConverter.ToInt32(Buffer, ReadPosition));
-            ReadPosition += 4;
-            return result;
+            var result = Read<uint>();
+            return littleEndian == BitConverter.IsLittleEndian
+                ? result : PGUtil.ReverseEndianness(result);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public long ReadInt64()
+            => ReadInt64(false);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public long ReadInt64(bool littleEndian)
         {
-            Debug.Assert(ReadBytesLeft >= sizeof(long));
-            var result = IPAddress.NetworkToHostOrder(BitConverter.ToInt64(Buffer, ReadPosition));
-            ReadPosition += 8;
-            return result;
+            var result = Read<long>();
+            return littleEndian == BitConverter.IsLittleEndian
+                ? result : PGUtil.ReverseEndianness(result);
         }
 
-        public  float ReadSingle()
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ulong ReadUInt64()
+            => ReadUInt64(false);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public ulong ReadUInt64(bool littleEndian)
         {
-            Debug.Assert(ReadBytesLeft >= sizeof(float));
-            if (BitConverter.IsLittleEndian)
-            {
-                _workspace[3] = Buffer[ReadPosition++];
-                _workspace[2] = Buffer[ReadPosition++];
-                _workspace[1] = Buffer[ReadPosition++];
-                _workspace[0] = Buffer[ReadPosition++];
-                return BitConverter.ToSingle(_workspace, 0);
-            }
-            else
-            {
-                var result = BitConverter.ToSingle(Buffer, ReadPosition);
-                ReadPosition += 4;
-                return result;
-            }
+            var result = Read<ulong>();
+            return littleEndian == BitConverter.IsLittleEndian
+                ? result : PGUtil.ReverseEndianness(result);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public float ReadSingle()
+            => ReadSingle(false);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public float ReadSingle(bool littleEndian)
+        {
+            var result = Read<float>();
+            return littleEndian == BitConverter.IsLittleEndian
+                ? result : PGUtil.ReverseEndianness(result);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public double ReadDouble()
+            => ReadDouble(false);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public double ReadDouble(bool littleEndian)
         {
-            Debug.Assert(ReadBytesLeft >= sizeof(double));
-            if (BitConverter.IsLittleEndian)
-            {
-                _workspace[7] = Buffer[ReadPosition++];
-                _workspace[6] = Buffer[ReadPosition++];
-                _workspace[5] = Buffer[ReadPosition++];
-                _workspace[4] = Buffer[ReadPosition++];
-                _workspace[3] = Buffer[ReadPosition++];
-                _workspace[2] = Buffer[ReadPosition++];
-                _workspace[1] = Buffer[ReadPosition++];
-                _workspace[0] = Buffer[ReadPosition++];
-                return BitConverter.ToDouble(_workspace, 0);
-            }
-            else
-            {
-                var result = BitConverter.ToDouble(Buffer, ReadPosition);
-                ReadPosition += 8;
-                return result;
-            }
+            var result = Read<double>();
+            return littleEndian == BitConverter.IsLittleEndian
+                ? result : PGUtil.ReverseEndianness(result);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private T Read<T>()
+        {
+            Debug.Assert(Unsafe.SizeOf<T>() <= ReadBytesLeft);
+            var result = Unsafe.ReadUnaligned<T>(ref Buffer[ReadPosition]);
+            ReadPosition += Unsafe.SizeOf<T>();
+            return result;
         }
 
         public string ReadString(int byteLen)
@@ -322,40 +374,46 @@ namespace Npgsql
 
         #region Read Complex
 
-        internal async ValueTask<int> ReadAllBytes(byte[] output, int outputOffset, int len, bool readOnce, bool async)
+        public ValueTask<int> ReadBytes(byte[] output, int outputOffset, int len, bool async)
         {
-            if (len <= ReadBytesLeft)
+            var readFromBuffer = Math.Min(ReadBytesLeft, len);
+            if (readFromBuffer > 0)
             {
-                Array.Copy(Buffer, ReadPosition, output, outputOffset, len);
+                System.Buffer.BlockCopy(Buffer, ReadPosition, output, outputOffset, readFromBuffer);
                 ReadPosition += len;
-                return len;
+                return new ValueTask<int>(readFromBuffer);
             }
 
-            Array.Copy(Buffer, ReadPosition, output, outputOffset, ReadBytesLeft);
-            var offset = outputOffset + ReadBytesLeft;
-            var totalRead = ReadBytesLeft;
-            Clear();
-            try
+            return new ValueTask<int>(ReadBytesLong());
+
+            async Task<int> ReadBytesLong()
             {
-                while (totalRead < len)
+                Debug.Assert(ReadPosition == 0);
+                Clear();
+                try
                 {
                     var read = async
-                        ? await Underlying.ReadAsync(output, offset, len - totalRead)
-                        : Underlying.Read(output, offset, len - totalRead);
+                        ? await Underlying.ReadAsync(output, outputOffset, len)
+                        : Underlying.Read(output, outputOffset, len);
                     if (read == 0)
                         throw new EndOfStreamException();
-                    totalRead += read;
-                    if (readOnce)
-                        return totalRead;
-                    offset += read;
+                    return read;
+                }
+                catch (Exception e)
+                {
+                    Connector.Break();
+                    throw new NpgsqlException("Exception while reading from stream", e);
                 }
             }
-            catch (Exception e)
-            {
-                Connector.Break();
-                throw new NpgsqlException("Exception while reading from stream", e);
-            }
-            return len;
+        }
+
+        public Stream GetStream(int len, bool canSeek)
+        {
+            if (_columnStream == null)
+                _columnStream = new ColumnStream(this);
+
+            _columnStream.Init(len, canSeek);
+            return _columnStream;
         }
 
         /// <summary>
@@ -453,101 +511,7 @@ namespace Npgsql
 
         #endregion
 
-        #region Read PostGIS
-
-        internal int ReadInt32(ByteOrder bo)
-        {
-            Debug.Assert(ReadBytesLeft >= sizeof(int));
-            int result;
-            if (BitConverter.IsLittleEndian == (bo == ByteOrder.LSB))
-            {
-                result = BitConverter.ToInt32(Buffer, ReadPosition);
-                ReadPosition += 4;
-            }
-            else
-            {
-                _workspace[3] = Buffer[ReadPosition++];
-                _workspace[2] = Buffer[ReadPosition++];
-                _workspace[1] = Buffer[ReadPosition++];
-                _workspace[0] = Buffer[ReadPosition++];
-                result = BitConverter.ToInt32(_workspace, 0);
-            }
-            return result;
-        }
-
-        internal uint ReadUInt32(ByteOrder bo)
-        {
-            Debug.Assert(ReadBytesLeft >= sizeof(int));
-            uint result;
-            if (BitConverter.IsLittleEndian == (bo == ByteOrder.LSB))
-            {
-                result = BitConverter.ToUInt32(Buffer, ReadPosition);
-                ReadPosition += 4;
-            }
-            else
-            {
-                _workspace[3] = Buffer[ReadPosition++];
-                _workspace[2] = Buffer[ReadPosition++];
-                _workspace[1] = Buffer[ReadPosition++];
-                _workspace[0] = Buffer[ReadPosition++];
-                result = BitConverter.ToUInt32(_workspace, 0);
-            }
-            return result;
-        }
-
-        internal double ReadDouble(ByteOrder bo)
-        {
-            Debug.Assert(ReadBytesLeft >= sizeof(double));
-
-            if (BitConverter.IsLittleEndian == (ByteOrder.LSB == bo))
-            {
-                var result = BitConverter.ToDouble(Buffer, ReadPosition);
-                ReadPosition += 8;
-                return result;
-            }
-            else
-            {
-                _workspace[7] = Buffer[ReadPosition++];
-                _workspace[6] = Buffer[ReadPosition++];
-                _workspace[5] = Buffer[ReadPosition++];
-                _workspace[4] = Buffer[ReadPosition++];
-                _workspace[3] = Buffer[ReadPosition++];
-                _workspace[2] = Buffer[ReadPosition++];
-                _workspace[1] = Buffer[ReadPosition++];
-                _workspace[0] = Buffer[ReadPosition++];
-                return BitConverter.ToDouble(_workspace, 0);
-            }
-        }
-
-        #endregion
-
         #region Misc
-
-        /// <summary>
-        /// Seeks within the current in-memory data. Does not read any data from the underlying.
-        /// </summary>
-        /// <param name="offset"></param>
-        /// <param name="origin"></param>
-        internal void Seek(int offset, SeekOrigin origin)
-        {
-            int absoluteOffset;
-            switch (origin)
-            {
-                case SeekOrigin.Begin:
-                    absoluteOffset = offset;
-                    break;
-                case SeekOrigin.Current:
-                    absoluteOffset = ReadPosition + offset;
-                    break;
-                case SeekOrigin.End:
-                    throw new NotImplementedException();
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(origin));
-            }
-            Debug.Assert(absoluteOffset >= 0 && absoluteOffset <= _filledBytes);
-
-            ReadPosition = absoluteOffset;
-        }
 
         internal void Clear()
         {

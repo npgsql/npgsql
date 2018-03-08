@@ -71,8 +71,8 @@ PG type     | .NET value               | Action
 timestamp   | DateTime (default)       | Kind=Unspecified
 timestamp   | DateTimeOffset           | Should throw an exception?
             |                          |
-timestamptz | DateTime                 | Kind=Local (according to system tz)
-timestamptz | DateTimeOffset (default) | **Offset=UTC**
+timestamptz | DateTime (default)       | Kind=Local (according to system tz)
+timestamptz | DateTimeOffset           | **Offset=UTC**
             |                          |
 time        | TimeSpan (default)       | As-is
 time        | DateTime                 | **Use only time component**

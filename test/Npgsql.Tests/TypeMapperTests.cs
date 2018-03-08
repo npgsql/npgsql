@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeHandlers;
 using Npgsql.TypeHandlers.NumericHandlers;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
@@ -153,6 +154,29 @@ CHECK
         {
             Assert.That(() => new NpgsqlTypeMappingBuilder().Build(), Throws.ArgumentException);
             Assert.That(() => new NpgsqlTypeMappingBuilder{ PgTypeName = "foo" }.Build(), Throws.ArgumentException);
+        }
+
+        [Test]
+        public void StringToCitext()
+        {
+            using (var conn = OpenLocalConnection())
+            {
+                conn.TypeMapper.RemoveMapping("text");
+                conn.TypeMapper.AddMapping(new NpgsqlTypeMappingBuilder
+                {
+                    PgTypeName = "citext",
+                    NpgsqlDbType = NpgsqlDbType.Citext,
+                    DbTypes = new[] { DbType.String },
+                    ClrTypes = new[] { typeof(string) },
+                    TypeHandlerFactory = new TextHandlerFactory()
+                }.Build());
+
+                using (var cmd = new NpgsqlCommand("SELECT @p = 'hello'::citext", conn))
+                {
+                    cmd.Parameters.AddWithValue("p", "HeLLo");
+                    Assert.That(cmd.ExecuteScalar(), Is.True);
+                }
+            }
         }
 
         #region Support

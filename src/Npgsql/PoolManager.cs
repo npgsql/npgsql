@@ -7,9 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.Logging;
-#if !NETSTANDARD1_3
 using System.Transactions;
-#endif
 
 namespace Npgsql
 {
@@ -18,8 +16,8 @@ namespace Npgsql
         /// <summary>
         /// Holds connector pools indexed by their connection strings.
         /// </summary>
-        internal static Dictionary<string, ConnectorPool> Pools { get; }
-            = new Dictionary<string, ConnectorPool>();
+        internal static ConcurrentDictionary<string, ConnectorPool> Pools { get; }
+            = new ConcurrentDictionary<string, ConnectorPool>();
 
         /// <summary>
         /// Maximum number of possible connections in the pool.
@@ -28,32 +26,24 @@ namespace Npgsql
 
         static PoolManager()
         {
-#if !NETSTANDARD1_3
             // When the appdomain gets unloaded (e.g. web app redeployment) attempt to nicely
             // close idle connectors to prevent errors in PostgreSQL logs (#491).
             AppDomain.CurrentDomain.DomainUnload += (sender, args) => ClearAll();
             AppDomain.CurrentDomain.ProcessExit += (sender, args) => ClearAll();
-#endif
         }
 
         internal static void Clear(string connString)
         {
             Debug.Assert(connString != null);
 
-            lock (Pools)
-            {
-                if (Pools.TryGetValue(connString, out var pool))
-                    pool.Clear();
-            }
+            if (Pools.TryGetValue(connString, out var pool))
+                pool.Clear();
         }
 
         internal static void ClearAll()
         {
-            lock (Pools)
-            {
-                foreach (var kvp in Pools)
-                    kvp.Value.Clear();
-            }
+            foreach (var kvp in Pools)
+                kvp.Value.Clear();
         }
     }
 
@@ -120,7 +110,6 @@ namespace Npgsql
             _prunedConnectors = new List<NpgsqlConnector>();
             Idle = new IdleConnectorList();
             _waiting = new Queue<WaitingOpenAttempt>();
-            Counters.NumberOfActiveConnectionPools.Increment();
         }
 
         void IncrementBusy()
@@ -290,7 +279,16 @@ namespace Npgsql
                         var tcs2 = tcs;
                         var connector2 = connector;
 
-                        Task.Run(() => tcs2.TrySetResult(connector2));
+                        Task.Run(() =>
+                        {
+                            if (!tcs2.TrySetResult(connector2))
+                            {
+                                // Race condition: the waiter timed out between our IsCanceled check above and here
+                                // Recursively call Release again, this will dequeue another open attempt and retry.
+                                Debug.Assert(tcs2.Task.IsCanceled);
+                                Release(connector2);
+                            }
+                        });
                     }
                     else
                         tcs.SetResult(connector);
@@ -324,11 +322,7 @@ namespace Npgsql
 
                 try
                 {
-#if NETSTANDARD1_3
-                    var connector = new NpgsqlConnector(conn.Clone())
-#else
                     var connector = new NpgsqlConnector((NpgsqlConnection) ((ICloneable) conn).Clone())
-#endif
                     {
                         ClearCounter = _clearCounter
                     };
@@ -445,7 +439,6 @@ namespace Npgsql
 
         #region Pending Enlisted Connections
 
-#if !NETSTANDARD1_3
         internal void AddPendingEnlistedConnector(NpgsqlConnector connector, Transaction transaction)
         {
             lock (_pendingEnlistedConnectors)
@@ -487,7 +480,6 @@ namespace Npgsql
         // (i.e. access to connectors of a specific transaction won't be concurrent)
         readonly Dictionary<Transaction, List<NpgsqlConnector>> _pendingEnlistedConnectors
             = new Dictionary<Transaction, List<NpgsqlConnector>>();
-#endif
 
         #endregion
 

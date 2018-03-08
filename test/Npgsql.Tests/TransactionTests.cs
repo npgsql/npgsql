@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -428,6 +428,61 @@ namespace Npgsql.Tests
                 Assert.That(tx.IsCompleted);
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
             }
+        }
+
+        [Test, Description("Tests that a if a DatabaseInfoFactory is registered for a database that doesn't support transactions, no transactions are created")]
+        [Parallelizable(ParallelScope.None)]
+        public void TransactionNotSupported()
+        {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ApplicationName = nameof(TransactionNotSupported)
+            }.ToString();
+
+            NpgsqlDatabaseInfo.RegisterFactory(new NoTransactionDatabaseInfoFactory());
+            using (var conn = OpenConnection(connString))
+            using (var tx = conn.BeginTransaction())
+            {
+                // Detect that we're not really in a transaction
+                var prevTxId = conn.ExecuteScalar("SELECT txid_current()");
+                var nextTxId = conn.ExecuteScalar("SELECT txid_current()");
+                // If we're in an actual transaction, the two IDs should be the same
+                // https://stackoverflow.com/questions/1651219/how-to-check-for-pending-operations-in-a-postgresql-transaction
+                Assert.That(nextTxId, Is.Not.EqualTo(prevTxId));
+                conn.Close();
+            }
+
+            NpgsqlDatabaseInfo.ResetFactories();
+
+            using (var conn = OpenConnection(connString))
+            {
+                NpgsqlConnection.ClearPool(conn);
+                conn.ReloadTypes();
+            }
+
+            // Check that everything is back to normal
+            using (var conn = OpenConnection(connString))
+            using (var tx = conn.BeginTransaction())
+            {
+                var prevTxId = conn.ExecuteScalar("SELECT txid_current()");
+                var nextTxId = conn.ExecuteScalar("SELECT txid_current()");
+                Assert.That(nextTxId, Is.EqualTo(prevTxId));
+            }
+        }
+
+        class NoTransactionDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
+        {
+            public async Task<NpgsqlDatabaseInfo> Load(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
+            {
+                var db = new NoTransactionDatabaseInfo();
+                await db.LoadPostgresInfo(conn, timeout, async);
+                return db;
+            }
+        }
+
+        class NoTransactionDatabaseInfo : PostgresDatabaseInfo
+        {
+            public override bool SupportsTransactions => false;
         }
 
         // Older tests

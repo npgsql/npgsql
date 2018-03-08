@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -37,6 +37,8 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     [TypeMapping("money", NpgsqlDbType.Money, dbType: DbType.Currency)]
     class MoneyHandler : NpgsqlSimpleTypeHandler<decimal>
     {
+        internal const uint TypeOID = 790;
+
         public override decimal Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => buf.ReadInt64() / 100m;
 

@@ -1,7 +1,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -87,16 +87,6 @@ namespace NpgsqlTypes
         /// </summary>
         /// <remarks>See http://www.postgresql.org/docs/current/static/datatype-boolean.html</remarks>
         Boolean = 2,
-
-        #endregion
-
-        #region Enumerated Types
-
-        /// <summary>
-        /// Corresponds to the PostgreSQL "enum" type.
-        /// </summary>
-        /// <remarks>See http://www.postgresql.org/docs/current/static/datatype-enum.html</remarks>
-        Enum = 47,
 
         #endregion
 
@@ -291,6 +281,12 @@ namespace NpgsqlTypes
         /// <remarks>See http://www.postgresql.org/docs/current/static/datatype-net-types.html</remarks>
         MacAddr = 34,
 
+        /// <summary>
+        /// Corresponds to the PostgreSQL "macaddr8" type, a field storing a 6-byte or 8-byte physical address.
+        /// </summary>
+        /// <remarks>See http://www.postgresql.org/docs/current/static/datatype-net-types.html</remarks>
+        MacAddr8 = 54,
+
         #endregion
 
         #region Bit String Types
@@ -385,16 +381,6 @@ namespace NpgsqlTypes
         /// </summary>
         /// <remarks>See http://www.postgresql.org/docs/current/static/arrays.html</remarks>
         Array = int.MinValue,
-
-        #endregion
-
-        #region Composite Types
-
-        /// <summary>
-        /// Corresponds to the PostgreSQL "composite" type.
-        /// </summary>
-        /// <remarks>See http://www.postgresql.org/docs/current/static/rowtypes.html</remarks>
-        Composite = 48,
 
         #endregion
 

@@ -6,9 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
-#if !NETCOREAPP1_1
 using System.Transactions;
-#endif
 
 namespace Npgsql.Tests
 {
@@ -131,7 +129,6 @@ namespace Npgsql.Tests
             }
         }
 
-#if !NETCOREAPP1_1
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1497")]
         public void Bug1497()
         {
@@ -147,9 +144,7 @@ namespace Npgsql.Tests
                 }
             }
         }
-#endif
 
-#if !NETCOREAPP1_1
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1558")]
         public void Bug1558()
         {
@@ -164,7 +159,6 @@ namespace Npgsql.Tests
                 conn.Open();
             }
         }
-#endif
 
         [Test]
         public void Bug1695()

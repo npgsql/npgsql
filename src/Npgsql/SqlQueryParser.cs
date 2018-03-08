@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -149,8 +149,9 @@ namespace Npgsql
             // We have already at least one character of the param name
             for (;;) {
                 lastChar = ch;
-                if (currCharOfs >= end || !IsParamNameChar(ch = sql[currCharOfs])) {
-                    var paramName = sql.Substring(currTokenBeg, currCharOfs - currTokenBeg);
+                if (currCharOfs >= end || !IsParamNameChar(ch = sql[currCharOfs]))
+                {
+                    var paramName = sql.Substring(currTokenBeg + 1, currCharOfs - (currTokenBeg + 1));
 
                     if (!_paramIndexMap.TryGetValue(paramName, out var index))
                     {
@@ -159,12 +160,14 @@ namespace Npgsql
                         {
                             if (deriveParameters)
                             {
-                                parameter = new NpgsqlParameter() { ParameterName = paramName.Substring(1) };
+                                parameter = new NpgsqlParameter { ParameterName = paramName };
                                 parameters.Add(parameter);
                             }
                             else
                             {
-                                _rewrittenSql.Append(paramName);
+                                // Parameter placeholder does not match a parameter on this command.
+                                // Leave the text as it was in the SQL, it may not be a an actual placeholder
+                                _rewrittenSql.Append(sql.Substring(currTokenBeg, currCharOfs - currTokenBeg));
                                 currTokenBeg = currCharOfs;
                                 if (currCharOfs >= end)
                                     goto Finish;

@@ -24,20 +24,9 @@ namespace Npgsql
         /// <summary>
         /// The number of columns in the current row
         /// </summary>
-        int _numColumns;
-
-        [CanBeNull]
-        List<int> _columnOffsets;
-        int _endOffset;
-
         int _column;
-
-        /// <summary>
-        /// List of all streams that have been opened on the current row, and need to be disposed of
-        /// when the row is consumed.
-        /// </summary>
-        [CanBeNull]
-        List<IDisposable> _streams;
+        List<(int Offset, int Length)> _columns;
+        int _dataMsgEnd;
 
         internal NpgsqlDefaultDataReader(NpgsqlCommand command, CommandBehavior behavior, List<NpgsqlStatement> statements, Task sendTask)
             : base(command, behavior, statements, sendTask) {}
@@ -49,10 +38,24 @@ namespace Npgsql
         {
             // This is an optimized execution path that avoids calling any async methods for the (usual)
             // case where the next row (or CommandComplete) is already in memory.
-            if (State != ReaderState.InResult || (Behavior & CommandBehavior.SingleRow) != 0)
+
+            if ((Behavior & CommandBehavior.SingleRow) != 0)
                 return base.Read(async);
 
-            ConsumeRow(false);
+            switch (State)
+            {
+            case ReaderState.BeforeResult:
+                // First Read() after NextResult. Data row has already been processed.
+                State = ReaderState.InResult;
+                return PGUtil.TrueTask;
+            case ReaderState.InResult:
+                ConsumeRow(false);
+                break;
+            case ReaderState.BetweenResults:
+            case ReaderState.Consumed:
+            case ReaderState.Closed:
+                return PGUtil.FalseTask;
+            }
 
             var readBuf = Connector.ReadBuffer;
             if (readBuf.ReadBytesLeft < 5)
@@ -61,7 +64,7 @@ namespace Npgsql
             var len = readBuf.ReadInt32() - 4;  // Transmitted length includes itself
             if (messageCode != BackendMessageCode.DataRow || readBuf.ReadBytesLeft < len)
             {
-                readBuf.Seek(-5, SeekOrigin.Current);
+                readBuf.ReadPosition -= 5;
                 return base.Read(async);
             }
 
@@ -108,7 +111,7 @@ namespace Npgsql
             var taken = new List<int>();
             foreach (var p in Command.Parameters.Where(p => p.IsOutputDirection))
             {
-                if (RowDescription.TryGetFieldIndex(p.CleanName, out var idx))
+                if (RowDescription.TryGetFieldIndex(p.ParameterName, out var idx))
                 {
                     // TODO: Provider-specific check?
                     p.Value = GetValue(idx);
@@ -117,7 +120,7 @@ namespace Npgsql
                 else
                     pending.Enqueue(p);
             }
-            for (var i = 0; pending.Count != 0 && i != _numColumns; ++i)
+            for (var i = 0; pending.Count != 0 && i != RowDescription.NumFields; ++i)
             {
                 // TODO: Need to get the provider-specific value based on the out param's type
                 if (!taken.Contains(i))
@@ -131,13 +134,13 @@ namespace Npgsql
         internal override Task ConsumeRow(bool async)
         {
             Debug.Assert(State == ReaderState.InResult || State == ReaderState.BeforeResult);
-            Buffer.Seek(_endOffset, SeekOrigin.Begin);
-            if (_streams != null)
+
+            if (ColumnStream != null)
             {
-                foreach (var stream in _streams)
-                    stream.Dispose();
-                _streams.Clear();
+                ColumnStream.Dispose();
+                ColumnStream = null;
             }
+            Buffer.ReadPosition = _dataMsgEnd;
             return PGUtil.CompletedTask;
         }
 
@@ -148,23 +151,23 @@ namespace Npgsql
             // reading in non-sequential mode, a new oversize buffer is allocated. We thus have to
             // recapture the connector's buffer on each new DataRow.
             Buffer = Connector.ReadBuffer;
+            _dataMsgEnd = Buffer.ReadPosition + dataMsg.Length;
 
-            _numColumns = Buffer.ReadInt16();
+            // We currently assume that the row's number of columns is identical to the description's
+#if DEBUG
+            var numColumns = Buffer.ReadInt16();
+            Debug.Assert(RowDescription.NumFields == numColumns);
+#else
+            Buffer.ReadPosition += 2;
+#endif
             _column = -1;
-            Debug.Assert(RowDescription.NumFields == _numColumns);
-            if (_columnOffsets == null)
-                _columnOffsets = new List<int>(_numColumns);
-            else
-                _columnOffsets.Clear();
+            dataMsg.Columns.Clear();
+            // TODO: Don't do this every time
+            _columns = dataMsg.Columns;
 
-            for (var i = 0; i < _numColumns; i++)
-            {
-                _columnOffsets.Add(Buffer.ReadPosition);
-                var len = Buffer.ReadInt32();
-                if (len != -1)
-                    Buffer.Seek(len, SeekOrigin.Current);
-            }
-            _endOffset = Buffer.ReadPosition;
+            // Initialize our columns array with the offset and length of the first column
+            var len = Buffer.ReadInt32();
+            _columns.Add((Buffer.ReadPosition, len));
         }
 
         // We know the entire row is buffered in memory (non-sequential reader), so no I/O will be performed
@@ -285,23 +288,26 @@ namespace Npgsql
             return ColumnLen == -1;
         }
 
-        internal override ValueTask<Stream> GetStreamInternal(int column, bool async)
-        {
-            SeekToColumn(column);
-            if (ColumnLen == -1)
-                throw new InvalidCastException("Column is null");
-
-            var s = new MemoryStream(Buffer.Buffer, Buffer.ReadPosition, ColumnLen, false, false);
-            if (_streams == null)
-                _streams = new List<IDisposable>();
-            _streams.Add(s);
-            return new ValueTask<Stream>(s);
-        }
-
         void SeekToColumn(int column)
         {
-            Buffer.Seek(_columnOffsets[column], SeekOrigin.Begin);
-            ColumnLen = Buffer.ReadInt32();
+            // Shut down any streaming going on on the column
+            if (ColumnStream != null)
+            {
+                ColumnStream.Dispose();
+                ColumnStream = null;
+            }
+
+            for (var lastColumnRead = _columns.Count; column >= lastColumnRead; lastColumnRead++)
+            {
+                int lastColumnLen;
+                (Buffer.ReadPosition, lastColumnLen) = _columns[lastColumnRead-1];
+                if (lastColumnLen != -1)
+                    Buffer.ReadPosition += lastColumnLen;
+                var len = Buffer.ReadInt32();
+                _columns.Add((Buffer.ReadPosition, len));
+            }
+
+            (Buffer.ReadPosition, ColumnLen) = _columns[column];
             _column = column;
             PosInColumn = 0;
         }
@@ -316,7 +322,7 @@ namespace Npgsql
         {
             if (posInColumn > ColumnLen)
                 posInColumn = ColumnLen;
-            Buffer.Seek(_columnOffsets[_column] + 4 + posInColumn, SeekOrigin.Begin);
+            Buffer.ReadPosition = _columns[_column].Offset + posInColumn;
             PosInColumn = posInColumn;
             return PGUtil.CompletedTask;
         }

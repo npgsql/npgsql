@@ -392,6 +392,7 @@ namespace Npgsql.Tests
                 using (var cmd = new NpgsqlCommand("SELECT 1", conn))
                 {
                     cmd.Prepare();
+                    Assert.That(cmd.IsPrepared, Is.True);
                     AssertNumPreparedStatements(conn, 1);
                     Assert.That(cmd.ExecuteScalar(), Is.EqualTo(1));
                 }

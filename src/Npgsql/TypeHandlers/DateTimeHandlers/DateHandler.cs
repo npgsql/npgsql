@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -43,6 +43,8 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// </remarks>
     class DateHandler : NpgsqlSimpleTypeHandlerWithPsv<DateTime, NpgsqlDate>
     {
+        internal const uint TypeOID = 1082;
+
         internal const int PostgresEpochJdate = 2451545; // == date2j(2000, 1, 1)
         internal const int MonthsPerYear = 12;
 

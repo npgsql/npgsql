@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -66,37 +66,37 @@ namespace Npgsql.TypeHandlers
         public override async ValueTask<PostgisGeometry> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
         {
             await buf.Ensure(5, async);
-            var bo = (ByteOrder)buf.ReadByte();
-            var id = buf.ReadUInt32(bo);
+            var le = buf.ReadByte() != 0;
+            var id = buf.ReadUInt32(le);
 
             var srid = 0u;
             if ((id & (uint)EwkbModifiers.HasSRID) != 0)
             {
                 await buf.Ensure(4, async);
-                srid = buf.ReadUInt32(bo);
+                srid = buf.ReadUInt32(le);
             }
 
-            var geom = await DoRead(buf, (WkbIdentifier)(id & 7), bo, async);
+            var geom = await DoRead(buf, (WkbIdentifier)(id & 7), le, async);
             geom.SRID = srid;
             return geom;
         }
 
-        async ValueTask<PostgisGeometry> DoRead(NpgsqlReadBuffer buf, WkbIdentifier id, ByteOrder bo, bool async)
+        async ValueTask<PostgisGeometry> DoRead(NpgsqlReadBuffer buf, WkbIdentifier id, bool le, bool async)
         {
             switch (id)
             {
             case WkbIdentifier.Point:
                 await buf.Ensure(16, async);
-                return new PostgisPoint(buf.ReadDouble(bo), buf.ReadDouble(bo));
+                return new PostgisPoint(buf.ReadDouble(le), buf.ReadDouble(le));
 
             case WkbIdentifier.LineString:
             {
                 await buf.Ensure(4, async);
-                var points = new Coordinate2D[buf.ReadInt32(bo)];
+                var points = new Coordinate2D[buf.ReadInt32(le)];
                 for (var ipts = 0; ipts < points.Length; ipts++)
                 {
                     await buf.Ensure(16, async);
-                    points[ipts] = new Coordinate2D(buf.ReadDouble(bo), buf.ReadDouble(bo));
+                    points[ipts] = new Coordinate2D(buf.ReadDouble(le), buf.ReadDouble(le));
                 }
                 return new PostgisLineString(points);
             }
@@ -104,16 +104,16 @@ namespace Npgsql.TypeHandlers
             case WkbIdentifier.Polygon:
             {
                 await buf.Ensure(4, async);
-                var rings = new Coordinate2D[buf.ReadInt32(bo)][];
+                var rings = new Coordinate2D[buf.ReadInt32(le)][];
 
                 for (var irng = 0; irng < rings.Length; irng++)
                 {
                     await buf.Ensure(4, async);
-                    rings[irng] = new Coordinate2D[buf.ReadInt32(bo)];
+                    rings[irng] = new Coordinate2D[buf.ReadInt32(le)];
                     for (var ipts = 0; ipts < rings[irng].Length; ipts++)
                     {
                         await buf.Ensure(16, async);
-                        rings[irng][ipts] = new Coordinate2D(buf.ReadDouble(bo), buf.ReadDouble(bo));
+                        rings[irng][ipts] = new Coordinate2D(buf.ReadDouble(le), buf.ReadDouble(le));
                     }
                 }
                 return new PostgisPolygon(rings);
@@ -122,12 +122,12 @@ namespace Npgsql.TypeHandlers
             case WkbIdentifier.MultiPoint:
             {
                 await buf.Ensure(4, async);
-                var points = new Coordinate2D[buf.ReadInt32(bo)];
+                var points = new Coordinate2D[buf.ReadInt32(le)];
                 for (var ipts = 0; ipts < points.Length; ipts++)
                 {
                     await buf.Ensure(21, async);
                     await buf.Skip(5, async);
-                    points[ipts] = new Coordinate2D(buf.ReadDouble(bo), buf.ReadDouble(bo));
+                    points[ipts] = new Coordinate2D(buf.ReadDouble(le), buf.ReadDouble(le));
                 }
                 return new PostgisMultiPoint(points);
             }
@@ -135,17 +135,17 @@ namespace Npgsql.TypeHandlers
             case WkbIdentifier.MultiLineString:
             {
                 await buf.Ensure(4, async);
-                var rings = new Coordinate2D[buf.ReadInt32(bo)][];
+                var rings = new Coordinate2D[buf.ReadInt32(le)][];
 
                 for (var irng = 0; irng < rings.Length; irng++)
                 {
                     await buf.Ensure(9, async);
                     await buf.Skip(5, async);
-                    rings[irng] = new Coordinate2D[buf.ReadInt32(bo)];
+                    rings[irng] = new Coordinate2D[buf.ReadInt32(le)];
                     for (var ipts = 0; ipts < rings[irng].Length; ipts++)
                     {
                         await buf.Ensure(16, async);
-                        rings[irng][ipts] = new Coordinate2D(buf.ReadDouble(bo), buf.ReadDouble(bo));
+                        rings[irng][ipts] = new Coordinate2D(buf.ReadDouble(le), buf.ReadDouble(le));
                     }
                 }
                 return new PostgisMultiLineString(rings);
@@ -154,21 +154,21 @@ namespace Npgsql.TypeHandlers
             case WkbIdentifier.MultiPolygon:
             {
                 await buf.Ensure(4, async);
-                var pols = new Coordinate2D[buf.ReadInt32(bo)][][];
+                var pols = new Coordinate2D[buf.ReadInt32(le)][][];
 
                 for (var ipol = 0; ipol < pols.Length; ipol++)
                 {
                     await buf.Ensure(9, async);
                     await buf.Skip(5, async);
-                    pols[ipol] = new Coordinate2D[buf.ReadInt32(bo)][];
+                    pols[ipol] = new Coordinate2D[buf.ReadInt32(le)][];
                     for (var irng = 0; irng < pols[ipol].Length; irng++)
                     {
                         await buf.Ensure(4, async);
-                        pols[ipol][irng] = new Coordinate2D[buf.ReadInt32(bo)];
+                        pols[ipol][irng] = new Coordinate2D[buf.ReadInt32(le)];
                         for (var ipts = 0; ipts < pols[ipol][irng].Length; ipts++)
                         {
                             await buf.Ensure(16, async);
-                            pols[ipol][irng][ipts] = new Coordinate2D(buf.ReadDouble(bo), buf.ReadDouble(bo));
+                            pols[ipol][irng][ipts] = new Coordinate2D(buf.ReadDouble(le), buf.ReadDouble(le));
                         }
                     }
                 }
@@ -178,15 +178,15 @@ namespace Npgsql.TypeHandlers
             case WkbIdentifier.GeometryCollection:
             {
                 await buf.Ensure(4, async);
-                var g = new PostgisGeometry[buf.ReadInt32(bo)];
+                var g = new PostgisGeometry[buf.ReadInt32(le)];
 
                 for (var i = 0; i < g.Length; i++)
                 {
                     await buf.Ensure(5, async);
-                    var elemBo = (ByteOrder)buf.ReadByte();
-                    var elemId = (WkbIdentifier)(buf.ReadUInt32(bo) & 7);
+                    var elemLe = buf.ReadByte() != 0;
+                    var elemId = (WkbIdentifier)(buf.ReadUInt32(le) & 7);
 
-                    g[i] = await DoRead(buf, elemId, elemBo, async);
+                    g[i] = await DoRead(buf, elemId, elemLe, async);
                 }
                 return new PostgisGeometryCollection(g);
             }

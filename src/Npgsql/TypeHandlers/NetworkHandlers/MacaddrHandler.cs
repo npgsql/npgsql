@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -58,11 +58,9 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
         #region Write
 
         public override int ValidateAndGetLength(PhysicalAddress value, NpgsqlParameter parameter)
-        {
-            if (value.GetAddressBytes().Length != 6)
-                throw new FormatException("MAC addresses must have length 6 in PostgreSQL");
-            return 6;
-        }
+             => value.GetAddressBytes().Length == 6
+                 ? 6
+                 : throw new FormatException("MAC addresses must have length 6 in PostgreSQL");
 
         public int ValidateAndGetLength(string value, NpgsqlParameter parameter)
             => ValidateAndGetLength(PhysicalAddress.Parse(value), parameter);

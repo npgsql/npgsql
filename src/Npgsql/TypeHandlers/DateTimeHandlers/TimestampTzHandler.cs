@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -44,6 +44,8 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// </remarks>
     class TimestampTzHandler : TimestampHandler
     {
+        internal new const uint TypeOID = 1184;
+
         public TimestampTzHandler(bool integerFormat, bool convertInfinityDateTime)
             : base(integerFormat, convertInfinityDateTime) {}
 

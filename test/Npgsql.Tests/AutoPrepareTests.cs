@@ -316,8 +316,6 @@ namespace Npgsql.Tests
             }
         }
 
-#if !NETCOREAPP1_1
-
         [Test, Description("Tests parameter derivation a parameterized query (CommandType.Text) that is already auto-prepared.")]
         public void DeriveParametersForAutoPreparedStatement()
         {
@@ -341,7 +339,7 @@ namespace Npgsql.Tests
                 // Derive parameters for the already autoprepared statement
                 NpgsqlCommandBuilder.DeriveParameters(cmd);
                 Assert.That(cmd.Parameters.Count, Is.EqualTo(1));
-                Assert.That(cmd.Parameters[0].CleanName, Is.EqualTo("p"));
+                Assert.That(cmd.Parameters[0].ParameterName, Is.EqualTo("p"));
 
                 // DeriveParameters should have silently unprepared the autoprepared statements
                 Assert.That(checkCmd.ExecuteScalar(), Is.EqualTo(0));
@@ -353,8 +351,6 @@ namespace Npgsql.Tests
                 conn.UnprepareAll();
             }
         }
-
-#endif
 
         // Exclude some internal Npgsql queries which include pg_type as well as the count statement itself
         const string CountPreparedStatements = @"

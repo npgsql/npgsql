@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -23,6 +23,7 @@
 
 using System;
 using System.Collections.Generic;
+using JetBrains.Annotations;
 using Npgsql.TypeHandlers;
 
 namespace Npgsql.PostgresTypes
@@ -39,25 +40,22 @@ namespace Npgsql.PostgresTypes
         /// Holds the name and OID for all fields.
         /// Populated on the first activation of the composite.
         /// </summary>
-        internal List<Field> Fields { get; }
+        internal List<Field> Fields { get; } = new List<Field>();
 
         /// <summary>
         /// Constructs a representation of a PostgreSQL array data type.
         /// </summary>
 #pragma warning disable CA2222 // Do not decrease inherited member visibility
-        internal PostgresCompositeType(string ns, string name, uint oid, List<Field> fields)
+        internal PostgresCompositeType(string ns, string name, uint oid)
+            : base(ns, name, oid) {}
 #pragma warning restore CA2222 // Do not decrease inherited member visibility
-            : base(ns, name, oid)
-        {
-            Fields = fields;
-        }
 
-        internal struct Field
+        internal class Field
         {
             internal string PgName;
-            internal uint TypeOID;
+            internal PostgresType Type;
 
-            public override string ToString() => $"{PgName} => {TypeOID}";
+            public override string ToString() => $"{PgName} => {Type}";
         }
     }
 }

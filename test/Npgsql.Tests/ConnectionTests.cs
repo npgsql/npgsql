@@ -1,7 +1,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -148,12 +148,9 @@ namespace Npgsql.Tests
             using (var conn = new NpgsqlConnection(csb)) {
                 Assert.That(() => conn.Open(), Throws.Exception
                     .TypeOf<SocketException>()
-#if !NETCOREAPP1_1
-// CoreCLR currently has an issue which causes the wrong SocketErrorCode to be set on Linux:
-// https://github.com/dotnet/corefx/issues/8464
-
+                    // CoreCLR currently has an issue which causes the wrong SocketErrorCode to be set on Linux:
+                    // https://github.com/dotnet/corefx/issues/8464
                     .With.Property(nameof(SocketException.SocketErrorCode)).EqualTo(SocketError.ConnectionRefused)
-#endif
                 );
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
             }
@@ -876,11 +873,7 @@ namespace Npgsql.Tests
                 conn.UserCertificateValidationCallback = callback2;
 
                 conn.Open();
-#if NETCOREAPP1_1
-                using (var conn2 = conn.Clone())
-#else
                 using (var conn2 = (NpgsqlConnection)((ICloneable)conn).Clone())
-#endif
                 {
                     Assert.That(conn2.ConnectionString, Is.EqualTo(conn.ConnectionString));
                     Assert.That(conn2.ProvideClientCertificatesCallback, Is.SameAs(callback1));
@@ -891,19 +884,26 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/824")]
-        [Explicit("Failing for some inexplicable reason on the build server on Linux only")]
         public void ReloadTypes()
         {
             using (var conn = OpenConnection())
             {
                 Assert.That(conn.ExecuteScalar("SELECT EXISTS (SELECT * FROM pg_type WHERE typname='reload_types_enum')"), Is.False);
                 conn.ExecuteNonQuery("CREATE TYPE pg_temp.reload_types_enum AS ENUM ('First', 'Second')");
-                Assert.That(() => conn.TypeMapper.MapEnum<ReloadTypesEnum>(), Throws.Exception.TypeOf<NpgsqlException>());
+                Assert.That(() => conn.TypeMapper.MapEnum<ReloadTypesEnum>(), Throws.Exception.TypeOf<ArgumentException>());
                 conn.ReloadTypes();
                 conn.TypeMapper.MapEnum<ReloadTypesEnum>();
             }
         }
         enum ReloadTypesEnum { First, Second };
+
+        [Test]
+        public void DatabaseInfoIsShared()
+        {
+            using (var conn1 = OpenConnection())
+            using (var conn2 = OpenConnection())
+                Assert.That(conn1.Connector.DatabaseInfo, Is.SameAs(conn2.Connector.DatabaseInfo));
+        }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/736")]
         public void ManyOpenClose()
@@ -1009,6 +1009,27 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, Description("Some pseudo-PG database don't support pg_type loading, we have a minimal DatabaseInfo for this")]
+        public void NoTypeLoading()
+        {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ApplicationName = nameof(NoTypeLoading),
+                ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
+                Pooling = false
+            }.ToString();
+
+            using (var conn = OpenConnection(connString))
+            {
+                // Arrays should not be supported in this mode
+                Assert.That(() => conn.ExecuteScalar("SELECT '{1,2,3}'::INTEGER[]"), Throws.Exception.TypeOf<NotSupportedException>());
+                // Test that some basic types do work
+                Assert.That(conn.ExecuteScalar("SELECT 8"), Is.EqualTo(8));
+                Assert.That(conn.ExecuteScalar("SELECT 'foo'"), Is.EqualTo("foo"));
+                Assert.That(conn.ExecuteScalar("SELECT TRUE"), Is.EqualTo(true));
+            }
+        }
+
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1158")]
         public void TableNamedRecord()
         {
@@ -1027,8 +1048,8 @@ namespace Npgsql.Tests
             }
         }
 
+#if NET451
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/392")]
-        [LinuxIgnore]  // TODO: Ignore on CoreCLR instead
         public void NonUTF8Encoding()
         {
             using (var adminConn = OpenConnection())
@@ -1074,6 +1095,7 @@ namespace Npgsql.Tests
                 }
             }
         }
+#endif
 
         [Test]
         public void OversizeBuffer()
