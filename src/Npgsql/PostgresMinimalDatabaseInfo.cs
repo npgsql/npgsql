@@ -57,6 +57,7 @@ namespace Npgsql
             new PostgresBaseType("pg_catalog", "text",        TextHandler.TextTypeOID),
             new PostgresBaseType("pg_catalog", "varchar",     TextHandler.VarcharTypeOID),
             new PostgresBaseType("pg_catalog", "char",        TextHandler.CharTypeOID),
+            new PostgresBaseType("pg_catalog", "unknown",     TextHandler.UnknownTypeOID),
 
             new PostgresBaseType("pg_catalog", "timestamp",   TimestampHandler.TypeOID),
             new PostgresBaseType("pg_catalog", "timestamptz", TimestampTzHandler.TypeOID),
