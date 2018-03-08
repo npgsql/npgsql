@@ -577,6 +577,7 @@ namespace Npgsql
         [Category("Security")]
         [Description("Npgsql uses its own internal implementation of TLS/SSL. Turn this on to use .NET SslStream instead.")]
         [DisplayName("Use SSL Stream")]
+        [DefaultValue(true)]
         [NpgsqlConnectionStringProperty]
         public bool UseSslStream
         {
