@@ -1,11 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
+
   <PropertyGroup>
     <TargetFrameworks>net451;netcoreapp2.0</TargetFrameworks>
     <DebugType>portable</DebugType>
     <AssemblyOriginatorKeyFile>../../Npgsql.snk</AssemblyOriginatorKeyFile>
-    <SignAssembly>true</SignAssembly>
-    <PublicSign Condition=" '$(OS)' != 'Windows_NT' ">true</PublicSign>
   </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="../../src/Npgsql/Npgsql.csproj" />
     <ProjectReference Include="../../src/Npgsql.Json.NET/Npgsql.Json.NET.csproj" />
@@ -14,6 +14,7 @@
     <ProjectReference Include="../../src/Npgsql.LegacyPostgis/Npgsql.LegacyPostgis.csproj" />
     <ProjectReference Include="../../src/Npgsql.RawPostgis/Npgsql.RawPostgis.csproj" />
     <ProjectReference Include="../../src/Npgsql.NetTopologySuite/Npgsql.NetTopologySuite.csproj" />
+    <ProjectReference Include="../../src/Npgsql.GeoJSON/Npgsql.GeoJSON.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="GeoAPI" Version="1.7.5-pre024" />
@@ -24,4 +25,5 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.7.0" />
     <PackageReference Include="NUnit3TestAdapter" Version="3.10.0" />
   </ItemGroup>
+
 </Project>
