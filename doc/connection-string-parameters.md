@@ -58,6 +58,7 @@ Parameter keywords are case-insensitive.
 | Write Buffer Size          | Determines the size of the internal buffer Npgsql uses when writing. Increasing may improve performance if transferring large values to the database. | 8192 |
 | Socket Receive Buffer Size | Determines the size of socket receive buffer. | System-dependent |
 | Socket Send Buffer Size    | Determines the size of socket send buffer. | System-dependent |
+| No Reset On Close          | Improves performance in some cases by not resetting the connection state when it is returned to the pool, at the cost of leaking state. Use only if benchmarking shows a performance improvement | false |
 
 ## Misc
 
