@@ -65,7 +65,7 @@ namespace NpgsqlTypes
         // ReSharper restore CompareOfFloatsByEqualityOperator
 
         public override int GetHashCode()
-            => X.GetHashCode() ^ PGUtil.RotateShift(Y.GetHashCode(), sizeof(int) / 2);
+            => X.GetHashCode() ^ PGUtil.RotateShift(Y.GetHashCode(), PGUtil.BitsInInt / 2);
 
         public override bool Equals([CanBeNull] object obj)
             => obj is Coordinate2D && Equals((Coordinate2D)obj);
@@ -132,7 +132,7 @@ namespace NpgsqlTypes
 
         public static bool operator !=(PostgisPoint x, PostgisPoint y) => !(x == y);
 
-        public override int GetHashCode() => X.GetHashCode() ^ PGUtil.RotateShift(Y.GetHashCode(), sizeof(int) / 2);
+        public override int GetHashCode() => X.GetHashCode() ^ PGUtil.RotateShift(Y.GetHashCode(), PGUtil.BitsInInt / 2);
     }
 
     /// <summary>
@@ -189,7 +189,7 @@ namespace NpgsqlTypes
         {
             var ret = 266370105;//seed with something other than zero to make paths of all zeros hash differently.
             foreach (var t in _points)
-                ret ^= PGUtil.RotateShift(t.GetHashCode(), ret % sizeof(int));
+                ret ^= PGUtil.RotateShift(t.GetHashCode(), ret % PGUtil.BitsInInt);
             return ret;
         }
     }
@@ -256,7 +256,7 @@ namespace NpgsqlTypes
             var ret = 266370105;//seed with something other than zero to make paths of all zeros hash differently.
             for (var i = 0; i < _rings.Length; i++)
                 for (var j = 0; j < _rings[i].Length; j++)
-                    ret ^= PGUtil.RotateShift(_rings[i][j].GetHashCode(), ret % sizeof(int));
+                    ret ^= PGUtil.RotateShift(_rings[i][j].GetHashCode(), ret % PGUtil.BitsInInt);
             return ret;
         }
     }
@@ -318,7 +318,7 @@ namespace NpgsqlTypes
         {
             var ret = 266370105;//seed with something other than zero to make paths of all zeros hash differently.
             for (var i = 0; i < _points.Length; i++)
-                ret ^= PGUtil.RotateShift(_points[i].GetHashCode(), ret % sizeof(int));
+                ret ^= PGUtil.RotateShift(_points[i].GetHashCode(), ret % PGUtil.BitsInInt);
             return ret;
         }
 
@@ -394,7 +394,7 @@ namespace NpgsqlTypes
         {
             var ret = 266370105;//seed with something other than zero to make paths of all zeros hash differently.
             for (var i = 0; i < _lineStrings.Length; i++)
-                ret ^= PGUtil.RotateShift(_lineStrings[i].GetHashCode(), ret % sizeof(int));
+                ret ^= PGUtil.RotateShift(_lineStrings[i].GetHashCode(), ret % PGUtil.BitsInInt);
             return ret;
         }
 
@@ -453,7 +453,7 @@ namespace NpgsqlTypes
         {
             var ret = 266370105;//seed with something other than zero to make paths of all zeros hash differently.
             for (var i = 0; i < _polygons.Length; i++)
-                ret ^= PGUtil.RotateShift(_polygons[i].GetHashCode(), ret % sizeof(int));
+                ret ^= PGUtil.RotateShift(_polygons[i].GetHashCode(), ret % PGUtil.BitsInInt);
             return ret;
         }
 
@@ -516,7 +516,7 @@ namespace NpgsqlTypes
         {
             var ret = 266370105;//seed with something other than zero to make paths of all zeros hash differently.
             for (var i = 0; i < _geometries.Length; i++)
-                ret ^= PGUtil.RotateShift(_geometries[i].GetHashCode(), ret % sizeof(int));
+                ret ^= PGUtil.RotateShift(_geometries[i].GetHashCode(), ret % PGUtil.BitsInInt);
             return ret;
         }
 
