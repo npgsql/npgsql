@@ -179,8 +179,8 @@ namespace Npgsql.Tests.Types
             }
         }
 
-        [Test]
-        public void PostgresType()
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1779")]
+        public void CompositePostgresType()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -204,8 +204,8 @@ namespace Npgsql.Tests.Types
                         Assert.That(comp2Type.Fields, Has.Count.EqualTo(2));
                         var field1 = comp2Type.Fields[0];
                         var field2 = comp2Type.Fields[1];
-                        Assert.That(field1.PgName, Is.EqualTo("comp"));
-                        Assert.That(field2.PgName, Is.EqualTo("comps"));
+                        Assert.That(field1.Name, Is.EqualTo("comp"));
+                        Assert.That(field2.Name, Is.EqualTo("comps"));
                         var comp1Type = (PostgresCompositeType)field1.Type;
                         Assert.That(comp1Type.Name, Is.EqualTo("comp1"));
                         var arrType = (PostgresArrayType)field2.Type;

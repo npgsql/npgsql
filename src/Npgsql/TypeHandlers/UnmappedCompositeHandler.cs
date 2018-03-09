@@ -233,9 +233,9 @@ namespace Npgsql.TypeHandlers
             _members = new List<MemberDescriptor>(rawFields.Count);
             foreach (var rawField in rawFields)
             {
-                var member = new MemberDescriptor { PgName = rawField.PgName, OID = rawField.Type.OID };
+                var member = new MemberDescriptor { PgName = rawField.Name, OID = rawField.Type.OID };
                 if (!_typeMapper.TryGetByOID(rawField.Type.OID, out member.Handler))
-                    throw new Exception($"PostgreSQL composite type {PgDisplayName} has field {rawField.PgName} with an unknown type (TypeOID={rawField.Type.OID})");
+                    throw new Exception($"PostgreSQL composite type {PgDisplayName} has field {rawField.Name} with an unknown type (TypeOID={rawField.Type.OID})");
                 _members.Add(member);
             }
         }

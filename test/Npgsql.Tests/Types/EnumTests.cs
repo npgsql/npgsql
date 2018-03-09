@@ -29,6 +29,7 @@ using System.Linq;
 using System.Text;
 using Npgsql;
 using Npgsql.NameTranslation;
+using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 
 namespace Npgsql.Tests.Types
@@ -602,6 +603,32 @@ namespace Npgsql.Tests.Types
                 using (var conn = OpenConnection(csb))
                     conn.ExecuteNonQuery("DROP TYPE IF EXISTS mood9");
                 NpgsqlConnection.GlobalTypeMapper.UnmapEnum<Mood>("mood1");
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1779")]
+        public void EnumPostgresType()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ApplicationName = nameof(PostgresType),
+                Pooling = false
+            };
+            using (var conn = OpenConnection(csb))
+            {
+                conn.ExecuteNonQuery("DROP TYPE IF EXISTS mood9; CREATE TYPE mood9 AS ENUM ('sad', 'ok', 'happy')");
+                conn.ReloadTypes();
+
+                using (var cmd = new NpgsqlCommand("SELECT 'ok'::mood9", conn))
+                {
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        reader.Read();
+                        var enumType = (PostgresEnumType)reader.GetPostgresType(0);
+                        Assert.That(enumType.Name, Is.EqualTo("mood9"));
+                        Assert.That(enumType.Labels, Is.EqualTo(new List<string> { "sad", "ok", "happy" }));
+                    }
+                }
             }
         }
 

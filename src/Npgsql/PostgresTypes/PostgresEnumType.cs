@@ -21,6 +21,7 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
+using System.Collections.Generic;
 using Npgsql.TypeHandlers;
 
 namespace Npgsql.PostgresTypes
@@ -33,6 +34,13 @@ namespace Npgsql.PostgresTypes
     /// </remarks>
     public class PostgresEnumType : PostgresType
     {
+        /// <summary>
+        /// The enum's fields.
+        /// </summary>
+        public IReadOnlyList<string> Labels => MutableLabels;
+
+        internal List<string> MutableLabels { get; } = new List<string>();
+
         /// <summary>
         /// Constructs a representation of a PostgreSQL enum data type.
         /// </summary>

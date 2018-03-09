@@ -37,10 +37,11 @@ namespace Npgsql.PostgresTypes
     public class PostgresCompositeType : PostgresType
     {
         /// <summary>
-        /// Holds the name and OID for all fields.
-        /// Populated on the first activation of the composite.
+        /// Holds the name and types for all fields.
         /// </summary>
-        internal List<Field> Fields { get; } = new List<Field>();
+        public IReadOnlyList<Field> Fields => MutableFields;
+
+        internal List<Field> MutableFields { get; } = new List<Field>();
 
         /// <summary>
         /// Constructs a representation of a PostgreSQL array data type.
@@ -50,12 +51,28 @@ namespace Npgsql.PostgresTypes
             : base(ns, name, oid) {}
 #pragma warning restore CA2222 // Do not decrease inherited member visibility
 
-        internal class Field
+        /// <summary>
+        /// Represents a field in a PostgreSQL composite data type.
+        /// </summary>
+        public class Field
         {
-            internal string PgName;
-            internal PostgresType Type;
+            internal Field(string name, PostgresType type)
+            {
+                Name = name;
+                Type = type;
+            }
 
-            public override string ToString() => $"{PgName} => {Type}";
+            /// <summary>
+            /// The name of the composite field.
+            /// </summary>
+            public string Name { get; }
+            /// <summary>
+            /// The type of the composite field.
+            /// </summary>
+            public PostgresType Type { get; }
+
+            /// <inheritdoc />
+            public override string ToString() => $"{Name} => {Type}";
         }
     }
 }
