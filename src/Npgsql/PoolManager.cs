@@ -127,7 +127,6 @@ namespace Npgsql
             AppDomain.CurrentDomain.ProcessExit += (sender, args) => ClearAll();
         }
 
-#if DEBUG
         /// <summary>
         /// Resets the pool manager to its initial state, for test purposes only.
         /// Assumes that no other threads are accessing the pool.
@@ -141,6 +140,5 @@ namespace Npgsql
                 _nextSlot = 0;
             }
         }
-#endif
     }
 }
