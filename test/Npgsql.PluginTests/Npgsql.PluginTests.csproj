@@ -13,9 +13,12 @@
     <ProjectReference Include="../../src/Npgsql.Json.NET/Npgsql.Json.NET.csproj" />
     <ProjectReference Include="../../src/Npgsql.NodaTime/Npgsql.NodaTime.csproj" />
     <ProjectReference Include="../Npgsql.Tests/Npgsql.Tests.csproj" />
+    <ProjectReference Include="..\..\src\Npgsql.NetTopologySuite\Npgsql.NetTopologySuite.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="GeoAPI" Version="1.7.5-pre020" />
+    <PackageReference Include="NetTopologySuite" Version="1.15.0-pre063" />
     <PackageReference Include="NodaTime" Version="2.2.4" />
     <PackageReference Include="NUnit" Version="3.9.0" />
     <PackageReference Include="NLog" Version="5.0.0-beta06" />
