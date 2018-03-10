@@ -33,6 +33,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Npgsql.LegacyPostgis", "src
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Npgsql.RawPostgis", "src\Npgsql.RawPostgis\Npgsql.RawPostgis.csproj", "{B7E92398-DD4E-410E-923C-E256992F6687}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Npgsql.NetTopologySuite", "src\Npgsql.NetTopologySuite\Npgsql.NetTopologySuite.csproj", "{20D889AA-82DC-4AA0-B508-7CE68B83BB27}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -121,6 +123,14 @@ Global
 		{B7E92398-DD4E-410E-923C-E256992F6687}.Release|Any CPU.Build.0 = Release|Any CPU
 		{B7E92398-DD4E-410E-923C-E256992F6687}.Release|x86.ActiveCfg = Release|Any CPU
 		{B7E92398-DD4E-410E-923C-E256992F6687}.Release|x86.Build.0 = Release|Any CPU
+		{20D889AA-82DC-4AA0-B508-7CE68B83BB27}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{20D889AA-82DC-4AA0-B508-7CE68B83BB27}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{20D889AA-82DC-4AA0-B508-7CE68B83BB27}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{20D889AA-82DC-4AA0-B508-7CE68B83BB27}.Debug|x86.Build.0 = Debug|Any CPU
+		{20D889AA-82DC-4AA0-B508-7CE68B83BB27}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{20D889AA-82DC-4AA0-B508-7CE68B83BB27}.Release|Any CPU.Build.0 = Release|Any CPU
+		{20D889AA-82DC-4AA0-B508-7CE68B83BB27}.Release|x86.ActiveCfg = Release|Any CPU
+		{20D889AA-82DC-4AA0-B508-7CE68B83BB27}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -136,6 +146,7 @@ Global
 		{9BD7FC3D-6956-42A8-A586-2558C499EBA2} = {ED612DB1-AB32-4603-95E7-891BACA71C39}
 		{EC0DCB3C-9401-47BB-A5E8-B8C7A47DF96A} = {8537E50E-CF7F-49CB-B4EF-3E2A1B11F050}
 		{B7E92398-DD4E-410E-923C-E256992F6687} = {8537E50E-CF7F-49CB-B4EF-3E2A1B11F050}
+		{20D889AA-82DC-4AA0-B508-7CE68B83BB27} = {8537E50E-CF7F-49CB-B4EF-3E2A1B11F050}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {C90AEECD-DB4C-4BE6-B506-16A449852FB8}
