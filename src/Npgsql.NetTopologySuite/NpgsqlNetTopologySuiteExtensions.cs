@@ -21,9 +21,10 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
+using GeoAPI;
 using GeoAPI.Geometries;
-using GeoAPI.IO;
 using NetTopologySuite.Geometries;
+using NetTopologySuite.IO;
 using Npgsql.NetTopologySuite;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -39,11 +40,21 @@ namespace Npgsql
         /// <summary>
         /// Sets up NetTopologySuite mappings for the PostGIS types.
         /// </summary>
-        /// <param name="mapper">The type mapper to set up (global or connection-specific)</param>
-        /// <param name="reader">The writer which consumes WKB input</param>
-        /// <param name="writer">The reader which produces WKB output</param>
-        public static INpgsqlTypeMapper UseNetTopologySuite(this INpgsqlTypeMapper mapper, IBinaryGeometryReader reader = null, IBinaryGeometryWriter writer = null)
-            => mapper
+        /// <param name="mapper">The type mapper to set up (global or connection-specific).</param>
+        /// <param name="coordinateSequenceFactory">The factory which knows how to build a particular implementation of ICoordinateSequence from an array of Coordinates.</param>
+        /// <param name="precisionModel">Specifies the grid of allowable points.</param>
+        /// <param name="handleOrdinates">Specifies the ordinates which will be handled. Not specified ordinates will be ignored.</param>
+        public static INpgsqlTypeMapper UseNetTopologySuite(
+            this INpgsqlTypeMapper mapper,
+            ICoordinateSequenceFactory coordinateSequenceFactory = null,
+            IPrecisionModel precisionModel = null,
+            Ordinates handleOrdinates = Ordinates.XYZM)
+        {
+            if (coordinateSequenceFactory == null)
+                coordinateSequenceFactory = GeometryServiceProvider.Instance.DefaultCoordinateSequenceFactory;
+            if (precisionModel == null)
+                precisionModel = GeometryServiceProvider.Instance.DefaultPrecisionModel;
+            return mapper
                 .AddMapping(new NpgsqlTypeMappingBuilder
                 {
                     PgTypeName = "geometry",
@@ -61,7 +72,11 @@ namespace Npgsql
                         typeof(IGeometryCollection), typeof(GeometryCollection)
                     },
                     InferredDbType = DbType.Object,
-                    TypeHandlerFactory = new NetTopologySuiteHandlerFactory(reader, writer)
-                }.Build());
+                    TypeHandlerFactory = new NetTopologySuiteHandlerFactory(
+                        new PostGisReader(coordinateSequenceFactory, precisionModel, handleOrdinates),
+                        new PostGisWriter())
+                }
+                .Build());
+        }
     }
 }

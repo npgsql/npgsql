@@ -24,7 +24,6 @@
 using GeoAPI.Geometries;
 using GeoAPI.IO;
 using NetTopologySuite.Geometries;
-using NetTopologySuite.IO;
 using Npgsql.BackendMessages;
 using Npgsql.TypeHandling;
 using System;
@@ -48,7 +47,7 @@ namespace Npgsql.NetTopologySuite
         }
 
         protected override NpgsqlTypeHandler<IGeometry> Create(NpgsqlConnection conn)
-            => new NetTopologySuiteHandler(_reader ?? new WKBReader(), _writer ?? new WKBWriter());
+            => new NetTopologySuiteHandler(_reader, _writer);
     }
 
     class NetTopologySuiteHandler : NpgsqlTypeHandler<IGeometry>, INpgsqlTypeHandler<Geometry>,
