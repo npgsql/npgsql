@@ -20,28 +20,16 @@ namespace Npgsql.Benchmarks
         }
 
         [Benchmark]
-        public void NullableField()
-        {
-            _reader.GetFieldValue<int?>(0);
-        }
+        public void NullableField() => _reader.GetFieldValue<int?>(0);
 
         [Benchmark]
-        public void ValueTypeField()
-        {
-            _reader.GetFieldValue<int>(0);
-        }
+        public void ValueTypeField() => _reader.GetFieldValue<int>(0);
 
         [Benchmark]
-        public void ReferenceTypeField()
-        {
-            _reader.GetFieldValue<string>(1);
-        }
+        public void ReferenceTypeField() => _reader.GetFieldValue<string>(1);
 
         [Benchmark]
-        public void ObjectField()
-        {
-            _reader.GetFieldValue<object>(1);
-        }
+        public void ObjectField() => _reader.GetFieldValue<object>(1);
 
         class Config : ManualConfig
         {
