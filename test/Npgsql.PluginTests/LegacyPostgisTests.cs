@@ -22,9 +22,10 @@
 #endregion
 
 using System;
-using System.Linq;
 using System.Diagnostics;
+using System.Linq;
 using System.Text.RegularExpressions;
+using Npgsql.LegacyPostgis;
 using NpgsqlTypes;
 using NUnit.Framework;
 
@@ -434,6 +435,13 @@ namespace Npgsql.Tests.Types
                 cmd.Parameters.AddWithValue("p", collection);
                 cmd.ExecuteNonQuery();
             }
+        }
+
+        protected override NpgsqlConnection OpenConnection(string connectionString = null)
+        {
+            var conn = base.OpenConnection(connectionString);
+            conn.TypeMapper.UseLegacyPostgis();
+            return conn;
         }
 
         [OneTimeSetUp]

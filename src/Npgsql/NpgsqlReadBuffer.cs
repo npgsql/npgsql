@@ -204,7 +204,10 @@ namespace Npgsql
             ReadPosition += (int)len;
         }
 
-        internal async Task Skip(long len, bool async)
+        /// <summary>
+        /// Skip a given number of bytes.
+        /// </summary>
+        public async Task Skip(long len, bool async)
         {
             Debug.Assert(len >= 0);
 

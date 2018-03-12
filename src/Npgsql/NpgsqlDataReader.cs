@@ -850,7 +850,7 @@ namespace Npgsql
 
             var fieldDescription = RowDescription[ordinal];
             var handler = fieldDescription.Handler;
-            if (!(handler is ByteaHandler || handler is PostgisGeometryHandler))
+            if (!(handler is ByteaHandler))
                 throw new InvalidCastException("GetBytes() not supported for type " + fieldDescription.Name);
 
             SeekToColumn(ordinal, false).GetAwaiter().GetResult();
