@@ -64,10 +64,6 @@ namespace Npgsql.TypeHandlers
         internal const uint CharTypeOID    = 18;
         internal const uint UnknownTypeOID = 705;
 
-        // Text types are handled a bit more efficiently when sent as text than as binary
-        // see https://github.com/npgsql/npgsql/issues/1210#issuecomment-235641670
-        internal override bool PreferTextWrite => true;
-
         readonly Encoding _encoding;
 
         #region State

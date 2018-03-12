@@ -71,8 +71,6 @@ namespace Npgsql
         [CanBeNull]
         internal NpgsqlTypeHandler Handler { get; set; }
 
-        internal FormatCode FormatCode { get; private set; }
-
         #endregion
 
         #region Constructors
@@ -536,7 +534,6 @@ namespace Npgsql
         {
             ResolveHandler(typeMapper);
             Debug.Assert(Handler != null);
-            FormatCode = Handler.PreferTextWrite ? FormatCode.Text : FormatCode.Binary;
         }
 
         internal virtual int ValidateAndGetLength()
@@ -607,7 +604,7 @@ namespace Npgsql
         }
 
         object ICloneable.Clone() => Clone();
-      
+
         #endregion
     }
 }

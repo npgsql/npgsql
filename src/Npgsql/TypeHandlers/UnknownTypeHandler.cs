@@ -78,32 +78,18 @@ namespace Npgsql.TypeHandlers
         public override int ValidateAndGetLength<T2>(T2 value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
             => ValidateObjectAndGetLength(value, ref lengthCache, parameter);
 
-        //protected override Task Write<T2>(T2 value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-        //    => WriteObjectWithLength(value, buf, lengthCache, parameter, async);
-
         protected internal override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
         {
-            if (value is string asString)
-                return base.ValidateAndGetLength(asString, ref lengthCache, parameter);
-
-            var converted = Convert.ToString(value);
-            if (parameter == null)
-                throw CreateConversionButNoParamException(value.GetType());
-            parameter.ConvertedValue = converted;
-            return base.ValidateAndGetLength(converted, ref lengthCache, parameter);
+            throw new NotSupportedException(
+                "Parameters with NpgsqlDbType.Unknown are no longer supported. " +
+                "If you're writing enums as strings, see the section on unmapped enums in the documentation.");
         }
 
-        protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        public override Task Write(string value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
-            if (value == null || value is DBNull)
-                return base.WriteObjectWithLength(value, buf, lengthCache, parameter, async);
-
-            buf.WriteInt32(ValidateObjectAndGetLength(value, ref lengthCache, parameter));
-            return base.Write(
-                value is string asString
-                    ? asString
-                    : (string)parameter.ConvertedValue,
-                buf, lengthCache, parameter, async);
+            throw new NotSupportedException(
+                "Parameters with NpgsqlDbType.Unknown are no longer supported. " +
+                "If you're writing enums as strings, see the section on unmapped enums in the documentation.");
         }
 
         #endregion Write

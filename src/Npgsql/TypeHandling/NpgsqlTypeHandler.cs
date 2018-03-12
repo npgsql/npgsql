@@ -163,8 +163,6 @@ namespace Npgsql.TypeHandling
         internal abstract Type GetFieldType(FieldDescription fieldDescription = null);
         internal abstract Type GetProviderSpecificFieldType(FieldDescription fieldDescription = null);
 
-        internal virtual bool PreferTextWrite => false;
-
         /// <summary>
         /// Creates a type handler for arrays of this handler's type.
         /// </summary>
