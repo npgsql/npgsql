@@ -26,12 +26,13 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Npgsql.LegacyPostgis;
+using Npgsql.Tests;
 using NpgsqlTypes;
 using NUnit.Framework;
 
-namespace Npgsql.Tests.Types
+namespace Npgsql.PluginTests
 {
-    class PostgisTests : TestBase
+    class LegacyPostgisTests : TestBase
     {
         public class TestAtt
         {
@@ -231,47 +232,6 @@ namespace Npgsql.Tests.Types
                 command.Parameters.AddWithValue("p1", geom2);
                 command.CommandText = "Select :p1";
                 command.ExecuteScalar();
-            }
-        }
-
-        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1121")]
-        public void AsBinaryWkb()
-        {
-            using (var conn = OpenConnection())
-            {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo GEOMETRY)");
-                var point = new PostgisPoint(8, 8);
-
-                using (var cmd = new NpgsqlCommand("INSERT INTO data (foo) VALUES (@p)", conn))
-                {
-                    cmd.Parameters.AddWithValue("p", NpgsqlDbType.Geometry, point);
-                    cmd.ExecuteNonQuery();
-                }
-
-                byte[] bytes;
-                using (var cmd = new NpgsqlCommand("SELECT foo FROM data", conn))
-                using (var reader = cmd.ExecuteReader())
-                {
-                    reader.Read();
-                    bytes = reader.GetFieldValue<byte[]>(0);
-
-                    var length = (int)reader.GetBytes(0, 0, null, 0, 0);
-                    var buffer = new byte[length];
-                    reader.GetBytes(0, 0, buffer, 0, length);
-
-                    Assert.That(buffer, Is.EqualTo(bytes));
-                }
-
-                conn.ExecuteNonQuery("TRUNCATE data");
-
-                using (var cmd = new NpgsqlCommand("INSERT INTO data (foo) VALUES (@p)", conn))
-                {
-                    cmd.Parameters.AddWithValue("p", NpgsqlDbType.Geometry, bytes);
-                    cmd.ExecuteNonQuery();
-                }
-
-                Assert.That(conn.ExecuteScalar("SELECT foo FROM data"), Is.EqualTo(point));
-                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
             }
         }
 

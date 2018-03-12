@@ -1,5 +1,4 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
-
   <PropertyGroup>
     <TargetFrameworks>net451;netcoreapp2.0</TargetFrameworks>
     <DebugType>portable</DebugType>
@@ -7,15 +6,14 @@
     <SignAssembly>true</SignAssembly>
     <PublicSign Condition=" '$(OS)' != 'Windows_NT' ">true</PublicSign>
   </PropertyGroup>
-
   <ItemGroup>
     <ProjectReference Include="../../src/Npgsql/Npgsql.csproj" />
     <ProjectReference Include="../../src/Npgsql.Json.NET/Npgsql.Json.NET.csproj" />
     <ProjectReference Include="../../src/Npgsql.NodaTime/Npgsql.NodaTime.csproj" />
     <ProjectReference Include="../Npgsql.Tests/Npgsql.Tests.csproj" />
     <ProjectReference Include="..\..\src\Npgsql.LegacyPostgis\Npgsql.LegacyPostgis.csproj" />
+    <ProjectReference Include="..\..\src\Npgsql.RawPostgis\Npgsql.RawPostgis.csproj" />
   </ItemGroup>
-
   <ItemGroup>
     <PackageReference Include="NodaTime" Version="2.2.4" />
     <PackageReference Include="NUnit" Version="3.9.0" />
@@ -23,5 +21,4 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.5.0" />
     <PackageReference Include="NUnit3TestAdapter" Version="3.9.0" />
   </ItemGroup>
-
 </Project>
