@@ -134,15 +134,17 @@ namespace Npgsql
         /// Initializes a new instance of the
         /// <see cref="NpgsqlConnection">NpgsqlConnection</see> class.
         /// </summary>
-        public NpgsqlConnection()
-            => GC.SuppressFinalize(this);
+        public NpgsqlConnection() : this("") { }
 
         /// <summary>
         /// Initializes a new instance of <see cref="NpgsqlConnection"/> with the given connection string.
         /// </summary>
         /// <param name="connectionString">The connection used to open the PostgreSQL database.</param>
         public NpgsqlConnection(string connectionString)
-            => ConnectionString = connectionString;
+        {
+            GC.SuppressFinalize(this);
+            ConnectionString = connectionString;
+        }
 
         /// <summary>
         /// Opens a database connection with the property settings specified by the
