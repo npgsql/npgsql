@@ -59,11 +59,6 @@ namespace Npgsql.TypeHandlers
     public class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler<char[]>, INpgsqlTypeHandler<ArraySegment<char>>,
         INpgsqlTypeHandler<char>, ITextReaderHandler
     {
-        internal const uint TextTypeOID    = 25;
-        internal const uint VarcharTypeOID = 1043;
-        internal const uint CharTypeOID    = 18;
-        internal const uint UnknownTypeOID = 705;
-
         readonly Encoding _encoding;
 
         #region State

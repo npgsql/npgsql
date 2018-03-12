@@ -44,8 +44,6 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// </remarks>
     class TimeHandler : NpgsqlSimpleTypeHandler<TimeSpan>
     {
-        internal const uint TypeOID = 1083;
-
         /// <summary>
         /// A deprecated compile-time option of PostgreSQL switches to a floating-point representation of some date/time
         /// fields. Some PostgreSQL-like databases (e.g. CrateDB) use floating-point representation by default and do not

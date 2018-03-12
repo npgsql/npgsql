@@ -29,6 +29,7 @@ using Npgsql.PostgresTypes;
 using Npgsql.TypeHandlers;
 using Npgsql.TypeHandlers.DateTimeHandlers;
 using Npgsql.TypeHandlers.NumericHandlers;
+using NpgsqlTypes;
 
 namespace Npgsql
 {
@@ -46,29 +47,29 @@ namespace Npgsql
     {
         static readonly PostgresType[] Types = new[]
         {
-            new PostgresBaseType("pg_catalog", "int4",        Int32Handler.TypeOID),
-            new PostgresBaseType("pg_catalog", "int2",        Int16Handler.TypeOID),
-            new PostgresBaseType("pg_catalog", "int8",        Int64Handler.TypeOID),
-            new PostgresBaseType("pg_catalog", "float4",      SingleHandler.TypeOID),
-            new PostgresBaseType("pg_catalog", "float8",      DoubleHandler.TypeOID),
-            new PostgresBaseType("pg_catalog", "numeric",     NumericHandler.TypeOID),
-            new PostgresBaseType("pg_catalog", "money",       MoneyHandler.TypeOID),
+            new PostgresBaseType("pg_catalog", "int4",        (uint)NpgsqlDbType.Integer),
+            new PostgresBaseType("pg_catalog", "int2",        (uint)NpgsqlDbType.Smallint),
+            new PostgresBaseType("pg_catalog", "int8",        (uint)NpgsqlDbType.Bigint),
+            new PostgresBaseType("pg_catalog", "float4",      (uint)NpgsqlDbType.Real),
+            new PostgresBaseType("pg_catalog", "float8",      (uint)NpgsqlDbType.Double),
+            new PostgresBaseType("pg_catalog", "numeric",     (uint)NpgsqlDbType.Numeric),
+            new PostgresBaseType("pg_catalog", "money",       (uint)NpgsqlDbType.Money),
 
-            new PostgresBaseType("pg_catalog", "text",        TextHandler.TextTypeOID),
-            new PostgresBaseType("pg_catalog", "varchar",     TextHandler.VarcharTypeOID),
-            new PostgresBaseType("pg_catalog", "char",        TextHandler.CharTypeOID),
-            new PostgresBaseType("pg_catalog", "unknown",     TextHandler.UnknownTypeOID),
+            new PostgresBaseType("pg_catalog", "text",        (uint)NpgsqlDbType.Text),
+            new PostgresBaseType("pg_catalog", "varchar",     (uint)NpgsqlDbType.Varchar),
+            new PostgresBaseType("pg_catalog", "char",        (uint)NpgsqlDbType.Char),
+            new PostgresBaseType("pg_catalog", "unknown",     (uint)NpgsqlDbType.Unknown),
 
-            new PostgresBaseType("pg_catalog", "timestamp",   TimestampHandler.TypeOID),
-            new PostgresBaseType("pg_catalog", "timestamptz", TimestampTzHandler.TypeOID),
-            new PostgresBaseType("pg_catalog", "date",        DateHandler.TypeOID),
-            new PostgresBaseType("pg_catalog", "time",        TimeHandler.TypeOID),
-            new PostgresBaseType("pg_catalog", "timetz",      TimeTzHandler.TypeOID),
-            new PostgresBaseType("pg_catalog", "interval",    IntervalHandler.TypeOID),
+            new PostgresBaseType("pg_catalog", "timestamp",   (uint)NpgsqlDbType.Timestamp),
+            new PostgresBaseType("pg_catalog", "timestamptz", (uint)NpgsqlDbType.TimestampTz),
+            new PostgresBaseType("pg_catalog", "date",        (uint)NpgsqlDbType.Date),
+            new PostgresBaseType("pg_catalog", "time",        (uint)NpgsqlDbType.Time),
+            new PostgresBaseType("pg_catalog", "timetz",      (uint)NpgsqlDbType.TimeTz),
+            new PostgresBaseType("pg_catalog", "interval",    (uint)NpgsqlDbType.Interval),
 
-            new PostgresBaseType("pg_catalog", "bool",        BoolHandler.TypeOID),
-            new PostgresBaseType("pg_catalog", "bytea",       ByteaHandler.TypeOID),
-            new PostgresBaseType("pg_catalog", "uuid",        UuidHandler.TypeOID)
+            new PostgresBaseType("pg_catalog", "bool",        (uint)NpgsqlDbType.Boolean),
+            new PostgresBaseType("pg_catalog", "bytea",       (uint)NpgsqlDbType.Bytea),
+            new PostgresBaseType("pg_catalog", "uuid",        (uint)NpgsqlDbType.Uuid)
         };
 
         protected override IEnumerable<PostgresType> GetTypes() => Types;
