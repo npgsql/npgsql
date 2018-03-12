@@ -145,7 +145,19 @@ namespace Npgsql
         /// corruption will occur. If in doubt, use <see cref="Write{T}(T, NpgsqlDbType)"/> to manually
         /// specify the type.
         /// </typeparam>
-        public void Write<T>(T value) => DoWrite(value, null);
+        public void Write<T>(T value)
+        {
+            var p = _params[_column];
+            if (p == null)
+            {
+                // First row, create the parameter objects
+                _params[_column] = p = typeof(T) == typeof(object)
+                    ? new NpgsqlParameter()
+                    : new NpgsqlParameter<T>();
+            }
+
+            Write(value, p);
+        }
 
         /// <summary>
         /// Writes a single column in the current row as type <paramref name="npgsqlDbType"/>.
@@ -158,9 +170,52 @@ namespace Npgsql
         /// <paramref name="npgsqlDbType"/> must be specified as <see cref="NpgsqlDbType.Jsonb"/>.
         /// </param>
         /// <typeparam name="T">The .NET type of the column to be written.</typeparam>
-        public void Write<T>(T value, NpgsqlDbType npgsqlDbType) => DoWrite(value, npgsqlDbType);
+        public void Write<T>(T value, NpgsqlDbType npgsqlDbType)
+        {
+            var p = _params[_column];
+            if (p == null)
+            {
+                // First row, create the parameter objects
+                _params[_column] = p = typeof(T) == typeof(object)
+                    ? new NpgsqlParameter()
+                    : new NpgsqlParameter<T>();
+                p.NpgsqlDbType = npgsqlDbType;
+            }
 
-        void DoWrite<T>([CanBeNull] T value, NpgsqlDbType? npgsqlDbType)
+            if (npgsqlDbType != p.NpgsqlDbType)
+                throw new InvalidOperationException($"Can't change {nameof(p.NpgsqlDbType)} from {p.NpgsqlDbType} to {npgsqlDbType}");
+
+            Write(value, p);
+        }
+
+        /// <summary>
+        /// Writes a single column in the current row as type <paramref name="dataTypeName"/>.
+        /// </summary>
+        /// <param name="value">The value to be written</param>
+        /// <param name="dataTypeName">
+        /// In some cases <typeparamref name="T"/> isn't enough to infer the data type to be written to
+        /// the database. This parameter and be used to unambiguously specify the type.
+        /// </param>
+        /// <typeparam name="T">The .NET type of the column to be written.</typeparam>
+        public void Write<T>(T value, string dataTypeName)
+        {
+            var p = _params[_column];
+            if (p == null)
+            {
+                // First row, create the parameter objects
+                _params[_column] = p = typeof(T) == typeof(object)
+                    ? new NpgsqlParameter()
+                    : new NpgsqlParameter<T>();
+                p.DataTypeName = dataTypeName;
+            }
+
+            //if (dataTypeName!= p.DataTypeName)
+            //    throw new InvalidOperationException($"Can't change {nameof(p.DataTypeName)} from {p.DataTypeName} to {dataTypeName}");
+
+            Write(value, p);
+        }
+
+        void Write<T>([CanBeNull] T value, NpgsqlParameter param)
         {
             CheckReady();
             if (_column == -1)
@@ -172,45 +227,24 @@ namespace Npgsql
                 return;
             }
 
-            var untypedParam = _params[_column];
-            if (untypedParam == null)
-            {
-                // First row, create the parameter objects
-                _params[_column] = untypedParam = typeof(T) == typeof(object)
-                    ? new NpgsqlParameter()
-                    : new NpgsqlParameter<T>();
-                if (npgsqlDbType.HasValue)
-                    untypedParam.NpgsqlDbType = npgsqlDbType.Value;
-            }
-
-            if (npgsqlDbType.HasValue && npgsqlDbType.Value != untypedParam.NpgsqlDbType)
-                throw new InvalidOperationException($"Can't change NpgsqlDbType from {untypedParam.NpgsqlDbType} to {npgsqlDbType.Value}");
-
             if (typeof(T) == typeof(object))
             {
-                untypedParam.Value = value;
-                untypedParam.ResolveHandler(_connector.TypeMapper);
-                untypedParam.ValidateAndGetLength();
-                untypedParam.LengthCache?.Rewind();
-                untypedParam.WriteWithLength(_buf, false);
-                untypedParam.LengthCache?.Clear();
+                param.Value = value;
             }
             else
             {
-                var param = untypedParam as NpgsqlParameter<T>;
-                if (param == null)
+                if (!(param is NpgsqlParameter<T> typedParam))
                 {
-                    _params[_column] = param = new NpgsqlParameter<T>();
-                    param.NpgsqlDbType = untypedParam.NpgsqlDbType;
+                    _params[_column] = typedParam = new NpgsqlParameter<T>();
+                    typedParam.NpgsqlDbType = param.NpgsqlDbType;
                 }
-
-                param.TypedValue = value;
-                param.ResolveHandler(_connector.TypeMapper);
-                param.ValidateAndGetLength();
-                param.LengthCache?.Rewind();
-                param.WriteWithLength(_buf, false);
-                param.LengthCache?.Clear();
+                typedParam.TypedValue = value;
             }
+            param.ResolveHandler(_connector.TypeMapper);
+            param.ValidateAndGetLength();
+            param.LengthCache?.Rewind();
+            param.WriteWithLength(_buf, false);
+            param.LengthCache?.Clear();
             _column++;
         }
 

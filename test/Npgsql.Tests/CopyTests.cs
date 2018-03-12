@@ -206,7 +206,7 @@ namespace Npgsql.Tests
                     writer.WriteRow("Something", (short)9);
 
                     writer.StartRow();
-                    writer.Write(longString);
+                    writer.Write(longString, "text");
                     writer.WriteNull();
 
                     writer.Commit();
