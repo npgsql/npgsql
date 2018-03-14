@@ -33,6 +33,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Security;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -1027,6 +1028,7 @@ namespace Npgsql.Tests
                 Assert.That(conn.ExecuteScalar("SELECT 8"), Is.EqualTo(8));
                 Assert.That(conn.ExecuteScalar("SELECT 'foo'"), Is.EqualTo("foo"));
                 Assert.That(conn.ExecuteScalar("SELECT TRUE"), Is.EqualTo(true));
+                Assert.That(conn.ExecuteScalar("SELECT INET '192.168.1.1'"), Is.EqualTo(IPAddress.Parse("192.168.1.1")));
             }
         }
 
