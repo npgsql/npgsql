@@ -640,7 +640,10 @@ namespace Npgsql
         {
             public static readonly ReadDelegate<T> Read;
             public static readonly ReadAsyncDelegate<T> ReadAsync;
-            public static readonly bool Exists = NullableHandler.Construct(out Read, out ReadAsync);
+            public static readonly bool Exists;
+
+            static NullableHandler()
+                => Exists = NullableHandler.Construct(out Read, out ReadAsync);
         }
 
         static class NullableHandler
