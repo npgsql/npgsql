@@ -16,9 +16,9 @@
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="NodaTime" Version="2.2.4" />
-    <PackageReference Include="NUnit" Version="3.9.0" />
+    <PackageReference Include="NUnit" Version="3.10.1" />
     <PackageReference Include="NLog" Version="5.0.0-beta06" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.5.0" />
-    <PackageReference Include="NUnit3TestAdapter" Version="3.9.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="3.10.0" />
   </ItemGroup>
 </Project>
