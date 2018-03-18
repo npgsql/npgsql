@@ -772,7 +772,7 @@ $$ LANGUAGE SQL;
                             {
                                 reader.GetValue(0);
                             });
-                        Assert.That(ex.Message, Is.EqualTo("PostgreSQL composite type pg_temp_2.deriveparameterscomposite3 contains field x which could not match any on CLR type Object"));
+                        Assert.That(ex.Message, Does.Contain("deriveparameterscomposite3 contains field x which could not match any on CLR type Object"));
                     }
 
                 }

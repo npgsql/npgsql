@@ -432,26 +432,19 @@ namespace Npgsql.TypeMapping
             if (!DatabaseInfo.ByOID.TryGetValue(oid, out var postgresType))
                 throw new InvalidOperationException($"Couldn't find PostgreSQL type with OID {oid}");
 
-            // Try to find the postgresType in the mappings 
+            // Try to find the postgresType in the mappings
             if (TryGetMapping(postgresType, out var npgsqlTypeMapping))
                 return (npgsqlTypeMapping.NpgsqlDbType, postgresType);
 
-            if (postgresType is PostgresArrayType arrayType)
+            // Try to find the Elements' postgresType in the mappings
+            if (postgresType is PostgresArrayType arrayType &&
+                TryGetMapping(arrayType.Element, out var elementNpgsqlTypeMapping))
             {
-                // Try to find the Elements' postgresType in the mappings 
-                if (TryGetMapping(arrayType.Element, out var elementNpgsqlTypeMapping))
-                    return (elementNpgsqlTypeMapping.NpgsqlDbType | NpgsqlDbType.Array, postgresType);
-
-                // It might be an array of an unmapped enum or composite type
-                if (arrayType.Element is PostgresEnumType || arrayType.Element is PostgresCompositeType)
-                    return (null, postgresType);
+                return (elementNpgsqlTypeMapping.NpgsqlDbType | NpgsqlDbType.Array, postgresType);
             }
 
-            // It might be an unmapped enum type
-            if (postgresType is PostgresEnumType || postgresType is PostgresCompositeType)
-                return (null, postgresType);
-
-            throw new InvalidOperationException($"No mapping found for PostgreSQL type {postgresType.DisplayName}");
+            // It might be an unmapped enum/composite type, or some other unmapped type
+            return (null, postgresType);
 
             bool TryGetMapping(PostgresType pgType, out NpgsqlTypeMapping mapping)
                 => (Mappings.TryGetValue(pgType.Name, out mapping) ||
