@@ -1,9 +1,9 @@
 ﻿# [Getting Started](index.md)
-# Migration Notes
-## [3.3](migration/3.3.md)
-## [3.2](migration/3.2.md)
-## [3.1](migration/3.1.md)
-## [3.0](migration/3.0.md)
+# Release Notes
+## [4.0](release-notes/4.0.md)
+## [3.2](release-notes/3.2.md)
+## [3.1](release-notes/3.1.md)
+## [3.0](release-notes/3.0.md)
 # [FAQ](faq.md)
 # [Compatibility Notes](compatibility.md)
 # [Connection String Parameters](connection-string-parameters.md)
