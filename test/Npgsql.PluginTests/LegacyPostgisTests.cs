@@ -249,7 +249,7 @@ namespace Npgsql.PluginTests
                     {
                         for (var i = 0; i < 1000; i++)
                             writer.WriteRow(a.Geom);
-                        writer.Commit();
+                        writer.Complete();
                     }
                 }
                 catch (Exception e)
@@ -290,7 +290,7 @@ namespace Npgsql.PluginTests
                     {
                         for (var i = 0; i < 1000; i++)
                             writer.WriteRow(new[] { t });
-                        writer.Commit();
+                        writer.Complete();
                     }
                 }
                 catch(Exception e)

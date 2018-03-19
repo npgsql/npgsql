@@ -282,9 +282,9 @@ namespace Npgsql
         #region Commit / Cancel / Close / Dispose
 
         /// <summary>
-        /// Commits the import operation. The writer is unusable after this operation.
+        /// Completes the import operation. The writer is unusable after this operation.
         /// </summary>
-        public void Commit()
+        public void Complete()
         {
             CheckReady();
 
