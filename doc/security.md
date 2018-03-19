@@ -4,6 +4,8 @@
 
 The simplest way to log into PostgreSQL is by specifying a `Username` and a `Password` in your connection string. Depending on how your PostgreSQL is configured (in the `pg_hba.conf` file), Npgsql will send the password in MD5 or in cleartext (not recommended).
 
+If a `Password` is not specified and your PostgreSQL is configured to request a password (plain or MD5), Npgsql will look for a [standard PostgreSQL password file](https://www.postgresql.org/docs/current/static/libpq-pgpass.html). If you specify the `Passfile` connection string parameter, the file it specifies will be used. If that parameter isn't defined, Npgsql will look under the path taken from `PGPASSFILE` environment variable. If the environment variable isn't defined, Npgsql will fall back to the system-dependent default directory which is `$HOME/.pgpass` for Unix and `%APPDATA%\postgresql\pgpass.conf` for Windows.
+
 For documentation about all auth methods supported by PostgreSQL, [see this page](http://www.postgresql.org/docs/current/static/auth-methods.html). Note that Npgsql supports Unix-domain sockets (auth method `local`), simply set your `Host` parameter to the absolute path of your PostgreSQL socket directory, as configred in your `postgresql.conf`.
 
 ## Integrated Security (GSS/SSPI/Kerberos)

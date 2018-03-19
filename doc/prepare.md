@@ -60,15 +60,15 @@ Starting from 3.2, all prepared statements are persistent - they no longer get c
 using (var conn = new NpgsqlConnection(...)
 using (var cmd = new NpgsqlCommand("<some_sql>", conn) {
     conn.Open();
-    cmd.Prepare();   // First time on this physical connection, Npgsql prepares with PostgreSQL
-    cmd.ExecuteNonQuery();
+    conn.Prepare();   // First time on this physical connection, Npgsql prepares with PostgreSQL
+    conn.ExecuteNonQuery();
 }
 
 using (var conn = new NpgsqlConnection(...)
 using (var cmd = new NpgsqlCommand("<some_sql>", conn) {
     conn.Open();      // We assume the pool returned the same physical connection used above
-    cmd.Prepare();   // The connection already has a prepared statement for <some_sql>, this doesn't need to do anything
-    cmd.ExecuteNonQuery();
+    conn.Prepare();   // The connection already has a prepared statement for <some_sql>, this doesn't need to do anything
+    conn.ExecuteNonQuery();
 }
 ```
 
