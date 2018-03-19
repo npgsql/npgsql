@@ -756,6 +756,27 @@ namespace Npgsql
         int _connectionIdleLifetime;
 
         /// <summary>
+        /// The time to wait before force closing connections in the pool if the count
+        /// of all connections exceeds MinPoolSize.
+        /// </summary>
+        /// <value>The time (in seconds) to wait. The default value is 0 (disabled).</value>
+        [Category("Pooling")]
+        [Description("The time to wait before force closing connections in the pool if the count of all connections exceeds MinPoolSize.")]
+        [DisplayName("Connection Max Lifetime")]
+        [NpgsqlConnectionStringProperty]
+        [DefaultValue(0)]
+        public int ConnectionMaxLifetime
+        {
+            get => _connectionMaxLifetime;
+            set
+            {
+                _connectionMaxLifetime = value;
+                SetValue(nameof(ConnectionMaxLifetime), value);
+            }
+        }
+        int _connectionMaxLifetime;
+
+        /// <summary>
         /// How many seconds the pool waits before attempting to prune idle connections that are beyond
         /// idle lifetime (<see cref="ConnectionIdleLifetime"/>.
         /// </summary>

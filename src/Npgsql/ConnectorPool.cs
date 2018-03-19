@@ -485,6 +485,7 @@ namespace Npgsql
         {
             var now = DateTime.UtcNow;
             var idleLifetime = Settings.ConnectionIdleLifetime;
+            var maxLifetime = Settings.ConnectionMaxLifetime;
 
             for (var i = 0; i < _idle.Length; i++)
             {
@@ -492,8 +493,15 @@ namespace Npgsql
                     return;
 
                 var connector = _idle[i];
-                if (connector == null || (now - connector.ReleaseTimestamp).TotalSeconds < idleLifetime)
+                if (connector == null)
                     continue;
+
+                var idleLifetimeExceeded = (now - connector.ReleaseTimestamp).TotalSeconds >= idleLifetime;
+                var maxLifetimeExceeded = maxLifetime > 0 && (now - connector.CreationTimestamp).TotalSeconds >= maxLifetime;
+
+                if (!idleLifetimeExceeded && !maxLifetimeExceeded)
+                    continue;
+
                 if (Interlocked.CompareExchange(ref _idle[i], null, connector) == connector)
                     CloseConnector(connector, true);
             }
