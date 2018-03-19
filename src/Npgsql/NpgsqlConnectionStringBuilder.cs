@@ -424,7 +424,7 @@ namespace Npgsql
         [Category("Connection")]
         [Description("Whether to enlist in an ambient TransactionScope.")]
         [DisplayName("Enlist")]
-        [DefaultValue(false)]
+        [DefaultValue(true)]
         [NpgsqlConnectionStringProperty]
         public bool Enlist
         {
