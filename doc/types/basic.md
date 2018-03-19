@@ -120,7 +120,6 @@ Cid		|			| cid			| uint, IConvertible
 Oidvector	|			| oidvector		| uint[]
 Name		|			| name			| string, char[], char, IConvertible
 InternalChar	|			| (internal) char	| byte, IConvertible
-Geometry	|			| geometry		| PostgisGeometry
 Composite	|			| composite types	| T
 Range \| (other NpgsqlDbType) |		| range types		| NpgsqlRange<TElement>
 Enum		|			| enum types		| TEnum
@@ -166,7 +165,6 @@ For information about enums, [see the Enums and Composites page](enums_and_compo
 | DateTimeOffset				| timestamptz
 | TimeSpan					| time
 | byte[]					| bytea
-| PostgisGeometry 				| geometry
 | Custom composite type				| composite types
 | NpgsqlRange<TElement>				| range types
 | Enum types					| enum types
