@@ -206,10 +206,10 @@ namespace Npgsql.Tests
                     writer.WriteRow("Something", (short)9);
 
                     writer.StartRow();
-                    writer.Write(longString);
+                    writer.Write(longString, "text");
                     writer.WriteNull();
 
-                    writer.Commit();
+                    writer.Complete();
                 }
 
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
@@ -269,7 +269,7 @@ namespace Npgsql.Tests
                 {
                     writer.StartRow();
                     writer.Write(data, NpgsqlDbType.Bytea);
-                    writer.Commit();
+                    writer.Complete();
                 }
 
                 Assert.That(conn.ExecuteScalar("SELECT field FROM data"), Is.EqualTo(data));
@@ -288,7 +288,7 @@ namespace Npgsql.Tests
                 {
                     writer.StartRow();
                     writer.Write(data, NpgsqlDbType.Array | NpgsqlDbType.Text);
-                    writer.Commit();
+                    writer.Complete();
                 }
 
                 Assert.That(conn.ExecuteScalar("SELECT field FROM data"), Is.EqualTo(data));
@@ -307,7 +307,7 @@ namespace Npgsql.Tests
                 {
                     writer.StartRow();
                     writer.Write(data, NpgsqlDbType.Text);
-                    writer.Commit();
+                    writer.Complete();
                 }
                 Assert.That(conn.ExecuteScalar("SELECT field FROM data"), Is.EqualTo(data));
             }
@@ -446,7 +446,7 @@ namespace Npgsql.Tests
                 {
                     writer.StartRow();
                     writer.Write(expected);
-                    writer.Commit();
+                    writer.Complete();
                 }
 
                 using (var reader = conn.BeginBinaryExport("COPY data (arr) TO STDIN BINARY"))
@@ -474,7 +474,7 @@ namespace Npgsql.Tests
                 {
                     writer.StartRow();
                     writer.Write(expected);
-                    writer.Commit();
+                    writer.Complete();
                 }
 
                 using (var reader = conn.BeginBinaryExport("COPY data (mymood) TO STDIN BINARY"))
@@ -498,7 +498,7 @@ namespace Npgsql.Tests
                 writer.Write(8);
                 writer.StartRow();
                 writer.Write(8);
-                Assert.That(() => writer.Commit(), Throws.Exception
+                Assert.That(() => writer.Complete(), Throws.Exception
                     .TypeOf<PostgresException>()
                     .With.Property(nameof(PostgresException.SqlState)).EqualTo("23505"));
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
@@ -517,7 +517,7 @@ namespace Npgsql.Tests
                     {
                         writer.StartRow();
                         writer.Write(8);
-                        writer.Commit();
+                        writer.Complete();
                         writer.StartRow();
                         Assert.Fail("StartRow should have thrown");
                     }
@@ -544,7 +544,7 @@ namespace Npgsql.Tests
                         writer.Write("hello");
                         writer.StartRow();
                         writer.Write(9);
-                        writer.Commit();
+                        writer.Complete();
                         Assert.Fail("Commit should have thrown");
                     }
                 }
@@ -754,7 +754,7 @@ namespace Npgsql.Tests
                     writer.Write((string)null, NpgsqlDbType.Uuid);
                     writer.Write(DBNull.Value);
                     writer.Write((string)null);
-                    writer.Commit();
+                    writer.Complete();
                 }
                 using (var cmd = new NpgsqlCommand("SELECT foo1,foo2,foo3,foo4 FROM data", conn))
                 using (var reader = cmd.ExecuteReader())
@@ -781,7 +781,7 @@ namespace Npgsql.Tests
                     writer.StartRow();
                     writer.Write(3, NpgsqlDbType.Integer);
                     writer.Write((object)new List<int> { 4, 5, 6 });
-                    writer.Commit();
+                    writer.Complete();
                 }
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(2));
             }

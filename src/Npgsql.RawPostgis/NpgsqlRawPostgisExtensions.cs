@@ -21,30 +21,30 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
-using JetBrains.Annotations;
+using System.Data;
+using Npgsql.LegacyPostgis;
+using Npgsql.TypeMapping;
+using NpgsqlTypes;
 
-namespace Npgsql.BackendMessages
+// ReSharper disable once CheckNamespace
+namespace Npgsql
 {
     /// <summary>
-    /// DataRow is special in that it does not parse the actual contents of the backend message,
-    /// because in sequential mode the message will be traversed and processed sequentially by
-    /// <see cref="NpgsqlSequentialDataReader"/>.
+    /// Extension adding the legacy PostGIS types to an Npgsql type mapper.
     /// </summary>
-    class DataRowMessage : IBackendMessage
+    public static class NpgsqlLegacyPostgisExtensions
     {
-        public BackendMessageCode Code => BackendMessageCode.DataRow;
-
-        internal int Length { get; private set; }
-
-        internal DataRowMessage Load(int len)
-        {
-            Length = len;
-            return this;
-        }
+        /// <summary>
+        /// Sets up the legacy PostGIS types to an Npgsql type mapper.
+        /// </summary>
+        /// <param name="mapper">The type mapper to set up (global or connection-specific)</param>
+        public static INpgsqlTypeMapper UseRawPostgis(this INpgsqlTypeMapper mapper)
+            => mapper
+                .AddMapping(new NpgsqlTypeMappingBuilder
+                {
+                    PgTypeName = "geometry",
+                    NpgsqlDbType = NpgsqlDbType.Geometry,
+                    TypeHandlerFactory = new PostgisRawHandlerFactory()
+                }.Build());
     }
 }

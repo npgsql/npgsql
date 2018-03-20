@@ -29,6 +29,7 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -70,8 +71,6 @@ namespace Npgsql
 
         [CanBeNull]
         internal NpgsqlTypeHandler Handler { get; set; }
-
-        internal FormatCode FormatCode { get; private set; }
 
         #endregion
 
@@ -505,6 +504,14 @@ namespace Npgsql
         public NpgsqlParameterCollection Collection { get; set; }
 #pragma warning restore CA2227
 
+        /// <summary>
+        /// The PostgreSQL data type, such as int4 or text, as discovered from pg_type.
+        /// This property is automatically set if parameters have been derived via
+        /// <see cref="NpgsqlCommandBuilder.DeriveParameters"/> and can be used to
+        /// acquire additional information about the parameters' data type.
+        /// </summary>
+        public PostgresType PostgresType { get; internal set; }
+
         #endregion Other Properties
 
         #region Internals
@@ -536,7 +543,6 @@ namespace Npgsql
         {
             ResolveHandler(typeMapper);
             Debug.Assert(Handler != null);
-            FormatCode = Handler.PreferTextWrite ? FormatCode.Text : FormatCode.Binary;
         }
 
         internal virtual int ValidateAndGetLength()
@@ -607,7 +613,7 @@ namespace Npgsql
         }
 
         object ICloneable.Clone() => Clone();
-      
+
         #endregion
     }
 }

@@ -260,6 +260,9 @@ namespace Npgsql
 
         #endregion
 
+        internal NpgsqlDefaultDataReader DefaultDataReader { get; }
+        internal NpgsqlSequentialDataReader SequentialDataReader { get; }
+
         #region Constructors
 
         internal NpgsqlConnector(NpgsqlConnection connection)
@@ -300,6 +303,9 @@ namespace Npgsql
                 _userLock = new SemaphoreSlim(1, 1);
                 _keepAliveTimer = new Timer(PerformKeepAlive, null, Timeout.Infinite, Timeout.Infinite);
             }
+
+            DefaultDataReader = new NpgsqlDefaultDataReader(this);
+            SequentialDataReader = new NpgsqlSequentialDataReader(this);
 
             // TODO: Not just for automatic preparation anymore...
             PreparedStatementManager = new PreparedStatementManager(this);
@@ -814,6 +820,8 @@ namespace Npgsql
             if (Settings.SocketSendBufferSize > 0)
                 socket.SendBufferSize = Settings.SocketSendBufferSize;
 
+            if (Settings.TcpKeepAlive)
+                socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
             if (Settings.TcpKeepAliveInterval > 0 && Settings.TcpKeepAliveTime == 0)
                 throw new ArgumentException("If TcpKeepAliveInterval is defined, TcpKeepAliveTime must be defined as well");
             if (Settings.TcpKeepAliveTime > 0)
@@ -821,7 +829,7 @@ namespace Npgsql
                 if (!PGUtil.IsWindows)
                     throw new PlatformNotSupportedException(
                         "Npgsql management of TCP keepalive is supported only on Windows. " +
-                        "TCP keepalives can still be used on other systems but are configured globally for the machine, see the relevant docs.");
+                        "TCP keepalives can still be used on other systems but are enabled via the TcpKeepAlive option or configured globally for the machine, see the relevant docs.");
 
                 var time = Settings.TcpKeepAliveTime;
                 var interval = Settings.TcpKeepAliveInterval > 0
@@ -829,11 +837,11 @@ namespace Npgsql
                     : Settings.TcpKeepAliveTime;
 
                 // For the following see https://msdn.microsoft.com/en-us/library/dd877220.aspx
-                var dummy = 0u;
-                var inOptionValues = new byte[Marshal.SizeOf(dummy) * 3];
+                var uintSize = Marshal.SizeOf(typeof(uint));
+                var inOptionValues = new byte[uintSize * 3];
                 BitConverter.GetBytes((uint)1).CopyTo(inOptionValues, 0);
-                BitConverter.GetBytes((uint)time).CopyTo(inOptionValues, Marshal.SizeOf(dummy));
-                BitConverter.GetBytes((uint)interval).CopyTo(inOptionValues, Marshal.SizeOf(dummy) * 2);
+                BitConverter.GetBytes((uint)time).CopyTo(inOptionValues, uintSize);
+                BitConverter.GetBytes((uint)interval).CopyTo(inOptionValues, uintSize * 2);
                 var result = socket.IOControl(IOControlCode.KeepAliveValues, inOptionValues, null);
                 if (result != 0)
                     throw new NpgsqlException($"Got non-zero value when trying to set TCP keepalive: {result}");

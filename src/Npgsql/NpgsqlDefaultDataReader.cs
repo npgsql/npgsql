@@ -4,12 +4,12 @@ using System.Data;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
-using Npgsql.TypeHandlers;
 using Npgsql.TypeHandling;
 
 namespace Npgsql
@@ -25,11 +25,10 @@ namespace Npgsql
         /// The number of columns in the current row
         /// </summary>
         int _column;
-        List<(int Offset, int Length)> _columns;
+        readonly List<(int Offset, int Length)> _columns = new List<(int Offset, int Length)>();
         int _dataMsgEnd;
 
-        internal NpgsqlDefaultDataReader(NpgsqlCommand command, CommandBehavior behavior, List<NpgsqlStatement> statements, Task sendTask)
-            : base(command, behavior, statements, sendTask) {}
+        internal NpgsqlDefaultDataReader(NpgsqlConnector connector) : base(connector) {}
 
         internal override ValueTask<IBackendMessage> ReadMessage(bool async)
             => Connector.ReadMessage(async);
@@ -161,9 +160,7 @@ namespace Npgsql
             Buffer.ReadPosition += 2;
 #endif
             _column = -1;
-            dataMsg.Columns.Clear();
-            // TODO: Don't do this every time
-            _columns = dataMsg.Columns;
+            _columns.Clear();
 
             // Initialize our columns array with the offset and length of the first column
             var len = Buffer.ReadInt32();
@@ -180,11 +177,19 @@ namespace Npgsql
 
             SeekToColumn(column);
             if (ColumnLen == -1)
-                throw new InvalidCastException("Column is null");
+            {
+                if (NullableHandler<T>.Exists)
+                    return default;
+                else
+                    throw new InvalidCastException("Column is null");
+            }
 
             var fieldDescription = RowDescription[column];
             try
             {
+                if (NullableHandler<T>.Exists)
+                    return NullableHandler<T>.Read(Buffer, ColumnLen, fieldDescription);
+
                 return typeof(T) == typeof(object)
                     ? (T)fieldDescription.Handler.ReadAsObject(Buffer, ColumnLen, fieldDescription)
                     : fieldDescription.Handler.Read<T>(Buffer, ColumnLen, fieldDescription);

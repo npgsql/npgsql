@@ -30,6 +30,7 @@ using System.Data.Common;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -57,16 +58,16 @@ namespace Npgsql
         , IDbColumnSchemaGenerator
 #endif
     {
-        internal NpgsqlCommand Command { get; }
-        internal readonly NpgsqlConnector Connector;
-        readonly NpgsqlConnection _connection;
+        internal NpgsqlCommand Command { get; private set; }
+        internal NpgsqlConnector Connector { get; }
+        NpgsqlConnection _connection;
 
         /// <summary>
         /// The behavior of the command with which this reader was executed.
         /// </summary>
-        protected readonly CommandBehavior Behavior;
+        protected CommandBehavior Behavior;
 
-        readonly Task _sendTask;
+        Task _sendTask;
 
         internal ReaderState State;
 
@@ -75,7 +76,7 @@ namespace Npgsql
         /// <summary>
         /// Holds the list of statements being executed by this reader.
         /// </summary>
-        readonly List<NpgsqlStatement> _statements;
+        List<NpgsqlStatement> _statements;
 
         /// <summary>
         /// The index of the current query resultset we're processing (within a multiquery)
@@ -121,16 +122,22 @@ namespace Npgsql
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
-        internal NpgsqlDataReader(NpgsqlCommand command, CommandBehavior behavior, List<NpgsqlStatement> statements, Task sendTask)
+        internal NpgsqlDataReader(NpgsqlConnector connector)
+        {
+            Connector = connector;
+        }
+
+        internal virtual void Init(NpgsqlCommand command, CommandBehavior behavior, List<NpgsqlStatement> statements, Task sendTask)
         {
             Command = command;
+            Debug.Assert(command.Connection == Connector.Connection);
             _connection = command.Connection;
-            Connector = _connection.Connector;
             Behavior = behavior;
             _statements = statements;
             StatementIndex = -1;
             _sendTask = sendTask;
             State = ReaderState.BetweenResults;
+            _recordsAffected = null;
         }
 
         #region Read
@@ -649,6 +656,53 @@ namespace Npgsql
 
         #endregion
 
+        #region Generic value getters
+
+        internal delegate T ReadDelegate<T>(NpgsqlReadBuffer buffer, int columnLen, FieldDescription fieldDescription);
+
+        internal delegate ValueTask<T> ReadAsyncDelegate<T>(NpgsqlReadBuffer buffer, int columnLen, bool async, FieldDescription fieldDescription);
+
+        internal static class NullableHandler<T>
+        {
+            public static readonly ReadDelegate<T> Read;
+            public static readonly ReadAsyncDelegate<T> ReadAsync;
+            public static readonly bool Exists;
+
+            static NullableHandler()
+                => Exists = NullableHandler.Construct(out Read, out ReadAsync);
+        }
+
+        static class NullableHandler
+        {
+            static readonly MethodInfo _readNullableMethod = new ReadDelegate<int?>(ReadNullable<int>).Method.GetGenericMethodDefinition();
+            static readonly MethodInfo _readNullableAsyncMethod = new ReadAsyncDelegate<int?>(ReadNullable<int>).Method.GetGenericMethodDefinition();
+
+            static T? ReadNullable<T>(NpgsqlReadBuffer buffer, int columnLen, FieldDescription fieldDescription) where T : struct
+                => fieldDescription.Handler.Read<T>(buffer, columnLen, fieldDescription);
+
+            static async ValueTask<T?> ReadNullable<T>(NpgsqlReadBuffer buffer, int columnLen, bool async, FieldDescription fieldDescription) where T : struct
+                => await fieldDescription.Handler.Read<T>(buffer, columnLen, async, fieldDescription);
+
+            public static bool Construct<T>(out ReadDelegate<T> read, out ReadAsyncDelegate<T> readAsync)
+            {
+                var underlyingType = Nullable.GetUnderlyingType(typeof(T));
+                if (underlyingType != null)
+                {
+                    read = (ReadDelegate<T>)_readNullableMethod.MakeGenericMethod(underlyingType).CreateDelegate(typeof(ReadDelegate<T>));
+                    readAsync = (ReadAsyncDelegate<T>)_readNullableAsyncMethod.MakeGenericMethod(underlyingType).CreateDelegate(typeof(ReadAsyncDelegate<T>));
+                    return true;
+                }
+                else
+                {
+                    read = null;
+                    readAsync = null;
+                    return false;
+                }
+            }
+        }
+
+        #endregion Generic value getters
+
         #region Simple value getters
 
         /// <summary>
@@ -850,7 +904,7 @@ namespace Npgsql
 
             var fieldDescription = RowDescription[ordinal];
             var handler = fieldDescription.Handler;
-            if (!(handler is ByteaHandler || handler is PostgisGeometryHandler))
+            if (!(handler is ByteaHandler))
                 throw new InvalidCastException("GetBytes() not supported for type " + fieldDescription.Name);
 
             SeekToColumn(ordinal, false).GetAwaiter().GetResult();

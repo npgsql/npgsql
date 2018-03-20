@@ -94,7 +94,20 @@ namespace Npgsql.TypeHandlers
         #endregion
     }
 
-    class EnumTypeHandlerFactory<TEnum> : NpgsqlTypeHandlerFactory<TEnum> where TEnum : struct
+
+    /// <summary>
+    /// Interface implemented by all enum handler factories.
+    /// Used to expose the name translator for those reflecting enum mappings (e.g. EF Core).
+    /// </summary>
+    public interface IEnumTypeHandlerFactory
+    {
+        /// <summary>
+        /// The name translator used for this enum.
+        /// </summary>
+        INpgsqlNameTranslator NameTranslator { get; }
+    }
+
+    class EnumTypeHandlerFactory<TEnum> : NpgsqlTypeHandlerFactory<TEnum>, IEnumTypeHandlerFactory where TEnum : struct
     {
         readonly Dictionary<TEnum, string> _enumToLabel = new Dictionary<TEnum, string>();
         readonly Dictionary<string, TEnum> _labelToEnum = new Dictionary<string, TEnum>();
@@ -103,6 +116,8 @@ namespace Npgsql.TypeHandlers
         {
             foreach (var field in typeof(TEnum).GetFields(BindingFlags.Static | BindingFlags.Public))
             {
+                NameTranslator = nameTranslator;
+
                 var attribute = (PgNameAttribute)field.GetCustomAttributes(typeof(PgNameAttribute), false).FirstOrDefault();
                 var enumName = attribute == null
                     ? nameTranslator.TranslateMemberName(field.Name)
@@ -115,5 +130,7 @@ namespace Npgsql.TypeHandlers
 
         protected override NpgsqlTypeHandler<TEnum> Create(NpgsqlConnection conn)
             => new EnumHandler<TEnum>(_enumToLabel, _labelToEnum);
+
+        public INpgsqlNameTranslator NameTranslator { get; }
     }
 }

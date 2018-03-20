@@ -27,6 +27,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Npgsql.PluginTests", "test\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Npgsql.NetTopologySuite", "src\Npgsql.NetTopologySuite\Npgsql.NetTopologySuite.csproj", "{68E7BF6B-4868-44EC-AEF6-451CFCFC857D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Npgsql.LegacyPostgis", "src\Npgsql.LegacyPostgis\Npgsql.LegacyPostgis.csproj", "{D96CC113-7D64-4B31-9DCC-13FDE92C1ECE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Npgsql.RawPostgis", "src\Npgsql.RawPostgis\Npgsql.RawPostgis.csproj", "{5BF3516D-5559-46A8-8362-0F4D931EEAB9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -91,6 +95,22 @@ Global
 		{68E7BF6B-4868-44EC-AEF6-451CFCFC857D}.Release|Any CPU.Build.0 = Release|Any CPU
 		{68E7BF6B-4868-44EC-AEF6-451CFCFC857D}.Release|x86.ActiveCfg = Release|Any CPU
 		{68E7BF6B-4868-44EC-AEF6-451CFCFC857D}.Release|x86.Build.0 = Release|Any CPU
+		{D96CC113-7D64-4B31-9DCC-13FDE92C1ECE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D96CC113-7D64-4B31-9DCC-13FDE92C1ECE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D96CC113-7D64-4B31-9DCC-13FDE92C1ECE}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{D96CC113-7D64-4B31-9DCC-13FDE92C1ECE}.Debug|x86.Build.0 = Debug|Any CPU
+		{D96CC113-7D64-4B31-9DCC-13FDE92C1ECE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D96CC113-7D64-4B31-9DCC-13FDE92C1ECE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D96CC113-7D64-4B31-9DCC-13FDE92C1ECE}.Release|x86.ActiveCfg = Release|Any CPU
+		{D96CC113-7D64-4B31-9DCC-13FDE92C1ECE}.Release|x86.Build.0 = Release|Any CPU
+		{5BF3516D-5559-46A8-8362-0F4D931EEAB9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5BF3516D-5559-46A8-8362-0F4D931EEAB9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5BF3516D-5559-46A8-8362-0F4D931EEAB9}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{5BF3516D-5559-46A8-8362-0F4D931EEAB9}.Debug|x86.Build.0 = Debug|Any CPU
+		{5BF3516D-5559-46A8-8362-0F4D931EEAB9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5BF3516D-5559-46A8-8362-0F4D931EEAB9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5BF3516D-5559-46A8-8362-0F4D931EEAB9}.Release|x86.ActiveCfg = Release|Any CPU
+		{5BF3516D-5559-46A8-8362-0F4D931EEAB9}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -103,6 +123,8 @@ Global
 		{D8DF12D6-FA70-4653-BD8F-C188944836DE} = {8537E50E-CF7F-49CB-B4EF-3E2A1B11F050}
 		{9BD7FC3D-6956-42A8-A586-2558C499EBA2} = {ED612DB1-AB32-4603-95E7-891BACA71C39}
 		{68E7BF6B-4868-44EC-AEF6-451CFCFC857D} = {8537E50E-CF7F-49CB-B4EF-3E2A1B11F050}
+		{D96CC113-7D64-4B31-9DCC-13FDE92C1ECE} = {8537E50E-CF7F-49CB-B4EF-3E2A1B11F050}
+		{5BF3516D-5559-46A8-8362-0F4D931EEAB9} = {8537E50E-CF7F-49CB-B4EF-3E2A1B11F050}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {C90AEECD-DB4C-4BE6-B506-16A449852FB8}

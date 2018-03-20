@@ -2,13 +2,14 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 using Npgsql;
 
 #pragma warning disable CA1710
 
 // ReSharper disable once CheckNamespace
-namespace NpgsqlTypes
+namespace Npgsql.LegacyPostgis
 {
     #pragma  warning disable 1591
     /// <summary>
@@ -65,7 +66,7 @@ namespace NpgsqlTypes
         // ReSharper restore CompareOfFloatsByEqualityOperator
 
         public override int GetHashCode()
-            => X.GetHashCode() ^ PGUtil.RotateShift(Y.GetHashCode(), PGUtil.BitsInInt / 2);
+            => X.GetHashCode() ^ Util.RotateShift(Y.GetHashCode(), Util.BitsInInt / 2);
 
         public override bool Equals([CanBeNull] object obj)
             => obj is Coordinate2D && Equals((Coordinate2D)obj);
@@ -132,7 +133,7 @@ namespace NpgsqlTypes
 
         public static bool operator !=(PostgisPoint x, PostgisPoint y) => !(x == y);
 
-        public override int GetHashCode() => X.GetHashCode() ^ PGUtil.RotateShift(Y.GetHashCode(), PGUtil.BitsInInt / 2);
+        public override int GetHashCode() => X.GetHashCode() ^ Util.RotateShift(Y.GetHashCode(), Util.BitsInInt / 2);
     }
 
     /// <summary>
@@ -189,7 +190,7 @@ namespace NpgsqlTypes
         {
             var ret = 266370105;//seed with something other than zero to make paths of all zeros hash differently.
             foreach (var t in _points)
-                ret ^= PGUtil.RotateShift(t.GetHashCode(), ret % PGUtil.BitsInInt);
+                ret ^= Util.RotateShift(t.GetHashCode(), ret % Util.BitsInInt);
             return ret;
         }
     }
@@ -217,7 +218,7 @@ namespace NpgsqlTypes
             _rings = rings.Select(x => x.ToArray()).ToArray();
         }
 
-        public IEnumerator<IEnumerable<Coordinate2D>> GetEnumerator() 
+        public IEnumerator<IEnumerable<Coordinate2D>> GetEnumerator()
             => ((IEnumerable<IEnumerable<Coordinate2D>>)_rings).GetEnumerator();
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
@@ -256,7 +257,7 @@ namespace NpgsqlTypes
             var ret = 266370105;//seed with something other than zero to make paths of all zeros hash differently.
             for (var i = 0; i < _rings.Length; i++)
                 for (var j = 0; j < _rings[i].Length; j++)
-                    ret ^= PGUtil.RotateShift(_rings[i][j].GetHashCode(), ret % PGUtil.BitsInInt);
+                    ret ^= Util.RotateShift(_rings[i][j].GetHashCode(), ret % Util.BitsInInt);
             return ret;
         }
     }
@@ -271,7 +272,7 @@ namespace NpgsqlTypes
         internal override WkbIdentifier Identifier => WkbIdentifier.MultiPoint;
 
         //each point of a multipoint is a postgispoint, not a building block point.
-        protected override int GetLenHelper() => 4 + _points.Length * 21; 
+        protected override int GetLenHelper() => 4 + _points.Length * 21;
 
         public IEnumerator<Coordinate2D> GetEnumerator() => ((IEnumerable<Coordinate2D>)_points).GetEnumerator();
 
@@ -318,7 +319,7 @@ namespace NpgsqlTypes
         {
             var ret = 266370105;//seed with something other than zero to make paths of all zeros hash differently.
             for (var i = 0; i < _points.Length; i++)
-                ret ^= PGUtil.RotateShift(_points[i].GetHashCode(), ret % PGUtil.BitsInInt);
+                ret ^= Util.RotateShift(_points[i].GetHashCode(), ret % Util.BitsInInt);
             return ret;
         }
 
@@ -394,7 +395,7 @@ namespace NpgsqlTypes
         {
             var ret = 266370105;//seed with something other than zero to make paths of all zeros hash differently.
             for (var i = 0; i < _lineStrings.Length; i++)
-                ret ^= PGUtil.RotateShift(_lineStrings[i].GetHashCode(), ret % PGUtil.BitsInInt);
+                ret ^= Util.RotateShift(_lineStrings[i].GetHashCode(), ret % Util.BitsInInt);
             return ret;
         }
 
@@ -453,7 +454,7 @@ namespace NpgsqlTypes
         {
             var ret = 266370105;//seed with something other than zero to make paths of all zeros hash differently.
             for (var i = 0; i < _polygons.Length; i++)
-                ret ^= PGUtil.RotateShift(_polygons[i].GetHashCode(), ret % PGUtil.BitsInInt);
+                ret ^= Util.RotateShift(_polygons[i].GetHashCode(), ret % Util.BitsInInt);
             return ret;
         }
 
@@ -516,7 +517,7 @@ namespace NpgsqlTypes
         {
             var ret = 266370105;//seed with something other than zero to make paths of all zeros hash differently.
             for (var i = 0; i < _geometries.Length; i++)
-                ret ^= PGUtil.RotateShift(_geometries[i].GetHashCode(), ret % PGUtil.BitsInInt);
+                ret ^= Util.RotateShift(_geometries[i].GetHashCode(), ret % Util.BitsInInt);
             return ret;
         }
 
@@ -529,5 +530,14 @@ namespace NpgsqlTypes
         }
 
         public int GeometryCount => _geometries.Length;
+    }
+
+    static class Util
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static int RotateShift(int val, int shift)
+            => (val << shift) | (val >> (BitsInInt - shift));
+
+        internal const int BitsInInt = sizeof(int) * 8;
     }
 }

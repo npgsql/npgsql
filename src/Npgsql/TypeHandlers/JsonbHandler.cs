@@ -49,8 +49,6 @@ namespace Npgsql.TypeHandlers
         /// </summary>
         const byte JsonbProtocolVersion = 1;
 
-        internal override bool PreferTextWrite => false;
-
         protected internal JsonbHandler(NpgsqlConnection connection) : base(connection) { }
 
         #region Write

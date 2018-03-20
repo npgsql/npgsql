@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <VersionPrefix>1.0.0</VersionPrefix>
+    <Description>PostGIS plugin for Npgsql, allowing mapping of PostGIS types to the legacy types (e.g. PostgisPoint).</Description>
+    <Authors>Shay Rojansky</Authors>
+    <Copyright>Copyright 2018 © The Npgsql Development Team</Copyright>
+    <Company>Npgsql</Company>
+    <PackageTags>npgsql postgresql postgres postgis spatial geometry geography ado ado.net database sql</PackageTags>
+    <TargetFrameworks>net45;netstandard2.0</TargetFrameworks>
+    <AssemblyOriginatorKeyFile>../../Npgsql.snk</AssemblyOriginatorKeyFile>
+    <SignAssembly>true</SignAssembly>
+    <PublicSign Condition=" '$(OS)' != 'Windows_NT' ">true</PublicSign>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageProjectUrl>http://www.npgsql.org</PackageProjectUrl>
+    <PackageIconUrl>http://www.npgsql.org/img/postgresql.gif</PackageIconUrl>
+    <PackageLicenseUrl>https://raw.githubusercontent.com/npgsql/npgsql/develop/LICENSE.txt</PackageLicenseUrl>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>git://github.com/npgsql/npgsql</RepositoryUrl>
+    <Deterministic>true</Deterministic>
+    <!-- This is somehow important for Microsoft.CodeQuality.Analyzers -->
+    <Features>IOperation</Features>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Causes issues in Appveyor and Travis
+    <PackageReference Include="Microsoft.CodeQuality.Analyzers" Version="2.6.0-beta2" PrivateAssets="All" />
+-->
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Npgsql\Npgsql.csproj" />
+  </ItemGroup>
+</Project>

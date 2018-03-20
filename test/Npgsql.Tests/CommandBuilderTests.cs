@@ -23,15 +23,18 @@
 
 using System;
 using System.Data;
+using System.Net.Mime;
 using NpgsqlTypes;
 using NUnit.Framework;
+using Npgsql.PostgresTypes;
+using NUnit.Framework.Constraints;
 
 namespace Npgsql.Tests
 {
     class CommandBuilderTests : TestBase
     {
         [Test, Description("Tests function parameter derivation with IN, OUT and INOUT parameters")]
-        public void DeriveParametersVarious()
+        public void DeriveFunctionParameters_Various()
         {
             using (var conn = OpenConnection())
             {
@@ -50,8 +53,20 @@ namespace Npgsql.Tests
                 NpgsqlCommandBuilder.DeriveParameters(cmd);
                 Assert.That(cmd.Parameters, Has.Count.EqualTo(3));
                 Assert.That(cmd.Parameters[0].Direction, Is.EqualTo(ParameterDirection.Input));
+                Assert.That(cmd.Parameters[0].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Integer));
+                Assert.That(cmd.Parameters[0].PostgresType, Is.TypeOf<PostgresBaseType>());
+                Assert.That(cmd.Parameters[0].DataTypeName, Is.EqualTo("int4"));
+                Assert.That(cmd.Parameters[0].ParameterName, Is.EqualTo("param1"));
                 Assert.That(cmd.Parameters[1].Direction, Is.EqualTo(ParameterDirection.Output));
+                Assert.That(cmd.Parameters[1].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Text));
+                Assert.That(cmd.Parameters[1].PostgresType, Is.TypeOf<PostgresBaseType>());
+                Assert.That(cmd.Parameters[1].DataTypeName, Is.EqualTo("text"));
+                Assert.That(cmd.Parameters[1].ParameterName, Is.EqualTo("param2"));
                 Assert.That(cmd.Parameters[2].Direction, Is.EqualTo(ParameterDirection.InputOutput));
+                Assert.That(cmd.Parameters[2].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Integer));
+                Assert.That(cmd.Parameters[2].PostgresType, Is.TypeOf<PostgresBaseType>());
+                Assert.That(cmd.Parameters[2].DataTypeName, Is.EqualTo("int4"));
+                Assert.That(cmd.Parameters[2].ParameterName, Is.EqualTo("param3"));
                 cmd.Parameters[0].Value = 5;
                 cmd.Parameters[2].Value = 4;
                 cmd.ExecuteNonQuery();
@@ -62,7 +77,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Tests function parameter derivation with IN-only parameters")]
-        public void DeriveParametersInOnly()
+        public void DeriveFunctionParameters_InOnly()
         {
             using (var conn = OpenConnection())
             {
@@ -88,7 +103,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Tests function parameter derivation with no parameters")]
-        public void DeriveParametersNoParams()
+        public void DeriveFunctionParameters_NoParams()
         {
             using (var conn = OpenConnection())
             {
@@ -109,7 +124,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void FunctionCaseSensitiveNameDeriveParameters()
+        public void DeriveFunctionParameters_CaseSensitiveName()
         {
             using (var conn = OpenConnection())
             {
@@ -129,7 +144,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void DeriveParametersWithParameterNameFromFunction()
+        public void DeriveFunctionParameters_ParameterNameFromFunction()
         {
             using (var conn = OpenConnection())
             {
@@ -142,7 +157,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void DeriveInvalidFunction()
+        public void DeriveFunctionParameters_NonExistingFunction()
         {
             using (var conn = OpenConnection())
             {
@@ -154,7 +169,7 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1212")]
-        public void TableParameters()
+        public void DeriveFunctionParameters_TableParameters()
         {
             using (var conn = OpenConnection())
             {
@@ -180,7 +195,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Tests function parameter derivation for quoted functions with double quotes in the name works")]
-        public void FunctionQuoteCharactersInNameDeriveParameters()
+        public void DeriveFunctionParameters_QuoteCharactersInFunctionName()
         {
             using (var conn = OpenConnection())
             {
@@ -200,7 +215,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Tests function parameter derivation for quoted functions with dots in the name works")]
-        public void FunctionDotCharacterInNameDeriveParameters()
+        public void DeriveFunctionParameters_DotCharacterInFunctionName()
         {
             using (var conn = OpenConnection())
             {
@@ -220,7 +235,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Tests if the right function according to search_path is used in function parameter derivation")]
-        public void DeriveParametersWithCorrectSchemaResolution()
+        public void DeriveFunctionParameters_CorrectSchemaResolution()
         {
             using (var conn = OpenConnection())
             {
@@ -265,7 +280,7 @@ SET search_path TO schema2;
         }
 
         [Test, Description("Tests if function parameter derivation throws an exception if the specified function is not in the search_path")]
-        public void DeriveThrowsForExistingFunctionThatIsNotInSearchPath()
+        public void DeriveFunctionParameters_ThrowsForExistingFunctionThatIsNotInSearchPath()
         {
             using (var conn = OpenConnection())
             {
@@ -297,7 +312,7 @@ RESET search_path;
         }
 
         [Test, Description("Tests if an exception is thrown if multiple functions with the specified name are in the search_path")]
-        public void DeriveThrowsForMultipleFunctionNameHitsInSearchPath()
+        public void DeriveFunctionParameters_ThrowsForMultipleFunctionNameHitsInSearchPath()
         {
             using (var conn = OpenConnection())
             {
@@ -340,7 +355,7 @@ SET search_path TO schema1, schema2;
         #region Set returning functions
 
         [Test, Description("Tests parameter derivation for a function that returns SETOF sometype")]
-        public void DeriveParametersFunctionReturningSetofType()
+        public void DeriveFunctionParameters_FunctionReturningSetofType()
         {
             using (var conn = OpenConnection())
             {
@@ -374,7 +389,7 @@ $$ LANGUAGE SQL;
         }
 
         [Test, Description("Tests parameter derivation for a function that returns TABLE")]
-        public void DeriveParametersFunctionReturningTable()
+        public void DeriveFunctionParameters_FunctionReturningTable()
         {
             using (var conn = OpenConnection())
             {
@@ -408,7 +423,7 @@ $$ LANGUAGE SQL;
         }
 
         [Test, Description("Tests parameter derivation for a function that returns SETOF record")]
-        public void DeriveParametersFunctionReturningSetofRecord()
+        public void DeriveFunctionParameters_FunctionReturningSetofRecord()
         {
             using (var conn = OpenConnection())
             {
@@ -446,7 +461,7 @@ $$ LANGUAGE SQL;
         #region CommandType.Text
 
         [Test, Description("Tests parameter derivation for parameterized queries (CommandType.Text)")]
-        public void DeriveParametersCommandTypeTextOneParameterWithSameType()
+        public void DeriveTextCommandParameters_OneParameterWithSameType()
         {
             using (var conn = OpenConnection())
             {
@@ -467,8 +482,8 @@ $$ LANGUAGE SQL;
             }
         }
 
-        [Test, Description("Tests parameter derivation for parameterized queries (CommandType.Text)")]
-        public void DeriveParametersCommandTypeTextOneParameterWithDifferentTypes()
+        [Test, Description("Tests parameter derivation for parameterized queries (CommandType.Text) where different types would be inferred for placeholders with the same name.")]
+        public void DeriveTextCommandParameters_OneParameterWithDifferentTypes()
         {
             using (var conn = OpenConnection())
             {
@@ -484,7 +499,7 @@ $$ LANGUAGE SQL;
         }
 
         [Test, Description("Tests parameter derivation for parameterized queries (CommandType.Text) with multiple parameters")]
-        public void DeriveParametersCommandTypeTextMultipleParameters()
+        public void DeriveTextCommandParameters_MultipleParameters()
         {
             using (var conn = OpenConnection())
             {
@@ -512,7 +527,7 @@ $$ LANGUAGE SQL;
         }
 
         [Test, Description("Tests parameter derivation a parameterized query (CommandType.Text) that is already prepared.")]
-        public void DeriveParametersForPreparedStatement()
+        public void DeriveTextCommandParameters_PreparedStatement()
         {
             const string query = "SELECT @p::integer";
             const int answer = 42;
@@ -540,6 +555,227 @@ $$ LANGUAGE SQL;
                 Assert.That(cmd.ExecuteScalar(), Is.EqualTo(answer));
 
                 conn.UnprepareAll();
+            }
+        }
+
+        [Test, Description("Tests parameter derivation for array parameters in parameterized queries (CommandType.Text)")]
+        public void DeriveTextCommandParameters_Array()
+        {
+            using (var conn = OpenConnection())
+            {
+                var cmd = new NpgsqlCommand("SELECT :a::integer[]", conn);
+                var val = new[] { 7, 42 };
+
+                NpgsqlCommandBuilder.DeriveParameters(cmd);
+                Assert.That(cmd.Parameters, Has.Count.EqualTo(1));
+                Assert.That(cmd.Parameters[0].ParameterName, Is.EqualTo("a"));
+                Assert.That(cmd.Parameters[0].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Integer | NpgsqlDbType.Array));
+                cmd.Parameters[0].Value = val;
+                using (var reader = cmd.ExecuteReader(CommandBehavior.SingleResult | CommandBehavior.SingleRow))
+                {
+                    Assert.That(reader.Read(), Is.True);
+                    Assert.That(reader.GetFieldValue<int[]>(0), Is.EqualTo(val));
+                }
+            }
+        }
+
+        [Test, Description("Tests parameter derivation for unmapped enum parameters in parameterized queries (CommandType.Text)")]
+        public void DeriveTextCommandParameters_UnmappedEnum()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TYPE pg_temp.fruit AS ENUM ('Apple', 'Cherry', 'Plum')");
+                conn.ReloadTypes();
+                var cmd = new NpgsqlCommand("SELECT :x::fruit", conn);
+                const string val1 = "Apple";
+                var val2 = new string[] { "Cherry", "Plum" };
+
+                NpgsqlCommandBuilder.DeriveParameters(cmd);
+                Assert.That(cmd.Parameters, Has.Count.EqualTo(1));
+                Assert.That(cmd.Parameters[0].ParameterName, Is.EqualTo("x"));
+                Assert.That(cmd.Parameters[0].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Unknown));
+                Assert.That(cmd.Parameters[0].PostgresType, Is.InstanceOf<PostgresEnumType>());
+                Assert.That(cmd.Parameters[0].PostgresType.Name, Is.EqualTo("fruit"));
+                Assert.That(cmd.Parameters[0].DataTypeName, Does.EndWith("fruit"));
+                cmd.Parameters[0].Value = val1;
+                using (var reader = cmd.ExecuteReader(CommandBehavior.SingleResult | CommandBehavior.SingleRow))
+                {
+                    Assert.That(reader.Read(), Is.True);
+                    Assert.That(reader.GetString(0), Is.EqualTo(val1));
+                }
+            }
+        }
+
+        enum Fruit { Apple, Cherry, Plum }
+
+        [Test, Description("Tests parameter derivation for mapped enum parameters in parameterized queries (CommandType.Text)")]
+        public void DeriveTextCommandParameters_MappedEnum()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TYPE pg_temp.fruit AS ENUM ('apple', 'cherry', 'plum')");
+                conn.ReloadTypes();
+                conn.TypeMapper.MapEnum<Fruit>("fruit");
+                var cmd = new NpgsqlCommand("SELECT :x::fruit, :y::fruit[]", conn);
+                const Fruit val1 = Fruit.Apple;
+                var val2 = new Fruit[] { Fruit.Cherry, Fruit.Plum };
+
+                NpgsqlCommandBuilder.DeriveParameters(cmd);
+                Assert.That(cmd.Parameters, Has.Count.EqualTo(2));
+                Assert.That(cmd.Parameters[0].ParameterName, Is.EqualTo("x"));
+                Assert.That(cmd.Parameters[0].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Unknown));
+                Assert.That(cmd.Parameters[0].PostgresType, Is.InstanceOf<PostgresEnumType>());
+                Assert.That(cmd.Parameters[0].DataTypeName, Does.EndWith("fruit"));
+                Assert.That(cmd.Parameters[1].ParameterName, Is.EqualTo("y"));
+                Assert.That(cmd.Parameters[1].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Unknown));
+                Assert.That(cmd.Parameters[1].PostgresType, Is.InstanceOf<PostgresArrayType>());
+                Assert.That(cmd.Parameters[1].DataTypeName, Does.EndWith("_fruit"));
+                cmd.Parameters[0].Value = val1;
+                cmd.Parameters[1].Value = val2;
+                using (var reader = cmd.ExecuteReader(CommandBehavior.SingleResult | CommandBehavior.SingleRow))
+                {
+                    Assert.That(reader.Read(), Is.True);
+                    Assert.That(reader.GetFieldValue<Fruit>(0), Is.EqualTo(val1));
+                    Assert.That(reader.GetFieldValue<Fruit[]>(1), Is.EqualTo(val2));
+                }
+            }
+        }
+
+        class SomeComposite
+        {
+            public int X { get; set; }
+            [PgName("some_text")]
+            public string SomeText { get; set; }
+        }
+
+        [Test]
+        public void DeriveTextCommandParameters_MappedComposite()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TYPE pg_temp.deriveparameterscomposite1 AS (x int, some_text text)");
+                conn.ReloadTypes();
+                conn.TypeMapper.MapComposite<SomeComposite>("deriveparameterscomposite1");
+
+                var expected1 = new SomeComposite { X = 8, SomeText = "foo" };
+                var expected2 = new[] {
+                    expected1,
+                    new SomeComposite {X = 9, SomeText = "bar"}
+                };
+
+                using (var cmd = new NpgsqlCommand("SELECT @p1::deriveparameterscomposite1, @p2::deriveparameterscomposite1[]", conn))
+                {
+                    NpgsqlCommandBuilder.DeriveParameters(cmd);
+                    Assert.That(cmd.Parameters, Has.Count.EqualTo(2));
+                    Assert.That(cmd.Parameters[0].ParameterName, Is.EqualTo("p1"));
+                    Assert.That(cmd.Parameters[0].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Unknown));
+                    Assert.That(cmd.Parameters[0].PostgresType, Is.InstanceOf<PostgresCompositeType>());
+                    Assert.That(cmd.Parameters[0].DataTypeName, Does.EndWith("deriveparameterscomposite1"));
+                    var p1Fields = ((PostgresCompositeType)cmd.Parameters[0].PostgresType).Fields;
+                    Assert.That(p1Fields[0].Name, Is.EqualTo("x"));
+                    Assert.That(p1Fields[1].Name, Is.EqualTo("some_text"));
+
+                    Assert.That(cmd.Parameters[1].ParameterName, Is.EqualTo("p2"));
+                    Assert.That(cmd.Parameters[1].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Unknown));
+                    Assert.That(cmd.Parameters[1].PostgresType, Is.InstanceOf<PostgresArrayType>());
+                    Assert.That(cmd.Parameters[1].DataTypeName, Does.EndWith("_deriveparameterscomposite1"));
+                    var p2Element = ((PostgresArrayType)cmd.Parameters[1].PostgresType).Element;
+                    Assert.That(p2Element, Is.InstanceOf<PostgresCompositeType>());
+                    Assert.That(p2Element.Name, Is.EqualTo("deriveparameterscomposite1"));
+                    var p2Fields = ((PostgresCompositeType)p2Element).Fields;
+                    Assert.That(p2Fields[0].Name, Is.EqualTo("x"));
+                    Assert.That(p2Fields[1].Name, Is.EqualTo("some_text"));
+
+                    cmd.Parameters[0].Value = expected1;
+                    cmd.Parameters[1].Value = expected2;
+                    using (var reader = cmd.ExecuteReader(CommandBehavior.SingleResult | CommandBehavior.SingleRow))
+                    {
+                        Assert.That(reader.Read(), Is.True);
+                        Assert.That(reader.GetFieldValue<SomeComposite>(0).SomeText, Is.EqualTo(expected1.SomeText));
+                        Assert.That(reader.GetFieldValue<SomeComposite>(0).X, Is.EqualTo(expected1.X));
+                        for (var i = 0; i < 2; i++)
+                        {
+                            Assert.That(reader.GetFieldValue<SomeComposite[]>(1)[i].SomeText, Is.EqualTo(expected2[i].SomeText));
+                            Assert.That(reader.GetFieldValue<SomeComposite[]>(1)[i].X, Is.EqualTo(expected2[i].X));
+                        }
+                    }
+                }
+            }
+        }
+
+        [Test]
+        public void DeriveTextCommandParameters_UnmappedComposite()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TYPE pg_temp.deriveparameterscomposite2 AS (x int, some_text text)");
+                conn.ReloadTypes();
+
+                var expected1 = new SomeComposite { X = 8, SomeText = "foo" };
+
+                using (var cmd = new NpgsqlCommand("SELECT @p1::deriveparameterscomposite2", conn))
+                {
+                    NpgsqlCommandBuilder.DeriveParameters(cmd);
+                    Assert.That(cmd.Parameters, Has.Count.EqualTo(1));
+                    Assert.That(cmd.Parameters[0].ParameterName, Is.EqualTo("p1"));
+                    Assert.That(cmd.Parameters[0].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Unknown));
+                    Assert.That(cmd.Parameters[0].PostgresType, Is.InstanceOf<PostgresCompositeType>());
+                    Assert.That(cmd.Parameters[0].DataTypeName, Does.EndWith("deriveparameterscomposite2"));
+                    var p1Fields = ((PostgresCompositeType)cmd.Parameters[0].PostgresType).Fields;
+                    Assert.That(p1Fields[0].Name, Is.EqualTo("x"));
+                    Assert.That(p1Fields[1].Name, Is.EqualTo("some_text"));
+
+                    cmd.Parameters[0].Value = expected1;
+                    using (var reader = cmd.ExecuteReader(CommandBehavior.SingleResult | CommandBehavior.SingleRow))
+                    {
+                        Assert.That(reader.Read(), Is.True);
+                        Assert.That(reader.GetFieldValue<SomeComposite>(0).SomeText, Is.EqualTo(expected1.SomeText));
+                        Assert.That(reader.GetFieldValue<SomeComposite>(0).X, Is.EqualTo(expected1.X));
+                    }
+                }
+            }
+        }
+
+        [Test]
+        public void DeriveTextCommandParameters_UnmappedCompositeArray()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TYPE pg_temp.deriveparameterscomposite3 AS (x int, some_text text)");
+                conn.ReloadTypes();
+
+                var expected = new[] {
+                    new SomeComposite { X = 8, SomeText = "foo" },
+                    new SomeComposite { X = 9, SomeText = "bar" }
+                };
+
+                using (var cmd = new NpgsqlCommand("SELECT @p1::deriveparameterscomposite3[]", conn))
+                {
+                    NpgsqlCommandBuilder.DeriveParameters(cmd);
+                    Assert.That(cmd.Parameters, Has.Count.EqualTo(1));
+                    Assert.That(cmd.Parameters[0].ParameterName, Is.EqualTo("p1"));
+                    Assert.That(cmd.Parameters[0].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Unknown));
+                    Assert.That(cmd.Parameters[0].PostgresType, Is.InstanceOf<PostgresArrayType>());
+                    Assert.That(cmd.Parameters[0].DataTypeName, Does.EndWith("_deriveparameterscomposite3"));
+                    var p1Element = ((PostgresArrayType)cmd.Parameters[0].PostgresType).Element;
+                    Assert.That(p1Element, Is.InstanceOf<PostgresCompositeType>());
+                    Assert.That(p1Element.Name, Is.EqualTo("deriveparameterscomposite3"));
+                    var p1Fields = ((PostgresCompositeType)p1Element).Fields;
+                    Assert.That(p1Fields[0].Name, Is.EqualTo("x"));
+                    Assert.That(p1Fields[1].Name, Is.EqualTo("some_text"));
+
+                    cmd.Parameters[0].Value = expected;
+                    using (var reader = cmd.ExecuteReader(CommandBehavior.SingleResult | CommandBehavior.SingleRow))
+                    {
+                        Assert.That(reader.Read(), Is.True);
+                        var ex = Assert.Throws<Exception>(() =>
+                            {
+                                reader.GetValue(0);
+                            });
+                        Assert.That(ex.Message, Does.Contain("deriveparameterscomposite3 contains field x which could not match any on CLR type Object"));
+                    }
+
+                }
             }
         }
 

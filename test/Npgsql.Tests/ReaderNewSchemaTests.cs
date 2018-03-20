@@ -648,25 +648,16 @@ namespace Npgsql.Tests
         {
             using (var conn = OpenConnection())
             {
-                using (var cmd = new NpgsqlCommand("SELECT postgis_version()", conn))
-                {
-                    try
-                    {
-                        cmd.ExecuteNonQuery();
-                    }
-                    catch (PostgresException)
-                    {
-                        TestUtil.IgnoreExceptOnBuildServer("PostGIS extension not installed.");
-                        return;
-                    }
-                }
+                TestUtil.MinimumPgVersion(conn, "9.1.0", "HSTORE data type not yet introduced");
+                conn.ExecuteNonQuery(@"CREATE EXTENSION IF NOT EXISTS hstore");
+                conn.ReloadTypes();
 
-                using (var cmd = new NpgsqlCommand("SELECT NULL::GEOMETRY", conn))
+                using (var cmd = new NpgsqlCommand("SELECT NULL::HSTORE", conn))
                 using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
                 {
                     var columns = reader.GetColumnSchema();
                     // The full datatype name for PostGIS is public.geometry (unlike int4 which is in pg_catalog).
-                    Assert.That(columns[0].NpgsqlDbType, Is.EqualTo(NpgsqlTypes.NpgsqlDbType.Geometry));
+                    Assert.That(columns[0].NpgsqlDbType, Is.EqualTo(NpgsqlTypes.NpgsqlDbType.Hstore));
                 }
             }
         }

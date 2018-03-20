@@ -153,16 +153,16 @@ namespace Npgsql.TypeHandlers
         #endregion
     }
 
-    class UnmappedEnumTypeHandlerFactory : NpgsqlTypeHandlerFactory<string>
+    class UnmappedEnumTypeHandlerFactory : NpgsqlTypeHandlerFactory<string>, IEnumTypeHandlerFactory
     {
-        readonly INpgsqlNameTranslator _nameTranslator;
-
         internal UnmappedEnumTypeHandlerFactory(INpgsqlNameTranslator nameTranslator)
         {
-            _nameTranslator = nameTranslator;
+            NameTranslator = nameTranslator;
         }
 
         protected override NpgsqlTypeHandler<string> Create(NpgsqlConnection conn)
-            => new UnmappedEnumHandler(_nameTranslator, conn);
+            => new UnmappedEnumHandler(NameTranslator, conn);
+
+        public INpgsqlNameTranslator NameTranslator { get; }
     }
 }

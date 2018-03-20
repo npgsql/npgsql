@@ -21,14 +21,12 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using System;
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
+using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using Npgsql.PostgresTypes;
-using Npgsql.TypeHandlers;
-using Npgsql.TypeHandlers.DateTimeHandlers;
-using Npgsql.TypeHandlers.NumericHandlers;
+using NpgsqlTypes;
 
 namespace Npgsql
 {
@@ -44,32 +42,11 @@ namespace Npgsql
 
     class PostgresMinimalDatabaseInfo : PostgresDatabaseInfo
     {
-        static readonly PostgresType[] Types = new[]
-        {
-            new PostgresBaseType("pg_catalog", "int4",        Int32Handler.TypeOID),
-            new PostgresBaseType("pg_catalog", "int2",        Int16Handler.TypeOID),
-            new PostgresBaseType("pg_catalog", "int8",        Int64Handler.TypeOID),
-            new PostgresBaseType("pg_catalog", "float4",      SingleHandler.TypeOID),
-            new PostgresBaseType("pg_catalog", "float8",      DoubleHandler.TypeOID),
-            new PostgresBaseType("pg_catalog", "numeric",     NumericHandler.TypeOID),
-            new PostgresBaseType("pg_catalog", "money",       MoneyHandler.TypeOID),
-
-            new PostgresBaseType("pg_catalog", "text",        TextHandler.TextTypeOID),
-            new PostgresBaseType("pg_catalog", "varchar",     TextHandler.VarcharTypeOID),
-            new PostgresBaseType("pg_catalog", "char",        TextHandler.CharTypeOID),
-            new PostgresBaseType("pg_catalog", "unknown",     TextHandler.UnknownTypeOID),
-
-            new PostgresBaseType("pg_catalog", "timestamp",   TimestampHandler.TypeOID),
-            new PostgresBaseType("pg_catalog", "timestamptz", TimestampTzHandler.TypeOID),
-            new PostgresBaseType("pg_catalog", "date",        DateHandler.TypeOID),
-            new PostgresBaseType("pg_catalog", "time",        TimeHandler.TypeOID),
-            new PostgresBaseType("pg_catalog", "timetz",      TimeTzHandler.TypeOID),
-            new PostgresBaseType("pg_catalog", "interval",    IntervalHandler.TypeOID),
-
-            new PostgresBaseType("pg_catalog", "bool",        BoolHandler.TypeOID),
-            new PostgresBaseType("pg_catalog", "bytea",       ByteaHandler.TypeOID),
-            new PostgresBaseType("pg_catalog", "uuid",        UuidHandler.TypeOID)
-        };
+        static readonly PostgresBaseType[] Types = typeof(NpgsqlDbType).GetFields()
+            .Select(f => f.GetCustomAttribute<BuiltInPostgresType>())
+            .Where(a => a != null)
+            .Select(a => new PostgresBaseType("pg_catalog", a.Name, a.OID))
+            .ToArray();
 
         protected override IEnumerable<PostgresType> GetTypes() => Types;
     }
