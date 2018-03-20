@@ -21,6 +21,7 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
+using GeoAPI;
 using GeoAPI.Geometries;
 using NetTopologySuite.Geometries;
 using Npgsql.Tests;
@@ -62,6 +63,7 @@ namespace Npgsql.PluginTests
 
         protected override NpgsqlConnection OpenConnection(string connectionString = null)
         {
+            NetTopologySuiteBootstrapper.Bootstrap();
             var conn = base.OpenConnection(connectionString);
             conn.TypeMapper.UseNetTopologySuite();
             return conn;
