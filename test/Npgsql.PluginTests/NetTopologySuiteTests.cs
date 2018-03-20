@@ -155,6 +155,7 @@ namespace Npgsql.PluginTests
         };
 
         [Test, TestCaseSource(nameof(Tests))]
+        [Ignore("Requires a fix if PostGisReader from NetTopologySuite.")]
         public void TestRead(TestData data)
         {
             using (var conn = OpenConnection())
@@ -166,6 +167,7 @@ namespace Npgsql.PluginTests
         }
 
         [Test, TestCaseSource(nameof(Tests))]
+        [Ignore("Requires a fix if PostGisReader from NetTopologySuite.")]
         public void TestWrite(TestData data)
         {
             using (var conn = OpenConnection())
@@ -178,6 +180,7 @@ namespace Npgsql.PluginTests
         }
 
         [Test]
+        [Ignore("Requires a fix if PostGisReader from NetTopologySuite.")]
         public void TestArrayRead()
         {
             using (var conn = OpenConnection())
@@ -191,6 +194,7 @@ namespace Npgsql.PluginTests
         }
 
         [Test]
+        [Ignore("Requires a fix if PostGisReader from NetTopologySuite.")]
         public void TestArrayWrite()
         {
             using (var conn = OpenConnection())
@@ -203,6 +207,7 @@ namespace Npgsql.PluginTests
         }
 
         [Test]
+        [Ignore("Requires a fix if PostGisReader from NetTopologySuite.")]
         public void ReadAsConcreteType()
         {
             using (var conn = OpenConnection())
