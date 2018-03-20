@@ -456,8 +456,13 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 {
                     var param = new NpgsqlParameter();
 
-                    // TODO: Fix enums, composite types
-                    param.NpgsqlDbType = c.Connection.Connector.TypeMapper.GetNpgsqlTypeByOid(types[i]);
+                    (var npgsqlDbType, var postgresType) =
+                        c.Connection.Connector.TypeMapper.GetTypeInfoByOid(types[i]);
+
+                    param.DataTypeName = postgresType.DisplayName;
+                    param.PostgresType = postgresType;
+                    if (npgsqlDbType.HasValue)
+                        param.NpgsqlDbType = npgsqlDbType.Value;
 
                     if (names != null && i < names.Length)
                         param.ParameterName = names[i];
@@ -517,15 +522,27 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                     for (var i = 0; i < paramTypeOIDs.Count; i++)
                     {
-                        var param = statement.InputParameters[i];
-                        var derivedType = connector.TypeMapper.GetNpgsqlTypeByOid(paramTypeOIDs[i]);
-                        if (param.NpgsqlDbType != NpgsqlDbType.Unknown && param.NpgsqlDbType != derivedType)
+                        try
+                        {
+                            var param = statement.InputParameters[i];
+                            var paramOid = paramTypeOIDs[i];
+
+                            (var npgsqlDbType, var postgresType) = connector.TypeMapper.GetTypeInfoByOid(paramOid);
+
+                            if (param.NpgsqlDbType != NpgsqlDbType.Unknown && param.NpgsqlDbType != npgsqlDbType)
+                                throw new NpgsqlException("The backend parser inferred different types for parameters with the same name. Please try explicit casting within your SQL statement or batch or use different placeholder names.");
+
+                            param.DataTypeName = postgresType.DisplayName;
+                            param.PostgresType = postgresType;
+                            if (npgsqlDbType.HasValue)
+                                param.NpgsqlDbType = npgsqlDbType.Value;
+                        }
+                        catch
                         {
                             connector.SkipUntil(BackendMessageCode.ReadyForQuery);
                             Parameters.Clear();
-                            throw new NpgsqlException("The backend parser inferred different types for parameters with the same name. Please try explicit casting within your SQL statement or batch or use different placeholder names.");
+                            throw;
                         }
-                        param.NpgsqlDbType = derivedType;
                     }
 
                     var msg = connector.ReadMessage();
@@ -1194,8 +1211,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                     //var reader = new NpgsqlDataReader(this, behavior, _statements, sendTask);
                     var reader = (behavior & CommandBehavior.SequentialAccess) == 0
-                        ? (NpgsqlDataReader)new NpgsqlDefaultDataReader(this, behavior, _statements, sendTask)
-                        : new NpgsqlSequentialDataReader(this, behavior, _statements, sendTask);
+                        ? (NpgsqlDataReader)connector.DefaultDataReader
+                        : connector.SequentialDataReader;
+                    reader.Init(this, behavior, _statements, sendTask);
                     connector.CurrentReader = reader;
                     if (async)
                         await reader.NextResultAsync(cancellationToken);

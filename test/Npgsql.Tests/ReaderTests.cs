@@ -914,6 +914,44 @@ LANGUAGE plpgsql VOLATILE";
             }
         }
 
+
+        [Test]
+        public void NullableScalar()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn))
+            {
+                var p1 = new NpgsqlParameter { ParameterName = "p1", Value = DBNull.Value, NpgsqlDbType = NpgsqlDbType.Smallint };
+                var p2 = new NpgsqlParameter { ParameterName = "p2", Value = (short)8 };
+                Assert.That(p2.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Smallint));
+                Assert.That(p2.DbType, Is.EqualTo(DbType.Int16));
+                cmd.Parameters.Add(p1);
+                cmd.Parameters.Add(p2);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+
+                    for (var i = 0; i < cmd.Parameters.Count; i++)
+                    {
+                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(short)));
+                        Assert.That(reader.GetDataTypeName(i), Is.EqualTo("int2"));
+                    }
+
+                    Assert.That(() => reader.GetFieldValue<object>(0), Throws.TypeOf<InvalidCastException>());
+                    Assert.That(() => reader.GetFieldValue<int>(0), Throws.TypeOf<InvalidCastException>());
+                    Assert.That(() => reader.GetFieldValue<int?>(0), Throws.Nothing);
+                    Assert.That(reader.GetFieldValue<int?>(0), Is.Null);
+
+                    Assert.That(() => reader.GetFieldValue<object>(1), Throws.Nothing);
+                    Assert.That(() => reader.GetFieldValue<int>(1), Throws.Nothing);
+                    Assert.That(() => reader.GetFieldValue<int?>(1), Throws.Nothing);
+                    Assert.That(reader.GetFieldValue<object>(1), Is.EqualTo(8));
+                    Assert.That(reader.GetFieldValue<int>(1), Is.EqualTo(8));
+                    Assert.That(reader.GetFieldValue<int?>(1), Is.EqualTo(8));
+                }
+            }
+        }
+
         #region GetBytes / GetStream
 
         [Test]
@@ -1224,6 +1262,30 @@ LANGUAGE plpgsql VOLATILE";
                 Assert.That(() => reader.GetChars(0, 0, buf, 0, 1), Throws.Exception.TypeOf<InvalidCastException>(), "GetChars");
                 Assert.That(() => reader.GetTextReader(0), Throws.Exception.TypeOf<InvalidCastException>(), "GetTextReader");
                 Assert.That(() => reader.GetChars(0, 0, null, 0, 0), Throws.Exception.TypeOf<InvalidCastException>(), "GetChars with null buffer");
+            }
+        }
+
+        [Test]
+        public void ReaderIsReused()
+        {
+            using (var conn = OpenConnection())
+            {
+                NpgsqlDataReader reader1;
+
+                using (var cmd = new NpgsqlCommand("SELECT 8", conn))
+                using (reader1 = cmd.ExecuteReader(Behavior))
+                {
+                    reader1.Read();
+                    Assert.That(reader1.GetInt32(0), Is.EqualTo(8));
+                }
+
+                using (var cmd = new NpgsqlCommand("SELECT 9", conn))
+                using (var reader2 = cmd.ExecuteReader(Behavior))
+                {
+                    Assert.That(reader2, Is.SameAs(reader1));
+                    reader2.Read();
+                    Assert.That(reader2.GetInt32(0), Is.EqualTo(9));
+                }
             }
         }
 

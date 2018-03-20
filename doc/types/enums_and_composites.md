@@ -2,7 +2,10 @@
 
 PostgreSQL supports [enum types](http://www.postgresql.org/docs/current/static/datatype-enum.html) and [composite types](http://www.postgresql.org/docs/current/static/rowtypes.html) as database columns, and Npgsql supports reading and writing these. This allows you to seamlessly read and write enum and composite values to the database without worrying about conversions.
 
-As of version 3.3, you're no longer required to map your enums and composites in order to use them. Here's a quick code sample to get you started:
+> [!NOTE]
+> If you're using version 3.2, skip to "Mapping your CLR Types" below.
+
+As of version 4.0 (currently in preview), you're no longer required to map your enums and composites in order to use them. Here's a quick code sample to get you started:
 
 ```c#
 // Writing
@@ -82,6 +85,9 @@ enum SomeEnum {
 ```
 
 ## Reading and Writing Dynamically (without CLR types)
+
+> [!NOTE] 
+> This feature is only available in Npgsql 4.0, which is currently in preview. 
 
 In some cases, it may be desirable to interact with PostgreSQL enums and composites without a pre-existing CLR type - this is useful mainly if your program doesn't know the database schema and types in advance, and needs to interact with any enum/composite type. Note that using CLR types is safer and faster (for composites), and should be preferred when possible.
 

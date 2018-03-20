@@ -22,15 +22,17 @@
 #endregion
 
 using System;
-using System.Linq;
 using System.Diagnostics;
+using System.Linq;
 using System.Text.RegularExpressions;
+using Npgsql.LegacyPostgis;
+using Npgsql.Tests;
 using NpgsqlTypes;
 using NUnit.Framework;
 
-namespace Npgsql.Tests.Types
+namespace Npgsql.PluginTests
 {
-    class PostgisTests : TestBase
+    class LegacyPostgisTests : TestBase
     {
         public class TestAtt
         {
@@ -233,47 +235,6 @@ namespace Npgsql.Tests.Types
             }
         }
 
-        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1121")]
-        public void AsBinaryWkb()
-        {
-            using (var conn = OpenConnection())
-            {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo GEOMETRY)");
-                var point = new PostgisPoint(8, 8);
-
-                using (var cmd = new NpgsqlCommand("INSERT INTO data (foo) VALUES (@p)", conn))
-                {
-                    cmd.Parameters.AddWithValue("p", NpgsqlDbType.Geometry, point);
-                    cmd.ExecuteNonQuery();
-                }
-
-                byte[] bytes;
-                using (var cmd = new NpgsqlCommand("SELECT foo FROM data", conn))
-                using (var reader = cmd.ExecuteReader())
-                {
-                    reader.Read();
-                    bytes = reader.GetFieldValue<byte[]>(0);
-
-                    var length = (int)reader.GetBytes(0, 0, null, 0, 0);
-                    var buffer = new byte[length];
-                    reader.GetBytes(0, 0, buffer, 0, length);
-
-                    Assert.That(buffer, Is.EqualTo(bytes));
-                }
-
-                conn.ExecuteNonQuery("TRUNCATE data");
-
-                using (var cmd = new NpgsqlCommand("INSERT INTO data (foo) VALUES (@p)", conn))
-                {
-                    cmd.Parameters.AddWithValue("p", NpgsqlDbType.Geometry, bytes);
-                    cmd.ExecuteNonQuery();
-                }
-
-                Assert.That(conn.ExecuteScalar("SELECT foo FROM data"), Is.EqualTo(point));
-                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
-            }
-        }
-
         [Test, TestCaseSource(nameof(Tests)), IssueLink("https://github.com/npgsql/npgsql/issues/1260")]
         public void CopyBinary(TestAtt a)
         {
@@ -288,7 +249,7 @@ namespace Npgsql.Tests.Types
                     {
                         for (var i = 0; i < 1000; i++)
                             writer.WriteRow(a.Geom);
-                        writer.Commit();
+                        writer.Complete();
                     }
                 }
                 catch (Exception e)
@@ -329,7 +290,7 @@ namespace Npgsql.Tests.Types
                     {
                         for (var i = 0; i < 1000; i++)
                             writer.WriteRow(new[] { t });
-                        writer.Commit();
+                        writer.Complete();
                     }
                 }
                 catch(Exception e)
@@ -434,6 +395,13 @@ namespace Npgsql.Tests.Types
                 cmd.Parameters.AddWithValue("p", collection);
                 cmd.ExecuteNonQuery();
             }
+        }
+
+        protected override NpgsqlConnection OpenConnection(string connectionString = null)
+        {
+            var conn = base.OpenConnection(connectionString);
+            conn.TypeMapper.UseLegacyPostgis();
+            return conn;
         }
 
         [OneTimeSetUp]

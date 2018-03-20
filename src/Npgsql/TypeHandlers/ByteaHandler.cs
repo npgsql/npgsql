@@ -36,10 +36,9 @@ namespace Npgsql.TypeHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-binary.html
     /// </remarks>
     [TypeMapping("bytea", NpgsqlDbType.Bytea, DbType.Binary, new[] { typeof(byte[]), typeof(ArraySegment<byte>) })]
-    class ByteaHandler : NpgsqlTypeHandler<byte[]>, INpgsqlTypeHandler<ArraySegment<byte>>
+    public class ByteaHandler : NpgsqlTypeHandler<byte[]>, INpgsqlTypeHandler<ArraySegment<byte>>
     {
-        internal const uint TypeOID = 17;
-
+        /// <inheritdoc />
         public override async ValueTask<byte[]> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
         {
             var bytes = new byte[len];
@@ -64,16 +63,19 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
+        /// <inheritdoc />
         public override int ValidateAndGetLength(byte[] value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
             => parameter == null || parameter.Size <= 0 || parameter.Size >= value.Length
                     ? value.Length
                     : parameter.Size;
 
+        /// <inheritdoc />
         public int ValidateAndGetLength(ArraySegment<byte> value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
             => parameter == null || parameter.Size <= 0 || parameter.Size >= value.Count
                 ? value.Count
                 : parameter.Size;
 
+        /// <inheritdoc />
         public override async Task Write(byte[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter, bool async)
         {
             var len = parameter == null || parameter.Size <= 0 || parameter.Size >= value.Length
@@ -93,6 +95,7 @@ namespace Npgsql.TypeHandlers
             buf.DirectWrite(value, 0, len);
         }
 
+        /// <inheritdoc />
         public async Task Write(ArraySegment<byte> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter, bool async)
         {
             if (!(parameter == null || parameter.Size <= 0 || parameter.Size >= value.Count))

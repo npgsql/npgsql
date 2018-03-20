@@ -22,45 +22,26 @@
 #endregion
 
 using System;
-using System.Diagnostics;
 using System.Threading.Tasks;
-using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.TypeHandling;
-using Npgsql.TypeMapping;
-using NpgsqlTypes;
 
-namespace Npgsql.TypeHandlers
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+
+namespace Npgsql.LegacyPostgis
 {
-    /// <summary>
-    /// Type Handler for the postgis geometry type.
-    /// </summary>
-    [TypeMapping("geometry", NpgsqlDbType.Geometry, new[]
+    public class PostgisLegacyHandlerFactory : NpgsqlTypeHandlerFactory<PostgisGeometry>
     {
-        typeof(PostgisGeometry),
-        typeof(PostgisPoint),
-        typeof(PostgisMultiPoint),
-        typeof(PostgisLineString),
-        typeof(PostgisMultiLineString),
-        typeof(PostgisPolygon),
-        typeof(PostgisMultiPolygon),
-        typeof(PostgisGeometryCollection),
-    })]
-    class PostgisGeometryHandler : NpgsqlTypeHandler<PostgisGeometry>,
+        protected override NpgsqlTypeHandler<PostgisGeometry> Create(NpgsqlConnection conn)
+            => new PostgisLegacyHandler();
+    }
+
+    class PostgisLegacyHandler : NpgsqlTypeHandler<PostgisGeometry>,
         INpgsqlTypeHandler<PostgisPoint>, INpgsqlTypeHandler<PostgisMultiPoint>,
         INpgsqlTypeHandler<PostgisLineString>, INpgsqlTypeHandler<PostgisMultiLineString>,
         INpgsqlTypeHandler<PostgisPolygon>, INpgsqlTypeHandler<PostgisMultiPolygon>,
-        INpgsqlTypeHandler<PostgisGeometryCollection>,
-        INpgsqlTypeHandler<byte[]>
+        INpgsqlTypeHandler<PostgisGeometryCollection>
     {
-        [CanBeNull]
-        readonly ByteaHandler _byteaHandler;
-
-        public PostgisGeometryHandler()
-        {
-            _byteaHandler = new ByteaHandler();
-        }
-
         #region Read
 
         public override async ValueTask<PostgisGeometry> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
@@ -194,12 +175,6 @@ namespace Npgsql.TypeHandlers
             default:
                 throw new InvalidOperationException("Unknown Postgis identifier.");
             }
-        }
-
-        ValueTask<byte[]> INpgsqlTypeHandler<byte[]>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
-        {
-            Debug.Assert(_byteaHandler != null);
-            return _byteaHandler.Read(buf, len, async, fieldDescription);
         }
 
         #endregion Read
@@ -416,11 +391,6 @@ namespace Npgsql.TypeHandlers
 
         public Task Write(PostgisGeometryCollection value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
             => Write((PostgisGeometry)value, buf, lengthCache, parameter, async);
-
-        public Task Write(byte[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-            => _byteaHandler == null
-                ? throw new NpgsqlException("Bytea handler was not found during initialization of PostGIS handler")
-                : _byteaHandler.Write(value, buf, lengthCache, parameter, async);
 
         #endregion Write
     }

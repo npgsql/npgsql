@@ -76,7 +76,9 @@ namespace Npgsql.FrontendMessages
                 4 +                        // Message length
                 1 +                        // Portal is always empty (only a null terminator)
                 Statement.Length + 1 +
-                2;                         // Number of parameter format codes that follow
+                2 +                        // Number of parameter format codes that follow
+                2 +                        // "List" of parameter format codes (always 1, we only support binary)
+                2;                         // Number of parameters
 
             if (buf.WriteSpaceLeft < headerLength)
             {
@@ -84,55 +86,31 @@ namespace Npgsql.FrontendMessages
                 await buf.Flush(async);
             }
 
-            var formatCodesSum = 0;
             var paramsLength = 0;
             foreach (var p in InputParameters)
             {
-                formatCodesSum += (int)p.FormatCode;
                 p.LengthCache?.Rewind();
                 paramsLength += p.ValidateAndGetLength();
             }
 
-            var formatCodeListLength = formatCodesSum == 0 ? 0 : formatCodesSum == InputParameters.Count ? 1 : InputParameters.Count;
-
             var messageLength = headerLength +
-                2 * formatCodeListLength + // List of format codes
-                2 +                         // Number of parameters
                 4 * InputParameters.Count +                                     // Parameter lengths
                 paramsLength +                                                  // Parameter values
                 2 +                                                             // Number of result format codes
                 2 * (UnknownResultTypeList?.Length ?? 1);                       // Result format codes
 
+            // Write the header
             buf.WriteByte(Code);
             buf.WriteInt32(messageLength - 1);
             Debug.Assert(Portal == string.Empty);
             buf.WriteByte(0);  // Portal is always empty
-            
+
             buf.WriteNullTerminatedString(Statement);
-            buf.WriteInt16(formatCodeListLength);
-
-            // 0 length implicitly means all-text, 1 means all-binary, >1 means mix-and-match
-            if (formatCodeListLength == 1)
-            {
-                if (buf.WriteSpaceLeft < 2)
-                    await buf.Flush(async);
-                buf.WriteInt16((short)FormatCode.Binary);
-            }
-            else if (formatCodeListLength > 1)
-            {
-                foreach (var p in InputParameters)
-                {
-                    if (buf.WriteSpaceLeft < 2)
-                        await buf.Flush(async);
-                    buf.WriteInt16((short)p.FormatCode);
-                }
-            }
-
-            if (buf.WriteSpaceLeft < 2)
-                await buf.Flush(async);
-
+            buf.WriteInt16(1);                          // Number of format codes
+            buf.WriteInt16((short)FormatCode.Binary);   // Binary format code for all parameters, always
             buf.WriteInt16(InputParameters.Count);
 
+            // Write the rest of the message
             foreach (var param in InputParameters)
             {
                 param.LengthCache?.Rewind();

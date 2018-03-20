@@ -22,29 +22,20 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Threading;
 using System.Threading.Tasks;
-using JetBrains.Annotations;
+using Npgsql.BackendMessages;
+using Npgsql.TypeHandlers;
+using Npgsql.TypeHandling;
 
-namespace Npgsql.BackendMessages
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+
+namespace Npgsql.LegacyPostgis
 {
-    /// <summary>
-    /// DataRow is special in that it does not parse the actual contents of the backend message,
-    /// because in sequential mode the message will be traversed and processed sequentially by
-    /// <see cref="NpgsqlSequentialDataReader"/>.
-    /// </summary>
-    class DataRowMessage : IBackendMessage
+    public class PostgisRawHandlerFactory : NpgsqlTypeHandlerFactory<byte[]>
     {
-        public BackendMessageCode Code => BackendMessageCode.DataRow;
-
-        internal int Length { get; private set; }
-
-        internal DataRowMessage Load(int len)
-        {
-            Length = len;
-            return this;
-        }
+        protected override NpgsqlTypeHandler<byte[]> Create(NpgsqlConnection conn)
+            => new PostgisRawHandler();
     }
+
+    class PostgisRawHandler : ByteaHandler {}
 }

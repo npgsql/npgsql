@@ -31,12 +31,12 @@ using NpgsqlTypes;
 namespace Npgsql
 {
     /// <summary>
-    /// Extension allowing adding the NodaTime plugin to an Npgsql type mapper.
+    /// Extension adding the NodaTime plugin to an Npgsql type mapper.
     /// </summary>
     public static class NpgsqlNodatimeExtensions
     {
         /// <summary>
-        /// Sets up NodaTime mappings for the PostgreSQL json and jsonb types.
+        /// Sets up NodaTime mappings for the PostgreSQL date/time types.
         /// </summary>
         /// <param name="mapper">The type mapper to set up (global or connection-specific)</param>
         public static INpgsqlTypeMapper UseNodatime(this INpgsqlTypeMapper mapper)

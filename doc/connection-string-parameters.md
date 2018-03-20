@@ -44,6 +44,7 @@ Parameter keywords are case-insensitive.
 | Command Timeout          | The time to wait (in seconds) while trying to execute a command before terminating the attempt and generating an error. Set to zero for infinity. | 30 |
 | Internal Command Timeout | The time to wait (in seconds) while trying to execute a an internal command before terminating the attempt and generating an error. -1 uses CommandTimeout, 0 means no timeout. | -1 |
 | Keepalive                | The number of seconds of connection inactivity before Npgsql sends a keepalive query. | disabled |
+| Tcp Keepalive            | Whether to use TCP keepalive with system defaults if overrides isn't specified. | disabled |
 | Tcp Keepalive Time       | The number of milliseconds of connection inactivity before a TCP keepalive query is sent. Use of this option is discouraged, use KeepAlive instead if possible. Supported only on Windows. | disabled |
 | Tcp Keepalive Interval   | The interval, in milliseconds, between when successive keep-alive packets are sent if no acknowledgement is received. TcpKeepAliveTime must be non-zero as well. Supported only on Windows. | value of TcpKeepAliveTime |
 
@@ -65,7 +66,7 @@ Parameter keywords are case-insensitive.
 | Parameter                | Description                                                                                     | Default   |
 |--------------------------|-------------------------------------------------------------------------------------------------|-----------|
 | Application Name         | The optional application name parameter to be sent to the backend during connection initiation. |           |
-| Enlist                   | Whether to enlist in an ambient TransactionScope.                                               | false     |
+| Enlist                   | Whether to enlist in an ambient TransactionScope.                                               | true      |
 | Search Path              | Sets the schema search path.                                                                    |           |
 | Client Encoding          | Gets or sets the client_encoding parameter. Since 3.1.                                          |           |
 | Timezone                 | Gets or sets the session timezone, PGTZ environment variable can be used instead. Since 3.3.    |           |
