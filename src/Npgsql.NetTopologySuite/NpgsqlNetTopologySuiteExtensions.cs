@@ -48,12 +48,14 @@ namespace Npgsql
             this INpgsqlTypeMapper mapper,
             ICoordinateSequenceFactory coordinateSequenceFactory = null,
             IPrecisionModel precisionModel = null,
-            Ordinates handleOrdinates = Ordinates.XYZM)
+            Ordinates handleOrdinates = Ordinates.None)
         {
             if (coordinateSequenceFactory == null)
                 coordinateSequenceFactory = GeometryServiceProvider.Instance.DefaultCoordinateSequenceFactory;
             if (precisionModel == null)
                 precisionModel = GeometryServiceProvider.Instance.DefaultPrecisionModel;
+            if (handleOrdinates == Ordinates.None)
+                handleOrdinates = coordinateSequenceFactory.Ordinates;
             return mapper
                 .AddMapping(new NpgsqlTypeMappingBuilder
                 {
