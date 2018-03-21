@@ -296,23 +296,46 @@ namespace Npgsql.Tests.Types
             }
         }
 
-        [Test, Description("Roundtrips a generic IList as an array")]
+        [Test, Description("Roundtrips a generic List as an array")]
         // ReSharper disable once InconsistentNaming
         public void IListGeneric()
         {
             using (var conn = OpenConnection())
             using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn))
             {
-                var expected = new[] {1, 2, 3};
-                var p1 = new NpgsqlParameter {ParameterName = "p1", Value = expected.ToList()};
-                var p2 = new NpgsqlParameter {ParameterName = "p2", Value = expected.ToList()};
+                var expected = new[] { 1, 2, 3 }.ToList();
+                var p1 = new NpgsqlParameter { ParameterName = "p1", Value = expected };
+                var p2 = new NpgsqlParameter { ParameterName = "p2", Value = expected };
                 cmd.Parameters.Add(p1);
                 cmd.Parameters.Add(p2);
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
-                    Assert.That(reader[0], Is.EqualTo(expected.ToArray()));
-                    Assert.That(reader[1], Is.EqualTo(expected.ToArray()));
+                    Assert.That(reader.GetValue(0), Is.EqualTo(expected));
+                    Assert.That(reader.GetFieldValue<List<int>>(1), Is.EqualTo(expected));
+                }
+            }
+        }
+
+        [Test, Description("Tests for failure when reading a generic IList from a multidimensional array")]
+        // ReSharper disable once InconsistentNaming
+        public void IListGenericFailsForMultidimensionalArray()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT @p1", conn))
+            {
+                var expected = new[,] { { 1, 2 }, { 3, 4 } };
+                var p1 = new NpgsqlParameter { ParameterName = "p1", Value = expected };
+                cmd.Parameters.Add(p1);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetValue(0), Is.EqualTo(expected));
+                    var exception = Assert.Throws<NotSupportedException>(() =>
+                    {
+                        reader.GetFieldValue<List<int>>(0);
+                    });
+                    Assert.That(exception.Message, Is.EqualTo("Can't read multidimensional array as List<Int32>"));
                 }
             }
         }
