@@ -91,18 +91,30 @@ namespace Npgsql.TypeHandlers
         {
             // TODO: Throw SafeReadExceptions
             var t = typeof(TArray);
-            if (!t.IsArray)
-                throw new InvalidCastException($"Can't cast database type {PgDisplayName} to {typeof(TArray).Name}");
 
             // Getting an array
+            if (t.IsArray)
+            {
+                var elementType = t.GetElementType();
+                // We need to treat this as an actual array type, these need special treatment because of
+                // typing/generics reasons (there is no way to express "array of X" with generics
+                if (elementType == GetElementFieldType())
+                    return (TArray)await ReadAsObject(buf, len, async, fieldDescription);
+                if (elementType == GetElementPsvType())
+                    return (TArray)await ReadPsvAsObject(buf, len, async, fieldDescription);
+            }
 
-            // We need to treat this as an actual array type, these need special treatment because of
-            // typing/generics reasons (there is no way to express "array of X" with generics
-            var elementType = t.GetElementType();
-            if (elementType == GetElementFieldType())
-                return (TArray)await ReadAsObject(buf, len, async, fieldDescription);
-            if (elementType == GetElementPsvType())
-                return (TArray)await ReadPsvAsObject(buf, len, async, fieldDescription);
+            if (t.IsGenericType
+                     && t.GetGenericTypeDefinition() == typeof(List<>))
+            {
+                var elementType = t.GetGenericArguments()[0];
+                if (elementType == GetElementFieldType())
+                    return (TArray)t.GetConstructor(new[]{typeof(IEnumerable<>).MakeGenericType(elementType)})
+                        .Invoke(new[] { await ReadAsObject(buf, len, async, fieldDescription) });
+                if (elementType == GetElementPsvType())
+                    return (TArray)t.GetConstructor(new[]{typeof(IEnumerable<>).MakeGenericType(elementType)})
+                        .Invoke(new[] { await ReadPsvAsObject(buf, len, async, fieldDescription) });
+            }
             throw new InvalidCastException($"Can't cast database type {PgDisplayName} to {typeof(TArray).Name}");
         }
 
