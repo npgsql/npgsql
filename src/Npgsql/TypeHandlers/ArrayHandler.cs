@@ -108,12 +108,24 @@ namespace Npgsql.TypeHandlers
                      && t.GetGenericTypeDefinition() == typeof(List<>))
             {
                 var elementType = t.GetGenericArguments()[0];
+                Array array = null;
                 if (elementType == GetElementFieldType())
+                {
+                    array = (Array)await ReadAsObject(buf, len, async, fieldDescription);
+                }
+                else if (elementType == GetElementPsvType())
+                {
+                    array = (Array)await ReadPsvAsObject(buf, len, async, fieldDescription);
+                }
+
+                if (array != null)
+                {
+                    if (array.Rank != 1)
+                        throw new InvalidCastException($"Can't cast multidimensional array {array.GetType().Name} to {typeof(TArray).Name}");
+
                     return (TArray)t.GetConstructor(new[]{typeof(IEnumerable<>).MakeGenericType(elementType)})
-                        .Invoke(new[] { await ReadAsObject(buf, len, async, fieldDescription) });
-                if (elementType == GetElementPsvType())
-                    return (TArray)t.GetConstructor(new[]{typeof(IEnumerable<>).MakeGenericType(elementType)})
-                        .Invoke(new[] { await ReadPsvAsObject(buf, len, async, fieldDescription) });
+                        .Invoke(new[] { array });
+                }
             }
             throw new InvalidCastException($"Can't cast database type {PgDisplayName} to {typeof(TArray).Name}");
         }
