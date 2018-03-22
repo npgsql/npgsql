@@ -12,7 +12,7 @@ cache:
   - '%USERPROFILE%\.nuget\packages -> **\*.csproj'
   - 'C:\projects\npgsql\packages -> **\*.csproj'  # For VSIX
   - $(POSTGIS_EXE)
-shallow_clone: true
+clone_depth: 10
 install:
   - powershell .build\setup-pg.ps1
 services:
