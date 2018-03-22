@@ -289,8 +289,8 @@ namespace Npgsql
                         var item = _internalList[i];
 
                         // Store only the first of each distinct value
-                        if (!_lookup.ContainsKey(item.ParameterName))
-                            _lookup.Add(item.ParameterName, i);
+                        if (!_lookup.ContainsKey(item.TrimmedName))
+                            _lookup.Add(item.TrimmedName, i);
                     }
                 }
 
@@ -307,8 +307,8 @@ namespace Npgsql
                         var item = _internalList[i];
 
                         // Store only the first of each distinct value
-                        if (!_lookupIgnoreCase.ContainsKey(item.ParameterName))
-                            _lookupIgnoreCase.Add(item.ParameterName, i);
+                        if (!_lookupIgnoreCase.ContainsKey(item.TrimmedName))
+                            _lookupIgnoreCase.Add(item.TrimmedName, i);
                     }
                 }
 
@@ -321,12 +321,12 @@ namespace Npgsql
 
             // First try a case-sensitive match
             for (var i = 0; i < _internalList.Count; i++)
-                if (parameterName == _internalList[i].ParameterName)
+                if (parameterName == _internalList[i].TrimmedName)
                     return i;
 
             // If not fond, try a case-insensitive match
             for (var i = 0; i < _internalList.Count; i++)
-                if (string.Equals(parameterName, _internalList[i].ParameterName, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(parameterName, _internalList[i].TrimmedName, StringComparison.OrdinalIgnoreCase))
                     return i;
 
             return -1;

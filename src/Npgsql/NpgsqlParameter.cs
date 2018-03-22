@@ -52,13 +52,15 @@ namespace Npgsql
         internal NpgsqlDbType? _npgsqlDbType;
         internal DbType? _dbType;
         [CanBeNull]
-        internal     string _dataTypeName;
+        internal string _dataTypeName;
         // ReSharper restore InconsistentNaming
         [CanBeNull]
         Type _specificType;
         string _name = string.Empty;
         [CanBeNull]
         object _value;
+
+        internal string TrimmedName { get; private set; } = string.Empty;
 
         /// <summary>
         /// Can be used to communicate a value from the validation phase to the writing phase.
@@ -267,11 +269,17 @@ namespace Npgsql
             set
             {
                 // ReSharper disable once ConditionIsAlwaysTrueOrFalse
-                _name = value == null
-                    ? string.Empty
-                    : value.Length > 0 && (value[0] == ':' || value[0] == '@')
-                        ? value.Substring(1)
-                        : value;
+                if (value == null)
+                {
+                    _name = TrimmedName = string.Empty;
+                }
+                else if (value.Length > 0 && (value[0] == ':' || value[0] == '@'))
+                {
+                    TrimmedName = value.Substring(1);
+                    _name = value;
+                }
+                else
+                    _name = TrimmedName = value;
 
                 Collection?.InvalidateHashLookups();
             }

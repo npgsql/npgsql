@@ -739,7 +739,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 var hasWrittenFirst = false;
                 for (var i = 1; i <= numInput; i++) {
                     var param = inputList[i - 1];
-                    if (param.ParameterName == "")
+                    if (param.TrimmedName == "")
                     {
                         if (hasWrittenFirst)
                             sb.Append(',');
@@ -751,12 +751,12 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 for (var i = 1; i <= numInput; i++)
                 {
                     var param = inputList[i - 1];
-                    if (param.ParameterName != "")
+                    if (param.TrimmedName != "")
                     {
                         if (hasWrittenFirst)
                             sb.Append(',');
                         sb.Append('"');
-                        sb.Append(param.ParameterName.Replace("\"", "\"\""));
+                        sb.Append(param.TrimmedName.Replace("\"", "\"\""));
                         sb.Append("\" := ");
                         sb.Append('$');
                         sb.Append(i);

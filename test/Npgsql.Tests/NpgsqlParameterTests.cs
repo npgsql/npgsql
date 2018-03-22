@@ -598,6 +598,10 @@ namespace Npgsql.Tests
 #endif
 
         [Test]
+        public void ParameterNameRetainsPrefix()
+            => Assert.That(new NpgsqlParameter("@p", DbType.String).ParameterName, Is.EqualTo("@p"));
+
+        [Test]
         [Ignore("")]
         public void SourceColumn()
         {
