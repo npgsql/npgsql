@@ -29,8 +29,8 @@ build_script:
   - dotnet build "src\Npgsql.NodaTime" -c Release
   - dotnet build "test\Npgsql.Tests" -c Debug -f net451
   - dotnet build "test\Npgsql.PluginTests" -c Debug -f net451
-  - msbuild src\VSIX\VSIX.csproj /p:Configuration=Release
-  - msbuild src\MSI\MSI.wixproj /p:Configuration=Release
+#  - msbuild src\VSIX\VSIX.csproj /p:Configuration=Release
+#  - msbuild src\MSI\MSI.wixproj /p:Configuration=Release
 after_build:
   - ps: $env:padded_build_number = $env:appveyor_build_number.PadLeft(5, '0')
   - dotnet pack src\Npgsql\Npgsql.csproj -c ReleaseOptimizedCryptography --version-suffix ci-%PADDED_BUILD_NUMBER%
