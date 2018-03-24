@@ -25,9 +25,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Npgsql.NodaTime", "src\Npgs
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Npgsql.PluginTests", "test\Npgsql.PluginTests\Npgsql.PluginTests.csproj", "{9BD7FC3D-6956-42A8-A586-2558C499EBA2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Npgsql.LegacyPostgis", "src\Npgsql.LegacyPostgis\Npgsql.LegacyPostgis.csproj", "{D96CC113-7D64-4B31-9DCC-13FDE92C1ECE}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Npgsql.LegacyPostgis", "src\Npgsql.LegacyPostgis\Npgsql.LegacyPostgis.csproj", "{D96CC113-7D64-4B31-9DCC-13FDE92C1ECE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Npgsql.RawPostgis", "src\Npgsql.RawPostgis\Npgsql.RawPostgis.csproj", "{5BF3516D-5559-46A8-8362-0F4D931EEAB9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Npgsql.RawPostgis", "src\Npgsql.RawPostgis\Npgsql.RawPostgis.csproj", "{5BF3516D-5559-46A8-8362-0F4D931EEAB9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
