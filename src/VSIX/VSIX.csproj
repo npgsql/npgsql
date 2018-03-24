@@ -219,6 +219,9 @@
     <Reference Include="Npgsql">
       <HintPath>..\Npgsql\bin\$(Configuration)\net451\Npgsql.dll</HintPath>
     </Reference>
+    <Reference Include="System.Runtime.CompilerServices.Unsafe">
+      <HintPath>..\Npgsql\bin\$(Configuration)\net451\System.Runtime.CompilerServices.Unsafe.dll</HintPath>
+    </Reference>
     <Reference Include="System.Threading.Tasks.Extensions">
       <HintPath>..\Npgsql\bin\$(Configuration)\net451\System.Threading.Tasks.Extensions.dll</HintPath>
     </Reference>
