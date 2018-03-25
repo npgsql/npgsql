@@ -104,31 +104,45 @@ namespace Npgsql.TypeHandlers
                     return (TArray)await ReadPsvAsObject(buf, len, async, fieldDescription);
             }
 
+            if (t == typeof(List<TElement>))
+                return (TArray)await ReadAsList<TElement>(buf, async);
+
             if (t.IsGenericType
-                     && t.GetGenericTypeDefinition() == typeof(List<>))
+                && t.GetGenericTypeDefinition() == typeof(List<>)
+                && t.GenericTypeArguments[0] == GetElementPsvType())
             {
-                var elementType = t.GetGenericArguments()[0];
-                Array array = null;
-                if (elementType == GetElementFieldType())
-                {
-                    array = (Array)await ReadAsObject(buf, len, async, fieldDescription);
-                }
-                else if (elementType == GetElementPsvType())
-                {
-                    array = (Array)await ReadPsvAsObject(buf, len, async, fieldDescription);
-                }
-
-                if (array != null)
-                {
-                    if (array.Rank != 1)
-                        throw new InvalidCastException($"Can't cast multidimensional array {array.GetType().Name} to {typeof(TArray).Name}");
-
-                    return (TArray)t.GetConstructor(new[]{typeof(IEnumerable<>).MakeGenericType(elementType)})
-                        .Invoke(new[] { array });
-                }
+                return (TArray)await ReadPsvAsList(buf, async);
             }
-            throw new InvalidCastException($"Can't cast database type {PgDisplayName} to {typeof(TArray).Name}");
+                throw new InvalidCastException($"Can't cast database type {PgDisplayName} to {typeof(TArray).Name}");
         }
+
+        protected async ValueTask<object> ReadAsList<TElement2>(NpgsqlReadBuffer buf, bool async)
+        {
+            await buf.Ensure(12, async);
+            var dimensions = buf.ReadInt32();
+
+            if (dimensions == 0)
+                return new List<TElement2>();
+            if (dimensions > 1)
+                throw new NotSupportedException($"Can't read multidimensional array as List<{typeof(TElement2).Name}>");
+
+            buf.ReadInt32();        // Has nulls. Not populated by PG?
+            var elementOID = buf.ReadUInt32();
+            // The following should hold but fails in test CopyTests.ReadBitString
+            //Debug.Assert(elementOID == ElementHandler.BackendType.OID);
+
+            await buf.Ensure(8, async);
+            var length = buf.ReadInt32();
+            buf.ReadInt32(); // We don't care about the lower bounds
+
+            var list = new List<TElement2>(length);
+            for (var i = 0; i < length; i++)
+                list.Add(await ElementHandler.ReadWithLength<TElement2>(buf, async));
+            return list;
+        }
+
+        protected internal virtual ValueTask<object> ReadPsvAsList(NpgsqlReadBuffer buf, bool async)
+            => throw new NotSupportedException();
 
         internal override object ReadAsObject(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription)
             => ReadAsObject(buf, len, false, fieldDescription).Result;
@@ -376,6 +390,9 @@ namespace Npgsql.TypeHandlers
 
         internal override async ValueTask<object> ReadPsvAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
             => await Read<TElementPsv>(buf, async);
+
+        protected internal override ValueTask<object> ReadPsvAsList(NpgsqlReadBuffer buf, bool async)
+            => ReadAsList<TElementPsv>(buf, async);
 
         public ArrayHandlerWithPsv(NpgsqlTypeHandler elementHandler)
             : base(elementHandler) {}

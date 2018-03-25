@@ -331,11 +331,11 @@ namespace Npgsql.Tests.Types
                 {
                     reader.Read();
                     Assert.That(reader.GetValue(0), Is.EqualTo(expected));
-                    var exception = Assert.Throws<InvalidCastException>(() =>
+                    var exception = Assert.Throws<NotSupportedException>(() =>
                     {
                         reader.GetFieldValue<List<int>>(0);
                     });
-                    Assert.That(exception.Message, Is.EqualTo("Can't cast multidimensional array Int32[,] to List`1"));
+                    Assert.That(exception.Message, Is.EqualTo("Can't read multidimensional array as List<Int32>"));
                 }
             }
         }
