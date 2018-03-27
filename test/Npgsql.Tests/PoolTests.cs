@@ -164,7 +164,7 @@ namespace Npgsql.Tests
         }
 
         //[Test, Timeout(10000)]
-        [Explicit("Flaky")]
+        //[Explicit("Timing-based")]
         public async Task CancelOpenAsync()
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString) {
@@ -176,20 +176,28 @@ namespace Npgsql.Tests
             {
                 await conn1.OpenAsync();
 
+                Assert.True(PoolManager.TryGetValue(connString, out var pool));
+                AssertPoolState(pool, 0, 1, 0);
+
                 // Pool is exhausted
                 using (var conn2 = new NpgsqlConnection(connString))
                 {
                     var cts = new CancellationTokenSource(1000);
-                    Assert.That(async () => await conn2.OpenAsync(cts.Token), Throws.Exception.TypeOf<TaskCanceledException>());
+                    var openTask = conn2.OpenAsync(cts.Token);
+                    AssertPoolState(pool, 0, 1, 1);
+                    Assert.That(async () => await openTask, Throws.Exception.TypeOf<TaskCanceledException>());
                 }
 
                 // The cancelled open attempt should have left a cancelled task completion source
-                // in the pool's wait queue. Make sure that's so
+                // in the pool's wait queue. Close our busy connection and make sure everything work as planned.
+                AssertPoolState(pool, 0, 1, 0);
                 using (var conn2 = new NpgsqlConnection(connString))
+                using (new Timer(o => conn1.Close(), null, 1000, Timeout.Infinite))
                 {
-                    new Timer(o => conn1.Close(), null, 1000, Timeout.Infinite);
                     await conn2.OpenAsync();
+                    AssertPoolState(pool, 0, 1, 0);
                 }
+                AssertPoolState(pool, 1, 0, 0);
             }
         }
 
@@ -214,8 +222,8 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test, NonParallelizable]
-        [Explicit("Flaky, based on timing")]
+        //[Test, NonParallelizable]
+        //[Explicit("Flaky, based on timing")]
         public void PruneIdleConnectors()
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
