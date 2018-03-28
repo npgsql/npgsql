@@ -21,25 +21,24 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using System;
-using System.ComponentModel;
-using System.Data;
-using System.Data.Common;
-using System.Diagnostics;
-using System.Reflection;
-using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
+using System;
+using System.ComponentModel;
+using System.Data;
+using System.Data.Common;
+using System.Diagnostics;
+using System.Threading.Tasks;
 
 namespace Npgsql
 {
     ///<summary>
     /// This class represents a parameter to a command that will be sent to server
     ///</summary>
-    public class NpgsqlParameter : DbParameter, ICloneable
+    public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     {
         #region Fields and Properties
 
@@ -423,7 +422,7 @@ namespace Npgsql
         [Category("Data")]
         public sealed override ParameterDirection Direction { get; set; }
 
-        // Implementation of IDbDataParameter
+#pragma warning disable CS0109
         /// <summary>
         /// Gets or sets the maximum number of digits used to represent the
         /// <see cref="NpgsqlParameter.Value">Value</see> property.
@@ -434,14 +433,7 @@ namespace Npgsql
         /// sets the precision for <b>Value</b>.</value>
         [DefaultValue((byte)0)]
         [Category("Data")]
-#if NET45
-// In mono .NET 4.5 is actually a later version, meaning that virtual Precision and Scale already exist in DbParameter
-#pragma warning disable CS0114
-        public byte Precision
-#pragma warning restore CS0114
-#else
-        public sealed override byte Precision
-#endif
+        public new byte Precision
         {
             get => _precision;
             set
@@ -459,14 +451,7 @@ namespace Npgsql
         /// <see cref="NpgsqlParameter.Value">Value</see> is resolved. The default is 0.</value>
         [DefaultValue((byte)0)]
         [Category("Data")]
-#if NET45
-// In mono .NET 4.5 is actually a later version, meaning that virtual Precision and Scale already exist in DbParameter
-#pragma warning disable CS0114
-        public byte Scale
-#pragma warning restore CS0114
-#else
-        public sealed override byte Scale
-#endif
+        public new byte Scale
         {
             get => _scale;
             set
@@ -475,6 +460,7 @@ namespace Npgsql
                 Handler = null;
             }
         }
+#pragma warning restore CS0109
 
         /// <inheritdoc />
         [DefaultValue(0)]
