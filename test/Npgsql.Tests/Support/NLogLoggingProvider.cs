@@ -28,7 +28,7 @@ using System.Text;
 using NLog;
 using Npgsql.Logging;
 
-namespace Npgsql.Tests
+namespace Npgsql.Tests.Support
 {
     class NLogLoggingProvider : INpgsqlLoggingProvider
     {
