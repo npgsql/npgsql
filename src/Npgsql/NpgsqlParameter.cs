@@ -38,9 +38,9 @@ namespace Npgsql
     /// This class represents a parameter to a command that will be sent to server
     ///</summary>
 #if NETSTANDARD1_3
-    public sealed class NpgsqlParameter : DbParameter
+    public sealed class NpgsqlParameter : DbParameter, IDbDataParameter
 #else
-    public sealed class NpgsqlParameter : DbParameter, ICloneable
+    public sealed class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
 #endif
     {
         #region Fields and Properties
@@ -312,7 +312,7 @@ namespace Npgsql
         [Category("Data")]
         public override ParameterDirection Direction { get; set; }
 
-        // Implementation of IDbDataParameter
+#pragma warning disable CS0109
         /// <summary>
         /// Gets or sets the maximum number of digits used to represent the
         /// <see cref="NpgsqlParameter.Value">Value</see> property.
@@ -323,14 +323,7 @@ namespace Npgsql
         /// sets the precision for <b>Value</b>.</value>
         [DefaultValue((byte)0)]
         [Category("Data")]
-#if NET45
-// In mono .NET 4.5 is actually a later version, meaning that virtual Precision and Scale already exist in DbParameter
-#pragma warning disable CS0114
-        public byte Precision
-#pragma warning restore CS0114
-#else
-        public override byte Precision
-#endif
+        public new byte Precision
         {
             get { return _precision; }
             set
@@ -348,14 +341,7 @@ namespace Npgsql
         /// <see cref="NpgsqlParameter.Value">Value</see> is resolved. The default is 0.</value>
         [DefaultValue((byte)0)]
         [Category("Data")]
-#if NET45
-// In mono .NET 4.5 is actually a later version, meaning that virtual Precision and Scale already exist in DbParameter
-#pragma warning disable CS0114
-        public byte Scale
-#pragma warning restore CS0114
-#else
-        public override byte Scale
-#endif
+        public new byte Scale
         {
             get { return _scale; }
             set
@@ -364,6 +350,7 @@ namespace Npgsql
                 ClearBind();
             }
         }
+#pragma warning restore CS0109
 
         /// <summary>
         /// Gets or sets the maximum size, in bytes, of the data within the column.
