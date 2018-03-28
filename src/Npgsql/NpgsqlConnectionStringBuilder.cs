@@ -788,7 +788,7 @@ namespace Npgsql
         [Description("The time to wait (in seconds) while trying to establish a connection before terminating the attempt and generating an error.")]
         [DisplayName("Timeout")]
         [NpgsqlConnectionStringProperty]
-        [DefaultValue(15)]
+        [DefaultValue(DefaultTimeout)]
         public int Timeout
         {
             get => _timeout;
@@ -802,6 +802,8 @@ namespace Npgsql
             }
         }
         int _timeout;
+
+        internal const int DefaultTimeout = 15;
 
         /// <summary>
         /// The time to wait (in seconds) while trying to execute a command before terminating the attempt and generating an error.

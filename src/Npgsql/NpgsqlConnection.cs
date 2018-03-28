@@ -61,12 +61,12 @@ namespace Npgsql
         /// <summary>
         /// The connection string, without the password after open (unless Persist Security Info=true)
         /// </summary>
-        string _userFacingConnectionString;
+        string _userFacingConnectionString = string.Empty;
 
         /// <summary>
         /// The original connection string provided by the user, including the password.
         /// </summary>
-        string _connectionString;
+        string _connectionString = string.Empty;
 
         internal string OriginalConnectionString => _connectionString;
 
@@ -79,7 +79,9 @@ namespace Npgsql
         /// <summary>
         /// The parsed connection string set by the user
         /// </summary>
-        internal NpgsqlConnectionStringBuilder Settings { get; private set; }
+        internal NpgsqlConnectionStringBuilder Settings { get; private set; } = DefaultSettings;
+
+        static readonly NpgsqlConnectionStringBuilder DefaultSettings = new NpgsqlConnectionStringBuilder();
 
         [CanBeNull]
         ConnectorPool _pool;

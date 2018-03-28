@@ -498,6 +498,15 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test]
+        public void EmptyCtor()
+        {
+            var conn = new NpgsqlConnection();
+            Assert.That(conn.ConnectionTimeout, Is.EqualTo(NpgsqlConnectionStringBuilder.DefaultTimeout));
+            Assert.That(conn.ConnectionString, Is.SameAs(string.Empty));
+            Assert.That(() => conn.Open(), Throws.Exception.TypeOf<ArgumentException>());
+        }
+
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/703")]
         public void NoDatabaseDefaultsToUsername()
         {
