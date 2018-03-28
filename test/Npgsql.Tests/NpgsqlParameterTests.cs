@@ -173,7 +173,7 @@ namespace Npgsql.Tests
         [Test]
         public void Constructor2_Value_Null()
         {
-            var p = new NpgsqlParameter("address", (object) null);
+            var p = new NpgsqlParameter("address", (object)null);
             Assert.AreEqual(DbType.Object, p.DbType, "A:DbType");
             Assert.AreEqual(ParameterDirection.Input, p.Direction, "A:Direction");
             Assert.IsFalse(p.IsNullable, "A:IsNullable");
@@ -457,7 +457,7 @@ namespace Npgsql.Tests
             Assert.AreEqual(DbType.Int32, p.DbType, "#D1");
             Assert.AreEqual(NpgsqlDbType.Integer, p.NpgsqlDbType, "#D2");
 #endif
-            p.Value = new byte[] {0x0a};
+            p.Value = new byte[] { 0x0a };
             Assert.AreEqual(DbType.Binary, p.DbType, "#E1");
             Assert.AreEqual(NpgsqlDbType.Bytea, p.NpgsqlDbType, "#E2");
             p.Value = null;
@@ -657,7 +657,7 @@ namespace Npgsql.Tests
             using (var command = new NpgsqlCommand())
             {
                 // Put plenty of parameters in the collection to turn on hash lookup functionality.
-                for (var i = 0 ; i < 10 ; i++)
+                for (var i = 0; i < 10; i++)
                 {
                     command.Parameters.AddWithValue(string.Format("p{0:00}", i + 1), NpgsqlDbType.Text, string.Format("String parameter value {0}", i + 1));
                 }
@@ -686,7 +686,6 @@ namespace Npgsql.Tests
         [Test]
         public void NpgsqlParameterCloneTest()
         {
-
             var param = new NpgsqlParameter();
 
             param.Value = 5;
@@ -730,6 +729,50 @@ namespace Npgsql.Tests
             // These should not throw exceptions
             Assert.AreEqual(0, command.Parameters.IndexOf(""));
             Assert.AreEqual("", param.ParameterName);
+        }
+
+        [Test]
+        public void PrecisionViaInterface()
+        {
+            var parameter = new NpgsqlParameter();
+            var paramIface = (IDbDataParameter)parameter;
+
+            paramIface.Precision = 42;
+
+            Assert.AreEqual((byte)42, paramIface.Precision);
+        }
+
+        [Test]
+        public void PrecisionViaBaseClass()
+        {
+            var parameter = new NpgsqlParameter();
+            var paramBase = (DbParameter)parameter;
+
+            paramBase.Precision = 42;
+
+            Assert.AreEqual((byte)42, paramBase.Precision);
+        }
+
+        [Test]
+        public void ScaleViaInterface()
+        {
+            var parameter = new NpgsqlParameter();
+            var paramIface = (IDbDataParameter)parameter;
+
+            paramIface.Scale = 42;
+
+            Assert.AreEqual((byte)42, paramIface.Scale);
+        }
+
+        [Test]
+        public void ScaleViaBaseClass()
+        {
+            var parameter = new NpgsqlParameter();
+            var paramBase = (DbParameter)parameter;
+
+            paramBase.Scale = 42;
+
+            Assert.AreEqual((byte)42, paramBase.Scale);
         }
     }
 }
