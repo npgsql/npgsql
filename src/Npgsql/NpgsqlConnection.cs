@@ -137,7 +137,10 @@ namespace Npgsql
         /// <see cref="NpgsqlConnection">NpgsqlConnection</see> class.
         /// </summary>
         public NpgsqlConnection()
-            => GC.SuppressFinalize(this);
+        {
+            GC.SuppressFinalize(this);
+            Settings = new NpgsqlConnectionStringBuilder();
+        }
 
         /// <summary>
         /// Initializes a new instance of <see cref="NpgsqlConnection"/> with the given connection string.
