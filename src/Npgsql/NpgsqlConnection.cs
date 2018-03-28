@@ -240,6 +240,7 @@ namespace Npgsql
             if (mapper.ChangeCounter != TypeMapping.GlobalTypeMapper.Instance.ChangeCounter)
                 mapper.Reset();
 
+            Debug.Assert(Connector.Connection != null, "Open done but connector not set on Connection");
             Log.Debug("Connection opened", Connector.Id);
             OnStateChange(new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open));
             return PGUtil.CompletedTask;
@@ -283,7 +284,10 @@ namespace Npgsql
                             // to a distributed transaction.
                             Connector = _pool.TryAllocateEnlistedPending(Transaction.Current);
                             if (Connector != null)
+                            {
+                                Connector.Connection = this;
                                 EnlistedTransaction = transaction;
+                            }
                         }
 
                         if (Connector == null)
@@ -314,6 +318,7 @@ namespace Npgsql
                 Connector = null;
                 throw;
             }
+            Debug.Assert(Connector.Connection != null, "Open done but connector not set on Connection");
             Log.Debug("Connection opened", Connector.Id);
             OnStateChange(ClosedToOpenEventArgs);
         }
