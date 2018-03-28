@@ -22,11 +22,7 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
@@ -333,6 +329,23 @@ namespace Npgsql.Tests
             }.ToString();
             using (var conn = new NpgsqlConnection(connString))
                 NpgsqlConnection.ClearPool(conn);
+        }
+
+        [Test, Description("https://github.com/npgsql/npgsql/commit/45e33ecef21f75f51a625c7b919a50da3ed8e920#r28239653")]
+        public void PhysicalOpenFailure()
+        {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) {
+                ApplicationName = nameof(PhysicalOpenFailure),
+                Port = 44444,
+                MaxPoolSize = 1
+            }.ToString();
+            using (var conn = new NpgsqlConnection(connString))
+            {
+                for (var i = 0; i < 1; i++)
+                    Assert.That(() => conn.Open(), Throws.Exception.TypeOf<SocketException>());
+                Assert.True(PoolManager.TryGetValue(connString, out var pool));
+                AssertPoolState(pool, 0, 0);
+            }
         }
 
         void AssertPoolState(ConnectorPool pool, int idle, int busy, int waiting=0)

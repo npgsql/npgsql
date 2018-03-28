@@ -91,6 +91,12 @@ namespace Npgsql
             internal int Total => Idle + Busy;
 
             internal PoolState Copy() => new PoolState { All = Volatile.Read(ref All) };
+
+            public override string ToString()
+            {
+                var state = Copy();
+                return $"[{state.Total} total, {state.Idle} idle, {state.Busy} busy, {state.Waiting} waiting]";
+            }
         }
 
         internal PoolState State;
@@ -230,9 +236,64 @@ namespace Npgsql
                         continue;
                     }
 
-                    // We've managed to increase the busy counter, open a physical connections
-                    connector = new NpgsqlConnector(conn) { ClearCounter = _clearCounter };
-                    await connector.Open(timeout, async, cancellationToken);
+                    try
+                    {
+                        // We've managed to increase the busy counter, open a physical connections
+                        connector = new NpgsqlConnector(conn) { ClearCounter = _clearCounter };
+                        await connector.Open(timeout, async, cancellationToken);
+                    }
+                    catch
+                    {
+                        // Physical open failed, decrement busy back down
+                        var sw = new SpinWait();
+                        while (true)
+                        {
+                            state = State.Copy();
+                            newState = state;
+                            newState.Busy--;
+                            if (Interlocked.CompareExchange(ref State.All, newState.All, state.All) != state.All)
+                            {
+                                // Our attempt to increment the busy count failed, Loop again and retry.
+                                sw.SpinOnce();
+                                continue;
+                            }
+
+                            break;
+                        }
+
+                        // There may be waiters because we raised the busy count (and failed). Release one
+                        // waiter if there is one.
+                        if (_waiting.TryDequeue(out var waitingOpenAttempt))
+                        {
+                            var tcs = waitingOpenAttempt.TaskCompletionSource;
+
+                            // We have a pending open attempt. "Complete" it, handing off the connector.
+                            if (waitingOpenAttempt.IsAsync)
+                            {
+                                // If the waiting open attempt is asynchronous (i.e. OpenAsync()), we can't simply
+                                // call SetResult on its TaskCompletionSource, since it would execute the open's
+                                // continuation in our thread (the closing thread). Instead we schedule the completion
+                                // to run in the thread pool via Task.Run().
+
+                                // TODO: When we drop support for .NET Framework 4.5, switch to RunContinuationsAsynchronously
+#pragma warning disable 4014
+                                Task.Run(() =>
+                                {
+                                    if (!tcs.TrySetResult(null))
+                                    {
+                                        // TODO: Release more??
+                                    }
+                                });
+#pragma warning restore 4014
+                            }
+                            else if (!tcs.TrySetResult(null)) // Open attempt is sync
+                            {
+                                // TODO: Release more??
+                            }
+                        }
+
+                        throw;
+                    }
 
                     Counters.NumberOfActiveConnections.Increment();
                     Counters.NumberOfPooledConnections.Increment();
@@ -331,6 +392,12 @@ namespace Npgsql
 
                         Debug.Assert(tcs.Task.IsCompleted);
                         connector = tcs.Task.Result;
+
+                        // Our task completion may contain a null in order to unblock us, allowing us to try
+                        // allocating again.
+                        if (connector == null)
+                            continue;
+
                         // Note that we don't update counters or any state since the connector is being
                         // handed off from one open connection to another.
                         connector.Connection = conn;
@@ -620,11 +687,7 @@ namespace Npgsql
 
         public void Dispose() => _pruningTimer?.Dispose();
 
-        public override string ToString()
-        {
-            var state = State.Copy();
-            return $"[{state.Total} total, {state.Idle} idle, {state.Busy} busy, {state.Waiting} waiting]";
-        }
+        public override string ToString() => State.ToString();
 
         #endregion Misc
     }
