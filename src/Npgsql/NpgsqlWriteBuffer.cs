@@ -38,7 +38,7 @@ namespace Npgsql
     /// A buffer used by Npgsql to write data to the socket efficiently.
     /// Provides methods which encode different values types and tracks the current position.
     /// </summary>
-    public sealed class NpgsqlWriteBuffer
+    public sealed partial class NpgsqlWriteBuffer
     {
         #region Fields and Properties
 
