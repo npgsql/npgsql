@@ -67,6 +67,9 @@ namespace Npgsql
 
         int _writePosition;
 
+        [CanBeNull]
+        ParameterStream _parameterStream;
+
         /// <summary>
         /// The minimum buffer size possible.
         /// </summary>
@@ -388,6 +391,15 @@ namespace Npgsql
         #endregion
 
         #region Write Complex
+
+        public Stream GetStream()
+        {
+            if (_parameterStream == null)
+                _parameterStream = new ParameterStream(this);
+
+            _parameterStream.Init();
+            return _parameterStream;
+        }
 
         internal void WriteStringChunked(char[] chars, int charIndex, int charCount,
                                          bool flush, out int charsUsed, out bool completed)
