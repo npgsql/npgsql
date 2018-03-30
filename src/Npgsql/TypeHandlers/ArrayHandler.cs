@@ -113,7 +113,8 @@ namespace Npgsql.TypeHandlers
             {
                 return (TArray)await ReadPsvAsList(buf, async);
             }
-                throw new InvalidCastException($"Can't cast database type {PgDisplayName} to {typeof(TArray).Name}");
+
+            throw new InvalidCastException($"Can't cast database type {PgDisplayName} to {typeof(TArray).Name}");
         }
 
         protected async ValueTask<object> ReadAsList<TElement2>(NpgsqlReadBuffer buf, bool async)
@@ -126,10 +127,8 @@ namespace Npgsql.TypeHandlers
             if (dimensions > 1)
                 throw new NotSupportedException($"Can't read multidimensional array as List<{typeof(TElement2).Name}>");
 
-            buf.ReadInt32();        // Has nulls. Not populated by PG?
-            var elementOID = buf.ReadUInt32();
-            // The following should hold but fails in test CopyTests.ReadBitString
-            //Debug.Assert(elementOID == ElementHandler.BackendType.OID);
+            buf.ReadInt32();  // Has nulls. Not populated by PG?
+            buf.ReadUInt32(); // Element OID. Ignored.
 
             await buf.Ensure(8, async);
             var length = buf.ReadInt32();
@@ -142,7 +141,7 @@ namespace Npgsql.TypeHandlers
         }
 
         protected internal virtual ValueTask<object> ReadPsvAsList(NpgsqlReadBuffer buf, bool async)
-            => throw new NotSupportedException();
+            => ReadAsList<TElement>(buf, async);
 
         internal override object ReadAsObject(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription)
             => ReadAsObject(buf, len, false, fieldDescription).Result;
