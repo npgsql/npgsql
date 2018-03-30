@@ -33,6 +33,7 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests
 {
+    [NonParallelizable]
     class PoolTests : TestBase
     {
         [Test]
@@ -100,7 +101,7 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test, Timeout(10000)]
+        //[Test, Explicit, Timeout(10000)]
         public async Task GetConnectorFromExhaustedPoolAsync()
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
@@ -115,10 +116,8 @@ namespace Npgsql.Tests
 
                 // Pool is exhausted
                 using (var conn2 = new NpgsqlConnection(connString))
-                {
-                    new Timer(o => conn1.Close(), null, 1000, Timeout.Infinite);
+                using (new Timer(o => conn1.Close(), null, 1000, Timeout.Infinite))
                     await conn2.OpenAsync();
-                }
             }
         }
 
