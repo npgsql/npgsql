@@ -387,6 +387,8 @@ namespace Npgsql
         internal bool IsClosed => State == ConnectorState.Closed;
         internal bool IsBroken => State == ConnectorState.Broken;
 
+        bool _isConnecting;
+
         #endregion
 
         #region Open
@@ -404,6 +406,7 @@ namespace Npgsql
             if (string.IsNullOrWhiteSpace(Host))
                 throw new ArgumentException("Host can't be null");
 
+            _isConnecting = true;
             State = ConnectorState.Connecting;
 
             try {
@@ -439,6 +442,12 @@ namespace Npgsql
                 Counters.NumberOfNonPooledConnections.Increment();
                 Counters.HardConnectsPerSecond.Increment();
                 Log.Trace($"Opened connection to {Host}:{Port}");
+
+                // If an exception occurs during open, Break() below shouldn't close the connection, which would also
+                // update pool state. Instead we let the exception propagate and get handled by the calling pool code.
+                // We use an extra state flag because the connector's State varies during the type loading query
+                // above (Executing, Fetching...). Note also that Break() gets called from ReadMessageLong().
+                _isConnecting = false;
             }
             catch
             {
@@ -1389,22 +1398,20 @@ namespace Npgsql
                     return;
 
                 Log.Error("Breaking connector", Id);
-                var prevState = State;
                 State = ConnectorState.Broken;
                 var conn = Connection;
                 Cleanup();
 
                 // We have no connection if we're broken by a keepalive occuring while the connector is in the pool
-                if (conn != null)
+                // When we break, we normally need to call into NpgsqlConnection to reset its state.
+                // The exception to this is when we're connecting, in which case the exception bubbles up and
+                // try/catch above takes care of everything.
+                if (conn != null && !_isConnecting)
                 {
-                    // When we break, we normally need to call into NpgsqlConnection to reset its state.
-                    // The exception to this is when we're connecting, in which case the try/catch in NpgsqlConnection.Open
-                    // will handle things.
-                    // Note also that the connection's full state is usually calculated from the connector's, but in
+                    // Note that the connection's full state is usually calculated from the connector's, but in
                     // states closed/broken the connector is null. We therefore need a way to distinguish between
                     // Closed and Broken on the connection.
-                    if (prevState != ConnectorState.Connecting)
-                        conn.Close(true);
+                     conn.Close(true);
                 }
             }
         }
