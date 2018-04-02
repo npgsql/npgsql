@@ -11,8 +11,8 @@
     <ProjectReference Include="../../src/Npgsql.Json.NET/Npgsql.Json.NET.csproj" />
     <ProjectReference Include="../../src/Npgsql.NodaTime/Npgsql.NodaTime.csproj" />
     <ProjectReference Include="../Npgsql.Tests/Npgsql.Tests.csproj" />
-    <ProjectReference Include="../../src\Npgsql.LegacyPostgis\Npgsql.LegacyPostgis.csproj" />
-    <ProjectReference Include="../../src\Npgsql.RawPostgis\Npgsql.RawPostgis.csproj" />
+    <ProjectReference Include="../../src/Npgsql.LegacyPostgis/Npgsql.LegacyPostgis.csproj" />
+    <ProjectReference Include="../../src/Npgsql.RawPostgis/Npgsql.RawPostgis.csproj" />
     <ProjectReference Include="../../src/Npgsql.NetTopologySuite/Npgsql.NetTopologySuite.csproj" />
   </ItemGroup>
   <ItemGroup>
