@@ -177,6 +177,9 @@ namespace Npgsql
                     connector = Interlocked.Exchange(ref _idle[i], null);
                 }
 
+                if (connector == null)
+                    return false;
+
                 Counters.NumberOfFreeConnections.Decrement();
 
                 // An connector could be broken because of a keepalive that occurred while it was

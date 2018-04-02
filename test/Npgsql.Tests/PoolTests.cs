@@ -22,6 +22,7 @@
 #endregion
 
 using System;
+using System.Linq;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
@@ -347,6 +348,34 @@ namespace Npgsql.Tests
                 AssertPoolState(pool, 0, 0);
             }
         }
+
+        //[Test, Explicit]
+        [TestCase(10, 10, 30)]
+        [TestCase(10, 20, 30)]
+        public void ExercisePool(int maxPoolSize, int numTasks, int seconds)
+        {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) {
+                ApplicationName = nameof(ExercisePool),
+                MaxPoolSize = maxPoolSize
+            }.ToString();
+
+            Console.WriteLine($"Spinning up {numTasks} parallel tasks for {seconds} seconds (MaxPoolSize={maxPoolSize})...");
+            StopFlag = 0;
+            var tasks = Enumerable.Range(0, numTasks).Select(i => Task.Run(async () =>
+            {
+                while (StopFlag == 0)
+                    using (var conn = new NpgsqlConnection(connString))
+                        conn.Open();
+            })).ToArray();
+
+            Thread.Sleep(seconds * 1000);
+            Interlocked.Exchange(ref StopFlag, 1);
+            Console.WriteLine("Stopped. Waiting for all tasks to stop...");
+            Task.WaitAll(tasks);
+            Console.WriteLine("Done");
+        }
+
+        volatile int StopFlag;
 
         void AssertPoolState(ConnectorPool pool, int idle, int busy, int waiting=0)
         {
