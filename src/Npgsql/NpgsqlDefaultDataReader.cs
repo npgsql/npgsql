@@ -33,46 +33,6 @@ namespace Npgsql
         internal override ValueTask<IBackendMessage> ReadMessage(bool async)
             => Connector.ReadMessage(async);
 
-        protected override Task<bool> Read(bool async)
-        {
-            // This is an optimized execution path that avoids calling any async methods for the (usual)
-            // case where the next row (or CommandComplete) is already in memory.
-
-            if ((Behavior & CommandBehavior.SingleRow) != 0)
-                return base.Read(async);
-
-            switch (State)
-            {
-            case ReaderState.BeforeResult:
-                // First Read() after NextResult. Data row has already been processed.
-                State = ReaderState.InResult;
-                return PGUtil.TrueTask;
-            case ReaderState.InResult:
-                ConsumeRow(false);
-                break;
-            case ReaderState.BetweenResults:
-            case ReaderState.Consumed:
-            case ReaderState.Closed:
-                return PGUtil.FalseTask;
-            }
-
-            var readBuf = Connector.ReadBuffer;
-            if (readBuf.ReadBytesLeft < 5)
-                return base.Read(async);
-            var messageCode = (BackendMessageCode)readBuf.ReadByte();
-            var len = readBuf.ReadInt32() - 4;  // Transmitted length includes itself
-            if (messageCode != BackendMessageCode.DataRow || readBuf.ReadBytesLeft < len)
-            {
-                readBuf.ReadPosition -= 5;
-                return base.Read(async);
-            }
-
-            var msg = Connector.ParseServerMessage(readBuf, messageCode, len, false);
-            ProcessMessage(msg);
-            return msg.Code == BackendMessageCode.DataRow
-                ? PGUtil.TrueTask : PGUtil.FalseTask;
-        }
-
         protected override Task<bool> NextResult(bool async, bool isConsuming=false)
         {
             var task = base.NextResult(async, isConsuming);

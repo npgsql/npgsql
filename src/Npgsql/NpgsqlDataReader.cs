@@ -165,44 +165,84 @@ namespace Npgsql
         /// <summary>
         /// Implementation of read
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        protected virtual async Task<bool> Read(bool async)
+        Task<bool> Read(bool async)
         {
+            // This is an optimized execution path that avoids calling any async methods for the (usual)
+            // case where the next row (or CommandComplete) is already in memory.
+
+            if ((Behavior & CommandBehavior.SingleRow) != 0)
+                return ReadLong();
+
             switch (State)
             {
             case ReaderState.BeforeResult:
                 // First Read() after NextResult. Data row has already been processed.
                 State = ReaderState.InResult;
-                return true;
-
+                return PGUtil.TrueTask;
             case ReaderState.InResult:
-                await ConsumeRow(async);
-                if ((Behavior & CommandBehavior.SingleRow) != 0)
-                {
-                    // TODO: See optimization proposal in #410
-                    await Consume(async);
-                    return false;
-                }
+                ConsumeRow(false);
                 break;
-
             case ReaderState.BetweenResults:
             case ReaderState.Consumed:
             case ReaderState.Closed:
-                return false;
-            default:
-                throw new ArgumentOutOfRangeException();
+                return PGUtil.FalseTask;
             }
 
-            try
+            var readBuf = Connector.ReadBuffer;
+            if (readBuf.ReadBytesLeft < 5)
+                return ReadLong();
+            var messageCode = (BackendMessageCode)readBuf.ReadByte();
+            var len = readBuf.ReadInt32() - 4;  // Transmitted length includes itself
+            if (messageCode != BackendMessageCode.DataRow || readBuf.ReadBytesLeft < len)
             {
-                var msg = await ReadMessage(async);
-                ProcessMessage(msg);
-                return msg.Code == BackendMessageCode.DataRow;
+                readBuf.ReadPosition -= 5;
+                return ReadLong();
             }
-            catch (PostgresException)
+
+            var msg = Connector.ParseServerMessage(readBuf, messageCode, len, false);
+            ProcessMessage(msg);
+            return msg.Code == BackendMessageCode.DataRow
+                ? PGUtil.TrueTask : PGUtil.FalseTask;
+
+            // If the above fast-path failed, we call into this async slow path
+            async Task<bool> ReadLong()
             {
-                State = ReaderState.Consumed;
-                throw;
+                switch (State)
+                {
+                case ReaderState.BeforeResult:
+                    // First Read() after NextResult. Data row has already been processed.
+                    State = ReaderState.InResult;
+                    return true;
+
+                case ReaderState.InResult:
+                    await ConsumeRow(async);
+                    if ((Behavior & CommandBehavior.SingleRow) != 0)
+                    {
+                        // TODO: See optimization proposal in #410
+                        await Consume(async);
+                        return false;
+                    }
+                    break;
+
+                case ReaderState.BetweenResults:
+                case ReaderState.Consumed:
+                case ReaderState.Closed:
+                    return false;
+                default:
+                    throw new ArgumentOutOfRangeException();
+                }
+
+                try
+                {
+                    var msg2 = await ReadMessage(async);
+                    ProcessMessage(msg2);
+                    return msg2.Code == BackendMessageCode.DataRow;
+                }
+                catch (PostgresException)
+                {
+                    State = ReaderState.Consumed;
+                    throw;
+                }
             }
         }
 
