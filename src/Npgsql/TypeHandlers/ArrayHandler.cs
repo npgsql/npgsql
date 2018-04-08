@@ -31,9 +31,11 @@ using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.TypeHandling;
 
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+
 namespace Npgsql.TypeHandlers
 {
-    abstract class ArrayHandler : NpgsqlTypeHandler<Array>
+    public abstract class ArrayHandler : NpgsqlTypeHandler<Array>
     {
         internal abstract Type GetElementFieldType(FieldDescription fieldDescription = null);
         internal abstract Type GetElementPsvType(FieldDescription fieldDescription = null);
@@ -47,7 +49,7 @@ namespace Npgsql.TypeHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/arrays.html
     /// </remarks>
-    class ArrayHandler<TElement> : ArrayHandler
+    public class ArrayHandler<TElement> : ArrayHandler
     {
         /// <summary>
         /// The lower bound value sent to the backend when writing arrays. Normally 1 (the PG default) but
