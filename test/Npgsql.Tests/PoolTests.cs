@@ -350,9 +350,11 @@ namespace Npgsql.Tests
         }
 
         //[Test, Explicit]
-        [TestCase(10, 10, 30)]
-        [TestCase(10, 20, 30)]
-        public void ExercisePool(int maxPoolSize, int numTasks, int seconds)
+        //[TestCase(10, 10, 30, true)]
+        //[TestCase(10, 10, 30, false)]
+        //[TestCase(10, 20, 30, true)]
+        //[TestCase(10, 20, 30, false)]
+        public void ExercisePool(int maxPoolSize, int numTasks, int seconds, bool async)
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString) {
                 ApplicationName = nameof(ExercisePool),
@@ -365,7 +367,12 @@ namespace Npgsql.Tests
             {
                 while (StopFlag == 0)
                     using (var conn = new NpgsqlConnection(connString))
-                        conn.Open();
+                    {
+                        if (async)
+                            await conn.OpenAsync();
+                        else
+                            conn.Open();
+                    }
             })).ToArray();
 
             Thread.Sleep(seconds * 1000);
