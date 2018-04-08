@@ -838,6 +838,24 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test]
+        public void SendUnknown([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT @p::TIMESTAMP", conn))
+            {
+                cmd.CommandText = "SELECT @p::TIMESTAMP";
+                cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Unknown) { Value = "2008-1-1" });
+                if (prepare == PrepareOrNot.Prepared)
+                    cmd.Prepare();
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetValue(0), Is.EqualTo(new DateTime(2008, 1, 1)));
+                }
+            }
+        }
+
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/503")]
         public void InvalidUTF8()
         {

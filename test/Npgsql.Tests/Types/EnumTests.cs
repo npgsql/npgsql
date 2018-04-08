@@ -386,6 +386,42 @@ namespace Npgsql.Tests.Types
             }
         }
 
+        [Test, Description("Test that a c# string can be written to a backend enum when DbType is unknown")]
+        public void WriteStringToBackendEnum()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TYPE pg_temp.fruit AS ENUM ('Banana', 'Apple', 'Orange')");
+                conn.ExecuteNonQuery("create table pg_temp.test_fruit ( id serial, value1 pg_temp.fruit, value2 pg_temp.fruit );");
+                conn.ReloadTypes();
+                const string expected = "Banana";
+                using (var cmd = new NpgsqlCommand("insert into pg_temp.test_fruit(id, value1, value2) values(default, @p1, @p2);", conn))
+                {
+                    cmd.Parameters.AddWithValue("p2", NpgsqlDbType.Unknown, expected);
+                    var p2 = new NpgsqlParameter("p1", NpgsqlDbType.Unknown) {Value = expected};
+                    cmd.Parameters.Add(p2);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
+        [Test, Description("Tests that a a C# enum an be written to an enum backend when passed as dbUnknown")]
+        public void WriteEnumAsDbUnknwown()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TYPE pg_temp.mood8 AS ENUM ('Sad', 'Ok', 'Happy')");
+                conn.ExecuteNonQuery("CREATE TABLE pg_temp.test_mood_writes (value1 pg_temp.mood8)");
+                conn.ReloadTypes();
+                var expected = Mood.Happy;
+                using (var cmd = new NpgsqlCommand("insert into pg_temp.test_mood_writes(value1) values(@p1);", conn))
+                {
+                    cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Unknown, expected);
+                    cmd.ExecuteNonQuery();
+                }
+            }
+        }
+
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/859")]
         public void NameTranslationDefaultSnakeCase()
         {
