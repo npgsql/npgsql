@@ -423,9 +423,9 @@ namespace NpgsqlTypes
         #region Range Types
 
         /// <summary>
-        /// Corresponds to the PostgreSQL "array" type, a variable-length multidimensional array of
-        /// another type. This value must be combined with another value from <see cref="NpgsqlDbType"/>
-        /// via a bit OR (e.g. NpgsqlDbType.Array | NpgsqlDbType.Integer)
+        /// Corresponds to the PostgreSQL "range" type, continuous range of values of specific type.
+        /// This value must be combined with another value from <see cref="NpgsqlDbType"/>
+        /// via a bit OR (e.g. NpgsqlDbType.Range | NpgsqlDbType.Integer)
         /// </summary>
         /// <remarks>
         /// Supported since PostgreSQL 9.2.
