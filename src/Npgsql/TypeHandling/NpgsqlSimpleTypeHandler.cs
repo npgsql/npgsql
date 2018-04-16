@@ -72,7 +72,7 @@ namespace Npgsql.TypeHandling
         /// <summary>
         /// Reads a value of type <typeparamref name="TDefault"/> with the given length from the provided buffer,
         /// with the assumption that it is entirely present in the provided memory buffer and no I/O will be
-        /// required. 
+        /// required.
         /// </summary>
         /// <param name="buf">The buffer from which to read.</param>
         /// <param name="len">The byte length of the value. The buffer might not contain the full length, requiring I/O to be performed.</param>
@@ -201,9 +201,6 @@ namespace Npgsql.TypeHandling
 
         async Task WriteWithLengthLong<TAny>([CanBeNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter, bool async)
         {
-            Debug.Assert(this is INpgsqlSimpleTypeHandler<TAny>);
-            var typedHandler = (INpgsqlSimpleTypeHandler<TAny>)this;
-
             if (value == null || typeof(TAny) == typeof(DBNull))
             {
                 if (buf.WriteSpaceLeft < 4)
@@ -212,6 +209,7 @@ namespace Npgsql.TypeHandling
                 return;
             }
 
+            var typedHandler = (INpgsqlSimpleTypeHandler<TAny>)this;
             var elementLen = typedHandler.ValidateAndGetLength(value, parameter);
             if (buf.WriteSpaceLeft < 4 + elementLen)
                 await buf.Flush(async);
