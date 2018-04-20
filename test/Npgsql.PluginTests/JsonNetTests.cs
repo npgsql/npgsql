@@ -190,7 +190,7 @@ namespace Npgsql.PluginTests
                     using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
-                        var actual = reader.GetFieldValue<System.DateTime>(0);
+                        var actual = reader.GetFieldValue<DateWrapper>(0);
                         var actualString = reader.GetFieldValue<string>(1);
                         Assert.That(actual, Is.EqualTo(expected));
                         Assert.That(actualString, Is.EqualTo(expectedString));
