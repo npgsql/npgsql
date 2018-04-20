@@ -168,8 +168,7 @@ namespace Npgsql.PluginTests
             public override int GetHashCode() => Date.GetHashCode();
         }
 
-        [Test]
-        public void RoundtripCustomSerializerSettings()
+        private void RoundtripCustomSerializerSettings(bool asJsonb)
         {
             var expected = new DateWrapper() { Date = new System.DateTime(2018, 04, 20) };
 
@@ -178,11 +177,20 @@ namespace Npgsql.PluginTests
                 DateFormatString = @"T\he d\t\h o\f MMMM, yyyy"
             };
 
-            var expectedString = "\"The 20th of April, 2018\"";
+            // If we serialize to JSONB, Postgres will not store the Json.NET formatting, and will add a space after ':'
+            var expectedString = asJsonb ? "{\"Date\": \"The 20th of April, 2018\"}"
+                                         : "{\"Date\":\"The 20th of April, 2018\"}";
 
             using (var conn = OpenConnection())
             {
-                conn.TypeMapper.UseJsonNet(new[] { typeof(DateWrapper) }, jsonSerializerSettings : settings);
+                if (asJsonb)
+                {
+                    conn.TypeMapper.UseJsonNet(jsonbClrTypes : new[] { typeof(DateWrapper) }, jsonSerializerSettings: settings);
+                }
+                else
+                {
+                    conn.TypeMapper.UseJsonNet(jsonClrTypes : new[] { typeof(DateWrapper) }, jsonSerializerSettings: settings);
+                }
 
                 using (var cmd = new NpgsqlCommand($@"SELECT @p::{_pgTypeName}, @p::text", conn))
                 {
@@ -198,6 +206,12 @@ namespace Npgsql.PluginTests
                 }
             }
         }
+        
+        [Test]
+        public void RoundtripJsonbCustomSerializerSettings() => RoundtripCustomSerializerSettings(asJsonb: true);
+
+        [Test]
+        public void RoundtripJsonCustomSerializerSettings() => RoundtripCustomSerializerSettings(asJsonb: false);
 
         protected override NpgsqlConnection OpenConnection(string connectionString = null)
         {
