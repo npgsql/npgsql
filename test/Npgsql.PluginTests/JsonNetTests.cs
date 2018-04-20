@@ -161,51 +161,39 @@ namespace Npgsql.PluginTests
             }
         }
 
-        [Test]
-        public void RoundtripAnonymousObject()
+        class DateWrapper
         {
-            var expected = new { Foo = "foo value", Bar = 128 };
-            
-            using (var conn = OpenConnection())
-            {
-                conn.TypeMapper.UseJsonNet(new[] { typeof(int[]) });
-
-                using (var cmd = new NpgsqlCommand($@"SELECT @p::{_pgTypeName}", conn))
-                {
-                    cmd.Parameters.AddWithValue("p", expected);
-                    using (var reader = cmd.ExecuteReader())
-                    {
-                        reader.Read();
-                        var actual = reader.GetFieldValue<int[]>(0);
-                        Assert.That(actual, Is.EqualTo(expected));
-                    }
-                }
-            }
+            public System.DateTime Date;
+            public override bool Equals(object obj) => (obj as DateWrapper)?.Date == Date;
+            public override int GetHashCode() => Date.GetHashCode();
         }
 
         [Test]
         public void RoundtripCustomSerializerSettings()
         {
-            var expected = new System.DateTime(2018, 04, 20);
+            var expected = new DateWrapper() { Date = new System.DateTime(2018, 04, 20) };
 
             var settings = new JsonSerializerSettings()
-            {
-                // "The 20th of April, 2018"
+            {                
                 DateFormatString = @"T\he d\t\h o\f MMMM, yyyy"
             };
 
+            var expectedString = "\"The 20th of April, 2018\"";
+
             using (var conn = OpenConnection())
             {
-                conn.TypeMapper.UseJsonNet(new[] { typeof(System.DateTime) }, jsonSerializerSettings : settings);
+                conn.TypeMapper.UseJsonNet(new[] { typeof(DateWrapper) }, jsonSerializerSettings : settings);
 
-                using (var cmd = new NpgsqlCommand($@"SELECT @p::{_pgTypeName}", conn))
+                using (var cmd = new NpgsqlCommand($@"SELECT @p::{_pgTypeName}, @p::text", conn))
                 {
                     cmd.Parameters.AddWithValue("p", expected);
                     using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
                         var actual = reader.GetFieldValue<System.DateTime>(0);
+                        var actualString = reader.GetFieldValue<string>(1);
                         Assert.That(actual, Is.EqualTo(expected));
+                        Assert.That(actualString, Is.EqualTo(expectedString));
                     }
                 }
             }
