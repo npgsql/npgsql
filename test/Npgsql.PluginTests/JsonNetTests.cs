@@ -190,6 +190,7 @@ namespace Npgsql.PluginTests
 
             var settings = new JsonSerializerSettings()
             {
+                // "The 20th of April, 2018"
                 DateFormatString = @"T\he d\t\h o\f MMMM, yyyy"
             };
 
