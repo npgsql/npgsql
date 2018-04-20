@@ -40,14 +40,20 @@ namespace Npgsql
         /// <param name="mapper">The type mapper to set up (global or connection-specific)</param>
         /// <param name="jsonbClrTypes">A list of CLR types to map to PostgreSQL jsonb (no need to specify NpgsqlDbType.Jsonb)</param>
         /// <param name="jsonClrTypes">A list of CLR types to map to PostgreSQL json (no need to specify NpgsqlDbType.Json)</param>
-        public static INpgsqlTypeMapper UseJsonNet(this INpgsqlTypeMapper mapper, Type[] jsonbClrTypes = null, Type[] jsonClrTypes = null)
+        /// <param name="jsonSerializerSettings">Optional settings to customize JSON serialization</param>
+        public static INpgsqlTypeMapper UseJsonNet(
+            this INpgsqlTypeMapper mapper, 
+            Type[] jsonbClrTypes = null, 
+            Type[] jsonClrTypes = null,
+            Newtonsoft.Json.JsonSerializerSettings jsonSerializerSettings = null
+        )
         {
             mapper.AddMapping(new NpgsqlTypeMappingBuilder
             {
                 PgTypeName = "jsonb",
                 NpgsqlDbType = NpgsqlDbType.Jsonb,
                 ClrTypes = jsonbClrTypes,
-                TypeHandlerFactory = new JsonbHandlerFactory()
+                TypeHandlerFactory = new JsonbHandlerFactory(jsonSerializerSettings)
             }.Build());
 
             mapper.AddMapping(new NpgsqlTypeMappingBuilder
@@ -55,7 +61,7 @@ namespace Npgsql
                 PgTypeName = "json",
                 NpgsqlDbType = NpgsqlDbType.Json,
                 ClrTypes = jsonClrTypes,
-                TypeHandlerFactory = new JsonHandlerFactory()
+                TypeHandlerFactory = new JsonHandlerFactory(jsonSerializerSettings)
             }.Build());
 
             return mapper;
