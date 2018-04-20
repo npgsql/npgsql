@@ -161,6 +161,55 @@ namespace Npgsql.PluginTests
             }
         }
 
+        [Test]
+        public void RoundtripAnonymousObject()
+        {
+            var expected = new { Foo = "foo value", Bar = 128 };
+            
+            using (var conn = OpenConnection())
+            {
+                conn.TypeMapper.UseJsonNet(new[] { typeof(int[]) });
+
+                using (var cmd = new NpgsqlCommand($@"SELECT @p::{_pgTypeName}", conn))
+                {
+                    cmd.Parameters.AddWithValue("p", expected);
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        reader.Read();
+                        var actual = reader.GetFieldValue<int[]>(0);
+                        Assert.That(actual, Is.EqualTo(expected));
+                    }
+                }
+            }
+        }
+
+        [Test]
+        public void RoundtripCustomSerializerSettings()
+        {
+            var expected = new System.DateTime(2018, 04, 20);
+
+            var settings = new JsonSerializerSettings()
+            {
+                DateFormatString = @"T\he d\t\h o\f MMMM, yyyy"
+            };
+
+            using (var conn = OpenConnection())
+            {
+                conn.TypeMapper.UseJsonNet(new[] { typeof(System.DateTime) }, jsonSerializerSettings : settings);
+
+                using (var cmd = new NpgsqlCommand($@"SELECT @p::{_pgTypeName}", conn))
+                {
+                    cmd.Parameters.AddWithValue("p", expected);
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        reader.Read();
+                        var actual = reader.GetFieldValue<System.DateTime>(0);
+                        Assert.That(actual, Is.EqualTo(expected));
+                    }
+                }
+            }
+        }
+
         protected override NpgsqlConnection OpenConnection(string connectionString = null)
         {
             var conn = base.OpenConnection(connectionString);

@@ -33,14 +33,22 @@ namespace Npgsql.Json.NET
 {
     public class JsonbHandlerFactory : NpgsqlTypeHandlerFactory<string>
     {
+        private JsonSerializerSettings _jsonSerializerSettings;
+
+        public JsonbHandlerFactory(JsonSerializerSettings jsonSerializerSettings) => _jsonSerializerSettings = jsonSerializerSettings;
+
         protected override NpgsqlTypeHandler<string> Create(NpgsqlConnection conn)
-            => new JsonbHandler(conn);
+            => new JsonbHandler(conn, _jsonSerializerSettings);
     }
 
     class JsonbHandler : Npgsql.TypeHandlers.JsonbHandler
     {
-        public JsonbHandler(NpgsqlConnection connection)
-            : base(connection) {}
+        private JsonSerializerSettings _jsonSerializerSettings;
+
+        public JsonbHandler(NpgsqlConnection connection, JsonSerializerSettings jsonSerializerSettings) : base(connection)
+        {           
+            _jsonSerializerSettings = jsonSerializerSettings;
+        }
 
         protected override async ValueTask<T> Read<T>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
         {
@@ -49,7 +57,7 @@ namespace Npgsql.Json.NET
                 return (T)(object)s;
             try
             {
-                return JsonConvert.DeserializeObject<T>(s);
+                return JsonConvert.DeserializeObject<T>(s, _jsonSerializerSettings);
             }
             catch (Exception e)
             {
@@ -73,7 +81,7 @@ namespace Npgsql.Json.NET
             var s = value as string;
             if (s == null)
             {
-                s = JsonConvert.SerializeObject(value);
+                s = JsonConvert.SerializeObject(value, _jsonSerializerSettings);
                 if (parameter != null)
                     parameter.ConvertedValue = s;
             }
@@ -84,7 +92,7 @@ namespace Npgsql.Json.NET
         {
             if (parameter?.ConvertedValue != null)
                 value = parameter.ConvertedValue;
-            var s = value as string ?? JsonConvert.SerializeObject(value);
+            var s = value as string ?? JsonConvert.SerializeObject(value, _jsonSerializerSettings);
             return base.WriteObjectWithLength(s, buf, lengthCache, parameter, async);
         }
     }
