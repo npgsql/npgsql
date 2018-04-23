@@ -185,11 +185,11 @@ namespace Npgsql.PluginTests
             {
                 if (asJsonb)
                 {
-                    conn.TypeMapper.UseJsonNet(jsonbClrTypes : new[] { typeof(DateWrapper) }, jsonSerializerSettings: settings);
+                    conn.TypeMapper.UseJsonNet(jsonbClrTypes : new[] { typeof(DateWrapper) }, settings: settings);
                 }
                 else
                 {
-                    conn.TypeMapper.UseJsonNet(jsonClrTypes : new[] { typeof(DateWrapper) }, jsonSerializerSettings: settings);
+                    conn.TypeMapper.UseJsonNet(jsonClrTypes : new[] { typeof(DateWrapper) }, settings: settings);
                 }
 
                 using (var cmd = new NpgsqlCommand($@"SELECT @p::{_pgTypeName}, @p::text", conn))
