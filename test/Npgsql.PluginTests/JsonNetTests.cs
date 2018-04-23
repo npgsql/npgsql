@@ -185,11 +185,11 @@ namespace Npgsql.PluginTests
             {
                 if (asJsonb)
                 {
-                    conn.TypeMapper.UseJsonNet(jsonbClrTypes : new[] { typeof(DateWrapper) }, settings: settings);
+                    conn.TypeMapper.UseJsonNet(jsonbClrTypes : new[] { typeof(DateWrapper) }, settings : settings);
                 }
                 else
                 {
-                    conn.TypeMapper.UseJsonNet(jsonClrTypes : new[] { typeof(DateWrapper) }, settings: settings);
+                    conn.TypeMapper.UseJsonNet(jsonClrTypes : new[] { typeof(DateWrapper) }, settings : settings);
                 }
 
                 using (var cmd = new NpgsqlCommand($@"SELECT @p::{_pgTypeName}, @p::text", conn))
@@ -208,10 +208,10 @@ namespace Npgsql.PluginTests
         }
         
         [Test]
-        public void RoundtripJsonbCustomSerializerSettings() => RoundtripCustomSerializerSettings(asJsonb: true);
+        public void RoundtripJsonbCustomSerializerSettings() => RoundtripCustomSerializerSettings(asJsonb : true);
 
         [Test]
-        public void RoundtripJsonCustomSerializerSettings() => RoundtripCustomSerializerSettings(asJsonb: false);
+        public void RoundtripJsonCustomSerializerSettings() => RoundtripCustomSerializerSettings(asJsonb : false);
 
         protected override NpgsqlConnection OpenConnection(string connectionString = null)
         {
