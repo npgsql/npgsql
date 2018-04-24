@@ -33,14 +33,19 @@ namespace Npgsql.Json.NET
 {
     public class JsonHandlerFactory : NpgsqlTypeHandlerFactory<string>
     {
+        readonly JsonSerializerSettings _settings;
+
+        public JsonHandlerFactory(JsonSerializerSettings settings) => _settings = settings;
+
         protected override NpgsqlTypeHandler<string> Create(NpgsqlConnection conn)
-            => new JsonHandler(conn);
+            => new JsonHandler(conn, _settings);
     }
 
     class JsonHandler : Npgsql.TypeHandlers.TextHandler
     {
-        public JsonHandler(NpgsqlConnection connection)
-            : base(connection) {}
+        readonly JsonSerializerSettings _settings;
+
+        public JsonHandler(NpgsqlConnection connection, JsonSerializerSettings settings) : base(connection) => _settings = settings;
 
         protected override async ValueTask<T> Read<T>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
         {
@@ -49,7 +54,7 @@ namespace Npgsql.Json.NET
                 return (T)(object)s;
             try
             {
-                return JsonConvert.DeserializeObject<T>(s);
+                return JsonConvert.DeserializeObject<T>(s, _settings);
             }
             catch (Exception e)
             {
@@ -73,7 +78,7 @@ namespace Npgsql.Json.NET
             var s = value as string;
             if (s == null)
             {
-                s = JsonConvert.SerializeObject(value);
+                s = JsonConvert.SerializeObject(value, _settings);
                 if (parameter != null)
                     parameter.ConvertedValue = s;
             }
@@ -84,7 +89,7 @@ namespace Npgsql.Json.NET
         {
             if (parameter?.ConvertedValue != null)
                 value = parameter.ConvertedValue;
-            var s = value as string ?? JsonConvert.SerializeObject(value);
+            var s = value as string ?? JsonConvert.SerializeObject(value, _settings);
             return base.WriteObjectWithLength(s, buf, lengthCache, parameter, async);
         }
     }
