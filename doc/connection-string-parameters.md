@@ -10,7 +10,7 @@ Parameter keywords are case-insensitive.
 | Port         | The TCP port of the PostgreSQL server.                                             | 5432             |
 | Database     | The PostgreSQL database to connect to.                                             | Same as Username |
 | Username     | The username to connect with. Not required if using IntegratedSecurity.            |                  |
-| Password     | The password to connect with. Not required if using IntegratedSecurity.            |                  |
+| Password     | The password to connect with. Not required if using IntegratedSecurity. If the password contains semicolon(s), it can be surrounded by double quotes in the connection string.                                     |                  |
 | Passfile     | Path to a PostgreSQL password file (PGPASSFILE), from which the password is taken. |                  |
 
 ## Security and Encryption
