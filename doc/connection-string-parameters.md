@@ -1,6 +1,8 @@
 # Connection String Parameters
 
-Parameter keywords are case-insensitive.
+To connect to a database, the application provides a connection string which specifies parameters such as the host, the username, the password, etc. Connection strings have the form `keyword1=value; keyword2=value;` and are case-insensitive. Values containing special characters (e.g. semicolons) can be double-quoted. For more information, [see the official doc page on connection strings](https://docs.microsoft.com/en-us/dotnet/framework/data/adonet/connection-strings).
+
+Below are the connection string parameters which Npgsql understands.
 
 ## Basic Connection
 
