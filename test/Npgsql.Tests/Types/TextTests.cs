@@ -236,8 +236,8 @@ namespace Npgsql.Tests.Types
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
+                    Assert.That(reader.GetChar(0), Is.EqualTo(expected));
                     Assert.That(reader.GetString(0), Is.EqualTo(expected.ToString()));
-                    Assert.That(() => reader.GetChar(0), Throws.Exception.TypeOf<NotSupportedException>());
                 }
             }
         }

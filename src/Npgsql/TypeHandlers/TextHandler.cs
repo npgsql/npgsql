@@ -145,16 +145,27 @@ namespace Npgsql.TypeHandlers
             return buf.TextEncoding.GetChars(tempBuf);
         }
 
+        async ValueTask<char> INpgsqlTypeHandler<char>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        {
+            // Make sure we have enough bytes in the buffer for a single character
+            var maxBytes = Math.Min(buf.TextEncoding.GetMaxByteCount(1), len);
+            while (buf.ReadBytesLeft < maxBytes)
+                await buf.ReadMore(async);
+
+            var decoder = buf.TextEncoding.GetDecoder();
+            decoder.Convert(buf.Buffer, buf.ReadPosition, maxBytes, _singleCharArray, 0, 1, true, out var bytesUsed, out var charsUsed, out var completed);
+            buf.Skip(len - bytesUsed);
+
+            if (charsUsed < 1)
+                throw new NpgsqlSafeReadException(new NpgsqlException("Could not read char - string was empty"));
+
+            return _singleCharArray[0];
+        }
+
         ValueTask<ArraySegment<char>> INpgsqlTypeHandler<ArraySegment<char>>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
         {
             buf.Skip(len);
             throw new NpgsqlSafeReadException(new NotSupportedException("Only writing ArraySegment<char> to PostgreSQL text is supported, no reading."));
-        }
-
-        ValueTask<char> INpgsqlTypeHandler<char>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
-        {
-            buf.Skip(len);
-            throw new NpgsqlSafeReadException(new NotSupportedException("Only writing char to PostgreSQL text is supported, no reading."));
         }
 
         #endregion
