@@ -364,7 +364,6 @@ namespace Npgsql
             }
 
             Debug.Assert(_state == ReaderState.BetweenResults);
-            _hasRows = null;
 
             if ((_behavior & CommandBehavior.SingleResult) != 0 && _statementIndex == 0 && !isConsuming)
             {
@@ -433,6 +432,7 @@ namespace Npgsql
                 }
 
                 // We got a new resultset.
+                _hasRows = null;
 
                 // Read the next message and store it in _pendingRow, this is to make sure that if the
                 // statement generated an error, it gets thrown here and not on the first call to Read().
