@@ -41,15 +41,17 @@ namespace Npgsql.Tests.Types
         public void Roundtrip()
         {
             using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4, @p5, @p6", conn))
+            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4, @p5, @p6, @p7", conn))
             {
                 const string expected = "Something";
+                var expectedBytes = Encoding.UTF8.GetBytes(expected);
                 var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Text);
                 var p2 = new NpgsqlParameter("p2", NpgsqlDbType.Varchar);
                 var p3 = new NpgsqlParameter("p3", DbType.String);
                 var p4 = new NpgsqlParameter { ParameterName = "p4", Value = expected };
                 var p5 = new NpgsqlParameter("p5", NpgsqlDbType.Text);
                 var p6 = new NpgsqlParameter("p6", NpgsqlDbType.Text);
+                var p7 = new NpgsqlParameter("p7", NpgsqlDbType.Text);
                 Assert.That(p2.DbType, Is.EqualTo(DbType.String));
                 Assert.That(p3.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Text));
                 Assert.That(p3.DbType, Is.EqualTo(DbType.String));
@@ -59,9 +61,11 @@ namespace Npgsql.Tests.Types
                 cmd.Parameters.Add(p4);
                 cmd.Parameters.Add(p5);
                 cmd.Parameters.Add(p6);
+                cmd.Parameters.Add(p7);
                 p1.Value = p2.Value = p3.Value = expected;
                 p5.Value = expected.ToCharArray();
                 p6.Value = new ArraySegment<char>(("X" + expected).ToCharArray(), 1, expected.Length);
+                p7.Value = expectedBytes;
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
@@ -73,6 +77,7 @@ namespace Npgsql.Tests.Types
                         Assert.That(reader.GetFieldValue<string>(i), Is.EqualTo(expected));
                         Assert.That(reader.GetValue(i), Is.EqualTo(expected));
                         Assert.That(reader.GetFieldValue<char[]>(i), Is.EqualTo(expected.ToCharArray()));
+                        Assert.That(reader.GetFieldValue<byte[]>(i), Is.EqualTo(expectedBytes));
                     }
                 }
             }
