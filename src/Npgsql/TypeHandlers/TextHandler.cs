@@ -26,6 +26,7 @@ using System.IO;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
+using System.Diagnostics;
 using System.Text;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
@@ -62,7 +63,7 @@ namespace Npgsql.TypeHandlers
         // Text types are handled a bit more efficiently when sent as text than as binary
         // see https://github.com/npgsql/npgsql/issues/1210#issuecomment-235641670
         internal override bool PreferTextWrite => true;
-        
+
         readonly Encoding _encoding;
 
         #region State

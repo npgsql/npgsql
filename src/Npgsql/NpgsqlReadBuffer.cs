@@ -66,16 +66,9 @@ namespace Npgsql
 
         internal readonly byte[] Buffer;
         int _filledBytes;
-        readonly Decoder _textDecoder;
 
         [CanBeNull]
         ColumnStream _columnStream;
-
-        /// <summary>
-        /// Used for internal temporary purposes
-        /// </summary>
-        [CanBeNull]
-        char[] _tempCharBuf;
 
         /// <summary>
         /// The minimum buffer size possible.
@@ -99,7 +92,6 @@ namespace Npgsql
             Size = size;
             Buffer = new byte[Size];
             TextEncoding = textEncoding;
-            _textDecoder = TextEncoding.GetDecoder();
         }
 
         #endregion
@@ -441,75 +433,6 @@ namespace Npgsql
             var result = encoding.GetString(Buffer, ReadPosition, i - ReadPosition);
             ReadPosition = i + 1;
             return result;
-        }
-
-        /// <summary>
-        /// Note that unlike the primitive readers, this reader can read any length, looping internally
-        /// and reading directly from the underlying stream.
-        /// </summary>
-        /// <param name="output">output buffer to fill</param>
-        /// <param name="outputOffset">offset in the output buffer in which to start writing</param>
-        /// <param name="charCount">number of character to be read into the output buffer</param>
-        /// <param name="byteCount">number of bytes left in the field. This method will not read bytes
-        /// beyond this count</param>
-        /// <param name="bytesRead">The number of bytes actually read.</param>
-        /// <param name="charsRead">The number of characters actually read.</param>
-        /// <returns>the number of bytes read</returns>
-        internal void ReadAllChars(char[] output, int outputOffset, int charCount, int byteCount, out int bytesRead, out int charsRead)
-        {
-            Debug.Assert(charCount <= output.Length - outputOffset);
-
-            bytesRead = 0;
-            charsRead = 0;
-            if (charCount == 0) { return; }
-
-            try
-            {
-                while (true)
-                {
-                    Ensure(1); // Make sure we have at least some data
-
-                    int bytesUsed, charsUsed;
-                    bool completed;
-                    var maxBytes = Math.Min(byteCount - bytesRead, ReadBytesLeft);
-                    _textDecoder.Convert(Buffer, ReadPosition, maxBytes, output, outputOffset, charCount - charsRead, false,
-                                         out bytesUsed, out charsUsed, out completed);
-                    ReadPosition += bytesUsed;
-                    bytesRead += bytesUsed;
-                    charsRead += charsUsed;
-                    if (charsRead == charCount || bytesRead == byteCount)
-                        return;
-                    outputOffset += charsUsed;
-                    Clear();
-                }
-            }
-            finally
-            {
-                _textDecoder.Reset();
-            }
-        }
-
-        /// <summary>
-        /// Skips over characters in the buffer, reading from the underlying stream as necessary.
-        /// </summary>
-        /// <param name="charCount">the number of characters to skip over.
-        /// int.MaxValue means all available characters (limited only by <paramref name="byteCount"/>).
-        /// </param>
-        /// <param name="byteCount">the maximal number of bytes to process</param>
-        /// <param name="bytesSkipped">The number of bytes actually skipped.</param>
-        /// <param name="charsSkipped">The number of characters actually skipped.</param>
-        /// <returns>the number of bytes read</returns>
-        internal void SkipChars(int charCount, int byteCount, out int bytesSkipped, out int charsSkipped)
-        {
-            if (_tempCharBuf == null)
-                _tempCharBuf = new char[1024];
-            charsSkipped = bytesSkipped = 0;
-            while (charsSkipped < charCount && bytesSkipped < byteCount)
-            {
-                ReadAllChars(_tempCharBuf, 0, Math.Min(charCount, _tempCharBuf.Length), byteCount, out var bSkipped, out var cSkipped);
-                charsSkipped += cSkipped;
-                bytesSkipped += bSkipped;
-            }
         }
 
         #endregion

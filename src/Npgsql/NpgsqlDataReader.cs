@@ -32,6 +32,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
@@ -119,6 +120,12 @@ namespace Npgsql
         /// </summary>
         [CanBeNull]
         protected Stream ColumnStream;
+
+        /// <summary>
+        /// Used for internal temporary purposes
+        /// </summary>
+        [CanBeNull]
+        char[] _tempCharBuf;
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
@@ -1058,12 +1065,14 @@ namespace Npgsql
             if (PosInColumn == 0)
                 _charPos = 0;
 
+            var decoder = Buffer.TextEncoding.GetDecoder();
+
             if (buffer == null)
             {
                 // Note: Getting the length of a text column means decoding the entire field,
                 // very inefficient and also consumes the column in sequential mode. But this seems to
                 // be SqlClient's behavior as well.
-                Buffer.SkipChars(int.MaxValue, ColumnLen - PosInColumn, out var bytesSkipped, out var charsSkipped);
+                var (bytesSkipped, charsSkipped) = SkipChars(decoder, int.MaxValue, ColumnLen - PosInColumn);
                 Debug.Assert(bytesSkipped == ColumnLen - PosInColumn);
                 PosInColumn += bytesSkipped;
                 _charPos += charsSkipped;
@@ -1082,8 +1091,8 @@ namespace Npgsql
             if (dataOffset > _charPos)
             {
                 var charsToSkip = (int)dataOffset - _charPos;
-                int bytesSkipped, charsSkipped;
-                Buffer.SkipChars(charsToSkip, ColumnLen - PosInColumn, out bytesSkipped, out charsSkipped);
+                var (bytesSkipped, charsSkipped) = SkipChars(decoder, charsToSkip, ColumnLen - PosInColumn);
+                decoder.Reset();
                 PosInColumn += bytesSkipped;
                 _charPos += charsSkipped;
                 if (charsSkipped < charsToSkip)
@@ -1093,10 +1102,53 @@ namespace Npgsql
                 }
             }
 
-            Buffer.ReadAllChars(buffer, bufferOffset, length, ColumnLen - PosInColumn, out var bytesRead, out var charsRead);
+            // We're now positioned at the start of the segment of characters we need to read.
+            if (length == 0)
+                return 0;
+
+            var (bytesRead, charsRead) = DecodeChars(decoder, buffer, bufferOffset, length, ColumnLen - PosInColumn);
+
             PosInColumn += bytesRead;
             _charPos += charsRead;
             return charsRead;
+        }
+
+        (int BytesRead, int CharsRead) DecodeChars(Decoder decoder, char[] output, int outputOffset, int charCount, int byteCount)
+        {
+            var (bytesRead, charsRead) = (0, 0);
+
+            while (true)
+            {
+                Buffer.Ensure(1); // Make sure we have at least some data
+
+                var maxBytes = Math.Min(byteCount - bytesRead, Buffer.ReadBytesLeft);
+                decoder.Convert(Buffer.Buffer, Buffer.ReadPosition, maxBytes, output, outputOffset, charCount - charsRead, false,
+                    out var bytesUsed, out var charsUsed, out var completed);
+                Buffer.ReadPosition += bytesUsed;
+                bytesRead += bytesUsed;
+                charsRead += charsUsed;
+                if (charsRead == charCount || bytesRead == byteCount)
+                    break;
+                outputOffset += charsUsed;
+                Buffer.Clear();
+            }
+
+            return (bytesRead, charsRead);
+        }
+
+        internal (int BytesSkipped, int CharsSkipped) SkipChars(Decoder decoder, int charCount, int byteCount)
+        {
+            // TODO: Allocate on the stack with Span
+            if (_tempCharBuf == null)
+                _tempCharBuf = new char[1024];
+            var (charsSkipped, bytesSkipped) = (0, 0);
+            while (charsSkipped < charCount && bytesSkipped < byteCount)
+            {
+                var (bytesRead, charsRead) = DecodeChars(decoder, _tempCharBuf, 0, Math.Min(charCount, _tempCharBuf.Length), byteCount);
+                bytesSkipped += bytesRead;
+                charsSkipped += charsRead;
+            }
+            return (bytesSkipped, charsSkipped);
         }
 
         /// <summary>
