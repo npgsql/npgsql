@@ -765,6 +765,7 @@ namespace Npgsql.Tests
         [IssueLink("https://github.com/npgsql/npgsql/issues/742")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/800")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/1234")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/1898")]
         public void HasRows([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
         {
             using (var conn = OpenConnection())
@@ -802,6 +803,16 @@ namespace Npgsql.Tests
                     reader.Read();
                     reader.Close();
                     Assert.That(() => reader.HasRows, Throws.Exception.TypeOf<InvalidOperationException>());
+                }
+
+                command.CommandText = "INSERT INTO data (name) VALUES ('foo'); SELECT * FROM data";
+                if (prepare == PrepareOrNot.Prepared)
+                    command.Prepare();
+                using (var reader = command.ExecuteReader())
+                {
+                    Assert.That(reader.HasRows, Is.True);
+                    reader.Read();
+                    Assert.That(reader.GetString(0), Is.EqualTo("foo"));
                 }
 
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
