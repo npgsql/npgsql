@@ -78,42 +78,42 @@ namespace Npgsql.TypeHandlers
 
         public override ValueTask<string> Read(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription fieldDescription = null)
         {
-            if (buf.ReadBytesLeft >= byteLen)
-                return new ValueTask<string>(buf.ReadString(byteLen));
-            return ReadLong(buf, byteLen, async);
-        }
+            return buf.ReadBytesLeft >= byteLen
+                ? new ValueTask<string>(buf.ReadString(byteLen))
+                : ReadLong();
 
-        async ValueTask<string> ReadLong(NpgsqlReadBuffer buf, int byteLen, bool async)
-        {
-            if (byteLen <= buf.Size)
+            async ValueTask<string> ReadLong()
             {
-                // The string's byte representation can fit in our read buffer, read it.
-                while (buf.ReadBytesLeft < byteLen)
-                    await buf.ReadMore(async);
-                return buf.ReadString(byteLen);
-            }
-
-            // Bad case: the string's byte representation doesn't fit in our buffer.
-            // This is rare - will only happen in CommandBehavior.Sequential mode (otherwise the
-            // entire row is in memory). Tweaking the buffer length via the connection string can
-            // help avoid this.
-
-            // Allocate a temporary byte buffer to hold the entire string and read it in chunks.
-            var tempBuf = new byte[byteLen];
-            var pos = 0;
-            while (true)
-            {
-                var len = Math.Min(buf.ReadBytesLeft, byteLen - pos);
-                buf.ReadBytes(tempBuf, pos, len);
-                pos += len;
-                if (pos < byteLen)
+                if (byteLen <= buf.Size)
                 {
-                    await buf.ReadMore(async);
-                    continue;
+                    // The string's byte representation can fit in our read buffer, read it.
+                    while (buf.ReadBytesLeft < byteLen)
+                        await buf.ReadMore(async);
+                    return buf.ReadString(byteLen);
                 }
-                break;
+
+                // Bad case: the string's byte representation doesn't fit in our buffer.
+                // This is rare - will only happen in CommandBehavior.Sequential mode (otherwise the
+                // entire row is in memory). Tweaking the buffer length via the connection string can
+                // help avoid this.
+
+                // Allocate a temporary byte buffer to hold the entire string and read it in chunks.
+                var tempBuf = new byte[byteLen];
+                var pos = 0;
+                while (true)
+                {
+                    var len = Math.Min(buf.ReadBytesLeft, byteLen - pos);
+                    buf.ReadBytes(tempBuf, pos, len);
+                    pos += len;
+                    if (pos < byteLen)
+                    {
+                        await buf.ReadMore(async);
+                        continue;
+                    }
+                    break;
+                }
+                return buf.TextEncoding.GetString(tempBuf);
             }
-            return buf.TextEncoding.GetString(tempBuf);
         }
 
         async ValueTask<char[]> INpgsqlTypeHandler<char[]>.Read(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription fieldDescription)
