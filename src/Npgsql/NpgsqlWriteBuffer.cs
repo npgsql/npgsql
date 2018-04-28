@@ -392,11 +392,11 @@ namespace Npgsql
 
         async Task WriteBytesLong(byte[] bytes, bool async)
         {
-            await Flush(async);
             if (bytes.Length <= Size)
             {
                 // value can fit entirely in an empty buffer. Flush and retry rather than
                 // going into the partial writing flow below
+                await Flush(async);
                 WriteBytes(bytes);
             }
             else
