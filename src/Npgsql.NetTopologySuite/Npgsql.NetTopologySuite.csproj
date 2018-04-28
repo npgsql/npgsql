@@ -24,8 +24,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="NetTopologySuite" Version="1.15.0-pre063" />
-    <PackageReference Include="NetTopologySuite.IO" Version="1.15.0-pre063" />
+    <PackageReference Include="NetTopologySuite" Version="1.15.0-pre066" />
+    <PackageReference Include="NetTopologySuite.IO" Version="1.15.0-pre066" />
   </ItemGroup>
 
   <ItemGroup>

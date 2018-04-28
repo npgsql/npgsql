@@ -157,7 +157,6 @@ namespace Npgsql.PluginTests
         };
 
         [Test, TestCaseSource(nameof(Tests))]
-        [Ignore("Depends on https://github.com/NetTopologySuite/NetTopologySuite/pull/221")]
         public void TestRead(TestData data)
         {
             using (var conn = OpenConnection())
@@ -181,7 +180,6 @@ namespace Npgsql.PluginTests
         }
 
         [Test]
-        [Ignore("Depends on https://github.com/NetTopologySuite/NetTopologySuite/pull/221")]
         public void TestArrayRead()
         {
             using (var conn = OpenConnection())
@@ -207,7 +205,6 @@ namespace Npgsql.PluginTests
         }
 
         [Test]
-        [Ignore("Depends on https://github.com/NetTopologySuite/NetTopologySuite/pull/221")]
         public void ReadAsConcreteType()
         {
             using (var conn = OpenConnection())
