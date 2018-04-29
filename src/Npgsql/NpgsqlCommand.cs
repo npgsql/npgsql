@@ -84,6 +84,8 @@ namespace Npgsql
         static readonly SingleThreadSynchronizationContext SingleThreadSynchronizationContext = new SingleThreadSynchronizationContext("NpgsqlRemainingAsyncSendWorker");
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+        
+        static readonly DiagnosticListener NpgsqlDiagnosticListener = new DiagnosticListener(NpgsqlDiagnosticListenerExtensions.DiagnosticListenerName);
 
         #endregion Fields
 
@@ -1041,11 +1043,35 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         async Task<int> ExecuteNonQuery(bool async, CancellationToken cancellationToken)
         {
-            using (var reader = await ExecuteDbDataReader(CommandBehavior.Default, async, cancellationToken))
+            var operationId = NpgsqlDiagnosticListener.WriteCommandBefore(this);
+
+            Exception e = null;
+            
+            try
             {
-                while (async ? await reader.NextResultAsync(cancellationToken) : reader.NextResult()) {}
-                reader.Close();
-                return reader.RecordsAffected;
+                using (var reader = await ExecuteDbDataReader(CommandBehavior.Default, async, cancellationToken))
+                {
+                    while (async ? await reader.NextResultAsync(cancellationToken) : reader.NextResult()) {}
+                    reader.Close();
+                    return reader.RecordsAffected;
+                }
+            }
+            catch (Exception exception)
+            {
+                e = exception;
+                throw;
+            }
+            finally
+            {
+                
+                if (e != null)
+                {
+                    NpgsqlDiagnosticListener.WriteCommandError(operationId, this, e);
+                }
+                else
+                {
+                    NpgsqlDiagnosticListener.WriteCommandAfter(operationId, this);
+                }
             }
         }
 
@@ -1083,8 +1109,33 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             var behavior = CommandBehavior.SingleRow;
             if (!Parameters.HasOutputParameters)
                 behavior |= CommandBehavior.SequentialAccess;
-            using (var reader = await ExecuteDbDataReader(behavior, async, cancellationToken))
-                return reader.Read() && reader.FieldCount != 0 ? reader.GetValue(0) : null;
+
+            var operationId = NpgsqlDiagnosticListener.WriteCommandBefore(this);
+
+            Exception e = null;
+            
+            try
+            {
+                using (var reader = await ExecuteDbDataReader(behavior, async, cancellationToken))
+                    return reader.Read() && reader.FieldCount != 0 ? reader.GetValue(0) : null;
+            }
+            catch (Exception ex)
+            {
+                e = ex;
+                throw;
+            }
+            finally
+            {
+                if (e != null)
+                {
+                    NpgsqlDiagnosticListener.WriteCommandError(operationId, this, e);
+                }
+                else
+                {
+                    NpgsqlDiagnosticListener.WriteCommandAfter(operationId, this);
+                }
+            }
+           
         }
 
         #endregion Execute Scalar
@@ -1099,7 +1150,32 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// DataReader.
         /// </remarks>
         /// <returns>A DbDataReader object.</returns>
-        public new NpgsqlDataReader ExecuteReader() => (NpgsqlDataReader) base.ExecuteReader();
+        public new NpgsqlDataReader ExecuteReader()
+        {
+            var operationId = NpgsqlDiagnosticListener.WriteCommandBefore(this);
+            
+            Exception e = null;
+            try
+            {
+                return (NpgsqlDataReader) base.ExecuteReader();
+            }
+            catch (Exception exception)
+            {
+                e = exception;
+                throw;
+            }
+            finally
+            {
+                if (e != null)
+                {
+                    NpgsqlDiagnosticListener.WriteCommandError(operationId, this, e);
+                }
+                else
+                {
+                    NpgsqlDiagnosticListener.WriteCommandAfter(operationId, this);
+                }
+            }
+        }
 
         /// <summary>
         /// Executes the CommandText against the Connection, and returns an DbDataReader using one
@@ -1110,7 +1186,32 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// DataReader.
         /// </remarks>
         /// <returns>A DbDataReader object.</returns>
-        public new NpgsqlDataReader ExecuteReader(CommandBehavior behavior) => (NpgsqlDataReader) base.ExecuteReader(behavior);
+        public new NpgsqlDataReader ExecuteReader(CommandBehavior behavior)
+        {
+            var operationId = NpgsqlDiagnosticListener.WriteCommandBefore(this);
+            
+            Exception e = null;
+            try
+            {
+                return (NpgsqlDataReader) base.ExecuteReader(behavior);
+            }
+            catch (Exception exception)
+            {
+                e = exception;
+                throw;
+            }
+            finally
+            {
+                if (e != null)
+                {
+                    NpgsqlDiagnosticListener.WriteCommandError(operationId, this, e);
+                }
+                else
+                {
+                    NpgsqlDiagnosticListener.WriteCommandAfter(operationId, this);
+                }
+            }
+        }
 
         /// <summary>
         /// Executes the command text against the connection.
