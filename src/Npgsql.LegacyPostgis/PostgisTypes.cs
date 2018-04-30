@@ -185,7 +185,12 @@ namespace Npgsql.LegacyPostgis
             => ReferenceEquals(x, null) ? ReferenceEquals(y, null) : x.Equals(y);
 
         public static bool operator !=(PostgisLineString x, PostgisLineString y) => !(x == y);
-
+        
+        public Coordinate2D[] Reverse()
+        {
+            return _points.Reverse().ToArray();
+        }
+        
         public override int GetHashCode()
         {
             var ret = 266370105;//seed with something other than zero to make paths of all zeros hash differently.
@@ -391,6 +396,17 @@ namespace Npgsql.LegacyPostgis
 
         public static bool operator !=(PostgisMultiLineString x, PostgisMultiLineString y) => !(x == y);
 
+        public PostgisLineString[] Reverse()
+        {
+            var res = new PostgisLineString[_lineStrings.Length];
+            for(var index = 0; index < _lineStrings.Length; index++)
+            {
+                var _line = _lineStrings[index];
+                res[index] = new PostgisLineString(_line.Reverse());
+            }
+            return res.Reverse().ToArray();
+        }
+        
         public override int GetHashCode()
         {
             var ret = 266370105;//seed with something other than zero to make paths of all zeros hash differently.
