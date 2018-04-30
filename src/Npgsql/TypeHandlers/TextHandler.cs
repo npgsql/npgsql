@@ -176,37 +176,35 @@ namespace Npgsql.TypeHandlers
                 buf.ReadBytes(bytes, 0, byteLen);
                 return bytes;
             }
-            else
+
+            if (byteLen <= buf.Size)
             {
-                if (byteLen <= buf.Size)
-                {
-                    // The bytes can fit in our read buffer, read it.
-                    while (buf.ReadBytesLeft < byteLen)
-                        await buf.ReadMore(async);
-                    buf.ReadBytes(bytes, 0, byteLen);
-                    return bytes;
-                }
-
-                // Bad case: the bytes don't fit in our buffer.
-                // This is rare - will only happen in CommandBehavior.Sequential mode (otherwise the
-                // entire row is in memory). Tweaking the buffer length via the connection string can
-                // help avoid this.
-
-                var pos = 0;
-                while (true)
-                {
-                    var len = Math.Min(buf.ReadBytesLeft, byteLen - pos);
-                    buf.ReadBytes(bytes, pos, len);
-                    pos += len;
-                    if (pos < byteLen)
-                    {
-                        await buf.ReadMore(async);
-                        continue;
-                    }
-                    break;
-                }
+                // The bytes can fit in our read buffer, read it.
+                while (buf.ReadBytesLeft < byteLen)
+                    await buf.ReadMore(async);
+                buf.ReadBytes(bytes, 0, byteLen);
                 return bytes;
             }
+
+            // Bad case: the bytes don't fit in our buffer.
+            // This is rare - will only happen in CommandBehavior.Sequential mode (otherwise the
+            // entire row is in memory). Tweaking the buffer length via the connection string can
+            // help avoid this.
+
+            var pos = 0;
+            while (true)
+            {
+                var len = Math.Min(buf.ReadBytesLeft, byteLen - pos);
+                buf.ReadBytes(bytes, pos, len);
+                pos += len;
+                if (pos < byteLen)
+                {
+                    await buf.ReadMore(async);
+                    continue;
+                }
+                break;
+            }
+            return bytes;
         }
 
         #endregion
@@ -260,9 +258,7 @@ namespace Npgsql.TypeHandlers
         }
 
         public int ValidateAndGetLength(byte[] value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
-        {
-            return value.Length;
-        }
+            => value.Length;
 
         public override Task Write(string value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
             => WriteString(value, buf, lengthCache, parameter, async);
@@ -293,10 +289,8 @@ namespace Npgsql.TypeHandlers
             return buf.WriteChars(_singleCharArray, 0, 1, len, async);
         }
 
-        public async Task Write(byte[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-        {
-            await buf.WriteBytesRaw(value, async);
-        }
+        public Task Write(byte[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+            => buf.WriteBytesRaw(value, async);
 
         #endregion
 

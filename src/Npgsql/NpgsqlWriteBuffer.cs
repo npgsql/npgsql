@@ -406,7 +406,7 @@ namespace Npgsql
                 {
                     if (WriteSpaceLeft == 0)
                         await Flush(async);
-                    var writeLen = remaining < WriteSpaceLeft ? remaining : WriteSpaceLeft;
+                    var writeLen = Math.Min(remaining, WriteSpaceLeft);
                     var offset = bytes.Length - remaining;
                     WriteBytes(bytes, offset, writeLen);
                     remaining -= writeLen;
