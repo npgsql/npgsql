@@ -404,7 +404,7 @@ namespace Npgsql.LegacyPostgis
                 var _line = _lineStrings[index];
                 res[index] = new PostgisLineString(_line.Reverse());
             }
-            return res.Reverse.ToArray();
+            return res.Reverse().ToArray();
         }
         
         public override int GetHashCode()
