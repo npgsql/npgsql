@@ -38,7 +38,7 @@ namespace Npgsql
     /// A buffer used by Npgsql to write data to the socket efficiently.
     /// Provides methods which encode different values types and tracks the current position.
     /// </summary>
-    public sealed class NpgsqlWriteBuffer
+    public sealed partial class NpgsqlWriteBuffer
     {
         #region Fields and Properties
 
@@ -66,6 +66,9 @@ namespace Npgsql
         readonly Encoder _textEncoder;
 
         int _writePosition;
+
+        [CanBeNull]
+        ParameterStream _parameterStream;
 
         /// <summary>
         /// The minimum buffer size possible.
@@ -388,6 +391,15 @@ namespace Npgsql
         #endregion
 
         #region Write Complex
+
+        public Stream GetStream()
+        {
+            if (_parameterStream == null)
+                _parameterStream = new ParameterStream(this);
+
+            _parameterStream.Init();
+            return _parameterStream;
+        }
 
         internal void WriteStringChunked(char[] chars, int charIndex, int charCount,
                                          bool flush, out int charsUsed, out bool completed)

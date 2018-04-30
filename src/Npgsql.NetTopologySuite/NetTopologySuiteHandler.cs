@@ -274,72 +274,12 @@ namespace Npgsql.NetTopologySuite
 
         Task WriteCore(IGeometry value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
-            _writer.Write(value, new WriteStream(buf));
+            _writer.Write(value, buf.GetStream());
 #if NET45
             return Task.Delay(0);
 #else
             return Task.CompletedTask;
 #endif
-        }
-
-        sealed class WriteStream : Stream
-        {
-            readonly NpgsqlWriteBuffer _buf;
-
-            internal WriteStream(NpgsqlWriteBuffer buf)
-                => _buf = buf;
-
-            public override bool CanRead => false;
-
-            public override bool CanSeek => false;
-
-            public override bool CanWrite => true;
-
-            public override long Length => throw new NotSupportedException();
-
-            public override long Position
-            {
-                get => throw new NotSupportedException();
-                set => throw new NotSupportedException();
-            }
-
-            public override void Flush()
-            { }
-
-            public override int Read(byte[] buffer, int offset, int count)
-                => throw new NotSupportedException();
-
-            public override long Seek(long offset, SeekOrigin origin)
-                => throw new NotSupportedException();
-
-            public override void SetLength(long value)
-                => throw new NotSupportedException();
-
-            public override void Write(byte[] buffer, int offset, int count)
-            {
-                while (count > 0)
-                {
-                    var left = _buf.WriteSpaceLeft;
-                    if (left == 0) _buf.Flush(false).GetAwaiter().GetResult();
-                    var slice = Math.Min(count, left);
-                    _buf.WriteBytes(buffer, offset, slice);
-                    offset += slice;
-                    count -= slice;
-                }
-            }
-
-            public override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-            {
-                while (count > 0)
-                {
-                    var left = _buf.WriteSpaceLeft;
-                    if (left == 0) await _buf.Flush(true);
-                    var slice = Math.Min(count, left);
-                    _buf.WriteBytes(buffer, offset, slice);
-                    offset += slice;
-                    count -= slice;
-                }
-            }
         }
 
         #endregion

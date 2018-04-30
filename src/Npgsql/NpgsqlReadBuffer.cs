@@ -38,7 +38,7 @@ namespace Npgsql
     /// A buffer used by Npgsql to read data from the socket efficiently.
     /// Provides methods which decode different values types and tracks the current position.
     /// </summary>
-    public sealed class NpgsqlReadBuffer
+    public sealed partial class NpgsqlReadBuffer
     {
         #region Fields and Properties
 
