@@ -138,6 +138,17 @@ namespace Npgsql
         internal static readonly Task<bool> TrueTask = Task.FromResult(true);
         internal static readonly Task<bool> FalseTask = Task.FromResult(false);
 
+        internal static Task TaskFromException(Exception exception)
+        {
+#if NET45 || NET451
+            var tcs = new TaskCompletionSource<bool>();
+            tcs.SetException(exception);
+            return tcs.Task;
+#else
+            return Task.FromException(exception);
+#endif
+        }
+
         internal static StringComparer InvariantCaseIgnoringStringComparer => StringComparer.InvariantCultureIgnoreCase;
 
         internal static bool IsWindows =>
