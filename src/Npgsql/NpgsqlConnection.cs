@@ -173,7 +173,7 @@ namespace Npgsql
                 Settings = _pool.Settings;  // Great, we already have a pool
                 return;
             }
-                
+
             // Connection string hasn't been seen before. Parse it.
             Settings = new NpgsqlConnectionStringBuilder(_connectionString);
 
@@ -188,7 +188,7 @@ namespace Npgsql
             {
                 return;
             }
-            
+
             // Connstring may be equivalent to one that has already been seen though (e.g. different
             // ordering). Have NpgsqlConnectionStringBuilder produce a canonical string representation
             // and recheck.
@@ -201,7 +201,7 @@ namespace Npgsql
                 _pool = PoolManager.GetOrAdd(_connectionString, _pool);
                 return;
             }
-                
+
             // Really unseen, need to create a new pool
             // The canonical pool is the 'base' pool so we need to set that up first. If someone beats us to it use what they put.
             // The connection string pool can either be added here or above, if it's added above we should just use that.
@@ -228,7 +228,7 @@ namespace Npgsql
             Log.Trace("Opening connection...");
 
             if (_pool == null || Settings.Enlist || !_pool.TryAllocateFast(this, out Connector))
-                return OpenLong(async, cancellationToken);
+                return OpenLong();
 
             _userFacingConnectionString = _pool.UserFacingConnectionString;
 
@@ -244,83 +244,84 @@ namespace Npgsql
             Log.Debug("Connection opened", Connector.Id);
             OnStateChange(new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open));
             return PGUtil.CompletedTask;
-        }
 
-        async Task OpenLong(bool async, CancellationToken cancellationToken)
-        {
-            CheckConnectionClosed();
-
-            Log.Trace("Opening connection...");
-
-            _wasBroken = false;
-
-            try
+            async Task OpenLong()
             {
-                Debug.Assert(Settings != null);
+                CheckConnectionClosed();
 
-                var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
-                Transaction transaction = null;
+                Log.Trace("Opening connection...");
 
-                if (_pool == null) // Unpooled connection
+                _wasBroken = false;
+
+                try
                 {
-                    if (!Settings.PersistSecurityInfo)
-                        _userFacingConnectionString = Settings.ToStringWithoutPassword();
+                    Debug.Assert(Settings != null);
 
-                    Connector = new NpgsqlConnector(this);
-                    await Connector.Open(timeout, async, cancellationToken);
-                    Counters.NumberOfNonPooledConnections.Increment();
-                }
-                else
-                {
-                    _userFacingConnectionString = _pool.UserFacingConnectionString;
+                    var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
+                    Transaction transaction = null;
 
-                    if (Settings.Enlist)
+                    if (_pool == null) // Unpooled connection
                     {
-                        transaction = Transaction.Current;
-                        if (transaction != null)
+                        if (!Settings.PersistSecurityInfo)
+                            _userFacingConnectionString = Settings.ToStringWithoutPassword();
+
+                        Connector = new NpgsqlConnector(this);
+                        await Connector.Open(timeout, async, cancellationToken);
+                        Counters.NumberOfNonPooledConnections.Increment();
+                    }
+                    else
+                    {
+                        _userFacingConnectionString = _pool.UserFacingConnectionString;
+
+                        if (Settings.Enlist)
                         {
-                            // First, check to see if we have a connection enlisted to this transaction which has been closed.
-                            // If so, return that as an optimization rather than opening a new one and triggering escalation
-                            // to a distributed transaction.
-                            Connector = _pool.TryAllocateEnlistedPending(Transaction.Current);
-                            if (Connector != null)
+                            transaction = Transaction.Current;
+                            if (transaction != null)
                             {
-                                Connector.Connection = this;
-                                EnlistedTransaction = transaction;
+                                // First, check to see if we have a connection enlisted to this transaction which has been closed.
+                                // If so, return that as an optimization rather than opening a new one and triggering escalation
+                                // to a distributed transaction.
+                                Connector = _pool.TryAllocateEnlistedPending(Transaction.Current);
+                                if (Connector != null)
+                                {
+                                    Connector.Connection = this;
+                                    EnlistedTransaction = transaction;
+                                }
+                            }
+
+                            if (Connector == null)
+                            {
+                                // If Enlist is true, we skipped the fast path above, try it here first,
+                                // before going to the long path.
+                                // TODO: Maybe find a more elegant way to factor this code...
+                                if (!_pool.TryAllocateFast(this, out Connector))
+                                    Connector = await _pool.AllocateLong(this, timeout, async, cancellationToken);
                             }
                         }
+                        else  // No enlist
+                            Connector = await _pool.AllocateLong(this, timeout, async, cancellationToken);
 
-                        if (Connector == null)
-                        {
-                            // If Enlist is true, we skipped the fast path above, try it here first,
-                            // before going to the long path.
-                            // TODO: Maybe find a more elegant way to factor this code...
-                            if (!_pool.TryAllocateFast(this, out Connector))
-                                Connector = await _pool.AllocateLong(this, timeout, async, cancellationToken);
-                        }
+                        // Since this pooled connector was opened, global mappings may have
+                        // changed. Bring this up to date if needed.
+                        mapper = Connector.TypeMapper;
+                        if (mapper.ChangeCounter != TypeMapping.GlobalTypeMapper.Instance.ChangeCounter)
+                            mapper.Reset();
                     }
-                    else  // No enlist
-                        Connector = await _pool.AllocateLong(this, timeout, async, cancellationToken);
 
-                    // Since this pooled connector was opened, global mappings may have
-                    // changed. Bring this up to date if needed.
-                    var mapper = Connector.TypeMapper;
-                    if (mapper.ChangeCounter != TypeMapping.GlobalTypeMapper.Instance.ChangeCounter)
-                        mapper.Reset();
+                    // We may have gotten an already enlisted pending connector above, no need to enlist in that case
+                    if (transaction != null && EnlistedTransaction == null)
+                        EnlistTransaction(Transaction.Current);
                 }
+                catch
+                {
+                    Connector = null;
+                    throw;
+                }
+                Debug.Assert(Connector.Connection != null, "Open done but connector not set on Connection");
+                Log.Debug("Connection opened", Connector.Id);
+                OnStateChange(ClosedToOpenEventArgs);
+            }
 
-                // We may have gotten an already enlisted pending connector above, no need to enlist in that case
-                if (transaction != null && EnlistedTransaction == null)
-                    EnlistTransaction(Transaction.Current);
-            }
-            catch
-            {
-                Connector = null;
-                throw;
-            }
-            Debug.Assert(Connector.Connection != null, "Open done but connector not set on Connection");
-            Log.Debug("Connection opened", Connector.Id);
-            OnStateChange(ClosedToOpenEventArgs);
         }
 
         #endregion Open / Init

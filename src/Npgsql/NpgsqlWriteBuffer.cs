@@ -295,29 +295,29 @@ namespace Npgsql
                 WriteString(s, charLen);
                 return PGUtil.CompletedTask;
             }
-            return WriteStringLong(s, charLen, byteLen, async);
-        }
+            return WriteStringLong();
 
-        async Task WriteStringLong(string s, int charLen, int byteLen, bool async)
-        {
-            Debug.Assert(byteLen > WriteSpaceLeft);
-            if (byteLen <= Size)
+            async Task WriteStringLong()
             {
-                // String can fit entirely in an empty buffer. Flush and retry rather than
-                // going into the partial writing flow below (which requires ToCharArray())
-                await Flush(async);
-                WriteString(s, charLen);
-            }
-            else
-            {
-                var charPos = 0;
-                while (true)
+                Debug.Assert(byteLen > WriteSpaceLeft);
+                if (byteLen <= Size)
                 {
-                    WriteStringChunked(s, charPos, charLen - charPos, true, out var charsUsed, out var completed);
-                    if (completed)
-                        break;
+                    // String can fit entirely in an empty buffer. Flush and retry rather than
+                    // going into the partial writing flow below (which requires ToCharArray())
                     await Flush(async);
-                    charPos += charsUsed;
+                    WriteString(s, charLen);
+                }
+                else
+                {
+                    var charPos = 0;
+                    while (true)
+                    {
+                        WriteStringChunked(s, charPos, charLen - charPos, true, out var charsUsed, out var completed);
+                        if (completed)
+                            break;
+                        await Flush(async);
+                        charPos += charsUsed;
+                    }
                 }
             }
         }
@@ -329,32 +329,32 @@ namespace Npgsql
                 WriteChars(chars, offset, charLen);
                 return PGUtil.CompletedTask;
             }
-            return WriteCharsLong(chars, offset, charLen, byteLen, async);
-        }
+            return WriteCharsLong();
 
-        async Task WriteCharsLong(char[] chars, int offset, int charLen, int byteLen, bool async)
-        {
-            Debug.Assert(byteLen > WriteSpaceLeft);
-            if (byteLen <= Size)
+            async Task WriteCharsLong()
             {
-                // String can fit entirely in an empty buffer. Flush and retry rather than
-                // going into the partial writing flow below (which requires ToCharArray())
-                await Flush(async);
-                WriteChars(chars, offset, charLen);
-            }
-            else
-            {
-                var charPos = 0;
-
-                while (true)
+                Debug.Assert(byteLen > WriteSpaceLeft);
+                if (byteLen <= Size)
                 {
-                    int charsUsed;
-                    bool completed;
-                    WriteStringChunked(chars, charPos + offset, charLen - charPos, true, out charsUsed, out completed);
-                    if (completed)
-                        break;
+                    // String can fit entirely in an empty buffer. Flush and retry rather than
+                    // going into the partial writing flow below (which requires ToCharArray())
                     await Flush(async);
-                    charPos += charsUsed;
+                    WriteChars(chars, offset, charLen);
+                }
+                else
+                {
+                    var charPos = 0;
+
+                    while (true)
+                    {
+                        int charsUsed;
+                        bool completed;
+                        WriteStringChunked(chars, charPos + offset, charLen - charPos, true, out charsUsed, out completed);
+                        if (completed)
+                            break;
+                        await Flush(async);
+                        charPos += charsUsed;
+                    }
                 }
             }
         }

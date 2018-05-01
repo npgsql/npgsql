@@ -175,15 +175,13 @@ namespace Npgsql.TypeHandling
 
         /// <summary>
         /// In the vast majority of cases writing a parameter to the buffer won't need to perform I/O.
-        /// This version of WriteWithLengthInternal isn't async to avoid that overhead, but will delegate
-        /// to <see cref="WriteWithLengthLong{TAny}"/> if needed.
         /// </summary>
         internal sealed override Task WriteWithLengthInternal<TAny>(TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
             if (value == null || typeof(TAny) == typeof(DBNull))
             {
                 if (buf.WriteSpaceLeft < 4)
-                    return WriteWithLengthLong(value, buf, parameter, async);
+                    return WriteWithLengthLong();
                 buf.WriteInt32(-1);
                 return PGUtil.CompletedTask;
             }
@@ -193,28 +191,28 @@ namespace Npgsql.TypeHandling
 
             var elementLen = typedHandler.ValidateAndGetLength(value, parameter);
             if (buf.WriteSpaceLeft < 4 + elementLen)
-                return WriteWithLengthLong(value, buf, parameter, async);
+                return WriteWithLengthLong();
             buf.WriteInt32(elementLen);
             typedHandler.Write(value, buf, parameter);
             return PGUtil.CompletedTask;
-        }
 
-        async Task WriteWithLengthLong<TAny>([CanBeNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter, bool async)
-        {
-            if (value == null || typeof(TAny) == typeof(DBNull))
+            async Task WriteWithLengthLong()
             {
-                if (buf.WriteSpaceLeft < 4)
-                    await buf.Flush(async);
-                buf.WriteInt32(-1);
-                return;
-            }
+                if (value == null || typeof(TAny) == typeof(DBNull))
+                {
+                    if (buf.WriteSpaceLeft < 4)
+                        await buf.Flush(async);
+                    buf.WriteInt32(-1);
+                    return;
+                }
 
-            var typedHandler = (INpgsqlSimpleTypeHandler<TAny>)this;
-            var elementLen = typedHandler.ValidateAndGetLength(value, parameter);
-            if (buf.WriteSpaceLeft < 4 + elementLen)
-                await buf.Flush(async);
-            buf.WriteInt32(elementLen);
-            typedHandler.Write(value, buf, parameter);
+                typedHandler = (INpgsqlSimpleTypeHandler<TAny>)this;
+                elementLen = typedHandler.ValidateAndGetLength(value, parameter);
+                if (buf.WriteSpaceLeft < 4 + elementLen)
+                    await buf.Flush(async);
+                buf.WriteInt32(elementLen);
+                typedHandler.Write(value, buf, parameter);
+            }
         }
 
         /// <summary>

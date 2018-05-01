@@ -112,67 +112,70 @@ namespace Npgsql
         }
 
         internal Task Ensure(int count, bool async, bool dontBreakOnTimeouts)
-            => count <= ReadBytesLeft ? PGUtil.CompletedTask : EnsureLong(count, async, dontBreakOnTimeouts);
-
-        async Task EnsureLong(int count, bool async, bool dontBreakOnTimeouts = false)
         {
-            Debug.Assert(count <= Size);
-            Debug.Assert(count > ReadBytesLeft);
-            count -= ReadBytesLeft;
-            if (count <= 0) { return; }
+            return count <= ReadBytesLeft ? PGUtil.CompletedTask : EnsureLong();
 
-            if (ReadPosition == _filledBytes)
+            async Task EnsureLong()
             {
-                Clear();
-            }
-            else if (count > Size - _filledBytes)
-            {
-                Array.Copy(Buffer, ReadPosition, Buffer, 0, ReadBytesLeft);
-                _filledBytes = ReadBytesLeft;
-                ReadPosition = 0;
-            }
+                Debug.Assert(count <= Size);
+                Debug.Assert(count > ReadBytesLeft);
+                count -= ReadBytesLeft;
+                if (count <= 0) { return; }
 
-            try
-            {
-                while (count > 0)
+                if (ReadPosition == _filledBytes)
                 {
-                    var toRead = Size - _filledBytes;
+                    Clear();
+                }
+                else if (count > Size - _filledBytes)
+                {
+                    Array.Copy(Buffer, ReadPosition, Buffer, 0, ReadBytesLeft);
+                    _filledBytes = ReadBytesLeft;
+                    ReadPosition = 0;
+                }
 
-                    int read;
-                    if (async)
+                try
+                {
+                    while (count > 0)
                     {
-                        if (AwaitableSocket == null)  // SSL
-                            read = await Underlying.ReadAsync(Buffer, _filledBytes, toRead);
-                        else  // Non-SSL async I/O, optimized
-                        {
-                            AwaitableSocket.SetBuffer(Buffer, _filledBytes, toRead);
-                            await AwaitableSocket.ReceiveAsync();
-                            read = AwaitableSocket.BytesTransferred;
-                        }
-                    } else  // Sync I/O
-                        read = Underlying.Read(Buffer, _filledBytes, toRead);
+                        var toRead = Size - _filledBytes;
 
-                    if (read == 0)
-                        throw new EndOfStreamException();
-                    count -= read;
-                    _filledBytes += read;
+                        int read;
+                        if (async)
+                        {
+                            if (AwaitableSocket == null)  // SSL
+                                read = await Underlying.ReadAsync(Buffer, _filledBytes, toRead);
+                            else  // Non-SSL async I/O, optimized
+                            {
+                                AwaitableSocket.SetBuffer(Buffer, _filledBytes, toRead);
+                                await AwaitableSocket.ReceiveAsync();
+                                read = AwaitableSocket.BytesTransferred;
+                            }
+                        } else  // Sync I/O
+                            read = Underlying.Read(Buffer, _filledBytes, toRead);
+
+                        if (read == 0)
+                            throw new EndOfStreamException();
+                        count -= read;
+                        _filledBytes += read;
+                    }
+                }
+                // We have a special case when reading async notifications - a timeout may be normal
+                // shouldn't be fatal
+                // Note that mono throws SocketException with the wrong error (see #1330)
+                catch (IOException e) when (
+                    dontBreakOnTimeouts && (e.InnerException as SocketException)?.SocketErrorCode ==
+                       (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock)
+                )
+                {
+                    throw new TimeoutException("Timeout while reading from stream");
+                }
+                catch (Exception e)
+                {
+                    Connector.Break();
+                    throw new NpgsqlException("Exception while reading from stream", e);
                 }
             }
-            // We have a special case when reading async notifications - a timeout may be normal
-            // shouldn't be fatal
-            // Note that mono throws SocketException with the wrong error (see #1330)
-            catch (IOException e) when (
-                dontBreakOnTimeouts && (e.InnerException as SocketException)?.SocketErrorCode ==
-                   (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock)
-            )
-            {
-                throw new TimeoutException("Timeout while reading from stream");
-            }
-            catch (Exception e)
-            {
-                Connector.Break();
-                throw new NpgsqlException("Exception while reading from stream", e);
-            }
+
         }
 
         internal Task ReadMore(bool async) => Ensure(ReadBytesLeft + 1, async);
