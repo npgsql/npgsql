@@ -278,21 +278,25 @@ namespace Npgsql.TypeHandlers
         protected internal override ValueTask<TAny> Read<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
         {
             if (IsArrayOf<TAny, BitArray>.Value)
-                return ReadArrayImpl<TAny, BitArray>(buf, async);
+                return ReadArrayImpl<BitArray>();
+
             if (IsArrayOf<TAny, bool>.Value)
-                return ReadArrayImpl<TAny, bool>(buf, async);
+                return ReadArrayImpl<bool>();
+
             if (typeof(TAny) == typeof(List<BitArray>))
-                return ReadListImpl<TAny, BitArray>(buf, async);
+                return ReadListImpl<BitArray>();
+
             if (typeof(TAny) == typeof(List<bool>))
-                return ReadListImpl<TAny, bool>(buf, async);
+                return ReadListImpl<bool>();
+
             return base.Read<TAny>(buf, len, async, fieldDescription);
+
+            async ValueTask<TAny> ReadArrayImpl<TElement>()
+                => (TAny)(object)await ReadArray<TElement>(buf, async);
+
+            async ValueTask<TAny> ReadListImpl<TElement>()
+                => (TAny)(object)await ReadList<TElement>(buf, async);
         }
-
-        async ValueTask<TArray> ReadArrayImpl<TArray, TElement>(NpgsqlReadBuffer buf, bool async)
-            => (TArray)(object)await ReadArray<TElement>(buf, async);
-
-        async ValueTask<TArray> ReadListImpl<TArray, TElement>(NpgsqlReadBuffer buf, bool async)
-            => (TArray)(object)await ReadList<TElement>(buf, async);
 
         internal override object ReadAsObject(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => ReadAsObject(buf, len, false, fieldDescription).Result;

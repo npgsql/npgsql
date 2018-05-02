@@ -80,20 +80,20 @@ namespace Npgsql.TypeHandlers
 
         protected internal override ValueTask<TAny> Read<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
         {
-            if (typeof(TAny) == typeof(List<TElement>))
-                return ReadListImpl<TAny>(buf, async);
-
             if (IsArrayOf<TAny, TElement>.Value)
-                return ReadArrayImpl<TAny>(buf, async);
+                return ReadArrayImpl();
+
+            if (typeof(TAny) == typeof(List<TElement>))
+                return ReadListImpl();
 
             return base.Read<TAny>(buf, len, async, fieldDescription);
+
+            async ValueTask<TAny> ReadArrayImpl()
+                => (TAny)(object)await ReadArray<TElement>(buf, async);
+
+            async ValueTask<TAny> ReadListImpl()
+                => (TAny)(object)await ReadList<TElement>(buf, async);
         }
-
-        async ValueTask<TArray> ReadArrayImpl<TArray>(NpgsqlReadBuffer buf, bool async)
-            => (TArray)(object)await ReadArray<TElement>(buf, async);
-
-        async ValueTask<TArray> ReadListImpl<TArray>(NpgsqlReadBuffer buf, bool async)
-            => (TArray)(object)await ReadList<TElement>(buf, async);
 
         protected async ValueTask<Array> ReadArray<T>(NpgsqlReadBuffer buf, bool async)
         {
@@ -175,11 +175,11 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        static Exception MixedTypesOrJaggedArray(Exception innerException)
+        static Exception MixedTypesOrJaggedArrayException(Exception innerException)
             => new Exception("While trying to write an array, one of its elements failed validation. " +
                              "You may be trying to mix types in a non-generic IList, or to write a jagged array.", innerException);
 
-        static Exception CantWriteType(Type type)
+        static Exception CantWriteTypeException(Type type)
             => new InvalidCastException($"Can't write type {type} as an array of {typeof(TElement)}");
 
         // We're required to override this but it will never be called
@@ -208,7 +208,7 @@ namespace Npgsql.TypeHandlers
                 return ValidateAndGetLengthGeneric(generic, ref lengthCache);
             if (value is ICollection nonGeneric)
                 return ValidateAndGetLengthNonGeneric(nonGeneric, ref lengthCache);
-            throw CantWriteType(value.GetType());
+            throw CantWriteTypeException(value.GetType());
         }
 
         // Handle single-dimensional arrays and generic IList<T>
@@ -232,7 +232,7 @@ namespace Npgsql.TypeHandlers
                     }
                     catch (Exception e)
                     {
-                        throw MixedTypesOrJaggedArray(e);
+                        throw MixedTypesOrJaggedArrayException(e);
                     }
             lengthCache = elemLengthCache;
             lengthCache.Lengths[pos] = len;
@@ -263,7 +263,7 @@ namespace Npgsql.TypeHandlers
                     }
                     catch (Exception e)
                     {
-                        throw MixedTypesOrJaggedArray(e);
+                        throw MixedTypesOrJaggedArrayException(e);
                     }
             lengthCache = elemLengthCache;
             lengthCache.Lengths[pos] = len;
@@ -282,7 +282,7 @@ namespace Npgsql.TypeHandlers
                 return WriteGeneric(list, buf, lengthCache, async);
             if (value is ICollection nonGeneric)
                 return WriteNonGeneric(nonGeneric, buf, lengthCache, async);
-            return PGUtil.TaskFromException(CantWriteType(value.GetType()));
+            throw CantWriteTypeException(value.GetType());
         }
 
         // The default WriteObjectWithLength casts the type handler to INpgsqlTypeHandler<T>, but that's not sufficient for
@@ -368,20 +368,20 @@ namespace Npgsql.TypeHandlers
 
         protected internal override ValueTask<TAny> Read<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
         {
-            if (typeof(TAny) == typeof(List<TElementPsv>))
-                return ReadPvsListImpl<TAny>(buf, async);
-
             if (IsArrayOf<TAny, TElementPsv>.Value)
-                return ReadPvsArrayImpl<TAny>(buf, async);
+                return ReadPvsArrayImpl();
+
+            if (typeof(TAny) == typeof(List<TElementPsv>))
+                return ReadPvsListImpl();
 
             return base.Read<TAny>(buf, len, async, fieldDescription);
+
+            async ValueTask<TAny> ReadPvsArrayImpl()
+                => (TAny)(object)await ReadArray<TElementPsv>(buf, async);
+
+            async ValueTask<TAny> ReadPvsListImpl()
+                => (TAny)(object)await ReadList<TElementPsv>(buf, async);
         }
-
-        async ValueTask<TArray> ReadPvsArrayImpl<TArray>(NpgsqlReadBuffer buf, bool async)
-            => (TArray)(object)await ReadArray<TElementPsv>(buf, async);
-
-        async ValueTask<TArray> ReadPvsListImpl<TArray>(NpgsqlReadBuffer buf, bool async)
-            => (TArray)(object)await ReadList<TElementPsv>(buf, async);
 
         internal override object ReadPsvAsObject(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => ReadPsvAsObject(buf, len, false, fieldDescription).Result;
