@@ -21,16 +21,17 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using System;
-using System.Collections;
-using System.Collections.Specialized;
-using System.Linq;
-using System.Threading.Tasks;
 using Npgsql.BackendMessages;
-using NpgsqlTypes;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
+using NpgsqlTypes;
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Npgsql.TypeHandlers
 {
@@ -271,31 +272,32 @@ namespace Npgsql.TypeHandlers
     /// </summary>
     class BitStringArrayHandler : ArrayHandler<BitArray>
     {
-        internal override Type GetElementFieldType(FieldDescription fieldDescription = null)
-            => fieldDescription?.TypeModifier == 1 ? typeof(bool) : typeof(BitArray);
-
-        internal override Type GetElementPsvType(FieldDescription fieldDescription = null)
-            => GetElementFieldType(fieldDescription);
-
         public BitStringArrayHandler(BitStringHandler elementHandler)
-            : base(elementHandler) {}
+            : base(elementHandler) { }
 
-        protected internal override async ValueTask<TArray> Read<TArray>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+        protected internal override async ValueTask<TAny> Read<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
         {
-            var t = typeof(TArray);
-            if (!t.IsArray)
-                throw new InvalidCastException($"Can't cast database type {PgDisplayName} to {typeof(TArray).Name}");
-            var elementType = t.GetElementType();
-            if (elementType == typeof(BitArray))
-                return (TArray)(object)await Read<BitArray>(buf, async);
-            if (elementType == typeof(bool))
-                return (TArray)(object)await Read<bool>(buf, async);
-            throw new InvalidCastException($"Can't cast database type {PgDisplayName} to {typeof(TArray).Name}");
+            if (IsArrayOf<TAny, BitArray>.Value)
+                return (TAny)(object)await ReadArray<BitArray>(buf, async);
+
+            if (IsArrayOf<TAny, bool>.Value)
+                return (TAny)(object)await ReadArray<bool>(buf, async);
+
+            if (typeof(TAny) == typeof(List<BitArray>))
+                return (TAny)(object)await ReadList<BitArray>(buf, async);
+
+            if (typeof(TAny) == typeof(List<bool>))
+                return (TAny)(object)await ReadList<bool>(buf, async);
+
+            return await base.Read<TAny>(buf, len, async, fieldDescription);
         }
+
+        internal override object ReadAsObject(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+            => ReadAsObject(buf, len, false, fieldDescription).Result;
 
         internal override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
             => fieldDescription?.TypeModifier == 1
-                ? await Read<bool>(buf, async)
-                : await Read<BitArray>(buf, async);
+                ? await ReadArray<bool>(buf, async)
+                : await ReadArray<BitArray>(buf, async);
     }
 }
