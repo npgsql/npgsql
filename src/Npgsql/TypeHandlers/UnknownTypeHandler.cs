@@ -75,11 +75,8 @@ namespace Npgsql.TypeHandlers
 
         // Allow writing anything that is a string or can be converted to one via the unknown type handler
 
-        public override int ValidateAndGetLength<T2>(T2 value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        protected internal override int ValidateAndGetLength<T2>(T2 value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
             => ValidateObjectAndGetLength(value, ref lengthCache, parameter);
-
-        //protected override Task Write<T2>(T2 value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-        //    => WriteObjectWithLength(value, buf, lengthCache, parameter, async);
 
         protected internal override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
         {

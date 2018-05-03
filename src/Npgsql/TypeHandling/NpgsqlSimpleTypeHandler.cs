@@ -21,6 +21,7 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
+using Npgsql.BackendMessages;
 using System;
 using System.Collections.Concurrent;
 using System.Data.Common;
@@ -29,8 +30,6 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading.Tasks;
-using JetBrains.Annotations;
-using Npgsql.BackendMessages;
 
 namespace Npgsql.TypeHandling
 {
@@ -168,7 +167,7 @@ namespace Npgsql.TypeHandling
         /// <summary>
         /// This method is sealed, override <see cref="ValidateAndGetLength(TDefault,NpgsqlParameter)"/>.
         /// </summary>
-        public override int ValidateAndGetLength<TAny>(TAny value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        protected internal override int ValidateAndGetLength<TAny>(TAny value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
             => this is INpgsqlSimpleTypeHandler<TAny> typedHandler
                 ? typedHandler.ValidateAndGetLength(value, parameter)
                 : throw new InvalidCastException($"Can't write CLR type {typeof(TAny)} to database type {PgDisplayName}");

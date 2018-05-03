@@ -21,20 +21,25 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using System;
-using NpgsqlTypes;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandlers.NumericHandlers;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
+using NpgsqlTypes;
+using System;
 
 namespace Npgsql.TypeHandlers.InternalTypesHandlers
 {
     [TypeMapping("int2vector", NpgsqlDbType.Int2Vector)]
-    class Int2VectorHandlerFactory : NpgsqlTypeHandlerFactory<Array>
+    class Int2VectorHandlerFactory : NpgsqlTypeHandlerFactory
     {
-        protected override NpgsqlTypeHandler<Array> Create(NpgsqlConnection conn)
-            => new Int2VectorHandler(conn.Connector.TypeMapper.DatabaseInfo.ByName["int2"]);
+        internal override NpgsqlTypeHandler Create(PostgresType pgType, NpgsqlConnection conn)
+            => new Int2VectorHandler(conn.Connector.TypeMapper.DatabaseInfo.ByName["int2"])
+            {
+                PostgresType = pgType
+            };
+
+        internal override Type DefaultValueType => null;
     }
 
     /// <summary>
@@ -44,9 +49,6 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
     class Int2VectorHandler : ArrayHandler<short>
     {
         public Int2VectorHandler(PostgresType postgresShortType)
-            : base(null, 0)
-        {
-            ElementHandler = new Int16Handler { PostgresType = postgresShortType };
-        }
+            : base(new Int16Handler { PostgresType = postgresShortType }, 0) { }
     }
 }

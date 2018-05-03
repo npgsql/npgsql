@@ -137,7 +137,7 @@ namespace Npgsql.TypeHandling
         /// Called to validate and get the length of a value of an arbitrary type.
         /// Checks that the current handler supports that type and throws an exception otherwise.
         /// </summary>
-        public override int ValidateAndGetLength<TAny>(TAny value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        protected internal override int ValidateAndGetLength<TAny>(TAny value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
             => this is INpgsqlTypeHandler<TAny> typedHandler
                 ? typedHandler.ValidateAndGetLength(value, ref lengthCache, parameter)
                 : throw new InvalidCastException($"Can't write CLR type {typeof(TAny)} to database type {PgDisplayName}");

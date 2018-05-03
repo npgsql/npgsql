@@ -62,12 +62,11 @@ namespace Npgsql.Json.NET
             }
         }
 
-        public override int ValidateAndGetLength<T2>(T2 value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        protected override int ValidateAndGetLength<T2>(T2 value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
             => typeof(T2) == typeof(string)
                 ? base.ValidateAndGetLength(value, ref lengthCache, parameter)
                 : ValidateObjectAndGetLength(value, ref lengthCache, parameter);
-
-
+        
         protected override Task WriteWithLength<T2>(T2 value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
             => typeof(T2) == typeof(string)
                 ? base.WriteWithLength(value, buf, lengthCache, parameter, async)
