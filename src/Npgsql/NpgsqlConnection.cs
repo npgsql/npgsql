@@ -83,6 +83,8 @@ namespace Npgsql
 
         static readonly NpgsqlConnectionStringBuilder DefaultSettings = new NpgsqlConnectionStringBuilder();
 
+        static readonly DiagnosticListener NpgsqlDiagnosticListener = new DiagnosticListener(NpgsqlDiagnosticListenerExtensions.DiagnosticListenerName);
+
         [CanBeNull]
         ConnectorPool _pool;
 
@@ -222,28 +224,49 @@ namespace Npgsql
         {
             // This is an optimized path for when a connection can be taken from the pool
             // with no waiting or I/O
+            var operationId = NpgsqlDiagnosticListener.WriteConnectionOpenBefore(this);
+            Exception e = null;
+            try
+            {
+                CheckConnectionClosed();
 
-            CheckConnectionClosed();
+                Log.Trace("Opening connection...");
 
-            Log.Trace("Opening connection...");
+                if (_pool == null || Settings.Enlist || !_pool.TryAllocateFast(this, out Connector))
+                    return OpenLong(async, cancellationToken);
 
-            if (_pool == null || Settings.Enlist || !_pool.TryAllocateFast(this, out Connector))
-                return OpenLong(async, cancellationToken);
+                _userFacingConnectionString = _pool.UserFacingConnectionString;
 
-            _userFacingConnectionString = _pool.UserFacingConnectionString;
+                Counters.SoftConnectsPerSecond.Increment();
 
-            Counters.SoftConnectsPerSecond.Increment();
+                // Since this pooled connector was opened, global mappings may have
+                // changed. Bring this up to date if needed.
+                var mapper = Connector.TypeMapper;
+                if (mapper.ChangeCounter != TypeMapping.GlobalTypeMapper.Instance.ChangeCounter)
+                    mapper.Reset();
 
-            // Since this pooled connector was opened, global mappings may have
-            // changed. Bring this up to date if needed.
-            var mapper = Connector.TypeMapper;
-            if (mapper.ChangeCounter != TypeMapping.GlobalTypeMapper.Instance.ChangeCounter)
-                mapper.Reset();
-
-            Debug.Assert(Connector.Connection != null, "Open done but connector not set on Connection");
-            Log.Debug("Connection opened", Connector.Id);
-            OnStateChange(new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open));
-            return PGUtil.CompletedTask;
+                Debug.Assert(Connector.Connection != null, "Open done but connector not set on Connection");
+                Log.Debug("Connection opened", Connector.Id);
+                OnStateChange(new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open));
+                return PGUtil.CompletedTask;
+            }
+            catch (Exception ex)
+            {
+                e = ex;
+                throw;
+            }
+            finally
+            {
+                if (e != null)
+                {
+                    NpgsqlDiagnosticListener.WriteConnectionOpenError(operationId, this, e);
+                }
+                else
+                { 
+                    NpgsqlDiagnosticListener.WriteConnectionOpenAfter(operationId, this);
+                }
+            }
+           
         }
 
         async Task OpenLong(bool async, CancellationToken cancellationToken)
@@ -605,44 +628,66 @@ namespace Npgsql
 
         internal void Close(bool wasBroken)
         {
-            if (Connector == null)
-                return;
-            var connectorId = Connector.Id;
-            Log.Trace("Closing connection...", connectorId);
-            _wasBroken = wasBroken;
-
-            Connector.CloseOngoingOperations();
-
-            if (Settings.Pooling)
+            var operationId = NpgsqlDiagnosticListener.WriteConnectionCloseBefore(this);
+            
+            Exception e = null;
+            try
             {
-                if (EnlistedTransaction == null)
-                    _pool.Release(Connector);
-                else
+                if (Connector == null)
+                    return;
+                var connectorId = Connector.Id;
+                Log.Trace("Closing connection...", connectorId);
+                _wasBroken = wasBroken;
+
+                Connector.CloseOngoingOperations();
+
+                if (Settings.Pooling)
                 {
-                    // A System.Transactions transaction is still in progress, we need to wait for it to complete.
-                    // Close the connection and disconnect it from the resource manager but leave the connector
-                    // in a enlisted pending list in the pool.
-                    _pool.AddPendingEnlistedConnector(Connector, EnlistedTransaction);
+                    if (EnlistedTransaction == null)
+                        _pool.Release(Connector);
+                    else
+                    {
+                        // A System.Transactions transaction is still in progress, we need to wait for it to complete.
+                        // Close the connection and disconnect it from the resource manager but leave the connector
+                        // in a enlisted pending list in the pool.
+                        _pool.AddPendingEnlistedConnector(Connector, EnlistedTransaction);
+                        Connector.Connection = null;
+                        EnlistedTransaction = null;
+                    }
+                }
+                else // Non-pooled connection
+                {
+                    if (EnlistedTransaction == null)
+                        Connector.Close();
+                    // If a non-pooled connection is being closed but is enlisted in an ongoing
+                    // TransactionScope, simply detach the connector from the connection and leave
+                    // it open. It will be closed when the TransactionScope is disposed.
                     Connector.Connection = null;
                     EnlistedTransaction = null;
                 }
+
+                Log.Debug("Connection closed", connectorId);
+
+                Connector = null;
+
+                OnStateChange(OpenToClosedEventArgs);
             }
-            else  // Non-pooled connection
+            catch (Exception exception)
             {
-                if (EnlistedTransaction == null)
-                    Connector.Close();
-                // If a non-pooled connection is being closed but is enlisted in an ongoing
-                // TransactionScope, simply detach the connector from the connection and leave
-                // it open. It will be closed when the TransactionScope is disposed.
-                Connector.Connection = null;
-                EnlistedTransaction = null;
+                e = exception;
+                throw;
             }
-
-            Log.Debug("Connection closed", connectorId);
-
-            Connector = null;
-
-            OnStateChange(OpenToClosedEventArgs);
+            finally
+            {
+                if (e != null)
+                {
+                    NpgsqlDiagnosticListener.WriteConnectionCloseError(operationId, this, e);
+                }
+                else
+                {
+                    NpgsqlDiagnosticListener.WriteConnectionCloseAfter(operationId, this);
+                }
+            }
         }
 
         /// <summary>

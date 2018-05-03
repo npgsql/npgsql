@@ -83,6 +83,8 @@ namespace Npgsql
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
+        static readonly DiagnosticListener NpgsqlDiagnosticListener = new DiagnosticListener(NpgsqlDiagnosticListenerExtensions.DiagnosticListenerName);
+
         const IsolationLevel DefaultIsolationLevel = IsolationLevel.ReadCommitted;
 
         #endregion
@@ -145,16 +147,38 @@ namespace Npgsql
 
         async Task Commit(bool async)
         {
-            CheckReady();
+            Exception e = null;
+            var operationId = NpgsqlDiagnosticListener.WriteTransactionCommitBefore(_isolationLevel, _connector.Connection);
 
-            if (!_connector.DatabaseInfo.SupportsTransactions)
-                return;
-
-            using (_connector.StartUserAction())
+            try
             {
-                Log.Debug("Committing transaction", _connector.Id);
-                await _connector.ExecuteInternalCommand(PregeneratedMessage.CommitTransaction, async);
-                Clear();
+                CheckReady();
+
+                if (!_connector.DatabaseInfo.SupportsTransactions)
+                    return;
+
+                using (_connector.StartUserAction())
+                {
+                    Log.Debug("Committing transaction", _connector.Id);
+                    await _connector.ExecuteInternalCommand(PregeneratedMessage.CommitTransaction, async);
+                    Clear();
+                }
+            }
+            catch (Exception exception)
+            {
+                e = exception;
+                throw;
+            }
+            finally
+            {
+                if (e != null)
+                {
+                    NpgsqlDiagnosticListener.WriteTransactionCommitError(operationId, _isolationLevel, _connector.Connection, e);
+                }
+                else
+                {
+                    NpgsqlDiagnosticListener.WriteTransactionCommitAfter(operationId, _isolationLevel, _connector.Connection);
+                }
             }
         }
 
@@ -186,11 +210,33 @@ namespace Npgsql
 
         async Task Rollback(bool async)
         {
-            CheckReady();
-            if (!_connector.DatabaseInfo.SupportsTransactions)
-                return;
-            await _connector.Rollback(async);
-            Clear();
+            Exception e = null;
+            var operationId = NpgsqlDiagnosticListener.WriteTransactionRollbackBefore(_isolationLevel, _connector.Connection, null);
+
+            try
+            {
+                CheckReady();
+                if (!_connector.DatabaseInfo.SupportsTransactions)
+                    return;
+                await _connector.Rollback(async);
+                Clear();
+            }
+            catch (Exception exception)
+            {
+                e = exception;
+                throw;
+            }
+            finally
+            {
+                if (e != null)
+                {
+                    NpgsqlDiagnosticListener.WriteTransactionRollbackError(operationId, _isolationLevel, _connector.Connection, null, e);
+                }
+                else
+                {
+                    NpgsqlDiagnosticListener.WriteTransactionRollbackAfter(operationId, _isolationLevel, _connector.Connection, null);
+                }
+            }
         }
 
         /// <summary>
