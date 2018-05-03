@@ -378,6 +378,14 @@ namespace Npgsql.Tests
                 Assert.That(() => tx.Save("a;b"), Throws.Exception.TypeOf<ArgumentException>());
         }
 
+        [Test, Description("Check that Save Point name is starting with a letter.")]
+        public void SavepointStartingWithNumbers()
+        {
+            using (var conn = OpenConnection())
+            using (var tx = conn.BeginTransaction())
+                Assert.That(() => tx.Save("00savepoint"), Throws.Exception.TypeOf<ArgumentException>());
+        }
+
         [Test, Description("Check IsCompleted before, during and after a normal committed transaction")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/985")]
         public void IsCompletedCommit()
@@ -390,7 +398,7 @@ namespace Npgsql.Tests
                 conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')", tx: tx);
                 Assert.That(!tx.IsCompleted);
                 tx.Commit();
-                Assert.That(tx.IsCompleted);
+
             }
         }
 
@@ -493,16 +501,21 @@ namespace Npgsql.Tests
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString);
             csb.CommandTimeout = 100000;
 
-            using (var connTimeoutChanged = new NpgsqlConnection(csb.ToString())) {
+            using (var connTimeoutChanged = new NpgsqlConnection(csb.ToString()))
+            {
                 connTimeoutChanged.Open();
-                using (var t = connTimeoutChanged.BeginTransaction()) {
-                    try {
+                using (var t = connTimeoutChanged.BeginTransaction())
+                {
+                    try
+                    {
                         var command = new NpgsqlCommand("select count(*) from dta", connTimeoutChanged);
                         command.Transaction = t;
                         var result = command.ExecuteScalar();
 
 
-                    } catch (Exception) {
+                    }
+                    catch (Exception)
+                    {
 
                         t.Rollback();
                     }
