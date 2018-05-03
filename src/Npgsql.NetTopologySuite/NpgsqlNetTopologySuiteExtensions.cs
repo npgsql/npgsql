@@ -21,6 +21,7 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
+using System;
 using GeoAPI;
 using GeoAPI.Geometries;
 using NetTopologySuite.Geometries;
@@ -56,6 +57,11 @@ namespace Npgsql
                 precisionModel = GeometryServiceProvider.Instance.DefaultPrecisionModel;
             if (handleOrdinates == Ordinates.None)
                 handleOrdinates = coordinateSequenceFactory.Ordinates;
+
+            var typeHandlerFactory = new NetTopologySuiteHandlerFactory(
+                new PostGisReader(coordinateSequenceFactory, precisionModel, handleOrdinates),
+                new PostGisWriter());
+
             return mapper
                 .AddMapping(new NpgsqlTypeMappingBuilder
                 {
@@ -74,9 +80,16 @@ namespace Npgsql
                         typeof(IGeometryCollection), typeof(GeometryCollection)
                     },
                     InferredDbType = DbType.Object,
-                    TypeHandlerFactory = new NetTopologySuiteHandlerFactory(
-                        new PostGisReader(coordinateSequenceFactory, precisionModel, handleOrdinates),
-                        new PostGisWriter())
+                    TypeHandlerFactory = typeHandlerFactory
+                }.Build())
+                .AddMapping(new NpgsqlTypeMappingBuilder
+                {
+                    PgTypeName = "geography",
+                    NpgsqlDbType = NpgsqlDbType.Geography,
+                    DbTypes = new DbType[0],
+                    ClrTypes = new Type[0],
+                    InferredDbType = DbType.Object,
+                    TypeHandlerFactory = typeHandlerFactory
                 }
                 .Build());
         }

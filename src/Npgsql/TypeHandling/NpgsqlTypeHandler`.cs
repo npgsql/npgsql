@@ -144,13 +144,11 @@ namespace Npgsql.TypeHandling
 
         /// <summary>
         /// In the vast majority of cases writing a parameter to the buffer won't need to perform I/O.
-        /// This version of WriteWithLengthInternal isn't async to avoid that overhead, but will delegate
-        /// to <see cref="WriteWithLengthLong{TAny}"/> if needed.
         /// </summary>
         internal override Task WriteWithLengthInternal<TAny>(TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
             if (buf.WriteSpaceLeft < 4)
-                return WriteWithLengthLong(value, buf, lengthCache, parameter, async);
+                return WriteWithLengthLong();
 
             if (value == null || typeof(TAny) == typeof(DBNull))
             {
@@ -159,20 +157,20 @@ namespace Npgsql.TypeHandling
             }
 
             return WriteWithLength(value, buf, lengthCache, parameter, async);
-        }
 
-        async Task WriteWithLengthLong<TAny>([CanBeNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-        {
-            if (buf.WriteSpaceLeft < 4)
-                await buf.Flush(async);
-
-            if (value == null || typeof(TAny) == typeof(DBNull))
+            async Task WriteWithLengthLong()
             {
-                buf.WriteInt32(-1);
-                return;
-            }
+                if (buf.WriteSpaceLeft < 4)
+                    await buf.Flush(async);
 
-            await WriteWithLength(value, buf, lengthCache, parameter, async);
+                if (value == null || typeof(TAny) == typeof(DBNull))
+                {
+                    buf.WriteInt32(-1);
+                    return;
+                }
+
+                await WriteWithLength(value, buf, lengthCache, parameter, async);
+            }
         }
 
         /// <summary>
