@@ -82,7 +82,7 @@ namespace Npgsql.TypeHandlers
                 ? -1
                 : ValidateAndGetLength(value, ref lengthCache, parameter);
 
-        public override int ValidateAndGetLength<TAny>(TAny value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        protected internal override int ValidateAndGetLength<TAny>(TAny value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
             => ValidateAndGetLength(value, ref lengthCache, parameter);
 
         int ValidateAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
