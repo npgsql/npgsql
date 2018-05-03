@@ -148,7 +148,7 @@ namespace Npgsql
         async Task Commit(bool async)
         {
             Exception e = null;
-            var operationId = NpgsqlDiagnosticListener.WriteTransactionCommitBefore(_isolationLevel, _connector.Connection);
+            var operationId = NpgsqlDiagnosticListener.WriteTransactionCommitBefore(_isolationLevel, Connection);
 
             try
             {
@@ -173,11 +173,11 @@ namespace Npgsql
             {
                 if (e != null)
                 {
-                    NpgsqlDiagnosticListener.WriteTransactionCommitError(operationId, _isolationLevel, _connector.Connection, e);
+                    NpgsqlDiagnosticListener.WriteTransactionCommitError(operationId, _isolationLevel, Connection, e);
                 }
                 else
                 {
-                    NpgsqlDiagnosticListener.WriteTransactionCommitAfter(operationId, _isolationLevel, _connector.Connection);
+                    NpgsqlDiagnosticListener.WriteTransactionCommitAfter(operationId, _isolationLevel, Connection);
                 }
             }
         }
@@ -211,7 +211,7 @@ namespace Npgsql
         async Task Rollback(bool async)
         {
             Exception e = null;
-            var operationId = NpgsqlDiagnosticListener.WriteTransactionRollbackBefore(_isolationLevel, _connector.Connection, null);
+            var operationId = NpgsqlDiagnosticListener.WriteTransactionRollbackBefore(_isolationLevel, Connection, null);
 
             try
             {
@@ -230,11 +230,11 @@ namespace Npgsql
             {
                 if (e != null)
                 {
-                    NpgsqlDiagnosticListener.WriteTransactionRollbackError(operationId, _isolationLevel, _connector.Connection, null, e);
+                    NpgsqlDiagnosticListener.WriteTransactionRollbackError(operationId, _isolationLevel, Connection, null, e);
                 }
                 else
                 {
-                    NpgsqlDiagnosticListener.WriteTransactionRollbackAfter(operationId, _isolationLevel, _connector.Connection, null);
+                    NpgsqlDiagnosticListener.WriteTransactionRollbackAfter(operationId, _isolationLevel, Connection, null);
                 }
             }
         }
