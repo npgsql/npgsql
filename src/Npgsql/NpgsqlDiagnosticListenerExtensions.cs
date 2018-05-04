@@ -5,325 +5,181 @@ using System.Data;
 
 namespace Npgsql
 {
-    internal static class NpgsqlDiagnosticListenerExtensions
+    static class NpgsqlDiagnosticListenerExtensions
     {
-        public const string DiagnosticListenerName = "NpgsqlDiagnosticListener";
+        public const string CommandDiagnosticListenerName = "Npgsql.Command";
+        public const string ConnectionDiagnosticListenerName = "Npgsql.Connection";
+        public const string TransactionDiagnosticListenerName = "Npgsql.Transaction";
 
-        const string NpgsqlClientPrefix = "Npgsql.";
+        public const string NpgsqlExecuteCommandStart = nameof(ExecuteCommandStart);
+        public const string NpgsqlExecuteCommandStop = nameof(ExecuteCommandStop);
+        public const string NpgsqlExecuteCommandError = nameof(ExecuteCommandError);
 
-        public const string NpgsqlBeforeExecuteCommand = NpgsqlClientPrefix + nameof(WriteCommandBefore);
-        public const string NpgsqlAfterExecuteCommand = NpgsqlClientPrefix + nameof(WriteCommandAfter);
-        public const string NpgsqlErrorExecuteCommand = NpgsqlClientPrefix + nameof(WriteCommandError);
+        public const string NpgsqlOpenConnectionStart = nameof(OpenConnectionStart);
+        public const string NpgsqlOpenConnectionStop = nameof(OpenConnectionStop);
+        public const string NpgsqlOpenConnectionError = nameof(WriteConnectionOpenError);
 
-        public const string NpgsqlBeforeOpenConnection = NpgsqlClientPrefix + nameof(WriteConnectionOpenBefore);
-        public const string NpgsqlAfterOpenConnection = NpgsqlClientPrefix + nameof(WriteConnectionOpenAfter);
-        public const string NpgsqlErrorOpenConnection = NpgsqlClientPrefix + nameof(WriteConnectionOpenError);
+        public const string NpgsqlCloseConnectionStart = nameof(CloseConnectionStart);
+        public const string NpgsqlCloseConnectionStop = nameof(CloseConnectionStop);
+        public const string NpgsqlCloseConnectionError = nameof(CloseConnectionError);
 
-        public const string NpgsqlBeforeCloseConnection = NpgsqlClientPrefix + nameof(WriteConnectionCloseBefore);
-        public const string NpgsqlAfterCloseConnection = NpgsqlClientPrefix + nameof(WriteConnectionCloseAfter);
-        public const string NpgsqlErrorCloseConnection = NpgsqlClientPrefix + nameof(WriteConnectionCloseError);
+        public const string NpgsqlCommitTransactionStart = nameof(CommitTransactionStart);
+        public const string NpgsqlCommitTransactionStop = nameof(CommitTransactionStop);
+        public const string NpgsqlCommitTransactionError = nameof(CommitTransactionError);
 
-        public const string NpgsqlBeforeCommitTransaction = NpgsqlClientPrefix + nameof(WriteTransactionCommitBefore);
-        public const string NpgsqlAfterCommitTransaction = NpgsqlClientPrefix + nameof(WriteTransactionCommitAfter);
-        public const string NpgsqlErrorCommitTransaction = NpgsqlClientPrefix + nameof(WriteTransactionCommitError);
+        public const string NpgsqlRollbackTransactionStart = nameof(RollbackTransactionStart);
+        public const string NpgsqlRollbackTransactionStop = nameof(RollbackTransactionStop);
+        public const string NpgsqlRollbackTransactionError = nameof(RollbackTransactionError);
 
-        public const string NpgsqlBeforeRollbackTransaction = NpgsqlClientPrefix + nameof(WriteTransactionRollbackBefore);
-        public const string NpgsqlAfterRollbackTransaction = NpgsqlClientPrefix + nameof(WriteTransactionRollbackAfter);
-        public const string NpgsqlErrorRollbackTransaction = NpgsqlClientPrefix + nameof(WriteTransactionRollbackError);
-
-        public static Guid WriteCommandBefore(this DiagnosticListener @this, NpgsqlCommand command, [CallerMemberName] string operation = "")
+        public static void ExecuteCommandStart(this DiagnosticListener @this, NpgsqlCommand command)
         {
-            if (!@this.IsEnabled(NpgsqlBeforeExecuteCommand))
+            if (!@this.IsEnabled(NpgsqlExecuteCommandStart))
             {
-                return Guid.Empty;
+                return;
             }
 
-            var operationId = Guid.NewGuid();
-
-            @this.Write(
-                NpgsqlBeforeExecuteCommand,
-                new
-                {
-                    OperationId = operationId,
-                    Operation = operation,
-                    ConnectionId = command.Connection?.Connector?.Id,
-                    Command = command
-                });
-
-            return operationId;
+            @this.Write(NpgsqlExecuteCommandStart, command);
         }
 
-        public static void WriteCommandAfter(this DiagnosticListener @this, Guid operationId, NpgsqlCommand command, [CallerMemberName] string operation = "")
+        public static void ExecuteCommandStop(this DiagnosticListener @this, NpgsqlCommand command)
         {
-            if (@this.IsEnabled(NpgsqlAfterExecuteCommand))
+            if (@this.IsEnabled(NpgsqlExecuteCommandStop))
+            {
+                @this.Write(NpgsqlExecuteCommandStop, command);
+            }
+        }
+
+        public static void ExecuteCommandError(this DiagnosticListener @this, NpgsqlCommand command, Exception ex)
+        {
+            if (@this.IsEnabled(NpgsqlExecuteCommandError))
             {
                 @this.Write(
-                    NpgsqlAfterExecuteCommand,
+                    NpgsqlExecuteCommandError,
                     new
                     {
-                        OperationId = operationId,
-                        Operation = operation,
-                        ConnectionId = command.Connection?.Connector?.Id,
                         Command = command,
-                        Timestamp = Stopwatch.GetTimestamp()
+                        Exception = ex
                     });
             }
         }
 
-        public static void WriteCommandError(this DiagnosticListener @this, Guid operationId, NpgsqlCommand command, Exception ex, [CallerMemberName] string operation = "")
+        public static void OpenConnectionStart(this DiagnosticListener @this, NpgsqlConnection connection)
         {
-            if (@this.IsEnabled(NpgsqlErrorExecuteCommand))
+            if (@this.IsEnabled(NpgsqlOpenConnectionStart))
             {
-                @this.Write(
-                    NpgsqlErrorExecuteCommand,
-                    new
-                    {
-                        OperationId = operationId,
-                        Operation = operation,
-                        ConnectionId = command.Connection?.Connector?.Id,
-                        Command = command,
-                        Exception = ex,
-                        Timestamp = Stopwatch.GetTimestamp()
-                    });
+                @this.Write(NpgsqlOpenConnectionStart, connection);
             }
         }
 
-        public static Guid WriteConnectionOpenBefore(this DiagnosticListener @this, NpgsqlConnection connection, [CallerMemberName] string operation = "")
+        public static void OpenConnectionStop(this DiagnosticListener @this, NpgsqlConnection connection)
         {
-            if (@this.IsEnabled(NpgsqlBeforeOpenConnection))
+            if (@this.IsEnabled(NpgsqlOpenConnectionStop))
             {
-                Guid operationId = Guid.NewGuid();
-
-                @this.Write(
-                    NpgsqlBeforeOpenConnection,
-                    new
-                    {
-                        OperationId = operationId,
-                        Operation = operation,
-                        Connection = connection,
-                        Timestamp = Stopwatch.GetTimestamp()
-                    });
-
-                return operationId;
-            }
-            else
-                return Guid.Empty;
-        }
-
-        public static void WriteConnectionOpenAfter(this DiagnosticListener @this, Guid operationId, NpgsqlConnection connection, [CallerMemberName] string operation = "")
-        {
-            if (@this.IsEnabled(NpgsqlAfterOpenConnection))
-            {
-                @this.Write(
-                    NpgsqlAfterOpenConnection,
-                    new
-                    {
-                        OperationId = operationId,
-                        Operation = operation,
-                        ConnectionId = connection.Connector.Id,
-                        Connection = connection,
-                        Timestamp = Stopwatch.GetTimestamp()
-                    });
+                @this.Write(NpgsqlOpenConnectionStop, connection);
             }
         }
 
-        public static void WriteConnectionOpenError(this DiagnosticListener @this, Guid operationId, NpgsqlConnection sqlConnection, Exception ex,
-            [CallerMemberName] string operation = "")
+        public static void WriteConnectionOpenError(this DiagnosticListener @this, NpgsqlConnection sqlConnection, Exception ex)
         {
-            if (@this.IsEnabled(NpgsqlErrorOpenConnection))
+            if (@this.IsEnabled(NpgsqlOpenConnectionError))
             {
                 @this.Write(
-                    NpgsqlErrorOpenConnection,
+                    NpgsqlOpenConnectionError,
                     new
                     {
-                        OperationId = operationId,
-                        Operation = operation,
-                        ConnectionId = sqlConnection.Connector.Id,
                         Connection = sqlConnection,
-                        Exception = ex,
-                        Timestamp = Stopwatch.GetTimestamp()
+                        Exception = ex
                     });
             }
         }
 
-        public static Guid WriteConnectionCloseBefore(this DiagnosticListener @this, NpgsqlConnection connection, [CallerMemberName] string operation = "")
+        public static void CloseConnectionStart(this DiagnosticListener @this, NpgsqlConnection connection)
         {
-            if (@this.IsEnabled(NpgsqlBeforeCloseConnection))
+            if (@this.IsEnabled(NpgsqlCloseConnectionStart))
             {
-                Guid operationId = Guid.NewGuid();
 
-                @this.Write(
-                    NpgsqlBeforeCloseConnection,
-                    new
-                    {
-                        OperationId = operationId,
-                        Operation = operation,
-                        ConnectionId = connection.Connector.Id,
-                        Connection = connection,
-                        Timestamp = Stopwatch.GetTimestamp()
-                    });
-
-                return operationId;
+                @this.Write(NpgsqlCloseConnectionStart, connection);
             }
-            else
-                return Guid.Empty;
         }
 
-        public static void WriteConnectionCloseAfter(this DiagnosticListener @this, Guid operationId, NpgsqlConnection connection, [CallerMemberName] string operation = "")
+        public static void CloseConnectionStop(this DiagnosticListener @this, NpgsqlConnection connection)
         {
-            if (@this.IsEnabled(NpgsqlAfterCloseConnection))
+            if (@this.IsEnabled(NpgsqlCloseConnectionStop))
+            {
+                @this.Write(NpgsqlCloseConnectionStop, connection);
+            }
+        }
+
+        public static void CloseConnectionError(this DiagnosticListener @this, NpgsqlConnection connection, Exception ex)
+        {
+            if (@this.IsEnabled(NpgsqlCloseConnectionError))
             {
                 @this.Write(
-                    NpgsqlAfterCloseConnection,
+                    NpgsqlCloseConnectionError,
                     new
                     {
-                        OperationId = operationId,
-                        Operation = operation,
                         Connection = connection,
-                        Timestamp = Stopwatch.GetTimestamp()
+                        Exception = ex
                     });
             }
         }
 
-        public static void WriteConnectionCloseError(this DiagnosticListener @this, Guid operationId, NpgsqlConnection connection, Exception ex,
-            [CallerMemberName] string operation = "")
+        public static void CommitTransactionStart(this DiagnosticListener @this, NpgsqlTransaction transaction)
         {
-            if (@this.IsEnabled(NpgsqlErrorCloseConnection))
+            if (@this.IsEnabled(NpgsqlCommitTransactionStart))
+            {
+                @this.Write(NpgsqlCommitTransactionStart, transaction);
+            }
+        }
+
+        public static void CommitTransactionStop(this DiagnosticListener @this, NpgsqlTransaction transaction)
+        {
+            if (@this.IsEnabled(NpgsqlCommitTransactionStop))
+            {
+                @this.Write(NpgsqlCommitTransactionStop, transaction);
+            }
+        }
+
+        public static void CommitTransactionError(this DiagnosticListener @this, NpgsqlTransaction transaction, Exception ex)
+        {
+            if (@this.IsEnabled(NpgsqlCommitTransactionError))
             {
                 @this.Write(
-                    NpgsqlErrorCloseConnection,
+                    NpgsqlCommitTransactionError,
                     new
                     {
-                        OperationId = operationId,
-                        Operation = operation,
-                        Connection = connection,
-                        Exception = ex,
-                        Timestamp = Stopwatch.GetTimestamp()
+                        Transaction = transaction,
+                        Exception = ex
                     });
             }
         }
 
-        public static Guid WriteTransactionCommitBefore(this DiagnosticListener @this, IsolationLevel isolationLevel, NpgsqlConnection connection,
-            [CallerMemberName] string operation = "")
+        public static void RollbackTransactionStart(this DiagnosticListener @this, NpgsqlTransaction transaction)
         {
-            if (@this.IsEnabled(NpgsqlBeforeCommitTransaction))
+            if (@this.IsEnabled(NpgsqlRollbackTransactionStart))
             {
-                Guid operationId = Guid.NewGuid();
-
-                @this.Write(
-                    NpgsqlBeforeCommitTransaction,
-                    new
-                    {
-                        OperationId = operationId,
-                        Operation = operation,
-                        IsolationLevel = isolationLevel,
-                        Connection = connection,
-                        Timestamp = Stopwatch.GetTimestamp()
-                    });
-
-                return operationId;
-            }
-            else
-                return Guid.Empty;
-        }
-
-        public static void WriteTransactionCommitAfter(this DiagnosticListener @this, Guid operationId, IsolationLevel isolationLevel, NpgsqlConnection connection,
-            [CallerMemberName] string operation = "")
-        {
-            if (@this.IsEnabled(NpgsqlAfterCommitTransaction))
-            {
-                @this.Write(
-                    NpgsqlAfterCommitTransaction,
-                    new
-                    {
-                        OperationId = operationId,
-                        Operation = operation,
-                        IsolationLevel = isolationLevel,
-                        Connection = connection,
-                        Timestamp = Stopwatch.GetTimestamp()
-                    });
+                @this.Write(NpgsqlRollbackTransactionStart, transaction);
             }
         }
 
-        public static void WriteTransactionCommitError(this DiagnosticListener @this, Guid operationId, IsolationLevel isolationLevel, NpgsqlConnection connection, Exception ex,
-            [CallerMemberName] string operation = "")
+        public static void RollbackTransactionStop(this DiagnosticListener @this, NpgsqlTransaction transaction)
         {
-            if (@this.IsEnabled(NpgsqlErrorCommitTransaction))
+            if (@this.IsEnabled(NpgsqlRollbackTransactionStop))
             {
-                @this.Write(
-                    NpgsqlErrorCommitTransaction,
-                    new
-                    {
-                        OperationId = operationId,
-                        Operation = operation,
-                        IsolationLevel = isolationLevel,
-                        Connection = connection,
-                        Exception = ex,
-                        Timestamp = Stopwatch.GetTimestamp()
-                    });
+                @this.Write(NpgsqlRollbackTransactionStop, transaction);
             }
         }
 
-        public static Guid WriteTransactionRollbackBefore(this DiagnosticListener @this, IsolationLevel isolationLevel, NpgsqlConnection connection, string transactionName,
-            [CallerMemberName] string operation = "")
+        public static void RollbackTransactionError(this DiagnosticListener @this, NpgsqlTransaction transaction, Exception ex)
         {
-            if (@this.IsEnabled(NpgsqlBeforeRollbackTransaction))
-            {
-                Guid operationId = Guid.NewGuid();
-
-                @this.Write(
-                    NpgsqlBeforeRollbackTransaction,
-                    new
-                    {
-                        OperationId = operationId,
-                        Operation = operation,
-                        IsolationLevel = isolationLevel,
-                        Connection = connection,
-                        TransactionName = transactionName,
-                        Timestamp = Stopwatch.GetTimestamp()
-                    });
-
-                return operationId;
-            }
-            else
-                return Guid.Empty;
-        }
-
-        public static void WriteTransactionRollbackAfter(this DiagnosticListener @this, Guid operationId, IsolationLevel isolationLevel, NpgsqlConnection connection,
-            string transactionName, [CallerMemberName] string operation = "")
-        {
-            if (@this.IsEnabled(NpgsqlAfterRollbackTransaction))
+            if (@this.IsEnabled(NpgsqlRollbackTransactionError))
             {
                 @this.Write(
-                    NpgsqlAfterRollbackTransaction,
+                    NpgsqlRollbackTransactionError,
                     new
                     {
-                        OperationId = operationId,
-                        Operation = operation,
-                        IsolationLevel = isolationLevel,
-                        Connection = connection,
-                        TransactionName = transactionName,
-                        Timestamp = Stopwatch.GetTimestamp()
-                    });
-            }
-        }
-
-        public static void WriteTransactionRollbackError(this DiagnosticListener @this, Guid operationId, IsolationLevel isolationLevel, NpgsqlConnection connection,
-            string transactionName, Exception ex, [CallerMemberName] string operation = "")
-        {
-            if (@this.IsEnabled(NpgsqlErrorRollbackTransaction))
-            {
-                @this.Write(
-                    NpgsqlErrorRollbackTransaction,
-                    new
-                    {
-                        OperationId = operationId,
-                        Operation = operation,
-                        IsolationLevel = isolationLevel,
-                        Connection = connection,
-                        TransactionName = transactionName,
-                        Exception = ex,
-                        Timestamp = Stopwatch.GetTimestamp()
+                        Transaction = transaction,
+                        Exception = ex
                     });
             }
         }

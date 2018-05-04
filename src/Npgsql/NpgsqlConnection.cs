@@ -83,7 +83,7 @@ namespace Npgsql
 
         static readonly NpgsqlConnectionStringBuilder DefaultSettings = new NpgsqlConnectionStringBuilder();
 
-        static readonly DiagnosticListener NpgsqlDiagnosticListener = new DiagnosticListener(NpgsqlDiagnosticListenerExtensions.DiagnosticListenerName);
+        static readonly DiagnosticListener NpgsqlDiagnosticListener = new DiagnosticListener(NpgsqlDiagnosticListenerExtensions.ConnectionDiagnosticListenerName);
 
         [CanBeNull]
         ConnectorPool _pool;
@@ -224,10 +224,10 @@ namespace Npgsql
         {
             // This is an optimized path for when a connection can be taken from the pool
             // with no waiting or I/O
-            var operationId = NpgsqlDiagnosticListener.WriteConnectionOpenBefore(this);
-            Exception e = null;
             try
             {
+                NpgsqlDiagnosticListener.OpenConnectionStart(this);
+                
                 CheckConnectionClosed();
 
                 Log.Trace("Opening connection...");
@@ -248,25 +248,15 @@ namespace Npgsql
                 Debug.Assert(Connector.Connection != null, "Open done but connector not set on Connection");
                 Log.Debug("Connection opened", Connector.Id);
                 OnStateChange(new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open));
+                NpgsqlDiagnosticListener.OpenConnectionStop(this);
                 return PGUtil.CompletedTask;
             }
             catch (Exception ex)
             {
-                e = ex;
+                NpgsqlDiagnosticListener.WriteConnectionOpenError(this, ex);
                 throw;
             }
-            finally
-            {
-                if (e != null)
-                {
-                    NpgsqlDiagnosticListener.WriteConnectionOpenError(operationId, this, e);
-                }
-                else
-                {
-                    NpgsqlDiagnosticListener.WriteConnectionOpenAfter(operationId, this);
-                }
-            }
-
+           
             async Task OpenLong()
             {
                 CheckConnectionClosed();
@@ -629,13 +619,12 @@ namespace Npgsql
 
         internal void Close(bool wasBroken)
         {
-            var operationId = NpgsqlDiagnosticListener.WriteConnectionCloseBefore(this);
             
-            Exception e = null;
             try
             {
                 if (Connector == null)
                     return;
+                NpgsqlDiagnosticListener.CloseConnectionStart(this);
                 var connectorId = Connector.Id;
                 Log.Trace("Closing connection...", connectorId);
                 _wasBroken = wasBroken;
@@ -672,22 +661,13 @@ namespace Npgsql
                 Connector = null;
 
                 OnStateChange(OpenToClosedEventArgs);
+                
+                NpgsqlDiagnosticListener.CloseConnectionStop(this);
             }
             catch (Exception exception)
             {
-                e = exception;
+                NpgsqlDiagnosticListener.CloseConnectionError(this, exception);
                 throw;
-            }
-            finally
-            {
-                if (e != null)
-                {
-                    NpgsqlDiagnosticListener.WriteConnectionCloseError(operationId, this, e);
-                }
-                else
-                {
-                    NpgsqlDiagnosticListener.WriteConnectionCloseAfter(operationId, this);
-                }
             }
         }
 

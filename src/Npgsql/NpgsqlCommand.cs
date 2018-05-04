@@ -85,7 +85,7 @@ namespace Npgsql
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
         
-        static readonly DiagnosticListener NpgsqlDiagnosticListener = new DiagnosticListener(NpgsqlDiagnosticListenerExtensions.DiagnosticListenerName);
+        static readonly DiagnosticListener NpgsqlDiagnosticListener = new DiagnosticListener(NpgsqlDiagnosticListenerExtensions.CommandDiagnosticListenerName);
 
         #endregion Fields
 
@@ -1043,35 +1043,11 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         async Task<int> ExecuteNonQuery(bool async, CancellationToken cancellationToken)
         {
-            var operationId = NpgsqlDiagnosticListener.WriteCommandBefore(this);
-
-            Exception e = null;
-            
-            try
+            using (var reader = await ExecuteDbDataReader(CommandBehavior.Default, async, cancellationToken))
             {
-                using (var reader = await ExecuteDbDataReader(CommandBehavior.Default, async, cancellationToken))
-                {
-                    while (async ? await reader.NextResultAsync(cancellationToken) : reader.NextResult()) {}
-                    reader.Close();
-                    return reader.RecordsAffected;
-                }
-            }
-            catch (Exception exception)
-            {
-                e = exception;
-                throw;
-            }
-            finally
-            {
-                
-                if (e != null)
-                {
-                    NpgsqlDiagnosticListener.WriteCommandError(operationId, this, e);
-                }
-                else
-                {
-                    NpgsqlDiagnosticListener.WriteCommandAfter(operationId, this);
-                }
+                while (async ? await reader.NextResultAsync(cancellationToken) : reader.NextResult()){ }
+                reader.Close();
+                return reader.RecordsAffected;
             }
         }
 
@@ -1110,32 +1086,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             if (!Parameters.HasOutputParameters)
                 behavior |= CommandBehavior.SequentialAccess;
 
-            var operationId = NpgsqlDiagnosticListener.WriteCommandBefore(this);
-
-            Exception e = null;
-            
-            try
-            {
-                using (var reader = await ExecuteDbDataReader(behavior, async, cancellationToken))
-                    return reader.Read() && reader.FieldCount != 0 ? reader.GetValue(0) : null;
-            }
-            catch (Exception ex)
-            {
-                e = ex;
-                throw;
-            }
-            finally
-            {
-                if (e != null)
-                {
-                    NpgsqlDiagnosticListener.WriteCommandError(operationId, this, e);
-                }
-                else
-                {
-                    NpgsqlDiagnosticListener.WriteCommandAfter(operationId, this);
-                }
-            }
-           
+            using (var reader = await ExecuteDbDataReader(behavior, async, cancellationToken))
+                return reader.Read() && reader.FieldCount != 0 ? reader.GetValue(0) : null;
         }
 
         #endregion Execute Scalar
@@ -1152,29 +1104,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// <returns>A DbDataReader object.</returns>
         public new NpgsqlDataReader ExecuteReader()
         {
-            var operationId = NpgsqlDiagnosticListener.WriteCommandBefore(this);
-            
-            Exception e = null;
-            try
-            {
-                return (NpgsqlDataReader) base.ExecuteReader();
-            }
-            catch (Exception exception)
-            {
-                e = exception;
-                throw;
-            }
-            finally
-            {
-                if (e != null)
-                {
-                    NpgsqlDiagnosticListener.WriteCommandError(operationId, this, e);
-                }
-                else
-                {
-                    NpgsqlDiagnosticListener.WriteCommandAfter(operationId, this);
-                }
-            }
+            return (NpgsqlDataReader)base.ExecuteReader();
         }
 
         /// <summary>
@@ -1188,29 +1118,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// <returns>A DbDataReader object.</returns>
         public new NpgsqlDataReader ExecuteReader(CommandBehavior behavior)
         {
-            var operationId = NpgsqlDiagnosticListener.WriteCommandBefore(this);
-            
-            Exception e = null;
-            try
-            {
-                return (NpgsqlDataReader) base.ExecuteReader(behavior);
-            }
-            catch (Exception exception)
-            {
-                e = exception;
-                throw;
-            }
-            finally
-            {
-                if (e != null)
-                {
-                    NpgsqlDiagnosticListener.WriteCommandError(operationId, this, e);
-                }
-                else
-                {
-                    NpgsqlDiagnosticListener.WriteCommandAfter(operationId, this);
-                }
-            }
+            return (NpgsqlDataReader)base.ExecuteReader(behavior);
         }
 
         /// <summary>
@@ -1238,6 +1146,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             connector.StartUserAction(this);
             try
             {
+                NpgsqlDiagnosticListener.ExecuteCommandStart(this);
                 using (cancellationToken.Register(cmd => ((NpgsqlCommand)cmd).Cancel(), this))
                 {
                     ValidateParameters();
@@ -1320,11 +1229,13 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         await reader.NextResultAsync(cancellationToken);
                     else
                         reader.NextResult();
+                    NpgsqlDiagnosticListener.ExecuteCommandStop(this);
                     return reader;
                 }
             }
-            catch
+            catch(Exception exception)
             {
+                NpgsqlDiagnosticListener.ExecuteCommandError(this, exception);
                 State = CommandState.Idle;
                 Connection.Connector?.EndUserAction();
 
