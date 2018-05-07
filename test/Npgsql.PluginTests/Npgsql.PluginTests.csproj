@@ -16,11 +16,11 @@
     <ProjectReference Include="../../src/Npgsql.NetTopologySuite/Npgsql.NetTopologySuite.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="GeoAPI" Version="1.7.5-pre023" />
-    <PackageReference Include="NetTopologySuite" Version="1.15.0-pre069" />
-    <PackageReference Include="NodaTime" Version="2.2.4" />
+    <PackageReference Include="GeoAPI" Version="1.7.5-pre024" />
+    <PackageReference Include="NetTopologySuite" Version="1.15.0-pre071" />
+    <PackageReference Include="NodaTime" Version="2.2.6" />
     <PackageReference Include="NUnit" Version="3.10.1" />
-    <PackageReference Include="NLog" Version="5.0.0-beta06" />
+    <PackageReference Include="NLog" Version="4.5.4" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.7.0" />
     <PackageReference Include="NUnit3TestAdapter" Version="3.10.0" />
   </ItemGroup>
