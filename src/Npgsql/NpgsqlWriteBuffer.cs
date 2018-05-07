@@ -384,34 +384,31 @@ namespace Npgsql
                 WriteBytes(bytes);
                 return PGUtil.CompletedTask;
             }
-            else
-            {
-                return WriteBytesLong(bytes, async);
-            }
-        }
+            return WriteBytesLong();
 
-        async Task WriteBytesLong(byte[] bytes, bool async)
-        {
-            if (bytes.Length <= Size)
+            async Task WriteBytesLong()
             {
-                // value can fit entirely in an empty buffer. Flush and retry rather than
-                // going into the partial writing flow below
-                await Flush(async);
-                WriteBytes(bytes);
-            }
-            else
-            {
-                var remaining = bytes.Length;
-                do
+                if (bytes.Length <= Size)
                 {
-                    if (WriteSpaceLeft == 0)
-                        await Flush(async);
-                    var writeLen = Math.Min(remaining, WriteSpaceLeft);
-                    var offset = bytes.Length - remaining;
-                    WriteBytes(bytes, offset, writeLen);
-                    remaining -= writeLen;
+                    // value can fit entirely in an empty buffer. Flush and retry rather than
+                    // going into the partial writing flow below
+                    await Flush(async);
+                    WriteBytes(bytes);
                 }
-                while (remaining > 0);
+                else
+                {
+                    var remaining = bytes.Length;
+                    do
+                    {
+                        if (WriteSpaceLeft == 0)
+                            await Flush(async);
+                        var writeLen = Math.Min(remaining, WriteSpaceLeft);
+                        var offset = bytes.Length - remaining;
+                        WriteBytes(bytes, offset, writeLen);
+                        remaining -= writeLen;
+                    }
+                    while (remaining > 0);
+                }
             }
         }
 

@@ -168,43 +168,47 @@ namespace Npgsql.TypeHandlers
             throw new NpgsqlSafeReadException(new NotSupportedException("Only writing ArraySegment<char> to PostgreSQL text is supported, no reading."));
         }
 
-        async ValueTask<byte[]> INpgsqlTypeHandler<byte[]>.Read(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription fieldDescription)
+        ValueTask<byte[]> INpgsqlTypeHandler<byte[]>.Read(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription fieldDescription)
         {
             var bytes = new byte[byteLen];
             if (buf.ReadBytesLeft >= byteLen)
             {
                 buf.ReadBytes(bytes, 0, byteLen);
-                return bytes;
+                return new ValueTask<byte[]>(bytes);
             }
+            return ReadLong();
 
-            if (byteLen <= buf.Size)
+            async ValueTask<byte[]> ReadLong()
             {
-                // The bytes can fit in our read buffer, read it.
-                while (buf.ReadBytesLeft < byteLen)
-                    await buf.ReadMore(async);
-                buf.ReadBytes(bytes, 0, byteLen);
-                return bytes;
-            }
-
-            // Bad case: the bytes don't fit in our buffer.
-            // This is rare - will only happen in CommandBehavior.Sequential mode (otherwise the
-            // entire row is in memory). Tweaking the buffer length via the connection string can
-            // help avoid this.
-
-            var pos = 0;
-            while (true)
-            {
-                var len = Math.Min(buf.ReadBytesLeft, byteLen - pos);
-                buf.ReadBytes(bytes, pos, len);
-                pos += len;
-                if (pos < byteLen)
+                if (byteLen <= buf.Size)
                 {
-                    await buf.ReadMore(async);
-                    continue;
+                    // The bytes can fit in our read buffer, read it.
+                    while (buf.ReadBytesLeft < byteLen)
+                        await buf.ReadMore(async);
+                    buf.ReadBytes(bytes, 0, byteLen);
+                    return bytes;
                 }
-                break;
+
+                // Bad case: the bytes don't fit in our buffer.
+                // This is rare - will only happen in CommandBehavior.Sequential mode (otherwise the
+                // entire row is in memory). Tweaking the buffer length via the connection string can
+                // help avoid this.
+
+                var pos = 0;
+                while (true)
+                {
+                    var len = Math.Min(buf.ReadBytesLeft, byteLen - pos);
+                    buf.ReadBytes(bytes, pos, len);
+                    pos += len;
+                    if (pos < byteLen)
+                    {
+                        await buf.ReadMore(async);
+                        continue;
+                    }
+                    break;
+                }
+                return bytes;
             }
-            return bytes;
         }
 
         #endregion
