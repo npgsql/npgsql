@@ -280,7 +280,13 @@ namespace Npgsql.Tests.Types
                     rdr.Read();
                 }
 
-                var decimals = new decimal[] { 499.0M / 375.0M, 0, 1, -1, 2, -2, decimal.MaxValue, decimal.MinValue, 9999, 10000, -0.0001M, 0.00001M, 0.00000000111143243221M, 4372894738294782934.5832947839247M, 7483927483400000000000M };
+                var decimals = new decimal[] {
+                    499.0M / 375.0M,
+                    0, 1, -1, 2, -2,
+                    decimal.MaxValue, decimal.MinValue,
+                    9999, 10000,
+                     1.2M, -1.2M, 0.0001M, -0.00001M, 0.00000000111143243221M, 4372894738294782934.5832947839247M, 7483927483400000000000M
+                };
 
                 using (var cmd = new NpgsqlCommand("SELECT " + string.Join(", ", Enumerable.Range(0, decimals.Length).Select(i => "@p" + i.ToString())), conn))
                 {
@@ -292,7 +298,10 @@ namespace Npgsql.Tests.Types
                     {
                         rdr.Read();
                         for (var i = 0; i < decimals.Length; i++)
-                            Assert.AreEqual(decimals[i], rdr.GetValue(i));
+                            Assert.Multiple(() => {
+                                Assert.AreEqual(decimals[i], rdr.GetValue(i));
+                                Assert.AreEqual(decimal.GetBits(decimals[i]), decimal.GetBits(rdr.GetDecimal(i)));
+                            });
                     }
                 }
 
