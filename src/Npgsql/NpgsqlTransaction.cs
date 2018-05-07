@@ -225,6 +225,8 @@ namespace Npgsql
                 throw new ArgumentException("name can't be empty", nameof(name));
             if (name.Contains(";"))
                 throw new ArgumentException("name can't contain a semicolon");
+            if (!char.IsLetter(name[0]))
+                throw new ArgumentException("name should start with a letter");
 
             CheckReady();
             if (!_connector.DatabaseInfo.SupportsTransactions)
