@@ -58,7 +58,7 @@ namespace Npgsql.TypeHandlers
     }
 
     public class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler<char[]>, INpgsqlTypeHandler<ArraySegment<char>>,
-        INpgsqlTypeHandler<char>, ITextReaderHandler
+        INpgsqlTypeHandler<char>, INpgsqlTypeHandler<byte[]>, ITextReaderHandler
     {
         // Text types are handled a bit more efficiently when sent as text than as binary
         // see https://github.com/npgsql/npgsql/issues/1210#issuecomment-235641670
@@ -168,6 +168,49 @@ namespace Npgsql.TypeHandlers
             throw new NpgsqlSafeReadException(new NotSupportedException("Only writing ArraySegment<char> to PostgreSQL text is supported, no reading."));
         }
 
+        ValueTask<byte[]> INpgsqlTypeHandler<byte[]>.Read(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription fieldDescription)
+        {
+            var bytes = new byte[byteLen];
+            if (buf.ReadBytesLeft >= byteLen)
+            {
+                buf.ReadBytes(bytes, 0, byteLen);
+                return new ValueTask<byte[]>(bytes);
+            }
+            return ReadLong();
+
+            async ValueTask<byte[]> ReadLong()
+            {
+                if (byteLen <= buf.Size)
+                {
+                    // The bytes can fit in our read buffer, read it.
+                    while (buf.ReadBytesLeft < byteLen)
+                        await buf.ReadMore(async);
+                    buf.ReadBytes(bytes, 0, byteLen);
+                    return bytes;
+                }
+
+                // Bad case: the bytes don't fit in our buffer.
+                // This is rare - will only happen in CommandBehavior.Sequential mode (otherwise the
+                // entire row is in memory). Tweaking the buffer length via the connection string can
+                // help avoid this.
+
+                var pos = 0;
+                while (true)
+                {
+                    var len = Math.Min(buf.ReadBytesLeft, byteLen - pos);
+                    buf.ReadBytes(bytes, pos, len);
+                    pos += len;
+                    if (pos < byteLen)
+                    {
+                        await buf.ReadMore(async);
+                        continue;
+                    }
+                    break;
+                }
+                return bytes;
+            }
+        }
+
         #endregion
 
         #region Write
@@ -218,6 +261,9 @@ namespace Npgsql.TypeHandlers
             return _encoding.GetByteCount(_singleCharArray);
         }
 
+        public int ValidateAndGetLength(byte[] value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+            => value.Length;
+
         public override Task Write(string value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
             => WriteString(value, buf, lengthCache, parameter, async);
 
@@ -246,6 +292,9 @@ namespace Npgsql.TypeHandlers
             var len = _encoding.GetByteCount(_singleCharArray);
             return buf.WriteChars(_singleCharArray, 0, 1, len, async);
         }
+
+        public Task Write(byte[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+            => buf.WriteBytesRaw(value, async);
 
         #endregion
 

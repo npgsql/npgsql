@@ -380,6 +380,41 @@ namespace Npgsql
             _writePosition += count;
         }
 
+        public Task WriteBytesRaw(byte[] bytes, bool async)
+        {
+            if (bytes.Length <= WriteSpaceLeft)
+            {
+                WriteBytes(bytes);
+                return PGUtil.CompletedTask;
+            }
+            return WriteBytesLong();
+
+            async Task WriteBytesLong()
+            {
+                if (bytes.Length <= Size)
+                {
+                    // value can fit entirely in an empty buffer. Flush and retry rather than
+                    // going into the partial writing flow below
+                    await Flush(async);
+                    WriteBytes(bytes);
+                }
+                else
+                {
+                    var remaining = bytes.Length;
+                    do
+                    {
+                        if (WriteSpaceLeft == 0)
+                            await Flush(async);
+                        var writeLen = Math.Min(remaining, WriteSpaceLeft);
+                        var offset = bytes.Length - remaining;
+                        WriteBytes(bytes, offset, writeLen);
+                        remaining -= writeLen;
+                    }
+                    while (remaining > 0);
+                }
+            }
+        }
+
         public void WriteNullTerminatedString(string s)
         {
             Debug.Assert(s.All(c => c < 128), "Method only supports ASCII strings");
