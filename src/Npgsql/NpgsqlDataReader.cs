@@ -1224,12 +1224,17 @@ namespace Npgsql
 
         /// <summary>
         /// Gets the data type information for the specified field.
-        /// This will be the PostgreSQL type name (e.g. int4) as in the pg_type table,
-        /// not the .NET type (see <see cref="GetFieldType"/> for that).
+        /// This will be the PostgreSQL type name (e.g. double precision), not the .NET type
+        /// (see <see cref="GetFieldType"/> for that).
         /// </summary>
         /// <param name="ordinal">The zero-based column index.</param>
-        /// <returns></returns>
-        public override string GetDataTypeName(int ordinal) => GetPostgresType(ordinal).DisplayName;
+        public override string GetDataTypeName(int ordinal)
+        {
+            CheckResultSet();
+            CheckColumn(ordinal);
+
+            return RowDescription[ordinal].TypeDisplayName;
+        }
 
         /// <summary>
         /// Gets the OID for the PostgreSQL type for the specified field, as it appears in the pg_type table.

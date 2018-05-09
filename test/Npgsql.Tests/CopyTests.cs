@@ -359,7 +359,7 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/657")]
+        //[Test, IssueLink("https://github.com/npgsql/npgsql/issues/657")]
         [Explicit]
         public void ImportByteaMassive()
         {

@@ -74,7 +74,7 @@ namespace Npgsql.Tests
             using (var conn = OpenConnection())
             using (var cmd = new NpgsqlCommand("SELECT @p", conn))
             {
-                var p1 = new NpgsqlParameter { ParameterName = "p", Value = 8, DataTypeName = "int4" };
+                var p1 = new NpgsqlParameter { ParameterName = "p", Value = 8, DataTypeName = "integer" };
                 cmd.Parameters.Add(p1);
                 Assert.That(cmd.ExecuteScalar(), Is.EqualTo(8));
                 // Purposefully try to send int as string, which should fail. This makes sure
@@ -84,7 +84,7 @@ namespace Npgsql.Tests
 
                 cmd.Parameters.Clear();
 
-                var p2 = new NpgsqlParameter<int> { ParameterName = "p", TypedValue = 8, DataTypeName = "int4" };
+                var p2 = new NpgsqlParameter<int> { ParameterName = "p", TypedValue = 8, DataTypeName = "integer" };
                 cmd.Parameters.Add(p2);
                 Assert.That(cmd.ExecuteScalar(), Is.EqualTo(8));
                 // Purposefully try to send int as string, which should fail. This makes sure

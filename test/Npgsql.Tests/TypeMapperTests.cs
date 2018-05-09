@@ -78,7 +78,7 @@ namespace Npgsql.Tests
         [Test]
         public void RemoveGlobalMapping()
         {
-            NpgsqlConnection.GlobalTypeMapper.RemoveMapping("int4");
+            NpgsqlConnection.GlobalTypeMapper.RemoveMapping("integer");
             using (var conn = OpenLocalConnection())
                 Assert.That(() => conn.ExecuteScalar("SELECT 8"), Throws.TypeOf<NotSupportedException>());
         }
@@ -88,7 +88,7 @@ namespace Npgsql.Tests
         {
             using (var conn = OpenLocalConnection())
             {
-                conn.TypeMapper.RemoveMapping("int4");
+                conn.TypeMapper.RemoveMapping("integer");
                 Assert.That(() => conn.ExecuteScalar("SELECT 8"), Throws.TypeOf<NotSupportedException>());
             }
             // Make sure reopening (same physical connection) reverts the mapping
@@ -186,7 +186,7 @@ CHECK
             var myFactory = new MyInt32HandlerFactory();
             NpgsqlConnection.GlobalTypeMapper.AddMapping(new NpgsqlTypeMappingBuilder
             {
-                PgTypeName = "int4",
+                PgTypeName = "integer",
                 NpgsqlDbType = NpgsqlDbType.Integer,
                 DbTypes = new[] { DbType.Int32 },
                 ClrTypes = new[] { typeof(int) },
@@ -200,7 +200,7 @@ CHECK
             var myFactory = new MyInt32HandlerFactory();
             conn.TypeMapper.AddMapping(new NpgsqlTypeMappingBuilder
             {
-                PgTypeName = "int4",
+                PgTypeName = "integer",
                 NpgsqlDbType = NpgsqlDbType.Integer,
                 DbTypes = new[] { DbType.Int32 },
                 ClrTypes = new[] { typeof(int) },

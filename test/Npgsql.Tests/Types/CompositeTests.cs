@@ -124,13 +124,13 @@ namespace Npgsql.Tests.Types
                     {
                         ParameterName = "array1",
                         Value = compositeArray,
-                        DataTypeName = $"{tempSchema}._unmapped_comp"
+                        DataTypeName = $"{tempSchema}.unmapped_comp[]"
                     });
                     cmd.Parameters.Add(new NpgsqlParameter
                     {
                         ParameterName = "array2",
                         Value = expandoArray,
-                        DataTypeName = $"{tempSchema}._unmapped_comp"
+                        DataTypeName = $"{tempSchema}.unmapped_comp[]"
                     });
 
                     using (var reader = cmd.ExecuteReader())
@@ -155,7 +155,7 @@ namespace Npgsql.Tests.Types
                         for (var i = 4; i < 6; i++)
                         {
                             Assert.That(reader.GetDataTypeName(i),
-                                Does.StartWith("pg_temp") & Does.EndWith("._unmapped_comp"));
+                                Does.StartWith("pg_temp") & Does.EndWith(".unmapped_comp[]"));
 
                             // TODO: The following doesn't work because of limitations in ArrayHandler.
                             // You currently have to map the composite in order to read an array.
@@ -209,7 +209,7 @@ namespace Npgsql.Tests.Types
                         var comp1Type = (PostgresCompositeType)field1.Type;
                         Assert.That(comp1Type.Name, Is.EqualTo("comp1"));
                         var arrType = (PostgresArrayType)field2.Type;
-                        Assert.That(arrType.Name, Is.EqualTo("_comp1"));
+                        Assert.That(arrType.Name, Is.EqualTo("comp1[]"));
                         var elemType = arrType.Element;
                         Assert.That(elemType, Is.SameAs(comp1Type));
                     }
@@ -511,7 +511,7 @@ namespace Npgsql.Tests.Types
                     cmd.Parameters.Add(new NpgsqlParameter
                     {
                         ParameterName = "p1",
-                        DataTypeName = "_composite5",
+                        DataTypeName = "composite5[]",
                         Value = expected
                     });
                     cmd.Parameters.AddWithValue("p2", expected); // Infer

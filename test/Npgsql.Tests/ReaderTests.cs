@@ -335,57 +335,75 @@ namespace Npgsql.Tests
             using (var conn = OpenConnection())
             {
                 PostgresType intType;
-                using (var cmd = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", conn))
+                using (var cmd = new NpgsqlCommand(@"SELECT 1::INTEGER AS some_column", conn))
                 using (var reader = cmd.ExecuteReader(Behavior))
                 {
                     reader.Read();
                     intType = (PostgresBaseType)reader.GetPostgresType(0);
                     Assert.That(intType.Namespace, Is.EqualTo("pg_catalog"));
-                    Assert.That(intType.Name, Is.EqualTo("int4"));
-                    Assert.That(intType.FullName, Is.EqualTo("pg_catalog.int4"));
-                    Assert.That(intType.DisplayName, Is.EqualTo("int4"));
+                    Assert.That(intType.Name, Is.EqualTo("integer"));
+                    Assert.That(intType.FullName, Is.EqualTo("pg_catalog.integer"));
+                    Assert.That(intType.DisplayName, Is.EqualTo("integer"));
+                    Assert.That(intType.InternalName, Is.EqualTo("int4"));
                 }
 
-                using (var cmd = new NpgsqlCommand(@"SELECT '{1}'::INT4[] AS some_column", conn))
+                using (var cmd = new NpgsqlCommand(@"SELECT '{1}'::INTEGER[] AS some_column", conn))
                 using (var reader = cmd.ExecuteReader(Behavior))
                 {
                     reader.Read();
                     var intArrayType = (PostgresArrayType)reader.GetPostgresType(0);
-                    Assert.That(intArrayType.Name, Is.EqualTo("_int4"));
+                    Assert.That(intArrayType.Name, Is.EqualTo("integer[]"));
                     Assert.That(intArrayType.Element, Is.SameAs(intType));
+                    Assert.That(intArrayType.DisplayName, Is.EqualTo("integer[]"));
+                    Assert.That(intArrayType.InternalName, Is.EqualTo("_int4"));
                     Assert.That(intType.Array, Is.SameAs(intArrayType));
                 }
             }
         }
 
-        [Test]
-        [IssueLink("https://github.com/npgsql/npgsql/issues/787")]
-        [IssueLink("https://github.com/npgsql/npgsql/issues/794")]
-        public void GetDataTypeName()
+        /// <seealso cref="ReaderNewSchemaTests.DataTypeName"/>
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/787")]
+        [TestCase("integer")]
+        [TestCase("real")]
+        [TestCase("integer[]")]
+        [TestCase("character varying(10)")]
+        [TestCase("character varying")]
+        [TestCase("character varying(10)[]")]
+        [TestCase("character(10)")]
+        [TestCase("character")]
+        [TestCase("numeric(1000, 2)")]
+        [TestCase("numeric(1000)")]
+        [TestCase("numeric")]
+        [TestCase("timestamp")]
+        [TestCase("timestamp(2)")]
+        [TestCase("timestamp(2) with time zone")]
+        [TestCase("time")]
+        [TestCase("time(2)")]
+        [TestCase("time(2) with time zone")]
+        [TestCase("interval")]
+        [TestCase("interval(2)")]
+        [TestCase("bit")]
+        [TestCase("bit(3)")]
+        [TestCase("bit varying")]
+        [TestCase("bit varying(3)")]
+        public void GetDataTypeName(string typeName)
         {
             using (var conn = OpenConnection())
             {
-                using (var cmd = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", conn))
+                using (var cmd = new NpgsqlCommand($"SELECT NULL::{typeName} AS some_column", conn))
                 using (var reader = cmd.ExecuteReader(Behavior))
                 {
                     reader.Read();
-                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4"));
+                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo(typeName));
                 }
-                using (var cmd = new NpgsqlCommand(@"SELECT '{1}'::INT4[] AS some_column", conn))
-                using (var reader = cmd.ExecuteReader(Behavior))
-                {
-                    reader.Read();
-                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("_int4"));
-                }
-                using (var cmd = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", conn))
-                {
-                    cmd.AllResultTypesAreUnknown = true;
-                    using (var reader = cmd.ExecuteReader(Behavior))
-                    {
-                        reader.Read();
-                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4"));
-                    }
-                }
+            }
+        }
+
+        [Test]
+        public void GetDataTypeNameEnum()
+        {
+            using (var conn = OpenConnection())
+            {
                 conn.ExecuteNonQuery("CREATE TYPE pg_temp.my_enum AS ENUM ('one')");
                 conn.ReloadTypes();
                 using (var cmd = new NpgsqlCommand("SELECT 'one'::my_enum", conn))
@@ -393,6 +411,40 @@ namespace Npgsql.Tests
                 {
                     reader.Read();
                     Assert.That(reader.GetDataTypeName(0), Does.StartWith("pg_temp").And.EndWith(".my_enum"));
+                }
+            }
+        }
+
+        [Test]
+        public void GetDataTypeNameDomain()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE DOMAIN pg_temp.my_domain AS VARCHAR(10)");
+                conn.ReloadTypes();
+                using (var cmd = new NpgsqlCommand("SELECT 'one'::my_domain", conn))
+                using (var reader = cmd.ExecuteReader(Behavior))
+                {
+                    reader.Read();
+                    // In the RowDescription, PostgreSQL sends the type OID of the underlying type and not of the domain.
+                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("character varying(10)"));
+                }
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/794")]
+        public void GetDataTypeNameTypesUnknown()
+        {
+            using (var conn = OpenConnection())
+            {
+                using (var cmd = new NpgsqlCommand(@"SELECT 1::INTEGER AS some_column", conn))
+                {
+                    cmd.AllResultTypesAreUnknown = true;
+                    using (var reader = cmd.ExecuteReader(Behavior))
+                    {
+                        reader.Read();
+                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("integer"));
+                    }
                 }
             }
         }
@@ -973,7 +1025,7 @@ LANGUAGE plpgsql VOLATILE";
                     for (var i = 0; i < cmd.Parameters.Count; i++)
                     {
                         Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(short)));
-                        Assert.That(reader.GetDataTypeName(i), Is.EqualTo("int2"));
+                        Assert.That(reader.GetDataTypeName(i), Is.EqualTo("smallint"));
                     }
 
                     Assert.That(() => reader.GetFieldValue<object>(0), Throws.TypeOf<InvalidCastException>());
@@ -1340,7 +1392,7 @@ LANGUAGE plpgsql VOLATILE";
                 // Temporarily reroute integer to go to a type handler which generates SafeReadExceptions
                 conn.TypeMapper.AddMapping(new NpgsqlTypeMappingBuilder
                 {
-                    PgTypeName = "int4",
+                    PgTypeName = "integer",
                     TypeHandlerFactory = new ExplodingTypeHandlerFactory(true)
                 }.Build());
                 using (var cmd = new NpgsqlCommand(@"SELECT 1, 'hello'", conn))
@@ -1363,7 +1415,7 @@ LANGUAGE plpgsql VOLATILE";
                 // Temporarily reroute integer to go to a type handler which generates some exception
                 conn.TypeMapper.AddMapping(new NpgsqlTypeMappingBuilder()
                 {
-                    PgTypeName = "int4",
+                    PgTypeName = "integer",
                     TypeHandlerFactory = new ExplodingTypeHandlerFactory(false)
                 }.Build());
                 using (var cmd = new NpgsqlCommand(@"SELECT 1, 'hello'", conn))

@@ -102,12 +102,7 @@ namespace Npgsql.TypeMapping
             => TryGetByOID(oid, out var result) ? result : UnrecognizedTypeHandler;
 
         internal bool TryGetByOID(uint oid, out NpgsqlTypeHandler handler)
-        {
-            if (_byOID.TryGetValue(oid, out handler))
-                return true;
-            // TODO: Late activation (composite/enum)
-            return false;
-        }
+            => _byOID.TryGetValue(oid, out handler);
 
         internal NpgsqlTypeHandler GetByNpgsqlDbType(NpgsqlDbType npgsqlDbType)
             => _byNpgsqlDbType.TryGetValue(npgsqlDbType, out var handler)
@@ -117,18 +112,14 @@ namespace Npgsql.TypeMapping
 
 
         internal NpgsqlTypeHandler GetByDbType(DbType dbType)
-        {
-            if (_byDbType.TryGetValue(dbType, out var handler))
-                return handler;
-            throw new NotSupportedException("This DbType is not supported in Npgsql: " + dbType);
-        }
+            => _byDbType.TryGetValue(dbType, out var handler)
+                ? handler
+                : throw new NotSupportedException("This DbType is not supported in Npgsql: " + dbType);
 
         internal NpgsqlTypeHandler GetByDataTypeName(string typeName)
-        {
-            if (_byTypeName.TryGetValue(typeName, out var handler))
-                return handler;
-            throw new NotSupportedException("Could not find PostgreSQL type " + typeName);
-        }
+            => _byTypeName.TryGetValue(typeName, out var handler)
+                ? handler
+                : throw new NotSupportedException("Could not find PostgreSQL type " + typeName);
 
         internal NpgsqlTypeHandler GetByClrType(Type type)
         {

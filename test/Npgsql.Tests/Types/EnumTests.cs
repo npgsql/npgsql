@@ -262,7 +262,7 @@ namespace Npgsql.Tests.Types
                 var p = new NpgsqlParameter
                 {
                     ParameterName = "p1",
-                    DataTypeName = "_mood4",
+                    DataTypeName = "mood4[]",
                     Value = expected
                 };
                 cmd.Parameters.Add(p);
@@ -346,7 +346,7 @@ namespace Npgsql.Tests.Types
                     var p1 = new NpgsqlParameter
                     {
                         ParameterName = "p1",
-                        DataTypeName = "_mood6",
+                        DataTypeName = "mood6[]",
                         Value = expected
                     };
                     var p2 = new NpgsqlParameter {ParameterName = "p2", Value = expected};

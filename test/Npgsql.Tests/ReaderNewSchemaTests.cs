@@ -538,24 +538,62 @@ namespace Npgsql.Tests
                     var columns = reader.GetColumnSchema();
                     var intType = columns[0].PostgresType;
                     Assert.That(columns[1].PostgresType, Is.SameAs(intType));
-                    Assert.That(intType.Name, Is.EqualTo("int4"));
+                    Assert.That(intType.Name, Is.EqualTo("integer"));
+                    Assert.That(intType.InternalName, Is.EqualTo("int4"));
                 }
             }
         }
 
+        /// <seealso cref="ReaderTests.GetDataTypeName"/>
         [Test]
-        public void DataTypeName()
+        [TestCase("integer")]
+        [TestCase("real")]
+        [TestCase("integer[]")]
+        [TestCase("character varying(10)", 10)]
+        [TestCase("character varying")]
+        [TestCase("character varying(10)[]", 10)]
+        [TestCase("character(10)", 10)]
+        [TestCase("character")]
+        [TestCase("numeric(1000, 2)", null, 1000, 2)]
+        [TestCase("numeric(1000)", null, 1000, null)]
+        [TestCase("numeric")]
+        [TestCase("timestamp")]
+        [TestCase("timestamp(2)", null, 2)]
+        [TestCase("timestamp(2) with time zone", null, 2)]
+        [TestCase("time")]
+        [TestCase("time(2)", null, 2)]
+        [TestCase("time(2) with time zone", null, 2)]
+        [TestCase("interval")]
+        [TestCase("interval(2)", null, 2)]
+        [TestCase("bit")]   // Size is implicitly 1
+        [TestCase("bit(3)", 3)]
+        [TestCase("bit varying")]
+        [TestCase("bit varying(3)", 3)]
+        public void DataTypeName(string typeName, int? size=null, int? precision=null, int? scale=null)
         {
+            var openingParen = typeName.IndexOf('(');
+            var typeNameWithoutFacets = openingParen == -1
+                ? typeName
+                : typeName.Substring(0, openingParen) + typeName.Substring(typeName.IndexOf(')') + 1);
+
             using (var conn = OpenConnection())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo INTEGER)");
+                conn.ExecuteNonQuery($"CREATE TEMP TABLE data (foo {typeName})");
 
-                using (var cmd = new NpgsqlCommand("SELECT foo,8::INTEGER FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                using (var cmd = new NpgsqlCommand($"SELECT foo,NULL::{typeName} FROM data", conn))
+                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
                 {
                     var columns = reader.GetColumnSchema();
-                    Assert.That(columns[0].DataTypeName, Is.EqualTo("int4"));
-                    Assert.That(columns[1].DataTypeName, Is.EqualTo("int4"));
+                    var tableColumn = columns[0];
+                    var nonTableColumn = columns[1];
+                    Assert.That(tableColumn.DataTypeName, Is.EqualTo(typeNameWithoutFacets));
+                    Assert.That(tableColumn.ColumnSize, Is.EqualTo(size));
+                    Assert.That(tableColumn.NumericPrecision, Is.EqualTo(precision));
+                    Assert.That(tableColumn.NumericScale, Is.EqualTo(scale));
+                    Assert.That(nonTableColumn.DataTypeName, Is.EqualTo(typeNameWithoutFacets));
+                    Assert.That(nonTableColumn.ColumnSize, Is.EqualTo(size));
+                    Assert.That(nonTableColumn.NumericPrecision, Is.EqualTo(precision));
+                    Assert.That(nonTableColumn.NumericScale, Is.EqualTo(scale));
                 }
             }
         }
@@ -604,24 +642,17 @@ namespace Npgsql.Tests
                 Assert.Ignore("Domain types not support on Redshift");
             using (var conn = OpenConnection())
             {
-                conn.ExecuteNonQuery("DROP DOMAIN IF EXISTS mydomain; CREATE DOMAIN mydomain AS varchar(2)");
-                try
+                conn.ExecuteNonQuery("CREATE DOMAIN pg_temp.mydomain AS varchar(2)");
+                conn.ReloadTypes();
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (domain mydomain)");
+                using (var cmd = new NpgsqlCommand("SELECT domain FROM data", conn))
+                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
                 {
-                    conn.ReloadTypes();
-                    conn.ExecuteNonQuery("CREATE TEMP TABLE data (domain mydomain)");
-                    using (var cmd = new NpgsqlCommand("SELECT domain FROM data", conn))
-                    using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
-                    {
-                        var domainSchema = reader.GetColumnSchema().Single(c => c.ColumnName == "domain");
-                        Assert.That(domainSchema.ColumnSize, Is.EqualTo(2));
-                        var pgType = domainSchema.PostgresType;
-                        Assert.That(pgType, Is.InstanceOf<PostgresDomainType>());
-                        Assert.That(((PostgresDomainType)pgType).BaseType.Name, Is.EqualTo("varchar"));
-                    }
-                }
-                finally
-                {
-                    conn.ExecuteNonQuery("DROP TABLE data; DROP DOMAIN mydomain");
+                    var domainSchema = reader.GetColumnSchema().Single(c => c.ColumnName == "domain");
+                    Assert.That(domainSchema.ColumnSize, Is.EqualTo(2));
+                    var pgType = domainSchema.PostgresType;
+                    Assert.That(pgType, Is.InstanceOf<PostgresDomainType>());
+                    Assert.That(((PostgresDomainType)pgType).BaseType.Name, Is.EqualTo("character varying"));
                 }
             }
         }

@@ -44,8 +44,8 @@ namespace Npgsql.TypeHandlers
     )]
     [TypeMapping("xml", NpgsqlDbType.Xml, dbType: DbType.Xml)]
 
-    [TypeMapping("varchar", NpgsqlDbType.Varchar, inferredDbType: DbType.String)]
-    [TypeMapping("bpchar", NpgsqlDbType.Char, inferredDbType: DbType.String)]
+    [TypeMapping("character varying", NpgsqlDbType.Varchar, inferredDbType: DbType.String)]
+    [TypeMapping("character", NpgsqlDbType.Char, inferredDbType: DbType.String)]
     [TypeMapping("name", NpgsqlDbType.Name, inferredDbType: DbType.String)]
     [TypeMapping("json", NpgsqlDbType.Json, inferredDbType: DbType.String)]
     [TypeMapping("refcursor", NpgsqlDbType.Refcursor, inferredDbType: DbType.String)]
