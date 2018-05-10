@@ -97,7 +97,13 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             if (sign == 0xC000)
                 throw new NpgsqlSafeReadException(new InvalidCastException("Numeric NaN not supported by System.Decimal"));
 
-            result = Math.Round(result, dscale);
+            var rscale = ((decimal.GetBits(result)[3] >> 16) & 0x7F);                           //Find scale of result
+
+            if (rscale < dscale)                                                                //If result scale is insufficient,
+                result = result * new decimal((int)Math.Pow(10, dscale), 0, 0, false, 2);       //increase it.
+
+            else if (rscale > dscale)                                                           //If result scale is too high,
+                result = Math.Round(result, dscale, MidpointRounding.AwayFromZero);             //decrease it using same rounding method as pgsql.
 
             return sign == 0x4000 ? -result : result;
         }
