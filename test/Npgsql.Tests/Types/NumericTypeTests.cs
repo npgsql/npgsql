@@ -274,6 +274,27 @@ namespace Npgsql.Tests.Types
                     Assert.AreEqual(-1234567.890123M, result);
                 }
 
+                //Round up
+                using (var cmd = new NpgsqlCommand("SELECT '1.2345'::numeric(10,3)", conn))
+                {
+                    var result = cmd.ExecuteScalar();
+                    Assert.AreEqual(decimal.GetBits(1.235M), decimal.GetBits((decimal)result));
+                }
+
+                //Round down
+                using (var cmd = new NpgsqlCommand("SELECT '1.2344'::numeric(10,3)", conn))
+                {
+                    var result = cmd.ExecuteScalar();
+                    Assert.AreEqual(decimal.GetBits(1.234M), decimal.GetBits((decimal)result));
+                }
+
+                //Expand to specified scale
+                using (var cmd = new NpgsqlCommand("SELECT '1.2'::numeric(10,3)", conn))
+                {
+                    var result = cmd.ExecuteScalar();
+                    Assert.AreEqual(decimal.GetBits(1.200M), decimal.GetBits((decimal)result));
+                }
+
                 using (var cmd = new NpgsqlCommand("SELECT '" + string.Join("", Enumerable.Range(0, 131072).Select(i => "1")) + "." + string.Join("", Enumerable.Range(0, 16383).Select(i => "1")) + "'::numeric::text", conn))
                 using (var rdr = cmd.ExecuteReader())
                 {
