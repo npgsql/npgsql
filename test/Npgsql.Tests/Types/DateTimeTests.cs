@@ -207,6 +207,18 @@ namespace Npgsql.Tests.Types
             }
         }
 
+        [Test]
+        public void TimeWithTimeZoneBeforeUtcZero()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT TIME WITH TIME ZONE '01:00:00+02'", conn))
+            using (var reader = cmd.ExecuteReader())
+            {
+                reader.Read();
+                Assert.That(reader.GetFieldValue<DateTimeOffset>(0), Is.EqualTo(new DateTimeOffset(1, 1, 2, 1, 0, 0, new TimeSpan(0, 2, 0, 0))));
+            }
+        }
+
         #endregion
 
         #region Timestamp
