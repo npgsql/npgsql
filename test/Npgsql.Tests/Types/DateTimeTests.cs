@@ -196,7 +196,7 @@ namespace Npgsql.Tests.Types
                         {
                             Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(DateTimeOffset)));
 
-                            Assert.That(reader.GetFieldValue<DateTimeOffset>(i), Is.EqualTo(new DateTimeOffset(1, 1, 1, dto.Hour, dto.Minute, dto.Second, dto.Millisecond, dto.Offset)));
+                            Assert.That(reader.GetFieldValue<DateTimeOffset>(i), Is.EqualTo(new DateTimeOffset(1, 1, 2, dto.Hour, dto.Minute, dto.Second, dto.Millisecond, dto.Offset)));
                             Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(DateTimeOffset)));
                             Assert.That(reader.GetFieldValue<DateTime>(i).Kind, Is.EqualTo(DateTimeKind.Local));
                             Assert.That(reader.GetFieldValue<DateTime>(i), Is.EqualTo(reader.GetFieldValue<DateTimeOffset>(i).LocalDateTime));
