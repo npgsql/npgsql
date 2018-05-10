@@ -1,5 +1,9 @@
 # Supported Types and their Mappings
 
+The following lists the built-in mappings when reading and writing CLR types to PostgreSQL types.
+
+Note that in addition to the below, enum and composite mappings are documented [in a separate page](enums_and_composites.md). Note also that several plugins exist to add support for more mappings (e.g. spatial support for PostGIS), these are listed in the Types menu.
+
 ## Type mappings when reading values sent from the backend
 
 PostgreSQL type         | Default .NET type             | Provider-specific type	| Other .NET types

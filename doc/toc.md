@@ -12,9 +12,11 @@
 # Types
 ## [Basic Type Mapping](types/basic.md)
 ## [Date and Time](types/datetime.md)
+## [Enums and Composites](types/enums_and_composites.md)
 ## [NodaTime Plugin](types/nodatime.md)
 ## [Json.NET Plugin](types/jsonnet.md)
-## [Enums and Composites](types/enums_and_composites.md)
+## [NetTopologySuite Plugin](types/nts.md)
+## [Legacy PostGIS Plugin](types/legacy-postgis.md)
 # [Transactions](transactions.md)
 # [Performance](performance.md)
 # [Prepared Statements](prepare.md)
