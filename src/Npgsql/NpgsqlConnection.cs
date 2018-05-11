@@ -1399,6 +1399,12 @@ namespace Npgsql
         protected override DbProviderFactory DbProviderFactory => NpgsqlFactory.Instance;
 
         /// <summary>
+        /// Collects statistics for the connection/session
+        /// </summary>
+        [PublicAPI]
+        public bool EnableStatistics { get; set; }
+
+        /// <summary>
         /// Clear connection pool.
         /// </summary>
         public static void ClearPool(NpgsqlConnection connection) => PoolManager.Clear(connection._connectionString);
@@ -1431,6 +1437,20 @@ namespace Npgsql
         }
 
         #endregion Misc
+
+        /// <summary>
+        /// Collects statistics for the connection/session
+        /// </summary>
+        [PublicAPI]
+        public IDictionary<string, long> RetrieveStatistics()
+        {
+            if (EnableStatistics && Connector != null)
+            {
+                return Connector.RetrieveStatistics();
+            }
+            
+            return new Dictionary<string, long>();
+        }
     }
 
     #region Delegates

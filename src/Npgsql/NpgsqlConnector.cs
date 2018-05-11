@@ -2008,6 +2008,11 @@ namespace Npgsql
         }
 
         #endregion Misc
+
+        public IDictionary<string, long> RetrieveStatistics()
+        {
+            return ReadBuffer.RetrieveStatistics();
+        }
     }
 
     #region Enums

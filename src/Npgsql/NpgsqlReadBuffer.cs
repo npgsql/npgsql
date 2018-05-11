@@ -23,6 +23,8 @@
 
 using JetBrains.Annotations;
 using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Sockets;
@@ -80,6 +82,8 @@ namespace Npgsql
 
         #region Constructors
 
+        private readonly INpgsqlStatistics _stats = new NoOpNpgsqlStatistics();
+
         internal NpgsqlReadBuffer([CanBeNull] NpgsqlConnector connector, Stream stream, int size, Encoding textEncoding)
         {
             if (size < MinimumSize)
@@ -92,6 +96,11 @@ namespace Npgsql
             Size = size;
             Buffer = new byte[Size];
             TextEncoding = textEncoding;
+
+            if (connector?.Connection != null && connector.Connection.EnableStatistics)
+            {
+                _stats = new NpgsqlStatistics();
+            }
         }
 
         #endregion
@@ -444,6 +453,7 @@ namespace Npgsql
 
         internal void Clear()
         {
+            _stats.AddBytesReceived(_filledBytes);
             ReadPosition = 0;
             _filledBytes = 0;
         }
@@ -456,5 +466,60 @@ namespace Npgsql
         }
 
         #endregion
+
+
+        public IDictionary<string, long> RetrieveStatistics()
+        {
+            return _stats.RetrieveStatistics();
+        }
+    }
+
+    internal sealed class NpgsqlStatistics : INpgsqlStatistics
+    {
+        private readonly ConcurrentDictionary<string, long> _concurrentDictionary;
+
+        internal NpgsqlStatistics()
+        {
+            _concurrentDictionary = new ConcurrentDictionary<string, long>
+            {
+                ["BytesReceived"] = 0
+            };
+        }
+
+        public void AddBytesReceived(int bytesReceived)
+        {
+            _concurrentDictionary["BytesReceived"] += bytesReceived;
+        }
+
+        public IDictionary<string, long> RetrieveStatistics()
+        {
+            var dict = new Dictionary<string, long>();
+
+            foreach (var pair in _concurrentDictionary)
+            {
+                dict.Add(pair.Key, pair.Value);
+            }
+
+            return dict;
+        }
+    }
+
+    internal interface INpgsqlStatistics
+    {
+        void AddBytesReceived(int bytesReceived);
+        IDictionary<string, long> RetrieveStatistics();
+    }
+
+    internal sealed class NoOpNpgsqlStatistics : INpgsqlStatistics
+    {
+        public void AddBytesReceived(int bytesReceived)
+        {
+            // no op
+        }
+
+        public IDictionary<string, long> RetrieveStatistics()
+        {
+            return new Dictionary<string, long>();
+        }
     }
 }
