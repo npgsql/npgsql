@@ -376,12 +376,10 @@ namespace Npgsql.Tests.Types
         public void NumericScaleCasting(string sql, string expected)
         {
             using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand($"SELECT {sql}", conn))
             {
-                using (var cmd = new NpgsqlCommand($"SELECT {sql}", conn))
-                {
-                    var result = cmd.ExecuteScalar();
-                    Assert.AreEqual(decimal.GetBits(decimal.Parse(expected)), decimal.GetBits((decimal)result));
-                }
+                var result = cmd.ExecuteScalar();
+                Assert.AreEqual(decimal.GetBits(decimal.Parse(expected)), decimal.GetBits((decimal)result));
             }
         }
 
