@@ -268,12 +268,6 @@ namespace Npgsql.Tests.Types
         {
             using (var conn = OpenConnection())
             {
-                using (var cmd = new NpgsqlCommand("SELECT '-1234567.890123'::numeric", conn))
-                {
-                    var result = cmd.ExecuteScalar();
-                    Assert.AreEqual(-1234567.890123M, result);
-                }
-
                 using (var cmd = new NpgsqlCommand("SELECT '" + string.Join("", Enumerable.Range(0, 131072).Select(i => "1")) + "." + string.Join("", Enumerable.Range(0, 16383).Select(i => "1")) + "'::numeric::text", conn))
                 using (var rdr = cmd.ExecuteReader())
                 {
@@ -360,6 +354,33 @@ namespace Npgsql.Tests.Types
                         var result = cmd.ExecuteScalar();
                         Assert.AreEqual(decimal.GetBits(t.Item2), decimal.GetBits((decimal)result));
                     }
+                }
+            }
+        }
+
+        //NOTE: it is important to test rounding on both even and odd numbers to make sure
+        //midpoint rounding is AwayFromZero instead of ToEven https://msdn.microsoft.com/en-us/library/system.midpointrounding.aspx
+        //This is necessary to match psql.
+        [Test]
+        [TestCase("'1'::numeric(10,2)", "1.00", TestName = "ExpandScaleOdd")]
+        [TestCase("'2'::numeric(10,2)", "2.00", TestName = "ExpandScaleEven")]
+        [TestCase("'1.2'::numeric(10,2)", "1.20", TestName = "ExpandScaleDecimal")]
+        [TestCase("'1.4'::numeric(10,0)", "1", TestName = "RoundOddDown")]
+        [TestCase("'1.5'::numeric(10,0)", "2", TestName = "RoundOddUp")]
+        [TestCase("'2.4'::numeric(10,0)", "2", TestName = "RoundEvenDown")]
+        [TestCase("'2.5'::numeric(10,0)", "3", TestName = "RoundEvenUp")]
+        [TestCase("'-1.4'::numeric(10,0)", "-1", TestName = "RoundNegativeOddDown")]
+        [TestCase("'-1.5'::numeric(10,0)", "-2", TestName = "RoundNegativeOddUp")]
+        [TestCase("'-2.4'::numeric(10,0)", "-2", TestName = "RoundNegativeEvenDown")]
+        [TestCase("'-2.5'::numeric(10,0)", "-3", TestName = "RoundNegativeEvenUp")]
+        public void NumericScaleCasting(string sql, string expected)
+        {
+            using (var conn = OpenConnection())
+            {
+                using (var cmd = new NpgsqlCommand($"SELECT {sql}", conn))
+                {
+                    var result = cmd.ExecuteScalar();
+                    Assert.AreEqual(decimal.GetBits(decimal.Parse(expected)), decimal.GetBits((decimal)result));
                 }
             }
         }
@@ -477,21 +498,6 @@ namespace Npgsql.Tests.Types
                 command.Parameters[0].Value = x;
                 var valueReturned = command.ExecuteScalar();
                 Assert.That(valueReturned, Is.EqualTo(x).Within(100).Ulps);
-            }
-        }
-
-        [Test]
-        public void PrecisionScaleNumericSupport()
-        {
-            using (var conn = OpenConnection())
-            using (var command = new NpgsqlCommand("SELECT -4.3::NUMERIC", conn))
-            using (var dr = command.ExecuteReader())
-            {
-                dr.Read();
-                var result = dr.GetDecimal(0);
-                Assert.AreEqual(-4.3000000M, result);
-                //Assert.AreEqual(11, result.Precision);
-                //Assert.AreEqual(7, result.Scale);
             }
         }
 
