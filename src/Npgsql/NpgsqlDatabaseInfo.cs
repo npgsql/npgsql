@@ -79,6 +79,10 @@ namespace Npgsql
         /// </summary>
         public virtual bool SupportsRangeTypes => Version >= new Version(9, 2, 0);
         /// <summary>
+        /// Whether the backend supports enum types.
+        /// </summary>
+        public virtual bool SupportsEnumTypes => Version >= new Version(8, 3, 0);
+        /// <summary>
         /// Whether the backend supports the CLOSE ALL statement.
         /// </summary>
         public virtual bool SupportsCloseAll => Version >= new Version(8, 3, 0);

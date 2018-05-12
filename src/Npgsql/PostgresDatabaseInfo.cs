@@ -82,7 +82,7 @@ namespace Npgsql
         // Order by primitives first, container later.
         // For arrays and ranges, join in the element OID and type (to filter out arrays of unhandled
         // types).
-        static string GenerateTypesQuery(bool withRange, bool loadTableComposites)
+        static string GenerateTypesQuery(bool withRange, bool withEnum, bool loadTableComposites)
             => $@"
 /*** Load all supported types ***/
 SELECT ns.nspname, a.typname, a.oid, a.typrelid, a.typbasetype,
@@ -126,12 +126,12 @@ WHERE
   attnum > 0 AND     /* Don't load system attributes */
   NOT attisdropped
 ORDER BY typ.typname, att.attnum;
-
+{(withEnum ? @"
 /*** Load enum fields ***/
 SELECT pg_type.oid, enumlabel
 FROM pg_enum
 JOIN pg_type ON pg_type.oid=enumtypid
-ORDER BY oid, enumsortorder;
+ORDER BY oid, enumsortorder;" : "")}
 ";
 
         internal async Task<List<PostgresType>> LoadBackendTypes(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
@@ -144,7 +144,7 @@ ORDER BY oid, enumsortorder;
                     throw new TimeoutException();
             }
 
-            var typeLoadingQuery = GenerateTypesQuery(SupportsRangeTypes, conn.Settings.LoadTableComposites);
+            var typeLoadingQuery = GenerateTypesQuery(SupportsRangeTypes, SupportsEnumTypes, conn.Settings.LoadTableComposites);
 
             using (var command = new NpgsqlCommand(typeLoadingQuery, conn))
             {
