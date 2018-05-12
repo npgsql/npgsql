@@ -243,12 +243,15 @@ ORDER BY oid, enumsortorder;" : "")}
 
                     LoadCompositeFields(reader, byOID);
 
-                    if (async)
-                        await reader.NextResultAsync();
-                    else
-                        reader.NextResult();
+                    if (SupportsEnumTypes)
+                    {
+                        if (async)
+                            await reader.NextResultAsync();
+                        else
+                            reader.NextResult();
 
-                    LoadEnumLabels(reader, byOID);
+                        LoadEnumLabels(reader, byOID);
+                    }
 
                     return byOID.Values.ToList();
                 }
