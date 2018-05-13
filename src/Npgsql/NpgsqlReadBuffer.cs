@@ -82,7 +82,7 @@ namespace Npgsql
 
         #region Constructors
 
-        private readonly INpgsqlStatistics _stats = new NoOpNpgsqlStatistics();
+        private readonly NpgsqlStatistics _stats;
 
         internal NpgsqlReadBuffer([CanBeNull] NpgsqlConnector connector, Stream stream, int size, Encoding textEncoding)
         {
@@ -96,11 +96,7 @@ namespace Npgsql
             Size = size;
             Buffer = new byte[Size];
             TextEncoding = textEncoding;
-
-            if (connector?.Connection != null && connector.Connection.EnableStatistics)
-            {
-                _stats = new NpgsqlStatistics();
-            }
+            _stats = new NpgsqlStatistics();
         }
 
         #endregion
@@ -453,7 +449,11 @@ namespace Npgsql
 
         internal void Clear()
         {
-            _stats.AddBytesReceived(_filledBytes);
+            if (Connector?.Connection != null && Connector.Connection.EnableStatistics)
+            {
+                _stats.AddBytesReceived(_filledBytes);
+            }
+
             ReadPosition = 0;
             _filledBytes = 0;
         }
@@ -479,7 +479,7 @@ namespace Npgsql
         }
     }
 
-    internal sealed class NpgsqlStatistics : INpgsqlStatistics
+    internal sealed class NpgsqlStatistics
     {
         private ConcurrentDictionary<string, long> _concurrentDictionary;
 
@@ -514,31 +514,6 @@ namespace Npgsql
             {
                 ["BytesReceived"] = 0
             };
-        }
-    }
-
-    internal interface INpgsqlStatistics
-    {
-        void AddBytesReceived(int bytesReceived);
-        IDictionary<string, long> RetrieveStatistics();
-        void ResetStatistics();
-    }
-
-    internal sealed class NoOpNpgsqlStatistics : INpgsqlStatistics
-    {
-        public void AddBytesReceived(int bytesReceived)
-        {
-            // no op
-        }
-
-        public IDictionary<string, long> RetrieveStatistics()
-        {
-            return new Dictionary<string, long>();
-        }
-
-        public void ResetStatistics()
-        {
-            // no op
         }
     }
 }
