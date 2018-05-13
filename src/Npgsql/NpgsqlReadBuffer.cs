@@ -472,11 +472,16 @@ namespace Npgsql
         {
             return _stats.RetrieveStatistics();
         }
+
+        public void ResetStatistics()
+        {
+            _stats.ResetStatistics();
+        }
     }
 
     internal sealed class NpgsqlStatistics : INpgsqlStatistics
     {
-        private readonly ConcurrentDictionary<string, long> _concurrentDictionary;
+        private ConcurrentDictionary<string, long> _concurrentDictionary;
 
         internal NpgsqlStatistics()
         {
@@ -502,12 +507,21 @@ namespace Npgsql
 
             return dict;
         }
+
+        public void ResetStatistics()
+        {
+            _concurrentDictionary = new ConcurrentDictionary<string, long>
+            {
+                ["BytesReceived"] = 0
+            };
+        }
     }
 
     internal interface INpgsqlStatistics
     {
         void AddBytesReceived(int bytesReceived);
         IDictionary<string, long> RetrieveStatistics();
+        void ResetStatistics();
     }
 
     internal sealed class NoOpNpgsqlStatistics : INpgsqlStatistics
@@ -520,6 +534,11 @@ namespace Npgsql
         public IDictionary<string, long> RetrieveStatistics()
         {
             return new Dictionary<string, long>();
+        }
+
+        public void ResetStatistics()
+        {
+            // no op
         }
     }
 }

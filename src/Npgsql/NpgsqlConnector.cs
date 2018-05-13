@@ -1512,6 +1512,7 @@ namespace Npgsql
         internal void Reset()
         {
             Debug.Assert(State == ConnectorState.Ready);
+            ReadBuffer.ResetStatistics();
 
             Connection = null;
 
