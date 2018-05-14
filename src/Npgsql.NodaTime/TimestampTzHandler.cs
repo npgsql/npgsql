@@ -35,10 +35,11 @@ namespace Npgsql.NodaTime
     {
         // Check for the legacy floating point timestamps feature
         protected override NpgsqlTypeHandler<Instant> Create(NpgsqlConnection conn)
-            => new TimestampTzHandler(conn.HasIntegerDateTimes);
+            => new TimestampTzHandler(conn);
     }
 
-    class TimestampTzHandler : NpgsqlSimpleTypeHandler<Instant>, INpgsqlSimpleTypeHandler<ZonedDateTime>
+    class TimestampTzHandler : NpgsqlSimpleTypeHandler<Instant>, INpgsqlSimpleTypeHandler<ZonedDateTime>,
+        INpgsqlSimpleTypeHandler<OffsetDateTime>
     {
         readonly IDateTimeZoneProvider _dateTimeZoneProvider;
 
@@ -48,11 +49,13 @@ namespace Npgsql.NodaTime
         /// </summary>
         readonly bool _integerFormat;
 
-        public TimestampTzHandler(bool integerFormat)
+        public TimestampTzHandler(NpgsqlConnection conn)
         {
-            _integerFormat = integerFormat;
+            _integerFormat = conn.HasIntegerDateTimes;
             _dateTimeZoneProvider = DateTimeZoneProviders.Tzdb;
         }
+
+        #region Read
 
         public override Instant Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
@@ -96,10 +99,20 @@ namespace Npgsql.NodaTime
             }
         }
 
+        OffsetDateTime INpgsqlSimpleTypeHandler<OffsetDateTime>.Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription)
+            => ((INpgsqlSimpleTypeHandler<ZonedDateTime>)this).Read(buf, len, fieldDescription).ToOffsetDateTime();
+
+        #endregion Read
+
+        #region Write
+
         public override int ValidateAndGetLength(Instant value, NpgsqlParameter parameter)
             => 8;
 
         int INpgsqlSimpleTypeHandler<ZonedDateTime>.ValidateAndGetLength(ZonedDateTime value, NpgsqlParameter parameter)
+            => 8;
+
+        public int ValidateAndGetLength(OffsetDateTime value, NpgsqlParameter parameter)
             => 8;
 
         public override void Write(Instant value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
@@ -111,11 +124,11 @@ namespace Npgsql.NodaTime
         }
 
         void INpgsqlSimpleTypeHandler<ZonedDateTime>.Write(ZonedDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
-        {
-            if (_integerFormat)
-                TimestampHandler.WriteInteger(value.ToInstant(), buf);
-            else
-                TimestampHandler.WriteDouble(value.ToInstant(), buf);
-        }
+            => Write(value.ToInstant(), buf, parameter);
+
+        public void Write(OffsetDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => Write(value.ToInstant(), buf, parameter);
+
+        #endregion Write
     }
 }

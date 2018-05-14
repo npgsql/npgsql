@@ -138,21 +138,23 @@ namespace Npgsql.PluginTests
                 Assert.That(conn.Timezone, Is.EqualTo(timezone));
                 // Nodatime provider should return timestamptz's as ZonedDateTime in the session timezone
 
-                var expectedInstant = Instant.FromUtc(2015, 6, 27, 8, 45, 12) + Duration.FromMilliseconds(345);
-                var utcZonedDateTime = expectedInstant.InUtc();
+                var instant = Instant.FromUtc(2015, 6, 27, 8, 45, 12) + Duration.FromMilliseconds(345);
+                var utcZonedDateTime = instant.InUtc();
                 var localZonedDateTime = utcZonedDateTime.WithZone(DateTimeZoneProviders.Tzdb[timezone]);
+                var offsetDateTime = localZonedDateTime.ToOffsetDateTime();
 
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (d1 TIMESTAMPTZ, d2 TIMESTAMPTZ, d3 TIMESTAMPTZ)");
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (d1 TIMESTAMPTZ, d2 TIMESTAMPTZ, d3 TIMESTAMPTZ, d4 TIMESTAMPTZ)");
 
-                using (var cmd = new NpgsqlCommand("INSERT INTO data VALUES (@p1, @p2, @p3)", conn))
+                using (var cmd = new NpgsqlCommand("INSERT INTO data VALUES (@p1, @p2, @p3, @p4)", conn))
                 {
-                    cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.TimestampTz) { Value = expectedInstant });
+                    cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.TimestampTz) { Value = instant });
                     cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p2", Value = utcZonedDateTime });
                     cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p3", Value = localZonedDateTime });
+                    cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p4", Value = offsetDateTime });
                     cmd.ExecuteNonQuery();
                 }
 
-                using (var cmd = new NpgsqlCommand("SELECT d1::TEXT, d2::TEXT, d3::TEXT FROM data", conn))
+                using (var cmd = new NpgsqlCommand("SELECT d1::TEXT, d2::TEXT, d3::TEXT, d4::TEXT FROM data", conn))
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
@@ -172,9 +174,10 @@ namespace Npgsql.PluginTests
                     for (var i = 0; i < reader.FieldCount; i++)
                     {
                         Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(Instant)));
-                        Assert.That(reader.GetFieldValue<Instant>(i), Is.EqualTo(expectedInstant));
-                        Assert.That(reader.GetValue(i), Is.EqualTo(expectedInstant));
+                        Assert.That(reader.GetFieldValue<Instant>(i), Is.EqualTo(instant));
+                        Assert.That(reader.GetValue(i), Is.EqualTo(instant));
                         Assert.That(reader.GetFieldValue<ZonedDateTime>(i), Is.EqualTo(localZonedDateTime));
+                        Assert.That(reader.GetFieldValue<OffsetDateTime>(i), Is.EqualTo(offsetDateTime));
                         Assert.That(() => reader.GetFieldValue<LocalDateTime>(i), Throws.TypeOf<InvalidCastException>());
                         Assert.That(() => reader.GetDateTime(i), Throws.TypeOf<InvalidCastException>());
                         Assert.That(() => reader.GetDate(i), Throws.TypeOf<InvalidCastException>());

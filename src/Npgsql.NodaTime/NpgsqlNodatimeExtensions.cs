@@ -54,7 +54,7 @@ namespace Npgsql
                 {
                     PgTypeName = "timestamptz",
                     NpgsqlDbType = NpgsqlDbType.TimestampTz,
-                    ClrTypes = new[] { typeof(ZonedDateTime) },
+                    ClrTypes = new[] { typeof(ZonedDateTime), typeof(OffsetDateTime) },
                     TypeHandlerFactory = new TimestampTzHandlerFactory()
                 }.Build())
                 .AddMapping(new NpgsqlTypeMappingBuilder
