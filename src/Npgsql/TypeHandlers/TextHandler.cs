@@ -261,7 +261,7 @@ namespace Npgsql.TypeHandlers
             return _encoding.GetByteCount(_singleCharArray);
         }
 
-        public int ValidateAndGetLength(byte[] value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        int INpgsqlTypeHandler<byte[]>.ValidateAndGetLength(byte[] value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
             => value.Length;
 
         public override Task Write(string value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
@@ -293,7 +293,7 @@ namespace Npgsql.TypeHandlers
             return buf.WriteChars(_singleCharArray, 0, 1, len, async);
         }
 
-        public Task Write(byte[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        Task INpgsqlTypeHandler<byte[]>.Write(byte[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
             => buf.WriteBytesRaw(value, async);
 
         #endregion
