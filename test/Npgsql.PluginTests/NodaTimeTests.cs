@@ -39,37 +39,37 @@ namespace Npgsql.PluginTests
         #region Timestamp
 
         static readonly TestCaseData[] TimestampCases = {
-            new TestCaseData(new DateTime(1998, 4, 12, 13, 26, 38, 789, DateTimeKind.Utc)).SetName(nameof(Timestamp) + "Pre2000"),
-            new TestCaseData(new DateTime(2015, 1, 27, 8, 45, 12, 345, DateTimeKind.Utc)).SetName(nameof(Timestamp) + "Post2000"),
-            new TestCaseData(new DateTime(1999, 12, 31, 23, 59, 59, 999, DateTimeKind.Utc)).SetName(nameof(Timestamp) + "Pre2000"),
+            new TestCaseData(new LocalDateTime(1998, 4, 12, 13, 26, 38, 789)).SetName(nameof(Timestamp) + "Pre2000"),
+            new TestCaseData(new LocalDateTime(2015, 1, 27, 8, 45, 12, 345)).SetName(nameof(Timestamp) + "Post2000"),
+            new TestCaseData(new LocalDateTime(1999, 12, 31, 23, 59, 59, 999).PlusNanoseconds(456000)).SetName(nameof(Timestamp) + "Microseconds"),
         };
 
         [Test, TestCaseSource(nameof(TimestampCases))]
-        public void Timestamp(DateTime dateTime)
+        public void Timestamp(LocalDateTime localDateTime)
         {
             using (var conn = OpenConnection())
             {
-                var expectedInstant = Instant.FromDateTimeUtc(dateTime);
-                var expectedLocalDateTime = expectedInstant.InUtc().LocalDateTime;
+                var instant = localDateTime.InUtc().ToInstant();
 
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (d1 TIMESTAMP, d2 TIMESTAMP, d3 TIMESTAMP, d4 TIMESTAMP, d5 TIMESTAMP)");
 
                 using (var cmd = new NpgsqlCommand("INSERT INTO data VALUES (@p1, @p2, @p3, @p4, @p5)", conn))
                 {
-                    cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.Timestamp) { Value = expectedInstant });
-                    cmd.Parameters.Add(new NpgsqlParameter("p2", DbType.DateTime) { Value = expectedInstant });
-                    cmd.Parameters.Add(new NpgsqlParameter("p3", DbType.DateTime2) { Value = expectedInstant });
-                    cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p4", Value = expectedInstant });
-                    cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p5", Value = expectedLocalDateTime });
+                    cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.Timestamp) { Value = instant });
+                    cmd.Parameters.Add(new NpgsqlParameter("p2", DbType.DateTime) { Value = instant });
+                    cmd.Parameters.Add(new NpgsqlParameter("p3", DbType.DateTime2) { Value = instant });
+                    cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p4", Value = instant });
+                    cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p5", Value = localDateTime });
                     cmd.ExecuteNonQuery();
                 }
 
+                // Make sure the values inserted are the good ones, textually
                 using (var cmd = new NpgsqlCommand("SELECT d1::TEXT, d2::TEXT, d3::TEXT, d4::TEXT, d5::TEXT FROM data", conn))
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
                     for (var i = 0; i < reader.FieldCount; i++)
-                        Assert.That(reader.GetValue(i), Is.EqualTo(expectedInstant.ToString("uuuu'-'MM'-'dd' 'HH':'mm':'ss'.'fff", CultureInfo.InvariantCulture)));
+                        Assert.That(reader.GetValue(i), Is.EqualTo(instant.ToString("yyyy'-'MM'-'dd' 'HH':'mm':'ss'.'FFFFFF", CultureInfo.InvariantCulture)));
                 }
 
                 using (var cmd = new NpgsqlCommand("SELECT * FROM data", conn))
@@ -80,9 +80,9 @@ namespace Npgsql.PluginTests
                     for (var i = 0; i < reader.FieldCount; i++)
                     {
                         Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(Instant)));
-                        Assert.That(reader.GetFieldValue<Instant>(i), Is.EqualTo(expectedInstant));
-                        Assert.That(reader.GetValue(i), Is.EqualTo(expectedInstant));
-                        Assert.That(reader.GetFieldValue<LocalDateTime>(i), Is.EqualTo(expectedLocalDateTime));
+                        Assert.That(reader.GetFieldValue<Instant>(i), Is.EqualTo(instant));
+                        Assert.That(reader.GetValue(i), Is.EqualTo(instant));
+                        Assert.That(reader.GetFieldValue<LocalDateTime>(i), Is.EqualTo(localDateTime));
                         Assert.That(() => reader.GetFieldValue<ZonedDateTime>(i), Throws.TypeOf<InvalidCastException>());
                         Assert.That(() => reader.GetDateTime(i), Throws.TypeOf<InvalidCastException>());
                         Assert.That(() => reader.GetDate(i), Throws.TypeOf<InvalidCastException>());
@@ -138,8 +138,7 @@ namespace Npgsql.PluginTests
                 Assert.That(conn.Timezone, Is.EqualTo(timezone));
                 // Nodatime provider should return timestamptz's as ZonedDateTime in the session timezone
 
-                var dateTime = new DateTime(2015, 6, 27, 8, 45, 12, 345, DateTimeKind.Utc);
-                var expectedInstant = Instant.FromDateTimeUtc(dateTime);
+                var expectedInstant = Instant.FromUtc(2015, 6, 27, 8, 45, 12) + Duration.FromMilliseconds(345);
                 var utcZonedDateTime = expectedInstant.InUtc();
                 var localZonedDateTime = utcZonedDateTime.WithZone(DateTimeZoneProviders.Tzdb[timezone]);
 

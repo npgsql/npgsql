@@ -56,18 +56,18 @@ namespace Npgsql.NodaTime
 
         public override Instant Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
-            if (_integerFormat) { 
+            if (_integerFormat) {
                 var value = buf.ReadInt64();
                 if (value == long.MaxValue || value == long.MinValue)
                     throw new NpgsqlSafeReadException(new NotSupportedException("Infinity values not supported for timestamp with time zone"));
-                return TimestampHandler.DecodeZonedDateTimeUsingIntegerFormat(value).ToInstant();
+                return TimestampHandler.Decode(value);
             }
             else
             {
                 var value = buf.ReadDouble();
                 if (double.IsPositiveInfinity(value) || double.IsNegativeInfinity(value))
                     throw new NpgsqlSafeReadException(new NotSupportedException("Infinity values not supported for timestamp with time zone"));
-                return TimestampHandler.DecodeZonedDateTimeUsingFloatingPointFormat(value).ToInstant();
+                return TimestampHandler.Decode(value);
             }
         }
 
@@ -80,18 +80,14 @@ namespace Npgsql.NodaTime
                     var value = buf.ReadInt64();
                     if (value == long.MaxValue || value == long.MinValue)
                         throw new NpgsqlSafeReadException(new NotSupportedException("Infinity values not supported for timestamp with time zone"));
-                    var inUtc = TimestampHandler.DecodeZonedDateTimeUsingIntegerFormat(value);
-                    var timezone = _dateTimeZoneProvider[buf.Connection.Timezone];
-                    return inUtc.WithZone(timezone);
+                    return TimestampHandler.Decode(value).InZone(_dateTimeZoneProvider[buf.Connection.Timezone]);
                 }
                 else
                 {
                     var value = buf.ReadDouble();
                     if (double.IsPositiveInfinity(value) || double.IsNegativeInfinity(value))
                         throw new NpgsqlSafeReadException(new NotSupportedException("Infinity values not supported for timestamp with time zone"));
-                    var inUtc = TimestampHandler.DecodeZonedDateTimeUsingFloatingPointFormat(value);
-                    var timezone = _dateTimeZoneProvider[buf.Connection.Timezone];
-                    return inUtc.WithZone(timezone);
+                    return TimestampHandler.Decode(value).InZone(_dateTimeZoneProvider[buf.Connection.Timezone]);
                 }
             }
             catch (DateTimeZoneNotFoundException e)
@@ -109,17 +105,17 @@ namespace Npgsql.NodaTime
         public override void Write(Instant value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
             if (_integerFormat)
-                TimestampHandler.WriteDateTimeUsingIntegerFormat(value.InUtc().LocalDateTime, buf);
+                TimestampHandler.WriteInteger(value, buf);
             else
-                TimestampHandler.WriteDateTimeUsingFloatingPointFormat(value.InUtc().LocalDateTime, buf);
+                TimestampHandler.WriteDouble(value, buf);
         }
 
         void INpgsqlSimpleTypeHandler<ZonedDateTime>.Write(ZonedDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
             if (_integerFormat)
-                TimestampHandler.WriteDateTimeUsingIntegerFormat(value.WithZone(DateTimeZone.Utc).LocalDateTime, buf);
+                TimestampHandler.WriteInteger(value.ToInstant(), buf);
             else
-                TimestampHandler.WriteDateTimeUsingFloatingPointFormat(value.WithZone(DateTimeZone.Utc).LocalDateTime, buf);
+                TimestampHandler.WriteDouble(value.ToInstant(), buf);
         }
     }
 }
