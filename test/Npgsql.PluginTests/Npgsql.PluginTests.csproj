@@ -18,7 +18,7 @@
   <ItemGroup>
     <PackageReference Include="GeoAPI" Version="1.7.5-pre024" />
     <PackageReference Include="NetTopologySuite" Version="1.15.0-pre071" />
-    <PackageReference Include="NodaTime" Version="2.2.6" />
+    <PackageReference Include="NodaTime" Version="2.3.0-beta02" />
     <PackageReference Include="NUnit" Version="3.10.1" />
     <PackageReference Include="NLog" Version="4.5.4" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.7.0" />

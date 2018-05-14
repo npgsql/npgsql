@@ -37,7 +37,7 @@ timestamp       | Instant               | LocalDateTime                 | It's c
 timestamptz     | Instant               | ZonedDateTime, OffsetDateTime | This PostgreSQL type stores only a timestamp, assumed to be in UTC. If you read/write this as an Instant, it will be provided as stored with no timezone conversions whatsoever. If, however, you read/write as a ZonedDateTime or OffsetDateTime, the plugin will automatically convert to and from UTC according to your PostgreSQL session's timezone.
 date            | LocalDate             |                               | A simple date with no timezone or offset information.
 time            | LocalTime             |                               | A simple time-of-day, with no timezone or offset information.
-timetz          | OffsetDateTime        |                               | This is a PostgreSQL type that actually stores a time and an offset (odd and generally not recommended for use by PostgreSQL). As there's no corresponding NodaTime type, you can read/write this as OffsetDateTime with the date component zeroed out.
+timetz          | OffsetTime            |                               | This is a PostgreSQL type that stores a time and an offset.
 interval        | Period                |                               | This is a human interval which does not have a fixed absolute length ("two months" can vary depending on the months in question), and so it is mapped to NodaTime's Period (and not Duration or TimeSpan).
 
 ## Additional Notes

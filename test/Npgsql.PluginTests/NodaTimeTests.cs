@@ -306,9 +306,9 @@ namespace Npgsql.PluginTests
         {
             using (var conn = OpenConnection())
             {
-                var dateTime = new LocalDate() + new LocalTime(1, 2, 3, 4).PlusNanoseconds(5000);
+                var time = new LocalTime(1, 2, 3, 4).PlusNanoseconds(5000);
                 var offset = Offset.FromHoursAndMinutes(3, 30) + Offset.FromSeconds(5);
-                var expected = new OffsetDateTime(dateTime, offset);
+                var expected = new OffsetTime(time, offset);
 
                 using (var cmd = new NpgsqlCommand("SELECT @p", conn))
                 {
@@ -319,28 +319,11 @@ namespace Npgsql.PluginTests
 
                         for (var i = 0; i < cmd.Parameters.Count; i++)
                         {
-                            Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(OffsetDateTime)));
-                            Assert.That(reader.GetFieldValue<OffsetDateTime>(i), Is.EqualTo(expected));
+                            Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(OffsetTime)));
+                            Assert.That(reader.GetFieldValue<OffsetTime>(i), Is.EqualTo(expected));
                             Assert.That(reader.GetValue(i), Is.EqualTo(expected));
                         }
                     }
-                }
-            }
-        }
-
-        [Test]
-        public void TimeTzWithDateThrows()
-        {
-            using (var conn = OpenConnection())
-            {
-                var dateTime = new LocalDate(2017, 1, 1) + new LocalTime(1, 2, 3, 4).PlusNanoseconds(5000);
-                var offset = Offset.FromHoursAndMinutes(3, 30) + Offset.FromSeconds(5);
-                var expected = new OffsetDateTime(dateTime, offset);
-
-                using (var cmd = new NpgsqlCommand("SELECT @p", conn))
-                {
-                    cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.TimeTz) { Value = expected });
-                    Assert.That(() => cmd.ExecuteScalar(), Throws.TypeOf<InvalidCastException>());
                 }
             }
         }
