@@ -362,17 +362,21 @@ namespace Npgsql.Tests.Types
         //midpoint rounding is AwayFromZero instead of ToEven https://msdn.microsoft.com/en-us/library/system.midpointrounding.aspx
         //This is necessary to match psql.
         [Test]
-        [TestCase("'1'::numeric(10,2)", "1.00", TestName = "ExpandScaleOdd")]
-        [TestCase("'2'::numeric(10,2)", "2.00", TestName = "ExpandScaleEven")]
-        [TestCase("'1.2'::numeric(10,2)", "1.20", TestName = "ExpandScaleDecimal")]
-        [TestCase("'1.4'::numeric(10,0)", "1", TestName = "RoundOddDown")]
-        [TestCase("'1.5'::numeric(10,0)", "2", TestName = "RoundOddUp")]
-        [TestCase("'2.4'::numeric(10,0)", "2", TestName = "RoundEvenDown")]
-        [TestCase("'2.5'::numeric(10,0)", "3", TestName = "RoundEvenUp")]
-        [TestCase("'-1.4'::numeric(10,0)", "-1", TestName = "RoundNegativeOddDown")]
-        [TestCase("'-1.5'::numeric(10,0)", "-2", TestName = "RoundNegativeOddUp")]
-        [TestCase("'-2.4'::numeric(10,0)", "-2", TestName = "RoundNegativeEvenDown")]
-        [TestCase("'-2.5'::numeric(10,0)", "-3", TestName = "RoundNegativeEvenUp")]
+        [TestCase("'1'::numeric(10,2)", "1.00", TestName = "NumericExpandScaleOdd")]
+        [TestCase("'2'::numeric(10,2)", "2.00", TestName = "NumericExpandScaleEven")]
+        [TestCase("'1.2'::numeric(10,2)", "1.20", TestName = "NumericExpandScale2")]
+        [TestCase("'1.2'::numeric(10,3)", "1.200", TestName = "NumericExpandScale3")]
+        [TestCase("'1.2'::numeric(10,4)", "1.2000", TestName = "NumericExpandScale4")]
+        [TestCase("'1.2'::numeric(10,5)", "1.20000", TestName = "NumericExpandScale5")]
+        [TestCase("'-0.1'::numeric(28,28)", "-0.1000000000000000000000000000", TestName = "NumericExpandScaleMax")]
+        [TestCase("'1.4'::numeric(10,0)", "1", TestName = "NumericRoundOddDown")]
+        [TestCase("'1.5'::numeric(10,0)", "2", TestName = "NumericRoundOddUp")]
+        [TestCase("'2.4'::numeric(10,0)", "2", TestName = "NumericRoundEvenDown")]
+        [TestCase("'2.5'::numeric(10,0)", "3", TestName = "NumericRoundEvenUp")]
+        [TestCase("'-1.4'::numeric(10,0)", "-1", TestName = "NumericRoundNegativeOddDown")]
+        [TestCase("'-1.5'::numeric(10,0)", "-2", TestName = "NumericRoundNegativeOddUp")]
+        [TestCase("'-2.4'::numeric(10,0)", "-2", TestName = "NumericRoundNegativeEvenDown")]
+        [TestCase("'-2.5'::numeric(10,0)", "-3", TestName = "NumericRoundNegativeEvenUp")]
         public void NumericScaleCasting(string sql, string expected)
         {
             using (var conn = OpenConnection())
