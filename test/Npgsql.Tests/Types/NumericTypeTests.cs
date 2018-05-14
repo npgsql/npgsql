@@ -329,32 +329,6 @@ namespace Npgsql.Tests.Types
                         }
                     }
                 }
-
-                //NOTE: it is important to test rounding on both even and odd numbers to make sure
-                //midpoint rounding is AwayFromZero instead of ToEven https://msdn.microsoft.com/en-us/library/system.midpointrounding.aspx
-                //This is necessary to match psql.
-                var rounding = new Tuple<string, decimal>[] {
-                    new Tuple<string,decimal>("'1'::numeric(10,2)", 1.00M),     //test scale
-                    new Tuple<string,decimal>("'0'::numeric(10,2)", 0.00M),     //test scale
-                    new Tuple<string,decimal>("'1.2'::numeric(10,2)", 1.20M),   //test scale
-                    new Tuple<string,decimal>("'1.4'::numeric(10,0)", 1M),      //round down
-                    new Tuple<string,decimal>("'1.5'::numeric(10,0)", 2M),      //round up
-                    new Tuple<string,decimal>("'2.4'::numeric(10,0)", 2M),      //round down
-                    new Tuple<string,decimal>("'2.5'::numeric(10,0)", 3M),      //round up
-                    new Tuple<string,decimal>("'-1.4'::numeric(10,0)", -1M),    //round down
-                    new Tuple<string,decimal>("'-1.5'::numeric(10,0)", -2M),    //round up
-                    new Tuple<string,decimal>("'-2.4'::numeric(10,0)", -2M),    //round down
-                    new Tuple<string,decimal>("'-2.5'::numeric(10,0)", -3M),    //round up
-                };
-
-                foreach (var t in rounding)
-                {
-                    using (var cmd = new NpgsqlCommand($"SELECT {t.Item1}", conn))
-                    {
-                        var result = cmd.ExecuteScalar();
-                        Assert.AreEqual(decimal.GetBits(t.Item2), decimal.GetBits((decimal)result));
-                    }
-                }
             }
         }
 
