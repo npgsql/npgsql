@@ -130,7 +130,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
 
             var overflow = false;
 
-            var result = new DecimalRaw() { Value = 0M };
+            var result = new DecimalRaw();
             for (int i = 0, weight = weightFirstGroup + 7; i < numGroups; i++, weight--)
             {
                 var group = (ushort)buf.ReadInt16();
