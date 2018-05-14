@@ -93,11 +93,11 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
 #pragma warning disable CA1801 // Review unused parameters
         protected NpgsqlDateTime ReadTimeStamp(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => _integerFormat
-                ? ReadTimeStampUsingIntegerFormat(buf)
-                : ReadTimeStampUsingFloatingPointFormat(buf);
+                ? ReadInteger(buf)
+                : ReadDouble(buf);
 #pragma warning restore CA1801 // Review unused parameters
 
-        NpgsqlDateTime ReadTimeStampUsingIntegerFormat(NpgsqlReadBuffer buf)
+        NpgsqlDateTime ReadInteger(NpgsqlReadBuffer buf)
         {
             var value = buf.ReadInt64();
             if (value == long.MaxValue)
@@ -127,7 +127,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             }
         }
 
-        NpgsqlDateTime ReadTimeStampUsingFloatingPointFormat(NpgsqlReadBuffer buf)
+        NpgsqlDateTime ReadDouble(NpgsqlReadBuffer buf)
         {
             var value = buf.ReadDouble();
             if (double.IsPositiveInfinity(value))
@@ -184,12 +184,12 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         public override void Write(NpgsqlDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
             if (_integerFormat)
-                WriteTimeStampUsingIntegerFormat(value, buf);
+                WriteInteger(value, buf);
             else
-                WriteTimeStampUsingFloatingPointFormat(value, buf);
+                WriteDouble(value, buf);
         }
 
-        void WriteTimeStampUsingIntegerFormat(NpgsqlDateTime value, NpgsqlWriteBuffer buf)
+        void WriteInteger(NpgsqlDateTime value, NpgsqlWriteBuffer buf)
         {
             if (value.IsInfinity)
             {
@@ -217,7 +217,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             }
         }
 
-        void WriteTimeStampUsingFloatingPointFormat(NpgsqlDateTime value, NpgsqlWriteBuffer buf)
+        void WriteDouble(NpgsqlDateTime value, NpgsqlWriteBuffer buf)
         {
             if (value.IsInfinity)
             {
