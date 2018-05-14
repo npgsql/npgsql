@@ -77,6 +77,9 @@ namespace Npgsql.TypeHandlers
             return base.ValidateAndGetLength(value, ref lengthCache, parameter) + 1;
         }
 
+        internal override int ValidateAndGetLengthBytes(byte[] value)
+            => base.ValidateAndGetLengthBytes(value) + 1;
+
         public override async Task Write(string value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
             if (buf.WriteSpaceLeft < 1)
@@ -93,6 +96,14 @@ namespace Npgsql.TypeHandlers
             await base.Write(value, buf, lengthCache, parameter, async);
         }
 
+        internal override async Task WriteBytes(byte[] value, NpgsqlWriteBuffer buf, bool async)
+        {
+            if (buf.WriteSpaceLeft < 1)
+                await buf.Flush(async);
+            buf.WriteByte(JsonbProtocolVersion);
+            await base.WriteBytes(value, buf, async);
+        }
+
         #endregion
 
         #region Read
@@ -105,6 +116,16 @@ namespace Npgsql.TypeHandlers
                 throw new NotSupportedException($"Don't know how to decode JSONB with wire format {version}, your connection is now broken");
 
             return await base.Read(buf, len - 1, async, fieldDescription);
+        }
+
+        internal override async ValueTask<byte[]> ReadBytes(NpgsqlReadBuffer buf, int byteLen, bool async)
+        {
+            await buf.Ensure(1, async);
+            var version = buf.ReadByte();
+            if (version != JsonbProtocolVersion)
+                throw new NotSupportedException($"Don't know how to decode JSONB with wire format {version}, your connection is now broken");
+
+            return await base.ReadBytes(buf, byteLen - 1, async);
         }
 
         #endregion

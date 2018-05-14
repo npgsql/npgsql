@@ -169,6 +169,9 @@ namespace Npgsql.TypeHandlers
         }
 
         ValueTask<byte[]> INpgsqlTypeHandler<byte[]>.Read(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription fieldDescription)
+            => ReadBytes(buf, byteLen, async);
+
+        internal virtual ValueTask<byte[]> ReadBytes(NpgsqlReadBuffer buf, int byteLen, bool async)
         {
             var bytes = new byte[byteLen];
             if (buf.ReadBytesLeft >= byteLen)
@@ -262,6 +265,9 @@ namespace Npgsql.TypeHandlers
         }
 
         int INpgsqlTypeHandler<byte[]>.ValidateAndGetLength(byte[] value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+            => ValidateAndGetLengthBytes(value);
+
+        internal virtual int ValidateAndGetLengthBytes(byte[] value)
             => value.Length;
 
         public override Task Write(string value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
@@ -294,6 +300,9 @@ namespace Npgsql.TypeHandlers
         }
 
         Task INpgsqlTypeHandler<byte[]>.Write(byte[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+            => WriteBytes(value, buf, async);
+
+        internal virtual Task WriteBytes(byte[] value, NpgsqlWriteBuffer buf, bool async)
             => buf.WriteBytesRaw(value, async);
 
         #endregion

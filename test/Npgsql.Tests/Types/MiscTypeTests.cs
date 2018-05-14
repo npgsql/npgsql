@@ -264,6 +264,27 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
+        public void JsonbBytesRoundtrip()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+            {
+                TestUtil.MinimumPgVersion(conn, "9.4.0", "JSONB data type not yet introduced");
+                var sb = new StringBuilder();
+                sb.Append(@"{""Key"": """);
+                sb.Append('x', conn.Settings.WriteBufferSize);
+                sb.Append(@"""}");
+                var value = Encoding.UTF8.GetBytes(sb.ToString());
+                cmd.Parameters.AddWithValue("p", NpgsqlDbType.Jsonb, value);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetFieldValue<byte[]>(0), Is.EqualTo(value));
+                }
+            }
+        }
+
+        [Test]
         public void Hstore()
         {
             using (var conn = OpenConnection())
