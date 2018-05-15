@@ -55,7 +55,7 @@ namespace Npgsql
                         typeof(PostgisMultiPolygon),
                         typeof(PostgisGeometryCollection),
                     },
-                    TypeHandlerFactory = new PostgisLegacyHandlerFactory()
+                    TypeHandlerFactory = new LegacyPostgisHandlerFactory()
                 }.Build());
     }
 }
