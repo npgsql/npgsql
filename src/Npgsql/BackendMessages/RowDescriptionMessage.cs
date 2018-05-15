@@ -23,6 +23,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
@@ -42,6 +43,9 @@ namespace Npgsql.BackendMessages
     {
         public List<FieldDescription> Fields { get; }
         readonly Dictionary<string, int> _nameIndex;
+        [CanBeNull]
+        Dictionary<string, int> _insensitiveIndex;
+        bool _isInsensitiveIndexInitialized;
 
         internal RowDescriptionMessage()
         {
@@ -53,6 +57,12 @@ namespace Npgsql.BackendMessages
         {
             Fields.Clear();
             _nameIndex.Clear();
+            if (_isInsensitiveIndexInitialized)
+            {
+                Debug.Assert(_insensitiveIndex != null);
+                _insensitiveIndex.Clear();
+                _isInsensitiveIndexInitialized = false;
+            }
 
             var numFields = buf.ReadInt16();
             for (var i = 0; i != numFields; ++i)
@@ -61,19 +71,20 @@ namespace Npgsql.BackendMessages
                 var field = new FieldDescription();
                 field.Populate(
                     typeMapper,
-                    buf.ReadNullTerminatedString(),  // Name
-                    buf.ReadUInt32(),                // TableOID
-                    buf.ReadInt16(),                 // ColumnAttributeNumber
-                    buf.ReadUInt32(),                // TypeOID
-                    buf.ReadInt16(),                 // TypeSize
-                    buf.ReadInt32(),                 // TypeModifier
-                    (FormatCode)buf.ReadInt16()      // FormatCode
+                    buf.ReadNullTerminatedString(), // Name
+                    buf.ReadUInt32(), // TableOID
+                    buf.ReadInt16(), // ColumnAttributeNumber
+                    buf.ReadUInt32(), // TypeOID
+                    buf.ReadInt16(), // TypeSize
+                    buf.ReadInt32(), // TypeModifier
+                    (FormatCode)buf.ReadInt16() // FormatCode
                 );
 
                 Fields.Add(field);
                 if (!_nameIndex.ContainsKey(field.Name))
                     _nameIndex.Add(field.Name, i);
             }
+
             return this;
         }
 
@@ -85,7 +96,7 @@ namespace Npgsql.BackendMessages
         /// Given a string name, returns the field's ordinal index in the row.
         /// </summary>
         internal int GetFieldIndex(string name)
-            => _nameIndex.TryGetValue(name, out var ret)
+            => TryGetFieldIndex(name, out var ret)
                 ? ret
                 : throw new IndexOutOfRangeException("Field not found in row: " + name);
 
@@ -93,9 +104,45 @@ namespace Npgsql.BackendMessages
         /// Given a string name, returns the field's ordinal index in the row.
         /// </summary>
         internal bool TryGetFieldIndex(string name, out int fieldIndex)
-            => _nameIndex.TryGetValue(name, out fieldIndex);
+        {
+            if (_nameIndex.TryGetValue(name, out fieldIndex))
+                return true;
+
+            if (!_isInsensitiveIndexInitialized)
+            {
+                if (_insensitiveIndex == null)
+                    _insensitiveIndex = new Dictionary<string, int>(InsensitiveComparer.Instance);
+
+                foreach (var kv in _nameIndex)
+                    if (!_insensitiveIndex.ContainsKey(kv.Key))
+                        _insensitiveIndex[kv.Key] = kv.Value;
+
+                _isInsensitiveIndexInitialized = true;
+            }
+
+            Debug.Assert(_insensitiveIndex != null);
+            return _insensitiveIndex.TryGetValue(name, out fieldIndex);
+        }
 
         public BackendMessageCode Code => BackendMessageCode.RowDescription;
+
+        /// <summary>
+        /// Comparer that's case-insensitive and Kana width-insensitive
+        /// </summary>
+        sealed class InsensitiveComparer : IEqualityComparer<string>
+        {
+            public static readonly InsensitiveComparer Instance = new InsensitiveComparer();
+            static readonly CompareInfo CompareInfo = CultureInfo.InvariantCulture.CompareInfo;
+
+            InsensitiveComparer() {}
+
+            public bool Equals([NotNull] string x, [NotNull] string y)
+                => CompareInfo.Compare(x, y, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase) == 0;
+
+            public int GetHashCode([NotNull] string o)
+                => CompareInfo.GetSortKey(o, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase).GetHashCode();
+        }
+
     }
 
     /// <summary>

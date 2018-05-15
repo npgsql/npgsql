@@ -437,18 +437,6 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void GetOrdinal()
-        {
-            using (var conn = OpenConnection())
-            using (var command = new NpgsqlCommand(@"SELECT 0, 1 AS some_column WHERE 1=0", conn))
-            using (var dr = command.ExecuteReader(Behavior))
-            {
-                Assert.That(dr.GetOrdinal("some_column"), Is.EqualTo(1));
-                Assert.That(() => dr.GetOrdinal("doesn't_exist"), Throws.Exception.TypeOf<IndexOutOfRangeException>());
-            }
-        }
-
-        [Test]
         public void GetFieldValueAsObject()
         {
             using (var conn = OpenConnection())
@@ -687,6 +675,46 @@ namespace Npgsql.Tests
                 }
             }
         }
+
+        #region GetOrdinal
+
+        [Test]
+        public void GetOrdinal()
+        {
+            using (var conn = OpenConnection())
+            using (var command = new NpgsqlCommand(@"SELECT 0, 1 AS some_column WHERE 1=0", conn))
+            using (var reader = command.ExecuteReader(Behavior))
+            {
+                Assert.That(reader.GetOrdinal("some_column"), Is.EqualTo(1));
+                Assert.That(() => reader.GetOrdinal("doesn't_exist"), Throws.Exception.TypeOf<IndexOutOfRangeException>());
+            }
+        }
+
+        [Test]
+        public void GetOrdinalInsensitivity()
+        {
+            using (var conn = OpenConnection())
+            using (var command = new NpgsqlCommand("select 123 as FIELD1", conn))
+            using (var reader = command.ExecuteReader(Behavior))
+            {
+                reader.Read();
+                Assert.That(reader.GetOrdinal("fieLd1"), Is.EqualTo(0));
+            }
+        }
+
+        [Test]
+        public void GetOrdinalKanaInsensitive()
+        {
+            using (var conn = OpenConnection())
+            using (var command = new NpgsqlCommand("select 123 as ｦｧｨｩｪｫｬ", conn))
+            using (var reader = command.ExecuteReader(Behavior))
+            {
+                reader.Read();
+                Assert.That(reader["ヲァィゥェォャ"], Is.EqualTo(123));
+            }
+        }
+
+        #endregion GetOrdinal
 
         [Test]
         public void FieldIndexDoesntExist()
