@@ -27,6 +27,7 @@ using GeoJSON.Net.Geometry;
 using Npgsql.BackendMessages;
 using Npgsql.TypeHandling;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 
@@ -50,23 +51,29 @@ namespace Npgsql.GeoJSON
         public GeoJSONHandlerFactory(GeoJSONOptions options = GeoJSONOptions.None)
             => _options = options;
 
+        static readonly ConcurrentDictionary<string, CrsMap> s_crsMaps = new ConcurrentDictionary<string, CrsMap>();
+
         protected override NpgsqlTypeHandler<GeoJSONObject> Create(NpgsqlConnection conn)
         {
-            var builder = new CrsMapBuilder();
-            if ((_options & (GeoJSONOptions.ShortCRS | GeoJSONOptions.LongCRS)) != GeoJSONOptions.None)
-                using (var cmd = new NpgsqlCommand(
-                    "SELECT min(srid), max(srid), auth_name " +
-                    "FROM(SELECT srid, auth_name, srid - rank() OVER(ORDER BY srid) AS range " +
-                    "FROM spatial_ref_sys) AS s GROUP BY range, auth_name ORDER BY 1;", conn))
-                using (var reader = cmd.ExecuteReader())
-                    while (reader.Read())
-                    {
-                        builder.Add(new CrsMapEntry(
-                            reader.GetInt32(0),
-                            reader.GetInt32(1),
-                            reader.GetString(2)));
-                    }
-            return new GeoJsonHandler(_options, builder.Build());
+            var crsMap = (_options & (GeoJSONOptions.ShortCRS | GeoJSONOptions.LongCRS)) == GeoJSONOptions.None
+                ? default : s_crsMaps.GetOrAdd(conn.ConnectionString, _ =>
+                 {
+                     var builder = new CrsMapBuilder();
+                     using (var cmd = new NpgsqlCommand(
+                             "SELECT min(srid), max(srid), auth_name " +
+                             "FROM(SELECT srid, auth_name, srid - rank() OVER(ORDER BY srid) AS range " +
+                             "FROM spatial_ref_sys) AS s GROUP BY range, auth_name ORDER BY 1;", conn))
+                     using (var reader = cmd.ExecuteReader())
+                         while (reader.Read())
+                         {
+                             builder.Add(new CrsMapEntry(
+                                 reader.GetInt32(0),
+                                 reader.GetInt32(1),
+                                 reader.GetString(2)));
+                         }
+                     return builder.Build();
+                 });
+            return new GeoJsonHandler(_options, crsMap);
         }
     }
 
@@ -365,7 +372,7 @@ namespace Npgsql.GeoJSON
 
         public int ValidateAndGetLength(Point value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
         {
-            var length =  SizeOfHeader + SizeOfPoint(HasZ(value.Coordinates));
+            var length = SizeOfHeader + SizeOfPoint(HasZ(value.Coordinates));
             if (GetSrid(value.CRS) != 0)
                 length += sizeof(int);
 
