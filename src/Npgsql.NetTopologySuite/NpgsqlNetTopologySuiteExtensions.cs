@@ -70,7 +70,7 @@ namespace Npgsql
                     DbTypes = new DbType[0],
                     ClrTypes = new[]
                     {
-                       typeof(IGeometry), typeof(Geometry),
+                        typeof(IGeometry), typeof(Geometry),
                         typeof(IPoint), typeof(Point),
                         typeof(ILineString), typeof(LineString),
                         typeof(IPolygon), typeof(Polygon),
