@@ -31,9 +31,34 @@ using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
+using System.Runtime.InteropServices;
 
 namespace Npgsql.TypeHandlers.NumericHandlers
 {
+    [StructLayout(LayoutKind.Explicit)]
+    ref struct DecimalRaw
+    {
+        internal const int SignMask = unchecked((int)0x80000000);
+        internal const int ScaleMask = 0x00FF0000;
+        internal const int ScaleShift = 16;
+
+        [FieldOffset(0)]
+        internal decimal Value;
+
+        /// <summary>
+        /// The order of these fields is important as defined
+        /// here: https://github.com/dotnet/coreclr/blob/85374ceaed177f71472cc4c23c69daf7402e5048/src/System.Private.CoreLib/src/System/Decimal.cs#L135-L141
+        /// </summary>
+        [FieldOffset(0)]
+        internal int Flags;
+        [FieldOffset(4)]
+        internal int Hi;
+        [FieldOffset(8)]
+        internal int Lo;
+        [FieldOffset(12)]
+        internal int Mid;
+    }
+
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-numeric.html
     /// </remarks>
@@ -44,6 +69,39 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         INpgsqlSimpleTypeHandler<string>
     {
         #region Read
+
+        static readonly decimal[] Powers10 =
+        {
+            1M,
+            1.0M,
+            1.00M,
+            1.000M,
+            1.0000M,
+            1.00000M,
+            1.000000M,
+            1.0000000M,
+            1.00000000M,
+            1.000000000M,
+            1.0000000000M,
+            1.00000000000M,
+            1.000000000000M,
+            1.0000000000000M,
+            1.00000000000000M,
+            1.000000000000000M,
+            1.0000000000000000M,
+            1.00000000000000000M,
+            1.000000000000000000M,
+            1.0000000000000000000M,
+            1.00000000000000000000M,
+            1.000000000000000000000M,
+            1.0000000000000000000000M,
+            1.00000000000000000000000M,
+            1.000000000000000000000000M,
+            1.0000000000000000000000000M,
+            1.00000000000000000000000000M,
+            1.000000000000000000000000000M,
+            1.0000000000000000000000000000M
+        };
 
         static readonly decimal[] Decimals = {
             0.0000000000000000000000000001M,
@@ -72,7 +130,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
 
             var overflow = false;
 
-            var result = 0M;
+            var result = new DecimalRaw();
             for (int i = 0, weight = weightFirstGroup + 7; i < numGroups; i++, weight--)
             {
                 var group = (ushort)buf.ReadInt16();
@@ -82,7 +140,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
                 {
                     try
                     {
-                        result += Decimals[weight] * group;
+                        result.Value += Decimals[weight] * group;
                     }
                     catch (OverflowException)
                     {
@@ -97,9 +155,15 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             if (sign == 0xC000)
                 throw new NpgsqlSafeReadException(new InvalidCastException("Numeric NaN not supported by System.Decimal"));
 
-            result = Math.Round(result, dscale);
+            var rscale = (result.Flags & DecimalRaw.ScaleMask) >> DecimalRaw.ScaleShift;                //Find scale of result
 
-            return sign == 0x4000 ? -result : result;
+            if (rscale < dscale)                                                                        //If result scale is insufficient,
+                result.Value *= Powers10[dscale - rscale];                                              //increase it.
+
+            else if (rscale > dscale)                                                                   //If result scale is too high,
+                result.Value = Math.Round(result.Value, dscale, MidpointRounding.AwayFromZero);         //decrease it using same rounding method as pgsql.
+
+            return sign == 0x4000 ? -result.Value : result.Value;
         }
 
         byte INpgsqlSimpleTypeHandler<byte>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
