@@ -98,7 +98,7 @@ namespace Npgsql.BackendMessages
         internal int GetFieldIndex(string name)
             => TryGetFieldIndex(name, out var ret)
                 ? ret
-                : throw new IndexOutOfRangeException("Field not found in row: " + name);
+                : throw new KeyNotFoundException("Field not found in row: " + name);
 
         /// <summary>
         /// Given a string name, returns the field's ordinal index in the row.
