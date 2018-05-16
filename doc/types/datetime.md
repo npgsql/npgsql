@@ -10,7 +10,7 @@ yourself with PostgreSQL's types.
 ## .NET types and PostgreSQL types
 
 > [!Warning]
-> *Warning*: a common mistake is for users to think that the PostgreSQL `timestamp with timezone` type stores the timezone in the database. This is not the case: only the timestamp is stored. There is no single PostgreSQL type that stores both a date/time and a timezone, similar to [.NET DateTimeOffset](https://msdn.microsoft.com/en-us/library/system.datetimeoffset(v=vs.110).aspx).
+> A common mistake is for users to think that the PostgreSQL `timestamp with timezone` type stores the timezone in the database. This is not the case: only the timestamp is stored. There is no single PostgreSQL type that stores both a date/time and a timezone, similar to [.NET DateTimeOffset](https://msdn.microsoft.com/en-us/library/system.datetimeoffset(v=vs.110).aspx).
 
 The .NET and PostgreSQL types differ in the resolution and range they provide; the .NET type usually have a higher resolution but a lower range than the PostgreSQL types:
 

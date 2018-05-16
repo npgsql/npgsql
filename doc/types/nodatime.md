@@ -5,11 +5,15 @@
 
 Since 4.0, Npgsql supports *type plugins*, which are external nuget packages that modify how Npgsql maps PostgreSQL values to CLR types. One of these is the NodaTime plugin, which makes Npgsql read and write [NodaTime](http://nodatime.org) types. The NodaTime plugin is now the recommended way to interact with PostgreSQL date/time types, and isn't the default only because of the added dependency on the NodaTime library.
 
-## Why NodaTime?
+# What is NodaTime?
 
-The .NET date/time types (`DateTime`, `DateTimeOffset`) are flawed in many ways; regardless of PostgreSQL or databases, if your application handles dates and times in anything but the most basic way, you should seriously consider using NodaTime. To learn more read [this blog post](http://blog.nodatime.org/2011/08/what-wrong-with-datetime-anyway.html) by Jon Skeet.
+By default, [the PostgreSQL date/time types](https://www.postgresql.org/docs/current/static/datatype-datetime.html) are mapped to the built-in .NET types (`DateTime`, `TimeSpan`). Unfortunately, these built-in types are flawed in many ways. The [NodaTime library](http://nodatime.org/) was created to solve many of these problems, and if your application handles dates and times in anything but the most basic way, you should consider using it. To learn more [read this blog post by Jon Skeet](http://blog.nodatime.org/2011/08/what-wrong-with-datetime-anyway.html).
 
-For PostgreSQL specifically, the NodaTime types map more naturally to the database types - everything is simpler and works in a more predictable way.
+Beyond NodaTime's general advantages, some specific advantages NodaTime for PostgreSQL date/time mapping include:
+
+* NodaTime defines some types which are missing from the BCL, such as `LocalDate`, `LocalTime`, and `OffsetTime`. These cleanly correspond to PostgreSQL `date`, `time` and `timetz`.
+* `Period` is much more suitable for mapping PostgreSQL `interval` than `TimeSpan`.
+* NodaTime types can fully represent PostgreSQL's microsecond precision, and can represent dates outside the BCL's date limit (1AD-9999AD).
 
 ## Setup
 
@@ -28,7 +32,7 @@ conn.TypeMapper.UseNodaTime();
 ## Mapping Table
 
 > [!Warning]
-> *Warning*: a common mistake is for users to think that the PostgreSQL `timestamp with timezone` type stores the timezone in the database. This is not the case: only the t
+> A common mistake is for users to think that the PostgreSQL `timestamp with timezone` type stores the timezone in the database. This is not the case: only the t
 imestamp is stored. There is no single PostgreSQL type that stores both a date/time and a timezone, similar to [.NET DateTimeOffset](https://msdn.microsoft.com/en-us/library/system.datetimeoffset(v=vs.110).aspx).
 
 PostgreSQL Type | Default NodaTime Type | Additional NodaTime Type      | Notes
