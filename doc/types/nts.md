@@ -76,5 +76,5 @@ using (var cmd = new NpgsqlCommand("INSERT INTO data (geog) VALUES (@p)", conn))
 If you prefer to use `geography` everywhere by default, you can also specify that when setting up the plugin:
 
 ```c#
-NpgsqlConnection.GlobalTypeMapper.UseGeoJSON(geographyAsDefault: true);
+NpgsqlConnection.GlobalTypeMapper.UseNetTopologySuite(geographyAsDefault: true);
 ```
