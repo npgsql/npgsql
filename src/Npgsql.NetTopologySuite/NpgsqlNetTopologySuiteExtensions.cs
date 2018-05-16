@@ -38,6 +38,18 @@ namespace Npgsql
     /// </summary>
     public static class NpgsqlNetTopologySuiteExtensions
     {
+        static readonly Type[] ClrTypes = new[]
+        {
+            typeof(IGeometry), typeof(Geometry),
+            typeof(IPoint), typeof(Point),
+            typeof(ILineString), typeof(LineString),
+            typeof(IPolygon), typeof(Polygon),
+            typeof(IMultiPoint), typeof(MultiPoint),
+            typeof(IMultiLineString), typeof(MultiLineString),
+            typeof(IMultiPolygon), typeof(MultiPolygon),
+            typeof(IGeometryCollection), typeof(GeometryCollection)
+        };
+
         /// <summary>
         /// Sets up NetTopologySuite mappings for the PostGIS types.
         /// </summary>
@@ -45,11 +57,13 @@ namespace Npgsql
         /// <param name="coordinateSequenceFactory">The factory which knows how to build a particular implementation of ICoordinateSequence from an array of Coordinates.</param>
         /// <param name="precisionModel">Specifies the grid of allowable points.</param>
         /// <param name="handleOrdinates">Specifies the ordinates which will be handled. Not specified ordinates will be ignored.</param>
+        /// <param name="geographyAsDefault">Specifies that the geography type is used for mapping by default.</param>
         public static INpgsqlTypeMapper UseNetTopologySuite(
             this INpgsqlTypeMapper mapper,
             ICoordinateSequenceFactory coordinateSequenceFactory = null,
             IPrecisionModel precisionModel = null,
-            Ordinates handleOrdinates = Ordinates.None)
+            Ordinates handleOrdinates = Ordinates.None,
+            bool geographyAsDefault = false)
         {
             if (coordinateSequenceFactory == null)
                 coordinateSequenceFactory = GeometryServiceProvider.Instance.DefaultCoordinateSequenceFactory;
@@ -67,18 +81,7 @@ namespace Npgsql
                 {
                     PgTypeName = "geometry",
                     NpgsqlDbType = NpgsqlDbType.Geometry,
-                    DbTypes = new DbType[0],
-                    ClrTypes = new[]
-                    {
-                        typeof(IGeometry), typeof(Geometry),
-                        typeof(IPoint), typeof(Point),
-                        typeof(ILineString), typeof(LineString),
-                        typeof(IPolygon), typeof(Polygon),
-                        typeof(IMultiPoint), typeof(MultiPoint),
-                        typeof(IMultiLineString), typeof(MultiLineString),
-                        typeof(IMultiPolygon), typeof(MultiPolygon),
-                        typeof(IGeometryCollection), typeof(GeometryCollection)
-                    },
+                    ClrTypes = geographyAsDefault ? Type.EmptyTypes : ClrTypes,
                     InferredDbType = DbType.Object,
                     TypeHandlerFactory = typeHandlerFactory
                 }.Build())
@@ -86,12 +89,10 @@ namespace Npgsql
                 {
                     PgTypeName = "geography",
                     NpgsqlDbType = NpgsqlDbType.Geography,
-                    DbTypes = new DbType[0],
-                    ClrTypes = new Type[0],
+                    ClrTypes = geographyAsDefault ? ClrTypes : Type.EmptyTypes,
                     InferredDbType = DbType.Object,
                     TypeHandlerFactory = typeHandlerFactory
-                }
-                .Build());
+                }.Build());
         }
     }
 }

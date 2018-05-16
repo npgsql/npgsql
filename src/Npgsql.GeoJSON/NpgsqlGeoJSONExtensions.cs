@@ -36,7 +36,7 @@ namespace Npgsql
     /// </summary>
     public static class NpgsqlGeoJSONExtensions
     {
-        static readonly Type[] s_clrTypes = new[]
+        static readonly Type[] ClrTypes = new[]
         {
             typeof(GeoJSONObject), typeof(IGeoJSONObject), typeof(IGeometryObject),
             typeof(Point), typeof(LineString), typeof(Polygon),
@@ -58,8 +58,7 @@ namespace Npgsql
                 {
                     PgTypeName = "geometry",
                     NpgsqlDbType = NpgsqlDbType.Geometry,
-                    DbTypes = new DbType[0],
-                    ClrTypes = geographyAsDefault ? Type.EmptyTypes : s_clrTypes,
+                    ClrTypes = geographyAsDefault ? Type.EmptyTypes : ClrTypes,
                     InferredDbType = DbType.Object,
                     TypeHandlerFactory = factory
                 }.Build())
@@ -67,8 +66,7 @@ namespace Npgsql
                 {
                     PgTypeName = "geography",
                     NpgsqlDbType = NpgsqlDbType.Geography,
-                    DbTypes = new DbType[0],
-                    ClrTypes = geographyAsDefault ? s_clrTypes : Type.EmptyTypes,
+                    ClrTypes = geographyAsDefault ? ClrTypes : Type.EmptyTypes,
                     InferredDbType = DbType.Object,
                     TypeHandlerFactory = factory
                 }.Build());
