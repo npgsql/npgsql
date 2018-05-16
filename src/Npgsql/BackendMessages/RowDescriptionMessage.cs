@@ -136,13 +136,14 @@ namespace Npgsql.BackendMessages
 
             InsensitiveComparer() {}
 
+            // We should really have CompareOptions.IgnoreKanaType here, but see
+            // https://github.com/dotnet/corefx/issues/12518#issuecomment-389658716
             public bool Equals([NotNull] string x, [NotNull] string y)
-                => CompareInfo.Compare(x, y, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase) == 0;
+                => CompareInfo.Compare(x, y, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase | CompareOptions.IgnoreKanaType) == 0;
 
             public int GetHashCode([NotNull] string o)
-                => CompareInfo.GetSortKey(o, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase).GetHashCode();
+                => CompareInfo.GetSortKey(o, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase | CompareOptions.IgnoreKanaType).GetHashCode();
         }
-
     }
 
     /// <summary>
