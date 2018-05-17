@@ -65,7 +65,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             // Adjust from 1 microsecond to 100ns. Time zone (in seconds) is inverted.
             var ticks = _integerFormat ? buf.ReadInt64() * 10 : (long)(buf.ReadDouble() * TimeSpan.TicksPerSecond);
             var offset = new TimeSpan(0, 0, -buf.ReadInt32());
-            return new DateTimeOffset(ticks, offset);
+            return new DateTimeOffset(ticks + TimeSpan.TicksPerDay, offset);
         }
 
         DateTime INpgsqlSimpleTypeHandler<DateTime>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
