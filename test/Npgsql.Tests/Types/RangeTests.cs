@@ -1,11 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Npgsql;
-using Npgsql.Tests;
 using NpgsqlTypes;
 using NUnit.Framework;
 
@@ -190,5 +185,109 @@ namespace Npgsql.Tests.Types
             using (var conn = OpenConnection())
                 TestUtil.MinimumPgVersion(conn, "9.2.0");
         }
+
+        #region ParseTests
+
+        [Theory]
+        [TestCase("empty")]
+        [TestCase("EMPTY")]
+        public void GivenEmptyString_WhenConverted_ThenReturnsEmptyRange(string value)
+        {
+            // Act
+            NpgsqlRange<DateTime> result = NpgsqlRange<DateTime>.Parse(value);
+
+            // Assert
+            Assert.AreEqual(NpgsqlRange<DateTime>.Empty, result );
+        }
+
+        [Theory]
+        [TestCaseSource(nameof(DateTimeRangeTheoryData))]
+        public void GivenDateRangeString_WhenConverted_ThenReturnsDateRange(NpgsqlRange<DateTime> input)
+        {
+            // Arrange
+            string wellKnownText = input.ToString();
+
+            // Act
+            NpgsqlRange<DateTime> result = NpgsqlRange<DateTime>.Parse(wellKnownText);
+
+            // Assert
+            Assert.AreEqual(input, result);
+        }
+
+        #endregion
+
+        #region TheoryData
+
+        // ReSharper disable once InconsistentNaming
+        private static readonly DateTime May_17_2018 = DateTime.Parse("2018-05-17");
+
+        // ReSharper disable once InconsistentNaming
+        private static readonly DateTime May_18_2018 = DateTime.Parse("2018-05-18");
+
+        /// <summary>
+        /// Provides theory data for <see cref="NpgsqlRange{T}"/> of <see cref="DateTime"/>.
+        /// </summary>
+        // ReSharper disable once MemberCanBePrivate.Global
+        public static IEnumerable<object[]> DateTimeRangeTheoryData =>
+            new List<object[]>
+            {
+                // (2018-05-17, 2018-05-18)
+                new object[] { new NpgsqlRange<DateTime>(May_17_2018, false, false, May_18_2018, false, false) },
+
+                // [2018-05-17, 2018-05-18]
+                new object[] { new NpgsqlRange<DateTime>(May_17_2018, true, false, May_18_2018, true, false) },
+
+                // [2018-05-17, 2018-05-18)
+                new object[] { new NpgsqlRange<DateTime>(May_17_2018, true, false, May_18_2018, false, false) },
+
+                // (2018-05-17, 2018-05-18]
+                new object[] { new NpgsqlRange<DateTime>(May_17_2018, false, false, May_18_2018, true, false) },
+
+                // (,)
+                new object[] { new NpgsqlRange<DateTime>(default, false, true, default, false, true) },
+                new object[] { new NpgsqlRange<DateTime>(May_17_2018, false, true, May_18_2018, false, true) },
+
+                // (2018-05-17,)
+                new object[] { new NpgsqlRange<DateTime>(May_17_2018, false, false, default, false, true) },
+                new object[] { new NpgsqlRange<DateTime>(May_17_2018, false, false, May_18_2018, false, true) },
+
+                // (,2018-05-18)
+                new object[] { new NpgsqlRange<DateTime>(default, false, true, May_18_2018, false, false) },
+                new object[] { new NpgsqlRange<DateTime>(May_17_2018, false, true, May_18_2018, false, false) }
+            };
+
+        /// <summary>
+        /// Provides theory data for ranges.
+        /// </summary>
+        // ReSharper disable once MemberCanBePrivate.Global
+        public static IEnumerable<object[]> IntRangeTheoryData =>
+            new List<object[]>
+            {
+                // (2018-05-17, 2018-05-18)
+                new object[] { new NpgsqlRange<DateTime>(May_17_2018, false, false, May_18_2018, false, false) },
+
+                // [2018-05-17, 2018-05-18]
+                new object[] { new NpgsqlRange<DateTime>(May_17_2018, true, false, May_18_2018, true, false) },
+
+                // [2018-05-17, 2018-05-18)
+                new object[] { new NpgsqlRange<DateTime>(May_17_2018, true, false, May_18_2018, false, false) },
+
+                // (2018-05-17, 2018-05-18]
+                new object[] { new NpgsqlRange<DateTime>(May_17_2018, false, false, May_18_2018, true, false) },
+
+                // (,)
+                new object[] { new NpgsqlRange<DateTime>(default, false, true, default, false, true) },
+                new object[] { new NpgsqlRange<DateTime>(May_17_2018, false, true, May_18_2018, false, true) },
+
+                // (2018-05-17,)
+                new object[] { new NpgsqlRange<DateTime>(May_17_2018, false, false, default, false, true) },
+                new object[] { new NpgsqlRange<DateTime>(May_17_2018, false, false, May_18_2018, false, true) },
+
+                // (,2018-05-18)
+                new object[] { new NpgsqlRange<DateTime>(default, false, true, May_18_2018, false, false) },
+                new object[] { new NpgsqlRange<DateTime>(May_17_2018, false, true, May_18_2018, false, false) }
+            };
+
+        #endregion
     }
 }
