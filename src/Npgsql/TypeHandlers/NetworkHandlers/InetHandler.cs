@@ -31,13 +31,16 @@ using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
+#pragma warning disable 618
+
 namespace Npgsql.TypeHandlers.NetworkHandlers
 {
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-net-types.html
     /// </remarks>
-    [TypeMapping("inet", NpgsqlDbType.Inet, new[] { typeof(NpgsqlInet), typeof(IPAddress) })]
-    class InetHandler : NpgsqlSimpleTypeHandlerWithPsv<IPAddress, NpgsqlInet>, INpgsqlSimpleTypeHandler<string>
+    [TypeMapping("inet", NpgsqlDbType.Inet, new[] { typeof(IPAddress), typeof((IPAddress Address, int Subnet)), typeof(NpgsqlInet) })]
+    class InetHandler : NpgsqlSimpleTypeHandlerWithPsv<IPAddress, (IPAddress Address, int Subnet)>,
+        INpgsqlSimpleTypeHandler<NpgsqlInet>, INpgsqlSimpleTypeHandler<string>
     {
         // ReSharper disable InconsistentNaming
         const byte IPv4 = 2;
@@ -47,10 +50,14 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
         #region Read
 
         public override IPAddress Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
-            => ((INpgsqlSimpleTypeHandler<NpgsqlInet>)this).Read(buf, len, fieldDescription).Address;
+            => DoRead(buf, len, fieldDescription, false).Address;
 
 #pragma warning disable CA1801 // Review unused parameters
-        internal static NpgsqlInet DoRead(NpgsqlReadBuffer buf, [CanBeNull] FieldDescription fieldDescription, int len, bool isCidrHandler)
+        internal static (IPAddress Address, int Subnet) DoRead(
+            NpgsqlReadBuffer buf,
+            int len,
+            [CanBeNull] FieldDescription fieldDescription,
+            bool isCidrHandler)
         {
             buf.ReadByte();  // addressFamily
             var mask = buf.ReadByte();
@@ -61,12 +68,18 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             for (var i = 0; i < numBytes; i++) {
                 bytes[i] = buf.ReadByte();
             }
-            return new NpgsqlInet(new IPAddress(bytes), mask);
+            return (new IPAddress(bytes), mask);
         }
 #pragma warning restore CA1801 // Review unused parameters
 
-        protected override NpgsqlInet ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
-            => DoRead(buf, fieldDescription, len, false);
+        protected override (IPAddress Address, int Subnet) ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+            => DoRead(buf, len, fieldDescription, false);
+
+        NpgsqlInet INpgsqlSimpleTypeHandler<NpgsqlInet>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        {
+            var (address, subnet) = DoRead(buf, len, fieldDescription, false);
+            return new NpgsqlInet(address, subnet);
+        }
 
         string INpgsqlSimpleTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => ((INpgsqlSimpleTypeHandler<NpgsqlInet>)this).Read(buf, len, fieldDescription).ToString();
@@ -78,7 +91,10 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
         public override int ValidateAndGetLength(IPAddress value, NpgsqlParameter parameter)
             => GetLength(value);
 
-        public override int ValidateAndGetLength(NpgsqlInet value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength((IPAddress Address, int Subnet) value, NpgsqlParameter parameter)
+            => GetLength(value.Address);
+
+        public int ValidateAndGetLength(NpgsqlInet value, NpgsqlParameter parameter)
             => GetLength(value.Address);
 
         public int ValidateAndGetLength(string value, NpgsqlParameter parameter)
@@ -87,7 +103,10 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
         public override void Write(IPAddress value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
             => DoWrite(value, -1, buf, false);
 
-        public override void Write(NpgsqlInet value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public override void Write((IPAddress Address, int Subnet) value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => DoWrite(value.Address, value.Subnet, buf, false);
+
+        public void Write(NpgsqlInet value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
             => DoWrite(value.Address, value.Netmask, buf, false);
 
         public void Write(string value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
