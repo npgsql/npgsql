@@ -21,7 +21,6 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
@@ -41,6 +40,12 @@ namespace Npgsql.TypeHandlers
         {
             public static readonly bool Value = typeof(TArray).IsArray && typeof(TArray).GetElementType() == typeof(TElement);
         }
+
+        protected internal override ArrayHandler CreateArrayHandler(PostgresType arrayBackendType)
+            => throw new NotSupportedException();
+
+        internal override NpgsqlTypeHandler CreateRangeHandler(PostgresType rangeBackendType)
+            => throw new NotSupportedException();
     }
     
     /// <summary>
@@ -362,16 +367,6 @@ namespace Npgsql.TypeHandlers
             foreach (var element in value)
                 await _elementHandler.WriteObjectWithLength(element, buf, lengthCache, null, async);
         }
-
-        #endregion
-
-        #region Misc
-        
-        protected internal override ArrayHandler CreateArrayHandler(PostgresType arrayBackendType)
-            => new ArrayHandler<short>(this) { PostgresType = arrayBackendType };
-
-        internal override NpgsqlTypeHandler CreateRangeHandler(PostgresType rangeBackendType)
-            => throw new NotSupportedException();
 
         #endregion
     }
