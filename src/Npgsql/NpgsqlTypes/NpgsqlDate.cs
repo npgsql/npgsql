@@ -33,8 +33,8 @@ using JetBrains.Annotations;
 namespace NpgsqlTypes
 {
     [Serializable]
-    public struct NpgsqlDate : IEquatable<NpgsqlDate>, IComparable<NpgsqlDate>, IComparable, IComparer<NpgsqlDate>,
-                               IComparer
+    public readonly struct NpgsqlDate : IEquatable<NpgsqlDate>, IComparable<NpgsqlDate>, IComparable,
+        IComparer<NpgsqlDate>, IComparer
     {
         //Number of days since January 1st CE (January 1st EV). 1 Jan 1 CE = 0, 2 Jan 1 CE = 1, 31 Dec 1 BCE = -1, etc.
         readonly int _daysSinceEra;

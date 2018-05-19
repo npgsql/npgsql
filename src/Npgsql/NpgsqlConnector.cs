@@ -1694,7 +1694,7 @@ namespace Npgsql
         /// <summary>
         /// An IDisposable wrapper around <see cref="EndUserAction"/>.
         /// </summary>
-        internal struct UserAction : IDisposable
+        internal readonly struct UserAction : IDisposable
         {
             readonly NpgsqlConnector _connector;
 

@@ -637,7 +637,7 @@ namespace NpgsqlTypes
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-oid.html
     /// </remarks>
-    public struct NpgsqlTid : IEquatable<NpgsqlTid>
+    public readonly struct NpgsqlTid : IEquatable<NpgsqlTid>
     {
         /// <summary>
         /// Block number
