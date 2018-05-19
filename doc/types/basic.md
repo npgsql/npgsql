@@ -166,10 +166,8 @@ For information about enums, [see the Enums and Composites page](enums_and_compo
 | NpgsqlTsQuery					| tsquery
 | NpgsqlTsVector				| tsvector
 | NpgsqlDate					| date
-| NpgsqlDateTime(Kind=Local,Unspecified)	| timestamp
-| NpgsqlDateTime(Kind=Utc)			| timestamptz
-| DateTime(Kind=Local,Unspecified)		| timestamp
-| DateTime(Kind=Utc)				| timestamptz
+| NpgsqlDateTime				| timestamp
+| DateTime					| timestamp
 | DateTimeOffset				| timestamptz
 | TimeSpan					| time
 | byte[]					| bytea

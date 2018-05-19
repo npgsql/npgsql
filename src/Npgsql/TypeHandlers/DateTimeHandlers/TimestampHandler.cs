@@ -41,7 +41,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-datetime.html
     /// </remarks>
-    class TimestampHandler : NpgsqlSimpleTypeHandlerWithPsv<DateTime, NpgsqlDateTime>, INpgsqlSimpleTypeHandler<DateTimeOffset>
+    class TimestampHandler : NpgsqlSimpleTypeHandlerWithPsv<DateTime, NpgsqlDateTime>
     {
         internal const uint TypeOID = 1114;
 
@@ -159,15 +159,6 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             }
         }
 
-        protected virtual DateTimeOffset ReadDateTimeOffset(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
-        {
-            buf.Skip(len);
-            throw new NpgsqlSafeReadException(new InvalidCastException("Only writing of DateTimeOffset to PostgreSQL timestamp is supported, not reading."));
-        }
-
-        DateTimeOffset INpgsqlSimpleTypeHandler<DateTimeOffset>.Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription)
-            => ReadDateTimeOffset(buf, len, fieldDescription);
-
         #endregion Read
 
         #region Write
@@ -176,9 +167,6 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             => 8;
 
         public override int ValidateAndGetLength(NpgsqlDateTime value, NpgsqlParameter parameter)
-            => 8;
-
-        public int ValidateAndGetLength(DateTimeOffset value, NpgsqlParameter parameter)
             => 8;
 
         public override void Write(NpgsqlDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
@@ -268,9 +256,6 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             }
             Write(new NpgsqlDateTime(value), buf, parameter);
         }
-
-        public virtual void Write(DateTimeOffset value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
-            => Write(new NpgsqlDateTime(value.DateTime), buf, parameter);
 
         #endregion Write
     }

@@ -130,30 +130,7 @@ namespace Npgsql.TypeMapping
             throw new NotSupportedException("Could not find PostgreSQL type " + typeName);
         }
 
-        internal NpgsqlTypeHandler GetByValue(object value)
-        {
-            Debug.Assert(value != null);
-
-            if (value is DateTime)
-            {
-                return ((DateTime)value).Kind == DateTimeKind.Utc
-                    ? GetByNpgsqlDbType(NpgsqlDbType.TimestampTz)
-                    : GetByNpgsqlDbType(NpgsqlDbType.Timestamp);
-            }
-
-            if (value is NpgsqlDateTime)
-            {
-                return ((NpgsqlDateTime)value).Kind == DateTimeKind.Utc
-                    ? GetByNpgsqlDbType(NpgsqlDbType.TimestampTz)
-                    : GetByNpgsqlDbType(NpgsqlDbType.Timestamp);
-            }
-
-            return GetByClrType(value.GetType());
-        }
-
-#pragma warning disable CA1043
         internal NpgsqlTypeHandler GetByClrType(Type type)
-#pragma warning restore CA1043
         {
             if (_byClrType.TryGetValue(type, out var handler))
                 return handler;

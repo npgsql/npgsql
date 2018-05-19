@@ -234,19 +234,16 @@ namespace Npgsql.Tests.Types
         {
             using (var conn = OpenConnection())
             {
-                var npgsqlTimeStamp = new NpgsqlDateTime(dateTime.Ticks);
-                var offset = TimeSpan.FromHours(2);
-                var dateTimeOffset = new DateTimeOffset(dateTime, offset);
+                var npgsqlDateTime = new NpgsqlDateTime(dateTime.Ticks);
 
-                using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4, @p5, @p6, @p7", conn))
+                using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4, @p5, @p6", conn))
                 {
                     var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Timestamp);
                     var p2 = new NpgsqlParameter("p2", DbType.DateTime);
                     var p3 = new NpgsqlParameter("p3", DbType.DateTime2);
-                    var p4 = new NpgsqlParameter { ParameterName = "p4", Value = npgsqlTimeStamp };
+                    var p4 = new NpgsqlParameter { ParameterName = "p4", Value = npgsqlDateTime };
                     var p5 = new NpgsqlParameter { ParameterName = "p5", Value = dateTime };
-                    var p6 = new NpgsqlParameter("p6", NpgsqlDbType.Timestamp);
-                    var p7 = new NpgsqlParameter<DateTime> { ParameterName = "p7", TypedValue = dateTime };
+                    var p6 = new NpgsqlParameter<DateTime> { ParameterName = "p6", TypedValue = dateTime };
                     Assert.That(p4.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Timestamp));
                     Assert.That(p4.DbType, Is.EqualTo(DbType.DateTime));
                     Assert.That(p5.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Timestamp));
@@ -257,9 +254,7 @@ namespace Npgsql.Tests.Types
                     cmd.Parameters.Add(p4);
                     cmd.Parameters.Add(p5);
                     cmd.Parameters.Add(p6);
-                    cmd.Parameters.Add(p7);
-                    p1.Value = p2.Value = p3.Value = npgsqlTimeStamp;
-                    p6.Value = dateTimeOffset;
+                    p1.Value = p2.Value = p3.Value = npgsqlDateTime;
                     using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
@@ -275,10 +270,10 @@ namespace Npgsql.Tests.Types
                             Assert.That(reader.GetValue(i), Is.EqualTo(dateTime));
 
                             // Provider-specific type (NpgsqlTimeStamp)
-                            Assert.That(reader.GetTimeStamp(i), Is.EqualTo(npgsqlTimeStamp));
+                            Assert.That(reader.GetTimeStamp(i), Is.EqualTo(npgsqlDateTime));
                             Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof(NpgsqlDateTime)));
-                            Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(npgsqlTimeStamp));
-                            Assert.That(reader.GetFieldValue<NpgsqlDateTime>(i), Is.EqualTo(npgsqlTimeStamp));
+                            Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(npgsqlDateTime));
+                            Assert.That(reader.GetFieldValue<NpgsqlDateTime>(i), Is.EqualTo(npgsqlDateTime));
 
                             // DateTimeOffset
                             Assert.That(() => reader.GetFieldValue<DateTimeOffset>(i), Throws.Exception.TypeOf<InvalidCastException>());
@@ -353,9 +348,10 @@ namespace Npgsql.Tests.Types
                 var nDateTimeLocal = nDateTimeUtc.ToLocalTime();
                 var nDateTimeUnspecified = new NpgsqlDateTime(nDateTimeUtc.Ticks, DateTimeKind.Unspecified);
 
-                var dateTimeOffset = new DateTimeOffset(dateTimeLocal, dateTimeLocal - dateTimeUtc);
+                //var dateTimeOffset = new DateTimeOffset(dateTimeLocal, dateTimeLocal - dateTimeUtc);
+                var dateTimeOffset = new DateTimeOffset(dateTimeLocal);
 
-                using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4, @p5, @p6, @p7, @p8, @p9", conn))
+                using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4, @p5, @p6, @p7", conn))
                 {
                     cmd.Parameters.AddWithValue("p1", NpgsqlDbType.TimestampTz, dateTimeUtc);
                     cmd.Parameters.AddWithValue("p2", NpgsqlDbType.TimestampTz, dateTimeLocal);
@@ -363,12 +359,8 @@ namespace Npgsql.Tests.Types
                     cmd.Parameters.AddWithValue("p4", NpgsqlDbType.TimestampTz, nDateTimeUtc);
                     cmd.Parameters.AddWithValue("p5", NpgsqlDbType.TimestampTz, nDateTimeLocal);
                     cmd.Parameters.AddWithValue("p6", NpgsqlDbType.TimestampTz, nDateTimeUnspecified);
-                    cmd.Parameters.AddWithValue("p7", dateTimeUtc);
+                    cmd.Parameters.AddWithValue("p7", dateTimeOffset);
                     Assert.That(cmd.Parameters["p7"].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.TimestampTz));
-                    cmd.Parameters.AddWithValue("p8", nDateTimeUtc);
-                    Assert.That(cmd.Parameters["p8"].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.TimestampTz));
-                    cmd.Parameters.AddWithValue("p9", dateTimeOffset);
-                    Assert.That(cmd.Parameters["p9"].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.TimestampTz));
 
                     using (var reader = cmd.ExecuteReader())
                     {
@@ -390,7 +382,8 @@ namespace Npgsql.Tests.Types
                             Assert.That(reader.GetFieldValue<NpgsqlDateTime>(i), Is.EqualTo(nDateTimeLocal));
 
                             // DateTimeOffset
-                            Assert.That(reader.GetFieldValue<DateTimeOffset>(i), Is.EqualTo(dateTimeOffset.ToUniversalTime()));
+                            Assert.That(reader.GetFieldValue<DateTimeOffset>(i), Is.EqualTo(dateTimeOffset));
+                            var x = reader.GetFieldValue<DateTimeOffset>(i);
                         }
                     }
                 }
