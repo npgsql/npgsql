@@ -497,6 +497,7 @@ namespace Npgsql.Tests
             var o = p.Value;
         }
 
+#pragma warning disable 618
         [Test]
         [IssueLink("https://github.com/npgsql/npgsql/issues/750")]
         public void NpgsqlInet()
@@ -506,5 +507,6 @@ namespace Npgsql.Tests
 
             Assert.That(v != null);  // #776
         }
+#pragma restore disable 618
     }
 }

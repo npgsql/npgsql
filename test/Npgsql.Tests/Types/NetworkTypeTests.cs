@@ -31,6 +31,8 @@ using Npgsql;
 using NpgsqlTypes;
 using NUnit.Framework;
 
+#pragma warning disable 618  // For NpgsqlInet
+
 namespace Npgsql.Tests.Types
 {
     /// <summary>
