@@ -45,34 +45,29 @@ Accordingly, your DateTime's Kind will determine the the timezone sent to the da
 
 ## Detailed Behavior: Sending values to the database
 
-.NET value                 | PG type               | Action
----------------------------|-----------------------|--------------------------------------------------
-DateTime(Kind=UTC)         | timestamp             | Send as-is
-DateTime(Kind=Local)       | timestamp (default)   | Send as-is
-DateTime(Kind=Unspecified) | timestamp (default)   | Send as-is
-DateTimeOffset             | timestamp             | Strip offset, send as-is
-                           |                       |
-DateTime(Kind=UTC)         | timestamptz (default) | Send as-is
-DateTime(Kind=Local)       | timestamptz           | Convert to UTC locally before sending
-DateTime(Kind=Unspecified) | timestamptz           | Send as-is
-DateTimeOffset             | timestamptz (default) | Convert to UTC locally before sending
-                           |                       |
-TimeSpan                   | time                  | Send as-is
-                           |                       |
-DateTime(Kind=UTC)         | timetz                | Send time and UTC timezone
-DateTime(Kind=Local)       | timetz                | Send time and local system timezone
-DateTime(Kind=Unspecified) | timetz                | Assume local, send time and local system timezone
-DateTimeOffset             | timetz                | Send time and timezone
+.NET value                     | PG type               | Action
+-------------------------------|-----------------------|--------------------------------------------------
+DateTime                       | timestamp (default)   | Send as-is
+                               |                       |
+DateTime(Kind=UTC,Unspecified) | timestamptz           | Send as-is
+DateTime(Kind=Local)           | timestamptz           | Convert to UTC locally before sending
+DateTimeOffset                 | timestamptz (default) | Convert to UTC locally before sending
+                               |                       |
+TimeSpan                       | time                  | Send as-is
+                               |                       |
+DateTime(Kind=UTC)             | timetz                | Send time and UTC timezone
+DateTime(Kind=Local)           | timetz                | Send time and local system timezone
+DateTime(Kind=Unspecified)     | timetz                | Assume local, send time and local system timezone
+DateTimeOffset                 | timetz                | Send time and timezone
 
 ## Detailed Behavior: Reading values from the database
 
 PG type     | .NET value               | Action
 ------------|--------------------------|--------------------------------------------------
 timestamp   | DateTime (default)       | Kind=Unspecified
-timestamp   | DateTimeOffset           | Should throw an exception?
             |                          |
-timestamptz | DateTime (default)       | Kind=Local (according to system tz)
-timestamptz | DateTimeOffset           | **Offset=UTC**
+timestamptz | DateTime (default)       | Kind=Local (according to system timezone)
+timestamptz | DateTimeOffset           | In local timezone offset
             |                          |
 time        | TimeSpan (default)       | As-is
 time        | DateTime                 | **Use only time component**

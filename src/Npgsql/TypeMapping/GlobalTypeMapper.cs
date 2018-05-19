@@ -149,26 +149,7 @@ namespace Npgsql.TypeMapping
         internal DbType ToDbType(Type type)
             => _typeToDbType.TryGetValue(type, out var dbType) ? dbType : DbType.Object;
 
-        internal NpgsqlDbType ToNpgsqlDbType(object value)
-        {
-            if (value is DateTime)
-            {
-                return ((DateTime)value).Kind == DateTimeKind.Utc
-                    ? NpgsqlDbType.TimestampTz
-                    : NpgsqlDbType.Timestamp;
-            }
-
-            if (value is NpgsqlDateTime)
-            {
-                return ((NpgsqlDateTime)value).Kind == DateTimeKind.Utc
-                    ? NpgsqlDbType.TimestampTz
-                    : NpgsqlDbType.Timestamp;
-            }
-
-            return ToNpgsqlDbType(value.GetType());
-        }
-
-        NpgsqlDbType ToNpgsqlDbType(Type type)
+        internal NpgsqlDbType ToNpgsqlDbType(Type type)
         {
             if (_typeToNpgsqlDbType.TryGetValue(type, out var npgsqlDbType))
                 return npgsqlDbType;

@@ -370,14 +370,10 @@ namespace Npgsql
         {
             get
             {
-                if (_npgsqlDbType.HasValue) {
+                if (_npgsqlDbType.HasValue)
                     return _npgsqlDbType.Value;
-                }
-
-                if (_value != null) {   // Infer from value
-                    return GlobalTypeMapper.Instance.ToNpgsqlDbType(_value);
-                }
-
+                if (_value != null)   // Infer from value
+                    return GlobalTypeMapper.Instance.ToNpgsqlDbType(_value.GetType());
                 return NpgsqlDbType.Unknown;
             }
             set
@@ -530,7 +526,7 @@ namespace Npgsql
             else if (_dbType.HasValue)
                 Handler = typeMapper.GetByDbType(_dbType.Value);
             else if (_value != null)
-                Handler = typeMapper.GetByValue(_value);
+                Handler = typeMapper.GetByClrType(_value.GetType());
             else
                 throw new InvalidOperationException($"Parameter '{ParameterName}' must have its value set");
         }
@@ -610,7 +606,7 @@ namespace Npgsql
         }
 
         object ICloneable.Clone() => Clone();
-      
+
         #endregion
     }
 }
