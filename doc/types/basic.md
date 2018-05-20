@@ -118,9 +118,9 @@ TsVector	|			| tsvector		| NpgsqlTsVector
 Date		| Date			| date			| DateTime, NpgsqlDate, IConvertible
 Interval	|			| interval		| TimeSpan, NpgsqlTimeSpan, string
 Timestamp	| DateTime, DateTime2	| timestamp		| DateTime, DateTimeOffset, NpgsqlDateTime, IConvertible
-TimestampTZ	| DateTimeOffset	| timestamptz		| DateTime, DateTimeOffset, NpgsqlDateTime, IConvertible
+TimestampTz	| DateTimeOffset	| timestamptz		| DateTime, DateTimeOffset, NpgsqlDateTime, IConvertible
 Time		| Time			| time			| TimeSpan, string
-TimeTZ		|			| timetz		| DateTimeOffset, DateTime, TimeSpan
+TimeTz		|			| timetz		| DateTimeOffset, DateTime, TimeSpan
 Bytea		| Binary		| bytea			| byte[], ArraySegment<byte>
 Oid		|			| oid			| uint, IConvertible
 Xid		|			| xid			| uint, IConvertible
