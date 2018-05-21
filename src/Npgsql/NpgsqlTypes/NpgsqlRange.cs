@@ -28,7 +28,6 @@ using System.ComponentModel;
 using System.Globalization;
 using System.Text;
 using JetBrains.Annotations;
-using Microsoft.Extensions.Primitives;
 
 // ReSharper disable once CheckNamespace
 namespace NpgsqlTypes
@@ -40,8 +39,9 @@ namespace NpgsqlTypes
     /// <remarks>
     /// See: https://www.postgresql.org/docs/current/static/rangetypes.html
     /// </remarks>
+    [PublicAPI]
     [TypeConverter(typeof(NpgsqlRange<>.RangeTypeConverter))]
-    public readonly struct NpgsqlRange<T> : IEquatable<NpgsqlRange<T>>
+    public readonly struct NpgsqlRange<T> : IEquatable<NpgsqlRange<T>> where T : IComparable<T>, IEquatable<T>
     {
         // -----------------------------------------------------------------------------------------------
         // Regarding bitwise flag checks via @roji:
@@ -105,6 +105,11 @@ namespace NpgsqlTypes
         const char BoundSeparator = ',';
 
         /// <summary>
+        /// The <see cref="TypeConverter"/> used by <see cref="Parse"/> to convert <see cref="string"/> bounds into <typeparamref name="T"/>.
+        /// </summary>
+        static readonly TypeConverter BoundConverter = TypeDescriptor.GetConverter(typeof(T));
+
+        /// <summary>
         /// Represents the empty range. This field is read-only.
         /// </summary>
         public static readonly NpgsqlRange<T> Empty = new NpgsqlRange<T>(default, default, RangeFlags.Empty);
@@ -156,6 +161,7 @@ namespace NpgsqlTypes
         /// </summary>
         /// <param name="lowerBound">The lower bound of the range.</param>
         /// <param name="upperBound">The upper bound of the range.</param>
+        /// <exception cref="ArgumentException">Malformed range. The lower bound must be less than or equal to the upper bound.</exception>
         public NpgsqlRange(T lowerBound, T upperBound)
             : this(lowerBound, true, false, upperBound, true, false) { }
 
@@ -166,6 +172,8 @@ namespace NpgsqlTypes
         /// <param name="lowerBoundIsInclusive">True if the lower bound is is part of the range (i.e. inclusive); otherwise, false.</param>
         /// <param name="upperBound">The upper bound of the range.</param>
         /// <param name="upperBoundIsInclusive">True if the upper bound is part of the range (i.e. inclusive); otherwise, false.</param>
+        /// <exception cref="ArgumentException">Malformed range. The lower bound must be less than or equal to the upper bound.</exception>
+        /// <exception cref="ArgumentException">Malformed range. The lower and upper bounds are equal but not mutually inclusive.</exception>
         public NpgsqlRange(T lowerBound, bool lowerBoundIsInclusive, T upperBound, bool upperBoundIsInclusive)
             : this(lowerBound, lowerBoundIsInclusive, false, upperBound, upperBoundIsInclusive, false) { }
 
@@ -178,6 +186,8 @@ namespace NpgsqlTypes
         /// <param name="upperBound">The upper bound of the range.</param>
         /// <param name="upperBoundIsInclusive">True if the upper bound is part of the range (i.e. inclusive); otherwise, false.</param>
         /// <param name="upperBoundInfinite">True if the upper bound is indefinite (i.e. infinite or unbounded); otherwise, false.</param>
+        /// <exception cref="ArgumentException">Malformed range. The lower bound must be less than or equal to the upper bound.</exception>
+        /// <exception cref="ArgumentException">Malformed range. The lower and upper bounds are equal but not mutually inclusive.</exception>
         public NpgsqlRange(T lowerBound, bool lowerBoundIsInclusive, bool lowerBoundInfinite,
                            T upperBound, bool upperBoundIsInclusive, bool upperBoundInfinite)
             : this(
@@ -195,17 +205,60 @@ namespace NpgsqlTypes
         /// <param name="lowerBound">The lower bound of the range.</param>
         /// <param name="upperBound">The upper bound of the range.</param>
         /// <param name="flags">The characteristics of the range boundaries.</param>
+        /// <exception cref="ArgumentException">Malformed range. The lower bound must be less than or equal to the upper bound.</exception>
+        /// <exception cref="ArgumentException">Malformed range. The lower and upper bounds are equal but not mutually inclusive.</exception>
         internal NpgsqlRange([CanBeNull] T lowerBound, [CanBeNull] T upperBound, RangeFlags flags) : this()
         {
-            if (flags == RangeFlags.None)
-                throw new ArgumentException("An error occured while constructing the range. Boundary characteristics were not set.");
-
             // TODO: We need to check if the bounds are implicitly empty. E.g. '(1,1)' or '(0,0]'.
             // TODO: This will require introducing the concept of continuous and discrete ranges.
 
             LowerBound = (flags & RangeFlags.LowerBoundInfinite) != 0 ? default : lowerBound;
             UpperBound = (flags & RangeFlags.UpperBoundInfinite) != 0 ? default : upperBound;
             Flags = flags;
+
+            if (IsEmptyRange(LowerBound, UpperBound, Flags))
+            {
+                LowerBound = default;
+                UpperBound = default;
+                Flags = RangeFlags.Empty;
+            }
+        }
+
+        /// <summary>
+        /// Attempts to determine if the range is malformed or implicitly empty.
+        /// </summary>
+        /// <param name="lowerBound">The lower bound of the range.</param>
+        /// <param name="upperBound">The upper bound of the range.</param>
+        /// <param name="flags">The characteristics of the range boundaries.</param>
+        /// <returns>
+        /// True if the range is implicitly empty; otherwise, false.
+        /// </returns>
+        /// <exception cref="ArgumentException">Malformed range. The lower bound must be less than or equal to the upper bound.</exception>
+        /// <exception cref="ArgumentException">Malformed range. The lower and upper bounds are equal but not mutually inclusive.</exception>
+        static bool IsEmptyRange(T lowerBound, T upperBound, RangeFlags flags)
+        {
+            if ((flags & RangeFlags.Empty) != 0)
+                return true;
+
+            // Only attempt this if there are real values to test.
+            // Note that this cannot detect the empty range '(0,0)' nor the error condition '[0,0)'.
+            if (lowerBound is T lower && !lower.Equals(default) && upperBound is T upper && !upper.Equals(default))
+            {
+                int comparison = lower.CompareTo(upper);
+                if (comparison > 0)
+                    throw new ArgumentException("Malformed range. The lower bound must be less than or equal to the upper bound.");
+                if (comparison == 0)
+                {
+                    // E.g. '[1,1)'
+                    if ((flags & RangeFlags.Mixed) != 0)
+                        throw new ArgumentException("Malformed range. The lower and upper bounds are equal but not mutually inclusive.");
+                    // E.g. '(1,1)'
+                    if ((flags & RangeFlags.Inclusive) == 0)
+                        return true;
+                }
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -234,10 +287,10 @@ namespace NpgsqlTypes
 
             // PostgreSQL automatically converts inclusive-infinities, so no throw.
             // See: https://www.postgresql.org/docs/current/static/rangetypes.html#RANGETYPES-INFINITE
-            if ((result & RangeFlags.LowerBoundInclusive & RangeFlags.LowerBoundInfinite) != 0)
+            if ((result & RangeFlags.LowerInclusiveInfinite) != 0)
                 result &= ~RangeFlags.LowerBoundInclusive;
 
-            if ((result & RangeFlags.UpperBoundInclusive & RangeFlags.UpperBoundInfinite) != 0)
+            if ((result & RangeFlags.UpperInclusiveInfinite) != 0)
                 result &= ~RangeFlags.UpperBoundInclusive;
 
             return result;
@@ -306,6 +359,7 @@ namespace NpgsqlTypes
             return sb.ToString();
         }
 
+        // TODO: rewrite this to use ReadOnlySpan<char> for the 4.1 release
         /// <summary>
         /// Parses the well-known text representation of a PostgreSQL range type into a <see cref="NpgsqlRange{T}"/>.
         /// </summary>
@@ -314,71 +368,74 @@ namespace NpgsqlTypes
         /// The <see cref="NpgsqlRange{T}"/> represented by the <paramref name="value"/>.
         /// </returns>
         /// <exception cref="FormatException">
-        /// Invalid format for PostgreSQL range type.
+        /// Malformed range literal.
         /// </exception>
         /// <exception cref="FormatException">
-        /// Invalid format for PostgreSQL range type. Ranges must start with '(' or '['.
+        /// Malformed range literal. Missing left parenthesis or bracket.
         /// </exception>
         /// <exception cref="FormatException">
-        /// Invalid format for PostgreSQL range type. Ranges must start with '(' or '['.
+        /// Malformed range literal. Missing right parenthesis or bracket.
         /// </exception>
         /// <exception cref="FormatException">
-        /// Invalid format for PostgreSQL range type. Ranges must contain ','.
+        /// Malformed range literal. Missing comma after lower bound.
         /// </exception>
         /// <remarks>
         /// See: https://www.postgresql.org/docs/current/static/rangetypes.html
         /// </remarks>
-        public static NpgsqlRange<T> Parse(in StringSegment value)
+        public static NpgsqlRange<T> Parse([NotNull] string value)
         {
-            if (value.Length < 3)
-                throw new FormatException("Invalid format for PostgreSQL range type.");
+            if (value is null)
+            {
+                throw new ArgumentNullException(nameof(value));
+            }
 
-            if (value.Equals(EmptyLiteral, StringComparison.OrdinalIgnoreCase))
+            if (value.Length < 3)
+                throw new FormatException("Malformed range literal.");
+
+            if (string.Equals(value, EmptyLiteral, StringComparison.OrdinalIgnoreCase))
                 return Empty;
 
             var lowerInclusive = value[0] == LowerInclusiveBound;
             var lowerExclusive = value[0] == LowerExclusiveBound;
 
             if (!lowerInclusive && !lowerExclusive)
-                throw new FormatException("Invalid format for PostgreSQL range type. Ranges must start with '(' or '['.");
+                throw new FormatException("Malformed range literal. Missing left parenthesis or bracket.");
 
             var upperInclusive = value[value.Length - 1] == UpperInclusiveBound;
             var upperExclusive = value[value.Length - 1] == UpperExclusiveBound;
 
             if (!upperInclusive && !upperExclusive)
-                throw new FormatException("Invalid format for PostgreSQL range type. Ranges must end with ')' or ']'.");
+                throw new FormatException("Malformed range literal. Missing right parenthesis or bracket.");
 
             int separator = value.IndexOf(BoundSeparator);
 
             if (separator == -1)
-                throw new FormatException("Invalid format for PostgreSQL range type. Ranges must contain ','.");
+                throw new FormatException("Malformed range literal. Missing comma after lower bound.");
 
-            if (separator != value.LastIndexOf(','))
+            if (separator != value.LastIndexOf(BoundSeparator))
                 // TODO: this should be replaced to handle quoted commas.
                 throw new NotSupportedException("Ranges with embedded commas are not currently supported.");
 
             // Skip the opening bracket and stop short of the separator.
-            StringSegment lowerSegment = value.Subsegment(1, separator - 1);
+            var lowerSegment = value.Substring(1, separator - 1);
 
             // Skip past the separator and stop short of the closing bracket.
-            StringSegment upperSegment = value.Subsegment(separator + 1, value.Length - separator - 2);
+            var upperSegment = value.Substring(separator + 1, value.Length - separator - 2);
 
             var lowerInfinite =
-                !lowerSegment.HasValue ||
+                lowerSegment.Length > 0 ||
                 lowerSegment.Equals(string.Empty, StringComparison.OrdinalIgnoreCase) ||
                 lowerSegment.Equals(NullLiteral, StringComparison.OrdinalIgnoreCase) ||
                 lowerSegment.Equals(LowerInfinityLiteral, StringComparison.OrdinalIgnoreCase);
 
             var upperInfinite =
-                !upperSegment.HasValue ||
+                upperSegment.Length > 0 ||
                 upperSegment.Equals(string.Empty, StringComparison.OrdinalIgnoreCase) ||
                 upperSegment.Equals(NullLiteral, StringComparison.OrdinalIgnoreCase) ||
                 upperSegment.Equals(UpperInfinityLiteral, StringComparison.OrdinalIgnoreCase);
 
-            TypeConverter typeConverter = TypeDescriptor.GetConverter(typeof(T));
-
-            T lower = lowerInfinite ? default : (T)typeConverter.ConvertFromString(lowerSegment.Value);
-            T upper = upperInfinite ? default : (T)typeConverter.ConvertFromString(upperSegment.Value);
+            T lower = lowerInfinite ? default : (T)BoundConverter.ConvertFromString(lowerSegment);
+            T upper = upperInfinite ? default : (T)BoundConverter.ConvertFromString(upperSegment);
 
             if (lowerInclusive && lowerInfinite)
                 // PostgreSQL automatically converts '[-infinity,tody]' to '(-infinity,tody]'.
@@ -399,21 +456,11 @@ namespace NpgsqlTypes
         {
             /// <inheritdoc />
             public override bool CanConvertFrom(ITypeDescriptorContext context, Type sourceType)
-                => sourceType == typeof(string) || sourceType == typeof(StringSegment) || base.CanConvertFrom(context, sourceType);
+                => sourceType == typeof(string) || base.CanConvertFrom(context, sourceType);
 
             /// <inheritdoc />
             public override object ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, object value)
-            {
-                switch (value)
-                {
-                case string s:
-                    return Parse(s);
-                case StringSegment s:
-                    return Parse(s);
-                default:
-                    return base.ConvertFrom(context, culture, value);
-                }
-            }
+                => value is string s ? Parse(s) : base.ConvertFrom(context, culture, value);
 
             /// <inheritdoc />
             public override object ConvertTo(ITypeDescriptorContext context, CultureInfo culture, object value, Type destinationType)
@@ -431,7 +478,7 @@ namespace NpgsqlTypes
     enum RangeFlags : byte
     {
         /// <summary>
-        /// The default flag. This represents an error.
+        /// The default flag. The range is not empty and has boundaries that are definite and exclusive.
         /// </summary>
         None = 0,
 
@@ -458,6 +505,26 @@ namespace NpgsqlTypes
         /// <summary>
         /// The upper bound is infinite or indefinite. E.g. '[0,null)', '[0,infinity)', '[0,)'.
         /// </summary>
-        UpperBoundInfinite = 16
+        UpperBoundInfinite = 16,
+
+        /// <summary>
+        /// Both the lower and upper bounds are inclusive.
+        /// </summary>
+        Inclusive = LowerBoundInclusive & UpperBoundInclusive,
+
+        /// <summary>
+        /// One of the bounds is inclusive and the other is exclusive.
+        /// </summary>
+        Mixed = LowerBoundInclusive ^ UpperBoundInclusive,
+
+        /// <summary>
+        /// The lower bound is both inclusive and infinite. This represents an error condition.
+        /// </summary>
+        LowerInclusiveInfinite = LowerBoundInclusive & LowerBoundInfinite,
+
+        /// <summary>
+        /// The upper bound is both inclusive and infinite. This represents an error condition.
+        /// </summary>
+        UpperInclusiveInfinite = UpperBoundInclusive & UpperBoundInfinite
     }
 }
