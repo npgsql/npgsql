@@ -96,36 +96,58 @@ namespace Npgsql.TypeHandlers
             await base.Write(value, buf, lengthCache, parameter, async);
         }
 
-        internal override async Task WriteBytes(byte[] value, NpgsqlWriteBuffer buf, bool async)
+        internal override Task WriteBytes(byte[] value, NpgsqlWriteBuffer buf, bool async)
         {
-            if (buf.WriteSpaceLeft < 1)
+            if (buf.WriteSpaceLeft >= 1)
+            {
+                buf.WriteByte(JsonbProtocolVersion);
+                return base.WriteBytes(value, buf, async);
+            }
+            return WriteLong();
+
+            async Task WriteLong()
+            {
                 await buf.Flush(async);
-            buf.WriteByte(JsonbProtocolVersion);
-            await base.WriteBytes(value, buf, async);
+                buf.WriteByte(JsonbProtocolVersion);
+                await base.WriteBytes(value, buf, async);
+            }
         }
 
         #endregion
 
         #region Read
 
+        internal void EnsureProtocolVersion(int version)
+        {
+            if (version != JsonbProtocolVersion)
+                throw new NotSupportedException($"Don't know how to decode JSONB with wire format {version}, your connection is now broken");
+        }
+
         public override async ValueTask<string> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
         {
             await buf.Ensure(1, async);
             var version = buf.ReadByte();
-            if (version != JsonbProtocolVersion)
-                throw new NotSupportedException($"Don't know how to decode JSONB with wire format {version}, your connection is now broken");
-
+            EnsureProtocolVersion(version);
             return await base.Read(buf, len - 1, async, fieldDescription);
         }
 
-        internal override async ValueTask<byte[]> ReadBytes(NpgsqlReadBuffer buf, int byteLen, bool async)
+        internal override ValueTask<byte[]> ReadBytes(NpgsqlReadBuffer buf, int byteLen, bool async)
         {
-            await buf.Ensure(1, async);
-            var version = buf.ReadByte();
-            if (version != JsonbProtocolVersion)
-                throw new NotSupportedException($"Don't know how to decode JSONB with wire format {version}, your connection is now broken");
+            if (buf.ReadBytesLeft >= 1)
+            {
+                var version = buf.ReadByte();
+                EnsureProtocolVersion(version);
+                return base.ReadBytes(buf, byteLen - 1, async);
+            }
+            return ReadLong();
 
-            return await base.ReadBytes(buf, byteLen - 1, async);
+            async ValueTask<byte[]> ReadLong()
+            {
+                await buf.Ensure(1, async);
+                var version = buf.ReadByte();
+                EnsureProtocolVersion(version);
+                return await base.ReadBytes(buf, byteLen - 1, async);
+            }
         }
 
         #endregion
@@ -133,9 +155,7 @@ namespace Npgsql.TypeHandlers
         public override TextReader GetTextReader(Stream stream)
         {
             var version = stream.ReadByte();
-            if (version != JsonbProtocolVersion)
-                throw new NpgsqlException($"Don't know how to decode jsonb with wire format {version}, your connection is now broken");
-
+            EnsureProtocolVersion(version);
             return base.GetTextReader(stream);
         }
     }
