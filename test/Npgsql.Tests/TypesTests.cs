@@ -507,6 +507,6 @@ namespace Npgsql.Tests
 
             Assert.That(v != null);  // #776
         }
-#pragma restore disable 618
+#pragma warning restore 618
     }
 }
