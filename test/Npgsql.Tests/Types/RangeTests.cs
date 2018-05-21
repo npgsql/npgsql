@@ -219,10 +219,10 @@ namespace Npgsql.Tests.Types
         #region TheoryData
 
         // ReSharper disable once InconsistentNaming
-        private static readonly DateTime May_17_2018 = DateTime.Parse("2018-05-17");
+        static readonly DateTime May_17_2018 = DateTime.Parse("2018-05-17");
 
         // ReSharper disable once InconsistentNaming
-        private static readonly DateTime May_18_2018 = DateTime.Parse("2018-05-18");
+        static readonly DateTime May_18_2018 = DateTime.Parse("2018-05-18");
 
         /// <summary>
         /// Provides theory data for <see cref="NpgsqlRange{T}"/> of <see cref="DateTime"/>.

@@ -43,10 +43,71 @@ namespace NpgsqlTypes
     [TypeConverter(typeof(NpgsqlRange<>.RangeTypeConverter))]
     public readonly struct NpgsqlRange<T> : IEquatable<NpgsqlRange<T>>
     {
+        // -----------------------------------------------------------------------------------------------
+        // Regarding bitwise flag checks via @roji:
+        //
+        // > Note that Flags.HasFlag() used to be very inefficient compared to simply doing the
+        // > bit operation - this is why I've always avoided it. .NET Core 2.1 adds JIT intrinstics
+        // > for this, making Enum.HasFlag() fast, but I honestly don't see the value over just doing
+        // > a bitwise and operation, which would also be fast under .NET Core 2.0 and .NET Framework.
+        //
+        // See:
+        //   - https://github.com/npgsql/npgsql/pull/1939#pullrequestreview-121308396
+        //   - https://blogs.msdn.microsoft.com/dotnet/2018/04/18/performance-improvements-in-net-core-2-1
+        // -----------------------------------------------------------------------------------------------
+
         /// <summary>
-        /// Represents the empty range.
+        /// Defined by PostgreSQL to represent an empty range.
         /// </summary>
-        public static NpgsqlRange<T> Empty { get; } = new NpgsqlRange<T>(default, default, RangeFlags.Empty);
+        const string EmptyLiteral = "empty";
+
+        /// <summary>
+        /// Defined by PostgreSQL to represent an infinite lower bound.
+        /// Some element types may have specific handling for this value distinct from a missing or null value.
+        /// </summary>
+        const string LowerInfinityLiteral = "-infinity";
+
+        /// <summary>
+        /// Defined by PostgreSQL to represent an infinite upper bound.
+        /// Some element types may have specific handling for this value distinct from a missing or null value.
+        /// </summary>
+        const string UpperInfinityLiteral = "infinity";
+
+        /// <summary>
+        /// Defined by PostgreSQL to represent an null bound.
+        /// Some element types may have specific handling for this value distinct from an infinite or missing value.
+        /// </summary>
+        const string NullLiteral = "null";
+
+        /// <summary>
+        /// Defined by PostgreSQL to represent a lower inclusive bound.
+        /// </summary>
+        const char LowerInclusiveBound = '[';
+
+        /// <summary>
+        /// Defined by PostgreSQL to represent a lower exclusive bound.
+        /// </summary>
+        const char LowerExclusiveBound = '(';
+
+        /// <summary>
+        /// Defined by PostgreSQL to represent an upper inclusive bound.
+        /// </summary>
+        const char UpperInclusiveBound = ']';
+
+        /// <summary>
+        /// Defined by PostgreSQL to represent an upper exclusive bound.
+        /// </summary>
+        const char UpperExclusiveBound = ')';
+
+        /// <summary>
+        /// Defined by PostgreSQL to separate the values for the upper and lower bounds.
+        /// </summary>
+        const char BoundSeparator = ',';
+
+        /// <summary>
+        /// Represents the empty range. This field is read-only.
+        /// </summary>
+        public static readonly NpgsqlRange<T> Empty = new NpgsqlRange<T>(default, default, RangeFlags.Empty);
 
         /// <summary>
         /// The lower bound of the range. Only valid when <see cref="LowerBoundInfinite"/> is false.
@@ -68,27 +129,27 @@ namespace NpgsqlTypes
         /// <summary>
         /// True if the lower bound is part of the range (i.e. inclusive); otherwise, false.
         /// </summary>
-        public bool LowerBoundIsInclusive => Flags.HasFlag(RangeFlags.LowerBoundInclusive);
+        public bool LowerBoundIsInclusive => (Flags & RangeFlags.LowerBoundInclusive) != 0;
 
         /// <summary>
         /// True if the upper bound is part of the range (i.e. inclusive); otherwise, false.
         /// </summary>
-        public bool UpperBoundIsInclusive => Flags.HasFlag(RangeFlags.UpperBoundInclusive);
+        public bool UpperBoundIsInclusive => (Flags & RangeFlags.UpperBoundInclusive) != 0;
 
         /// <summary>
         /// True if the lower bound is indefinite (i.e. infinite or unbounded); otherwise, false.
         /// </summary>
-        public bool LowerBoundInfinite => Flags.HasFlag(RangeFlags.LowerBoundInfinite);
+        public bool LowerBoundInfinite => (Flags & RangeFlags.LowerBoundInfinite) != 0;
 
         /// <summary>
         /// True if the upper bound is indefinite (i.e. infinite or unbounded); otherwise, false.
         /// </summary>
-        public bool UpperBoundInfinite => Flags.HasFlag(RangeFlags.UpperBoundInfinite);
+        public bool UpperBoundInfinite => (Flags & RangeFlags.UpperBoundInfinite) != 0;
 
         /// <summary>
         /// True if the range is empty; otherwise, false.
         /// </summary>
-        public bool IsEmpty => Flags.HasFlag(RangeFlags.Empty);
+        public bool IsEmpty => (Flags & RangeFlags.Empty) != 0;
 
         /// <summary>
         /// Constructs an <see cref="NpgsqlRange{T}"/> with inclusive and definite bounds.
@@ -142,8 +203,8 @@ namespace NpgsqlTypes
             // TODO: We need to check if the bounds are implicitly empty. E.g. '(1,1)' or '(0,0]'.
             // TODO: This will require introducing the concept of continuous and discrete ranges.
 
-            LowerBound = flags.HasFlag(RangeFlags.LowerBoundInfinite) ? default : lowerBound;
-            UpperBound = flags.HasFlag(RangeFlags.UpperBoundInfinite) ? default : upperBound;
+            LowerBound = (flags & RangeFlags.LowerBoundInfinite) != 0 ? default : lowerBound;
+            UpperBound = (flags & RangeFlags.UpperBoundInfinite) != 0 ? default : upperBound;
             Flags = flags;
         }
 
@@ -157,9 +218,9 @@ namespace NpgsqlTypes
         /// <returns>
         /// The boundary characteristics.
         /// </returns>
-        private static RangeFlags EvaluateBoundaryFlags(bool lowerBoundIsInclusive, bool upperBoundIsInclusive, bool lowerBoundInfinite, bool upperBoundInfinite)
+        static RangeFlags EvaluateBoundaryFlags(bool lowerBoundIsInclusive, bool upperBoundIsInclusive, bool lowerBoundInfinite, bool upperBoundInfinite)
         {
-            RangeFlags result = RangeFlags.None;
+            var result = RangeFlags.None;
 
             // This is the only place flags are calculated, so no bitwise removal needed.
             if (lowerBoundIsInclusive)
@@ -173,10 +234,10 @@ namespace NpgsqlTypes
 
             // PostgreSQL automatically converts inclusive-infinities, so no throw.
             // See: https://www.postgresql.org/docs/current/static/rangetypes.html#RANGETYPES-INFINITE
-            if (result.HasFlag(RangeFlags.LowerBoundInclusive & RangeFlags.LowerBoundInfinite))
+            if ((result & RangeFlags.LowerBoundInclusive & RangeFlags.LowerBoundInfinite) != 0)
                 result &= ~RangeFlags.LowerBoundInclusive;
 
-            if (result.HasFlag(RangeFlags.UpperBoundInclusive & RangeFlags.UpperBoundInfinite))
+            if ((result & RangeFlags.UpperBoundInclusive & RangeFlags.UpperBoundInfinite) != 0)
                 result &= ~RangeFlags.UpperBoundInclusive;
 
             return result;
@@ -226,21 +287,21 @@ namespace NpgsqlTypes
         public override string ToString()
         {
             if (IsEmpty)
-                return "empty";
+                return EmptyLiteral;
 
             var sb = new StringBuilder();
 
-            sb.Append(LowerBoundIsInclusive ? '[' : '(');
+            sb.Append(LowerBoundIsInclusive ? LowerInclusiveBound : LowerExclusiveBound);
 
             if (!LowerBoundInfinite)
                 sb.Append(LowerBound);
 
-            sb.Append(',');
+            sb.Append(BoundSeparator);
 
             if (!UpperBoundInfinite)
                 sb.Append(UpperBound);
 
-            sb.Append(UpperBoundIsInclusive ? ']' : ')');
+            sb.Append(UpperBoundIsInclusive ? UpperInclusiveBound : UpperExclusiveBound);
 
             return sb.ToString();
         }
@@ -272,22 +333,22 @@ namespace NpgsqlTypes
             if (value.Length < 3)
                 throw new FormatException("Invalid format for PostgreSQL range type.");
 
-            if (value.Equals("empty", StringComparison.OrdinalIgnoreCase))
+            if (value.Equals(EmptyLiteral, StringComparison.OrdinalIgnoreCase))
                 return Empty;
 
-            bool lowerInclusive = value[0] == '[';
-            bool lowerExclusive = value[0] == '(';
+            var lowerInclusive = value[0] == LowerInclusiveBound;
+            var lowerExclusive = value[0] == LowerExclusiveBound;
 
             if (!lowerInclusive && !lowerExclusive)
                 throw new FormatException("Invalid format for PostgreSQL range type. Ranges must start with '(' or '['.");
 
-            bool upperInclusive = value[value.Length - 1] == ']';
-            bool upperExclusive = value[value.Length - 1] == ')';
+            var upperInclusive = value[value.Length - 1] == UpperInclusiveBound;
+            var upperExclusive = value[value.Length - 1] == UpperExclusiveBound;
 
             if (!upperInclusive && !upperExclusive)
                 throw new FormatException("Invalid format for PostgreSQL range type. Ranges must end with ')' or ']'.");
 
-            int separator = value.IndexOf(',');
+            int separator = value.IndexOf(BoundSeparator);
 
             if (separator == -1)
                 throw new FormatException("Invalid format for PostgreSQL range type. Ranges must contain ','.");
@@ -302,17 +363,17 @@ namespace NpgsqlTypes
             // Skip past the separator and stop short of the closing bracket.
             StringSegment upperSegment = value.Subsegment(separator + 1, value.Length - separator - 2);
 
-            bool lowerInfinite =
+            var lowerInfinite =
                 !lowerSegment.HasValue ||
                 lowerSegment.Equals(string.Empty, StringComparison.OrdinalIgnoreCase) ||
-                lowerSegment.Equals("null", StringComparison.OrdinalIgnoreCase) ||
-                lowerSegment.Equals("-infinity", StringComparison.OrdinalIgnoreCase);
+                lowerSegment.Equals(NullLiteral, StringComparison.OrdinalIgnoreCase) ||
+                lowerSegment.Equals(LowerInfinityLiteral, StringComparison.OrdinalIgnoreCase);
 
-            bool upperInfinite =
+            var upperInfinite =
                 !upperSegment.HasValue ||
                 upperSegment.Equals(string.Empty, StringComparison.OrdinalIgnoreCase) ||
-                upperSegment.Equals("null", StringComparison.OrdinalIgnoreCase) ||
-                upperSegment.Equals("infinity", StringComparison.OrdinalIgnoreCase);
+                upperSegment.Equals(NullLiteral, StringComparison.OrdinalIgnoreCase) ||
+                upperSegment.Equals(UpperInfinityLiteral, StringComparison.OrdinalIgnoreCase);
 
             TypeConverter typeConverter = TypeDescriptor.GetConverter(typeof(T));
 
@@ -334,14 +395,11 @@ namespace NpgsqlTypes
         /// <summary>
         /// Represents a type converter for <see cref="NpgsqlRange{T}" />.
         /// </summary>
-        [PublicAPI]
         internal class RangeTypeConverter : TypeConverter
         {
             /// <inheritdoc />
             public override bool CanConvertFrom(ITypeDescriptorContext context, Type sourceType)
-            {
-                return sourceType == typeof(string) || sourceType == typeof(StringSegment) || base.CanConvertFrom(context, sourceType);
-            }
+                => sourceType == typeof(string) || sourceType == typeof(StringSegment) || base.CanConvertFrom(context, sourceType);
 
             /// <inheritdoc />
             public override object ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, object value)
@@ -349,25 +407,17 @@ namespace NpgsqlTypes
                 switch (value)
                 {
                 case string s:
-                {
                     return Parse(s);
-                }
                 case StringSegment s:
-                {
                     return Parse(s);
-                }
                 default:
-                {
                     return base.ConvertFrom(context, culture, value);
-                }
                 }
             }
 
             /// <inheritdoc />
             public override object ConvertTo(ITypeDescriptorContext context, CultureInfo culture, object value, Type destinationType)
-            {
-                return value.ToString();
-            }
+                => value.ToString();
         }
     }
 
