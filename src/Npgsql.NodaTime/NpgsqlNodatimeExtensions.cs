@@ -77,6 +77,7 @@ namespace Npgsql
                 {
                     PgTypeName = "timetz",
                     NpgsqlDbType = NpgsqlDbType.TimeTz,
+                    ClrTypes = new[] { typeof(OffsetTime) },
                     TypeHandlerFactory = new TimeTzHandlerFactory()
                 }.Build())
                 .AddMapping(new NpgsqlTypeMappingBuilder

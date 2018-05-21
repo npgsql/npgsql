@@ -310,9 +310,10 @@ namespace Npgsql.PluginTests
                 var offset = Offset.FromHoursAndMinutes(3, 30) + Offset.FromSeconds(5);
                 var expected = new OffsetTime(time, offset);
 
-                using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+                using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn))
                 {
-                    cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.TimeTz) { Value = expected });
+                    cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.TimeTz) { Value = expected });
+                    cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p2", Value = expected });
                     using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
