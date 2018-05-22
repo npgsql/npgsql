@@ -11,59 +11,59 @@ The following shows the mappings used when reading values.
 * You can read as other types by calling `NpgsqlDataReader.GetFieldValue<T>()`.
 * Provider-specific types are returne by `NpgsqlDataReader.GetProviderSpecificValue()`.
 
-PostgreSQL type         | Default .NET type             | Provider-specific type	| Other .NET types
-------------------------|-------------------------------|-------------------------------|-----------------
-bool			| bool				|				|
-int2			| short				|				| byte, sbyte, int, long, float, double, decimal
-int4			| int				|				| byte, short, long, float, double, decimal
-int8			| long				|				| long, byte, short, int, float, double, decimal
-float4			| float				|				| double
-float8			| double			|				|
-numeric			| decimal			|				| byte, short, int, long, float, double
-money			| decimal			|				|
-text			| string			|				| char[]
-varchar			| string			|				| char[]
-bpchar			| string			|				| char[]
-citext			| string			|				| char[]
-json			| string			|				| char[]
-jsonb			| string			|				| char[]
-xml			| string			|				| char[]
-point			| NpgsqlPoint			|				| string
-lseg			| NpgsqlLSeg			|				| string
-path			| NpgsqlPath			|				|
-polygon			| NpgsqlPolygon			|				|
-line			| NpgsqlLine			|				| string
-circle			| NpgsqlCircle			|				| string
-box			| NpgsqlBox			|				| string
-bit(1)			| bool				|				| BitArray
-bit(n)			| BitArray			|				|
-varbit			| BitArray			|				|
-hstore			| IDictionary<string, string>	|				| string
-uuid			| Guid				|				| string
-cidr			| NpgsqlInet			|				| string
-inet			| IPAddress			| NpgsqlInet			| string
-macaddr			| PhysicalAddress		|				| string
-tsquery			| NpgsqlTsQuery			|				|
-tsvector		| NpgsqlTsVector		|				|
-date			| DateTime			| NpgsqlDate			|
-interval		| TimeSpan			| NpgsqlTimeSpan		|
-timestamp		| DateTime			| NpgsqlDateTime		|
-timestamptz		| DateTime			| NpgsqlDateTime		| DateTimeOffset
-time			| TimeSpan			|				|
-timetz			| DateTimeOffset		|				| DateTimeOffset, DateTime, TimeSpan
-bytea			| byte[]			|				|
-oid			| uint				|				|
-xid			| uint				|				|
-cid			| uint				|				|
-oidvector		| uint[]			|				|
-name			| string			|				| char[]
-(internal) char		| char				|				| byte, short, int, long
-geometry (PostGIS)	| PostgisGeometry		|				|
-record			| object[]			|				|
-composite types		| T				|				|
-range subtypes		| NpgsqlRange<TElement>		|				|
-enum types		| TEnum				|				|
-array types		| Array	(of child element type)	|				|
+PostgreSQL type			| Default .NET type		| Provider-specific type	| Other .NET types
+--------------------------------|-------------------------------|-------------------------------|-----------------
+boolean				| bool				|				|
+smallint			| short				|				| byte, sbyte, int, long, float, double, decimal
+integer				| int				|				| byte, short, long, float, double, decimal
+bigint				| long				|				| long, byte, short, int, float, double, decimal
+real				| float				|				| double
+double precision		| double			|				|
+numeric				| decimal			|				| byte, short, int, long, float, double
+money				| decimal			|				|
+text				| string			|				| char[]
+character varying		| string			|				| char[]
+character			| string			|				| char[]
+citext				| string			|				| char[]
+json				| string			|				| char[]
+jsonb				| string			|				| char[]
+xml				| string			|				| char[]
+point				| NpgsqlPoint			|				| string
+lseg				| NpgsqlLSeg			|				| string
+path				| NpgsqlPath			|				|
+polygon				| NpgsqlPolygon			|				|
+line				| NpgsqlLine			|				| string
+circle				| NpgsqlCircle			|				| string
+box				| NpgsqlBox			|				| string
+bit(1)				| bool				|				| BitArray
+bit(n)				| BitArray			|				|
+bit varying			| BitArray			|				|
+hstore				| IDictionary<string, string>	|				| string
+uuid				| Guid				|				| string
+cidr				| NpgsqlInet			|				| string
+inet				| IPAddress			| NpgsqlInet			| string
+macaddr				| PhysicalAddress		|				| string
+tsquery				| NpgsqlTsQuery			|				|
+tsvector			| NpgsqlTsVector		|				|
+date				| DateTime			| NpgsqlDate			|
+interval			| TimeSpan			| NpgsqlTimeSpan		|
+timestamp			| DateTime			| NpgsqlDateTime		|
+timestamp with time zone	| DateTime			| NpgsqlDateTime		| DateTimeOffset
+time				| TimeSpan			|				|
+time with time zone		| DateTimeOffset		|				| DateTimeOffset, DateTime, TimeSpan
+bytea				| byte[]			|				|
+oid				| uint				|				|
+xid				| uint				|				|
+cid				| uint				|				|
+oidvector			| uint[]			|				|
+name				| string			|				| char[]
+(internal) char			| char				|				| byte, short, int, long
+geometry (PostGIS)		| PostgisGeometry		|				|
+record				| object[]			|				|
+composite types			| T				|				|
+range subtypes			| NpgsqlRange<TElement>		|				|
+enum types			| TEnum				|				|
+array types			| Array	(of child element type)	|				|
 
 The Default .NET type column specifies the data type `NpgsqlDataReader.GetValue()` will return.
 
@@ -82,56 +82,56 @@ There are three rules that determine the PostgreSQL type sent for a parameter:
 
 Note that for `DateTime` and `NpgsqlDateTime`, the `Kind` attribute determines whether to use `timestamp` or `timestamptz`.
 
-NpgsqlDbType	| DbType		| PostgreSQL type	| Accepted .NET types
-----------------|-----------------------|-----------------------|--------------------
-Boolean		| Boolean		| bool			| bool, IConvertible
-Smallint	| Int16			| int2			| short, IConvertible
-Integer		| Int32			| int4			| int, IConvertible
-Bigint		| Int64			| int8			| long, IConvertible
-Real		| Single		| float4		| float, IConvertible
-Double		| Double		| float8		| double, IConvertible
-Numeric		| Decimal, VarNumeric	| numeric		| decimal, IConvertible
-Money		| Currency		| money			| decimal, IConvertible
+NpgsqlDbType	| DbType		| PostgreSQL type		| Accepted .NET types
+----------------|-----------------------|-------------------------------|--------------------
+Boolean		| Boolean		| boolean			| bool, IConvertible
+Smallint	| Int16			| smallint			| short, IConvertible
+Integer		| Int32			| integer			| int, IConvertible
+Bigint		| Int64			| bigint			| long, IConvertible
+Real		| Single		| real				| float, IConvertible
+Double		| Double		| double precision		| double, IConvertible
+Numeric		| Decimal, VarNumeric	| numeric			| decimal, IConvertible
+Money		| Currency		| money				| decimal, IConvertible
 Text		| String, StringFixedLength, AnsiString, AnsiStringFixedLength	| text	| string, char[], char, IConvertible
-Varchar		| 			| varchar		| string, char[], char, IConvertible
-Char		|			| char			| string, char[], char, IConvertible
-Citext		|			| citext		| string, char[], char, IConvertible
-Json		|			| json			| string, char[], char, IConvertible
-Jsonb		|			| jsonb			| string, char[], char, IConvertible
-Xml		|			| xml			| string, char[], char, IConvertible
-Point		|			| point			| NpgsqlPoint
-LSeg		|			| lseg			| NpgsqlLSeg
-Path		|			| path			| NpgsqlPath
-Polygon		|			| polygon		| NpgsqlPolygon
-Line		|			| line			| NpgsqlLine
-Circle		|			| circle		| NpgsqlCircle
-Box		|			| box			| NpgsqlBox
-Bit		|			| bit			| BitArray, bool, string
-Varbit		|			| varbit		| BitArray, bool, string
-Hstore		|			| hstore		| IDictionary<string, string>
-Uuid		|			| uuid			| Guid, string
-Cidr		|			| cidr			| IPAddress, NpgsqlInet
-Inet		|			| inet			| IPAddress, NpgsqlInet
-MacAddr		|			| macaddr		| PhysicalAddress
-TsQuery		|			| tsquery		| NpgsqlTsQuery
-TsVector	|			| tsvector		| NpgsqlTsVector
-Date		| Date			| date			| DateTime, NpgsqlDate, IConvertible
-Interval	|			| interval		| TimeSpan, NpgsqlTimeSpan, string
-Timestamp	| DateTime, DateTime2	| timestamp		| DateTime, DateTimeOffset, NpgsqlDateTime, IConvertible
-TimestampTz	| DateTimeOffset	| timestamptz		| DateTime, DateTimeOffset, NpgsqlDateTime, IConvertible
-Time		| Time			| time			| TimeSpan, string
-TimeTz		|			| timetz		| DateTimeOffset, DateTime, TimeSpan
-Bytea		| Binary		| bytea			| byte[], ArraySegment<byte>
-Oid		|			| oid			| uint, IConvertible
-Xid		|			| xid			| uint, IConvertible
-Cid		|			| cid			| uint, IConvertible
-Oidvector	|			| oidvector		| uint[]
-Name		|			| name			| string, char[], char, IConvertible
-InternalChar	|			| (internal) char	| byte, IConvertible
-Composite	|			| composite types	| T
-Range \| (other NpgsqlDbType) |		| range types		| NpgsqlRange<TElement>
-Enum		|			| enum types		| TEnum
-Array \| (other NpgsqlDbType) | 	| array types		| Array, IList<T>, IList
+Varchar		| 			| character varying		| string, char[], char, IConvertible
+Char		|			| character			| string, char[], char, IConvertible
+Citext		|			| citext			| string, char[], char, IConvertible
+Json		|			| json				| string, char[], char, IConvertible
+Jsonb		|			| jsonb				| string, char[], char, IConvertible
+Xml		|			| xml				| string, char[], char, IConvertible
+Point		|			| point				| NpgsqlPoint
+LSeg		|			| lseg				| NpgsqlLSeg
+Path		|			| path				| NpgsqlPath
+Polygon		|			| polygon			| NpgsqlPolygon
+Line		|			| line				| NpgsqlLine
+Circle		|			| circle			| NpgsqlCircle
+Box		|			| box				| NpgsqlBox
+Bit		|			| bit				| BitArray, bool, string
+Varbit		|			| bit varying			| BitArray, bool, string
+Hstore		|			| hstore			| IDictionary<string, string>
+Uuid		|			| uuid				| Guid, string
+Cidr		|			| cidr				| IPAddress, NpgsqlInet
+Inet		|			| inet				| IPAddress, NpgsqlInet
+MacAddr		|			| macaddr			| PhysicalAddress
+TsQuery		|			| tsquery			| NpgsqlTsQuery
+TsVector	|			| tsvector			| NpgsqlTsVector
+Date		| Date			| date				| DateTime, NpgsqlDate, IConvertible
+Interval	|			| interval			| TimeSpan, NpgsqlTimeSpan, string
+Timestamp	| DateTime, DateTime2	| timestamp			| DateTime, DateTimeOffset, NpgsqlDateTime, IConvertible
+TimestampTz	| DateTimeOffset	| timestamp with time zone	| DateTime, DateTimeOffset, NpgsqlDateTime, IConvertible
+Time		| Time			| time				| TimeSpan, string
+TimeTz		|			| time with time zone		| DateTimeOffset, DateTime, TimeSpan
+Bytea		| Binary		| bytea				| byte[], ArraySegment<byte>
+Oid		|			| oid				| uint, IConvertible
+Xid		|			| xid				| uint, IConvertible
+Cid		|			| cid				| uint, IConvertible
+Oidvector	|			| oidvector			| uint[]
+Name		|			| name				| string, char[], char, IConvertible
+InternalChar	|			| (internal) char		| byte, IConvertible
+Composite	|			| composite types		| T
+Range \| (other NpgsqlDbType) |		| range types			| NpgsqlRange<TElement>
+Enum		|			| enum types			| TEnum
+Array \| (other NpgsqlDbType) | 	| array types			| Array, IList<T>, IList
 
 Notes when using Range and Array, bitwise-or NpgsqlDbType.Range or NpgsqlDbType.Array with the child type. For example, to construct the NpgsqlDbType for a `int4range`, write `NpgsqlDbType.Range | NpgsqlDbType.Integer`. To construct the NpgsqlDbType for an `int[]`, write `NpgsqlDbType.Array | NpgsqlDbType.Integer`.
 
@@ -139,14 +139,14 @@ For information about enums, [see the Enums and Composites page](enums_and_compo
 
 | .NET type					| Auto-inferred PostgreSQL type
 |-----------------------------------------------|------------------------------
-| bool						| bool
-| byte						| int2
-| sbyte						| int2
-| short						| int2
-| int						| int4
-| long						| int8
-| float						| float4
-| double					| float8
+| bool						| boolean
+| byte						| smallint
+| sbyte						| smallint
+| short						| smallint
+| int						| integer
+| long						| bigint
+| float						| real
+| double					| double precision
 | decimal					| numeric
 | string					| text
 | char[]					| text
@@ -158,7 +158,7 @@ For information about enums, [see the Enums and Composites page](enums_and_compo
 | NpgsqlLine					| line
 | NpgsqlCircle					| circle
 | NpgsqlBox					| box
-| BitArray					| varbit
+| BitArray					| bit varying
 | Guid						| uuid
 | IPAddress					| inet
 | NpgsqlInet					| inet
@@ -168,7 +168,7 @@ For information about enums, [see the Enums and Composites page](enums_and_compo
 | NpgsqlDate					| date
 | NpgsqlDateTime				| timestamp
 | DateTime					| timestamp
-| DateTimeOffset				| timestamptz
+| DateTimeOffset				| timestamp with time zone
 | TimeSpan					| time
 | byte[]					| bytea
 | Custom composite type				| composite types

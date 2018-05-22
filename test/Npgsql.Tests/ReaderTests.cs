@@ -389,13 +389,11 @@ namespace Npgsql.Tests
         public void GetDataTypeName(string typeName)
         {
             using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand($"SELECT NULL::{typeName} AS some_column", conn))
+            using (var reader = cmd.ExecuteReader(Behavior))
             {
-                using (var cmd = new NpgsqlCommand($"SELECT NULL::{typeName} AS some_column", conn))
-                using (var reader = cmd.ExecuteReader(Behavior))
-                {
-                    reader.Read();
-                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo(typeName));
-                }
+                reader.Read();
+                Assert.That(reader.GetDataTypeName(0), Is.EqualTo(typeName));
             }
         }
 

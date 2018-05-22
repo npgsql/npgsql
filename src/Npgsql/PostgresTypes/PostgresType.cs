@@ -138,7 +138,6 @@ namespace Npgsql.PostgresTypes
                 ? GetPartialNameWithFacets(typeModifier)
                 : Namespace + '.' + GetPartialNameWithFacets(typeModifier);
 
-        [CanBeNull]
         internal virtual PostgresFacets GetFacets(int typeModifier) => PostgresFacets.None;
 
         /// <summary>

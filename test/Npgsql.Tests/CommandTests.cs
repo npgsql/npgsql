@@ -448,6 +448,20 @@ namespace Npgsql.Tests
         #endregion
 
         [Test]
+        public void DuplicateViolation()
+        {
+    using (var conn = OpenConnection())
+    {
+        using (var cmd = new NpgsqlCommand("CREATE TABLE foo (id INT PRIMARY KEY)", conn))
+            cmd.ExecuteNonQuery();
+        using (var cmd = new NpgsqlCommand("INSERT INTO foo (id) VALUES (1)", conn))
+            cmd.ExecuteNonQuery();
+        using (var cmd = new NpgsqlCommand("INSERT INTO foo (id) VALUES (1)", conn))
+            cmd.ExecuteNonQuery();
+    }
+        }
+
+        [Test]
         public void SingleRow([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
         {
             using (var conn = OpenConnection())

@@ -569,7 +569,7 @@ namespace Npgsql.Tests
         [TestCase("bit(3)", 3)]
         [TestCase("bit varying")]
         [TestCase("bit varying(3)", 3)]
-        public void DataTypeName(string typeName, int? size=null, int? precision=null, int? scale=null)
+        public void DataTypeName(string typeName, int? size = null, int? precision = null, int? scale = null)
         {
             var openingParen = typeName.IndexOf('(');
             var typeNameWithoutFacets = openingParen == -1

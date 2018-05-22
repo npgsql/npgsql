@@ -61,7 +61,6 @@ namespace Npgsql.PostgresTypes
             }
         }
 
-        [CanBeNull]
         internal override PostgresFacets GetFacets(int typeModifier)
         {
             if (typeModifier == -1)
@@ -106,6 +105,8 @@ namespace Npgsql.PostgresTypes
         {
             switch (internalName)
             {
+            case "bool":
+                return "boolean";
             case "bpchar":
                 return "character";
             case "decimal":
@@ -116,10 +117,10 @@ namespace Npgsql.PostgresTypes
                 return "double precision";
             case "int2":
                 return "smallint";
-            case "int8":
-                return "bigint";
             case "int4":
                 return "integer";
+            case "int8":
+                return "bigint";
             case "timetz":
                 return "time with time zone";
             case "timestamptz":
