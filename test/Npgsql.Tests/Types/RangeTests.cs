@@ -1,6 +1,7 @@
 ﻿using System;
 using System.ComponentModel;
 using System.Data;
+using System.Globalization;
 using NpgsqlTypes;
 using NUnit.Framework;
 
@@ -254,6 +255,54 @@ namespace Npgsql.Tests.Types
         }
 
         [Theory]
+        [TestCase("(1,1)", "empty")]
+        [TestCase("[1,1)", "empty")]
+        [TestCase("[,1]", "(,1]")]
+        [TestCase("[1,]", "[1,)")]
+        [TestCase("[,]", "(,)")]
+        [TestCase("[-infinity,infinity]", "(,)")]
+        [TestCase("[ -infinity , infinity ]", "(,)")]
+        [TestCase("[-infinity,infinity)", "(,)")]
+        [TestCase("(-infinity,infinity]", "(,)")]
+        [TestCase("(-infinity,infinity)", "(,)")]
+        [TestCase("[null,null]", "(,)")]
+        [TestCase("[null,infinity]", "(,)")]
+        [TestCase("[-infinity,null]", "(,)")]
+        public void GivenPoorlyFormedNullableIntRangeLiteral_WhenParsed_ThenReturnsNullableIntRange(string input, string normalized)
+        {
+            // Act
+            var result = NpgsqlRange<int?>.Parse(input);
+
+            // Assert
+            Assert.AreEqual(normalized, result.ToString());
+        }
+
+        [Theory]
+        [TestCase("(a,a)", "empty")]
+        [TestCase("[a,a)", "empty")]
+        [TestCase("[a,a]", "[a,a]")]
+        [TestCase("(a,b)", "(a,b)")]
+        public void GivenStringRangeLiteral_WhenParsed_ThenReturnsStringRange(string input, string normalized)
+        {
+            // Act
+            var result = NpgsqlRange<string>.Parse(input);
+
+            // Assert
+            Assert.AreEqual(normalized, result.ToString());
+        }
+
+        [Theory]
+        [TestCase("(one,two)")]
+        public void GivenSimpleTypeRangeLiteral_WhenParsed_ThenReturnsSimpleTypeRange(string input)
+        {
+            // Act
+            var result = NpgsqlRange<SimpleType>.Parse(input);
+
+            // Assert
+            Assert.AreEqual(input, result.ToString());
+        }
+
+        [Theory]
         [TestCase("0, 1)")]
         [TestCase("(0 1)")]
         [TestCase("(0, 1")]
@@ -282,6 +331,31 @@ namespace Npgsql.Tests.Types
         #endregion
 
         #region TheoryData
+
+        [TypeConverter(typeof(SimpleTypeConverter))]
+        class SimpleType
+        {
+            string Value { get; }
+
+            SimpleType(string value)
+            {
+                Value = value;
+            }
+
+            public override string ToString()
+            {
+                return Value;
+            }
+
+            class SimpleTypeConverter : TypeConverter
+            {
+                public override bool CanConvertFrom(ITypeDescriptorContext context, Type sourceType)
+                    => typeof(string) == sourceType;
+
+                public override object ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, object value)
+                    => new SimpleType(value?.ToString());
+            }
+        }
 
         // ReSharper disable once InconsistentNaming
         static readonly DateTime May_17_2018 = DateTime.Parse("2018-05-17");

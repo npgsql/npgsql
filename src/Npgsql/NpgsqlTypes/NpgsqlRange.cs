@@ -109,6 +109,16 @@ namespace NpgsqlTypes
         static readonly TypeConverter BoundConverter = TypeDescriptor.GetConverter(typeof(T));
 
         /// <summary>
+        /// True if <typeparamref name="T"/> implements <see cref="IEquatable{T}"/>; otherwise, false.
+        /// </summary>
+        static readonly bool HasEquatableBounds = typeof(IEquatable<T>).IsAssignableFrom(typeof(T));
+
+        /// <summary>
+        /// True if <typeparamref name="T"/> is a <see cref="ValueType"/>; otherwise, false.
+        /// </summary>
+        static readonly bool HasValueTypeBounds = typeof(T).IsValueType;
+
+        /// <summary>
         /// Represents the empty range. This field is read-only.
         /// </summary>
         public static readonly NpgsqlRange<T> Empty = new NpgsqlRange<T>(default, default, RangeFlags.Empty);
@@ -225,16 +235,14 @@ namespace NpgsqlTypes
         /// <returns>
         /// True if the range is implicitly empty; otherwise, false.
         /// </returns>
-        static bool IsEmptyRange(T lowerBound, T upperBound, RangeFlags flags)
+        static bool IsEmptyRange([CanBeNull] T lowerBound, [CanBeNull] T upperBound, RangeFlags flags)
         {
             // ---------------------------------------------------------------------------------
             // We only want to check for those conditions that are unambiguously erroneous:
             //   1. The bounds must not be default values (including null).
-            //       - Default values are ambiguous as they could represent an indefinite bound.
             //   2. The bounds must be definite (non-infinite).
-            //       - Indefinite bounds are too ambiguous for analysis.
-            //   3. The bounds must be considered equal by Object.Equals(Object).
-            //       - We can trust a true value, but the meaning is ambiguous when false.
+            //   3. The bounds must be inclusive.
+            //   4. The bounds must be considered equal.
             //
             // See:
             //  - https://github.com/npgsql/npgsql/pull/1939
@@ -247,15 +255,60 @@ namespace NpgsqlTypes
             if ((flags & RangeFlags.Infinite) == RangeFlags.Infinite)
                 return false;
 
-            if (lowerBound is T lower && !lower.Equals(default) && upperBound is T upper && !upper.Equals(default) && lower.Equals(upper))
-            {
-                // SELECT '(1,1)'::int4range = 'empty'::int4range;
-                // SELECT '[1,1)'::int4range = 'empty'::int4range;
-                if ((flags & RangeFlags.Inclusive) != RangeFlags.Inclusive)
-                    return true;
-            }
+            if ((flags & RangeFlags.Inclusive) == RangeFlags.Inclusive)
+                return false;
 
-            return false;
+            return
+                HasValueTypeBounds
+                    ? IsEmptyValueTypeRange(lowerBound, upperBound)
+                    : IsEmptyReferenceRange(lowerBound, upperBound);
+        }
+
+        /// <summary>
+        /// Attempts to determine if the range is malformed or implicitly empty. For <see cref="ValueType"/> ranges only.
+        /// </summary>
+        /// <param name="lowerBound">The lower bound of the range.</param>
+        /// <param name="upperBound">The upper bound of the range.</param>
+        /// <returns>
+        /// True if the range is implicitly empty; otherwise, false.
+        /// </returns>
+        static bool IsEmptyValueTypeRange([NotNull] T lowerBound, [NotNull] T upperBound)
+        {
+            if (!HasValueTypeBounds)
+                throw new Exception("This exception should never be thrown.");
+
+            if (!HasEquatableBounds)
+                return lowerBound.Equals(upperBound);
+
+            IEquatable<T> lower = (IEquatable<T>)lowerBound;
+            IEquatable<T> upper = (IEquatable<T>)upperBound;
+
+            return
+                !lower.Equals(default) &&
+                !upper.Equals(default) &&
+                lower.Equals(upperBound);
+        }
+
+        /// <summary>
+        /// Attempts to determine if the range is malformed or implicitly empty. For reference type ranges only.
+        /// </summary>
+        /// <param name="lowerBound">The lower bound of the range.</param>
+        /// <param name="upperBound">The upper bound of the range.</param>
+        /// <returns>
+        /// True if the range is implicitly empty; otherwise, false.
+        /// </returns>
+        static bool IsEmptyReferenceRange([CanBeNull] T lowerBound, [CanBeNull] T upperBound)
+        {
+            if (HasValueTypeBounds)
+                throw new Exception("This exception should never be thrown.");
+
+            if (lowerBound == null || upperBound == null)
+                return false;
+
+            return
+                HasEquatableBounds
+                    ? ((IEquatable<T>)lowerBound).Equals(upperBound)
+                    : lowerBound.Equals(upperBound);
         }
 
         /// <summary>
@@ -301,10 +354,7 @@ namespace NpgsqlTypes
         /// <returns>
         /// True if the <see cref="NpgsqlRange{T}"/> on the left is equal to the <see cref="NpgsqlRange{T}"/> on the right; otherwise, false.
         /// </returns>
-        public static bool operator ==(NpgsqlRange<T> x, NpgsqlRange<T> y)
-            => x.Flags == y.Flags
-               && (x.LowerBound?.Equals(y.LowerBound) ?? false)
-               && (x.UpperBound?.Equals(y.UpperBound) ?? false);
+        public static bool operator ==(NpgsqlRange<T> x, NpgsqlRange<T> y) => x.Equals(y);
 
         /// <summary>
         /// Indicates whether the <see cref="NpgsqlRange{T}"/> on the left is not equal to the <see cref="NpgsqlRange{T}"/> on the right.
@@ -314,13 +364,36 @@ namespace NpgsqlTypes
         /// <returns>
         /// True if the <see cref="NpgsqlRange{T}"/> on the left is not equal to the <see cref="NpgsqlRange{T}"/> on the right; otherwise, false.
         /// </returns>
-        public static bool operator !=(NpgsqlRange<T> x, NpgsqlRange<T> y) => !(x == y);
+        public static bool operator !=(NpgsqlRange<T> x, NpgsqlRange<T> y) => !x.Equals(y);
 
         /// <inheritdoc />
-        public override bool Equals(object o) => o is NpgsqlRange<T> range && this == range;
+        public override bool Equals(object o) => o is NpgsqlRange<T> range && Equals(range);
 
         /// <inheritdoc />
-        public bool Equals(NpgsqlRange<T> other) => this == other;
+        public bool Equals(NpgsqlRange<T> other)
+        {
+            if (Flags != other.Flags)
+                return false;
+
+            if (HasValueTypeBounds && HasEquatableBounds)
+                return
+                    ((IEquatable<T>)LowerBound).Equals(other.LowerBound) &&
+                    ((IEquatable<T>)UpperBound).Equals(other.UpperBound);
+
+            if (HasValueTypeBounds)
+                return
+                    LowerBound.Equals(other.LowerBound) &&
+                    UpperBound.Equals(other.UpperBound);
+
+            if (HasEquatableBounds)
+                return
+                    (((IEquatable<T>)LowerBound)?.Equals(other.LowerBound) ?? other.LowerBound == null) &&
+                    (((IEquatable<T>)UpperBound)?.Equals(other.UpperBound) ?? other.UpperBound == null);
+
+            return
+                (LowerBound?.Equals(other.LowerBound) ?? other.LowerBound == null) &&
+                (UpperBound?.Equals(other.UpperBound) ?? other.UpperBound == null);
+        }
 
         /// <inheritdoc />
         public override int GetHashCode()
