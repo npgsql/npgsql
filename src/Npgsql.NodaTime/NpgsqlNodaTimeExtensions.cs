@@ -33,7 +33,7 @@ namespace Npgsql
     /// <summary>
     /// Extension adding the NodaTime plugin to an Npgsql type mapper.
     /// </summary>
-    public static class NpgsqlNodatimeExtensions
+    public static class NpgsqlNodaTimeExtensions
     {
         /// <summary>
         /// Sets up NodaTime mappings for the PostgreSQL date/time types.
