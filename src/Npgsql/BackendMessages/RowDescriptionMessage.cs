@@ -217,6 +217,8 @@ namespace Npgsql.BackendMessages
 
         FormatCode _formatCode;
 
+        internal string TypeDisplayName => PostgresType.GetDisplayNameWithFacets(TypeModifier);
+
         /// <summary>
         /// The Npgsql type handler assigned to handle this field.
         /// Returns <see cref="UnknownTypeHandler"/> for fields with format text.

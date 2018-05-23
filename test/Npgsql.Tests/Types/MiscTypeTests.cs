@@ -54,7 +54,7 @@ namespace Npgsql.Tests.Types
                     using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
-                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4"));
+                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("integer"));
                     }
                 }
 
@@ -66,7 +66,7 @@ namespace Npgsql.Tests.Types
                     using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
-                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4"));
+                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("integer"));
                     }
                 }
 
@@ -78,7 +78,7 @@ namespace Npgsql.Tests.Types
                     using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
-                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4"));
+                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("integer"));
                     }
                 }
 
@@ -88,7 +88,7 @@ namespace Npgsql.Tests.Types
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
-                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4"));
+                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("integer"));
                 }
             }
         }
@@ -96,7 +96,6 @@ namespace Npgsql.Tests.Types
         /// <summary>
         /// http://www.postgresql.org/docs/current/static/datatype-boolean.html
         /// </summary>
-        /// <param name="prepare"></param>
         [Test, Description("Roundtrips a bool")]
         public void Bool()
         {
@@ -127,7 +126,7 @@ namespace Npgsql.Tests.Types
                         Assert.That(reader.GetValue(i), Is.True);
                         Assert.That(reader.GetProviderSpecificValue(i), Is.True);
                         Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(bool)));
-                        Assert.That(reader.GetDataTypeName(i), Is.EqualTo("bool"));
+                        Assert.That(reader.GetDataTypeName(i), Is.EqualTo("boolean"));
                     }
                 }
             }
@@ -370,7 +369,7 @@ namespace Npgsql.Tests.Types
         {
             using (var conn = OpenConnection())
             {
-                conn.TypeMapper.RemoveMapping("bool");
+                conn.TypeMapper.RemoveMapping("boolean");
                 using (var cmd = new NpgsqlCommand("SELECT TRUE", conn))
                 using (var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess))
                 {

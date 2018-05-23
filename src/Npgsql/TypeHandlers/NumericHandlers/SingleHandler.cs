@@ -33,7 +33,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-numeric.html
     /// </remarks>
-    [TypeMapping("float4", NpgsqlDbType.Real, DbType.Single, typeof(float))]
+    [TypeMapping("real", NpgsqlDbType.Real, DbType.Single, typeof(float))]
     class SingleHandler : NpgsqlSimpleTypeHandler<float>, INpgsqlSimpleTypeHandler<double>
     {
         #region Read

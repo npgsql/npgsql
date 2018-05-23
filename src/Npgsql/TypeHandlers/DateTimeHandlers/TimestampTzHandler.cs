@@ -31,7 +31,7 @@ using Npgsql.TypeMapping;
 
 namespace Npgsql.TypeHandlers.DateTimeHandlers
 {
-    [TypeMapping("timestamptz", NpgsqlDbType.TimestampTz, DbType.DateTimeOffset, typeof(DateTimeOffset))]
+    [TypeMapping("timestamp with time zone", NpgsqlDbType.TimestampTz, DbType.DateTimeOffset, typeof(DateTimeOffset))]
     class TimestampTzHandlerFactory : NpgsqlTypeHandlerFactory<DateTime>
     {
         // Check for the legacy floating point timestamps feature

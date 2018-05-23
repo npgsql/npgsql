@@ -1,4 +1,5 @@
 ﻿using System;
+using System.CodeDom;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -33,7 +34,7 @@ namespace Npgsql.Schema
                 ? GenerateOldColumnsQuery(columnFieldFilter)
                 :
 $@"SELECT
-     typ.oid AS typoid, nspname, relname, attname, typ.typname, attrelid, attnum, attnotnull,
+     typ.oid AS typoid, nspname, relname, attname, attrelid, attnum, attnotnull,
      {(pgVersion >= new Version(10, 0) ? "attidentity != ''" : "FALSE")} AS isidentity,
      CASE WHEN typ.typtype = 'd' THEN typ.typtypmod ELSE atttypmod END AS typmod,
      CASE WHEN atthasdef THEN (SELECT pg_get_expr(adbin, cls.oid) FROM pg_attrdef WHERE adrelid = cls.oid AND adnum = attr.attnum) ELSE NULL END AS default,
@@ -71,7 +72,7 @@ ORDER BY attnum";
         /// </summary>
         static string GenerateOldColumnsQuery(string columnFieldFilter) =>
             $@"SELECT
-     typ.oid AS typoid, nspname, relname, attname, typ.typname, attrelid, attnum, attnotnull,
+     typ.oid AS typoid, nspname, relname, attname, attrelid, attnum, attnotnull,
      CASE WHEN typ.typtype = 'd' THEN typ.typtypmod ELSE atttypmod END AS typmod,
      CASE WHEN atthasdef THEN (SELECT pg_get_expr(adbin, cls.oid) FROM pg_attrdef WHERE adrelid = cls.oid AND adnum = attr.attnum) ELSE NULL END AS default,
      TRUE AS is_updatable,  /* Supported only since PG 8.2 */
@@ -181,13 +182,13 @@ ORDER BY attnum";
                 IsKey = reader.GetBoolean(reader.GetOrdinal("isprimarykey")),
                 IsReadOnly = !reader.GetBoolean(reader.GetOrdinal("is_updatable")),
                 IsUnique = reader.GetBoolean(reader.GetOrdinal("isunique")),
-                DataTypeName = reader.GetString(reader.GetOrdinal("typname")),
 
                 TableOID = reader.GetFieldValue<uint>(reader.GetOrdinal("attrelid")),
                 TypeOID = reader.GetFieldValue<uint>(reader.GetOrdinal("typoid"))
             };
 
             column.PostgresType = databaseInfo.ByOID[column.TypeOID];
+            column.DataTypeName = column.PostgresType.DisplayName; // Facets do not get included
 
             var defaultValueOrdinal = reader.GetOrdinal("default");
             column.DefaultValue = reader.IsDBNull(defaultValueOrdinal) ? null : reader.GetString(defaultValueOrdinal);
@@ -227,11 +228,11 @@ ORDER BY attnum";
         {
             var typeMapper = _connection.Connector.TypeMapper;
 
-            if (typeMapper.Mappings.TryGetValue(column.DataTypeName, out var mapping))
+            if (typeMapper.Mappings.TryGetValue(column.PostgresType.Name, out var mapping))
                 column.NpgsqlDbType = mapping.NpgsqlDbType;
             else if (
-                column.DataTypeName.Contains(".") &&
-                typeMapper.Mappings.TryGetValue(column.DataTypeName.Split('.')[1], out mapping)
+                column.PostgresType.Name.Contains(".") &&
+                typeMapper.Mappings.TryGetValue(column.PostgresType.Name.Split('.')[1], out mapping)
             ) {
                 column.NpgsqlDbType = mapping.NpgsqlDbType;
             }
@@ -248,27 +249,13 @@ ORDER BY attnum";
                     column.UdtAssemblyQualifiedName = column.DataType.AssemblyQualifiedName;
             }
 
-            if (typeModifier == -1)
-                return;
-
-            // If the column's type is a domain, use its base data type to interpret the typmod
-            var dataTypeName = column.PostgresType is PostgresDomainType
-                ? ((PostgresDomainType)column.PostgresType).BaseType.Name
-                : column.DataTypeName;
-            switch (dataTypeName)
-            {
-            case "bpchar":
-            case "char":
-            case "varchar":
-                column.ColumnSize = typeModifier - 4;
-                break;
-            case "numeric":
-            case "decimal":
-                // See http://stackoverflow.com/questions/3350148/where-are-numeric-precision-and-scale-for-a-field-found-in-the-pg-catalog-tables
-                column.NumericPrecision = ((typeModifier - 4) >> 16) & 65535;
-                column.NumericScale = (typeModifier - 4) & 65535;
-                break;
-            }
+            var facets = column.PostgresType.GetFacets(typeModifier);
+            if (facets.Size != null)
+                column.ColumnSize = facets.Size;
+            if (facets.Precision != null)
+                column.NumericPrecision = facets.Precision;
+            if (facets.Scale != null)
+                column.NumericScale = facets.Scale;
         }
     }
 }

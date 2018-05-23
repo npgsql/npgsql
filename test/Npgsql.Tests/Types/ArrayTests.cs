@@ -60,7 +60,7 @@ namespace Npgsql.Tests.Types
                     using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
-                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("_int4"));
+                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("integer[]"));
                     }
                 }
 
@@ -72,7 +72,7 @@ namespace Npgsql.Tests.Types
                     using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
-                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("_int4"));
+                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("integer[]"));
                     }
                 }
 
@@ -82,7 +82,7 @@ namespace Npgsql.Tests.Types
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
-                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("_int4"));
+                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("integer[]"));
                 }
             }
         }
@@ -412,7 +412,7 @@ namespace Npgsql.Tests.Types
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
-                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("_int4"));
+                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("integer[]"));
                     Assert.That(reader[0], Is.EqualTo(value.ToArray()));
                 }
             }

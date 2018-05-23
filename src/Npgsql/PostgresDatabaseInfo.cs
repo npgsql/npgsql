@@ -160,17 +160,17 @@ ORDER BY oid, enumsortorder;" : "")}
                         timeout.Check();
 
                         var ns = reader.GetString(reader.GetOrdinal("nspname"));
-                        var name = reader.GetString(reader.GetOrdinal("typname"));
+                        var internalName = reader.GetString(reader.GetOrdinal("typname"));
                         var oid = Convert.ToUInt32(reader[reader.GetOrdinal("oid")]);
 
-                        Debug.Assert(name != null);
+                        Debug.Assert(internalName != null);
                         Debug.Assert(oid != 0);
 
                         var typeChar = reader.GetString(reader.GetOrdinal("type"))[0];
                         switch (typeChar)
                         {
                         case 'b':  // Normal base type
-                            var baseType = new PostgresBaseType(ns, name, oid);
+                            var baseType = new PostgresBaseType(ns, internalName, oid);
                             byOID[baseType.OID] = baseType;
                             continue;
 
@@ -180,11 +180,11 @@ ORDER BY oid, enumsortorder;" : "")}
                             Debug.Assert(elementOID > 0);
                             if (!byOID.TryGetValue(elementOID, out var elementPostgresType))
                             {
-                                Log.Trace($"Array type '{name}' refers to unknown element with OID {elementOID}, skipping", conn.ProcessID);
+                                Log.Trace($"Array type '{internalName}' refers to unknown element with OID {elementOID}, skipping", conn.ProcessID);
                                 continue;
                             }
 
-                            var arrayType = new PostgresArrayType(ns, name, oid, elementPostgresType);
+                            var arrayType = new PostgresArrayType(ns, internalName, oid, elementPostgresType);
                             byOID[arrayType.OID] = arrayType;
                             continue;
                         }
@@ -195,23 +195,23 @@ ORDER BY oid, enumsortorder;" : "")}
                             Debug.Assert(elementOID > 0);
                             if (!byOID.TryGetValue(elementOID, out var subtypePostgresType))
                             {
-                                Log.Trace($"Range type '{name}' refers to unknown subtype with OID {elementOID}, skipping", conn.ProcessID);
+                                Log.Trace($"Range type '{internalName}' refers to unknown subtype with OID {elementOID}, skipping", conn.ProcessID);
                                 continue;
                             }
 
-                            var rangeType = new PostgresRangeType(ns, name, oid, subtypePostgresType);
+                            var rangeType = new PostgresRangeType(ns, internalName, oid, subtypePostgresType);
                             byOID[rangeType.OID] = rangeType;
                             continue;
                         }
 
                         case 'e':   // Enum
-                            var enumType = new PostgresEnumType(ns, name, oid);
+                            var enumType = new PostgresEnumType(ns, internalName, oid);
                             byOID[enumType.OID] = enumType;
                             continue;
 
                         case 'c':   // Composite
                             // Unlike other types, we don't
-                            var compositeType = new PostgresCompositeType(ns, name, oid);
+                            var compositeType = new PostgresCompositeType(ns, internalName, oid);
                             byOID[compositeType.OID] = compositeType;
                             continue;
 
@@ -220,10 +220,10 @@ ORDER BY oid, enumsortorder;" : "")}
                             Debug.Assert(baseTypeOID > 0);
                             if (!byOID.TryGetValue(baseTypeOID, out var basePostgresType))
                             {
-                                Log.Trace($"Domain type '{name}' refers to unknown base type with OID {baseTypeOID}, skipping", conn.ProcessID);
+                                Log.Trace($"Domain type '{internalName}' refers to unknown base type with OID {baseTypeOID}, skipping", conn.ProcessID);
                                 continue;
                             }
-                            var domainType = new PostgresDomainType(ns, name, oid, basePostgresType);
+                            var domainType = new PostgresDomainType(ns, internalName, oid, basePostgresType);
                             byOID[domainType.OID] = domainType;
                             continue;
 
@@ -232,7 +232,7 @@ ORDER BY oid, enumsortorder;" : "")}
                             goto case 'b';
 
                         default:
-                            throw new ArgumentOutOfRangeException($"Unknown typtype for type '{name}' in pg_type: {typeChar}");
+                            throw new ArgumentOutOfRangeException($"Unknown typtype for type '{internalName}' in pg_type: {typeChar}");
                         }
                     }
 

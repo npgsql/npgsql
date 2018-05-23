@@ -36,7 +36,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-numeric.html
     /// </remarks>
-    [TypeMapping("int4", NpgsqlDbType.Integer, DbType.Int32, typeof(int))]
+    [TypeMapping("integer", NpgsqlDbType.Integer, DbType.Int32, typeof(int))]
     class Int32Handler : NpgsqlSimpleTypeHandler<int>,
         INpgsqlSimpleTypeHandler<byte>, INpgsqlSimpleTypeHandler<short>, INpgsqlSimpleTypeHandler<long>,
         INpgsqlSimpleTypeHandler<float>, INpgsqlSimpleTypeHandler<double>, INpgsqlSimpleTypeHandler<decimal>,

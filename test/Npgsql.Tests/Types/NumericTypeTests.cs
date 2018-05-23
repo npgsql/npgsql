@@ -80,7 +80,7 @@ namespace Npgsql.Tests.Types
                         Assert.That(reader.GetValue(i), Is.EqualTo(8));
                         Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(8));
                         Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(short)));
-                        Assert.That(reader.GetDataTypeName(i), Is.EqualTo("int2"));
+                        Assert.That(reader.GetDataTypeName(i), Is.EqualTo("smallint"));
                     }
                 }
             }
@@ -117,7 +117,7 @@ namespace Npgsql.Tests.Types
                         Assert.That(reader.GetValue(i),                 Is.EqualTo(8));
                         Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(8));
                         Assert.That(reader.GetFieldType(i),             Is.EqualTo(typeof(int)));
-                        Assert.That(reader.GetDataTypeName(i),          Is.EqualTo("int4"));
+                        Assert.That(reader.GetDataTypeName(i),          Is.EqualTo("integer"));
                     }
                 }
             }
@@ -173,7 +173,7 @@ namespace Npgsql.Tests.Types
                         Assert.That(reader.GetValue(i),                 Is.EqualTo(8));
                         Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(8));
                         Assert.That(reader.GetFieldType(i),             Is.EqualTo(typeof(long)));
-                        Assert.That(reader.GetDataTypeName(i),          Is.EqualTo("int8"));
+                        Assert.That(reader.GetDataTypeName(i),          Is.EqualTo("bigint"));
                     }
                 }
             }

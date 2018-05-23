@@ -52,7 +52,7 @@ namespace Npgsql
                 }.Build())
                 .AddMapping(new NpgsqlTypeMappingBuilder
                 {
-                    PgTypeName = "timestamptz",
+                    PgTypeName = "timestamp with time zone",
                     NpgsqlDbType = NpgsqlDbType.TimestampTz,
                     ClrTypes = new[] { typeof(ZonedDateTime), typeof(OffsetDateTime) },
                     TypeHandlerFactory = new TimestampTzHandlerFactory()
@@ -75,7 +75,7 @@ namespace Npgsql
                 }.Build())
                 .AddMapping(new NpgsqlTypeMappingBuilder
                 {
-                    PgTypeName = "timetz",
+                    PgTypeName = "time with time zone",
                     NpgsqlDbType = NpgsqlDbType.TimeTz,
                     ClrTypes = new[] { typeof(OffsetTime) },
                     TypeHandlerFactory = new TimeTzHandlerFactory()
