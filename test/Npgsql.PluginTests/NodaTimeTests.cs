@@ -370,7 +370,7 @@ namespace Npgsql.PluginTests
         {
             var conn = new NpgsqlConnection(connectionString ?? ConnectionString);
             conn.Open();
-            conn.TypeMapper.UseNodatime();
+            conn.TypeMapper.UseNodaTime();
             return conn;
         }
 
