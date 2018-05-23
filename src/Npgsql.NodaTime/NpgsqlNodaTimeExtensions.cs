@@ -33,13 +33,13 @@ namespace Npgsql
     /// <summary>
     /// Extension adding the NodaTime plugin to an Npgsql type mapper.
     /// </summary>
-    public static class NpgsqlNodatimeExtensions
+    public static class NpgsqlNodaTimeExtensions
     {
         /// <summary>
         /// Sets up NodaTime mappings for the PostgreSQL date/time types.
         /// </summary>
         /// <param name="mapper">The type mapper to set up (global or connection-specific)</param>
-        public static INpgsqlTypeMapper UseNodatime(this INpgsqlTypeMapper mapper)
+        public static INpgsqlTypeMapper UseNodaTime(this INpgsqlTypeMapper mapper)
             => mapper
                 .AddMapping(new NpgsqlTypeMappingBuilder
                 {
