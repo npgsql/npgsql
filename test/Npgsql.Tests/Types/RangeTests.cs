@@ -180,6 +180,36 @@ namespace Npgsql.Tests.Types
             Assert.IsFalse(r3 == r4);
         }
 
+        [Test]
+        public void RangeHashCode_ValueTypes()
+        {
+            NpgsqlRange<int> a = default;
+            NpgsqlRange<int> b = NpgsqlRange<int>.Empty;
+            NpgsqlRange<int> c = NpgsqlRange<int>.Parse("(,)");
+
+            Assert.IsFalse(a.Equals(b));
+            Assert.IsFalse(a.Equals(c));
+            Assert.IsFalse(b.Equals(c));
+            Assert.AreNotEqual(a.GetHashCode(), b.GetHashCode());
+            Assert.AreNotEqual(a.GetHashCode(), c.GetHashCode());
+            Assert.AreNotEqual(b.GetHashCode(), c.GetHashCode());
+        }
+
+        [Test]
+        public void RangeHashCode_ReferenceTypes()
+        {
+            NpgsqlRange<string> a= default;
+            NpgsqlRange<string> b = NpgsqlRange<string>.Empty;
+            NpgsqlRange<string> c = NpgsqlRange<string>.Parse("(,)");
+
+            Assert.IsFalse(a.Equals(b));
+            Assert.IsFalse(a.Equals(c));
+            Assert.IsFalse(b.Equals(c));
+            Assert.AreNotEqual(a.GetHashCode(), b.GetHashCode());
+            Assert.AreNotEqual(a.GetHashCode(), c.GetHashCode());
+            Assert.AreNotEqual(b.GetHashCode(), c.GetHashCode());
+        }
+
         [OneTimeSetUp]
         public void OneTimeSetUp()
         {

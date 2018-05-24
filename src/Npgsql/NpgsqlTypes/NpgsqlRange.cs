@@ -114,11 +114,6 @@ namespace NpgsqlTypes
         static readonly bool HasEquatableBounds = typeof(IEquatable<T>).IsAssignableFrom(typeof(T));
 
         /// <summary>
-        /// True if <typeparamref name="T"/> is a <see cref="ValueType"/>; otherwise, false.
-        /// </summary>
-        static readonly bool HasValueTypeBounds = typeof(T).IsValueType;
-
-        /// <summary>
         /// Represents the empty range. This field is read-only.
         /// </summary>
         public static readonly NpgsqlRange<T> Empty = new NpgsqlRange<T>(default, default, RangeFlags.Empty);
@@ -258,57 +253,16 @@ namespace NpgsqlTypes
             if ((flags & RangeFlags.Inclusive) == RangeFlags.Inclusive)
                 return false;
 
-            return
-                HasValueTypeBounds
-                    ? IsEmptyValueTypeRange(lowerBound, upperBound)
-                    : IsEmptyReferenceRange(lowerBound, upperBound);
-        }
-
-        /// <summary>
-        /// Attempts to determine if the range is malformed or implicitly empty. For <see cref="ValueType"/> ranges only.
-        /// </summary>
-        /// <param name="lowerBound">The lower bound of the range.</param>
-        /// <param name="upperBound">The upper bound of the range.</param>
-        /// <returns>
-        /// True if the range is implicitly empty; otherwise, false.
-        /// </returns>
-        static bool IsEmptyValueTypeRange([NotNull] T lowerBound, [NotNull] T upperBound)
-        {
-            if (!HasValueTypeBounds)
-                throw new Exception("This exception should never be thrown.");
-
             if (!HasEquatableBounds)
-                return lowerBound.Equals(upperBound);
+                return lowerBound?.Equals(upperBound) ?? false;
 
             IEquatable<T> lower = (IEquatable<T>)lowerBound;
             IEquatable<T> upper = (IEquatable<T>)upperBound;
 
             return
-                !lower.Equals(default) &&
-                !upper.Equals(default) &&
+                !(lower?.Equals(default) ?? true) &&
+                !(upper?.Equals(default) ?? true) &&
                 lower.Equals(upperBound);
-        }
-
-        /// <summary>
-        /// Attempts to determine if the range is malformed or implicitly empty. For reference type ranges only.
-        /// </summary>
-        /// <param name="lowerBound">The lower bound of the range.</param>
-        /// <param name="upperBound">The upper bound of the range.</param>
-        /// <returns>
-        /// True if the range is implicitly empty; otherwise, false.
-        /// </returns>
-        static bool IsEmptyReferenceRange([CanBeNull] T lowerBound, [CanBeNull] T upperBound)
-        {
-            if (HasValueTypeBounds)
-                throw new Exception("This exception should never be thrown.");
-
-            if (lowerBound == null || upperBound == null)
-                return false;
-
-            return
-                HasEquatableBounds
-                    ? ((IEquatable<T>)lowerBound).Equals(upperBound)
-                    : lowerBound.Equals(upperBound);
         }
 
         /// <summary>
@@ -375,16 +329,6 @@ namespace NpgsqlTypes
             if (Flags != other.Flags)
                 return false;
 
-            if (HasValueTypeBounds && HasEquatableBounds)
-                return
-                    ((IEquatable<T>)LowerBound).Equals(other.LowerBound) &&
-                    ((IEquatable<T>)UpperBound).Equals(other.UpperBound);
-
-            if (HasValueTypeBounds)
-                return
-                    LowerBound.Equals(other.LowerBound) &&
-                    UpperBound.Equals(other.UpperBound);
-
             if (HasEquatableBounds)
                 return
                     (((IEquatable<T>)LowerBound)?.Equals(other.LowerBound) ?? other.LowerBound == null) &&
@@ -397,7 +341,7 @@ namespace NpgsqlTypes
 
         /// <inheritdoc />
         public override int GetHashCode()
-            => IsEmpty ? 0 : unchecked((397 * (int)Flags) ^ (397 * LowerBound?.GetHashCode() ?? 0) ^ (397 * UpperBound?.GetHashCode() ?? 0));
+            => unchecked((397 * (int)Flags) ^ (397 * LowerBound?.GetHashCode() ?? 0) ^ (397 * UpperBound?.GetHashCode() ?? 0));
 
         /// <inheritdoc />
         public override string ToString()
