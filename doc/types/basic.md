@@ -61,7 +61,7 @@ name				| string			|				| char[]
 geometry (PostGIS)		| PostgisGeometry		|				|
 record				| object[]			|				|
 composite types			| T				|				|
-range subtypes			| NpgsqlRange<TElement>		|				|
+range subtypes			| NpgsqlRange\<TElement>		|				|
 enum types			| TEnum				|				|
 array types			| Array	(of child element type)	|				|
 
@@ -121,7 +121,7 @@ Timestamp	| DateTime, DateTime2	| timestamp			| DateTime, DateTimeOffset, Npgsql
 TimestampTz	| DateTimeOffset	| timestamp with time zone	| DateTime, DateTimeOffset, NpgsqlDateTime, IConvertible
 Time		| Time			| time				| TimeSpan, string
 TimeTz		|			| time with time zone		| DateTimeOffset, DateTime, TimeSpan
-Bytea		| Binary		| bytea				| byte[], ArraySegment<byte>
+Bytea		| Binary		| bytea				| byte[], ArraySegment\<byte>
 Oid		|			| oid				| uint, IConvertible
 Xid		|			| xid				| uint, IConvertible
 Cid		|			| cid				| uint, IConvertible
@@ -129,9 +129,9 @@ Oidvector	|			| oidvector			| uint[]
 Name		|			| name				| string, char[], char, IConvertible
 InternalChar	|			| (internal) char		| byte, IConvertible
 Composite	|			| composite types		| T
-Range \| (other NpgsqlDbType) |		| range types			| NpgsqlRange<TElement>
+Range \| (other NpgsqlDbType) |		| range types			| NpgsqlRange\<TElement>
 Enum		|			| enum types			| TEnum
-Array \| (other NpgsqlDbType) | 	| array types			| Array, IList<T>, IList
+Array \| (other NpgsqlDbType) | 	| array types			| Array, IList\<T>, IList
 
 Notes when using Range and Array, bitwise-or NpgsqlDbType.Range or NpgsqlDbType.Array with the child type. For example, to construct the NpgsqlDbType for a `int4range`, write `NpgsqlDbType.Range | NpgsqlDbType.Integer`. To construct the NpgsqlDbType for an `int[]`, write `NpgsqlDbType.Array | NpgsqlDbType.Integer`.
 
@@ -172,6 +172,6 @@ For information about enums, [see the Enums and Composites page](enums_and_compo
 | TimeSpan					| time
 | byte[]					| bytea
 | Custom composite type				| composite types
-| NpgsqlRange<TElement>				| range types
+| NpgsqlRange\<TElement>			| range types
 | Enum types					| enum types
 | Array types					| array types
