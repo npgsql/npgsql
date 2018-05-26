@@ -38,7 +38,7 @@ box				| NpgsqlBox			|				| string
 bit(1)				| bool				|				| BitArray
 bit(n)				| BitArray			|				|
 bit varying			| BitArray			|				|
-hstore				| IDictionary<string, string>	|				| string
+hstore				| IDictionary<string, string>	|				|
 uuid				| Guid				|				| string
 cidr				| NpgsqlInet			|				| string
 inet				| IPAddress			| NpgsqlInet			| string
