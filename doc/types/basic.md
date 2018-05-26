@@ -40,8 +40,8 @@ bit(n)				| BitArray			|				|
 bit varying			| BitArray			|				|
 hstore				| IDictionary<string, string>	|				|
 uuid				| Guid				|				| string
-cidr				| NpgsqlInet			|				| string
-inet				| IPAddress			| NpgsqlInet			| string
+cidr				| ValueTuple<IPAddress, int>	|				| NpgsqlInet, string
+inet				| IPAddress			| ValueTuple<IPAddress, int>	| NpgsqlInet, string
 macaddr				| PhysicalAddress		|				| string
 tsquery				| NpgsqlTsQuery			|				|
 tsvector			| NpgsqlTsVector		|				|
@@ -61,7 +61,7 @@ name				| string			|				| char[]
 geometry (PostGIS)		| PostgisGeometry		|				|
 record				| object[]			|				|
 composite types			| T				|				|
-range subtypes			| NpgsqlRange\<TElement>		|				|
+range subtypes			| NpgsqlRange\<TElement>	|				|
 enum types			| TEnum				|				|
 array types			| Array	(of child element type)	|				|
 
@@ -110,8 +110,8 @@ Bit		|			| bit				| BitArray, bool, string
 Varbit		|			| bit varying			| BitArray, bool, string
 Hstore		|			| hstore			| IDictionary<string, string>
 Uuid		|			| uuid				| Guid, string
-Cidr		|			| cidr				| IPAddress, NpgsqlInet
-Inet		|			| inet				| IPAddress, NpgsqlInet
+Cidr		|			| cidr				| ValueTuple<IPAddress, int>, IPAddress, NpgsqlInet
+Inet		|			| inet				| ValueTuple<IPAddress, int>, IPAddress, NpgsqlInet
 MacAddr		|			| macaddr			| PhysicalAddress
 TsQuery		|			| tsquery			| NpgsqlTsQuery
 TsVector	|			| tsvector			| NpgsqlTsVector
