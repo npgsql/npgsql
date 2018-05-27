@@ -98,8 +98,8 @@ ORDER BY attnum";
 
         internal ReadOnlyCollection<NpgsqlDbColumn> GetColumnSchema()
         {
-            var fields = _rowDescription.Fields;
-            if (fields.Count == 0)
+            var fields = _rowDescription?.Fields;
+            if ((fields?.Count ?? 0) == 0)
                 return new List<NpgsqlDbColumn>().AsReadOnly();
 
             var result = new List<NpgsqlDbColumn>(fields.Count);

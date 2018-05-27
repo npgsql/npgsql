@@ -693,6 +693,18 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1950")]
+        public void NoResultset()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("COMMIT", conn))
+            using (var reader = cmd.ExecuteReader())
+            {
+                reader.Read();
+                reader.GetColumnSchema();
+            }
+        }
+
         #region Not supported
 
         [Test]
