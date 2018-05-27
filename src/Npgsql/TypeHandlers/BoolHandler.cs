@@ -25,6 +25,8 @@ using System;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
@@ -35,15 +37,44 @@ namespace Npgsql.TypeHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-boolean.html
     /// </remarks>
     [TypeMapping("boolean", NpgsqlDbType.Boolean, DbType.Boolean, typeof(bool))]
-    class BoolHandler : NpgsqlSimpleTypeHandler<bool>
+    class BoolHandler : NpgsqlSimpleTypeHandler<bool>, INpgsqlSimpleTypeHandler<IConvertible>
     {
+        const int BoolLength = 1;
+
         public override bool Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+            => ReadBool(buf);
+
+        IConvertible INpgsqlSimpleTypeHandler<IConvertible>.Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription)
+            => ReadBool(buf);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        static bool ReadBool(NpgsqlReadBuffer buf)
             => buf.ReadByte() != 0;
 
         public override int ValidateAndGetLength(bool value, NpgsqlParameter parameter)
-            => 1;
+            => BoolLength;
+
+        public int ValidateAndGetLength(IConvertible value, NpgsqlParameter parameter)
+        {
+            var converted = Convert.ToBoolean(value);
+            if (parameter == null)
+                throw CreateConversionButNoParamException(value.GetType());
+            parameter.ConvertedValue = converted;
+            return BoolLength;
+        }
 
         public override void Write(bool value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => WriteBool(buf, value);
+
+        public void Write(IConvertible value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        {
+            Debug.Assert(parameter != null);
+            WriteBool(buf, (bool)parameter.ConvertedValue);
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        static void WriteBool(NpgsqlWriteBuffer buf, bool value)
             => buf.WriteByte(value ? (byte)1 : (byte)0);
+
     }
 }

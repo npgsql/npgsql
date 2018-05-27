@@ -26,6 +26,7 @@ using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
@@ -40,7 +41,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     class Int64Handler : NpgsqlSimpleTypeHandler<long>,
         INpgsqlSimpleTypeHandler<byte>, INpgsqlSimpleTypeHandler<short>, INpgsqlSimpleTypeHandler<int>,
         INpgsqlSimpleTypeHandler<float>, INpgsqlSimpleTypeHandler<double>, INpgsqlSimpleTypeHandler<decimal>,
-        INpgsqlSimpleTypeHandler<string>
+        INpgsqlSimpleTypeHandler<string>, INpgsqlSimpleTypeHandler<IConvertible>
     {
         #region Read
 
@@ -68,6 +69,9 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         string INpgsqlSimpleTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => Read(buf, len, fieldDescription).ToString();
 
+        IConvertible INpgsqlSimpleTypeHandler<IConvertible>.Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription)
+            => buf.ReadInt64();
+        
         #endregion Read
 
         #region Write
@@ -81,6 +85,9 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         public int ValidateAndGetLength(byte value, NpgsqlParameter parameter)          => 8;
 
         public int ValidateAndGetLength(string value, NpgsqlParameter parameter)
+            => ValidateAndGetLength((IConvertible)value, parameter);
+
+        public int ValidateAndGetLength(IConvertible value, NpgsqlParameter parameter)
         {
             var converted = Convert.ToInt64(value);
             if (parameter == null)
@@ -104,6 +111,12 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         public void Write(decimal value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
             => buf.WriteInt64((long)value);
         public void Write(string value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => WriteConvertedValue(buf, parameter);
+        public void Write(IConvertible value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => WriteConvertedValue(buf, parameter);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        static void WriteConvertedValue(NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
             Debug.Assert(parameter != null);
             buf.WriteInt64((long)parameter.ConvertedValue);
