@@ -84,21 +84,21 @@ Note that for `DateTime` and `NpgsqlDateTime`, the `Kind` attribute determines w
 
 NpgsqlDbType	| DbType		| PostgreSQL type		| Accepted .NET types
 ----------------|-----------------------|-------------------------------|--------------------
-Boolean		| Boolean		| boolean			| bool, IConvertible
-Smallint	| Int16			| smallint			| short, IConvertible
-Integer		| Int32			| integer			| int, IConvertible
-Bigint		| Int64			| bigint			| long, IConvertible
-Real		| Single		| real				| float, IConvertible
-Double		| Double		| double precision		| double, IConvertible
-Numeric		| Decimal, VarNumeric	| numeric			| decimal, IConvertible
-Money		| Currency		| money				| decimal, IConvertible
-Text		| String, StringFixedLength, AnsiString, AnsiStringFixedLength	| text	| string, char[], char, IConvertible
-Varchar		| 			| character varying		| string, char[], char, IConvertible
-Char		|			| character			| string, char[], char, IConvertible
-Citext		|			| citext			| string, char[], char, IConvertible
-Json		|			| json				| string, char[], char, IConvertible
-Jsonb		|			| jsonb				| string, char[], char, IConvertible
-Xml		|			| xml				| string, char[], char, IConvertible
+Boolean		| Boolean		| boolean			| bool
+Smallint	| Int16			| smallint			| short
+Integer		| Int32			| integer			| int
+Bigint		| Int64			| bigint			| long
+Real		| Single		| real				| float
+Double		| Double		| double precision		| double
+Numeric		| Decimal, VarNumeric	| numeric			| decimal
+Money		| Currency		| money				| decimal
+Text		| String, StringFixedLength, AnsiString, AnsiStringFixedLength	| text	| string, char[], char
+Varchar		| 			| character varying		| string, char[], char
+Char		|			| character			| string, char[], char
+Citext		|			| citext			| string, char[], char
+Json		|			| json				| string, char[], char
+Jsonb		|			| jsonb				| string, char[], char
+Xml		|			| xml				| string, char[], char
 Point		|			| point				| NpgsqlPoint
 LSeg		|			| lseg				| NpgsqlLSeg
 Path		|			| path				| NpgsqlPath
@@ -115,19 +115,19 @@ Inet		|			| inet				| ValueTuple<IPAddress, int>, IPAddress, NpgsqlInet
 MacAddr		|			| macaddr			| PhysicalAddress
 TsQuery		|			| tsquery			| NpgsqlTsQuery
 TsVector	|			| tsvector			| NpgsqlTsVector
-Date		| Date			| date				| DateTime, NpgsqlDate, IConvertible
+Date		| Date			| date				| DateTime, NpgsqlDate
 Interval	|			| interval			| TimeSpan, NpgsqlTimeSpan, string
-Timestamp	| DateTime, DateTime2	| timestamp			| DateTime, DateTimeOffset, NpgsqlDateTime, IConvertible
-TimestampTz	| DateTimeOffset	| timestamp with time zone	| DateTime, DateTimeOffset, NpgsqlDateTime, IConvertible
+Timestamp	| DateTime, DateTime2	| timestamp			| DateTime, DateTimeOffset, NpgsqlDateTime
+TimestampTz	| DateTimeOffset	| timestamp with time zone	| DateTime, DateTimeOffset, NpgsqlDateTime
 Time		| Time			| time				| TimeSpan, string
 TimeTz		|			| time with time zone		| DateTimeOffset, DateTime, TimeSpan
 Bytea		| Binary		| bytea				| byte[], ArraySegment\<byte>
-Oid		|			| oid				| uint, IConvertible
-Xid		|			| xid				| uint, IConvertible
-Cid		|			| cid				| uint, IConvertible
+Oid		|			| oid				| uint
+Xid		|			| xid				| uint
+Cid		|			| cid				| uint
 Oidvector	|			| oidvector			| uint[]
-Name		|			| name				| string, char[], char, IConvertible
-InternalChar	|			| (internal) char		| byte, IConvertible
+Name		|			| name				| string, char[], char
+InternalChar	|			| (internal) char		| byte
 Composite	|			| composite types		| T
 Range \| (other NpgsqlDbType) |		| range types			| NpgsqlRange\<TElement>
 Enum		|			| enum types			| TEnum
