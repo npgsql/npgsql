@@ -281,9 +281,15 @@ namespace Npgsql.TypeHandling
                 ifElseExpression = Expression.IfThenElse(
                     // Test whether the type of the value given to the delegate corresponds
                     // to our current interface's handled type (i.e. the T in INpgsqlTypeHandler<T>)
-                    Expression.TypeEqual(valueParam, handledType),
-                    // If it corresponds, cast the handler type (this) to INpgsqlTypeHandler<T>
-                    // and call its ValidateAndGetLength method
+                    // or, if our current interfaces' handled type is IConvertible, if it is assignable
+                    // from the values' type
+                    typeof(IConvertible) == handledType
+                        ? (Expression)Expression.Call(
+                            Expression.Constant(typeof(IConvertible), typeof(Type)),
+                            typeof(Type).GetMethod("IsAssignableFrom"),
+                            Expression.Call(valueParam, typeof(object).GetMethod(nameof(GetType))))
+                        : Expression.TypeEqual(valueParam, handledType),
+                    // If this is the case, cast the handler type (this) to INpgsqlTypeHandler<T>                    // and call its ValidateAndGetLength method
                     Expression.Assign(
                         resultVariable,
                         Expression.Call(

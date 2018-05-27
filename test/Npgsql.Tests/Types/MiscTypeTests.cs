@@ -739,5 +739,71 @@ namespace Npgsql.Tests.Types
                 Assert.AreEqual(query.ToString(), output.ToString());
             }
         }
+
+        #region IConvertible tests
+
+        class NpgsqlTestConvertible : IConvertible
+        {
+            readonly IConvertible _value;
+
+            public NpgsqlTestConvertible(IConvertible value) => _value = value;
+
+            public TypeCode GetTypeCode() => TypeCode.Object;
+
+            public bool ToBoolean(IFormatProvider provider) => Convert.ToBoolean(_value, provider);
+
+            public byte ToByte(IFormatProvider provider) => Convert.ToByte(_value, provider);
+
+            public char ToChar(IFormatProvider provider) => Convert.ToChar(_value, provider);
+
+            public DateTime ToDateTime(IFormatProvider provider) => Convert.ToDateTime(_value, provider);
+
+            public decimal ToDecimal(IFormatProvider provider) => Convert.ToDecimal(_value, provider);
+
+            public double ToDouble(IFormatProvider provider) => Convert.ToDouble(_value, provider);
+
+            public short ToInt16(IFormatProvider provider) => Convert.ToInt16(_value, provider);
+
+            public int ToInt32(IFormatProvider provider) => Convert.ToInt32(_value, provider);
+
+            public long ToInt64(IFormatProvider provider) => Convert.ToInt64(_value, provider);
+
+            public sbyte ToSByte(IFormatProvider provider) => Convert.ToSByte(_value, provider);
+
+            public float ToSingle(IFormatProvider provider) => Convert.ToSingle(_value, provider);
+
+            public string ToString(IFormatProvider provider) => Convert.ToString(_value, provider);
+
+            public object ToType(Type conversionType, IFormatProvider provider) =>
+                Convert.ChangeType(_value, conversionType, provider);
+
+            public ushort ToUInt16(IFormatProvider provider) => Convert.ToUInt16(_value, provider);
+
+            public uint ToUInt32(IFormatProvider provider) => Convert.ToUInt32(_value, provider);
+
+            public ulong ToUInt64(IFormatProvider provider) => Convert.ToUInt64(_value, provider);
+        }
+
+        [TestCase(true, NpgsqlDbType.Boolean)]
+        [TestCase(123L, NpgsqlDbType.Bigint)]
+        public void RoundTripIConvertible<T>(T value, NpgsqlDbType npgsqlDbType)
+            where T : IConvertible
+        {
+            var testValue = new NpgsqlTestConvertible(value);
+
+            using (var conn = OpenConnection(ConnectionString))
+            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+            {
+                cmd.Parameters.AddWithValue("p", npgsqlDbType, testValue);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetFieldValue<IConvertible>(0), Is.EqualTo(value));
+                }
+            }
+        }
+
+        #endregion
+
     }
 }
