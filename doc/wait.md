@@ -31,7 +31,7 @@ var conn = new NpgsqlConnection(ConnectionString);
 conn.Open();
 conn.Notification += (o, e) => Console.WriteLine("Received notification");
 
-using (NpgsqlCommand cmd = new NpgsqlCommand("listen channel_name", conn)) {
+using (var cmd = new NpgsqlCommand("LISTEN channel_name", conn)) {
   cmd.ExecuteNonQuery();
 }
 
