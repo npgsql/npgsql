@@ -709,6 +709,7 @@ namespace Npgsql.Tests
             Assert.AreEqual(param.Direction, newParam.Direction);
             Assert.AreEqual(param.IsNullable, newParam.IsNullable);
             Assert.AreEqual(param.ParameterName, newParam.ParameterName);
+            Assert.AreEqual(param.TrimmedName, newParam.TrimmedName);
             Assert.AreEqual(param.SourceColumn, newParam.SourceColumn);
             Assert.AreEqual(param.SourceVersion, newParam.SourceVersion);
             Assert.AreEqual(param.NpgsqlValue, newParam.NpgsqlValue);

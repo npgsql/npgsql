@@ -597,6 +597,7 @@ namespace Npgsql
                 Direction = Direction,
                 IsNullable = IsNullable,
                 _name = _name,
+                TrimmedName = TrimmedName,
                 SourceColumn = SourceColumn,
                 SourceVersion = SourceVersion,
                 _value = _value,
