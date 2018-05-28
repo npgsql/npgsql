@@ -28,21 +28,21 @@ citext				| string			|				| char[]
 json				| string			|				| char[]
 jsonb				| string			|				| char[]
 xml				| string			|				| char[]
-point				| NpgsqlPoint			|				| string
-lseg				| NpgsqlLSeg			|				| string
+point				| NpgsqlPoint			|				|
+lseg				| NpgsqlLSeg			|				|
 path				| NpgsqlPath			|				|
 polygon				| NpgsqlPolygon			|				|
-line				| NpgsqlLine			|				| string
-circle				| NpgsqlCircle			|				| string
-box				| NpgsqlBox			|				| string
+line				| NpgsqlLine			|				|
+circle				| NpgsqlCircle			|				|
+box				| NpgsqlBox			|				|
 bit(1)				| bool				|				| BitArray
 bit(n)				| BitArray			|				|
 bit varying			| BitArray			|				|
 hstore				| IDictionary<string, string>	|				|
-uuid				| Guid				|				| string
-cidr				| ValueTuple<IPAddress, int>	|				| NpgsqlInet, string
-inet				| IPAddress			| ValueTuple<IPAddress, int>	| NpgsqlInet, string
-macaddr				| PhysicalAddress		|				| string
+uuid				| Guid				|				|
+cidr				| ValueTuple<IPAddress, int>	|				| NpgsqlInet
+inet				| IPAddress			| ValueTuple<IPAddress, int>	| NpgsqlInet
+macaddr				| PhysicalAddress		|				|
 tsquery				| NpgsqlTsQuery			|				|
 tsvector			| NpgsqlTsVector		|				|
 date				| DateTime			| NpgsqlDate			|
@@ -109,17 +109,17 @@ Box		|			| box				| NpgsqlBox
 Bit		|			| bit				| BitArray, bool, string
 Varbit		|			| bit varying			| BitArray, bool, string
 Hstore		|			| hstore			| IDictionary<string, string>
-Uuid		|			| uuid				| Guid, string
+Uuid		|			| uuid				| Guid
 Cidr		|			| cidr				| ValueTuple<IPAddress, int>, IPAddress, NpgsqlInet
 Inet		|			| inet				| ValueTuple<IPAddress, int>, IPAddress, NpgsqlInet
 MacAddr		|			| macaddr			| PhysicalAddress
 TsQuery		|			| tsquery			| NpgsqlTsQuery
 TsVector	|			| tsvector			| NpgsqlTsVector
 Date		| Date			| date				| DateTime, NpgsqlDate
-Interval	|			| interval			| TimeSpan, NpgsqlTimeSpan, string
+Interval	|			| interval			| TimeSpan, NpgsqlTimeSpan
 Timestamp	| DateTime, DateTime2	| timestamp			| DateTime, DateTimeOffset, NpgsqlDateTime
 TimestampTz	| DateTimeOffset	| timestamp with time zone	| DateTime, DateTimeOffset, NpgsqlDateTime
-Time		| Time			| time				| TimeSpan, string
+Time		| Time			| time				| TimeSpan
 TimeTz		|			| time with time zone		| DateTimeOffset, DateTime, TimeSpan
 Bytea		| Binary		| bytea				| byte[], ArraySegment\<byte>
 Oid		|			| oid				| uint

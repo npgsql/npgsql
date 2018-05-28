@@ -36,7 +36,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-net-types.html
     /// </remarks>
     [TypeMapping("macaddr8", NpgsqlDbType.MacAddr8)]
-    class Macaddr8Handler : NpgsqlSimpleTypeHandler<PhysicalAddress>, INpgsqlSimpleTypeHandler<string>
+    class Macaddr8Handler : NpgsqlSimpleTypeHandler<PhysicalAddress>
     {
         #region Read
 
@@ -49,9 +49,6 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             buf.ReadBytes(bytes, 0, len);
             return new PhysicalAddress(bytes);
         }
-
-        string INpgsqlSimpleTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
-            => Read(buf, len, fieldDescription).ToString();
 
         #endregion Read
 
@@ -70,17 +67,11 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             }
         }
 
-        public int ValidateAndGetLength(string value, NpgsqlParameter parameter)
-            => ValidateAndGetLength(PhysicalAddress.Parse(value), parameter);
-
         public override void Write(PhysicalAddress value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
             var bytes = value.GetAddressBytes();
             buf.WriteBytes(bytes, 0, bytes.Length);
         }
-
-        public void Write(string value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
-            => Write(PhysicalAddress.Parse(value), buf, parameter);
 
         #endregion Write
     }

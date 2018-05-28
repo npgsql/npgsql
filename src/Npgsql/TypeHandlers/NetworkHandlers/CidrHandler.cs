@@ -37,8 +37,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-net-types.html
     /// </remarks>
     [TypeMapping("cidr", NpgsqlDbType.Cidr)]
-    class CidrHandler : NpgsqlSimpleTypeHandler<(IPAddress Address, int Subnet)>, INpgsqlSimpleTypeHandler<NpgsqlInet>,
-        INpgsqlSimpleTypeHandler<string>
+    class CidrHandler : NpgsqlSimpleTypeHandler<(IPAddress Address, int Subnet)>, INpgsqlSimpleTypeHandler<NpgsqlInet>
     {
         public override (IPAddress Address, int Subnet) Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => InetHandler.DoRead(buf, len, fieldDescription, true);
@@ -49,25 +48,16 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             return new NpgsqlInet(address, subnet);
         }
 
-        string INpgsqlSimpleTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
-            => ((INpgsqlSimpleTypeHandler<NpgsqlInet>)this).Read(buf, len, fieldDescription).ToString();
-
         public override int ValidateAndGetLength((IPAddress Address, int Subnet) value, NpgsqlParameter parameter)
             => InetHandler.GetLength(value.Address);
 
         public int ValidateAndGetLength(NpgsqlInet value, NpgsqlParameter parameter)
             => InetHandler.GetLength(value.Address);
 
-        public int ValidateAndGetLength(string value, NpgsqlParameter parameter)
-            => InetHandler.GetLength(IPAddress.Parse(value));
-
         public override void Write((IPAddress Address, int Subnet) value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
             => InetHandler.DoWrite(value.Address, value.Subnet, buf, true);
 
         public void Write(NpgsqlInet value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
             => InetHandler.DoWrite(value.Address, value.Netmask, buf, true);
-
-        public void Write(string value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
-            => InetHandler.DoWrite(IPAddress.Parse(value), -1, buf, true);
     }
 }
