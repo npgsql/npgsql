@@ -1,6 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
 
   <PropertyGroup>
+    <LangVersion>latest</LangVersion>
     <TargetFrameworks>net451;netcoreapp2.0</TargetFrameworks>
     <DebugType>portable</DebugType>
     <AssemblyOriginatorKeyFile>../../Npgsql.snk</AssemblyOriginatorKeyFile>

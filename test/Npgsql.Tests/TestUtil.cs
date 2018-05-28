@@ -141,6 +141,22 @@ namespace Npgsql.Tests
         }
     }
 
+    public static class NpgsqlCommandExtensions
+    {
+        public static T ExecuteScalar<T>(this NpgsqlCommand cmd)
+        {
+            using (var rdr = cmd.ExecuteReader())
+                return rdr.Read() ? rdr.GetFieldValue<T>(0) : default;
+        }
+
+        public static NpgsqlDataReader ExecuteRecord(this NpgsqlCommand cmd)
+        {
+            var rdr = cmd.ExecuteReader();
+            Assert.That(rdr.Read());
+            return rdr;
+        }
+    }
+
     public static class CommandBehaviorExtensions
     {
         public static bool IsSequential(this CommandBehavior behavior)
