@@ -357,7 +357,7 @@ namespace Npgsql.Tests.Types
             using (var cmd = new NpgsqlCommand($"SELECT {sql}", conn))
             {
                 var result = cmd.ExecuteScalar();
-                Assert.AreEqual(decimal.GetBits(decimal.Parse(expected)), decimal.GetBits((decimal)result));
+                Assert.AreEqual(decimal.GetBits(decimal.Parse(expected, CultureInfo.InvariantCulture)), decimal.GetBits((decimal)result));
             }
         }
 
