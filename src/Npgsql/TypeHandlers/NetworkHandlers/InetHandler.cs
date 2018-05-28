@@ -40,7 +40,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
     /// </remarks>
     [TypeMapping("inet", NpgsqlDbType.Inet, new[] { typeof(IPAddress), typeof((IPAddress Address, int Subnet)), typeof(NpgsqlInet) })]
     class InetHandler : NpgsqlSimpleTypeHandlerWithPsv<IPAddress, (IPAddress Address, int Subnet)>,
-        INpgsqlSimpleTypeHandler<NpgsqlInet>, INpgsqlSimpleTypeHandler<string>
+        INpgsqlSimpleTypeHandler<NpgsqlInet>
     {
         // ReSharper disable InconsistentNaming
         const byte IPv4 = 2;
@@ -81,9 +81,6 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             return new NpgsqlInet(address, subnet);
         }
 
-        string INpgsqlSimpleTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
-            => ((INpgsqlSimpleTypeHandler<NpgsqlInet>)this).Read(buf, len, fieldDescription).ToString();
-
         #endregion Read
 
         #region Write
@@ -97,9 +94,6 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
         public int ValidateAndGetLength(NpgsqlInet value, NpgsqlParameter parameter)
             => GetLength(value.Address);
 
-        public int ValidateAndGetLength(string value, NpgsqlParameter parameter)
-            => GetLength(IPAddress.Parse(value));
-
         public override void Write(IPAddress value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
             => DoWrite(value, -1, buf, false);
 
@@ -108,9 +102,6 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
 
         public void Write(NpgsqlInet value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
             => DoWrite(value.Address, value.Netmask, buf, false);
-
-        public void Write(string value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
-            => DoWrite(IPAddress.Parse(value), -1, buf, false);
 
         internal static void DoWrite(IPAddress ip, int mask, NpgsqlWriteBuffer buf, bool isCidrHandler)
         {

@@ -77,7 +77,6 @@ namespace Npgsql.Tests.Types
                         Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof((IPAddress, int))));
                         Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo((expectedIp, 32)));
                         Assert.That(reader.GetFieldValue<NpgsqlInet>(i), Is.EqualTo(new NpgsqlInet(expectedIp)));
-                        Assert.That(reader.GetString(i), Is.EqualTo(new NpgsqlInet(expectedIp).ToString()));
                     }
 
                     // Address and subnet
@@ -94,7 +93,6 @@ namespace Npgsql.Tests.Types
                         Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof((IPAddress, int))));
                         Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(expectedTuple));
                         Assert.That(reader.GetFieldValue<NpgsqlInet>(i), Is.EqualTo(expectedNpgsqlInet));
-                        Assert.That(reader.GetString(i), Is.EqualTo(expectedNpgsqlInet.ToString()));
                     }
                 }
             }
@@ -135,7 +133,6 @@ namespace Npgsql.Tests.Types
                         Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof((IPAddress, int))));
                         Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo((expectedIp, 128)));
                         Assert.That(reader.GetFieldValue<NpgsqlInet>(i), Is.EqualTo(new NpgsqlInet(expectedIp)));
-                        Assert.That(reader.GetString(i), Is.EqualTo(new NpgsqlInet(expectedIp).ToString()));
                     }
 
                     // Address and subnet
@@ -152,7 +149,6 @@ namespace Npgsql.Tests.Types
                         Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof((IPAddress, int))));
                         Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(expectedTuple));
                         Assert.That(reader.GetFieldValue<NpgsqlInet>(i), Is.EqualTo(expectedNpgsqlInet));
-                        Assert.That(reader.GetString(i), Is.EqualTo(expectedNpgsqlInet.ToString()));
                     }
                 }
             }
@@ -175,7 +171,6 @@ namespace Npgsql.Tests.Types
                 Assert.That(reader.GetFieldValue<NpgsqlInet>(0), Is.EqualTo(new NpgsqlInet(expected.Address, expected.Subnet)));
                 Assert.That(reader[0], Is.EqualTo(expected));
                 Assert.That(reader.GetValue(0), Is.EqualTo(expected));
-                Assert.That(reader.GetString(0), Is.EqualTo("192.168.1.0/24"));
             }
         }
 
@@ -198,7 +193,6 @@ namespace Npgsql.Tests.Types
                     {
                         Assert.That(reader.GetFieldValue<PhysicalAddress>(i), Is.EqualTo(expected));
                         Assert.That(reader.GetValue(i), Is.EqualTo(expected));
-                        Assert.That(reader.GetString(i), Is.EqualTo(expected.ToString()));
                         Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(PhysicalAddress)));
                     }
                 }
@@ -226,12 +220,10 @@ namespace Npgsql.Tests.Types
 
                         Assert.That(reader.GetFieldValue<PhysicalAddress>(0), Is.EqualTo(expected6));
                         Assert.That(reader.GetValue(0), Is.EqualTo(expected6));
-                        Assert.That(reader.GetString(0), Is.EqualTo(expected6.ToString()));
                         Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(PhysicalAddress)));
 
                         Assert.That(reader.GetFieldValue<PhysicalAddress>(1), Is.EqualTo(expected8));
                         Assert.That(reader.GetValue(1), Is.EqualTo(expected8));
-                        Assert.That(reader.GetString(1), Is.EqualTo(expected8.ToString()));
                         Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(PhysicalAddress)));
                     }
                 }

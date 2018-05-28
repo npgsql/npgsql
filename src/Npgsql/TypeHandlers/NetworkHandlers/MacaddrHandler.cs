@@ -36,7 +36,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-net-types.html
     /// </remarks>
     [TypeMapping("macaddr", NpgsqlDbType.MacAddr, typeof(PhysicalAddress))]
-    class MacaddrHandler : NpgsqlSimpleTypeHandler<PhysicalAddress>, INpgsqlSimpleTypeHandler<string>
+    class MacaddrHandler : NpgsqlSimpleTypeHandler<PhysicalAddress>
     {
         #region Read
 
@@ -50,9 +50,6 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             return new PhysicalAddress(bytes);
         }
 
-        string INpgsqlSimpleTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
-            => Read(buf, len, fieldDescription).ToString();
-
         #endregion Read
 
         #region Write
@@ -62,14 +59,8 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
                  ? 6
                  : throw new FormatException("MAC addresses must have length 6 in PostgreSQL");
 
-        public int ValidateAndGetLength(string value, NpgsqlParameter parameter)
-            => ValidateAndGetLength(PhysicalAddress.Parse(value), parameter);
-
         public override void Write(PhysicalAddress value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
             => buf.WriteBytes(value.GetAddressBytes(), 0, 6);
-
-        public void Write(string value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
-            => Write(PhysicalAddress.Parse(value), buf, parameter);
 
         #endregion Write
     }

@@ -65,8 +65,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     [TypeMapping("numeric", NpgsqlDbType.Numeric, new[] { DbType.Decimal, DbType.VarNumeric }, typeof(decimal), DbType.Decimal)]
     class NumericHandler : NpgsqlSimpleTypeHandler<decimal>,
         INpgsqlSimpleTypeHandler<byte>, INpgsqlSimpleTypeHandler<short>, INpgsqlSimpleTypeHandler<int>, INpgsqlSimpleTypeHandler<long>,
-        INpgsqlSimpleTypeHandler<float>, INpgsqlSimpleTypeHandler<double>,
-        INpgsqlSimpleTypeHandler<string>
+        INpgsqlSimpleTypeHandler<float>, INpgsqlSimpleTypeHandler<double>
     {
         #region Read
 
@@ -184,9 +183,6 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         double INpgsqlSimpleTypeHandler<double>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => (double)Read(buf, len, fieldDescription);
 
-        string INpgsqlSimpleTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
-            => Read(buf, len, fieldDescription).ToString();
-
         #endregion Read
 
         #region Write
@@ -218,15 +214,6 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             => ValidateAndGetLength((decimal) value, parameter);
         public int ValidateAndGetLength(byte value, NpgsqlParameter parameter)
             => ValidateAndGetLength((decimal) value, parameter);
-
-        public int ValidateAndGetLength(string value, NpgsqlParameter parameter)
-        {
-            var converted = Convert.ToDecimal(value);
-            if (parameter == null)
-                throw CreateConversionButNoParamException(value.GetType());
-            parameter.ConvertedValue = converted;
-            return ValidateAndGetLength(converted, parameter);
-        }
 
         public override void Write(decimal value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
@@ -266,11 +253,6 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             => Write((decimal)value, buf, parameter);
         public void Write(double value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
             => Write((decimal)value, buf, parameter);
-        public void Write(string value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
-        {
-            Debug.Assert(parameter != null);
-            Write((decimal)parameter.ConvertedValue, buf, parameter);
-        }
 
         void GetNumericHeader(decimal num, out int numGroups, out int weight, out int fractionDigits)
         {

@@ -158,7 +158,6 @@ namespace Npgsql.Tests.Types
                         Assert.That(reader.GetGuid(i), Is.EqualTo(expected));
                         Assert.That(reader.GetFieldValue<Guid>(i), Is.EqualTo(expected));
                         Assert.That(reader.GetValue(i), Is.EqualTo(expected));
-                        Assert.That(reader.GetString(i), Is.EqualTo(expected.ToString()));
                         Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(Guid)));
                     }
                 }
