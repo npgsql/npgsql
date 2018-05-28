@@ -62,10 +62,10 @@ namespace Npgsql
         internal Encoding TextEncoding { get; }
 
         internal int ReadPosition { get; set; }
-        internal int ReadBytesLeft => _filledBytes - ReadPosition;
+        internal int ReadBytesLeft => FilledBytes - ReadPosition;
 
         internal readonly byte[] Buffer;
-        int _filledBytes;
+        internal int FilledBytes;
 
         [CanBeNull]
         ColumnStream _columnStream;
@@ -122,14 +122,14 @@ namespace Npgsql
                 count -= ReadBytesLeft;
                 if (count <= 0) { return; }
 
-                if (ReadPosition == _filledBytes)
+                if (ReadPosition == FilledBytes)
                 {
                     Clear();
                 }
-                else if (count > Size - _filledBytes)
+                else if (count > Size - FilledBytes)
                 {
                     Array.Copy(Buffer, ReadPosition, Buffer, 0, ReadBytesLeft);
-                    _filledBytes = ReadBytesLeft;
+                    FilledBytes = ReadBytesLeft;
                     ReadPosition = 0;
                 }
 
@@ -137,26 +137,26 @@ namespace Npgsql
                 {
                     while (count > 0)
                     {
-                        var toRead = Size - _filledBytes;
+                        var toRead = Size - FilledBytes;
 
                         int read;
                         if (async)
                         {
                             if (AwaitableSocket == null)  // SSL
-                                read = await Underlying.ReadAsync(Buffer, _filledBytes, toRead);
+                                read = await Underlying.ReadAsync(Buffer, FilledBytes, toRead);
                             else  // Non-SSL async I/O, optimized
                             {
-                                AwaitableSocket.SetBuffer(Buffer, _filledBytes, toRead);
+                                AwaitableSocket.SetBuffer(Buffer, FilledBytes, toRead);
                                 await AwaitableSocket.ReceiveAsync();
                                 read = AwaitableSocket.BytesTransferred;
                             }
                         } else  // Sync I/O
-                            read = Underlying.Read(Buffer, _filledBytes, toRead);
+                            read = Underlying.Read(Buffer, FilledBytes, toRead);
 
                         if (read == 0)
                             throw new EndOfStreamException();
                         count -= read;
-                        _filledBytes += read;
+                        FilledBytes += read;
                     }
                 }
                 // We have a special case when reading async notifications - a timeout may be normal
@@ -445,14 +445,14 @@ namespace Npgsql
         internal void Clear()
         {
             ReadPosition = 0;
-            _filledBytes = 0;
+            FilledBytes = 0;
         }
 
         internal void CopyTo(NpgsqlReadBuffer other)
         {
-            Debug.Assert(other.Size - other._filledBytes >= ReadBytesLeft);
-            Array.Copy(Buffer, ReadPosition, other.Buffer, other._filledBytes, ReadBytesLeft);
-            other._filledBytes += ReadBytesLeft;
+            Debug.Assert(other.Size - other.FilledBytes >= ReadBytesLeft);
+            Array.Copy(Buffer, ReadPosition, other.Buffer, other.FilledBytes, ReadBytesLeft);
+            other.FilledBytes += ReadBytesLeft;
         }
 
         #endregion
