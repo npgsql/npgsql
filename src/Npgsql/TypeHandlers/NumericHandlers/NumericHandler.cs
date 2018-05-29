@@ -28,7 +28,6 @@ using Npgsql.TypeMapping;
 using NpgsqlTypes;
 using System;
 using System.Data;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -150,22 +149,52 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         INpgsqlSimpleTypeHandler<byte>, INpgsqlSimpleTypeHandler<short>, INpgsqlSimpleTypeHandler<int>, INpgsqlSimpleTypeHandler<long>,
         INpgsqlSimpleTypeHandler<float>, INpgsqlSimpleTypeHandler<double>
     {
+        const int MaxDecimalScale = 28;
+
+        const int SignPositive = 0x0000;
+        const int SignNegative = 0x4000;
+        const int SignNan = 0xC000;
+
+        const int MaxGroupCount = 8;
+        const int MaxGroupScale = 4;
+
+        // Fast access for 10^n where n is 0-9
+        static readonly uint[] Powers10 = new uint[]
+        {
+            1,
+            10,
+            100,
+            1000,
+            10000,
+            100000,
+            1000000,
+            10000000,
+            100000000,
+            1000000000
+        };
+
+        // The maximum power of 10 that a 32 bit unsigned integer can store
+        static readonly int MaxUInt32Scale = Powers10.Length - 1;
+
+        // The maximum power of 10 that a 32 bit unsigned integer can store
+        static readonly uint MaxGroupSize = Powers10[MaxGroupScale];
+
         #region Read
 
         public override decimal Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             var result = new DecimalRaw();
             var groups = buf.ReadInt16();
-            var weight = buf.ReadInt16() + (short)(1 - groups); // 10000^weight
-            var sign = buf.ReadUInt16(); // 0x0000 = positive, 0x4000 = negative, 0xC000 = NaN
+            var weight = buf.ReadInt16() - groups + 1;
+            var sign = buf.ReadUInt16();
 
-            if (sign == 0xC000)
+            if (sign == SignNan)
                 throw new NpgsqlSafeReadException(new InvalidCastException("Numeric NaN not supported by System.Decimal"));
-            else if (sign == 0x4000)
+            else if (sign == SignNegative)
                 DecimalRaw.Negate(ref result);
 
-            var scale = buf.ReadInt16(); // dcsale. Number of digits (in base 10) to print after decimal separator
-            if (scale > 28)
+            var scale = buf.ReadInt16();
+            if (scale > MaxDecimalScale)
                 throw new NpgsqlSafeReadException(new OverflowException("Numeric value does not fit in a System.Decimal"));
 
             result.Scale = scale;
@@ -174,41 +203,26 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             {
                 while (groups-- > 0)
                 {
-                    DecimalRaw.Multiply(ref result, 10000U);
+                    DecimalRaw.Multiply(ref result, MaxGroupSize);
                     DecimalRaw.Add(ref result, buf.ReadUInt16());
                 }
 
                 var scaleDifference = scale + weight * 4;
                 if (scaleDifference > 0)
-                {
-                    while (scaleDifference >= 4)
+                    do
                     {
-                        DecimalRaw.Multiply(ref result, 10000U);
-                        scaleDifference -= 4;
+                        var scaleChunk = Math.Min(MaxUInt32Scale, scaleDifference);
+                        DecimalRaw.Multiply(ref result, Powers10[scaleChunk]);
+                        scaleDifference -= scaleChunk;
                     }
-
-                    switch (scaleDifference)
-                    {
-                        case 3: DecimalRaw.Multiply(ref result, 1000U); break;
-                        case 2: DecimalRaw.Multiply(ref result, 100U); break;
-                        case 1: DecimalRaw.Multiply(ref result, 10U); break;
-                    }
-                }
+                    while (scaleDifference > 0);
                 else
-                {
-                    while (scaleDifference <= -4)
+                    while (scaleDifference < 0)
                     {
-                        DecimalRaw.Divide(ref result, 10000U);
-                        scaleDifference += 4;
+                        var scaleChunk = Math.Min(MaxUInt32Scale, -scaleDifference);
+                        DecimalRaw.Divide(ref result, Powers10[scaleChunk]);
+                        scaleDifference += scaleChunk;
                     }
-
-                    switch (scaleDifference)
-                    {
-                        case -3: DecimalRaw.Divide(ref result, 1000U); break;
-                        case -2: DecimalRaw.Divide(ref result, 100U); break;
-                        case -1: DecimalRaw.Divide(ref result, 10U); break;
-                    }
-                }
             }
             catch (OverflowException e)
             {
@@ -247,24 +261,26 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             if (raw.Low != 0 || raw.Mid != 0 || raw.High != 0)
             {
                 uint remainder = default;
-                switch (raw.Scale % 4)
+                var scaleChunk = raw.Scale % MaxGroupScale;
+                if (scaleChunk > 0)
                 {
-                    case 3: remainder = DecimalRaw.Divide(ref raw, 1000) * 10; break;
-                    case 2: remainder = DecimalRaw.Divide(ref raw, 100) * 100; break;
-                    case 1: remainder = DecimalRaw.Divide(ref raw, 10) * 1000; break;
+                    var divisor = Powers10[scaleChunk];
+                    var multiplier = Powers10[MaxGroupScale - scaleChunk];
+                    remainder = DecimalRaw.Divide(ref raw, divisor) * multiplier;
                 }
 
                 while (remainder == 0)
-                    remainder = DecimalRaw.Divide(ref raw, 10000);
+                    remainder = DecimalRaw.Divide(ref raw, MaxGroupSize);
 
                 groupCount++;
 
                 while (raw.Low != 0 || raw.Mid != 0 || raw.High != 0)
                 {
-                    DecimalRaw.Divide(ref raw, 10000);
+                    DecimalRaw.Divide(ref raw, MaxGroupSize);
                     groupCount++;
                 }
             }
+
             return 4 * sizeof(short) + groupCount * sizeof(short);
         }
 
@@ -289,44 +305,43 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         public override unsafe void Write(decimal value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
             var groupCount = 0;
-            var groups = stackalloc short[8];
+            var groups = stackalloc short[MaxGroupCount];
             var weight = 0;
 
             var raw = Unsafe.As<decimal, DecimalRaw>(ref value);
             if (raw.Low != 0 || raw.Mid != 0 || raw.High != 0)
             {
                 var scale = raw.Scale;
-                weight = -scale / 4 - 1;
+                weight = -scale / MaxGroupScale - 1;
 
                 uint remainder = default;
-                var scaleRemainder = scale % 4;
-                switch (scaleRemainder)
+                var scaleChunk = scale % MaxGroupScale;
+                if (scaleChunk > 0)
                 {
-                    case 3: remainder = DecimalRaw.Divide(ref raw, 1000) * 10; break;
-                    case 2: remainder = DecimalRaw.Divide(ref raw, 100) * 100; break;
-                    case 1: remainder = DecimalRaw.Divide(ref raw, 10) * 1000; break;
-                }
+                    var divisor = Powers10[scaleChunk];
+                    var multiplier = Powers10[MaxGroupScale - scaleChunk];
+                    remainder = DecimalRaw.Divide(ref raw, divisor) * multiplier;
 
-                if (remainder == 0)
-                {
-                    while ((remainder = DecimalRaw.Divide(ref raw, 10000)) == 0)
-                        weight++;
-                }
-                else
-                {
-                    if (scaleRemainder != 0)
+                    if (remainder != 0)
+                    {
                         weight--;
+                        goto WriteGroups;
+                    }
                 }
+                
+                while ((remainder = DecimalRaw.Divide(ref raw, MaxGroupSize)) == 0)
+                    weight++;
 
+                WriteGroups:
                 groups[groupCount++] = (short)remainder;
 
                 while (raw.Low != 0 || raw.Mid != 0 || raw.High != 0)
-                    groups[groupCount++] = (short)DecimalRaw.Divide(ref raw, 10000);
+                    groups[groupCount++] = (short)DecimalRaw.Divide(ref raw, MaxGroupSize);
             }
 
             buf.WriteInt16(groupCount);
             buf.WriteInt16(groupCount + weight);
-            buf.WriteInt16(raw.Negative ? 0x4000 : 0x0000);
+            buf.WriteInt16(raw.Negative ? SignNegative : SignPositive);
             buf.WriteInt16(raw.Scale);
 
             while (groupCount > 0)
