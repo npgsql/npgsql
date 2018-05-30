@@ -1,8 +1,5 @@
 # PostGIS/GeoJSON Type Plugin
 
-> [!NOTE] 
-> This feature is only available in Npgsql 4.0, which is currently in preview. 
-
 Before 4.0, Npgsql has supported reading and writing PostGIS types via some bundled .NET classes: `PostgisPoint`, `PostgisLineString`, etc. While this model provided some basic support, a proper representation of spatial types is a complicated task that's beyond Npgsql's scope, and should be handled by a specialized spatial library instead.
 
 The [Npgsql.GeoJSON](https://nuget.org/packages/Npgsql.GeoJSON) plugin makes Npgsql read and write PostGIS spatial types as [GeoJSON (RFC7946) types](http://geojson.org/), via the [GeoJSON.NET](https://github.com/GeoJSON-Net/GeoJSON.Net) library.

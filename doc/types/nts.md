@@ -1,8 +1,5 @@
 # PostGIS/NetTopologySuite Type Plugin
 
-> [!NOTE] 
-> This feature is only available in Npgsql 4.0, which is currently in preview. 
-
 Before 4.0, Npgsql has supported reading and writing PostGIS types via some bundled .NET classes: `PostgisPoint`, `PostgisLineString`, etc. While this model provided some basic support, a proper representation of spatial types is a complicated task that's beyond Npgsql's scope, and should be handled by a specialized spatial library instead. The leading spatial library in the .NET world is currently [NetTopologySuite](https://github.com/NetTopologySuite/NetTopologySuite), and with the introduction of *type plugins* in Npgsql 4.0, it is now possible to map PostGIS types directly to NetTopologySuite types. This is now the recommended way to store and load PostGIS types.
 
 If you prefer to work with the pre-4.0 types, you can still do so by using the [Npgsql.LegacyPostgis plugin](legacy-postgis.md).

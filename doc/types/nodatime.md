@@ -1,8 +1,5 @@
 # NodaTime Type Plugin
 
-> [!NOTE] 
-> This feature is only available in Npgsql 4.0, which is currently in preview. 
-
 Since 4.0, Npgsql supports *type plugins*, which are external nuget packages that modify how Npgsql maps PostgreSQL values to CLR types. One of these is the NodaTime plugin, which makes Npgsql read and write [NodaTime](http://nodatime.org) types. The NodaTime plugin is now the recommended way to interact with PostgreSQL date/time types, and isn't the default only because of the added dependency on the NodaTime library.
 
 # What is NodaTime?

@@ -1,7 +1,7 @@
 # Date and Time Handling
 
 > [!Note]
-> Since 4.0 (currently in preview) the recommended way of working with date/time types is [the NodaTime plugin](nodatime.md).
+> Since 4.0 the recommended way of working with date/time types is [the NodaTime plugin](nodatime.md).
 
 Handling date and time values usually isn't hard, but you must pay careful attention to differences in how the .NET types and PostgreSQL represent dates.
 It's worth reading the [PostgreSQL date/time type documentation](http://www.postgresql.org/docs/current/static/datatype-datetime.html) to familiarize
