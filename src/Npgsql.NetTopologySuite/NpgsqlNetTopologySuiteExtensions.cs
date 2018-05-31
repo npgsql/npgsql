@@ -72,6 +72,8 @@ namespace Npgsql
             if (handleOrdinates == Ordinates.None)
                 handleOrdinates = coordinateSequenceFactory.Ordinates;
 
+            NetTopologySuiteBootstrapper.Bootstrap();
+
             var typeHandlerFactory = new NetTopologySuiteHandlerFactory(
                 new PostGisReader(coordinateSequenceFactory, precisionModel, handleOrdinates),
                 new PostGisWriter());
