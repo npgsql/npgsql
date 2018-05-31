@@ -6,14 +6,50 @@ using System.Text;
 using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
-#if !NETCOREAPP1_1
 using System.Transactions;
-#endif
 
 namespace Npgsql.Tests
 {
     public class BugTests : TestBase
     {
+        #region Sequential reader bugs
+
+        [Test, Description("In sequential access, performing a null check on a non-first field would check the first field")]
+        public void SequentialNullCheckOnNonFirstField()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT 'X', NULL", conn))
+            using (var dr = cmd.ExecuteReader(CommandBehavior.SequentialAccess))
+            {
+                dr.Read();
+                Assert.That(dr.IsDBNull(1), Is.True);
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1034")]
+        public void SequentialSkipOverFirstRow()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT 1; SELECT 2", conn))
+            using (var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess))
+            {
+                Assert.That(reader.NextResult(), Is.True);
+                Assert.That(reader.Read(), Is.True);
+                Assert.That(reader.GetInt32(0), Is.EqualTo(2));
+            }
+        }
+
+        [Test]
+        public void SequentialConsumeWithNull()
+        {
+            using (var conn = OpenConnection())
+            using (var command = new NpgsqlCommand("SELECT 1, NULL", conn))
+            using (var reader = command.ExecuteReader(CommandBehavior.SequentialAccess))
+                reader.Read();
+        }
+
+        #endregion
+
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1210")]
         public void ManyParametersWithMixedFormatCode()
         {
@@ -93,7 +129,6 @@ namespace Npgsql.Tests
             }
         }
 
-#if !NETCOREAPP1_1
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1497")]
         public void Bug1497()
         {
@@ -109,9 +144,7 @@ namespace Npgsql.Tests
                 }
             }
         }
-#endif
 
-#if !NETCOREAPP1_1
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1558")]
         public void Bug1558()
         {
@@ -126,7 +159,6 @@ namespace Npgsql.Tests
                 conn.Open();
             }
         }
-#endif
 
         [Test]
         public void Bug1695()
@@ -148,6 +180,35 @@ namespace Npgsql.Tests
                 }
                 Assert.That(conn.ExecuteScalar("SELECT 2"), Is.EqualTo(2));
             }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1700")]
+        public void Bug1700()
+        {
+            Assert.That(() =>
+            {
+                using (var conn = OpenConnection())
+                using (var tx = conn.BeginTransaction())
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = "SELECT 1";
+                    var reader = cmd.ExecuteReader();
+
+                    while (reader.Read())
+                    {
+                        // Simulate exception whilst processing the data reader...
+                        throw new InvalidOperationException("Some problem parsing the returned data");
+
+                        // As this exception unwinds the stack, it calls Dispose on the NpgsqlTransaction
+                        // which then throws a NpgsqlOperationInProgressException as it tries to rollback
+                        // the transaction. This hides the underlying cause of the problem (in this case
+                        // our InvalidOperationException exception)
+                    }
+
+                    // Note, we never get here
+                    tx.Commit();
+                }
+            }, Throws.InvalidOperationException.With.Message.EqualTo("Some problem parsing the returned data"));
         }
 
         #region Bug1285

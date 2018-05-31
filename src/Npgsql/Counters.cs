@@ -52,6 +52,7 @@ namespace Npgsql
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
+#pragma warning disable CA1801 // Review unused parameters
         internal static void Initialize(bool usePerfCounters)
         {
             lock (InitLock)
@@ -100,10 +101,11 @@ namespace Npgsql
             }
         }
     }
+#pragma warning restore CA1801 // Review unused parameters
 
     /// <summary>
     /// This class is currently a simple wrapper around System.Diagnostics.PerformanceCounter.
-    /// Since these aren't supported in netstandard13, all the ifdef'ing happens here.
+    /// Since these aren't supported in .NET Standard, all the ifdef'ing happens here.
     /// When an alternative performance counter API emerges for netstandard, it can be added here.
     /// </summary>
     sealed class Counter : IDisposable

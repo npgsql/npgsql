@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -21,181 +21,336 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using System;
-using System.Globalization;
-using Npgsql.BackendMessages;
-using NpgsqlTypes;
-using System.Data;
 using JetBrains.Annotations;
-using Npgsql.PostgresTypes;
+using Npgsql.BackendMessages;
+using Npgsql.TypeHandling;
+using Npgsql.TypeMapping;
+using NpgsqlTypes;
+using System;
+using System.Data;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace Npgsql.TypeHandlers.NumericHandlers
 {
+    [StructLayout(LayoutKind.Explicit)]
+    struct DecimalRaw
+    {
+        const int SignMask = unchecked((int)0x80000000);
+        const int ScaleMask = 0x00FF0000;
+        const int ScaleShift = 16;
+
+        // Do not change the order in which these fields are declared. It
+        // should be same as in the System.Decimal struct.
+        [FieldOffset(0)]
+        int _flags;
+        [FieldOffset(4)]
+        uint _high;
+        [FieldOffset(8)]
+        uint _low;
+        [FieldOffset(12)]
+        uint _mid;
+
+        public bool Negative => (_flags & SignMask) != 0;
+
+        public int Scale
+        {
+            get => (_flags & ScaleMask) >> ScaleShift;
+            set => _flags = (_flags & SignMask) | ((value << ScaleShift) & ScaleMask);
+        }
+
+        public uint High => _high;
+        public uint Mid => _mid;
+        public uint Low => _low;
+
+        public static void Negate(ref DecimalRaw value)
+            => value._flags ^= SignMask;
+
+        public static void Add(ref DecimalRaw value, uint addend)
+        {
+            uint integer;
+            uint sum;
+
+            integer = value._low;
+            value._low = sum = integer + addend;
+
+            if (sum >= integer && sum >= addend)
+                return;
+
+            integer = value._mid;
+            value._mid = sum = integer + 1;
+
+            if (sum >= integer && sum >= 1)
+                return;
+
+            integer = value._high;
+            value._high = sum = integer + 1;
+
+            if (sum < integer || sum < 1)
+                throw new OverflowException("Numeric value does not fit in a System.Decimal");
+        }
+
+        public static void Multiply(ref DecimalRaw value, uint multiplier)
+        {
+            ulong integer;
+            uint remainder;
+
+            integer = (ulong)value._low * multiplier;
+            value._low = (uint)integer;
+            remainder = (uint)(integer >> 32);
+
+            integer = (ulong)value._mid * multiplier;
+            value._mid = (uint)integer + remainder;
+            remainder = (uint)(integer >> 32);
+
+            integer = (ulong)value._high * multiplier;
+            value._high = (uint)integer + remainder;
+            remainder = (uint)(integer >> 32);
+
+            if (remainder != 0)
+                throw new OverflowException("Numeric value does not fit in a System.Decimal");
+        }
+
+        public static uint Divide(ref DecimalRaw value, uint divisor)
+        {
+            ulong integer;
+            uint remainder = 0;
+
+            if (value._high != 0)
+            {
+                integer = value._high;
+                value._high = (uint)(integer / divisor);
+                remainder = (uint)(integer % divisor);
+            }
+
+            if (value._mid != 0 || remainder != 0)
+            {
+                integer = ((ulong)remainder << 32) | value._mid;
+                value._mid = (uint)(integer / divisor);
+                remainder = (uint)(integer % divisor);
+            }
+
+            if (value._low != 0 || remainder != 0)
+            {
+                integer = ((ulong)remainder << 32) | value._low;
+                value._low = (uint)(integer / divisor);
+                remainder = (uint)(integer % divisor);
+            }
+
+            return remainder;
+        }
+    }
+
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-numeric.html
     /// </remarks>
     [TypeMapping("numeric", NpgsqlDbType.Numeric, new[] { DbType.Decimal, DbType.VarNumeric }, typeof(decimal), DbType.Decimal)]
-    class NumericHandler : SimpleTypeHandler<decimal>,
-        ISimpleTypeHandler<byte>, ISimpleTypeHandler<short>, ISimpleTypeHandler<int>, ISimpleTypeHandler<long>,
-        ISimpleTypeHandler<float>, ISimpleTypeHandler<double>,
-        ISimpleTypeHandler<string>
+    class NumericHandler : NpgsqlSimpleTypeHandler<decimal>,
+        INpgsqlSimpleTypeHandler<byte>, INpgsqlSimpleTypeHandler<short>, INpgsqlSimpleTypeHandler<int>, INpgsqlSimpleTypeHandler<long>,
+        INpgsqlSimpleTypeHandler<float>, INpgsqlSimpleTypeHandler<double>
     {
-        static readonly decimal[] Decimals = new decimal[] {
-            0.0000000000000000000000000001M,
-            0.000000000000000000000001M,
-            0.00000000000000000001M,
-            0.0000000000000001M,
-            0.000000000001M,
-            0.00000001M,
-            0.0001M,
-            1M,
-            10000M,
-            100000000M,
-            1000000000000M,
-            10000000000000000M,
-            100000000000000000000M,
-            1000000000000000000000000M,
-            10000000000000000000000000000M
-        };
+        #region Read
 
-        internal NumericHandler(PostgresType postgresType) : base(postgresType) { }
-
-        public override decimal Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override decimal Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
-            var numGroups = (ushort)buf.ReadInt16();
-            var weightFirstGroup = buf.ReadInt16(); // 10000^weight
-            var sign = (ushort)buf.ReadInt16(); // 0x0000 = positive, 0x4000 = negative, 0xC000 = NaN
-            buf.ReadInt16(); // dcsale. Number of digits (in base 10) to print after decimal separator
-
-            var overflow = false;
-
-            var result = 0M;
-            for (int i = 0, weight = weightFirstGroup + 7; i < numGroups; i++, weight--)
-            {
-                var group = (ushort)buf.ReadInt16();
-                if (weight < 0 || weight >= Decimals.Length)
-                    overflow = true;
-                else
-                {
-                    try
-                    {
-                        result += Decimals[weight] * group;
-                    }
-                    catch (OverflowException)
-                    {
-                        overflow = true;
-                    }
-                }
-            }
-
-            if (overflow)
-                throw new SafeReadException(new OverflowException("Numeric value does not fit in a System.Decimal"));
+            var result = new DecimalRaw();
+            var groups = buf.ReadInt16();
+            var weight = buf.ReadInt16() + (short)(1 - groups); // 10000^weight
+            var sign = buf.ReadUInt16(); // 0x0000 = positive, 0x4000 = negative, 0xC000 = NaN
 
             if (sign == 0xC000)
-                throw new SafeReadException(new InvalidCastException("Numeric NaN not supported by System.Decimal"));
+                throw new NpgsqlSafeReadException(new InvalidCastException("Numeric NaN not supported by System.Decimal"));
+            else if (sign == 0x4000)
+                DecimalRaw.Negate(ref result);
 
-            return sign == 0x4000 ? -result : result;
+            var scale = buf.ReadInt16(); // dcsale. Number of digits (in base 10) to print after decimal separator
+            if (scale > 28)
+                throw new NpgsqlSafeReadException(new OverflowException("Numeric value does not fit in a System.Decimal"));
+
+            result.Scale = scale;
+
+            try
+            {
+                while (groups-- > 0)
+                {
+                    DecimalRaw.Multiply(ref result, 10000U);
+                    DecimalRaw.Add(ref result, buf.ReadUInt16());
+                }
+
+                var scaleDifference = scale + weight * 4;
+                if (scaleDifference > 0)
+                {
+                    while (scaleDifference >= 4)
+                    {
+                        DecimalRaw.Multiply(ref result, 10000U);
+                        scaleDifference -= 4;
+                    }
+
+                    switch (scaleDifference)
+                    {
+                        case 3: DecimalRaw.Multiply(ref result, 1000U); break;
+                        case 2: DecimalRaw.Multiply(ref result, 100U); break;
+                        case 1: DecimalRaw.Multiply(ref result, 10U); break;
+                    }
+                }
+                else
+                {
+                    while (scaleDifference <= -4)
+                    {
+                        DecimalRaw.Divide(ref result, 10000U);
+                        scaleDifference += 4;
+                    }
+
+                    switch (scaleDifference)
+                    {
+                        case -3: DecimalRaw.Divide(ref result, 1000U); break;
+                        case -2: DecimalRaw.Divide(ref result, 100U); break;
+                        case -1: DecimalRaw.Divide(ref result, 10U); break;
+                    }
+                }
+            }
+            catch (OverflowException e)
+            {
+                throw new NpgsqlSafeReadException(e);
+            }
+
+            return Unsafe.As<DecimalRaw, decimal>(ref result);
         }
 
-        byte ISimpleTypeHandler<byte>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        byte INpgsqlSimpleTypeHandler<byte>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => (byte)Read(buf, len, fieldDescription);
 
-        short ISimpleTypeHandler<short>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        short INpgsqlSimpleTypeHandler<short>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => (short)Read(buf, len, fieldDescription);
 
-        int ISimpleTypeHandler<int>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        int INpgsqlSimpleTypeHandler<int>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => (int)Read(buf, len, fieldDescription);
 
-        long ISimpleTypeHandler<long>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        long INpgsqlSimpleTypeHandler<long>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => (long)Read(buf, len, fieldDescription);
 
-        float ISimpleTypeHandler<float>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        float INpgsqlSimpleTypeHandler<float>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => (float)Read(buf, len, fieldDescription);
 
-        double ISimpleTypeHandler<double>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        double INpgsqlSimpleTypeHandler<double>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => (double)Read(buf, len, fieldDescription);
 
-        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
-            => Read(buf, len, fieldDescription).ToString();
+        #endregion Read
 
-        void GetNumericHeader(decimal num, out int numGroups, out int weight, out int fractionDigits)
+        #region Write
+
+        public override int ValidateAndGetLength(decimal value, NpgsqlParameter parameter)
         {
-            var integer = decimal.Truncate(num);
-            var fraction = num - integer;
-            int slot1;
-            for (slot1 = 0; slot1 <= 13; slot1++)
+            var groupCount = 0;
+            var raw = Unsafe.As<decimal, DecimalRaw>(ref value);
+            if (raw.Low != 0 || raw.Mid != 0 || raw.High != 0)
             {
-                if (num < Decimals[slot1 + 1])
-                    break;
-            }
-            weight = slot1 - 7;
-            fractionDigits = 0;
-            var fractionGroups = 0;
-            var integerGroups = weight >= 0 ? weight + 1 : 0;
-
-            if (fraction != 0)
-            {
-                fractionDigits = fraction.ToString(CultureInfo.InvariantCulture).Length - 2;
-                fractionGroups = (fractionDigits + 3) / 4;
-                if (weight < -1)
-                    fractionGroups += weight + 1;
-            }
-
-            numGroups = integerGroups + fractionGroups;
-        }
-
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
-        {
-            decimal num;
-            if (value is decimal)
-                num = (decimal)value;
-            else
-            {
-                num = Convert.ToDecimal(value);
-                if (parameter == null)
+                uint remainder = default;
+                switch (raw.Scale % 4)
                 {
-                    throw CreateConversionButNoParamException(value.GetType());
+                    case 3: remainder = DecimalRaw.Divide(ref raw, 1000) * 10; break;
+                    case 2: remainder = DecimalRaw.Divide(ref raw, 100) * 100; break;
+                    case 1: remainder = DecimalRaw.Divide(ref raw, 10) * 1000; break;
                 }
-                parameter.ConvertedValue = num;
-            }
 
-            if (num == 0M)
-                return 4 * sizeof(short) + 0;
+                while (remainder == 0)
+                    remainder = DecimalRaw.Divide(ref raw, 10000);
 
-            var negative = num < 0;
-            if (negative)
-                num = -num;
+                groupCount++;
 
-            int numGroups, weight, fractionDigits;
-            GetNumericHeader(num, out numGroups, out weight, out fractionDigits);
-
-            return 4 * sizeof(short) + numGroups * sizeof(short);
-        }
-
-        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
-        {
-            var num = (decimal) (parameter?.ConvertedValue ?? value);
-            if (num == 0M)
-                buf.WriteInt64(0);
-            else
-            {
-                var negative = num < 0;
-                if (negative)
-                    num = -num;
-
-                int numGroups, weight, fractionDigits;
-                GetNumericHeader(num, out numGroups, out weight, out fractionDigits);
-
-                buf.WriteInt16(numGroups);
-                buf.WriteInt16(weight);
-                buf.WriteInt16(negative ? 0x4000 : 0x0000);
-                buf.WriteInt16(fractionDigits);
-                for (int i = 0, pos = weight + 7; i < numGroups; i++, pos--)
+                while (raw.Low != 0 || raw.Mid != 0 || raw.High != 0)
                 {
-                    buf.WriteInt16((ushort)(num / Decimals[pos]));
-                    num %= Decimals[pos];
+                    DecimalRaw.Divide(ref raw, 10000);
+                    groupCount++;
                 }
             }
+            return 4 * sizeof(short) + groupCount * sizeof(short);
         }
+
+        public int ValidateAndGetLength(short value, NpgsqlParameter parameter)
+            => ValidateAndGetLength((decimal)value, parameter);
+
+        public int ValidateAndGetLength(int value, NpgsqlParameter parameter)
+            => ValidateAndGetLength((decimal)value, parameter);
+
+        public int ValidateAndGetLength(long value, NpgsqlParameter parameter)
+            => ValidateAndGetLength((decimal)value, parameter);
+
+        public int ValidateAndGetLength(float value, NpgsqlParameter parameter)
+            => ValidateAndGetLength((decimal)value, parameter);
+
+        public int ValidateAndGetLength(double value, NpgsqlParameter parameter)
+            => ValidateAndGetLength((decimal)value, parameter);
+
+        public int ValidateAndGetLength(byte value, NpgsqlParameter parameter)
+            => ValidateAndGetLength((decimal)value, parameter);
+
+        public override unsafe void Write(decimal value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        {
+            var groupCount = 0;
+            var groups = stackalloc short[8];
+            var weight = 0;
+
+            var raw = Unsafe.As<decimal, DecimalRaw>(ref value);
+            if (raw.Low != 0 || raw.Mid != 0 || raw.High != 0)
+            {
+                var scale = raw.Scale;
+                weight = -scale / 4 - 1;
+
+                uint remainder = default;
+                var scaleRemainder = scale % 4;
+                switch (scaleRemainder)
+                {
+                    case 3: remainder = DecimalRaw.Divide(ref raw, 1000) * 10; break;
+                    case 2: remainder = DecimalRaw.Divide(ref raw, 100) * 100; break;
+                    case 1: remainder = DecimalRaw.Divide(ref raw, 10) * 1000; break;
+                }
+
+                if (remainder == 0)
+                {
+                    while ((remainder = DecimalRaw.Divide(ref raw, 10000)) == 0)
+                        weight++;
+                }
+                else
+                {
+                    if (scaleRemainder != 0)
+                        weight--;
+                }
+
+                groups[groupCount++] = (short)remainder;
+
+                while (raw.Low != 0 || raw.Mid != 0 || raw.High != 0)
+                    groups[groupCount++] = (short)DecimalRaw.Divide(ref raw, 10000);
+            }
+
+            buf.WriteInt16(groupCount);
+            buf.WriteInt16(groupCount + weight);
+            buf.WriteInt16(raw.Negative ? 0x4000 : 0x0000);
+            buf.WriteInt16(raw.Scale);
+
+            while (groupCount > 0)
+                buf.WriteInt16(groups[--groupCount]);
+        }
+
+        public void Write(short value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => Write((decimal)value, buf, parameter);
+
+        public void Write(int value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => Write((decimal)value, buf, parameter);
+
+        public void Write(long value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => Write((decimal)value, buf, parameter);
+
+        public void Write(byte value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => Write((decimal)value, buf, parameter);
+
+        public void Write(float value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => Write((decimal)value, buf, parameter);
+
+        public void Write(double value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => Write((decimal)value, buf, parameter);
+
+        #endregion Write
     }
 }

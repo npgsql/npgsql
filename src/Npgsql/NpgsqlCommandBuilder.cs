@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -20,8 +20,6 @@
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
-
-#if !NETSTANDARD1_3
 
 using System;
 using System.Data;
@@ -76,7 +74,7 @@ namespace Npgsql
             // TODO: Why should it be possible to remove the QuotePrefix?
             set
             {
-                if (String.IsNullOrEmpty(value))
+                if (string.IsNullOrEmpty(value))
                 {
                     base.QuotePrefix = value;
                 }
@@ -102,7 +100,7 @@ namespace Npgsql
             // TODO: Why should it be possible to remove the QuoteSuffix?
             set
             {
-                if (String.IsNullOrEmpty(value))
+                if (string.IsNullOrEmpty(value))
                 {
                     base.QuoteSuffix = value;
                 }
@@ -117,121 +115,12 @@ namespace Npgsql
         ///
         /// This method is reponsible to derive the command parameter list with values obtained from function definition.
         /// It clears the Parameters collection of command. Also, if there is any parameter type which is not supported by Npgsql, an InvalidOperationException will be thrown.
-        /// Parameters name will be parameter1, parameter2, ...
+        /// Parameters name will be parameter1, parameter2, ... for CommandType.StoredProcedure and named after the placeholder for CommandType.Text
         ///</summary>
         /// <param name="command">NpgsqlCommand whose function parameters will be obtained.</param>
         public static void DeriveParameters(NpgsqlCommand command)
         {
-            try
-            {
-                DoDeriveParameters(command);
-            }
-            catch
-            {
-                command.Parameters.Clear();
-                throw;
-            }
-        }
-
-        private const string DeriveParametersQuery = @"
-SELECT
-CASE
-	WHEN pg_proc.proargnames IS NULL THEN array_cat(array_fill(''::name,ARRAY[pg_proc.pronargs]),array_agg(pg_attribute.attname ORDER BY pg_attribute.attnum))
-	ELSE pg_proc.proargnames
-END AS proargnames,
-pg_proc.proargtypes,
-CASE
-	WHEN pg_proc.proallargtypes IS NULL AND (array_agg(pg_attribute.atttypid))[1] IS NOT NULL THEN array_cat(string_to_array(pg_proc.proargtypes::text,' ')::oid[],array_agg(pg_attribute.atttypid ORDER BY pg_attribute.attnum))
-	ELSE pg_proc.proallargtypes
-END AS proallargtypes,
-CASE
-	WHEN pg_proc.proargmodes IS NULL AND (array_agg(pg_attribute.atttypid))[1] IS NOT NULL THEN array_cat(array_fill('i'::""char"",ARRAY[pg_proc.pronargs]),array_fill('o'::""char"",ARRAY[array_length(array_agg(pg_attribute.atttypid), 1)]))
-    ELSE pg_proc.proargmodes
-END AS proargmodes
-FROM pg_proc
-LEFT JOIN pg_type ON pg_proc.prorettype = pg_type.oid
-LEFT JOIN pg_attribute ON pg_type.typrelid = pg_attribute.attrelid AND pg_attribute.attnum >= 1
-WHERE pg_proc.oid = :proname::regproc
-GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_proc.proargmodes, pg_proc.pronargs;
-";
-
-        private static void DoDeriveParameters(NpgsqlCommand command)
-        {
-            // See http://www.postgresql.org/docs/current/static/catalog-pg-proc.html
-            command.Parameters.Clear();
-            using (var c = new NpgsqlCommand(DeriveParametersQuery, command.Connection))
-            {
-                c.Parameters.Add(new NpgsqlParameter("proname", NpgsqlDbType.Text));
-                c.Parameters[0].Value = command.CommandText;
-
-                string[] names = null;
-                uint[] types = null;
-                char[] modes = null;
-
-                using (var rdr = c.ExecuteReader(CommandBehavior.SingleRow | CommandBehavior.SingleResult))
-                {
-                    if (rdr.Read())
-                    {
-                        if (!rdr.IsDBNull(0))
-                            names = rdr.GetValue(0) as string[];
-                        if (!rdr.IsDBNull(2))
-                            types = rdr.GetValue(2) as uint[];
-                        if (!rdr.IsDBNull(3))
-                            modes = rdr.GetValue(3) as char[];
-                        if (types == null)
-                        {
-                            if (rdr.IsDBNull(1) || rdr.GetFieldValue<uint[]>(1).Length == 0)
-                                return;  // Parameterless function
-                            types = rdr.GetFieldValue<uint[]>(1);
-                        }
-                    }
-                    else
-                        throw new InvalidOperationException($"{command.CommandText} does not exist in pg_proc");
-                }
-
-                command.Parameters.Clear();
-                for (var i = 0; i < types.Length; i++)
-                {
-                    var param = new NpgsqlParameter();
-
-                    // TODO: Fix enums, composite types
-                    var npgsqlDbType = c.Connection.Connector.TypeHandlerRegistry[types[i]].PostgresType.NpgsqlDbType;
-                    if (!npgsqlDbType.HasValue)
-                        throw new InvalidOperationException($"Invalid parameter type: {types[i]}");
-                    param.NpgsqlDbType = npgsqlDbType.Value;
-
-                    if (names != null && i < names.Length)
-                        param.ParameterName = ":" + names[i];
-                    else
-                        param.ParameterName = "parameter" + (i + 1);
-
-                    if (modes == null) // All params are IN, or server < 8.1.0 (and only IN is supported)
-                        param.Direction = ParameterDirection.Input;
-                    else
-                    {
-                        switch (modes[i])
-                        {
-                            case 'i':
-                                param.Direction = ParameterDirection.Input;
-                                break;
-                            case 'o':
-                            case 't':
-                                param.Direction = ParameterDirection.Output;
-                                break;
-                            case 'b':
-                                param.Direction = ParameterDirection.InputOutput;
-                                break;
-                            case 'v':
-                                throw new NotImplementedException("Cannot derive function parameter of type VARIADIC");
-                            default:
-                                throw new ArgumentOutOfRangeException("proargmode", modes[i],
-                                    "Unknown code in proargmodes while deriving: " + modes[i]);
-                        }
-                    }
-
-                    command.Parameters.Add(param);
-                }
-            }
+            command.DeriveParameters();
         }
 
         /// <summary>
@@ -259,7 +148,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// </returns>
         public new NpgsqlCommand GetInsertCommand(bool useColumnsForParameterNames)
         {
-            NpgsqlCommand cmd = (NpgsqlCommand) base.GetInsertCommand(useColumnsForParameterNames);
+            var cmd = (NpgsqlCommand) base.GetInsertCommand(useColumnsForParameterNames);
             cmd.UpdatedRowSource = UpdateRowSource.None;
             return cmd;
         }
@@ -289,7 +178,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// </returns>
         public new NpgsqlCommand GetUpdateCommand(bool useColumnsForParameterNames)
         {
-            NpgsqlCommand cmd = (NpgsqlCommand)base.GetUpdateCommand(useColumnsForParameterNames);
+            var cmd = (NpgsqlCommand)base.GetUpdateCommand(useColumnsForParameterNames);
             cmd.UpdatedRowSource = UpdateRowSource.None;
             return cmd;
         }
@@ -319,7 +208,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// </returns>
         public new NpgsqlCommand GetDeleteCommand(bool useColumnsForParameterNames)
         {
-            NpgsqlCommand cmd = (NpgsqlCommand) base.GetDeleteCommand(useColumnsForParameterNames);
+            var cmd = (NpgsqlCommand) base.GetDeleteCommand(useColumnsForParameterNames);
             cmd.UpdatedRowSource = UpdateRowSource.None;
             return cmd;
         }
@@ -347,16 +236,17 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         }
 */
 
-        /// <summary>
-        /// Applies the parameter information.
-        /// </summary>
-        /// <param name="p">The parameter.</param>
-        /// <param name="row">The row.</param>
-        /// <param name="statementType">Type of the statement.</param>
-        /// <param name="whereClause">if set to <c>true</c> [where clause].</param>
+                /// <summary>
+                /// Applies the parameter information.
+                /// </summary>
+                /// <param name="p">The parameter.</param>
+                /// <param name="row">The row.</param>
+                /// <param name="statementType">Type of the statement.</param>
+                /// <param name="whereClause">if set to <c>true</c> [where clause].</param>
         protected override void ApplyParameterInfo(DbParameter p, DataRow row, System.Data.StatementType statementType, bool whereClause)
         {
-            // TODO: We may need to set NpgsqlDbType, as well as other properties, on p
+            var param = (NpgsqlParameter)p;
+            param.NpgsqlDbType = (NpgsqlDbType)row[SchemaTableColumn.ProviderType];
         }
 
         /// <summary>
@@ -368,7 +258,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// </returns>
         protected override string GetParameterName(int parameterOrdinal)
         {
-            return String.Format(CultureInfo.InvariantCulture, "@p{0}", parameterOrdinal);
+            return string.Format(CultureInfo.InvariantCulture, "@p{0}", parameterOrdinal);
         }
 
         /// <summary>
@@ -380,7 +270,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// </returns>
         protected override string GetParameterName(string parameterName)
         {
-            return String.Format(CultureInfo.InvariantCulture, "@{0}", parameterName);
+            return string.Format(CultureInfo.InvariantCulture, "@{0}", parameterName);
         }
 
         /// <summary>
@@ -396,9 +286,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         }
 
         /// <summary>
-        /// Registers the <see cref="T:NpgsqlCommandBuilder" /> to handle the <see cref="E:NpgsqlDataAdapter.RowUpdating"/> event for a <see cref="T:NpgsqlDataAdapter" />.
+        /// Registers the <see cref="NpgsqlCommandBuilder" /> to handle the <see cref="NpgsqlDataAdapter.RowUpdating"/> event for a <see cref="NpgsqlDataAdapter" />.
         /// </summary>
-        /// <param name="adapter">The <see cref="T:System.Data.Common.DbDataAdapter" /> to be used for the update.</param>
+        /// <param name="adapter">The <see cref="System.Data.Common.DbDataAdapter" /> to be used for the update.</param>
         protected override void SetRowUpdatingHandler(DbDataAdapter adapter)
         {
             var npgsqlAdapter = adapter as NpgsqlDataAdapter;
@@ -483,4 +373,3 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         }
     }
 }
-#endif

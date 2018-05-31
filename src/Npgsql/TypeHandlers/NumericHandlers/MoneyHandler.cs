@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -26,6 +26,8 @@ using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
+using Npgsql.TypeMapping;
 
 namespace Npgsql.TypeHandlers.NumericHandlers
 {
@@ -33,37 +35,17 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-money.html
     /// </remarks>
     [TypeMapping("money", NpgsqlDbType.Money, dbType: DbType.Currency)]
-    class MoneyHandler : SimpleTypeHandler<decimal>
+    class MoneyHandler : NpgsqlSimpleTypeHandler<decimal>
     {
-        internal MoneyHandler(PostgresType postgresType) : base(postgresType) { }
-
-        public override decimal Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override decimal Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => buf.ReadInt64() / 100m;
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
-        {
-            decimal decimalValue;
-            if (!(value is decimal))
-            {
-                var converted = Convert.ToDecimal(value);
-                if (parameter == null)
-                    throw CreateConversionButNoParamException(value.GetType());
-                decimalValue = converted;
-                parameter.ConvertedValue = converted;
-            }
-            else
-                decimalValue = (decimal)value;
+        public override int ValidateAndGetLength(decimal value, NpgsqlParameter parameter)
+            => value < -92233720368547758.08M || value > 92233720368547758.07M
+                ? throw new OverflowException($"The supplied value ({value}) is outside the range for a PostgreSQL money value.")
+                : 8;
 
-            if (decimalValue < -92233720368547758.08M || decimalValue > 92233720368547758.07M)
-                throw new OverflowException("The supplied value (" + decimalValue + ") is outside the range for a PostgreSQL money value.");
-
-            return 8;
-        }
-
-        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
-        {
-            var v = (decimal)(parameter?.ConvertedValue ?? value);
-            buf.WriteInt64((long)(Math.Round(v, 2, MidpointRounding.AwayFromZero) * 100m));
-        }
+        public override void Write(decimal value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => buf.WriteInt64((long)(Math.Round(value, 2, MidpointRounding.AwayFromZero) * 100m));
     }
 }

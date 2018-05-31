@@ -9,10 +9,6 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests
 {
-    // Some general notes on these tests...
-    // Care must be taken, since some "control" statements (checking the number of prepared statements, even the
-    // startup internal type loading query) may get prepared. This is why we never set minusages to 1, and explicitly
-    // prepare control statements.
     public class AutoPrepareTests : TestBase
     {
         [Test]
@@ -320,6 +316,56 @@ namespace Npgsql.Tests
             }
         }
 
-        const string CountPreparedStatements = "SELECT COUNT(*) FROM pg_prepared_statements WHERE statement NOT LIKE '%pg_prepared_statements%'";
+        [Test, Description("Tests parameter derivation a parameterized query (CommandType.Text) that is already auto-prepared.")]
+        public void DeriveParametersForAutoPreparedStatement()
+        {
+            const string query = "SELECT @p::integer";
+            const int answer = 42;
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                MaxAutoPrepare = 10,
+                AutoPrepareMinUsages = 2
+            };
+            using (var conn = OpenConnection(csb))
+            using (var checkCmd = new NpgsqlCommand(CountPreparedStatements, conn))
+            using (var cmd = new NpgsqlCommand(query, conn))
+            {
+                checkCmd.Prepare();
+                cmd.Parameters.AddWithValue("@p", NpgsqlDbType.Integer, answer);
+                cmd.ExecuteNonQuery(); cmd.ExecuteNonQuery(); // cmd1 is now autoprepared
+                Assert.That(checkCmd.ExecuteScalar(), Is.EqualTo(1));
+                Assert.That(conn.Connector.PreparedStatementManager.NumPrepared, Is.EqualTo(2));
+
+                // Derive parameters for the already autoprepared statement
+                NpgsqlCommandBuilder.DeriveParameters(cmd);
+                Assert.That(cmd.Parameters.Count, Is.EqualTo(1));
+                Assert.That(cmd.Parameters[0].ParameterName, Is.EqualTo("p"));
+
+                // DeriveParameters should have silently unprepared the autoprepared statements
+                Assert.That(checkCmd.ExecuteScalar(), Is.EqualTo(0));
+                Assert.That(conn.Connector.PreparedStatementManager.NumPrepared, Is.EqualTo(1));
+
+                cmd.Parameters["@p"].Value = answer;
+                Assert.That(cmd.ExecuteScalar(), Is.EqualTo(answer));
+
+                conn.UnprepareAll();
+            }
+        }
+
+        // Exclude some internal Npgsql queries which include pg_type as well as the count statement itself
+        const string CountPreparedStatements = @"
+SELECT COUNT(*) FROM pg_prepared_statements
+    WHERE statement NOT LIKE '%pg_prepared_statements%'
+    AND statement NOT LIKE '%pg_type%'";
+
+        void DumpPreparedStatements(NpgsqlConnection conn)
+        {
+            using (var cmd = new NpgsqlCommand("SELECT name,statement FROM pg_prepared_statements", conn))
+            using (var reader = cmd.ExecuteReader())
+            {
+                while (reader.Read())
+                    Console.WriteLine($"{reader.GetString(0)}: {reader.GetString(1)}");
+            }
+        }
     }
 }

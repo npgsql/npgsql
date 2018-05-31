@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -25,7 +25,8 @@ using System;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using JetBrains.Annotations;
-using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
+using Npgsql.TypeMapping;
 
 namespace Npgsql.TypeHandlers
 {
@@ -36,46 +37,50 @@ namespace Npgsql.TypeHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-character.html
     /// </remarks>
     [TypeMapping("char", NpgsqlDbType.InternalChar)]
-    class InternalCharHandler : SimpleTypeHandler<char>,
-        ISimpleTypeHandler<byte>, ISimpleTypeHandler<short>, ISimpleTypeHandler<int>, ISimpleTypeHandler<long>
+    class InternalCharHandler : NpgsqlSimpleTypeHandler<char>,
+        INpgsqlSimpleTypeHandler<byte>, INpgsqlSimpleTypeHandler<short>, INpgsqlSimpleTypeHandler<int>, INpgsqlSimpleTypeHandler<long>
     {
-        internal InternalCharHandler(PostgresType postgresType) : base(postgresType) { }
-
         #region Read
 
-        public override char Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override char Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => (char)buf.ReadByte();
 
-        byte ISimpleTypeHandler<byte>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        byte INpgsqlSimpleTypeHandler<byte>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => buf.ReadByte();
 
-        short ISimpleTypeHandler<short>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        short INpgsqlSimpleTypeHandler<short>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => buf.ReadByte();
 
-        int ISimpleTypeHandler<int>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        int INpgsqlSimpleTypeHandler<int>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => buf.ReadByte();
 
-        long ISimpleTypeHandler<long>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        long INpgsqlSimpleTypeHandler<long>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => buf.ReadByte();
 
         #endregion
 
         #region Write
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
-        {
-            if (!(value is byte))
-            {
-                // ReSharper disable once ReturnValueOfPureMethodIsNotUsed
-                Convert.ToByte(value);
-            }
-            return 1;
-        }
+        public override int ValidateAndGetLength(char value, NpgsqlParameter parameter) => 1;
+        public int ValidateAndGetLength(byte value, NpgsqlParameter parameter)          => 1;
+        public int ValidateAndGetLength(short value, NpgsqlParameter parameter)         => 1;
+        public int ValidateAndGetLength(int value, NpgsqlParameter parameter)           => 1;
+        public int ValidateAndGetLength(long value, NpgsqlParameter parameter)          => 1;
 
-        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
-        {
-            buf.WriteByte(value as byte? ?? Convert.ToByte(value));
-        }
+        public override void Write(char value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => buf.WriteByte((byte)value);
+
+        public void Write(byte value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => buf.WriteByte(value);
+
+        public void Write(short value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => buf.WriteByte((byte)value);
+
+        public void Write(int value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => buf.WriteByte((byte)value);
+
+        public void Write(long value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => buf.WriteByte((byte)value);
 
         #endregion
     }

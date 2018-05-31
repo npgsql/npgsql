@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -23,10 +23,13 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandlers;
+using Npgsql.TypeHandling;
+using Npgsql.TypeMapping;
 
 namespace Npgsql.BackendMessages
 {
@@ -40,20 +43,26 @@ namespace Npgsql.BackendMessages
     {
         public List<FieldDescription> Fields { get; }
         readonly Dictionary<string, int> _nameIndex;
-        readonly Dictionary<string, int> _caseInsensitiveNameIndex;
+        [CanBeNull]
+        Dictionary<string, int> _insensitiveIndex;
+        bool _isInsensitiveIndexInitialized;
 
         internal RowDescriptionMessage()
         {
             Fields = new List<FieldDescription>();
-            _nameIndex = new Dictionary<string, int>(KanaWidthInsensitiveComparer.Instance);
-            _caseInsensitiveNameIndex = new Dictionary<string, int>(KanaWidthCaseInsensitiveComparer.Instance);
+            _nameIndex = new Dictionary<string, int>();
         }
 
-        internal RowDescriptionMessage Load(ReadBuffer buf, TypeHandlerRegistry typeHandlerRegistry)
+        internal RowDescriptionMessage Load(NpgsqlReadBuffer buf, ConnectorTypeMapper typeMapper)
         {
             Fields.Clear();
             _nameIndex.Clear();
-            _caseInsensitiveNameIndex.Clear();
+            if (_isInsensitiveIndexInitialized)
+            {
+                Debug.Assert(_insensitiveIndex != null);
+                _insensitiveIndex.Clear();
+                _isInsensitiveIndexInitialized = false;
+            }
 
             var numFields = buf.ReadInt16();
             for (var i = 0; i != numFields; ++i)
@@ -61,24 +70,21 @@ namespace Npgsql.BackendMessages
                 // TODO: Recycle
                 var field = new FieldDescription();
                 field.Populate(
-                    typeHandlerRegistry,
-                    buf.ReadNullTerminatedString(),  // Name
-                    buf.ReadUInt32(),                // TableOID
-                    buf.ReadInt16(),                 // ColumnAttributeNumber
-                    buf.ReadUInt32(),                // TypeOID
-                    buf.ReadInt16(),                 // TypeSize
-                    buf.ReadInt32(),                 // TypeModifier
-                    (FormatCode)buf.ReadInt16()      // FormatCode
+                    typeMapper,
+                    buf.ReadNullTerminatedString(), // Name
+                    buf.ReadUInt32(), // TableOID
+                    buf.ReadInt16(), // ColumnAttributeNumber
+                    buf.ReadUInt32(), // TypeOID
+                    buf.ReadInt16(), // TypeSize
+                    buf.ReadInt32(), // TypeModifier
+                    (FormatCode)buf.ReadInt16() // FormatCode
                 );
 
                 Fields.Add(field);
                 if (!_nameIndex.ContainsKey(field.Name))
-                {
                     _nameIndex.Add(field.Name, i);
-                    if (!_caseInsensitiveNameIndex.ContainsKey(field.Name))
-                        _caseInsensitiveNameIndex.Add(field.Name, i);
-                }
             }
+
             return this;
         }
 
@@ -90,72 +96,68 @@ namespace Npgsql.BackendMessages
         /// Given a string name, returns the field's ordinal index in the row.
         /// </summary>
         internal int GetFieldIndex(string name)
-        {
-            if (_nameIndex.TryGetValue(name, out var ret) || _caseInsensitiveNameIndex.TryGetValue(name, out ret))
-                return ret;
-            throw new IndexOutOfRangeException("Field not found in row: " + name);
-        }
+            => TryGetFieldIndex(name, out var ret)
+                ? ret
+                : throw new IndexOutOfRangeException("Field not found in row: " + name);
 
         /// <summary>
         /// Given a string name, returns the field's ordinal index in the row.
         /// </summary>
         internal bool TryGetFieldIndex(string name, out int fieldIndex)
-            => _nameIndex.TryGetValue(name, out fieldIndex) ||
-               _caseInsensitiveNameIndex.TryGetValue(name, out fieldIndex);
+        {
+            if (_nameIndex.TryGetValue(name, out fieldIndex))
+                return true;
+
+            if (!_isInsensitiveIndexInitialized)
+            {
+                if (_insensitiveIndex == null)
+                    _insensitiveIndex = new Dictionary<string, int>(InsensitiveComparer.Instance);
+
+                foreach (var kv in _nameIndex)
+                    if (!_insensitiveIndex.ContainsKey(kv.Key))
+                        _insensitiveIndex[kv.Key] = kv.Value;
+
+                _isInsensitiveIndexInitialized = true;
+            }
+
+            Debug.Assert(_insensitiveIndex != null);
+            return _insensitiveIndex.TryGetValue(name, out fieldIndex);
+        }
 
         public BackendMessageCode Code => BackendMessageCode.RowDescription;
 
-        #region Kana comparers
-
-        static readonly CompareInfo CompareInfo = CultureInfo.InvariantCulture.CompareInfo;
-
-        sealed class KanaWidthInsensitiveComparer : IEqualityComparer<string>
+        /// <summary>
+        /// Comparer that's case-insensitive and Kana width-insensitive
+        /// </summary>
+        sealed class InsensitiveComparer : IEqualityComparer<string>
         {
-            public static readonly KanaWidthInsensitiveComparer Instance = new KanaWidthInsensitiveComparer();
-            KanaWidthInsensitiveComparer() { }
-            public bool Equals([NotNull] string x, [NotNull] string y)
-                => CompareInfo.Compare(x, y, CompareOptions.IgnoreWidth) == 0;
-            public int GetHashCode([NotNull] string o)
-            {
-#if NETSTANDARD1_3
-                return CompareInfo.GetHashCode(o, CompareOptions.IgnoreWidth);
-#else
-                return CompareInfo.GetSortKey(o, CompareOptions.IgnoreWidth).GetHashCode();
-#endif
-            }
-        }
+            public static readonly InsensitiveComparer Instance = new InsensitiveComparer();
+            static readonly CompareInfo CompareInfo = CultureInfo.InvariantCulture.CompareInfo;
 
-        sealed class KanaWidthCaseInsensitiveComparer : IEqualityComparer<string>
-        {
-            public static readonly KanaWidthCaseInsensitiveComparer Instance = new KanaWidthCaseInsensitiveComparer();
-            KanaWidthCaseInsensitiveComparer() { }
-            public bool Equals([NotNull] string x, [NotNull] string y)
-                => CompareInfo.Compare(x, y, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase) == 0;
-            public int GetHashCode([NotNull] string o)
-            {
-#if NETSTANDARD1_3
-                return CompareInfo.GetHashCode(o, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase);
-#else
-                return CompareInfo.GetSortKey(o, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase).GetHashCode();
-#endif
-            }
-        }
+            InsensitiveComparer() {}
 
-        #endregion
+            // We should really have CompareOptions.IgnoreKanaType here, but see
+            // https://github.com/dotnet/corefx/issues/12518#issuecomment-389658716
+            public bool Equals([NotNull] string x, [NotNull] string y)
+                => CompareInfo.Compare(x, y, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase | CompareOptions.IgnoreKanaType) == 0;
+
+            public int GetHashCode([NotNull] string o)
+                => CompareInfo.GetSortKey(o, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase | CompareOptions.IgnoreKanaType).GetHashCode();
+        }
     }
 
     /// <summary>
     /// A descriptive record on a single field received from PostgreSQL.
     /// See RowDescription in http://www.postgresql.org/docs/current/static/protocol-message-formats.html
     /// </summary>
-    sealed class FieldDescription
+    public sealed class FieldDescription
     {
         internal void Populate(
-            TypeHandlerRegistry typeHandlerRegistry, string name, uint tableOID, short columnAttributeNumber,
+            ConnectorTypeMapper typeMapper, string name, uint tableOID, short columnAttributeNumber,
             uint oid, short typeSize, int typeModifier, FormatCode formatCode
         )
         {
-            _typeHandlerRegistry = typeHandlerRegistry;
+            _typeMapper = typeMapper;
             Name = name;
             TableOID = tableOID;
             ColumnAttributeNumber = columnAttributeNumber;
@@ -164,7 +166,7 @@ namespace Npgsql.BackendMessages
             TypeModifier = typeModifier;
             FormatCode = formatCode;
 
-            RealHandler = typeHandlerRegistry[TypeOID];
+            RealHandler = typeMapper.GetByOID(TypeOID);
             ResolveHandler();
         }
 
@@ -181,12 +183,12 @@ namespace Npgsql.BackendMessages
         /// <summary>
         /// The data type size (see pg_type.typlen). Note that negative values denote variable-width types.
         /// </summary>
-        internal short TypeSize { get; set; }
+        public short TypeSize { get; set; }
 
         /// <summary>
         /// The type modifier (see pg_attribute.atttypmod). The meaning of the modifier is type-specific.
         /// </summary>
-        internal int TypeModifier { get; set; }
+        public int TypeModifier { get; set; }
 
         /// <summary>
         /// If the field can be identified as a column of a specific table, the object ID of the table; otherwise zero.
@@ -215,32 +217,41 @@ namespace Npgsql.BackendMessages
 
         FormatCode _formatCode;
 
+        internal string TypeDisplayName => PostgresType.GetDisplayNameWithFacets(TypeModifier);
+
         /// <summary>
         /// The Npgsql type handler assigned to handle this field.
         /// Returns <see cref="UnknownTypeHandler"/> for fields with format text.
         /// </summary>
-        internal TypeHandler Handler { get; private set; }
+        internal NpgsqlTypeHandler Handler { get; private set; }
 
         /// <summary>
         /// The type handler resolved for this field, regardless of whether it's binary or text.
         /// </summary>
-        internal TypeHandler RealHandler { get; private set; }
+        internal NpgsqlTypeHandler RealHandler { get; private set; }
 
-        internal PostgresType PostgresType => RealHandler.PostgresType;
-        public Type FieldType => Handler.GetFieldType(this);
+        internal PostgresType PostgresType
+            => _typeMapper.DatabaseInfo.ByOID.TryGetValue(TypeOID, out var postgresType)
+                ? postgresType
+                : UnknownBackendType.Instance;
+
+        internal Type FieldType => Handler.GetFieldType(this);
 
         void ResolveHandler()
         {
             Handler = IsBinaryFormat
-                ? _typeHandlerRegistry[TypeOID]
-                : _typeHandlerRegistry.UnrecognizedTypeHandler;
+                ? _typeMapper.GetByOID(TypeOID)
+                : _typeMapper.UnrecognizedTypeHandler;
         }
 
-        TypeHandlerRegistry _typeHandlerRegistry;
+        ConnectorTypeMapper _typeMapper;
 
-        public bool IsBinaryFormat => FormatCode == FormatCode.Binary;
-        public bool IsTextFormat => FormatCode == FormatCode.Text;
+        internal bool IsBinaryFormat => FormatCode == FormatCode.Binary;
+        internal bool IsTextFormat => FormatCode == FormatCode.Text;
 
+        /// <summary>
+        /// Returns a string that represents the current object.
+        /// </summary>
         public override string ToString() => Name + (Handler == null ? "" : $"({Handler.PgDisplayName})");
     }
 }

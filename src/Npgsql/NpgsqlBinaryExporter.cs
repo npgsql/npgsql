@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -25,11 +25,15 @@ using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
 using Npgsql.Logging;
 using Npgsql.TypeHandlers;
+using Npgsql.TypeHandling;
+using Npgsql.TypeMapping;
 using NpgsqlTypes;
+using static Npgsql.Statics;
 
 namespace Npgsql
 {
@@ -42,8 +46,8 @@ namespace Npgsql
         #region Fields and Properties
 
         NpgsqlConnector _connector;
-        ReadBuffer _buf;
-        TypeHandlerRegistry _registry;
+        NpgsqlReadBuffer _buf;
+        ConnectorTypeMapper _typeMapper;
         bool _isConsumed, _isDisposed;
         int _leftToReadInDataMsg, _columnLen;
 
@@ -54,6 +58,8 @@ namespace Npgsql
         /// </summary>
         internal int NumColumns { get; }
 
+        [ItemCanBeNull]
+        readonly NpgsqlTypeHandler[] _typeHandlerCache;
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         #endregion
@@ -64,7 +70,7 @@ namespace Npgsql
         {
             _connector = connector;
             _buf = connector.ReadBuffer;
-            _registry = connector.TypeHandlerRegistry;
+            _typeMapper = connector.TypeMapper;
             _columnLen = int.MinValue;   // Mark that the (first) column length hasn't been read yet
             _column = -1;
 
@@ -91,6 +97,7 @@ namespace Npgsql
                 }
 
                 NumColumns = copyOutResponse.NumColumns;
+                _typeHandlerCache = new NpgsqlTypeHandler[NumColumns];
                 ReadHeader();
             }
             catch
@@ -102,7 +109,7 @@ namespace Npgsql
 
         void ReadHeader()
         {
-            _leftToReadInDataMsg = _connector.ReadExpecting<CopyDataMessage>().Length;
+            _leftToReadInDataMsg = Expect<CopyDataMessage>(_connector.ReadMessage()).Length;
             var headerLen = NpgsqlRawCopyStream.BinarySignature.Length + 4 + 4;
             _buf.Ensure(headerLen);
             if (NpgsqlRawCopyStream.BinarySignature.Any(t => _buf.ReadByte() != t)) {
@@ -137,7 +144,7 @@ namespace Npgsql
             // message per row).
             if (_column == NumColumns)
             {
-                _leftToReadInDataMsg = _connector.ReadExpecting<CopyDataMessage>().Length;
+                _leftToReadInDataMsg = Expect<CopyDataMessage>(_connector.ReadMessage()).Length;
             }
             else if (_column != -1)
             {
@@ -149,9 +156,9 @@ namespace Npgsql
             if (numColumns == -1)
             {
                 Debug.Assert(_leftToReadInDataMsg == 0);
-                _connector.ReadExpecting<CopyDoneMessage>();
-                _connector.ReadExpecting<CommandCompleteMessage>();
-                _connector.ReadExpecting<ReadyForQueryMessage>();
+                Expect<CopyDoneMessage>(_connector.ReadMessage());
+                Expect<CommandCompleteMessage>(_connector.ReadMessage());
+                Expect<ReadyForQueryMessage>(_connector.ReadMessage());
                 _column = -1;
                 _isConsumed = true;
                 return -1;
@@ -180,7 +187,9 @@ namespace Npgsql
             }
 
             var type = typeof(T);
-            var handler = _registry[type];
+            var handler = _typeHandlerCache[_column];
+            if (handler == null)
+                handler = _typeHandlerCache[_column] = _typeMapper.GetByClrType(type);
             return DoRead<T>(handler);
         }
 
@@ -204,47 +213,23 @@ namespace Npgsql
                 throw new InvalidOperationException("Not reading a row");
             }
 
-            var handler = _registry[type];
+            var handler = _typeHandlerCache[_column];
+            if (handler == null)
+                handler = _typeHandlerCache[_column] = _typeMapper.GetByNpgsqlDbType(type);
             return DoRead<T>(handler);
         }
 
-        T DoRead<T>(TypeHandler handler)
+        T DoRead<T>(NpgsqlTypeHandler handler)
         {
             try {
                 ReadColumnLenIfNeeded();
                 if (_columnLen == -1)
                     throw new InvalidCastException("Column is null");
 
-                // TODO: Duplication with NpgsqlDataReader.GetFieldValueInternal
-
-                T result;
-
-                // The type handler supports the requested type directly
-                var tHandler = handler as ITypeHandler<T>;
-                if (tHandler != null)
-                    result = handler.Read<T>(_buf, _columnLen, false).Result;
-                else
-                {
-                    var t = typeof(T);
-                    if (!t.IsArray)
-                        throw new InvalidCastException($"Can't cast database type {handler.PgDisplayName} to {typeof(T).Name}");
-
-                    // Getting an array
-
-                    // We need to treat this as an actual array type, these need special treatment because of
-                    // typing/generics reasons (there is no way to express "array of X" with generics
-                    var elementType = t.GetElementType();
-                    var arrayHandler = handler as ArrayHandler;
-                    if (arrayHandler == null)
-                        throw new InvalidCastException($"Can't cast database type {handler.PgDisplayName} to {typeof(T).Name}");
-
-                    if (arrayHandler.GetElementFieldType() == elementType)
-                        result = (T)handler.ReadAsObject(_buf, _columnLen, false).Result;
-                    else if (arrayHandler.GetElementPsvType() == elementType)
-                        result = (T)handler.ReadPsvAsObject(_buf, _columnLen, false).Result;
-                    else
-                        throw new InvalidCastException($"Can't cast database type {handler.PgDisplayName} to {typeof(T).Name}");
-                }
+                // If we know the entire column is already in memory, use the code path without async
+                var result = _columnLen <= _buf.ReadBytesLeft
+                    ? handler.Read<T>(_buf, _columnLen)
+                    : handler.Read<T>(_buf, _columnLen, false).GetAwaiter().GetResult();
 
                 _leftToReadInDataMsg -= _columnLen;
                 _columnLen = int.MinValue;   // Mark that the (next) column length hasn't been read yet
@@ -327,8 +312,8 @@ namespace Npgsql
                 _buf.Skip(_leftToReadInDataMsg);
                 // Read to the end
                 _connector.SkipUntil(BackendMessageCode.CopyDone);
-                _connector.ReadExpecting<CommandCompleteMessage>();
-                _connector.ReadExpecting<ReadyForQueryMessage>();
+                Expect<CommandCompleteMessage>(_connector.ReadMessage());
+                Expect<ReadyForQueryMessage>(_connector.ReadMessage());
             }
 
             var connector = _connector;
@@ -340,7 +325,7 @@ namespace Npgsql
         {
             Log.Debug("COPY operation ended", _connector.Id);
             _connector = null;
-            _registry = null;
+            _typeMapper = null;
             _buf = null;
             _isDisposed = true;
         }

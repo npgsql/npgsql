@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -22,35 +22,43 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
+using System.Diagnostics;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
-using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
+using Npgsql.TypeMapping;
+
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
 namespace Npgsql.TypeHandlers
 {
-    [TypeMapping("text",      NpgsqlDbType.Text,
-      new[] { DbType.String, DbType.StringFixedLength, DbType.AnsiString, DbType.AnsiStringFixedLength },
-      new[] { typeof(string), typeof(char[]), typeof(char), typeof(ArraySegment<char>) },
-      DbType.String
+    [TypeMapping("text", NpgsqlDbType.Text,
+        new[] { DbType.String, DbType.StringFixedLength, DbType.AnsiString, DbType.AnsiStringFixedLength },
+        new[] { typeof(string), typeof(char[]), typeof(char), typeof(ArraySegment<char>) },
+        DbType.String
     )]
-    [TypeMapping("xml",       NpgsqlDbType.Xml, dbType: DbType.Xml)]
+    [TypeMapping("xml", NpgsqlDbType.Xml, dbType: DbType.Xml)]
 
-    [TypeMapping("varchar",   NpgsqlDbType.Varchar,            inferredDbType: DbType.String)]
-    [TypeMapping("bpchar",    NpgsqlDbType.Char,               inferredDbType: DbType.String)]
-    [TypeMapping("name",      NpgsqlDbType.Name,               inferredDbType: DbType.String)]
-    [TypeMapping("json",      NpgsqlDbType.Json,               inferredDbType: DbType.String)]
-    [TypeMapping("refcursor", NpgsqlDbType.Refcursor,          inferredDbType: DbType.String)]
-    [TypeMapping("citext",    NpgsqlDbType.Citext,             inferredDbType: DbType.String)]
+    [TypeMapping("character varying", NpgsqlDbType.Varchar, inferredDbType: DbType.String)]
+    [TypeMapping("character", NpgsqlDbType.Char, inferredDbType: DbType.String)]
+    [TypeMapping("name", NpgsqlDbType.Name, inferredDbType: DbType.String)]
+    [TypeMapping("json", NpgsqlDbType.Json, inferredDbType: DbType.String)]
+    [TypeMapping("refcursor", NpgsqlDbType.Refcursor, inferredDbType: DbType.String)]
+    [TypeMapping("citext", NpgsqlDbType.Citext, inferredDbType: DbType.String)]
     [TypeMapping("unknown")]
-    class TextHandler : ChunkingTypeHandler<string>, IChunkingTypeHandler<char[]>, ITextReaderHandler
+    public class TextHandlerFactory : NpgsqlTypeHandlerFactory<string>
+    {
+        protected override NpgsqlTypeHandler<string> Create(NpgsqlConnection conn)
+            => new TextHandler(conn);
+    }
+
+    public class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler<char[]>, INpgsqlTypeHandler<ArraySegment<char>>,
+        INpgsqlTypeHandler<char>, INpgsqlTypeHandler<byte[]>, ITextReaderHandler
     {
         // Text types are handled a bit more efficiently when sent as text than as binary
         // see https://github.com/npgsql/npgsql/issues/1210#issuecomment-235641670
@@ -60,59 +68,56 @@ namespace Npgsql.TypeHandlers
 
         #region State
 
-        int _charPos;
         readonly char[] _singleCharArray = new char[1];
 
         #endregion
 
-        internal TextHandler(PostgresType postgresType, TypeHandlerRegistry registry) : base(postgresType)
-        {
-            _encoding = registry.Connector.TextEncoding;
-        }
+        protected internal TextHandler(NpgsqlConnection connection)
+            => _encoding = connection.Connector.TextEncoding;
 
         #region Read
 
-        public override ValueTask<string> Read(ReadBuffer buf, int byteLen, bool async, FieldDescription fieldDescription = null)
+        public override ValueTask<string> Read(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription fieldDescription = null)
         {
-            if (buf.ReadBytesLeft >= byteLen)
-                return new ValueTask<string>(buf.ReadString(byteLen));
-            return ReadLong(buf, byteLen, async);
-        }
+            return buf.ReadBytesLeft >= byteLen
+                ? new ValueTask<string>(buf.ReadString(byteLen))
+                : ReadLong();
 
-        async ValueTask<string> ReadLong(ReadBuffer buf, int byteLen, bool async)
-        {
-            if (byteLen <= buf.Size)
+            async ValueTask<string> ReadLong()
             {
-                // The string's byte representation can fit in our read buffer, read it.
-                while (buf.ReadBytesLeft < byteLen)
-                    await buf.ReadMore(async);
-                return buf.ReadString(byteLen);
-            }
-
-            // Bad case: the string's byte representation doesn't fit in our buffer.
-            // This is rare - will only happen in CommandBehavior.Sequential mode (otherwise the
-            // entire row is in memory). Tweaking the buffer length via the connection string can
-            // help avoid this.
-
-            // Allocate a temporary byte buffer to hold the entire string and read it in chunks.
-            var tempBuf = new byte[byteLen];
-            var pos = 0;
-            while (true)
-            {
-                var len = Math.Min(buf.ReadBytesLeft, byteLen - pos);
-                buf.ReadBytes(tempBuf, pos, len);
-                pos += len;
-                if (pos < byteLen)
+                if (byteLen <= buf.Size)
                 {
-                    await buf.ReadMore(async);
-                    continue;
+                    // The string's byte representation can fit in our read buffer, read it.
+                    while (buf.ReadBytesLeft < byteLen)
+                        await buf.ReadMore(async);
+                    return buf.ReadString(byteLen);
                 }
-                break;
+
+                // Bad case: the string's byte representation doesn't fit in our buffer.
+                // This is rare - will only happen in CommandBehavior.Sequential mode (otherwise the
+                // entire row is in memory). Tweaking the buffer length via the connection string can
+                // help avoid this.
+
+                // Allocate a temporary byte buffer to hold the entire string and read it in chunks.
+                var tempBuf = new byte[byteLen];
+                var pos = 0;
+                while (true)
+                {
+                    var len = Math.Min(buf.ReadBytesLeft, byteLen - pos);
+                    buf.ReadBytes(tempBuf, pos, len);
+                    pos += len;
+                    if (pos < byteLen)
+                    {
+                        await buf.ReadMore(async);
+                        continue;
+                    }
+                    break;
+                }
+                return buf.TextEncoding.GetString(tempBuf);
             }
-            return buf.TextEncoding.GetString(tempBuf);
         }
 
-        async ValueTask<char[]> IChunkingTypeHandler<char[]>.Read(ReadBuffer buf, int byteLen, bool async, FieldDescription fieldDescription)
+        async ValueTask<char[]> INpgsqlTypeHandler<char[]>.Read(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription fieldDescription)
         {
             if (byteLen <= buf.Size)
             {
@@ -140,155 +145,161 @@ namespace Npgsql.TypeHandlers
             return buf.TextEncoding.GetChars(tempBuf);
         }
 
-        public long GetChars(DataRowMessage row, int charOffset, [CanBeNull] char[] output, int outputOffset, int charsCount, FieldDescription field)
+        async ValueTask<char> INpgsqlTypeHandler<char>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
         {
-            if (row.PosInColumn == 0)
-                _charPos = 0;
+            // Make sure we have enough bytes in the buffer for a single character
+            var maxBytes = Math.Min(buf.TextEncoding.GetMaxByteCount(1), len);
+            while (buf.ReadBytesLeft < maxBytes)
+                await buf.ReadMore(async);
 
-            if (output == null)
+            var decoder = buf.TextEncoding.GetDecoder();
+            decoder.Convert(buf.Buffer, buf.ReadPosition, maxBytes, _singleCharArray, 0, 1, true, out var bytesUsed, out var charsUsed, out var completed);
+            buf.Skip(len - bytesUsed);
+
+            if (charsUsed < 1)
+                throw new NpgsqlSafeReadException(new NpgsqlException("Could not read char - string was empty"));
+
+            return _singleCharArray[0];
+        }
+
+        ValueTask<ArraySegment<char>> INpgsqlTypeHandler<ArraySegment<char>>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        {
+            buf.Skip(len);
+            throw new NpgsqlSafeReadException(new NotSupportedException("Only writing ArraySegment<char> to PostgreSQL text is supported, no reading."));
+        }
+
+        ValueTask<byte[]> INpgsqlTypeHandler<byte[]>.Read(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription fieldDescription)
+        {
+            var bytes = new byte[byteLen];
+            if (buf.ReadBytesLeft >= byteLen)
             {
-                // Note: Getting the length of a text column means decoding the entire field,
-                // very inefficient and also consumes the column in sequential mode. But this seems to
-                // be SqlClient's behavior as well.
-                row.Buffer.SkipChars(int.MaxValue, row.ColumnLen - row.PosInColumn, out var bytesSkipped, out var charsSkipped);
-                Debug.Assert(bytesSkipped == row.ColumnLen - row.PosInColumn);
-                row.PosInColumn += bytesSkipped;
-                _charPos += charsSkipped;
-                return _charPos;
+                buf.ReadBytes(bytes, 0, byteLen);
+                return new ValueTask<byte[]>(bytes);
             }
+            return ReadLong();
 
-            if (charOffset < _charPos) {
-                row.SeekInColumn(0, false).GetAwaiter().GetResult();
-                _charPos = 0;
-            }
-
-            if (charOffset > _charPos)
+            async ValueTask<byte[]> ReadLong()
             {
-                var charsToSkip = charOffset - _charPos;
-                int bytesSkipped, charsSkipped;
-                row.Buffer.SkipChars(charsToSkip, row.ColumnLen - row.PosInColumn, out bytesSkipped, out charsSkipped);
-                row.PosInColumn += bytesSkipped;
-                _charPos += charsSkipped;
-                if (charsSkipped < charsToSkip) {
-                    // TODO: What is the actual required behavior here?
-                    throw new IndexOutOfRangeException();
+                if (byteLen <= buf.Size)
+                {
+                    // The bytes can fit in our read buffer, read it.
+                    while (buf.ReadBytesLeft < byteLen)
+                        await buf.ReadMore(async);
+                    buf.ReadBytes(bytes, 0, byteLen);
+                    return bytes;
                 }
-            }
 
-            row.Buffer.ReadAllChars(output, outputOffset, charsCount, row.ColumnLen - row.PosInColumn, out var bytesRead, out var charsRead);
-            row.PosInColumn += bytesRead;
-            _charPos += charsRead;
-            return charsRead;
+                // Bad case: the bytes don't fit in our buffer.
+                // This is rare - will only happen in CommandBehavior.Sequential mode (otherwise the
+                // entire row is in memory). Tweaking the buffer length via the connection string can
+                // help avoid this.
+
+                var pos = 0;
+                while (true)
+                {
+                    var len = Math.Min(buf.ReadBytesLeft, byteLen - pos);
+                    buf.ReadBytes(bytes, pos, len);
+                    pos += len;
+                    if (pos < byteLen)
+                    {
+                        await buf.ReadMore(async);
+                        continue;
+                    }
+                    break;
+                }
+                return bytes;
+            }
         }
 
         #endregion
 
         #region Write
 
-        public override unsafe int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter = null)
+        public override unsafe int ValidateAndGetLength(string value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
         {
             if (lengthCache == null)
-                lengthCache = new LengthCache(1);
+                lengthCache = new NpgsqlLengthCache(1);
             if (lengthCache.IsPopulated)
                 return lengthCache.Get();
 
-            var asString = value as string;
-            if (asString != null)
-            {
-                if (parameter == null || parameter.Size <= 0 || parameter.Size >= asString.Length)
-                    return lengthCache.Set(_encoding.GetByteCount(asString));
-                fixed (char* p = asString)
-                    return lengthCache.Set(_encoding.GetByteCount(p, parameter.Size));
-            }
-
-            var asCharArray = value as char[];
-            if (asCharArray != null)
-            {
-                return lengthCache.Set(
-                    parameter == null || parameter.Size <= 0 || parameter.Size >= asCharArray.Length
-                  ? _encoding.GetByteCount(asCharArray)
-                  : _encoding.GetByteCount(asCharArray, 0, parameter.Size)
-                );
-            }
-
-            if (value is char)
-            {
-                _singleCharArray[0] = (char)value;
-                return lengthCache.Set(_encoding.GetByteCount(_singleCharArray));
-            }
-
-            if (value is ArraySegment<char>)
-            {
-                if (parameter?.Size > 0)
-                {
-                    var paramName = parameter.ParameterName;
-                    throw new ArgumentException($"Parameter {paramName} is of type ArraySegment<char> and should not have its Size set", paramName);
-                }
-
-                var segment = (ArraySegment<char>)value;
-                return lengthCache.Set(_encoding.GetByteCount(segment.Array, segment.Offset, segment.Count));
-            }
-
-            // Fallback - try to convert the value to string
-            var converted = Convert.ToString(value);
-            if (parameter == null)
-                throw CreateConversionButNoParamException(value.GetType());
-            parameter.ConvertedValue = converted;
-
-            if (parameter.Size <= 0 || parameter.Size >= converted.Length)
-                return lengthCache.Set(_encoding.GetByteCount(converted));
-            fixed (char* p = converted)
+            if (parameter == null || parameter.Size <= 0 || parameter.Size >= value.Length)
+                return lengthCache.Set(_encoding.GetByteCount(value));
+            fixed (char* p = value)
                 return lengthCache.Set(_encoding.GetByteCount(p, parameter.Size));
         }
 
-        protected override Task Write(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter,
-            bool async, CancellationToken cancellationToken)
+        public virtual int ValidateAndGetLength(char[] value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
         {
-            if (parameter?.ConvertedValue != null)
-                value = parameter.ConvertedValue;
+            if (lengthCache == null)
+                lengthCache = new NpgsqlLengthCache(1);
+            if (lengthCache.IsPopulated)
+                return lengthCache.Get();
 
-            var str = value as string;
-            if (str != null)
-            {
-                return WriteString(str, buf, lengthCache, parameter, async, cancellationToken);
-            }
-
-            var chars = value as char[];
-            if (chars != null)
-            {
-                var charLen = parameter == null || parameter.Size <= 0 || parameter.Size >= chars.Length
-                    ? chars.Length
-                    : parameter.Size;
-                return buf.WriteChars(chars, 0, charLen, lengthCache.GetLast(), async, cancellationToken);
-            }
-
-            if (value is char)
-            {
-                _singleCharArray[0] = (char)value;
-                return buf.WriteChars(_singleCharArray, 0, 1, lengthCache.GetLast(), async, cancellationToken);
-            }
-
-            if (value is ArraySegment<char>)
-            {
-                var segment = (ArraySegment<char>)value;
-                return buf.WriteChars(segment.Array, segment.Offset, segment.Count, lengthCache.GetLast(), async,
-                    cancellationToken);
-            }
-
-            return WriteString(Convert.ToString(value), buf, lengthCache, parameter, async, cancellationToken);
+            return lengthCache.Set(
+                parameter == null || parameter.Size <= 0 || parameter.Size >= value.Length
+                    ? _encoding.GetByteCount(value)
+                    : _encoding.GetByteCount(value, 0, parameter.Size)
+            );
         }
 
-        Task WriteString(string str, WriteBuffer buf, LengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter,
-            bool async, CancellationToken cancellationToken)
+        public int ValidateAndGetLength(ArraySegment<char> value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        {
+            if (lengthCache == null)
+                lengthCache = new NpgsqlLengthCache(1);
+            if (lengthCache.IsPopulated)
+                return lengthCache.Get();
+
+            if (parameter?.Size > 0)
+                throw new ArgumentException($"Parameter {parameter.ParameterName} is of type ArraySegment<char> and should not have its Size set", parameter.ParameterName);
+
+            return lengthCache.Set(_encoding.GetByteCount(value.Array, value.Offset, value.Count));
+        }
+
+        public int ValidateAndGetLength(char value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        {
+            _singleCharArray[0] = value;
+            return _encoding.GetByteCount(_singleCharArray);
+        }
+
+        public int ValidateAndGetLength(byte[] value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+            => value.Length;
+
+        public override Task Write(string value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+            => WriteString(value, buf, lengthCache, parameter, async);
+
+        public virtual Task Write(char[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        {
+            var charLen = parameter == null || parameter.Size <= 0 || parameter.Size >= value.Length
+                ? value.Length
+                : parameter.Size;
+            return buf.WriteChars(value, 0, charLen, lengthCache.GetLast(), async);
+        }
+
+        public Task Write(ArraySegment<char> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+            => buf.WriteChars(value.Array, value.Offset, value.Count, lengthCache.GetLast(), async);
+
+        Task WriteString(string str, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter, bool async)
         {
             var charLen = parameter == null || parameter.Size <= 0 || parameter.Size >= str.Length
                 ? str.Length
                 : parameter.Size;
-            return buf.WriteString(str, charLen, lengthCache.GetLast(), async, cancellationToken);
+            return buf.WriteString(str, charLen, lengthCache.GetLast(), async);
         }
+
+        public Task Write(char value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        {
+            _singleCharArray[0] = value;
+            var len = _encoding.GetByteCount(_singleCharArray);
+            return buf.WriteChars(_singleCharArray, 0, 1, len, async);
+        }
+
+        public Task Write(byte[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+            => buf.WriteBytesRaw(value, async);
 
         #endregion
 
+#pragma warning disable CA2119 // Seal methods that satisfy private interfaces
         public virtual TextReader GetTextReader(Stream stream) => new StreamReader(stream);
+#pragma warning restore CA2119 // Seal methods that satisfy private interfaces
     }
 }

@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -21,46 +21,45 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using System;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
 using JetBrains.Annotations;
-using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
+using Npgsql.TypeMapping;
 
 namespace Npgsql.TypeHandlers.NumericHandlers
 {
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-numeric.html
     /// </remarks>
-    [TypeMapping("float4", NpgsqlDbType.Real, DbType.Single, typeof(float))]
-    class SingleHandler : SimpleTypeHandler<float>, ISimpleTypeHandler<double>
+    [TypeMapping("real", NpgsqlDbType.Real, DbType.Single, typeof(float))]
+    class SingleHandler : NpgsqlSimpleTypeHandler<float>, INpgsqlSimpleTypeHandler<double>
     {
-        internal SingleHandler(PostgresType postgresType) : base(postgresType) { }
+        #region Read
 
-        public override float Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override float Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => buf.ReadSingle();
 
-        double ISimpleTypeHandler<double>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        double INpgsqlSimpleTypeHandler<double>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => Read(buf, len, fieldDescription);
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
-        {
-            if (!(value is float))
-            {
-                var converted = Convert.ToSingle(value);
-                if (parameter == null)
-                    throw CreateConversionButNoParamException(value.GetType());
-                parameter.ConvertedValue = converted;
-            }
-            return 4;
-        }
+        #endregion Read
 
-        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
-        {
-            if (parameter?.ConvertedValue != null)
-                value = parameter.ConvertedValue;
-            buf.WriteSingle((float)value);
-        }
+        #region Write
+
+        public int ValidateAndGetLength(double value, NpgsqlParameter parameter)
+            => 4;
+
+        public override int ValidateAndGetLength(float value, NpgsqlParameter parameter)
+            => 4;
+
+        public void Write(double value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => buf.WriteSingle((float)value);
+
+        public override void Write(float value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => buf.WriteSingle(value);
+
+        #endregion Write
     }
 }

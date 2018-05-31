@@ -33,6 +33,27 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        public async Task Async()
+        {
+            using (var conn = OpenConnectionAndUnprepare())
+            {
+                using (var cmd = new NpgsqlCommand("SELECT 1", conn))
+                {
+                    AssertNumPreparedStatements(conn, 0);
+                    Assert.That(cmd.ExecuteScalar(), Is.EqualTo(1));
+                    Assert.That(cmd.IsPrepared, Is.False);
+
+                    await cmd.PrepareAsync();
+                    AssertNumPreparedStatements(conn, 1);
+                    Assert.That(cmd.IsPrepared, Is.True);
+                    Assert.That(cmd.ExecuteScalar(), Is.EqualTo(1));
+                }
+                AssertNumPreparedStatements(conn, 1);
+                conn.UnprepareAll();
+            }
+        }
+
+        [Test]
         public void Unprepare()
         {
             using (var conn = OpenConnectionAndUnprepare())
@@ -236,6 +257,33 @@ namespace Npgsql.Tests
                 using (var cmd = new NpgsqlCommand(sql.ToString(), conn))
                     cmd.ExecuteNonQuery();
                 AssertNumPreparedStatements(conn, 1);
+            }
+        }
+
+        [Test]
+        public void OneCommandSameSqlTwiceWithParams()
+        {
+            using (var conn = OpenConnectionAndUnprepare())
+            using (var cmd = new NpgsqlCommand("SELECT @p1; SELECT @p2", conn))
+            {
+                cmd.Parameters.Add("p1", NpgsqlDbType.Integer);
+                cmd.Parameters.Add("p2", NpgsqlDbType.Integer);
+                cmd.Prepare();
+                AssertNumPreparedStatements(conn, 1);
+
+                cmd.Parameters[0].Value = 8;
+                cmd.Parameters[1].Value = 9;
+                using (var reader = cmd.ExecuteReader())
+                {
+                    Assert.That(reader.Read(), Is.True);
+                    Assert.That(reader.GetInt32(0), Is.EqualTo(8));
+                    Assert.That(reader.NextResult(), Is.True);
+                    Assert.That(reader.Read(), Is.True);
+                    Assert.That(reader.GetInt32(0), Is.EqualTo(9));
+                    Assert.That(reader.NextResult(), Is.False);
+                }
+
+                cmd.Unprepare();
             }
         }
 

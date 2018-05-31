@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -25,6 +25,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
+using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers.GeometricHandlers
@@ -36,13 +38,11 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-geometric.html
     /// </remarks>
     [TypeMapping("polygon", NpgsqlDbType.Polygon, typeof(NpgsqlPolygon))]
-    class PolygonHandler : ChunkingTypeHandler<NpgsqlPolygon>
+    class PolygonHandler : NpgsqlTypeHandler<NpgsqlPolygon>
     {
-        internal PolygonHandler(PostgresType postgresType) : base(postgresType) { }
-
         #region Read
 
-        public override async ValueTask<NpgsqlPolygon> Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+        public override async ValueTask<NpgsqlPolygon> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
         {
             await buf.Ensure(4, async);
             var numPoints = buf.ReadInt32();
@@ -59,26 +59,19 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
 
         #region Write
 
-        public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter = null)
-        {
-            if (!(value is NpgsqlPolygon))
-                throw CreateConversionException(value.GetType());
-            return 4 + ((NpgsqlPolygon)value).Count * 16;
-        }
+        public override int ValidateAndGetLength(NpgsqlPolygon value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+            => 4 + value.Count * 16;
 
-        protected override async Task Write(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter,
-            bool async, CancellationToken cancellationToken)
+        public override async Task Write(NpgsqlPolygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
-            var polygon = (NpgsqlPolygon)value;
-
             if (buf.WriteSpaceLeft < 4)
-                await buf.Flush(async, cancellationToken);
-            buf.WriteInt32(polygon.Count);
+                await buf.Flush(async);
+            buf.WriteInt32(value.Count);
 
-            foreach (var p in polygon)
+            foreach (var p in value)
             {
                 if (buf.WriteSpaceLeft < 16)
-                    await buf.Flush(async, cancellationToken);
+                    await buf.Flush(async);
                 buf.WriteDouble(p.X);
                 buf.WriteDouble(p.Y);
             }

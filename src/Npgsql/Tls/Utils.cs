@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -59,9 +59,7 @@ namespace Npgsql.Tls
         }
 
         public static void ClearArray(Array array)
-        {
-            Array.Clear(array, 0, array.Length);
-        }
+            => Array.Clear(array, 0, array.Length);
 
         public static bool ArraysEqual(byte[] arr1, int offset1, byte[] arr2, int offset2, int len)
         {
@@ -313,7 +311,7 @@ namespace Npgsql.Tls
             return Regex.IsMatch(hostname, "^" + Regex.Escape(firstPart).Replace(@"\*", "[^.]*") + Regex.Escape(rest) + "$");
         }
 
-        public static byte[] DecodeDERSignature(byte[] signature, int offset, int len, int integerLength)
+        public static byte[] DecodeDERSignature(byte[] signature, int offset, int integerLength)
         {
             var decodedSignature = new byte[integerLength * 2];
             offset += 1; // Skip tag 0x30 (SEQUENCE)
@@ -366,34 +364,30 @@ namespace Npgsql.Tls
 
 #if NET45 || NET451
         public static void TransformBlock(this HashAlgorithm hashAlg, byte[] buf, int offset, int len)
-        {
-            hashAlg.TransformBlock(buf, offset, len, null, 0);
-        }
+            => hashAlg.TransformBlock(buf, offset, len, null, 0);
 
         public static void AppendData(this HashAlgorithm hash, byte[] data, int offset, int len)
-        {
-            hash.TransformBlock(data, offset, len);
-        }
+            => hash.TransformBlock(data, offset, len);
 
         public static byte[] GetHashAndReset(this HashAlgorithm hash)
         {
             hash.TransformFinalBlock(Hasher.EmptyByteArray, 0, 0);
-            byte[] data = hash.Hash;
+            var data = hash.Hash;
             hash.Initialize();
             return data;
         }
 #endif
 
         public static byte[] EncryptPkcsPadding(X509Certificate2 cert, byte[] rgb)
-        {
 #if NET45 || NET451
-            return ((RSACryptoServiceProvider)cert.PublicKey.Key).Encrypt(rgb, false);
+            => ((RSACryptoServiceProvider)cert.PublicKey.Key).Encrypt(rgb, false);
 #else
+        {
             using (var rsa = cert.GetRSAPublicKey())
             {
                 return rsa.Encrypt(rgb, RSAEncryptionPadding.Pkcs1);
             }
-#endif
         }
+#endif
     }
 }

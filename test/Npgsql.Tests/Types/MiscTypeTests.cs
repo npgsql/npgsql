@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -25,10 +25,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
-using System.Net;
-using System.Net.NetworkInformation;
 using System.Text;
-using Npgsql;
 using NpgsqlTypes;
 using NUnit.Framework;
 
@@ -57,7 +54,7 @@ namespace Npgsql.Tests.Types
                     using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
-                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4"));
+                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("integer"));
                     }
                 }
 
@@ -69,7 +66,7 @@ namespace Npgsql.Tests.Types
                     using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
-                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4"));
+                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("integer"));
                     }
                 }
 
@@ -81,7 +78,7 @@ namespace Npgsql.Tests.Types
                     using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
-                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4"));
+                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("integer"));
                     }
                 }
 
@@ -91,7 +88,7 @@ namespace Npgsql.Tests.Types
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
-                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4"));
+                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("integer"));
                 }
             }
         }
@@ -99,7 +96,6 @@ namespace Npgsql.Tests.Types
         /// <summary>
         /// http://www.postgresql.org/docs/current/static/datatype-boolean.html
         /// </summary>
-        /// <param name="prepare"></param>
         [Test, Description("Roundtrips a bool")]
         public void Bool()
         {
@@ -130,7 +126,7 @@ namespace Npgsql.Tests.Types
                         Assert.That(reader.GetValue(i), Is.True);
                         Assert.That(reader.GetProviderSpecificValue(i), Is.True);
                         Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(bool)));
-                        Assert.That(reader.GetDataTypeName(i), Is.EqualTo("bool"));
+                        Assert.That(reader.GetDataTypeName(i), Is.EqualTo("boolean"));
                     }
                 }
             }
@@ -162,7 +158,6 @@ namespace Npgsql.Tests.Types
                         Assert.That(reader.GetGuid(i), Is.EqualTo(expected));
                         Assert.That(reader.GetFieldValue<Guid>(i), Is.EqualTo(expected));
                         Assert.That(reader.GetValue(i), Is.EqualTo(expected));
-                        Assert.That(reader.GetString(i), Is.EqualTo(expected.ToString()));
                         Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(Guid)));
                     }
                 }
@@ -204,14 +199,18 @@ namespace Npgsql.Tests.Types
         public void Null()
         {
             using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT @p::INT4", conn))
+            using (var cmd = new NpgsqlCommand("SELECT @p1::TEXT, @p2::TEXT", conn))
             {
-                cmd.Parameters.AddWithValue("p", DBNull.Value);
+                cmd.Parameters.AddWithValue("p1", DBNull.Value);
+                cmd.Parameters.Add(new NpgsqlParameter<DBNull>("p2", DBNull.Value));
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
-                    Assert.That(reader.IsDBNull(0));
-                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(int)));
+                    for (var i = 0; i < cmd.Parameters.Count; i++)
+                    {
+                        Assert.That(reader.IsDBNull(i));
+                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(string)));
+                    }
                 }
             }
         }
@@ -293,14 +292,12 @@ namespace Npgsql.Tests.Types
                             Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(Dictionary<string, string>)));
                             Assert.That(reader.GetFieldValue<Dictionary<string, string>>(i), Is.EqualTo(expected));
                             Assert.That(reader.GetFieldValue<IDictionary<string, string>>(i), Is.EqualTo(expected));
-                            Assert.That(reader.GetString(i), Is.EqualTo(@"""a""=>""3"",""b""=>NULL,""cd""=>""hello"""));
                         }
                         for (var i = 2; i < 4; i++)
                         {
                             Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(Dictionary<string, string>)));
                             Assert.That(reader.GetFieldValue<Dictionary<string, string>>(i), Is.EqualTo(expected2));
                             Assert.That(reader.GetFieldValue<IDictionary<string, string>>(i), Is.EqualTo(expected2));
-                            Assert.That(reader.GetString(i), Is.EqualTo(""));
                         }
                     }
                 }
@@ -342,6 +339,16 @@ namespace Npgsql.Tests.Types
             }
         }
 
+        [Test]
+        public void Domain()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE DOMAIN pg_temp.text2 AS text");
+                Assert.That(conn.ExecuteScalar("SELECT 'foo'::text2"), Is.EqualTo("foo"));
+            }
+        }
+
         [Test, Description("Makes sure that setting DbType.Object makes Npgsql infer the type")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/694")]
         public void DbTypeCausesInference()
@@ -356,18 +363,13 @@ namespace Npgsql.Tests.Types
 
         #region Unrecognized types
 
-        static void CheckUnrecognizedType()
-        {
-            Assert.That(TypeHandlerRegistry.HandlerTypes.Values.All(x => x.Mapping.PgName != "regproc"), "Test requires an unrecognized type to work");
-        }
-
         [Test, Description("Attempts to retrieve an unrecognized type without marking it as unknown, triggering an exception")]
         public void UnrecognizedBinary()
         {
-            CheckUnrecognizedType();
             using (var conn = OpenConnection())
             {
-                using (var cmd = new NpgsqlCommand("SELECT typinput FROM pg_type WHERE typname='bool'", conn))
+                conn.TypeMapper.RemoveMapping("boolean");
+                using (var cmd = new NpgsqlCommand("SELECT TRUE", conn))
                 using (var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess))
                 {
                     reader.Read();
@@ -380,20 +382,18 @@ namespace Npgsql.Tests.Types
         [Test, Description("Retrieves a type as an unknown type, i.e. untreated string")]
         public void AllResultTypesAreUnknown()
         {
-            CheckUnrecognizedType();
             using (var conn = OpenConnection())
             {
-                // Fetch as text to have something the value to assert against
-                var expected = (string)conn.ExecuteScalar("SELECT typinput::TEXT FROM pg_type WHERE typname='bool'");
+                conn.TypeMapper.RemoveMapping("bool");
 
-                using (var cmd = new NpgsqlCommand("SELECT typinput FROM pg_type WHERE typname='bool'", conn))
+                using (var cmd = new NpgsqlCommand("SELECT TRUE", conn))
                 {
                     cmd.AllResultTypesAreUnknown = true;
                     using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
                         Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(string)));
-                        Assert.That(reader.GetString(0), Is.EqualTo(expected));
+                        Assert.That(reader.GetString(0), Is.EqualTo("t"));
                     }
                 }
             }
@@ -402,20 +402,18 @@ namespace Npgsql.Tests.Types
         [Test, Description("Mixes and matches an unknown type with a known type")]
         public void UnknownResultTypeList()
         {
-            CheckUnrecognizedType();
             using (var conn = OpenConnection())
             {
-                // Fetch as text to have something the value to assert against
-                var expected = (string) conn.ExecuteScalar("SELECT typinput::TEXT FROM pg_type WHERE typname='bool'");
+                conn.TypeMapper.RemoveMapping("bool");
 
-                using (var cmd = new NpgsqlCommand("SELECT typinput, 8 FROM pg_type WHERE typname='bool'", conn))
+                using (var cmd = new NpgsqlCommand("SELECT TRUE, 8", conn))
                 {
-                    cmd.UnknownResultTypeList = new[] {true, false};
+                    cmd.UnknownResultTypeList = new[] { true, false };
                     using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
                         Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(string)));
-                        Assert.That(reader.GetString(0), Is.EqualTo(expected));
+                        Assert.That(reader.GetString(0), Is.EqualTo("t"));
                         Assert.That(reader.GetInt32(1), Is.EqualTo(8));
                     }
                 }
@@ -732,7 +730,9 @@ namespace Npgsql.Tests.Types
             using (var conn = OpenConnection())
             using (var cmd = conn.CreateCommand())
             {
-                var query = NpgsqlTsQuery.Parse("(a & !(c | d)) & (!!a&b) | ä | d | e");
+                var query = conn.PostgreSqlVersion < new Version(9, 6)
+                    ? NpgsqlTsQuery.Parse("(a & !(c | d)) & (!!a&b) | ä | f")
+                    : NpgsqlTsQuery.Parse("(a & !(c | d)) & (!!a&b) | ä | x <-> y | x <10> y | d <0> e | f");
 
                 cmd.CommandText = "Select :p";
                 cmd.Parameters.AddWithValue("p", query);

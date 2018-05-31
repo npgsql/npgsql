@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -26,7 +26,8 @@ using System.Diagnostics;
 using System.Net.NetworkInformation;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
-using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
+using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers.NetworkHandlers
@@ -35,13 +36,11 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-net-types.html
     /// </remarks>
     [TypeMapping("macaddr8", NpgsqlDbType.MacAddr8)]
-    class Macaddr8Handler : SimpleTypeHandler<PhysicalAddress>, ISimpleTypeHandler<string>
+    class Macaddr8Handler : NpgsqlSimpleTypeHandler<PhysicalAddress>
     {
-        internal Macaddr8Handler(PostgresType postgresType) : base(postgresType) { }
-
         #region Read
 
-        public override PhysicalAddress Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override PhysicalAddress Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             Debug.Assert(len == 6 || len == 8);
 
@@ -51,19 +50,13 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             return new PhysicalAddress(bytes);
         }
 
-        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
-            => Read(buf, len, fieldDescription).ToString();
-
         #endregion Read
 
         #region Write
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(PhysicalAddress value, NpgsqlParameter parameter)
         {
-            if (!(value is PhysicalAddress address))
-                throw CreateConversionException(value.GetType());
-
-            switch (address.GetAddressBytes().Length)
+            switch (value.GetAddressBytes().Length)
             {
             case 6:
                 return 6;
@@ -74,17 +67,11 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             }
         }
 
-        public int ValidateAndGetLength(string value, NpgsqlParameter parameter)
-            => ValidateAndGetLength(PhysicalAddress.Parse(value), parameter);
-
-        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter)
+        public override void Write(PhysicalAddress value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
-            var bytes = ((PhysicalAddress)value).GetAddressBytes();
+            var bytes = value.GetAddressBytes();
             buf.WriteBytes(bytes, 0, bytes.Length);
         }
-
-        public void Write(string value, WriteBuffer buf, NpgsqlParameter parameter)
-            => Write(PhysicalAddress.Parse(value), buf, parameter);
 
         #endregion Write
     }

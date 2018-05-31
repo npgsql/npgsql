@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -22,14 +22,20 @@
 #endregion
 
 using System;
-using System.Threading;
 using System.Threading.Tasks;
-using JetBrains.Annotations;
 using Npgsql.BackendMessages;
-using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
+using Npgsql.TypeMapping;
 
 namespace Npgsql.TypeHandlers
 {
+    [TypeMapping("record")]
+    class RecordHandlerFactory : NpgsqlTypeHandlerFactory<object[]>
+    {
+        protected override NpgsqlTypeHandler<object[]> Create(NpgsqlConnection conn)
+            => new RecordHandler(conn.Connector.TypeMapper);
+    }
+
     /// <summary>
     /// Type handler for PostgreSQL record types.
     /// </summary>
@@ -42,20 +48,18 @@ namespace Npgsql.TypeHandlers
     /// * The length of the column(32-bit integer), or -1 if null
     /// * The column data encoded as binary
     /// </remarks>
-    [TypeMapping("record")]
-    class RecordHandler : ChunkingTypeHandler<object[]>
+    class RecordHandler : NpgsqlTypeHandler<object[]>
     {
-        readonly TypeHandlerRegistry _registry;
+        readonly ConnectorTypeMapper _typeMapper;
 
-        public RecordHandler(PostgresType postgresType, TypeHandlerRegistry registry)
-            : base(postgresType)
+        public RecordHandler(ConnectorTypeMapper typeMapper)
         {
-            _registry = registry;
+            _typeMapper = typeMapper;
         }
 
         #region Read
 
-        public override async ValueTask<object[]> Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+        public override async ValueTask<object[]> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
         {
             await buf.Ensure(4, async);
             var fieldCount = buf.ReadInt32();
@@ -68,7 +72,7 @@ namespace Npgsql.TypeHandlers
                 var fieldLen = buf.ReadInt32();
                 if (fieldLen == -1)  // Null field, simply skip it and leave at default
                     continue;
-                result[i] = await _registry[typeOID].ReadAsObject(buf, fieldLen, async);
+                result[i] = await _typeMapper.GetByOID(typeOID).ReadAsObject(buf, fieldLen, async);
             }
 
             return result;
@@ -78,10 +82,10 @@ namespace Npgsql.TypeHandlers
 
         #region Write (unsupported)
 
-        public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(object[] value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
             => throw new NotSupportedException("Can't write record types");
 
-        protected override Task Write(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter, bool async, CancellationToken cancellationToken)
+        public override Task Write(object[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
             => throw new NotSupportedException("Can't write record types");
 
         #endregion

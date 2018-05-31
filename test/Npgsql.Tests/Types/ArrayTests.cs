@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -60,7 +60,7 @@ namespace Npgsql.Tests.Types
                     using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
-                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("_int4"));
+                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("integer[]"));
                     }
                 }
 
@@ -72,7 +72,7 @@ namespace Npgsql.Tests.Types
                     using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
-                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("_int4"));
+                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("integer[]"));
                     }
                 }
 
@@ -82,7 +82,7 @@ namespace Npgsql.Tests.Types
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
-                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("_int4"));
+                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("integer[]"));
                 }
             }
         }
@@ -91,13 +91,15 @@ namespace Npgsql.Tests.Types
         public void Ints()
         {
             using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn))
+            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", conn))
             {
                 var expected = new[] { 1, 5, 9 };
                 var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Array | NpgsqlDbType.Integer);
                 var p2 = new NpgsqlParameter { ParameterName = "p2", Value = expected };
+                var p3 = new NpgsqlParameter<int[]>("p3", expected);
                 cmd.Parameters.Add(p1);
                 cmd.Parameters.Add(p2);
+                cmd.Parameters.Add(p3);
                 p1.Value = expected;
                 var reader = cmd.ExecuteReader();
                 reader.Read();
@@ -280,7 +282,6 @@ namespace Npgsql.Tests.Types
             }
         }
 
-#if !NETCOREAPP1_1
         [Test, Description("Roundtrips a non-generic IList as an array")]
         // ReSharper disable once InconsistentNaming
         public void IListNonGeneric()
@@ -294,25 +295,47 @@ namespace Npgsql.Tests.Types
                 Assert.That(cmd.ExecuteScalar(), Is.EqualTo(expected.ToArray()));
             }
         }
-#endif
 
-        [Test, Description("Roundtrips a generic IList as an array")]
+        [Test, Description("Roundtrips a generic List as an array")]
         // ReSharper disable once InconsistentNaming
         public void IListGeneric()
         {
             using (var conn = OpenConnection())
             using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn))
             {
-                var expected = new[] {1, 2, 3};
-                var p1 = new NpgsqlParameter {ParameterName = "p1", Value = expected.ToList()};
-                var p2 = new NpgsqlParameter {ParameterName = "p2", Value = expected.ToList()};
+                var expected = new[] { 1, 2, 3 }.ToList();
+                var p1 = new NpgsqlParameter { ParameterName = "p1", Value = expected };
+                var p2 = new NpgsqlParameter { ParameterName = "p2", Value = expected };
                 cmd.Parameters.Add(p1);
                 cmd.Parameters.Add(p2);
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
-                    Assert.That(reader[0], Is.EqualTo(expected.ToArray()));
-                    Assert.That(reader[1], Is.EqualTo(expected.ToArray()));
+                    Assert.That(reader.GetValue(0), Is.EqualTo(expected));
+                    Assert.That(reader.GetFieldValue<List<int>>(1), Is.EqualTo(expected));
+                }
+            }
+        }
+
+        [Test, Description("Tests for failure when reading a generic IList from a multidimensional array")]
+        // ReSharper disable once InconsistentNaming
+        public void IListGenericFailsForMultidimensionalArray()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT @p1", conn))
+            {
+                var expected = new[,] { { 1, 2 }, { 3, 4 } };
+                var p1 = new NpgsqlParameter { ParameterName = "p1", Value = expected };
+                cmd.Parameters.Add(p1);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetValue(0), Is.EqualTo(expected));
+                    var exception = Assert.Throws<NotSupportedException>(() =>
+                    {
+                        reader.GetFieldValue<List<int>>(0);
+                    });
+                    Assert.That(exception.Message, Is.EqualTo("Can't read multidimensional array as List<Int32>"));
                 }
             }
         }
@@ -328,7 +351,6 @@ namespace Npgsql.Tests.Types
             }
         }
 
-#if !NETCOREAPP1_1
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/960")]
         public void MixedElementTypes()
         {
@@ -342,7 +364,6 @@ namespace Npgsql.Tests.Types
                     .With.Message.Contains("mix"));
             }
         }
-#endif
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/960")]
         public void JaggedArraysNotSupported()
@@ -391,7 +412,7 @@ namespace Npgsql.Tests.Types
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
-                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("_int4"));
+                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("integer[]"));
                     Assert.That(reader[0], Is.EqualTo(value.ToArray()));
                 }
             }

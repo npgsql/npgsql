@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -42,11 +42,9 @@ namespace Npgsql.Tests
 
             int charsUsed;
             bool completed;
-#if !NETCOREAPP1_1
             WriteBuffer.WriteStringChunked("hello", 0, 5, true, out charsUsed, out completed);
             Assert.That(charsUsed, Is.Zero);
             Assert.That(completed, Is.False);
-#endif
             WriteBuffer.WriteStringChunked("hello".ToCharArray(), 0, 5, true, out charsUsed, out completed);
             Assert.That(charsUsed, Is.Zero);
             Assert.That(completed, Is.False);
@@ -56,11 +54,11 @@ namespace Npgsql.Tests
         public void SetUp()
         {
             Underlying = new MemoryStream();
-            WriteBuffer = new WriteBuffer(null, Underlying, ReadBuffer.DefaultSize, PGUtil.UTF8Encoding);
+            WriteBuffer = new NpgsqlWriteBuffer(null, Underlying, NpgsqlReadBuffer.DefaultSize, PGUtil.UTF8Encoding);
         }
 
         // ReSharper disable once InconsistentNaming
-        WriteBuffer WriteBuffer;
+        NpgsqlWriteBuffer WriteBuffer;
         // ReSharper disable once InconsistentNaming
         MemoryStream Underlying;
     }

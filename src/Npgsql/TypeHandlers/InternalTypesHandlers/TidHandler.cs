@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -21,20 +21,22 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
+using System;
 using System.Diagnostics;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
-using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
+using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers.InternalTypesHandlers
 {
     [TypeMapping("tid", NpgsqlDbType.Tid, typeof(NpgsqlTid))]
-    class TidHandler : SimpleTypeHandler<NpgsqlTid>, ISimpleTypeHandler<string>
+    class TidHandler : NpgsqlSimpleTypeHandler<NpgsqlTid>
     {
-        internal TidHandler(PostgresType postgresType) : base(postgresType) { }
+        #region Read
 
-        public override NpgsqlTid Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override NpgsqlTid Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             Debug.Assert(len == 6);
 
@@ -44,21 +46,19 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
             return new NpgsqlTid(blockNumber, offsetNumber);
         }
 
-        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
-            => Read(buf, len, fieldDescription).ToString();
+        #endregion Read
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
+        #region Write
+
+        public override int ValidateAndGetLength(NpgsqlTid value, NpgsqlParameter parameter)
+            => 6;
+
+        public override void Write(NpgsqlTid value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
-            if (!(value is NpgsqlTid))
-                throw CreateConversionException(value.GetType());
-            return 6;
+            buf.WriteUInt32(value.BlockNumber);
+            buf.WriteUInt16(value.OffsetNumber);
         }
 
-        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
-        {
-            var tid = (NpgsqlTid)value;
-            buf.WriteUInt32(tid.BlockNumber);
-            buf.WriteUInt16(tid.OffsetNumber);
-        }
+        #endregion Write
     }
 }

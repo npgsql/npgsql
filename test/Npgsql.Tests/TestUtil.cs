@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -23,6 +23,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -35,8 +36,7 @@ namespace Npgsql.Tests
 {
     public static class TestUtil
     {
-        public static bool IsOnBuildServer
-            => Environment.GetEnvironmentVariable("CI") != null;
+        public static bool IsOnBuildServer => Environment.GetEnvironmentVariable("CI") != null;
 
         /// <summary>
         /// Calls Assert.Ignore() unless we're on the build server, in which case calls
@@ -70,6 +70,42 @@ namespace Npgsql.Tests
             => prefix + Interlocked.Increment(ref _counter);
 
         static int _counter;
+
+        /// <summary>
+        /// Utility to generate a bytea literal in Postgresql hex format
+        /// See http://www.postgresql.org/docs/current/static/datatype-binary.html
+        /// </summary>
+        internal static string EncodeByteaHex(ICollection<byte> buf)
+        {
+            var hex = new StringBuilder(@"E'\\x", buf.Count * 2 + 3);
+            foreach (var b in buf)
+                hex.Append($"{b:x2}");
+            hex.Append("'");
+            return hex.ToString();
+        }
+
+        internal static IDisposable SetEnvironmentVariable(string name, string value)
+        {
+            var resetter = new EnvironmentVariableResetter(name, Environment.GetEnvironmentVariable(name));
+            Environment.SetEnvironmentVariable(name, value);
+            return resetter;
+        }
+
+        class EnvironmentVariableResetter : IDisposable
+        {
+            readonly string _name, _value;
+
+            internal EnvironmentVariableResetter(string name, string value)
+            {
+                _name = name;
+                _value = value;
+            }
+
+            public void Dispose()
+            {
+                Environment.SetEnvironmentVariable(_name, _value);
+            }
+        }
     }
 
     public static class NpgsqlConnectionExtensions
@@ -103,6 +139,28 @@ namespace Npgsql.Tests
             using (cmd)
                 return await cmd.ExecuteScalarAsync();
         }
+    }
+
+    public static class NpgsqlCommandExtensions
+    {
+        public static T ExecuteScalar<T>(this NpgsqlCommand cmd)
+        {
+            using (var rdr = cmd.ExecuteReader())
+                return rdr.Read() ? rdr.GetFieldValue<T>(0) : default;
+        }
+
+        public static NpgsqlDataReader ExecuteRecord(this NpgsqlCommand cmd)
+        {
+            var rdr = cmd.ExecuteReader();
+            Assert.That(rdr.Read());
+            return rdr;
+        }
+    }
+
+    public static class CommandBehaviorExtensions
+    {
+        public static bool IsSequential(this CommandBehavior behavior)
+            => (behavior & CommandBehavior.SequentialAccess) != 0;
     }
 
     /// <summary>

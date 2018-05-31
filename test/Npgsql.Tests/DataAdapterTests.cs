@@ -1,7 +1,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -20,8 +20,6 @@
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
-
-#if !NETCOREAPP1_1
 
 using System;
 using System.Data;
@@ -199,7 +197,7 @@ namespace Npgsql.Tests
                 da.Fill(ds);
 
                 //## Insert a new row with id = 1
-                ds.Tables[0].Rows.Add(new Object[] {0.4, 0.5});
+                ds.Tables[0].Rows.Add(0.4, 0.5);
                 da.Update(ds);
 
                 //## change id from 1 to 2
@@ -636,5 +634,3 @@ namespace Npgsql.Tests
         }
     }
 }
-
-#endif

@@ -1,7 +1,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -33,6 +33,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Security;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -148,12 +149,9 @@ namespace Npgsql.Tests
             using (var conn = new NpgsqlConnection(csb)) {
                 Assert.That(() => conn.Open(), Throws.Exception
                     .TypeOf<SocketException>()
-#if !NETCOREAPP1_1
-// CoreCLR currently has an issue which causes the wrong SocketErrorCode to be set on Linux:
-// https://github.com/dotnet/corefx/issues/8464
-
+                    // CoreCLR currently has an issue which causes the wrong SocketErrorCode to be set on Linux:
+                    // https://github.com/dotnet/corefx/issues/8464
                     .With.Property(nameof(SocketException.SocketErrorCode)).EqualTo(SocketError.ConnectionRefused)
-#endif
                 );
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
             }
@@ -377,28 +375,21 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1065")]
-        [Parallelizable(ParallelScope.None)]
+        [NonParallelizable]
         public void ClientEncodingEnvVar()
         {
             using (var conn = OpenConnection())
                 Assert.That(conn.ExecuteScalar("SHOW client_encoding"), Is.Not.EqualTo("SQL_ASCII"));
-            var prevEnvVar = Environment.GetEnvironmentVariable("PGCLIENTENCODING");
-            Environment.SetEnvironmentVariable("PGCLIENTENCODING", "SQL_ASCII");
-            // Note that the pool is unaware of the environment variable, so if a connection is
-            // returned from the pool it may contain the wrong client_encoding
-            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            using (TestUtil.SetEnvironmentVariable("PGCLIENTENCODING", "SQL_ASCII"))
             {
-                ApplicationName = nameof(ClientEncodingEnvVar),
-                Pooling = false
-            };
-            try
-            {
+                // Note that the pool is unaware of the environment variable, so if a connection is
+                // returned from the pool it may contain the wrong client_encoding
+                var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+                {
+                    Pooling = false
+                };
                 using (var conn = OpenConnection(connString))
                     Assert.That(conn.ExecuteScalar("SHOW client_encoding"), Is.EqualTo("SQL_ASCII"));
-            }
-            finally
-            {
-                Environment.SetEnvironmentVariable("PGCLIENTENCODING", prevEnvVar);
             }
         }
 
@@ -415,7 +406,56 @@ namespace Npgsql.Tests
                 Assert.That(conn.ExecuteScalar("SHOW client_encoding"), Is.EqualTo("SQL_ASCII"));
         }
 
-        #endregion
+        #endregion Client Encoding
+
+        #region Timezone
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1634")]
+        [NonParallelizable]
+        public void TimezoneEnvVar()
+        {
+            string newTimezone;
+            using (var conn = OpenConnection())
+            {
+                newTimezone = (string)conn.ExecuteScalar("SHOW TIMEZONE") == "Africa/Bamako"
+                    ? "Africa/Lagos"
+                    : "Africa/Bamako";
+            }
+
+            using (TestUtil.SetEnvironmentVariable("PGTZ", newTimezone))
+            {
+                // Note that the pool is unaware of the environment variable, so if a connection is
+                // returned from the pool it may contain the wrong timezone
+                var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+                {
+                    Pooling = false
+                };
+                using (var conn = OpenConnection(connString))
+                    Assert.That(conn.ExecuteScalar("SHOW TIMEZONE"), Is.EqualTo(newTimezone));
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1634")]
+        public void TimezoneConnectionParam()
+        {
+            string newTimezone;
+            using (var conn = OpenConnection())
+            {
+                newTimezone = (string)conn.ExecuteScalar("SHOW TIMEZONE") == "Africa/Bamako"
+                    ? "Africa/Lagos"
+                    : "Africa/Bamako";
+            }
+
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Timezone = newTimezone,
+                Pooling = false
+            };
+            using (var conn = OpenConnection(connString))
+                Assert.That(conn.ExecuteScalar("SHOW TIMEZONE"), Is.EqualTo(newTimezone));
+        }
+
+        #endregion Timezone
 
         [Test, WindowsIgnore]
         public void UnixDomainSocket()
@@ -456,6 +496,15 @@ namespace Npgsql.Tests
                 conn.Open();
                 Assert.That(() => conn.ConnectionString = "", Throws.Exception.TypeOf<InvalidOperationException>());
             }
+        }
+
+        [Test]
+        public void EmptyCtor()
+        {
+            var conn = new NpgsqlConnection();
+            Assert.That(conn.ConnectionTimeout, Is.EqualTo(NpgsqlConnectionStringBuilder.DefaultTimeout));
+            Assert.That(conn.ConnectionString, Is.SameAs(string.Empty));
+            Assert.That(() => conn.Open(), Throws.Exception.TypeOf<ArgumentException>());
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/703")]
@@ -560,22 +609,24 @@ namespace Npgsql.Tests
             else
                 csb.Pooling = false;
 
-            var conn = OpenConnection(csb);
-            var connectorId = conn.ProcessID;
-            using (var cmd = new NpgsqlCommand("SELECT 1", conn))
-            using (var reader = cmd.ExecuteReader())
+            using (var conn = OpenConnection(csb))
             {
-                reader.Read();
-                conn.Close();
-                Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
-                Assert.That(reader.IsClosed);
-            }
+                var connectorId = conn.ProcessID;
+                using (var cmd = new NpgsqlCommand("SELECT 1", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    conn.Close();
+                    Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
+                    Assert.That(reader.IsClosed);
+                }
 
-            conn.Open();
-            if (pooled)   // Make sure we can reuse the pooled connector
-                Assert.That(conn.ProcessID, Is.EqualTo(connectorId));
-            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
-            Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+                conn.Open();
+                if (pooled)   // Make sure we can reuse the pooled connector
+                    Assert.That(conn.ProcessID, Is.EqualTo(connectorId));
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+            }
         }
 
         [Test]
@@ -832,11 +883,7 @@ namespace Npgsql.Tests
                 conn.UserCertificateValidationCallback = callback2;
 
                 conn.Open();
-#if NETCOREAPP1_1
-                using (var conn2 = conn.Clone())
-#else
                 using (var conn2 = (NpgsqlConnection)((ICloneable)conn).Clone())
-#endif
                 {
                     Assert.That(conn2.ConnectionString, Is.EqualTo(conn.ConnectionString));
                     Assert.That(conn2.ProvideClientCertificatesCallback, Is.SameAs(callback1));
@@ -847,19 +894,26 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/824")]
-        [Explicit("Failing for some inexplicable reason on the build server on Linux only")]
         public void ReloadTypes()
         {
             using (var conn = OpenConnection())
             {
                 Assert.That(conn.ExecuteScalar("SELECT EXISTS (SELECT * FROM pg_type WHERE typname='reload_types_enum')"), Is.False);
                 conn.ExecuteNonQuery("CREATE TYPE pg_temp.reload_types_enum AS ENUM ('First', 'Second')");
-                Assert.That(() => conn.MapEnum<ReloadTypesEnum>(), Throws.Exception.TypeOf<NpgsqlException>());
+                Assert.That(() => conn.TypeMapper.MapEnum<ReloadTypesEnum>(), Throws.Exception.TypeOf<ArgumentException>());
                 conn.ReloadTypes();
-                conn.MapEnum<ReloadTypesEnum>();
+                conn.TypeMapper.MapEnum<ReloadTypesEnum>();
             }
         }
         enum ReloadTypesEnum { First, Second };
+
+        [Test]
+        public void DatabaseInfoIsShared()
+        {
+            using (var conn1 = OpenConnection())
+            using (var conn2 = OpenConnection())
+                Assert.That(conn1.Connector.DatabaseInfo, Is.SameAs(conn2.Connector.DatabaseInfo));
+        }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/736")]
         public void ManyOpenClose()
@@ -965,6 +1019,28 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, Description("Some pseudo-PG database don't support pg_type loading, we have a minimal DatabaseInfo for this")]
+        public void NoTypeLoading()
+        {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ApplicationName = nameof(NoTypeLoading),
+                ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
+                Pooling = false
+            }.ToString();
+
+            using (var conn = OpenConnection(connString))
+            {
+                // Arrays should not be supported in this mode
+                Assert.That(() => conn.ExecuteScalar("SELECT '{1,2,3}'::INTEGER[]"), Throws.Exception.TypeOf<NotSupportedException>());
+                // Test that some basic types do work
+                Assert.That(conn.ExecuteScalar("SELECT 8"), Is.EqualTo(8));
+                Assert.That(conn.ExecuteScalar("SELECT 'foo'"), Is.EqualTo("foo"));
+                Assert.That(conn.ExecuteScalar("SELECT TRUE"), Is.EqualTo(true));
+                Assert.That(conn.ExecuteScalar("SELECT INET '192.168.1.1'"), Is.EqualTo(IPAddress.Parse("192.168.1.1")));
+            }
+        }
+
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1158")]
         public void TableNamedRecord()
         {
@@ -983,8 +1059,8 @@ namespace Npgsql.Tests
             }
         }
 
+#if NET451
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/392")]
-        [LinuxIgnore]
         public void NonUTF8Encoding()
         {
             using (var adminConn = OpenConnection())
@@ -1030,6 +1106,7 @@ namespace Npgsql.Tests
                 }
             }
         }
+#endif
 
         [Test]
         public void OversizeBuffer()
@@ -1073,11 +1150,22 @@ namespace Npgsql.Tests
         }
 
         [Test, Explicit, Description("Turns on TCP keepalive and sleeps forever, good for wiresharking")]
-        public void TcpKeepalive()
+        public void TcpKeepaliveTime()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 TcpKeepAliveTime = 2000
+            };
+            using (OpenConnection(csb))
+                Thread.Sleep(Timeout.Infinite);
+        }
+
+        [Test, Explicit, Description("Turns on TCP keepalive and sleeps forever, good for wiresharking")]
+        public void TcpKeepalive()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                TcpKeepAlive = true
             };
             using (OpenConnection(csb))
                 Thread.Sleep(Timeout.Infinite);

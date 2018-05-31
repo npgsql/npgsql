@@ -68,7 +68,7 @@ Below are the connection string parameters which Npgsql understands.
 | Parameter                | Description                                                                                     | Default   |
 |--------------------------|-------------------------------------------------------------------------------------------------|-----------|
 | Application Name         | The optional application name parameter to be sent to the backend during connection initiation. |           |
-| Enlist                   | Whether to enlist in an ambient TransactionScope.                                               | false     |
+| Enlist                   | Whether to enlist in an ambient TransactionScope.                                               | true      |
 | Search Path              | Sets the schema search path.                                                                    |           |
 | Client Encoding          | Gets or sets the client_encoding parameter. Since 3.1.                                          |           |
 | Timezone                 | Gets or sets the session timezone, PGTZ environment variable can be used instead. Since 3.3.    |           |

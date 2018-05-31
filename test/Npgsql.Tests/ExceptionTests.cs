@@ -1,7 +1,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -26,10 +26,7 @@ using System.Data;
 using System.IO;
 using System.Net.Sockets;
 using NUnit.Framework;
-
-#if !NETCOREAPP1_1
 using System.Runtime.Serialization.Formatters.Binary;
-#endif
 
 namespace Npgsql.Tests
 {
@@ -117,7 +114,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [Parallelizable(ParallelScope.None)]
+        [NonParallelizable]
         public void DataTypeNameExceptionFieldIsPopulated()
         {
             // On reading the source code for PostgreSQL9.3beta1, the only time that the
@@ -182,6 +179,7 @@ namespace Npgsql.Tests
 
 #if NET451
         [Test]
+        [Ignore("DbException doesn't support serialization in .NET Core 2.0 (PlatformNotSupportedException)")]
         public void Serialization()
         {
             var e = new PostgresException

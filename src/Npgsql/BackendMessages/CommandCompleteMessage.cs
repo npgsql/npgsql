@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -35,7 +35,7 @@ namespace Npgsql.BackendMessages
         internal uint OID { get; private set; }
         internal uint Rows { get; private set; }
 
-        internal CommandCompleteMessage Load(ReadBuffer buf, int len)
+        internal CommandCompleteMessage Load(NpgsqlReadBuffer buf, int len)
         {
             Rows = 0;
             OID = 0;

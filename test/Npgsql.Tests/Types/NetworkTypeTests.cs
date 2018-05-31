@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -31,6 +31,8 @@ using Npgsql;
 using NpgsqlTypes;
 using NUnit.Framework;
 
+#pragma warning disable 618  // For NpgsqlInet
+
 namespace Npgsql.Tests.Types
 {
     /// <summary>
@@ -45,22 +47,23 @@ namespace Npgsql.Tests.Types
         public void InetV4()
         {
             using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4", conn))
+            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4, @p5, @p6", conn))
             {
                 var expectedIp = IPAddress.Parse("192.168.1.1");
-                var expectedInet = new NpgsqlInet(expectedIp, 24);
-                var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Inet) { Value = expectedInet };
-                var p2 = new NpgsqlParameter { ParameterName = "p2", Value = expectedInet };
-                var p3 = new NpgsqlParameter("p3", NpgsqlDbType.Inet) { Value = expectedIp };
-                var p4 = new NpgsqlParameter { ParameterName = "p4", Value = expectedIp };
-                cmd.Parameters.Add(p1);
-                cmd.Parameters.Add(p2);
-                cmd.Parameters.Add(p3);
-                cmd.Parameters.Add(p4);
+                var expectedTuple = (Address: expectedIp, Subnet: 24);
+                var expectedNpgsqlInet = new NpgsqlInet(expectedIp, 24);
+                cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.Inet) { Value = expectedIp });
+                cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p2", Value = expectedIp });
+                cmd.Parameters.Add(new NpgsqlParameter("p3", NpgsqlDbType.Inet) { Value = expectedTuple });
+                cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p4", Value = expectedTuple });
+                cmd.Parameters.Add(new NpgsqlParameter("p5", NpgsqlDbType.Inet) { Value = expectedNpgsqlInet });
+                cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p6", Value = expectedNpgsqlInet });
+
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
 
+                    // Address only, no subnet
                     for (var i = 0; i < 2; i++)
                     {
                         // Regular type (IPAddress)
@@ -70,15 +73,14 @@ namespace Npgsql.Tests.Types
                         Assert.That(reader.GetValue(i), Is.EqualTo(expectedIp));
                         Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(IPAddress)));
 
-                        // Provider-specific type (NpgsqlInet)
-                        Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof(NpgsqlInet)));
-                        Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(expectedInet));
-                        Assert.That(reader.GetFieldValue<NpgsqlInet>(i), Is.EqualTo(expectedInet));
-                        Assert.That(reader.GetString(i), Is.EqualTo(expectedInet.ToString()));
-                        Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof(NpgsqlInet)));
+                        // Provider-specific type (ValueTuple<IPAddress, int>)
+                        Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof((IPAddress, int))));
+                        Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo((expectedIp, 32)));
+                        Assert.That(reader.GetFieldValue<NpgsqlInet>(i), Is.EqualTo(new NpgsqlInet(expectedIp)));
                     }
 
-                    for (var i = 2; i < 4; i++)
+                    // Address and subnet
+                    for (var i = 2; i < 6; i++)
                     {
                         // Regular type (IPAddress)
                         Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(IPAddress)));
@@ -88,11 +90,9 @@ namespace Npgsql.Tests.Types
                         Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(IPAddress)));
 
                         // Provider-specific type (NpgsqlInet)
-                        Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof(NpgsqlInet)));
-                        Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(new NpgsqlInet(expectedIp)));
-                        Assert.That(reader.GetFieldValue<NpgsqlInet>(i), Is.EqualTo(new NpgsqlInet(expectedIp)));
-                        Assert.That(reader.GetString(i), Is.EqualTo(new NpgsqlInet(expectedIp).ToString()));
-                        Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof(NpgsqlInet)));
+                        Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof((IPAddress, int))));
+                        Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(expectedTuple));
+                        Assert.That(reader.GetFieldValue<NpgsqlInet>(i), Is.EqualTo(expectedNpgsqlInet));
                     }
                 }
             }
@@ -102,23 +102,24 @@ namespace Npgsql.Tests.Types
         public void InetV6()
         {
             using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4", conn))
+            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4, @p5, @p6", conn))
             {
                 const string addr = "2001:1db8:85a3:1142:1000:8a2e:1370:7334";
                 var expectedIp = IPAddress.Parse(addr);
-                var expectedInet = new NpgsqlInet(expectedIp, 24);
-                var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Inet) { Value = expectedInet };
-                var p2 = new NpgsqlParameter { ParameterName = "p2", Value = expectedInet };
-                var p3 = new NpgsqlParameter("p3", NpgsqlDbType.Inet) { Value = expectedIp };
-                var p4 = new NpgsqlParameter { ParameterName = "p4", Value = expectedIp };
-                cmd.Parameters.Add(p1);
-                cmd.Parameters.Add(p2);
-                cmd.Parameters.Add(p3);
-                cmd.Parameters.Add(p4);
+                var expectedTuple = (Address: expectedIp, Subnet: 24);
+                var expectedNpgsqlInet = new NpgsqlInet(expectedIp, 24);
+                cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.Inet) { Value = expectedIp });
+                cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p2", Value = expectedIp });
+                cmd.Parameters.Add(new NpgsqlParameter("p3", NpgsqlDbType.Inet) { Value = expectedTuple });
+                cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p4", Value = expectedTuple });
+                cmd.Parameters.Add(new NpgsqlParameter("p5", NpgsqlDbType.Inet) { Value = expectedNpgsqlInet });
+                cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p6", Value = expectedNpgsqlInet });
+
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
 
+                    // Address only, no subnet
                     for (var i = 0; i < 2; i++)
                     {
                         // Regular type (IPAddress)
@@ -126,18 +127,16 @@ namespace Npgsql.Tests.Types
                         Assert.That(reader.GetFieldValue<IPAddress>(i), Is.EqualTo(expectedIp));
                         Assert.That(reader[i], Is.EqualTo(expectedIp));
                         Assert.That(reader.GetValue(i), Is.EqualTo(expectedIp));
-                        Assert.That(reader.GetString(i), Is.EqualTo(addr + "/24"));
                         Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(IPAddress)));
 
-                        // Provider-specific type (NpgsqlInet)
-                        Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof(NpgsqlInet)));
-                        Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(expectedInet));
-                        Assert.That(reader.GetFieldValue<NpgsqlInet>(i), Is.EqualTo(expectedInet));
-                        Assert.That(reader.GetString(i), Is.EqualTo(expectedInet.ToString()));
-                        Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof(NpgsqlInet)));
+                        // Provider-specific type (ValueTuple<IPAddress, int>)
+                        Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof((IPAddress, int))));
+                        Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo((expectedIp, 128)));
+                        Assert.That(reader.GetFieldValue<NpgsqlInet>(i), Is.EqualTo(new NpgsqlInet(expectedIp)));
                     }
 
-                    for (var i = 2; i < 4; i++)
+                    // Address and subnet
+                    for (var i = 2; i < 6; i++)
                     {
                         // Regular type (IPAddress)
                         Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(IPAddress)));
@@ -147,11 +146,9 @@ namespace Npgsql.Tests.Types
                         Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(IPAddress)));
 
                         // Provider-specific type (NpgsqlInet)
-                        Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof(NpgsqlInet)));
-                        Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(new NpgsqlInet(expectedIp)));
-                        Assert.That(reader.GetFieldValue<NpgsqlInet>(i), Is.EqualTo(new NpgsqlInet(expectedIp)));
-                        Assert.That(reader.GetString(i), Is.EqualTo(new NpgsqlInet(expectedIp).ToString()));
-                        Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof(NpgsqlInet)));
+                        Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof((IPAddress, int))));
+                        Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(expectedTuple));
+                        Assert.That(reader.GetFieldValue<NpgsqlInet>(i), Is.EqualTo(expectedNpgsqlInet));
                     }
                 }
             }
@@ -160,7 +157,8 @@ namespace Npgsql.Tests.Types
         [Test]
         public void Cidr()
         {
-            var expectedInet = new NpgsqlInet("192.168.1.0/24");
+            var expected = (Address: IPAddress.Parse("192.168.1.0"), Subnet: 24);
+            //var expectedInet = new NpgsqlInet("192.168.1.0/24");
             using (var conn = OpenConnection())
             using (var cmd = new NpgsqlCommand("SELECT '192.168.1.0/24'::CIDR", conn))
             using (var reader = cmd.ExecuteReader())
@@ -168,12 +166,11 @@ namespace Npgsql.Tests.Types
                 reader.Read();
 
                 // Regular type (IPAddress)
-                Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(NpgsqlInet)));
-                Assert.That(reader.GetFieldValue<NpgsqlInet>(0), Is.EqualTo(expectedInet));
-                Assert.That(reader[0], Is.EqualTo(expectedInet));
-                Assert.That(reader.GetValue(0), Is.EqualTo(expectedInet));
-                Assert.That(reader.GetString(0), Is.EqualTo("192.168.1.0/24"));
-                Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(NpgsqlInet)));
+                Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof((IPAddress, int))));
+                Assert.That(reader.GetFieldValue<(IPAddress, int)>(0), Is.EqualTo(expected));
+                Assert.That(reader.GetFieldValue<NpgsqlInet>(0), Is.EqualTo(new NpgsqlInet(expected.Address, expected.Subnet)));
+                Assert.That(reader[0], Is.EqualTo(expected));
+                Assert.That(reader.GetValue(0), Is.EqualTo(expected));
             }
         }
 
@@ -196,7 +193,6 @@ namespace Npgsql.Tests.Types
                     {
                         Assert.That(reader.GetFieldValue<PhysicalAddress>(i), Is.EqualTo(expected));
                         Assert.That(reader.GetValue(i), Is.EqualTo(expected));
-                        Assert.That(reader.GetString(i), Is.EqualTo(expected.ToString()));
                         Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(PhysicalAddress)));
                     }
                 }
@@ -224,12 +220,10 @@ namespace Npgsql.Tests.Types
 
                         Assert.That(reader.GetFieldValue<PhysicalAddress>(0), Is.EqualTo(expected6));
                         Assert.That(reader.GetValue(0), Is.EqualTo(expected6));
-                        Assert.That(reader.GetString(0), Is.EqualTo(expected6.ToString()));
                         Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(PhysicalAddress)));
 
                         Assert.That(reader.GetFieldValue<PhysicalAddress>(1), Is.EqualTo(expected8));
                         Assert.That(reader.GetValue(1), Is.EqualTo(expected8));
-                        Assert.That(reader.GetString(1), Is.EqualTo(expected8.ToString()));
                         Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(PhysicalAddress)));
                     }
                 }

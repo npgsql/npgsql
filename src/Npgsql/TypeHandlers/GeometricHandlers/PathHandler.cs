@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -26,6 +26,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
+using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers.GeometricHandlers
@@ -37,13 +39,11 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-geometric.html
     /// </remarks>
     [TypeMapping("path", NpgsqlDbType.Path, typeof(NpgsqlPath))]
-    class PathHandler : ChunkingTypeHandler<NpgsqlPath>
+    class PathHandler : NpgsqlTypeHandler<NpgsqlPath>
     {
-        internal PathHandler(PostgresType postgresType) : base(postgresType) { }
-
         #region Read
 
-        public override async ValueTask<NpgsqlPath> Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+        public override async ValueTask<NpgsqlPath> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
         {
             await buf.Ensure(5, async);
             bool open;
@@ -74,27 +74,20 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
 
         #region Write
 
-        public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
-        {
-            if (!(value is NpgsqlPath))
-                    throw CreateConversionException(value.GetType());
-            return 5 + ((NpgsqlPath)value).Count * 16;
-        }
+        public override int ValidateAndGetLength(NpgsqlPath value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+            => 5 + value.Count * 16;
 
-        protected override async Task Write(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter,
-            bool async, CancellationToken cancellationToken)
+        public override async Task Write(NpgsqlPath value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
-            var path = (NpgsqlPath)value;
-
             if (buf.WriteSpaceLeft < 5)
-                await buf.Flush(async, cancellationToken);
-            buf.WriteByte((byte)(path.Open ? 0 : 1));
-            buf.WriteInt32(path.Count);
+                await buf.Flush(async);
+            buf.WriteByte((byte)(value.Open ? 0 : 1));
+            buf.WriteInt32(value.Count);
 
-            foreach (var p in path)
+            foreach (var p in value)
             {
                 if (buf.WriteSpaceLeft < 16)
-                    await buf.Flush(async, cancellationToken);
+                    await buf.Flush(async);
                 buf.WriteDouble(p.X);
                 buf.WriteDouble(p.Y);
             }

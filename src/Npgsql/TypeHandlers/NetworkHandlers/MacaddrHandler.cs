@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -26,7 +26,8 @@ using System.Diagnostics;
 using System.Net.NetworkInformation;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
-using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
+using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers.NetworkHandlers
@@ -35,11 +36,11 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-net-types.html
     /// </remarks>
     [TypeMapping("macaddr", NpgsqlDbType.MacAddr, typeof(PhysicalAddress))]
-    class MacaddrHandler : SimpleTypeHandler<PhysicalAddress>, ISimpleTypeHandler<string>
+    class MacaddrHandler : NpgsqlSimpleTypeHandler<PhysicalAddress>
     {
-        internal MacaddrHandler(PostgresType postgresType) : base(postgresType) { }
+        #region Read
 
-        public override PhysicalAddress Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override PhysicalAddress Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             Debug.Assert(len == 6);
 
@@ -49,20 +50,18 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             return new PhysicalAddress(bytes);
         }
 
-        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
-            => Read(buf, len, fieldDescription).ToString();
+        #endregion Read
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
-        {
-            var address = value as PhysicalAddress;
-            if (address == null)
-                throw CreateConversionException(value.GetType());
-            if (address.GetAddressBytes().Length != 6)
-                throw new FormatException("MAC addresses must have length 6 in PostgreSQL");
-            return 6;
-        }
+        #region Write
 
-        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
-            => buf.WriteBytes(((PhysicalAddress)value).GetAddressBytes(), 0, 6);
+        public override int ValidateAndGetLength(PhysicalAddress value, NpgsqlParameter parameter)
+             => value.GetAddressBytes().Length == 6
+                 ? 6
+                 : throw new FormatException("MAC addresses must have length 6 in PostgreSQL");
+
+        public override void Write(PhysicalAddress value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => buf.WriteBytes(value.GetAddressBytes(), 0, 6);
+
+        #endregion Write
     }
 }

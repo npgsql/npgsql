@@ -1,7 +1,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -20,8 +20,6 @@
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
-
-#if !NETSTANDARD1_3
 
 using System;
 using System.Collections.Generic;
@@ -314,12 +312,8 @@ namespace Npgsql
                 // These need to be closed now.
                 if (_connector.Settings.Pooling)
                 {
-                    ConnectorPool pool;
-                    lock (PoolManager.Pools)
-                    {
-                        var found = PoolManager.Pools.TryGetValue(_connector.ConnectionString, out pool);
-                        Debug.Assert(found);
-                    }
+                    var found = PoolManager.TryGetValue(_connector.ConnectionString, out var pool);
+                    Debug.Assert(found);
                     pool.TryRemovePendingEnlistedConnector(_connector, _transaction);
                     pool.Release(_connector);
                 }
@@ -364,4 +358,3 @@ namespace Npgsql
 
     }
 }
-#endif

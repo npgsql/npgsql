@@ -1,0 +1,29 @@
+﻿<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="15.0">
+
+  <PropertyGroup>
+    <TargetFrameworks>net451;netcoreapp2.1</TargetFrameworks>
+    <DebugType>portable</DebugType>
+    <AssemblyOriginatorKeyFile>../../Npgsql.snk</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/Npgsql/Npgsql.csproj" />
+    <ProjectReference Include="../../src/Npgsql.Json.NET/Npgsql.Json.NET.csproj" />
+    <ProjectReference Include="../../src/Npgsql.NodaTime/Npgsql.NodaTime.csproj" />
+    <ProjectReference Include="../Npgsql.Tests/Npgsql.Tests.csproj" />
+    <ProjectReference Include="../../src/Npgsql.LegacyPostgis/Npgsql.LegacyPostgis.csproj" />
+    <ProjectReference Include="../../src/Npgsql.RawPostgis/Npgsql.RawPostgis.csproj" />
+    <ProjectReference Include="../../src/Npgsql.NetTopologySuite/Npgsql.NetTopologySuite.csproj" />
+    <ProjectReference Include="../../src/Npgsql.GeoJSON/Npgsql.GeoJSON.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="GeoAPI" Version="1.7.5-pre025" />
+    <PackageReference Include="NetTopologySuite" Version="1.15.0-pre079" />
+    <PackageReference Include="NodaTime" Version="2.3.0" />
+    <PackageReference Include="NUnit" Version="3.10.1" />
+    <PackageReference Include="NLog" Version="4.5.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.7.2" />
+    <PackageReference Include="NUnit3TestAdapter" Version="3.10.0" />
+  </ItemGroup>
+
+</Project>

@@ -13,16 +13,17 @@ using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
 using Npgsql.Logging;
 using Npgsql.Tls;
+using static Npgsql.Statics;
 
 namespace Npgsql
 {
     partial class NpgsqlConnector
     {
-        async Task Authenticate(string username, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
+        async Task Authenticate(string username, NpgsqlTimeout timeout, bool async)
         {
             Log.Trace("Authenticating...", Id);
 
-            var msg = await ReadExpecting<AuthenticationRequestMessage>(async);
+            var msg = Expect<AuthenticationRequestMessage>(await ReadMessage(async));
             timeout.Check();
             switch (msg.AuthRequestType)
             {
@@ -30,20 +31,20 @@ namespace Npgsql
                 return;
 
             case AuthenticationRequestType.AuthenticationCleartextPassword:
-                await AuthenticateCleartext(async, cancellationToken);
+                await AuthenticateCleartext(async);
                 return;
 
             case AuthenticationRequestType.AuthenticationMD5Password:
-                await AuthenticateMD5(username, ((AuthenticationMD5PasswordMessage)msg).Salt, async, cancellationToken);
+                await AuthenticateMD5(username, ((AuthenticationMD5PasswordMessage)msg).Salt, async);
                 return;
 
             case AuthenticationRequestType.AuthenticationSASL:
-                await AuthenticateSASL(((AuthenticationSASLMessage)msg).Mechanisms, async, cancellationToken);
+                await AuthenticateSASL(((AuthenticationSASLMessage)msg).Mechanisms, async);
                 return;
 
             case AuthenticationRequestType.AuthenticationGSS:
             case AuthenticationRequestType.AuthenticationSSPI:
-                await AuthenticateGSS(async, cancellationToken);
+                await AuthenticateGSS(async);
                 return;
 
             case AuthenticationRequestType.AuthenticationGSSContinue:
@@ -54,7 +55,7 @@ namespace Npgsql
             }
         }
 
-        async Task AuthenticateCleartext(bool async, CancellationToken cancellationToken)
+        async Task AuthenticateCleartext(bool async)
         {
             var passwd = GetPassword();
             if (passwd == null)
@@ -62,12 +63,12 @@ namespace Npgsql
 
             await PasswordMessage
                 .CreateClearText(passwd)
-                .Write(WriteBuffer, async, cancellationToken);
+                .Write(WriteBuffer, async);
             await WriteBuffer.Flush(async);
-            await ReadExpecting<AuthenticationRequestMessage>(async);
+            Expect<AuthenticationRequestMessage>(await ReadMessage(async));
         }
 
-        async Task AuthenticateSASL(List<string> mechanisms, bool async, CancellationToken cancellationToken)
+        async Task AuthenticateSASL(List<string> mechanisms, bool async)
         {
             // At the time of writing PostgreSQL only supports SCRAM-SHA-256
             if (!mechanisms.Contains("SCRAM-SHA-256"))
@@ -82,10 +83,10 @@ namespace Npgsql
             var clientNonce = GetNonce();
 
             await new SASLInitialResponseMessage(mechanism, PGUtil.UTF8Encoding.GetBytes("n,,n=*,r=" + clientNonce))
-                .Write(WriteBuffer, async, cancellationToken);
-            await WriteBuffer.Flush(async, cancellationToken);
+                .Write(WriteBuffer, async);
+            await WriteBuffer.Flush(async);
 
-            var saslContinueMsg = await ReadExpecting<AuthenticationSASLContinueMessage>(async);
+            var saslContinueMsg = Expect<AuthenticationSASLContinueMessage>(await ReadMessage(async));
             if (saslContinueMsg.AuthRequestType != AuthenticationRequestType.AuthenticationSASLContinue)
                 throw new NpgsqlException("[SASL] AuthenticationSASLFinal message expected");
             var firstServerMsg = new AuthenticationSCRAMServerFirstMessage(saslContinueMsg.Payload);
@@ -93,10 +94,10 @@ namespace Npgsql
                 throw new InvalidOperationException("[SCRAM] Malformed SCRAMServerFirst message: server nonce doesn't start with client nonce");
 
             var scramFinalClientMsg = new SCRAMClientFinalMessage(passwd, firstServerMsg.Nonce, firstServerMsg.Salt, firstServerMsg.Iteration, clientNonce);
-            await scramFinalClientMsg.Write(WriteBuffer, async, cancellationToken);
-            await WriteBuffer.Flush(async, cancellationToken);
+            await scramFinalClientMsg.Write(WriteBuffer, async);
+            await WriteBuffer.Flush(async);
 
-            var saslFinalServerMsg = await ReadExpecting<AuthenticationSASLFinalMessage>(async);
+            var saslFinalServerMsg = Expect<AuthenticationSASLFinalMessage>(await ReadMessage(async));
             if (saslFinalServerMsg.AuthRequestType != AuthenticationRequestType.AuthenticationSASLFinal)
                 throw new NpgsqlException("[SASL] AuthenticationSASLFinal message expected");
             var scramFinalServerMsg = new AuthenticationSCRAMServerFinalMessage(saslFinalServerMsg.Payload);
@@ -104,7 +105,7 @@ namespace Npgsql
             if (scramFinalServerMsg.ServerSignature != Convert.ToBase64String(scramFinalClientMsg.ServerSignature))
                 throw new NpgsqlException("[SCRAM] Unable to verify server signature");
 
-            var okMsg = await ReadExpecting<AuthenticationRequestMessage>(async);
+            var okMsg = Expect<AuthenticationRequestMessage>(await ReadMessage(async));
             if (okMsg.AuthRequestType != AuthenticationRequestType.AuthenticationOk)
                 throw new NpgsqlException("[SASL] Expected AuthenticationOK message");
 
@@ -118,7 +119,7 @@ namespace Npgsql
             }
         }
 
-        async Task AuthenticateMD5(string username, byte[] salt, bool async, CancellationToken cancellationToken)
+        async Task AuthenticateMD5(string username, byte[] salt, bool async)
         {
             var passwd = GetPassword();
             if (passwd == null)
@@ -126,14 +127,13 @@ namespace Npgsql
 
             await PasswordMessage
                 .CreateMD5(passwd, username, salt)
-                .Write(WriteBuffer, async, cancellationToken);
+                .Write(WriteBuffer, async);
             await WriteBuffer.Flush(async);
-            await ReadExpecting<AuthenticationRequestMessage>(async);
+            Expect<AuthenticationRequestMessage>(await ReadMessage(async));
         }
 
-#pragma warning disable 1998
-        async Task AuthenticateGSS(bool async, CancellationToken cancellationToken)
-#pragma warning restore 1998
+#pragma warning disable CA1801 // Review unused parameters
+        async Task AuthenticateGSS(bool async)
         {
             if (!IntegratedSecurity)
                 throw new NpgsqlException("SSPI authentication but IntegratedSecurity not enabled");
@@ -143,13 +143,10 @@ namespace Npgsql
                 try
                 {
                     var targetName = $"{KerberosServiceName}/{Host}";
-                    // AuthenticateAsClientAsync doesn't exist in .NET 4.5/4.5.1 (only introduced in 4.6)
-                    // Conversely, no sync in .NET Standard 1.3 :/
-#if NETSTANDARD1_3
-                    await negotiateStream.AuthenticateAsClientAsync(CredentialCache.DefaultNetworkCredentials, targetName);
-#else
-                    negotiateStream.AuthenticateAsClient(CredentialCache.DefaultNetworkCredentials, targetName);
-#endif
+                    if (async)
+                        negotiateStream.AuthenticateAsClient(CredentialCache.DefaultNetworkCredentials, targetName);
+                    else
+                        await negotiateStream.AuthenticateAsClientAsync(CredentialCache.DefaultNetworkCredentials, targetName);
                 }
                 catch (AuthenticationCompleteException)
                 {
@@ -166,6 +163,7 @@ namespace Npgsql
             }
             throw new NpgsqlException("NegotiateStream.AuthenticateAsClient completed unexpectedly without signaling success");
         }
+#pragma warning restore CA1801 // Review unused parameters
 
         /// <summary>
         /// This Stream is placed between NegotiateStream and the socket's NetworkStream (or SSLStream). It intercepts
@@ -220,7 +218,7 @@ namespace Npgsql
                 if (count > _leftToWrite)
                     throw new NpgsqlException($"NegotiateStream trying to write {count} bytes but according to frame header we only have {_leftToWrite} left!");
                 await _msg.Populate(buffer, offset, count)
-                    .Write(_connector.WriteBuffer, false, CancellationToken.None);
+                    .Write(_connector.WriteBuffer, false);
                 await _connector.WriteBuffer.Flush(async);
                 _leftToWrite -= count;
             }
@@ -235,7 +233,7 @@ namespace Npgsql
             {
                 if (_leftToRead == 0)
                 {
-                    var response = await _connector.ReadExpecting<AuthenticationRequestMessage>(async);
+                    var response = Expect<AuthenticationRequestMessage>(await _connector.ReadMessage(async));
                     if (response.AuthRequestType == AuthenticationRequestType.AuthenticationOk)
                         throw new AuthenticationCompleteException();
                     var gssMsg = response as AuthenticationGSSContinueMessage;
@@ -262,8 +260,8 @@ namespace Npgsql
 
             public override void Flush() { }
 
-            public override long Seek(long offset, SeekOrigin origin) { throw new NotSupportedException(); }
-            public override void SetLength(long value) { throw new NotSupportedException(); }
+            public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+            public override void SetLength(long value) => throw new NotSupportedException();
 
             public override bool CanRead => true;
             public override bool CanWrite => true;
@@ -287,7 +285,7 @@ namespace Npgsql
                 return passwd;
 
             // No password was provided. Attempt to pull the password from the pgpass file.
-            var matchingEntry = PgPassFile.LoadDefaultFile()?.GetFirstMatchingEntry(Settings.Host, Settings.Port, Settings.Database, Settings.Username);
+            var matchingEntry = PgPassFile.Load(Settings.Passfile)?.GetFirstMatchingEntry(Settings.Host, Settings.Port, Settings.Database, Settings.Username);
             if (matchingEntry != null)
             {
                 Log.Trace("Taking password from pgpass file");

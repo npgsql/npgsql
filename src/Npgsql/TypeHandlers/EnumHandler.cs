@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -29,7 +29,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Text;
-using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
 
 namespace Npgsql.TypeHandlers
 {
@@ -44,12 +44,7 @@ namespace Npgsql.TypeHandlers
         Type EnumType { get; }
     }
 
-    interface IEnumHandlerFactory
-    {
-        IEnumHandler Create(PostgresType backendType);
-    }
-
-    class EnumHandler<TEnum> : SimpleTypeHandler<TEnum>, IEnumHandler where TEnum : struct
+    class EnumHandler<TEnum> : NpgsqlSimpleTypeHandler<TEnum>, IEnumHandler where TEnum : struct
     {
         readonly Dictionary<TEnum, string> _enumToLabel;
         readonly Dictionary<string, TEnum> _labelToEnum;
@@ -58,48 +53,24 @@ namespace Npgsql.TypeHandlers
 
         #region Construction
 
-        internal EnumHandler(PostgresType postgresType, INpgsqlNameTranslator nameTranslator)
-            : base(postgresType)
-        {
-            Debug.Assert(typeof(TEnum).GetTypeInfo().IsEnum, "EnumHandler instantiated for non-enum type");
-            _enumToLabel = new Dictionary<TEnum, string>();
-            _labelToEnum = new Dictionary<string, TEnum>();
-            GenerateMappings(nameTranslator, _enumToLabel, _labelToEnum);
-        }
-
-        internal EnumHandler(PostgresType postgresType, Dictionary<TEnum, string> enumToLabel, Dictionary<string, TEnum> labelToEnum)
-            : base(postgresType)
+        internal EnumHandler(Dictionary<TEnum, string> enumToLabel, Dictionary<string, TEnum> labelToEnum)
         {
             Debug.Assert(typeof(TEnum).GetTypeInfo().IsEnum, "EnumHandler instantiated for non-enum type");
             _enumToLabel = enumToLabel;
             _labelToEnum = labelToEnum;
         }
 
-        static void GenerateMappings(INpgsqlNameTranslator nameTranslator, Dictionary<TEnum, string> enumToLabel, Dictionary<string, TEnum> labelToEnum)
-        {
-            foreach (var field in typeof(TEnum).GetFields(BindingFlags.Static | BindingFlags.Public))
-            {
-                var attribute = (PgNameAttribute)field.GetCustomAttributes(typeof(PgNameAttribute), false).FirstOrDefault();
-                var enumName = attribute == null
-                    ? nameTranslator.TranslateMemberName(field.Name)
-                    : attribute.PgName;
-                var enumValue = (Enum)field.GetValue(null);
-                enumToLabel[(TEnum)(object)enumValue] = enumName;
-                labelToEnum[enumName] = (TEnum)(object)enumValue;
-            }
-        }
-
         #endregion
 
         #region Read
 
-        public override TEnum Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override TEnum Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             var str = buf.ReadString(len);
             var success = _labelToEnum.TryGetValue(str, out var value);
 
             if (!success)
-                throw new SafeReadException(new InvalidCastException($"Received enum value '{str}' from database which wasn't found on enum {typeof(TEnum)}"));
+                throw new NpgsqlSafeReadException(new InvalidCastException($"Received enum value '{str}' from database which wasn't found on enum {typeof(TEnum)}"));
 
             return value;
         }
@@ -108,44 +79,58 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
+        public override int ValidateAndGetLength(TEnum value, NpgsqlParameter parameter = null)
+            => _enumToLabel.TryGetValue(value, out var str)
+                ? Encoding.UTF8.GetByteCount(str)
+                : throw new InvalidCastException($"Can't write value {value} as enum {typeof(TEnum)}");
+
+        public override void Write(TEnum value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
         {
-            if (!(value is TEnum))
-                throw CreateConversionException(value.GetType());
-
-            var asEnum = (TEnum)value;
-            if (!_enumToLabel.TryGetValue(asEnum, out var str))
-                throw new InvalidCastException($"Can't write value {asEnum} as enum {typeof(TEnum)}");
-
-            return Encoding.UTF8.GetByteCount(str);
-        }
-
-        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
-        {
-            string str;
-            var asEnum = (TEnum)value;
-            if (!_enumToLabel.TryGetValue(asEnum, out str))
-                throw new InvalidCastException($"Can't write value {asEnum} as enum {typeof(TEnum)}");
-
+            if (!_enumToLabel.TryGetValue(value, out var str))
+                throw new InvalidCastException($"Can't write value {value} as enum {typeof(TEnum)}");
             buf.WriteString(str);
         }
 
         #endregion
+    }
 
-        internal class Factory : IEnumHandlerFactory
+
+    /// <summary>
+    /// Interface implemented by all enum handler factories.
+    /// Used to expose the name translator for those reflecting enum mappings (e.g. EF Core).
+    /// </summary>
+    public interface IEnumTypeHandlerFactory
+    {
+        /// <summary>
+        /// The name translator used for this enum.
+        /// </summary>
+        INpgsqlNameTranslator NameTranslator { get; }
+    }
+
+    class EnumTypeHandlerFactory<TEnum> : NpgsqlTypeHandlerFactory<TEnum>, IEnumTypeHandlerFactory where TEnum : struct
+    {
+        readonly Dictionary<TEnum, string> _enumToLabel = new Dictionary<TEnum, string>();
+        readonly Dictionary<string, TEnum> _labelToEnum = new Dictionary<string, TEnum>();
+
+        internal EnumTypeHandlerFactory(INpgsqlNameTranslator nameTranslator)
         {
-            readonly Dictionary<TEnum, string> _enumToLabel;
-            readonly Dictionary<string, TEnum> _labelToEnum;
-
-            internal Factory(INpgsqlNameTranslator nameTranslator)
+            foreach (var field in typeof(TEnum).GetFields(BindingFlags.Static | BindingFlags.Public))
             {
-                _enumToLabel = new Dictionary<TEnum, string>();
-                _labelToEnum = new Dictionary<string, TEnum>();
-                GenerateMappings(nameTranslator, _enumToLabel, _labelToEnum);
-            }
+                NameTranslator = nameTranslator;
 
-            public IEnumHandler Create(PostgresType backendType)
-                => new EnumHandler<TEnum>(backendType, _enumToLabel, _labelToEnum);
+                var attribute = (PgNameAttribute)field.GetCustomAttributes(typeof(PgNameAttribute), false).FirstOrDefault();
+                var enumName = attribute == null
+                    ? nameTranslator.TranslateMemberName(field.Name)
+                    : attribute.PgName;
+                var enumValue = (Enum)field.GetValue(null);
+                _enumToLabel[(TEnum)(object)enumValue] = enumName;
+                _labelToEnum[enumName] = (TEnum)(object)enumValue;
+            }
         }
+
+        protected override NpgsqlTypeHandler<TEnum> Create(NpgsqlConnection conn)
+            => new EnumHandler<TEnum>(_enumToLabel, _labelToEnum);
+
+        public INpgsqlNameTranslator NameTranslator { get; }
     }
 }

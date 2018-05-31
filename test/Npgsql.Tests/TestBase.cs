@@ -1,7 +1,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -43,11 +43,11 @@ namespace Npgsql.Tests
         /// Unless the NPGSQL_TEST_DB environment variable is defined, this is used as the connection string for the
         /// test database.
         /// </summary>
-        const string DefaultConnectionString = "Server=localhost;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests";
+        const string DefaultConnectionString = "Server=localhost;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;Timeout=0;Command Timeout=0";
 
         #region Utilities for use by tests
 
-        protected NpgsqlConnection OpenConnection(string connectionString = null)
+        protected virtual NpgsqlConnection OpenConnection(string connectionString = null)
         {
             if (connectionString == null)
                 connectionString = ConnectionString;
@@ -71,9 +71,6 @@ namespace Npgsql.Tests
 
         protected NpgsqlConnection OpenConnection(NpgsqlConnectionStringBuilder csb)
             => OpenConnection(csb.ToString());
-
-        protected static bool IsSequential(CommandBehavior behavior)
-            => (behavior & CommandBehavior.SequentialAccess) != 0;
 
         // In PG under 9.1 you can't do SELECT pg_sleep(2) in binary because that function returns void and PG doesn't know
         // how to transfer that. So cast to text server-side.

@@ -1,7 +1,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -38,7 +38,7 @@ using NUnit.Framework;
 namespace Npgsql.Tests
 {
     [TestFixture]
-    public class NpgsqlParameterTest
+    public class NpgsqlParameterTest : TestBase
     {
         [Test, Description("Makes sure that when NpgsqlDbType or Value/NpgsqlValue are set, DbType and NpgsqlDbType are set accordingly")]
         public void ImplicitSettingOfDbTypes()
@@ -66,6 +66,32 @@ namespace Npgsql.Tests
             p = new NpgsqlParameter("p", new int[0]);
             Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Array | NpgsqlDbType.Integer));
             Assert.That(p.DbType, Is.EqualTo(DbType.Object));
+        }
+
+        [Test]
+        public void TypeName()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+            {
+                var p1 = new NpgsqlParameter { ParameterName = "p", Value = 8, DataTypeName = "integer" };
+                cmd.Parameters.Add(p1);
+                Assert.That(cmd.ExecuteScalar(), Is.EqualTo(8));
+                // Purposefully try to send int as string, which should fail. This makes sure
+                // the above doesn't work simply because of type inference from the CLR type.
+                p1.DataTypeName = "text";
+                Assert.That(() => cmd.ExecuteScalar(), Throws.Exception.TypeOf<InvalidCastException>());
+
+                cmd.Parameters.Clear();
+
+                var p2 = new NpgsqlParameter<int> { ParameterName = "p", TypedValue = 8, DataTypeName = "integer" };
+                cmd.Parameters.Add(p2);
+                Assert.That(cmd.ExecuteScalar(), Is.EqualTo(8));
+                // Purposefully try to send int as string, which should fail. This makes sure
+                // the above doesn't work simply because of type inference from the CLR type.
+                p2.DataTypeName = "text";
+                Assert.That(() => cmd.ExecuteScalar(), Throws.Exception.TypeOf<InvalidCastException>());
+            }
         }
 
         // Older tests
@@ -98,30 +124,14 @@ namespace Npgsql.Tests
             Assert.AreEqual(DbType.Object, p.DbType, "DbType");
             Assert.AreEqual(ParameterDirection.Input, p.Direction, "Direction");
             Assert.IsFalse(p.IsNullable, "IsNullable");
-#if NET_2_0
-            //Assert.AreEqual (0, p.LocaleId, "LocaleId");
-#endif
             Assert.AreEqual(string.Empty, p.ParameterName, "ParameterName");
             Assert.AreEqual(0, p.Precision, "Precision");
             Assert.AreEqual(0, p.Scale, "Scale");
             Assert.AreEqual(0, p.Size, "Size");
             Assert.AreEqual(string.Empty, p.SourceColumn, "SourceColumn");
-#if NET_2_0
-            Assert.IsFalse(p.SourceColumnNullMapping, "SourceColumnNullMapping");
-#endif
-#if !NETCOREAPP1_1
             Assert.AreEqual(DataRowVersion.Current, p.SourceVersion, "SourceVersion");
-#endif
             Assert.AreEqual(NpgsqlDbType.Unknown, p.NpgsqlDbType, "NpgsqlDbType");
-#if NET_2_0
-            Assert.IsNull(p.NpgsqlValue, "NpgsqlValue");
-#endif
             Assert.IsNull(p.Value, "Value");
-#if NET_2_0
-            //Assert.AreEqual (string.Empty, p.XmlSchemaCollectionDatabase, "XmlSchemaCollectionDatabase");
-            //Assert.AreEqual (string.Empty, p.XmlSchemaCollectionName, "XmlSchemaCollectionName");
-            //Assert.AreEqual (string.Empty, p.XmlSchemaCollectionOwningSchema, "XmlSchemaCollectionOwningSchema");
-#endif
         }
 
         [Test]
@@ -133,31 +143,14 @@ namespace Npgsql.Tests
             Assert.AreEqual(DbType.DateTime, p.DbType, "B:DbType");
             Assert.AreEqual(ParameterDirection.Input, p.Direction, "B:Direction");
             Assert.IsFalse(p.IsNullable, "B:IsNullable");
-#if NET_2_0
-            //Assert.AreEqual (0, p.LocaleId, "B:LocaleId");
-#endif
             Assert.AreEqual("address", p.ParameterName, "B:ParameterName");
             Assert.AreEqual(0, p.Precision, "B:Precision");
             Assert.AreEqual(0, p.Scale, "B:Scale");
             //Assert.AreEqual (0, p.Size, "B:Size");
             Assert.AreEqual(string.Empty, p.SourceColumn, "B:SourceColumn");
-#if NET_2_0
-            Assert.IsFalse(p.SourceColumnNullMapping, "B:SourceColumnNullMapping");
-#endif
-#if !NETCOREAPP1_1
             Assert.AreEqual(DataRowVersion.Current, p.SourceVersion, "B:SourceVersion");
-#endif
             Assert.AreEqual(NpgsqlDbType.Timestamp, p.NpgsqlDbType, "B:NpgsqlDbType");
-#if NET_2_0
-            // FIXME
-            //Assert.AreEqual (new SqlDateTime (value), p.NpgsqlValue, "B:NpgsqlValue");
-#endif
             Assert.AreEqual(value, p.Value, "B:Value");
-#if NET_2_0
-            //Assert.AreEqual (string.Empty, p.XmlSchemaCollectionDatabase, "B:XmlSchemaCollectionDatabase");
-            //Assert.AreEqual (string.Empty, p.XmlSchemaCollectionName, "B:XmlSchemaCollectionName");
-            //Assert.AreEqual (string.Empty, p.XmlSchemaCollectionOwningSchema, "B:XmlSchemaCollectionOwningSchema");
-#endif
         }
 
         [Test]
@@ -167,68 +160,33 @@ namespace Npgsql.Tests
             Assert.AreEqual(DbType.Object, p.DbType, "B:DbType");
             Assert.AreEqual(ParameterDirection.Input, p.Direction, "B:Direction");
             Assert.IsFalse(p.IsNullable, "B:IsNullable");
-#if NET_2_0
-            //Assert.AreEqual (0, p.LocaleId, "B:LocaleId");
-#endif
             Assert.AreEqual("address", p.ParameterName, "B:ParameterName");
             Assert.AreEqual(0, p.Precision, "B:Precision");
             Assert.AreEqual(0, p.Scale, "B:Scale");
             Assert.AreEqual(0, p.Size, "B:Size");
             Assert.AreEqual(string.Empty, p.SourceColumn, "B:SourceColumn");
-#if NET_2_0
-            Assert.IsFalse(p.SourceColumnNullMapping, "B:SourceColumnNullMapping");
-#endif
-#if !NETCOREAPP1_1
             Assert.AreEqual(DataRowVersion.Current, p.SourceVersion, "B:SourceVersion");
-#endif
             Assert.AreEqual(NpgsqlDbType.Unknown, p.NpgsqlDbType, "B:NpgsqlDbType");
-#if NET_2_0
-            // FIXME
-            //Assert.AreEqual (SqlString.Null, p.NpgsqlValue, "B:NpgsqlValue");
-#endif
             Assert.AreEqual(DBNull.Value, p.Value, "B:Value");
-#if NET_2_0
-            //Assert.AreEqual (string.Empty, p.XmlSchemaCollectionDatabase, "B:XmlSchemaCollectionDatabase");
-            //Assert.AreEqual (string.Empty, p.XmlSchemaCollectionName, "B:XmlSchemaCollectionName");
-            //Assert.AreEqual (string.Empty, p.XmlSchemaCollectionOwningSchema, "B:XmlSchemaCollectionOwningSchema");
-#endif
         }
 
         [Test]
         public void Constructor2_Value_Null()
         {
-            var p = new NpgsqlParameter("address", (object) null);
+            var p = new NpgsqlParameter("address", (object)null);
             Assert.AreEqual(DbType.Object, p.DbType, "A:DbType");
             Assert.AreEqual(ParameterDirection.Input, p.Direction, "A:Direction");
             Assert.IsFalse(p.IsNullable, "A:IsNullable");
-#if NET_2_0
-            //Assert.AreEqual (0, p.LocaleId, "A:LocaleId");
-#endif
             Assert.AreEqual("address", p.ParameterName, "A:ParameterName");
             Assert.AreEqual(0, p.Precision, "A:Precision");
             Assert.AreEqual(0, p.Scale, "A:Scale");
             Assert.AreEqual(0, p.Size, "A:Size");
             Assert.AreEqual(string.Empty, p.SourceColumn, "A:SourceColumn");
-#if NET_2_0
-            Assert.IsFalse(p.SourceColumnNullMapping, "A:SourceColumnNullMapping");
-#endif
-#if !NETCOREAPP1_1
             Assert.AreEqual(DataRowVersion.Current, p.SourceVersion, "A:SourceVersion");
-#endif
             Assert.AreEqual(NpgsqlDbType.Unknown, p.NpgsqlDbType, "A:NpgsqlDbType");
-#if NET_2_0
-            Assert.IsNull(p.NpgsqlValue, "A:NpgsqlValue");
-#endif
             Assert.IsNull(p.Value, "A:Value");
-#if NET_2_0
-            //Assert.AreEqual (string.Empty, p.XmlSchemaCollectionDatabase, "A:XmlSchemaCollectionDatabase");
-            //Assert.AreEqual (string.Empty, p.XmlSchemaCollectionName, "A:XmlSchemaCollectionName");
-            //Assert.AreEqual (string.Empty, p.XmlSchemaCollectionOwningSchema, "A:XmlSchemaCollectionOwningSchema");
-#endif
         }
 
-#if NET_2_0
-#if !NETCOREAPP1_1
         [Test]
         //.ctor (String, NpgsqlDbType, Int32, String, ParameterDirection, bool, byte, byte, DataRowVersion, object)
         public void Constructor7()
@@ -254,8 +212,6 @@ namespace Npgsql.Tests
             //Assert.AreEqual ("name", p1.XmlSchemaCollectionName, "XmlSchemaCollectionName");
             //Assert.AreEqual ("schema", p1.XmlSchemaCollectionOwningSchema, "XmlSchemaCollectionOwningSchema");
         }
-#endif
-#endif
 
         #endregion
 
@@ -501,7 +457,7 @@ namespace Npgsql.Tests
             Assert.AreEqual(DbType.Int32, p.DbType, "#D1");
             Assert.AreEqual(NpgsqlDbType.Integer, p.NpgsqlDbType, "#D2");
 #endif
-            p.Value = new byte[] {0x0a};
+            p.Value = new byte[] { 0x0a };
             Assert.AreEqual(DbType.Binary, p.DbType, "#E1");
             Assert.AreEqual(NpgsqlDbType.Bytea, p.NpgsqlDbType, "#E2");
             p.Value = null;
@@ -642,6 +598,10 @@ namespace Npgsql.Tests
 #endif
 
         [Test]
+        public void ParameterNameRetainsPrefix()
+            => Assert.That(new NpgsqlParameter("@p", DbType.String).ParameterName, Is.EqualTo("@p"));
+
+        [Test]
         [Ignore("")]
         public void SourceColumn()
         {
@@ -697,7 +657,7 @@ namespace Npgsql.Tests
             using (var command = new NpgsqlCommand())
             {
                 // Put plenty of parameters in the collection to turn on hash lookup functionality.
-                for (var i = 0 ; i < 10 ; i++)
+                for (var i = 0; i < 10; i++)
                 {
                     command.Parameters.AddWithValue(string.Format("p{0:00}", i + 1), NpgsqlDbType.Text, string.Format("String parameter value {0}", i + 1));
                 }
@@ -726,7 +686,6 @@ namespace Npgsql.Tests
         [Test]
         public void NpgsqlParameterCloneTest()
         {
-
             var param = new NpgsqlParameter();
 
             param.Value = 5;
@@ -737,9 +696,7 @@ namespace Npgsql.Tests
             param.IsNullable = true;
             param.ParameterName = "parameterName";
             param.SourceColumn = "source_column";
-#if !NETCOREAPP1_1
             param.SourceVersion = DataRowVersion.Current;
-#endif
             param.NpgsqlValue = 5;
             param.SourceColumnNullMapping = false;
 
@@ -752,10 +709,9 @@ namespace Npgsql.Tests
             Assert.AreEqual(param.Direction, newParam.Direction);
             Assert.AreEqual(param.IsNullable, newParam.IsNullable);
             Assert.AreEqual(param.ParameterName, newParam.ParameterName);
+            Assert.AreEqual(param.TrimmedName, newParam.TrimmedName);
             Assert.AreEqual(param.SourceColumn, newParam.SourceColumn);
-#if !NETCOREAPP1_1
             Assert.AreEqual(param.SourceVersion, newParam.SourceVersion);
-#endif
             Assert.AreEqual(param.NpgsqlValue, newParam.NpgsqlValue);
             Assert.AreEqual(param.SourceColumnNullMapping, newParam.SourceColumnNullMapping);
             Assert.AreEqual(param.NpgsqlValue, newParam.NpgsqlValue);
@@ -773,7 +729,51 @@ namespace Npgsql.Tests
 
             // These should not throw exceptions
             Assert.AreEqual(0, command.Parameters.IndexOf(""));
-            Assert.AreEqual("", param.CleanName);
+            Assert.AreEqual("", param.ParameterName);
+        }
+
+        [Test]
+        public void PrecisionViaInterface()
+        {
+            var parameter = new NpgsqlParameter();
+            var paramIface = (IDbDataParameter)parameter;
+
+            paramIface.Precision = 42;
+
+            Assert.AreEqual((byte)42, paramIface.Precision);
+        }
+
+        [Test]
+        public void PrecisionViaBaseClass()
+        {
+            var parameter = new NpgsqlParameter();
+            var paramBase = (DbParameter)parameter;
+
+            paramBase.Precision = 42;
+
+            Assert.AreEqual((byte)42, paramBase.Precision);
+        }
+
+        [Test]
+        public void ScaleViaInterface()
+        {
+            var parameter = new NpgsqlParameter();
+            var paramIface = (IDbDataParameter)parameter;
+
+            paramIface.Scale = 42;
+
+            Assert.AreEqual((byte)42, paramIface.Scale);
+        }
+
+        [Test]
+        public void ScaleViaBaseClass()
+        {
+            var parameter = new NpgsqlParameter();
+            var paramBase = (DbParameter)parameter;
+
+            paramBase.Scale = 42;
+
+            Assert.AreEqual((byte)42, paramBase.Scale);
         }
     }
 }

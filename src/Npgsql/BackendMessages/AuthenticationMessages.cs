@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -63,7 +63,7 @@ namespace Npgsql.BackendMessages
 
         internal byte[] Salt { get; private set; }
 
-        internal static AuthenticationMD5PasswordMessage Load(ReadBuffer buf)
+        internal static AuthenticationMD5PasswordMessage Load(NpgsqlReadBuffer buf)
         {
             var salt = new byte[4];
             buf.ReadBytes(salt, 0, 4);
@@ -98,7 +98,7 @@ namespace Npgsql.BackendMessages
 
         internal byte[] AuthenticationData { get; private set; }
 
-        internal static AuthenticationGSSContinueMessage Load(ReadBuffer buf, int len)
+        internal static AuthenticationGSSContinueMessage Load(NpgsqlReadBuffer buf, int len)
         {
             len -= 4;   // The AuthRequestType code
             var authenticationData = new byte[len];
@@ -127,7 +127,7 @@ namespace Npgsql.BackendMessages
         internal override AuthenticationRequestType AuthRequestType => AuthenticationRequestType.AuthenticationSASL;
         internal List<string> Mechanisms { get; } = new List<string>();
 
-        internal AuthenticationSASLMessage(ReadBuffer buf)
+        internal AuthenticationSASLMessage(NpgsqlReadBuffer buf)
         {
             while (buf.Buffer[buf.ReadPosition] != 0)
                 Mechanisms.Add(buf.ReadNullTerminatedString());
@@ -142,7 +142,7 @@ namespace Npgsql.BackendMessages
         internal override AuthenticationRequestType AuthRequestType => AuthenticationRequestType.AuthenticationSASLContinue;
         internal byte[] Payload { get; }
 
-        internal AuthenticationSASLContinueMessage(ReadBuffer buf, int len)
+        internal AuthenticationSASLContinueMessage(NpgsqlReadBuffer buf, int len)
         {
             Payload = new byte[len];
             buf.ReadBytes(Payload, 0, len);
@@ -187,7 +187,7 @@ namespace Npgsql.BackendMessages
         internal override AuthenticationRequestType AuthRequestType => AuthenticationRequestType.AuthenticationSASLFinal;
         internal byte[] Payload { get; }
 
-        internal AuthenticationSASLFinalMessage(ReadBuffer buf, int len)
+        internal AuthenticationSASLFinalMessage(NpgsqlReadBuffer buf, int len)
         {
             Payload = new byte[len];
             buf.ReadBytes(Payload, 0, len);

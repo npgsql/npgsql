@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -26,58 +26,54 @@ using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
+using Npgsql.TypeMapping;
 
 namespace Npgsql.TypeHandlers.DateTimeHandlers
 {
+    [TypeMapping("time", NpgsqlDbType.Time, new[] { DbType.Time })]
+    class TimeHandlerFactory : NpgsqlTypeHandlerFactory<TimeSpan>
+    {
+        // Check for the legacy floating point timestamps feature
+        protected override NpgsqlTypeHandler<TimeSpan> Create(NpgsqlConnection conn)
+            => new TimeHandler(conn.HasIntegerDateTimes);
+    }
+
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-datetime.html
     /// </remarks>
-    [TypeMapping("time", NpgsqlDbType.Time, new[] { DbType.Time })]
-    class TimeHandler : SimpleTypeHandler<TimeSpan>
+    class TimeHandler : NpgsqlSimpleTypeHandler<TimeSpan>
     {
         /// <summary>
         /// A deprecated compile-time option of PostgreSQL switches to a floating-point representation of some date/time
-        /// fields. Npgsql (currently) does not support this mode.
+        /// fields. Some PostgreSQL-like databases (e.g. CrateDB) use floating-point representation by default and do not
+        /// provide the option of switching to integer format.
         /// </summary>
         readonly bool _integerFormat;
 
-        public TimeHandler(PostgresType postgresType, TypeHandlerRegistry registry)
-            : base(postgresType)
+        public TimeHandler(bool integerFormat)
         {
-            // Check for the legacy floating point timestamps feature, defaulting to integer timestamps
-            _integerFormat = !registry.Connector.BackendParams.TryGetValue("integer_datetimes", out var s) || s == "on";
+            _integerFormat = integerFormat;
         }
 
-        public override TimeSpan Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override TimeSpan Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
-            if (!_integerFormat)
-                throw new NotSupportedException("Old floating point representation for timestamps not supported");
-
-            // PostgreSQL time resolution == 1 microsecond == 10 ticks
-            return new TimeSpan(buf.ReadInt64() * 10);
+            if (_integerFormat)
+                // PostgreSQL time resolution == 1 microsecond == 10 ticks
+                return new TimeSpan(buf.ReadInt64() * 10);
+            else
+                return TimeSpan.FromSeconds(buf.ReadDouble());
         }
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
-        {
-            var asString = value as string;
-            if (asString != null)
-            {
-                var converted = TimeSpan.Parse(asString);
-                if (parameter == null)
-                    throw CreateConversionButNoParamException(value.GetType());
-                parameter.ConvertedValue = converted;
-            }
-            else if (!(value is TimeSpan))
-                throw CreateConversionException(value.GetType());
-            return 8;
-        }
+        public override int ValidateAndGetLength(TimeSpan value, NpgsqlParameter parameter)
+            => 8;
 
-        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
+        public override void Write(TimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
-            if (parameter?.ConvertedValue != null)
-                value = parameter.ConvertedValue;
-
-            buf.WriteInt64(((TimeSpan)value).Ticks / 10);
+            if (_integerFormat)
+                buf.WriteInt64(value.Ticks / 10);
+            else
+                buf.WriteDouble(value.TotalSeconds);
         }
     }
 }

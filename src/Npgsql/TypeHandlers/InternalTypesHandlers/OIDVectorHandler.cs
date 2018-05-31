@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -21,33 +21,34 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using Npgsql.Logging;
-using NpgsqlTypes;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeHandlers.NumericHandlers;
+using Npgsql.TypeHandling;
+using Npgsql.TypeMapping;
+using NpgsqlTypes;
+using System;
 
 namespace Npgsql.TypeHandlers.InternalTypesHandlers
 {
+    [TypeMapping("oidvector", NpgsqlDbType.Oidvector)]
+    class OIDVectorHandlerFactory : NpgsqlTypeHandlerFactory
+    {
+        internal override NpgsqlTypeHandler Create(PostgresType pgType, NpgsqlConnection conn)
+            => new OIDVectorHandler(conn.Connector.TypeMapper.DatabaseInfo.ByName["oid"])
+            {
+                PostgresType = pgType
+            };
+
+        internal override Type DefaultValueType => null;
+    }
+
     /// <summary>
     /// An OIDVector is simply a regular array of uints, with the sole exception that its lower bound must
     /// be 0 (we send 1 for regular arrays).
     /// </summary>
-    [TypeMapping("oidvector", NpgsqlDbType.Oidvector)]
     class OIDVectorHandler : ArrayHandler<uint>
     {
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
-
-        public OIDVectorHandler(PostgresType postgresType, TypeHandlerRegistry registry)
-            : base(postgresType, null, 0)
-        {
-            // The pg_type SQL query makes sure that the oid type comes before oidvector, so we can
-            // depend on it already being in the registry
-            var oidHandler = registry[NpgsqlDbType.Oid];
-            if (oidHandler == registry.UnrecognizedTypeHandler)
-            {
-                Log.Warn("oid type not present when setting up oidvector type. oidvector will not work.");
-                return;
-            }
-            ElementHandler = oidHandler;
-        }
+        public OIDVectorHandler(PostgresType postgresOIDType)
+            : base(new UInt32Handler { PostgresType = postgresOIDType }, 0) { }
     }
 }

@@ -1,8 +1,9 @@
 ﻿using System;
 using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
+using NpgsqlTypes;
 
-#if NETSTANDARD1_3 || NETSTANDARD2_0
+#if NETSTANDARD2_0
 using System.Data.Common;
 #endif
 
@@ -161,6 +162,8 @@ namespace Npgsql.Schema
         public short? ColumnAttributeNumber { get; internal set; }
         [PublicAPI]
         public string DefaultValue { get; internal set; }
+        [PublicAPI]
+        public NpgsqlDbType? NpgsqlDbType { get; internal set; }
 
         [CanBeNull]
         public override object this[string propertyName]
@@ -179,6 +182,8 @@ namespace Npgsql.Schema
                     return ColumnAttributeNumber;
                 case nameof(DefaultValue):
                     return DefaultValue;
+                case nameof(NpgsqlDbType):
+                    return NpgsqlDbType;
                 }
 
                 return base[propertyName];

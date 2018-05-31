@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -25,66 +25,78 @@ using System;
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
+using System.Diagnostics;
 using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
+using Npgsql.TypeMapping;
 
 namespace Npgsql.TypeHandlers.NumericHandlers
 {
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-numeric.html
     /// </remarks>
-    [TypeMapping("int2", NpgsqlDbType.Smallint, new[] { DbType.Int16, DbType.Byte, DbType.SByte }, new[] { typeof(short), typeof(byte), typeof(sbyte) }, DbType.Int16)]
-    class Int16Handler : SimpleTypeHandler<short>,
-        ISimpleTypeHandler<byte>, ISimpleTypeHandler<sbyte>, ISimpleTypeHandler<int>, ISimpleTypeHandler<long>,
-        ISimpleTypeHandler<float>, ISimpleTypeHandler<double>, ISimpleTypeHandler<decimal>,
-        ISimpleTypeHandler<string>
+    [TypeMapping("smallint", NpgsqlDbType.Smallint, new[] { DbType.Int16, DbType.Byte, DbType.SByte }, new[] { typeof(short), typeof(byte), typeof(sbyte) }, DbType.Int16)]
+    class Int16Handler : NpgsqlSimpleTypeHandler<short>,
+        INpgsqlSimpleTypeHandler<byte>, INpgsqlSimpleTypeHandler<sbyte>, INpgsqlSimpleTypeHandler<int>, INpgsqlSimpleTypeHandler<long>,
+        INpgsqlSimpleTypeHandler<float>, INpgsqlSimpleTypeHandler<double>, INpgsqlSimpleTypeHandler<decimal>
     {
-        internal Int16Handler(PostgresType postgresType) : base(postgresType) { }
+        #region Read
 
-        public override short Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override short Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => buf.ReadInt16();
 
-        byte ISimpleTypeHandler<byte>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
-            => (byte)Read(buf, len, fieldDescription);
+        byte INpgsqlSimpleTypeHandler<byte>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => checked((byte)Read(buf, len, fieldDescription));
 
-        sbyte ISimpleTypeHandler<sbyte>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
-            => (sbyte)Read(buf, len, fieldDescription);
+        sbyte INpgsqlSimpleTypeHandler<sbyte>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+            => checked((sbyte)Read(buf, len, fieldDescription));
 
-        int ISimpleTypeHandler<int>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        int INpgsqlSimpleTypeHandler<int>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => Read(buf, len, fieldDescription);
 
-        long ISimpleTypeHandler<long>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        long INpgsqlSimpleTypeHandler<long>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => Read(buf, len, fieldDescription);
 
-        float ISimpleTypeHandler<float>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        float INpgsqlSimpleTypeHandler<float>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => Read(buf, len, fieldDescription);
 
-        double ISimpleTypeHandler<double>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        double INpgsqlSimpleTypeHandler<double>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => Read(buf, len, fieldDescription);
 
-        decimal ISimpleTypeHandler<decimal>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        decimal INpgsqlSimpleTypeHandler<decimal>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => Read(buf, len, fieldDescription);
 
-        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
-            => Read(buf, len, fieldDescription).ToString();
+        #endregion Read
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
-        {
-            if (!(value is short))
-            {
-                var converted = Convert.ToInt16(value);
-                if (parameter == null)
-                    throw CreateConversionButNoParamException(value.GetType());
-                parameter.ConvertedValue = converted;
-            }
-            return 2;
-        }
+        #region Write
 
-        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
-        {
-            if (parameter?.ConvertedValue != null)
-                value = parameter.ConvertedValue;
-            buf.WriteInt16((short)value);
-        }
+        public override int ValidateAndGetLength(short value, NpgsqlParameter parameter) => 2;
+        public int ValidateAndGetLength(int value, NpgsqlParameter parameter)            => 2;
+        public int ValidateAndGetLength(long value, NpgsqlParameter parameter)           => 2;
+        public int ValidateAndGetLength(byte value, NpgsqlParameter parameter)           => 2;
+        public int ValidateAndGetLength(sbyte value, NpgsqlParameter parameter)          => 2;
+        public int ValidateAndGetLength(float value, NpgsqlParameter parameter)          => 2;
+        public int ValidateAndGetLength(double value, NpgsqlParameter parameter)         => 2;
+        public int ValidateAndGetLength(decimal value, NpgsqlParameter parameter)        => 2;
+
+        public override void Write(short value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => buf.WriteInt16(value);
+        public void Write(int value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => buf.WriteInt16(checked((short)value));
+        public void Write(long value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => buf.WriteInt16(checked((short)value));
+        public void Write(byte value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => buf.WriteInt16(value);
+        public void Write(sbyte value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => buf.WriteInt16(value);
+        public void Write(decimal value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => buf.WriteInt16((short)value);
+        public void Write(double value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => buf.WriteInt16(checked((short)value));
+        public void Write(float value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => buf.WriteInt16(checked((short)value));
+
+        #endregion Write
     }
 }

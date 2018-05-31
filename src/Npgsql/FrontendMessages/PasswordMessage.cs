@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -26,7 +26,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
@@ -110,7 +109,7 @@ namespace Npgsql.FrontendMessages
             return this;
         }
 
-        internal override async Task Write(WriteBuffer buf, bool async, CancellationToken cancellationToken)
+        internal override async Task Write(NpgsqlWriteBuffer buf, bool async)
         {
             if (buf.WriteSpaceLeft < 1 + 5)
                 await buf.Flush(async);
@@ -152,7 +151,7 @@ namespace Npgsql.FrontendMessages
             PGUtil.UTF8Encoding.GetByteCount(_mechanism) + 1 +
             4 + _initialResponse?.Length ?? 0;
 
-        internal override void WriteFully(WriteBuffer buf)
+        internal override void WriteFully(NpgsqlWriteBuffer buf)
         {
             buf.WriteByte(Code);
             buf.WriteInt32(Length - 1);
@@ -207,7 +206,7 @@ namespace Npgsql.FrontendMessages
 
         internal override int Length => 1 + 4 + PGUtil.UTF8Encoding.GetByteCount(_messageStr);
 
-        internal override void WriteFully(WriteBuffer buf)
+        internal override void WriteFully(NpgsqlWriteBuffer buf)
         {
             buf.WriteByte(Code);
             buf.WriteInt32(Length - 1);
