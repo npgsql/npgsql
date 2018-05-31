@@ -16,6 +16,9 @@ cache:
 clone_depth: 10
 install:
   - powershell .build\setup_appveyor.ps1
+  # Install .NET Core 2.0
+  - ps: Invoke-WebRequest -Uri "https://raw.githubusercontent.com/dotnet/cli/master/scripts/obtain/dotnet-install.ps1" -OutFile "install-dotnet.ps1"
+  - ps: .\install-dotnet.ps1 -Version 2.1.300
 services:
   - postgresql101
 before_build:
