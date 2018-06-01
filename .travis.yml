@@ -2,7 +2,7 @@ language: csharp
 dist: trusty
 sudo: false
 mono: none
-dotnet: 2.1.3
+dotnet: 2.1.300
 
 services:
   - postgresql
@@ -19,10 +19,10 @@ before_script:
   - psql -U postgres -c "CREATE EXTENSION postgis" npgsql_tests
   - dotnet restore -v Minimal Npgsql.sln
 script:
-  - dotnet build "test/Npgsql.Tests" -c Debug -f netcoreapp2.0
-  - dotnet build "test/Npgsql.PluginTests" -c Debug -f netcoreapp2.0
-  - dotnet test "test/Npgsql.Tests/Npgsql.Tests.csproj" -c Debug -f netcoreapp2.0
-  - dotnet test "test/Npgsql.PluginTests/Npgsql.PluginTests.csproj" -c Debug -f netcoreapp2.0
+  - dotnet build "test/Npgsql.Tests" -c Debug -f netcoreapp2.1
+  - dotnet build "test/Npgsql.PluginTests" -c Debug -f netcoreapp2.1
+  - dotnet test "test/Npgsql.Tests/Npgsql.Tests.csproj" -c Debug -f netcoreapp2.1
+  - dotnet test "test/Npgsql.PluginTests/Npgsql.PluginTests.csproj" -c Debug -f netcoreapp2.1
 
 cache:
   directories:

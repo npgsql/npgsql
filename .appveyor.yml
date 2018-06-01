@@ -18,26 +18,26 @@ install:
   - powershell .build\setup_appveyor.ps1
   # Install .NET Core 2.0
   - ps: Invoke-WebRequest -Uri "https://raw.githubusercontent.com/dotnet/cli/master/scripts/obtain/dotnet-install.ps1" -OutFile "install-dotnet.ps1"
-  - ps: .\install-dotnet.ps1 -Version 2.1.300
+  - ps: .\install-dotnet.ps1 -Version 2.1.300 -InstallDir "dotnetcli"
 services:
   - postgresql101
 before_build:
   - '"C:\Program Files\PostgreSQL\10\bin\psql" -c "CREATE EXTENSION citext"'
   - '"C:\Program Files\PostgreSQL\10\bin\psql" -c "CREATE EXTENSION postgis"'
-  - appveyor-retry dotnet restore -v Minimal Npgsql.sln
+  - appveyor-retry dotnetcli\dotnet restore -v Minimal Npgsql.sln
   - appveyor-retry nuget restore src\VSIX\packages.config -SolutionDirectory . -Verbosity quiet -NonInteractive
 build_script:
-  - dotnet build "test\Npgsql.Tests" -c Debug -f net451
-  - dotnet build "test\Npgsql.PluginTests" -c Debug -f net451
+  - dotnetcli\dotnet build "test\Npgsql.Tests" -c Debug -f net451
+  - dotnetcli\dotnet build "test\Npgsql.PluginTests" -c Debug -f net451
   - msbuild src\VSIX\VSIX.csproj /p:Configuration=Release /v:Minimal
   - msbuild src\MSI\MSI.wixproj /p:Configuration=Release /v:Minimal
 after_build:
-  - dotnet pack src\Npgsql\Npgsql.csproj -c ReleaseOptimizedCryptography
-  - dotnet pack src\Npgsql.Json.NET\Npgsql.Json.NET.csproj -c Release
-  - dotnet pack src\Npgsql.NodaTime\Npgsql.NodaTime.csproj -c Release
-  - dotnet pack src\Npgsql.LegacyPostgis\Npgsql.LegacyPostgis.csproj -c Release
-  - dotnet pack src\Npgsql.RawPostgis\Npgsql.RawPostgis.csproj -c Release
-  - dotnet pack src\Npgsql.NetTopologySuite\Npgsql.NetTopologySuite.csproj -c Release
+  - dotnetcli\dotnet pack src\Npgsql\Npgsql.csproj -c ReleaseOptimizedCryptography
+  - dotnetcli\dotnet pack src\Npgsql.Json.NET\Npgsql.Json.NET.csproj -c Release
+  - dotnetcli\dotnet pack src\Npgsql.NodaTime\Npgsql.NodaTime.csproj -c Release
+  - dotnetcli\dotnet pack src\Npgsql.LegacyPostgis\Npgsql.LegacyPostgis.csproj -c Release
+  - dotnetcli\dotnet pack src\Npgsql.RawPostgis\Npgsql.RawPostgis.csproj -c Release
+  - dotnetcli\dotnet pack src\Npgsql.NetTopologySuite\Npgsql.NetTopologySuite.csproj -c Release
 test:
   assemblies:
     - test\Npgsql.Tests\bin\Debug\net451\Npgsql.Tests.dll
