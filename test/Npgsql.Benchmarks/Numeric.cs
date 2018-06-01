@@ -49,6 +49,7 @@ namespace Npgsql.Benchmarks
             _writeBuffer = new NpgsqlWriteBuffer(null, _stream, NpgsqlWriteBuffer.MinimumSize, Encoding.UTF8);
         }
 
+        [ParamsSource(nameof(Values))]
         public decimal Value
         {
             get => _value;
