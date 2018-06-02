@@ -169,7 +169,7 @@ For information about enums, [see the Enums and Composites page](enums_and_compo
 | NpgsqlDateTime				| timestamp
 | DateTime					| timestamp
 | DateTimeOffset				| timestamp with time zone
-| TimeSpan					| time
+| TimeSpan					| interval
 | byte[]					| bytea
 | Custom composite type				| composite types
 | NpgsqlRange\<TElement>			| range types
