@@ -1,4 +1,5 @@
 ﻿#region License
+
 // The PostgreSQL License
 //
 // Copyright (C) 2018 The Npgsql Development Team
@@ -19,6 +20,7 @@
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+
 #endregion
 
 using System;
@@ -54,8 +56,8 @@ namespace Npgsql.Tests.Types
 
                 using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn))
                 {
-                    var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Date) {Value = npgsqlDate};
-                    var p2 = new NpgsqlParameter {ParameterName = "p2", Value = npgsqlDate};
+                    var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Date) { Value = npgsqlDate };
+                    var p2 = new NpgsqlParameter { ParameterName = "p2", Value = npgsqlDate };
                     Assert.That(p2.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Date));
                     Assert.That(p2.DbType, Is.EqualTo(DbType.Date));
                     cmd.Parameters.Add(p1);
@@ -84,23 +86,27 @@ namespace Npgsql.Tests.Types
             }
         }
 
-        static readonly TestCaseData[] DateSpecialCases = {
+        static readonly TestCaseData[] DateSpecialCases =
+        {
             new TestCaseData(NpgsqlDate.Infinity).SetName(nameof(DateSpecial) + "Infinity"),
             new TestCaseData(NpgsqlDate.NegativeInfinity).SetName(nameof(DateSpecial) + "NegativeInfinity"),
-            new TestCaseData(new NpgsqlDate(-5, 3, 3)).SetName(nameof(DateSpecial) +"BC"),
+            new TestCaseData(new NpgsqlDate(-5, 3, 3)).SetName(nameof(DateSpecial) + "BC"),
         };
 
         [Test, TestCaseSource(nameof(DateSpecialCases))]
         public void DateSpecial(NpgsqlDate value)
         {
             using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT @p", conn)) {
+            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+            {
                 cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Value = value });
-                using (var reader = cmd.ExecuteReader()) {
+                using (var reader = cmd.ExecuteReader())
+                {
                     reader.Read();
                     Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(value));
                     Assert.That(() => reader.GetDateTime(0), Throws.Exception.TypeOf<InvalidCastException>());
                 }
+
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
             }
         }
@@ -112,10 +118,12 @@ namespace Npgsql.Tests.Types
             {
                 conn.Open();
 
-                using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn)) {
+                using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn))
+                {
                     cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Date, DateTime.MaxValue);
                     cmd.Parameters.AddWithValue("p2", NpgsqlDbType.Date, DateTime.MinValue);
-                    using (var reader = cmd.ExecuteReader()) {
+                    using (var reader = cmd.ExecuteReader())
+                    {
                         reader.Read();
                         Assert.That(reader.GetFieldValue<NpgsqlDate>(0), Is.EqualTo(NpgsqlDate.Infinity));
                         Assert.That(reader.GetFieldValue<NpgsqlDate>(1), Is.EqualTo(NpgsqlDate.NegativeInfinity));
@@ -124,6 +132,17 @@ namespace Npgsql.Tests.Types
                     }
                 }
             }
+        }
+
+        [Test]
+        [TestCase("2018-06-03", 2018, 06, 03)]
+        [TestCase("2018-6-3", 2018, 6, 3)]
+        [TestCase("2018-06-03 AD", 2018, 06, 03)]
+        [TestCase("2018-06-03 BC", -2018, 06, 03)]
+        public void DateParse(string date, int year, int month, int day)
+        {
+            var test = NpgsqlDate.Parse(date);
+            Assert.AreEqual(new NpgsqlDate(year, month, day), test);
         }
 
         #endregion
@@ -139,8 +158,8 @@ namespace Npgsql.Tests.Types
 
                 using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn))
                 {
-                    cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.Time) {Value = expected});
-                    cmd.Parameters.Add(new NpgsqlParameter("p2", DbType.Time) {Value = expected});
+                    cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.Time) { Value = expected });
+                    cmd.Parameters.Add(new NpgsqlParameter("p2", DbType.Time) { Value = expected });
                     using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
@@ -223,7 +242,8 @@ namespace Npgsql.Tests.Types
 
         #region Timestamp
 
-        static readonly TestCaseData[] TimeStampCases = {
+        static readonly TestCaseData[] TimeStampCases =
+        {
             new TestCaseData(new DateTime(1998, 4, 12, 13, 26, 38)).SetName(nameof(Timestamp) + "Pre2000"),
             new TestCaseData(new DateTime(2015, 1, 27, 8, 45, 12, 345)).SetName(nameof(Timestamp) + "Post2000"),
             new TestCaseData(new DateTime(2013, 7, 25)).SetName(nameof(Timestamp) + "DateOnly"),
@@ -283,7 +303,8 @@ namespace Npgsql.Tests.Types
             }
         }
 
-        static readonly TestCaseData[] TimeStampSpecialCases = {
+        static readonly TestCaseData[] TimeStampSpecialCases =
+        {
             new TestCaseData(NpgsqlDateTime.Infinity).SetName(nameof(TimeStampSpecial) + "Infinity"),
             new TestCaseData(NpgsqlDateTime.NegativeInfinity).SetName(nameof(TimeStampSpecial) + "NegativeInfinity"),
             new TestCaseData(new NpgsqlDateTime(-5, 3, 3, 1, 0, 0)).SetName(nameof(TimeStampSpecial) + "BC"),
@@ -293,13 +314,16 @@ namespace Npgsql.Tests.Types
         public void TimeStampSpecial(NpgsqlDateTime value)
         {
             using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT @p", conn)) {
+            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+            {
                 cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Value = value });
-                using (var reader = cmd.ExecuteReader()) {
+                using (var reader = cmd.ExecuteReader())
+                {
                     reader.Read();
                     Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(value));
                     Assert.That(() => reader.GetDateTime(0), Throws.Exception.TypeOf<InvalidCastException>());
                 }
+
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
             }
         }

@@ -108,72 +108,204 @@ namespace NpgsqlTypes
 
         #endregion
 
+//        #region String Conversions
+//
+//        public override string ToString()
+//        {
+//            switch (_type)
+//            {
+//            case InternalType.Infinity:
+//                return "infinity";
+//            case InternalType.NegativeInfinity:
+//                return "-infinity";
+//            default:
+//                //Format of yyyy-MM-dd with " BC" for BCE and optional " AD" for CE which we omit here.
+//                return
+//                    new StringBuilder(Math.Abs(Year).ToString("D4")).Append('-').Append(Month.ToString("D2")).Append('-').Append(
+//                        Day.ToString("D2")).Append(_daysSinceEra < 0 ? " BC" : "").ToString();
+//            }
+//        }
+//
+//        public static NpgsqlDate Parse(string str)
+//        {
+//
+//            if (str == null) {
+//                throw new ArgumentNullException(nameof(str));
+//            }
+//
+//            if (str == "infinity")
+//                return Infinity;
+//
+//            if (str == "-infinity")
+//                return NegativeInfinity;
+//
+//            str = str.Trim();
+//            try {
+//                var idx = str.IndexOf('-');
+//                if (idx == -1) {
+//                    throw new FormatException();
+//                }
+//                var year = int.Parse(str.Substring(0, idx));
+//                var idxLast = idx + 1;
+//                if ((idx = str.IndexOf('-', idxLast)) == -1) {
+//                    throw new FormatException();
+//                }
+//                var month = int.Parse(str.Substring(idxLast, idx - idxLast));
+//                idxLast = idx + 1;
+//                if ((idx = str.IndexOf(' ', idxLast)) == -1) {
+//                    idx = str.Length;
+//                }
+//                var day = int.Parse(str.Substring(idxLast, idx - idxLast));
+//                if (str.Contains("BC")) {
+//                    year = -year;
+//                }
+//                return new NpgsqlDate(year, month, day);
+//            } catch (OverflowException) {
+//                throw;
+//            } catch (Exception) {
+//                throw new FormatException();
+//            }
+//        }
+//
+//        [PublicAPI]
+//        public static bool TryParse(string str, out NpgsqlDate date)
+//        {
+//            try {
+//                date = Parse(str);
+//                return true;
+//            } catch {
+//                date = Era;
+//                return false;
+//            }
+//        }
+//
+//        #endregion
+
         #region String Conversions
 
+        /// <summary>
+        /// Defined by PostgreSQL to represent an infinite date in the future.
+        /// </summary>
+        const string InfinityLiteral = "infinity";
+
+        /// <summary>
+        /// Defined by PostgreSQL to represent an infinite date in the past.
+        /// </summary>
+        const string NegativeInfinityLiteral = "-infinity";
+
+        /// <inheritdoc />
         public override string ToString()
         {
             switch (_type)
             {
             case InternalType.Infinity:
-                return "infinity";
+                return InfinityLiteral;
+
             case InternalType.NegativeInfinity:
-                return "-infinity";
+                return NegativeInfinityLiteral;
+
+            case InternalType.Finite:
             default:
                 //Format of yyyy-MM-dd with " BC" for BCE and optional " AD" for CE which we omit here.
                 return
-                    new StringBuilder(Math.Abs(Year).ToString("D4")).Append('-').Append(Month.ToString("D2")).Append('-').Append(
-                        Day.ToString("D2")).Append(_daysSinceEra < 0 ? " BC" : "").ToString();
+                    new StringBuilder(13)
+                        .Append(Math.Abs(Year).ToString("D4"))
+                        .Append('-')
+                        .Append(Month.ToString("D2"))
+                        .Append('-')
+                        .Append(Day.ToString("D2"))
+                        .Append(_daysSinceEra < 0 ? " BC" : string.Empty)
+                        .ToString();
             }
         }
 
-        public static NpgsqlDate Parse(string str)
+        /// <summary>
+        /// Parses the well-known text representation of a PostgreSQL date type into a <see cref="NpgsqlDate"/>.
+        /// </summary>
+        /// <param name="input">A PosgreSQL date type in a well-known text format.</param>
+        /// <returns>
+        /// The <see cref="NpgsqlDate"/> represented by the <paramref name="input"/>.
+        /// </returns>
+        /// <exception cref="FormatException">
+        /// Malformed date literal.
+        /// </exception>
+        /// <remarks>
+        /// See: https://www.postgresql.org/docs/current/static/datatype-datetime.html
+        /// </remarks>
+        public static NpgsqlDate Parse([NotNull] string input)
         {
+            if (input is null)
+                throw new ArgumentNullException(nameof(input));
 
-            if (str == null) {
-                throw new ArgumentNullException(nameof(str));
-            }
+            var str = input.AsSpan().Trim();
 
-            if (str == "infinity")
+            if (str.SequenceEqual(InfinityLiteral.AsSpan()))
                 return Infinity;
 
-            if (str == "-infinity")
+            if (str.SequenceEqual(NegativeInfinityLiteral.AsSpan()))
                 return NegativeInfinity;
 
-            str = str.Trim();
-            try {
-                var idx = str.IndexOf('-');
-                if (idx == -1) {
-                    throw new FormatException();
-                }
-                var year = int.Parse(str.Substring(0, idx));
-                var idxLast = idx + 1;
-                if ((idx = str.IndexOf('-', idxLast)) == -1) {
-                    throw new FormatException();
-                }
-                var month = int.Parse(str.Substring(idxLast, idx - idxLast));
-                idxLast = idx + 1;
-                if ((idx = str.IndexOf(' ', idxLast)) == -1) {
-                    idx = str.Length;
-                }
-                var day = int.Parse(str.Substring(idxLast, idx - idxLast));
-                if (str.Contains("BC")) {
+            try
+            {
+                var yearSeparator = str.IndexOf('-');
+
+                if (yearSeparator == -1)
+                    throw new FormatException($"Malformed date literal: {str.ToString()}");
+
+                var monthSeparator = str.Slice(yearSeparator + 1).IndexOf('-');
+
+                if (monthSeparator == -1)
+                    throw new FormatException($"Malformed date literal: {str.ToString()}");
+
+                var daySeparator = str.Slice(yearSeparator + monthSeparator + 1).IndexOf(' ');
+
+                var yearSegment = str.Slice(0, yearSeparator);
+                var monthSegment = str.Slice(yearSeparator + 1, monthSeparator);
+                var daySegment =
+                    daySeparator == -1
+                        ? str.Slice(yearSeparator + monthSeparator + 2)
+                        : str.Slice(yearSeparator + monthSeparator + 2, daySeparator);
+
+                var year = int.Parse(yearSegment.ToString());
+                var month = int.Parse(monthSegment.ToString());
+                var day = int.Parse(daySegment.ToString());
+
+                if (str.Contains("BC".AsSpan(), StringComparison.Ordinal))
                     year = -year;
-                }
+
                 return new NpgsqlDate(year, month, day);
-            } catch (OverflowException) {
+            }
+            catch (OverflowException)
+            {
                 throw;
-            } catch (Exception) {
-                throw new FormatException();
+            }
+            catch (Exception)
+            {
+                throw new FormatException($"Malformed date literal: {str.ToString()}");
             }
         }
 
+        /// <summary>
+        /// Attempts to parse the well-known text representation of a PostgreSQL date type into a <see cref="NpgsqlDate"/>.
+        /// </summary>
+        /// <param name="input">A PosgreSQL date type in a well-known text format.</param>
+        /// <param name="date">The <see cref="NpgsqlDate"/> if a value was successfully parsed.</param>
+        /// <returns>
+        /// True if a value was parsed; otherwise false.
+        /// </returns>
+        /// <remarks>
+        /// See: https://www.postgresql.org/docs/current/static/datatype-datetime.html
+        /// </remarks>
         [PublicAPI]
-        public static bool TryParse(string str, out NpgsqlDate date)
+        public static bool TryParse([NotNull] string input, out NpgsqlDate date)
         {
-            try {
-                date = Parse(str);
+            try
+            {
+                date = Parse(input);
                 return true;
-            } catch {
+            }
+            catch
+            {
                 date = Era;
                 return false;
             }
