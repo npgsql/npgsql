@@ -166,7 +166,7 @@ namespace NpgsqlTypes
         /// <param name="lowerBound">The lower bound of the range.</param>
         /// <param name="upperBound">The upper bound of the range.</param>
         public NpgsqlRange(T lowerBound, T upperBound)
-            : this(lowerBound, true, false, upperBound, true, false) { }
+            : this(lowerBound, true, false, upperBound, true, false) {}
 
         /// <summary>
         /// Constructs an <see cref="NpgsqlRange{T}"/> with definite bounds.
@@ -176,7 +176,7 @@ namespace NpgsqlTypes
         /// <param name="upperBound">The upper bound of the range.</param>
         /// <param name="upperBoundIsInclusive">True if the upper bound is part of the range (i.e. inclusive); otherwise, false.</param>
         public NpgsqlRange(T lowerBound, bool lowerBoundIsInclusive, T upperBound, bool upperBoundIsInclusive)
-            : this(lowerBound, lowerBoundIsInclusive, false, upperBound, upperBoundIsInclusive, false) { }
+            : this(lowerBound, lowerBoundIsInclusive, false, upperBound, upperBoundIsInclusive, false) {}
 
         /// <summary>
         /// Constructs an <see cref="NpgsqlRange{T}"/>.
@@ -196,7 +196,7 @@ namespace NpgsqlTypes
                     lowerBoundIsInclusive,
                     upperBoundIsInclusive,
                     lowerBoundInfinite,
-                    upperBoundInfinite)) { }
+                    upperBoundInfinite)) {}
 
         /// <summary>
         /// Constructs an <see cref="NpgsqlRange{T}"/>.
@@ -366,13 +366,12 @@ namespace NpgsqlTypes
             return sb.ToString();
         }
 
-        // TODO: rewrite this to use ReadOnlySpan<char> for the 4.1 release
         /// <summary>
         /// Parses the well-known text representation of a PostgreSQL range type into a <see cref="NpgsqlRange{T}"/>.
         /// </summary>
-        /// <param name="value">A PosgreSQL range type in a well-known text format.</param>
+        /// <param name="input">A PosgreSQL range type in a well-known text format.</param>
         /// <returns>
-        /// The <see cref="NpgsqlRange{T}"/> represented by the <paramref name="value"/>.
+        /// The <see cref="NpgsqlRange{T}"/> represented by the <paramref name="input"/>.
         /// </returns>
         /// <exception cref="FormatException">
         /// Malformed range literal.
@@ -389,64 +388,60 @@ namespace NpgsqlTypes
         /// <remarks>
         /// See: https://www.postgresql.org/docs/current/static/rangetypes.html
         /// </remarks>
-        public static NpgsqlRange<T> Parse([NotNull] string value)
+        public static NpgsqlRange<T> Parse([NotNull] string input)
         {
-            if (value is null)
-            {
-                throw new ArgumentNullException(nameof(value));
-            }
+            if (input is null)
+                throw new ArgumentNullException(nameof(input));
 
-            value = value.Trim();
+            var value = input.AsSpan().Trim();
 
             if (value.Length < 3)
-                throw new FormatException("Malformed range literal.");
+                throw new FormatException($"Malformed range literal: {value.ToString()}");
 
-            if (string.Equals(value, EmptyLiteral, StringComparison.OrdinalIgnoreCase))
+            if (value.SequenceEqual(EmptyLiteral.AsSpan()))
                 return Empty;
 
             var lowerInclusive = value[0] == LowerInclusiveBound;
             var lowerExclusive = value[0] == LowerExclusiveBound;
 
             if (!lowerInclusive && !lowerExclusive)
-                throw new FormatException("Malformed range literal. Missing left parenthesis or bracket.");
+                throw new FormatException($"Malformed range literal. Missing left parenthesis or bracket: {value.ToString()}");
 
             var upperInclusive = value[value.Length - 1] == UpperInclusiveBound;
             var upperExclusive = value[value.Length - 1] == UpperExclusiveBound;
 
             if (!upperInclusive && !upperExclusive)
-                throw new FormatException("Malformed range literal. Missing right parenthesis or bracket.");
+                throw new FormatException($"Malformed range literal. Missing right parenthesis or bracket: {value.ToString()}");
 
             int separator = value.IndexOf(BoundSeparator);
 
             if (separator == -1)
-                throw new FormatException("Malformed range literal. Missing comma after lower bound.");
+                throw new FormatException($"Malformed range literal. Missing comma after lower bound: {value.ToString()}");
 
             if (separator != value.LastIndexOf(BoundSeparator))
                 // TODO: this should be replaced to handle quoted commas.
-                throw new NotSupportedException("Ranges with embedded commas are not currently supported.");
+                throw new NotSupportedException($"Ranges with embedded commas are not currently supported: {value.ToString()}");
 
-            // Skip the opening bracket and stop short of the separator.
-            var lowerSegment = value.Substring(1, separator - 1).Trim();
+            // Skip the opening bracket and stop short of the separator, then trim whitespace.
+            var lowerSegment = value.Slice(1, separator - 1).Trim();
 
-            // Skip past the separator and stop short of the closing bracket.
-            var upperSegment = value.Substring(separator + 1, value.Length - separator - 2).Trim();
+            // Skip past the separator and stop short of the closing bracket, then trim whitespace.
+            var upperSegment = value.Slice(separator + 1, value.Length - separator - 2).Trim();
 
             // TODO: infinity literals have special meaning to some types (e.g. daterange), we should consider a flag to track them.
 
             var lowerInfinite =
-                lowerSegment.Length == 0 ||
-                string.Equals(lowerSegment, string.Empty, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(lowerSegment, NullLiteral, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(lowerSegment, LowerInfinityLiteral, StringComparison.OrdinalIgnoreCase);
+                lowerSegment.IsEmpty ||
+                lowerSegment.SequenceEqual(NullLiteral.AsSpan()) ||
+                lowerSegment.SequenceEqual(LowerInfinityLiteral.AsSpan());
 
             var upperInfinite =
-                upperSegment.Length == 0 ||
-                string.Equals(upperSegment, string.Empty, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(upperSegment, NullLiteral, StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(upperSegment, UpperInfinityLiteral, StringComparison.OrdinalIgnoreCase);
+                upperSegment.IsEmpty ||
+                upperSegment.SequenceEqual(NullLiteral.AsSpan()) ||
+                upperSegment.SequenceEqual(UpperInfinityLiteral.AsSpan());
 
-            T lower = lowerInfinite ? default : (T)BoundConverter.ConvertFromString(lowerSegment);
-            T upper = upperInfinite ? default : (T)BoundConverter.ConvertFromString(upperSegment);
+            T lower = lowerInfinite ? default : (T)BoundConverter.ConvertFromString(lowerSegment.ToString());
+            T upper = upperInfinite ? default : (T)BoundConverter.ConvertFromString(upperSegment.ToString());
 
             return new NpgsqlRange<T>(lower, lowerInclusive, lowerInfinite, upper, upperInclusive, upperInfinite);
         }

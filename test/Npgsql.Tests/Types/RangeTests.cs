@@ -12,7 +12,33 @@ namespace Npgsql.Tests.Types
     /// </remarks>
     class RangeTests : TestBase
     {
-        [Test, NUnit.Framework.Description("Resolves a range type handler via the different pathways")]
+        #region Issues
+
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/1943")]
+        public void Roundtrip_canonicalization_causes_issues()
+        {
+            var testValue = new NpgsqlRange<int>(0, 1);
+            using (var conn = OpenConnection(ConnectionString))
+            {
+                using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+                {
+                    cmd.Parameters.AddWithValue("p", NpgsqlDbType.Range | NpgsqlDbType.Integer, testValue);
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        reader.Read();
+                        Assert.AreNotEqual(testValue, reader.GetValue(0));
+                    }
+                }
+            }
+        }
+
+        #endregion
+
+        #region TypeTests
+
+        [Test]
+        [NUnit.Framework.Description("Resolves a range type handler via the different pathways")]
         public void RangeTypeResolution()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
@@ -198,7 +224,7 @@ namespace Npgsql.Tests.Types
         [Test]
         public void RangeHashCode_ReferenceTypes()
         {
-            NpgsqlRange<string> a= default;
+            NpgsqlRange<string> a = default;
             NpgsqlRange<string> b = NpgsqlRange<string>.Empty;
             NpgsqlRange<string> c = NpgsqlRange<string>.Parse("(,)");
 
@@ -210,12 +236,7 @@ namespace Npgsql.Tests.Types
             Assert.AreNotEqual(b.GetHashCode(), c.GetHashCode());
         }
 
-        [OneTimeSetUp]
-        public void OneTimeSetUp()
-        {
-            using (var conn = OpenConnection())
-                TestUtil.MinimumPgVersion(conn, "9.2.0");
-        }
+        #endregion
 
         #region ParseTests
 
@@ -233,14 +254,11 @@ namespace Npgsql.Tests.Types
             Assert.AreEqual(input, result);
         }
 
-        [Theory]
-        [TestCase("empty")]
-        [TestCase("EMPTY")]
-        [TestCase("  EmPtY  ")]
-        public void GivenEmptyIntRangeLiteral_WhenParsed_ThenReturnsEmptyIntRange(string value)
+        [Test]
+        public void GivenEmptyIntRangeLiteral_WhenParsed_ThenReturnsEmptyIntRange()
         {
             // Act
-            var result = NpgsqlRange<int>.Parse(value);
+            var result = NpgsqlRange<int>.Parse("empty");
 
             // Assert
             Assert.AreEqual(NpgsqlRange<int>.Empty, result);
@@ -356,6 +374,17 @@ namespace Npgsql.Tests.Types
 
             // Assert
             Assert.AreEqual(NpgsqlRange<int>.Empty, result);
+        }
+
+        #endregion
+
+        #region Setup
+
+        [OneTimeSetUp]
+        public void OneTimeSetUp()
+        {
+            using (var conn = OpenConnection())
+                TestUtil.MinimumPgVersion(conn, "9.2.0");
         }
 
         #endregion
