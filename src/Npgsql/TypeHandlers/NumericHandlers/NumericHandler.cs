@@ -201,28 +201,41 @@ namespace Npgsql.TypeHandlers.NumericHandlers
 
             try
             {
-                while (groups-- > 0)
+                var scaleDifference = scale + weight * MaxGroupScale;
+                if (groups == MaxGroupCount)
                 {
-                    DecimalRaw.Multiply(ref result, MaxGroupSize);
-                    DecimalRaw.Add(ref result, buf.ReadUInt16());
-                }
+                    while (groups-- > 1)
+                    {
+                        DecimalRaw.Multiply(ref result, MaxGroupSize);
+                        DecimalRaw.Add(ref result, buf.ReadUInt16());
+                    }
 
-                var scaleDifference = scale + weight * 4;
-                if (scaleDifference > 0)
-                    do
-                    {
-                        var scaleChunk = Math.Min(MaxUInt32Scale, scaleDifference);
-                        DecimalRaw.Multiply(ref result, Powers10[scaleChunk]);
-                        scaleDifference -= scaleChunk;
-                    }
-                    while (scaleDifference > 0);
+                    var group = buf.ReadUInt16();
+                    var groupSize = Powers10[-scaleDifference];
+                    if (group % groupSize != 0)
+                        throw new NpgsqlSafeReadException(new OverflowException("Numeric value does not fit in a System.Decimal"));
+
+                    DecimalRaw.Multiply(ref result, MaxGroupSize / groupSize);
+                    DecimalRaw.Add(ref result, group / groupSize);
+                }
                 else
-                    while (scaleDifference < 0)
+                {
+                    while (groups-- > 0)
                     {
-                        var scaleChunk = Math.Min(MaxUInt32Scale, -scaleDifference);
-                        DecimalRaw.Divide(ref result, Powers10[scaleChunk]);
-                        scaleDifference += scaleChunk;
+                        DecimalRaw.Multiply(ref result, MaxGroupSize);
+                        DecimalRaw.Add(ref result, buf.ReadUInt16());
                     }
+
+                    if (scaleDifference < 0)
+                        DecimalRaw.Divide(ref result, Powers10[-scaleDifference]);
+                    else
+                        while (scaleDifference > 0)
+                        {
+                            var scaleChunk = Math.Min(MaxUInt32Scale, scaleDifference);
+                            DecimalRaw.Multiply(ref result, Powers10[scaleChunk]);
+                            scaleDifference -= scaleChunk;
+                        }
+                }
             }
             catch (OverflowException e)
             {
