@@ -272,31 +272,36 @@ namespace Npgsql.TypeMapping
             // 1. When a user adds a mapping for a specific connection (and exception should bubble up to them)
             // 2. When binding the global mappings, in which case we want to log rather than throw
             // (i.e. missing database type for some unused defined binding shouldn't fail the connection)
-            try
-            {
-                DoBindType(mapping, connector);
-            }
-            catch (Exception e)
-            {
-                if (throwOnError)
-                    throw;
-                Log.Warn($"Exception while binding type {mapping.PgTypeName}", e);
-            }
-        }
 
-        void DoBindType(NpgsqlTypeMapping mapping, NpgsqlConnector connector)
-        {
             var pgName = mapping.PgTypeName;
             var found = pgName.IndexOf('.') == -1
                 ? DatabaseInfo.ByName.TryGetValue(pgName, out var pgType)  // No dot, partial type name
                 : DatabaseInfo.ByFullName.TryGetValue(pgName, out pgType); // Full type name with namespace
 
             if (!found)
-                throw new ArgumentException($"A PostgreSQL type with the name {mapping.PgTypeName} was not found in the database");
-            if (pgType == null)
-                throw new ArgumentException($"More than one PostgreSQL type was found with the name {mapping.PgTypeName}, please specify a full name including schema");
-            if (pgType is PostgresDomainType)
-                throw new NotSupportedException("Cannot add a mapping to a PostgreSQL domain type");
+            {
+                var msg = $"A PostgreSQL type with the name {mapping.PgTypeName} was not found in the database";
+                if (throwOnError)
+                    throw new ArgumentException(msg);
+                Log.Debug(msg);
+                return;
+            }
+            else if (pgType == null)
+            {
+                var msg = $"More than one PostgreSQL type was found with the name {mapping.PgTypeName}, please specify a full name including schema";
+                if (throwOnError)
+                    throw new ArgumentException(msg);
+                Log.Debug(msg);
+                return;
+            }
+            else if (pgType is PostgresDomainType)
+            {
+                var msg = "Cannot add a mapping to a PostgreSQL domain type";
+                if (throwOnError)
+                    throw new NotSupportedException(msg);
+                Log.Debug(msg);
+                return;
+            }
 
             var handler = mapping.TypeHandlerFactory.Create(pgType, connector.Connection);
             BindType(handler, pgType, mapping.NpgsqlDbType, mapping.DbTypes, mapping.ClrTypes);

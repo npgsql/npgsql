@@ -50,5 +50,8 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
     {
         public Int2VectorHandler(PostgresType postgresShortType)
             : base(new Int16Handler { PostgresType = postgresShortType }, 0) { }
+
+        protected internal override ArrayHandler CreateArrayHandler(PostgresType arrayBackendType)
+            => new ArrayHandler<ArrayHandler<short>>(this) { PostgresType = arrayBackendType };
     }
 }

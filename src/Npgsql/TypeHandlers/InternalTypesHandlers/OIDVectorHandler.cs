@@ -50,5 +50,8 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
     {
         public OIDVectorHandler(PostgresType postgresOIDType)
             : base(new UInt32Handler { PostgresType = postgresOIDType }, 0) { }
+
+        protected internal override ArrayHandler CreateArrayHandler(PostgresType arrayBackendType)
+            => new ArrayHandler<ArrayHandler<uint>>(this) { PostgresType = arrayBackendType };
     }
 }
