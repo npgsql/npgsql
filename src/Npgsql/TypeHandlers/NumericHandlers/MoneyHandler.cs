@@ -21,13 +21,13 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using System;
 using Npgsql.BackendMessages;
-using NpgsqlTypes;
-using System.Data;
-using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
+using NpgsqlTypes;
+using System;
+using System.Data;
+using System.Runtime.CompilerServices;
 
 namespace Npgsql.TypeHandlers.NumericHandlers
 {
@@ -37,8 +37,13 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     [TypeMapping("money", NpgsqlDbType.Money, dbType: DbType.Currency)]
     class MoneyHandler : NpgsqlSimpleTypeHandler<decimal>
     {
+        const int MoneyScale = 2;
+
         public override decimal Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
-            => buf.ReadInt64() / 100m;
+        {
+            var result = new DecimalRaw(buf.ReadInt64()) { Scale = MoneyScale };
+            return Unsafe.As<DecimalRaw, decimal>(ref result);
+        }
 
         public override int ValidateAndGetLength(decimal value, NpgsqlParameter parameter)
             => value < -92233720368547758.08M || value > 92233720368547758.07M
@@ -46,6 +51,22 @@ namespace Npgsql.TypeHandlers.NumericHandlers
                 : 8;
 
         public override void Write(decimal value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
-            => buf.WriteInt64((long)(Math.Round(value, 2, MidpointRounding.AwayFromZero) * 100m));
+        {
+            var raw = Unsafe.As<decimal, DecimalRaw>(ref value);
+            var scaleDifference = MoneyScale - raw.Scale;
+            if (scaleDifference > 0)
+                DecimalRaw.Multiply(ref raw, DecimalRaw.Powers10[scaleDifference]);
+            else
+                while (scaleDifference < 0)
+                {
+                    var scaleChunk = Math.Min(DecimalRaw.MaxUInt32Scale, -scaleDifference);
+                    DecimalRaw.Divide(ref raw, DecimalRaw.Powers10[scaleChunk]);
+                    scaleDifference -= scaleChunk;
+                }
+
+            var result = (long)raw.Mid << 32 | (long)raw.Low;
+            if (raw.Negative) result = -result;
+            buf.WriteInt64(result);
+        }
     }
 }
