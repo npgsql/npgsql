@@ -2,11 +2,11 @@
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Diagnosers;
-using NpgsqlTypes;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Runtime.CompilerServices;
+using System;
 
 namespace Npgsql.Benchmarks
 {
@@ -67,7 +67,7 @@ namespace Npgsql.Benchmarks
 
         [Benchmark]
         public void ReadNpgsqlInetArray() // PSV for IPAddress
-            => ReadArrayImpl<NpgsqlInet>();
+            => ReadArrayImpl<ValueTuple<IPAddress, int>>();
 
         [Benchmark]
         public void ReadListOfInt()
@@ -84,7 +84,7 @@ namespace Npgsql.Benchmarks
 
         [Benchmark]
         public void ReadListOfNpgsqlInet() // PSV for IPAddress
-            => ReadListImpl<NpgsqlInet>();
+            => ReadListImpl<ValueTuple<IPAddress, int>>();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void ReadArrayImpl<T>()
