@@ -211,6 +211,18 @@ namespace Npgsql.Tests
             }, Throws.InvalidOperationException.With.Message.EqualTo("Some problem parsing the returned data"));
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1964")]
+        public void Bug1963()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("INVALID SQL", conn))
+            {
+                cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Direction = ParameterDirection.Output });
+                Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception.TypeOf<PostgresException>()
+                    .With.Property(nameof(PostgresException.SqlState)).EqualTo("42601"));
+            }
+        }
+
         #region Bug1285
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1285")]
