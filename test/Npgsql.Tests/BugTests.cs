@@ -212,7 +212,7 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1964")]
-        public void Bug1963()
+        public void Bug1964()
         {
             using (var conn = OpenConnection())
             using (var cmd = new NpgsqlCommand("INVALID SQL", conn))
