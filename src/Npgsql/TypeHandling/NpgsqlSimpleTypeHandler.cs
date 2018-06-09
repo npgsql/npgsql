@@ -171,20 +171,10 @@ namespace Npgsql.TypeHandling
             => this is INpgsqlSimpleTypeHandler<TAny> typedHandler
                 ? typedHandler.ValidateAndGetLength(value, parameter)
                 : throw new InvalidCastException($"Can't write CLR type {typeof(TAny)} to database type {PgDisplayName}");
-
-        /// <summary>
-        /// In the vast majority of cases writing a parameter to the buffer won't need to perform I/O.
-        /// </summary>
-        internal sealed override Task WriteWithLengthInternal<TAny>(TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        
+        /// <inheritdoc />
+        protected internal sealed override Task WriteWithLength<TAny>(TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
-            if (value == null || typeof(TAny) == typeof(DBNull))
-            {
-                if (buf.WriteSpaceLeft < 4)
-                    return WriteWithLengthLong();
-                buf.WriteInt32(-1);
-                return PGUtil.CompletedTask;
-            }
-
             Debug.Assert(this is INpgsqlSimpleTypeHandler<TAny>);
             var typedHandler = (INpgsqlSimpleTypeHandler<TAny>)this;
 
@@ -243,7 +233,7 @@ namespace Npgsql.TypeHandling
         /// </summary>
         protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
             => value == null || value is DBNull  // For null just go through the default WriteWithLengthInternal
-                ? WriteWithLengthInternal<DBNull>(null, buf, lengthCache, parameter, async)
+                ? WriteWithLengthEntry<DBNull>(null, buf, lengthCache, parameter, async)
                 : _nonGenericWriteWithLength(this, value, buf, lengthCache, parameter, async);
 
         #endregion

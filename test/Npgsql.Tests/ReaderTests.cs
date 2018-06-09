@@ -21,20 +21,17 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using System;
-using System.Data;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using NUnit.Framework;
-using NUnit.Framework.Constraints;
-using Npgsql;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
+using NUnit.Framework;
+using System;
+using System.Data;
+using System.IO;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace Npgsql.Tests
 {
@@ -1000,44 +997,6 @@ LANGUAGE plpgsql VOLATILE";
                     Assert.That(reader.GetInt32(0), Is.EqualTo(i));
                 }
                 Assert.That(reader.Read(), Is.False);
-            }
-        }
-
-
-        [Test]
-        public void NullableScalar()
-        {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn))
-            {
-                var p1 = new NpgsqlParameter { ParameterName = "p1", Value = DBNull.Value, NpgsqlDbType = NpgsqlDbType.Smallint };
-                var p2 = new NpgsqlParameter { ParameterName = "p2", Value = (short)8 };
-                Assert.That(p2.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Smallint));
-                Assert.That(p2.DbType, Is.EqualTo(DbType.Int16));
-                cmd.Parameters.Add(p1);
-                cmd.Parameters.Add(p2);
-                using (var reader = cmd.ExecuteReader())
-                {
-                    reader.Read();
-
-                    for (var i = 0; i < cmd.Parameters.Count; i++)
-                    {
-                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(short)));
-                        Assert.That(reader.GetDataTypeName(i), Is.EqualTo("smallint"));
-                    }
-
-                    Assert.That(() => reader.GetFieldValue<object>(0), Throws.TypeOf<InvalidCastException>());
-                    Assert.That(() => reader.GetFieldValue<int>(0), Throws.TypeOf<InvalidCastException>());
-                    Assert.That(() => reader.GetFieldValue<int?>(0), Throws.Nothing);
-                    Assert.That(reader.GetFieldValue<int?>(0), Is.Null);
-
-                    Assert.That(() => reader.GetFieldValue<object>(1), Throws.Nothing);
-                    Assert.That(() => reader.GetFieldValue<int>(1), Throws.Nothing);
-                    Assert.That(() => reader.GetFieldValue<int?>(1), Throws.Nothing);
-                    Assert.That(reader.GetFieldValue<object>(1), Is.EqualTo(8));
-                    Assert.That(reader.GetFieldValue<int>(1), Is.EqualTo(8));
-                    Assert.That(reader.GetFieldValue<int?>(1), Is.EqualTo(8));
-                }
             }
         }
 

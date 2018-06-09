@@ -90,8 +90,8 @@ namespace Npgsql.TypeHandlers
 
             foreach (var kv in value)
             {
-                await _textHandler.WriteWithLengthInternal(kv.Key, buf, lengthCache, parameter, async);
-                await _textHandler.WriteWithLengthInternal(kv.Value, buf, lengthCache, parameter, async);
+                await _textHandler.WriteWithLengthEntry(kv.Key, buf, lengthCache, parameter, async);
+                await _textHandler.WriteWithLengthEntry(kv.Value, buf, lengthCache, parameter, async);
             }
         }
 

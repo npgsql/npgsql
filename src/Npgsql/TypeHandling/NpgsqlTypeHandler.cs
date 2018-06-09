@@ -59,6 +59,11 @@ namespace Npgsql.TypeHandling
         /// <returns>The fully-read value.</returns>
         protected internal abstract ValueTask<TAny> Read<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null);
 
+        internal ValueTask<TAny> ReadEntry<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+            => NullableHandler<TAny>.Exists
+                ? NullableHandler<TAny>.ReadAsync(buf, len, async, fieldDescription)
+                : Read<TAny>(buf, len, async, fieldDescription);
+
         /// <summary>
         /// Reads a value of type <typeparamref name="TAny"/> with the given length from the provided buffer,
         /// with the assumption that it is entirely present in the provided memory buffer and no I/O will be
@@ -69,6 +74,11 @@ namespace Npgsql.TypeHandling
         /// <param name="fieldDescription">Additional PostgreSQL information about the type, such as the length in varchar(30).</param>
         /// <returns>The fully-read value.</returns>
         internal abstract TAny Read<TAny>(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null);
+
+        internal TAny ReadEntry<TAny>(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+            => NullableHandler<TAny>.Exists
+                ? NullableHandler<TAny>.Read(buf, len, fieldDescription)
+                : Read<TAny>(buf, len, fieldDescription);
 
         /// <summary>
         /// Reads a column as the type handler's default read type, assuming that it is already entirely
@@ -121,10 +131,51 @@ namespace Npgsql.TypeHandling
         /// </summary>
         protected internal abstract int ValidateAndGetLength<TAny>([CanBeNull] TAny value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter);
 
+        internal int ValidateAndGetLengthEntry<TAny>(TAny value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+            => NullableHandler<TAny>.Exists
+                ? NullableHandler<TAny>.Validate(this, value, ref lengthCache, parameter)
+                : ValidateAndGetLength(value, ref lengthCache, parameter);
+
         /// <summary>
-        /// Called to write the value of a generic <see cref="NpgsqlParameter{T}"/>.
+        /// Typically does not need to be overridden by type handlers, but may be needed in some
+        /// cases (e.g. <see cref="ArrayHandler"/>.
+        /// Note that this method assumes it can write 4 bytes of length (already verified by
+        /// <see cref="WriteWithLengthEntry{TAny}"/>).
         /// </summary>
-        internal abstract Task WriteWithLengthInternal<TAny>([CanBeNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async);
+        protected internal abstract Task WriteWithLength<TAny>([CanBeNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async);
+
+        internal Task WriteWithLengthEntry<TAny>(TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        {
+            if (buf.WriteSpaceLeft < 4)
+                return WriteWithLengthLong();
+
+            if (value == null || typeof(TAny) == typeof(DBNull))
+            {
+                buf.WriteInt32(-1);
+                return PGUtil.CompletedTask;
+            }
+
+            return NullableHandler<TAny>.Exists
+                ? NullableHandler<TAny>.WriteAsync(this, value, buf, lengthCache, parameter, async)
+                : WriteWithLength(value, buf, lengthCache, parameter, async);
+
+            async Task WriteWithLengthLong()
+            {
+                if (buf.WriteSpaceLeft < 4)
+                    await buf.Flush(async);
+
+                if (value == null || typeof(TAny) == typeof(DBNull))
+                {
+                    buf.WriteInt32(-1);
+                    return;
+                }
+
+                if (NullableHandler<TAny>.Exists)
+                    await NullableHandler<TAny>.WriteAsync(this, value, buf, lengthCache, parameter, async);
+                else
+                    await WriteWithLength(value, buf, lengthCache, parameter, async);
+            }
+        }
 
         /// <summary>
         /// Responsible for validating that a value represents a value of the correct and which can be
@@ -224,7 +275,7 @@ namespace Npgsql.TypeHandling
                         Expression.Call(
                             handlerParam,
                             // Call the generic WriteWithLengthInternal<T2> with our handled type
-                            nameof(WriteWithLengthInternal),
+                            nameof(WriteWithLengthEntry),
                             new[] { handledType },
                             // Cast the value from object down to the interface's T
                             Expression.Convert(valueParam, handledType),

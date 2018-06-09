@@ -2,6 +2,7 @@
 using System.Data;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
@@ -76,10 +77,8 @@ namespace Npgsql
                 Handler = typeMapper.GetByDataTypeName(_dataTypeName);
             else if (_dbType.HasValue)
                 Handler = typeMapper.GetByDbType(_dbType.Value);
-            else if (TypedValue != null)
-                Handler = typeMapper.GetByClrType(typeof(T));
             else
-                throw new InvalidOperationException($"Parameter '{ParameterName}' must have its value set");
+                Handler = typeMapper.GetByClrType(NullableHandler<T>.UnderlyingType ?? typeof(T));
         }
 
         internal override int ValidateAndGetLength()
@@ -87,13 +86,17 @@ namespace Npgsql
             Debug.Assert(Handler != null);
 
             if (TypedValue == null)
+            {
+                if (NullableHandler<T>.Exists)
+                    return 0;
                 throw new InvalidCastException($"Parameter {ParameterName} must be set");
+            }
             // TODO: Why do it like this rather than a handler?
             if (typeof(T) == typeof(DBNull))
                 return 0;
 
             var lengthCache = LengthCache;
-            var len = Handler.ValidateAndGetLength(TypedValue, ref lengthCache, this);
+            var len = Handler.ValidateAndGetLengthEntry(TypedValue, ref lengthCache, this);
             LengthCache = lengthCache;
             return len;
         }
@@ -101,7 +104,7 @@ namespace Npgsql
         internal override Task WriteWithLength(NpgsqlWriteBuffer buf, bool async)
         {
             Debug.Assert(Handler != null);
-            return Handler.WriteWithLengthInternal(TypedValue, buf, LengthCache, this, async);
+            return Handler.WriteWithLengthEntry(TypedValue, buf, LengthCache, this, async);
         }
     }
 }

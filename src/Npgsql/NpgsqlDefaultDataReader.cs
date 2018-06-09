@@ -141,12 +141,9 @@ namespace Npgsql
             var fieldDescription = RowDescription[column];
             try
             {
-                if (NullableHandler<T>.Exists)
-                    return NullableHandler<T>.Read(Buffer, ColumnLen, fieldDescription);
-
                 return typeof(T) == typeof(object)
                     ? (T)fieldDescription.Handler.ReadAsObject(Buffer, ColumnLen, fieldDescription)
-                    : fieldDescription.Handler.Read<T>(Buffer, ColumnLen, fieldDescription);
+                    : fieldDescription.Handler.ReadEntry<T>(Buffer, ColumnLen, fieldDescription);
             }
             catch (NpgsqlSafeReadException e)
             {
