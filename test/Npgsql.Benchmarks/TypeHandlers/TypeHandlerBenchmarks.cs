@@ -2,17 +2,17 @@
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
 using BenchmarkDotNet.Diagnosers;
-using Npgsql.TypeHandlers.NumericHandlers;
+using Npgsql.TypeHandling;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-namespace Npgsql.Benchmarks
+namespace Npgsql.Benchmarks.TypeHandlers
 {
-    [Config(typeof(Config))]
-    public class Numeric
+    public abstract class TypeHandlerBenchmarks<T>
     {
-        class Config : ManualConfig
+        protected class Config : ManualConfig
         {
             public Config()
             {
@@ -35,29 +35,36 @@ namespace Npgsql.Benchmarks
             public override void Write(byte[] buffer, int offset, int count) { }
         }
 
-        readonly EndlessStream _stream = new EndlessStream();
-        readonly NumericHandler _handler = new NumericHandler();
+        readonly EndlessStream _stream;
+        readonly NpgsqlTypeHandler<T> _handler;
         readonly NpgsqlReadBuffer _readBuffer;
         readonly NpgsqlWriteBuffer _writeBuffer;
-        decimal _value;
+        T _value;
         int _elementSize;
 
-        public Numeric()
+        protected TypeHandlerBenchmarks(NpgsqlTypeHandler<T> handler)
         {
-            _stream = new EndlessStream(); _handler = new NumericHandler();
+            _stream = new EndlessStream();
+            _handler = handler ?? throw new ArgumentNullException(nameof(handler));
             _readBuffer = new NpgsqlReadBuffer(null, _stream, NpgsqlReadBuffer.MinimumSize, Encoding.UTF8);
             _writeBuffer = new NpgsqlWriteBuffer(null, _stream, NpgsqlWriteBuffer.MinimumSize, Encoding.UTF8);
         }
 
+        public IEnumerable<T> Values() => ValuesOverride();
+
+        protected virtual IEnumerable<T> ValuesOverride() => new[] { default(T) };
+
         [ParamsSource(nameof(Values))]
-        public decimal Value
+        public T Value
         {
             get => _value;
             set
             {
+                NpgsqlLengthCache cache = null;
+
                 _value = value;
-                _elementSize = _handler.ValidateAndGetLength(value, null);
-                _handler.Write(_value, _writeBuffer, null);
+                _elementSize = _handler.ValidateAndGetLength<T>(value, ref cache, null);
+                _handler.WriteWithLengthInternal(_value, _writeBuffer, null, null, false);
 
                 Buffer.BlockCopy(_writeBuffer.Buffer, 0, _readBuffer.Buffer, 0, _elementSize);
 
@@ -66,37 +73,18 @@ namespace Npgsql.Benchmarks
             }
         }
 
-        public static decimal[] Values => new decimal[]
-        {
-            0.0000000000000000000000000001M,
-            0.000000000000000000000001M,
-            0.00000000000000000001M,
-            0.0000000000000001M,
-            0.000000000001M,
-            0.00000001M,
-            0.0001M,
-            1M,
-            10000M,
-            100000000M,
-            1000000000000M,
-            10000000000000000M,
-            100000000000000000000M,
-            1000000000000000000000000M,
-            10000000000000000000000000000M,
-        };
-
         [Benchmark]
-        public void Read()
+        public T Read()
         {
             _readBuffer.ReadPosition = 0;
-            _handler.Read(_readBuffer, _elementSize);
+            return _handler.Read<T>(_readBuffer, _elementSize);
         }
 
         [Benchmark]
         public void Write()
         {
             _writeBuffer.WritePosition = 0;
-            _handler.Write(_value, _writeBuffer, null);
+            _handler.WriteWithLengthInternal(_value, _writeBuffer, null, null, false);
         }
     }
 }
