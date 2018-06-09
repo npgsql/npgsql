@@ -68,19 +68,19 @@ namespace Npgsql.TypeHandlers
         public int ValidateAndGetLength(long value, NpgsqlParameter parameter)          => 1;
 
         public override void Write(char value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
-            => buf.WriteByte((byte)value);
+            => buf.WriteByte(checked((byte)value));
 
         public void Write(byte value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
             => buf.WriteByte(value);
 
         public void Write(short value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
-            => buf.WriteByte((byte)value);
+            => buf.WriteByte(checked((byte)value));
 
         public void Write(int value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
-            => buf.WriteByte((byte)value);
+            => buf.WriteByte(checked((byte)value));
 
         public void Write(long value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
-            => buf.WriteByte((byte)value);
+            => buf.WriteByte(checked((byte)value));
 
         #endregion
     }
