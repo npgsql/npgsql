@@ -242,6 +242,34 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1987")]
+        public void Bug1987()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                MaxAutoPrepare = 10,
+                AutoPrepareMinUsages = 2,
+                Pooling = false
+            };
+
+            using (var conn = OpenConnection(csb))
+            {
+                conn.ExecuteNonQuery("CREATE TYPE pg_temp.mood AS ENUM ('sad', 'ok', 'happy')");
+                conn.ReloadTypes();
+                conn.TypeMapper.MapEnum<Mood>("mood");
+                for (var i = 0; i < 2; i++)
+                {
+                    using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+                    {
+                        cmd.Parameters.AddWithValue("p", Mood.Happy);
+                        Assert.That(cmd.ExecuteScalar(), Is.EqualTo(Mood.Happy));
+                    }
+                }
+            }
+        }
+
+        enum Mood { Sad, Ok, Happy };
+
         #region Bug1285
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1285")]
