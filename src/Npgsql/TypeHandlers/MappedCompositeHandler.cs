@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 
@@ -23,35 +24,26 @@ namespace Npgsql.TypeHandlers
     {
         readonly INpgsqlNameTranslator _nameTranslator;
         readonly NpgsqlConnection _conn;
-        [CanBeNull]
-        UnmappedCompositeHandler _wrappedHandler;
+        readonly UnmappedCompositeHandler _wrappedHandler;
 
         public Type CompositeType => typeof(T);
 
-        internal MappedCompositeHandler(INpgsqlNameTranslator nameTranslator, NpgsqlConnection conn)
+        internal MappedCompositeHandler(INpgsqlNameTranslator nameTranslator, PostgresType pgType, NpgsqlConnection conn)
         {
+            PostgresType = pgType;
             _nameTranslator = nameTranslator;
             _conn = conn;
-        }
-
-        void WrapHandler()
-        {
             _wrappedHandler = (UnmappedCompositeHandler)new UnmappedCompositeTypeHandlerFactory(_nameTranslator).Create(PostgresType, _conn);
+            Debug.Assert(_wrappedHandler != null);
         }
 
         public override ValueTask<T> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
         {
-            if (_wrappedHandler == null)
-                WrapHandler();
-            Debug.Assert(_wrappedHandler != null);
             return _wrappedHandler.Read<T>(buf, len, async, fieldDescription);
         }
 
         public override int ValidateAndGetLength(T value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
         {
-            if (_wrappedHandler == null)
-                WrapHandler();
-            Debug.Assert(_wrappedHandler != null);
             return _wrappedHandler.ValidateAndGetLength(value, ref lengthCache, parameter);
         }
 
@@ -69,7 +61,12 @@ namespace Npgsql.TypeHandlers
             _nameTranslator = nameTranslator;
         }
 
+        internal override NpgsqlTypeHandler Create(PostgresType pgType, NpgsqlConnection conn)
+        {
+            return new MappedCompositeHandler<T>(_nameTranslator, pgType, conn);
+        }
+
         protected override NpgsqlTypeHandler<T> Create(NpgsqlConnection conn)
-            => new MappedCompositeHandler<T>(_nameTranslator, conn);
+            => throw new InvalidOperationException($"Expect {nameof(PostgresType)}");
     }
 }
