@@ -78,7 +78,7 @@ namespace Npgsql.Tests
             using (var command = new NpgsqlCommand("SELECT @a, @b", conn))
             {
                 command.Parameters.Add(new NpgsqlParameter("a", DbType.Int32));
-                command.Parameters.Add(new NpgsqlParameter("b", DbType.Int64));
+                command.Parameters.Add(new NpgsqlParameter("b", 8));
                 command.Prepare();
                 command.Parameters[0].Value = 3;
                 command.Parameters[1].Value = 5;
@@ -124,18 +124,6 @@ namespace Npgsql.Tests
                 cmd.ExecuteNonQuery();
 
                 conn.UnprepareAll();
-            }
-        }
-
-        [Test, Description("Checks that prepares requires all params to have explicitly set types (NpgsqlDbType or DbType)")]
-        public void RequiresParamTypesSet()
-        {
-            using (var conn = OpenConnectionAndUnprepare())
-            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
-            {
-                var p = new NpgsqlParameter("p", 8);
-                cmd.Parameters.Add(p);
-                Assert.That(() => cmd.Prepare(), Throws.InvalidOperationException);
             }
         }
 
