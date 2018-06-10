@@ -34,18 +34,13 @@ namespace Npgsql.TypeHandlers
             _nameTranslator = nameTranslator;
             _conn = conn;
             _wrappedHandler = (UnmappedEnumHandler)new UnmappedEnumTypeHandlerFactory(_nameTranslator).Create(PostgresType, _conn);
-            Debug.Assert(_wrappedHandler != null);
         }
 
         public override ValueTask<T> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
-        {
-            return _wrappedHandler.Read<T>(buf, len, async, fieldDescription);
-        }
+            => _wrappedHandler.Read<T>(buf, len, async, fieldDescription);
 
         public override int ValidateAndGetLength(T value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
-        {
-            return _wrappedHandler.ValidateAndGetLength(value, ref lengthCache, parameter);
-        }
+            => _wrappedHandler.ValidateAndGetLength(value, ref lengthCache, parameter);
 
         public override Task Write(T value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
            => _wrappedHandler.Write(value, buf, lengthCache, parameter, async);
@@ -62,9 +57,7 @@ namespace Npgsql.TypeHandlers
         }
 
         internal override NpgsqlTypeHandler Create(PostgresType pgType, NpgsqlConnection conn)
-        {
-            return new MappedEnumHandler<T>(_nameTranslator, pgType, conn);
-        }
+            => new MappedEnumHandler<T>(_nameTranslator, pgType, conn);
 
         protected override NpgsqlTypeHandler<T> Create(NpgsqlConnection conn)
             => throw new InvalidOperationException($"Expect {nameof(PostgresType)}");
