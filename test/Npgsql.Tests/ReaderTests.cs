@@ -1110,24 +1110,23 @@ LANGUAGE plpgsql VOLATILE";
                 // TODO: This is too small to actually test any interesting sequential behavior
                 byte[] expected = { 1, 2, 3, 4, 5 };
                 var actual = new byte[expected.Length];
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (bytes BYTEA)");
-                conn.ExecuteNonQuery($"INSERT INTO data (bytes) VALUES ({TestUtil.EncodeByteaHex(expected)})");
-
-                using (var cmd = new NpgsqlCommand(@"SELECT bytes, 'foo' FROM data", conn))
+                using (var cmd = new NpgsqlCommand($@"SELECT {TestUtil.EncodeByteaHex(expected)}::bytea, {TestUtil.EncodeByteaHex(expected)}::bytea", conn))
                 using (var reader = cmd.ExecuteReader(Behavior))
                 {
                     reader.Read();
 
-                    var stream = await streamGetter(reader, 0);
-                    Assert.That(stream.CanSeek, Is.EqualTo(Behavior == CommandBehavior.Default));
-                    Assert.That(stream.Length, Is.EqualTo(expected.Length));
-                    stream.Read(actual, 0, 2);
-                    Assert.That(actual[0], Is.EqualTo(expected[0]));
-                    Assert.That(actual[1], Is.EqualTo(expected[1]));
-                    Assert.That(async () => await streamGetter(reader, 0), Throws.Exception.TypeOf<InvalidOperationException>());
-                    stream.Read(actual, 2, 1);
-                    Assert.That(actual[2], Is.EqualTo(expected[2]));
-                    stream.Dispose();
+                    using (var stream = await streamGetter(reader, 0))
+                    {
+                        Assert.That(stream.CanSeek, Is.EqualTo(Behavior == CommandBehavior.Default));
+                        Assert.That(stream.Length, Is.EqualTo(expected.Length));
+                        stream.Read(actual, 0, 2);
+                        Assert.That(actual[0], Is.EqualTo(expected[0]));
+                        Assert.That(actual[1], Is.EqualTo(expected[1]));
+                        Assert.That(async () => await streamGetter(reader, 0),
+                            Throws.Exception.TypeOf<InvalidOperationException>());
+                        stream.Read(actual, 2, 1);
+                        Assert.That(actual[2], Is.EqualTo(expected[2]));
+                    }
 
                     if (IsSequential)
                         Assert.That(() => reader.GetBytes(0, 0, actual, 4, 1), Throws.Exception.TypeOf<InvalidOperationException>(), "Seek back sequential");
@@ -1136,7 +1135,11 @@ LANGUAGE plpgsql VOLATILE";
                         Assert.That(reader.GetBytes(0, 0, actual, 4, 1), Is.EqualTo(1));
                         Assert.That(actual[4], Is.EqualTo(expected[0]));
                     }
-                    Assert.That(reader.GetString(1), Is.EqualTo("foo"));
+
+                    using (var stream2 = await streamGetter(reader, 1))
+                    {
+                        Assert.That(stream2.ReadByte(), Is.EqualTo(1));
+                    }
                 }
             }
         }

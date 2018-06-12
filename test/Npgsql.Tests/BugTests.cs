@@ -223,6 +223,25 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1986")]
+        public void Bug1986()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT 'hello', 'goodbye'", conn))
+            using (var reader = cmd.ExecuteReader())
+            {
+                reader.Read();
+                using (var textReader1 = reader.GetTextReader(0))
+                {
+
+                }
+                using (var textReader2 = reader.GetTextReader(1))
+                {
+
+                }
+            }
+        }
+
         #region Bug1285
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1285")]

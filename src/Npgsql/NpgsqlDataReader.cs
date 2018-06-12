@@ -119,7 +119,7 @@ namespace Npgsql
         /// A stream that has been opened on a column.
         /// </summary>
         [CanBeNull]
-        protected Stream ColumnStream;
+        private protected NpgsqlReadBuffer.ColumnStream ColumnStream;
 
         /// <summary>
         /// Used for internal temporary purposes
@@ -1009,7 +1009,7 @@ namespace Npgsql
 
         ValueTask<Stream> GetStreamInternal(int ordinal, bool async)
         {
-            if (ColumnStream != null)
+            if (ColumnStream != null && !ColumnStream.IsDisposed)
                 throw new InvalidOperationException("A stream is already open for this reader");
 
             var t = SeekToColumn(ordinal, async);
@@ -1019,7 +1019,7 @@ namespace Npgsql
             if (ColumnLen == -1)
                 throw new InvalidCastException("Column is null");
             PosInColumn += ColumnLen;
-            return new ValueTask<Stream>(ColumnStream = Buffer.GetStream(ColumnLen, !IsSequential));
+            return new ValueTask<Stream>(ColumnStream = (NpgsqlReadBuffer.ColumnStream)Buffer.GetStream(ColumnLen, !IsSequential));
 
             async Task<Stream> GetStreamLong(Task seekTask)
             {
@@ -1027,7 +1027,7 @@ namespace Npgsql
                 if (ColumnLen == -1)
                     throw new InvalidCastException("Column is null");
                 PosInColumn += ColumnLen;
-                return ColumnStream = Buffer.GetStream(ColumnLen, !IsSequential);
+                return ColumnStream = (NpgsqlReadBuffer.ColumnStream)Buffer.GetStream(ColumnLen, !IsSequential);
             }
         }
 
