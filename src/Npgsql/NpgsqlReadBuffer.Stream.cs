@@ -31,12 +31,12 @@ namespace Npgsql
 {
     public sealed partial class NpgsqlReadBuffer
     {
-        sealed class ColumnStream : Stream
+        internal sealed class ColumnStream : Stream
         {
             readonly NpgsqlReadBuffer _buf;
             int _start, _len, _read;
             bool _canSeek;
-            bool _disposed;
+            internal bool IsDisposed { get; private set; }
 
             internal ColumnStream(NpgsqlReadBuffer buf)
                 => _buf = buf;
@@ -49,7 +49,7 @@ namespace Npgsql
                 _len = len;
                 _read = 0;
                 _canSeek = canSeek;
-                _disposed = false;
+                IsDisposed = false;
             }
 
             public override bool CanRead => true;
@@ -188,19 +188,19 @@ namespace Npgsql
 
             void CheckDisposed()
             {
-                if (_disposed)
+                if (IsDisposed)
                     throw new ObjectDisposedException(null);
             }
 
             protected override void Dispose(bool disposing)
             {
-                if (_disposed)
+                if (IsDisposed)
                     return;
 
                 var leftToSkip = _len - _read;
                 if (leftToSkip > 0)
                     _buf.Skip(leftToSkip, false).GetAwaiter().GetResult();
-                _disposed = true;
+                IsDisposed = true;
             }
         }
     }
