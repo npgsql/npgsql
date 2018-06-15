@@ -1029,6 +1029,32 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 return reader.Read() && reader.FieldCount != 0 ? reader.GetValue(0) : null;
         }
 
+        /// <summary>
+        /// Executes the query, and returns the first column of the first row
+        /// in the result set returned by the query. Extra columns or rows are ignored.
+        /// </summary>
+        /// <returns>The first column of the first row in the result set.</returns>
+        /// <remarks>Throws an Exception if the result set is empty or if the result is NULL.</remarks>
+        [CanBeNull]
+        public T ExecuteScalar<T>()
+            => ExecuteScalar<T>(false, CancellationToken.None).GetAwaiter().GetResult();
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [ItemCanBeNull]
+        async ValueTask<T> ExecuteScalar<T>(bool async, CancellationToken cancellationToken)
+        {
+            var behavior = CommandBehavior.SingleRow;
+            if (!Parameters.HasOutputParameters)
+                behavior |= CommandBehavior.SequentialAccess;
+            using (var reader = await ExecuteDbDataReader(behavior, async, cancellationToken))
+            {
+                if (reader.Read() && reader.FieldCount != 0)
+                    return reader.GetFieldValue<T>(0);
+
+                throw new NpgsqlException("Empty result set");
+            }
+        }
+
         #endregion Execute Scalar
 
         #region Execute Reader
