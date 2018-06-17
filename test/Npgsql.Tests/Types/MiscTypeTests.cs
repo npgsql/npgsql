@@ -323,19 +323,23 @@ namespace Npgsql.Tests.Types
 
         [Test, Description("PostgreSQL records should be returned as arrays of objects")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/724")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/1980")]
         public void Record()
         {
+            var recordLiteral = "(1,'foo'::text)::record";
             using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand($"SELECT {recordLiteral}, ARRAY[{recordLiteral}, {recordLiteral}]", conn))
+            using (var reader = cmd.ExecuteReader())
             {
-                conn.ExecuteNonQuery("CREATE FUNCTION pg_temp.foo () RETURNS RECORD AS $$ SELECT 1,2 $$ LANGUAGE SQL");
-                using (var cmd = new NpgsqlCommand("SELECT pg_temp.foo()", conn))
-                {
-                    var record = cmd.ExecuteScalar();
-                    Assert.That(record, Is.TypeOf<object[]>());
-                    var array = (object[]) record;
-                    Assert.That(array[0], Is.EqualTo(1));
-                    Assert.That(array[1], Is.EqualTo(2));
-                }
+                reader.Read();
+                var record = (object[])reader[0];
+                Assert.That(record[0], Is.EqualTo(1));
+                Assert.That(record[1], Is.EqualTo("foo"));
+
+                var arr = (object[][])reader[1];
+                Assert.That(arr.Length, Is.EqualTo(2));
+                Assert.That(arr[0][0], Is.EqualTo(1));
+                Assert.That(arr[1][0], Is.EqualTo(1));
             }
         }
 

@@ -109,7 +109,8 @@ WHERE
   a.typtype IN ('b', 'r', 'e', 'd') OR         /* Base, range, enum, domain */
   (a.typtype = 'c' AND {(loadTableComposites ? "ns.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')" : "cls.relkind='c'")}) OR /* User-defined free-standing composites (not table composites) by default */
   (pg_proc.proname='array_recv' AND (
-    b.typtype IN ('b', 'r', 'e', 'd') OR       /* Array of base, range, enum domain */
+    b.typtype IN ('b', 'r', 'e', 'd') OR       /* Array of base, range, enum, domain */
+    (b.typtype = 'p' AND b.typname IN ('record', 'void')) OR /* Arrays of special supported pseudo-types */
     (b.typtype = 'c' AND elemcls.relkind='c')  /* Array of user-defined free-standing composites (not table composites) */
   )) OR
   (a.typtype = 'p' AND a.typname IN ('record', 'void'))  /* Some special supported pseudo-types */
