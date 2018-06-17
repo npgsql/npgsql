@@ -27,3 +27,4 @@
 # [Bulk Copy](copy.md)
 # [Logging](logging.md)
 # [Visual Studio Integration](ddex.md)
+# [API Reference](../../obj/api/Npgsql/)
