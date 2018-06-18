@@ -242,7 +242,7 @@ namespace Npgsql.TypeHandlers
             );
         }
 
-        public int ValidateAndGetLength(ArraySegment<char> value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        public virtual int ValidateAndGetLength(ArraySegment<char> value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
         {
             if (lengthCache == null)
                 lengthCache = new NpgsqlLengthCache(1);
@@ -275,8 +275,8 @@ namespace Npgsql.TypeHandlers
             return buf.WriteChars(value, 0, charLen, lengthCache.GetLast(), async);
         }
 
-        public Task Write(ArraySegment<char> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-            => buf.WriteChars(value.Array, value.Offset, value.Count, lengthCache.GetLast(), async);
+        public virtual Task Write(ArraySegment<char> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async) => 
+            buf.WriteChars(value.Array, value.Offset, value.Count, lengthCache.GetLast(), async);
 
         Task WriteString(string str, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter, bool async)
         {
