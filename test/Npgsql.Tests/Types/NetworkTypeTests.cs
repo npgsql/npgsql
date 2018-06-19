@@ -1,4 +1,5 @@
 ﻿#region License
+
 // The PostgreSQL License
 //
 // Copyright (C) 2018 The Npgsql Development Team
@@ -19,15 +20,12 @@
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+
 #endregion
 
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
-using System.Text;
-using Npgsql;
 using NpgsqlTypes;
 using NUnit.Framework;
 
@@ -181,8 +179,8 @@ namespace Npgsql.Tests.Types
             using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn))
             {
                 var expected = PhysicalAddress.Parse("08-00-2B-01-02-03");
-                var p1 = new NpgsqlParameter("p1", NpgsqlDbType.MacAddr) {Value = expected};
-                var p2 = new NpgsqlParameter {ParameterName = "p2", Value = expected};
+                var p1 = new NpgsqlParameter("p1", NpgsqlDbType.MacAddr) { Value = expected };
+                var p2 = new NpgsqlParameter { ParameterName = "p2", Value = expected };
                 cmd.Parameters.Add(p1);
                 cmd.Parameters.Add(p2);
                 using (var reader = cmd.ExecuteReader())
@@ -210,7 +208,7 @@ namespace Npgsql.Tests.Types
                 using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn))
                 {
                     var send6 = PhysicalAddress.Parse("08-00-2B-01-02-03");
-                    var expected6 = PhysicalAddress.Parse("08-00-2B-FF-FE-01-02-03");  // 6-byte macaddr8 gets FF and FE inserted in the middle
+                    var expected6 = PhysicalAddress.Parse("08-00-2B-FF-FE-01-02-03"); // 6-byte macaddr8 gets FF and FE inserted in the middle
                     var expected8 = PhysicalAddress.Parse("08-00-2B-01-02-03-04-05");
                     cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.MacAddr8) { Value = send6 });
                     cmd.Parameters.Add(new NpgsqlParameter("p2", NpgsqlDbType.MacAddr8) { Value = expected8 });
@@ -242,6 +240,27 @@ namespace Npgsql.Tests.Types
                 r.Read();
                 var p2 = (PhysicalAddress)r[0];
                 Assert.That(p1, Is.EqualTo(PhysicalAddress.Parse("08-00-2B-01-02-03")));
+                Assert.That(p2, Is.EqualTo(PhysicalAddress.Parse("08-00-2B-01-02-04")));
+            }
+        }
+
+        [Test]
+        public void MacaddrValidation()
+        {
+            using (var conn = OpenConnection())
+            {
+                if (conn.PostgreSqlVersion < new Version(10, 0))
+                    Assert.Ignore("macaddr8 only supported on PostgreSQL 10 and above");
+
+                using (var cmd = new NpgsqlCommand("SELECT @p1", conn))
+                {
+                    // 6-byte macaddr8 gets FF and FE inserted in the middle
+                    var send8 = PhysicalAddress.Parse("08-00-2B-01-02-03-04-05");
+                    cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.MacAddr) { Value = send8 });
+
+                    PostgresException exception = Assert.Throws<PostgresException>(() => cmd.ExecuteReader());
+                    Assert.AreEqual("22P03: incorrect binary data format in bind parameter 1", exception.Message);
+                }
             }
         }
 
