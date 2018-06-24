@@ -258,7 +258,11 @@ namespace Npgsql.TypeMapping
             // for reading domain fields of composites
             foreach (var domain in DatabaseInfo.DomainTypes)
                 if (_byOID.TryGetValue(domain.BaseType.OID, out var baseTypeHandler))
+                {
                     _byOID[domain.OID] = baseTypeHandler;
+                    if (domain.Array != null)
+                        BindType(baseTypeHandler.CreateArrayHandler(domain.Array), domain.Array);
+                }
 
             // Composites
             var dynamicCompositeFactory = new UnmappedCompositeTypeHandlerFactory(DefaultNameTranslator);
