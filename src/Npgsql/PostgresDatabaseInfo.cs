@@ -93,7 +93,8 @@ CASE
   ELSE 0
 END AS elemoid,
 CASE
-  WHEN pg_proc.proname IN ('array_recv','oidvectorrecv') THEN 3    /* Arrays last */
+  WHEN a.typtype='d' AND a.typcategory='A' THEN 4                  /* Domains over arrays last */
+  WHEN pg_proc.proname IN ('array_recv','oidvectorrecv') THEN 3    /* Arrays before */
   WHEN a.typtype='r' THEN 2                                        /* Ranges before */
   WHEN a.typtype='d' THEN 1                                        /* Domains before */
   ELSE 0                                                           /* Base types first */

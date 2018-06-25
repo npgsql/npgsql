@@ -579,6 +579,43 @@ $$ LANGUAGE SQL;
             }
         }
 
+        [Test, Description("Tests parameter derivation for domain parameters in parameterized queries (CommandType.Text)")]
+        public void DeriveTextCommandParameters_Domain()
+        {
+            using (var conn = OpenConnection())
+            {
+                TestUtil.MinimumPgVersion(conn, "11.0", "Arrays of domains and domains over arrays were introduced in PostgreSQL 11");
+                conn.ExecuteNonQuery("CREATE DOMAIN pg_temp.posint AS integer CHECK (VALUE > 0);" +
+                                     "CREATE DOMAIN pg_temp.int_array  AS int[] CHECK(array_length(VALUE, 1) = 2);");
+                conn.ReloadTypes();
+
+                var cmd = new NpgsqlCommand("SELECT :a::posint, :b::posint[], :c::int_array", conn);
+                var val = 23;
+                var arrayVal = new[] { 7, 42 };
+
+                NpgsqlCommandBuilder.DeriveParameters(cmd);
+                Assert.That(cmd.Parameters, Has.Count.EqualTo(3));
+                Assert.That(cmd.Parameters[0].ParameterName, Is.EqualTo("a"));
+                Assert.That(cmd.Parameters[0].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Integer));
+                Assert.That(cmd.Parameters[0].DataTypeName, Does.EndWith("posint"));
+                Assert.That(cmd.Parameters[1].ParameterName, Is.EqualTo("b"));
+                Assert.That(cmd.Parameters[1].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Integer | NpgsqlDbType.Array));
+                Assert.That(cmd.Parameters[1].DataTypeName, Does.EndWith("posint[]"));
+                Assert.That(cmd.Parameters[2].ParameterName, Is.EqualTo("c"));
+                Assert.That(cmd.Parameters[2].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Integer | NpgsqlDbType.Array));
+                Assert.That(cmd.Parameters[2].DataTypeName, Does.EndWith("int_array"));
+                cmd.Parameters[0].Value = val;
+                cmd.Parameters[1].Value = arrayVal;
+                cmd.Parameters[2].Value = arrayVal;
+                using (var reader = cmd.ExecuteRecord())
+                {
+                    Assert.That(reader.GetFieldValue<int>(0), Is.EqualTo(val));
+                    Assert.That(reader.GetFieldValue<int[]>(1), Is.EqualTo(arrayVal));
+                    Assert.That(reader.GetFieldValue<int[]>(2), Is.EqualTo(arrayVal));
+                }
+            }
+        }
+
         [Test, Description("Tests parameter derivation for unmapped enum parameters in parameterized queries (CommandType.Text)")]
         public void DeriveTextCommandParameters_UnmappedEnum()
         {
