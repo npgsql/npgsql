@@ -270,6 +270,23 @@ namespace Npgsql.Tests
 
         enum Mood { Sad, Ok, Happy };
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2003")]
+        public void Bug2003()
+        {
+            // A big RowDescription (larger than buffer size) causes an oversize buffer allocation, but which isn't
+            // picked up by sequential reader which continues to read from the original buffer.
+            using (var conn = OpenConnection())
+            {
+                var longFieldName = new string('x', conn.Settings.ReadBufferSize);
+                using (var cmd = new NpgsqlCommand($"SELECT 8 AS {longFieldName}", conn))
+                using (var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess))
+                {
+                    reader.Read();
+                    Assert.That(reader.GetInt32(0), Is.EqualTo(8));
+                }
+            }
+        }
+
         #region Bug1285
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1285")]

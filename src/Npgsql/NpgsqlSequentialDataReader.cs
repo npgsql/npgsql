@@ -39,20 +39,16 @@ namespace Npgsql
         internal NpgsqlSequentialDataReader(NpgsqlConnector connector)
             : base(connector) {}
 
-        internal override void Init(NpgsqlCommand command, CommandBehavior behavior, List<NpgsqlStatement> statements, Task sendTask)
-        {
-            base.Init(command, behavior, statements, sendTask);
-            Debug.Assert(!command.Parameters.HasOutputParameters);
-            // In sequential reading mode we always use the connector's buffer, unlike in non-sequential
-            // where an oversize buffer may be allocated for a big DataRow
-            Buffer = Connector.ReadBuffer;
-        }
-
         internal override ValueTask<IBackendMessage> ReadMessage(bool async)
             => Connector.ReadMessage(async, DataRowLoadingMode.Sequential);
 
         internal override void ProcessDataMessage(DataRowMessage dataMsg)
         {
+            // When reading sequentially, we never allocate oversize buffers for data rows since they don't have
+            // to fit in the buffer (that's the point of sequential). However, if the row description message is bigger
+            // than the buffer, an oversize buffer will be allocated (see #2003). This is hacky and needs to be redone.
+            Buffer = Connector.ReadBuffer;
+
             _column = -1;
             ColumnLen = -1;
             PosInColumn = 0;

@@ -134,7 +134,7 @@ namespace Npgsql
             Connector = connector;
         }
 
-        internal virtual void Init(NpgsqlCommand command, CommandBehavior behavior, List<NpgsqlStatement> statements, Task sendTask)
+        internal void Init(NpgsqlCommand command, CommandBehavior behavior, List<NpgsqlStatement> statements, Task sendTask)
         {
             Command = command;
             Debug.Assert(command.Connection == Connector.Connection);
