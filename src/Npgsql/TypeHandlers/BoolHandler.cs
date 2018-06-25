@@ -34,7 +34,7 @@ namespace Npgsql.TypeHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-boolean.html
     /// </remarks>
-    [TypeMapping("bool", NpgsqlDbType.Boolean, DbType.Boolean, typeof(bool))]
+    [TypeMapping("boolean", NpgsqlDbType.Boolean, DbType.Boolean, typeof(bool))]
     class BoolHandler : NpgsqlSimpleTypeHandler<bool>
     {
         public override bool Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)

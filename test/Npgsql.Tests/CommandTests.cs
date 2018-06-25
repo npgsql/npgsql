@@ -496,14 +496,14 @@ namespace Npgsql.Tests
 
             // Get by indexers.
 
-            Assert.AreEqual("Parameter1", command.Parameters["Parameter1"].ParameterName);
-            Assert.AreEqual("Parameter2", command.Parameters["Parameter2"].ParameterName);
-            Assert.AreEqual("Parameter3", command.Parameters["Parameter3"].ParameterName);
-            //Assert.AreEqual("Parameter4", command.Parameters["Parameter4"].ParameterName); //Should this work?
+            Assert.AreEqual(":Parameter1", command.Parameters["Parameter1"].ParameterName);
+            Assert.AreEqual(":Parameter2", command.Parameters["Parameter2"].ParameterName);
+            Assert.AreEqual(":Parameter3", command.Parameters["Parameter3"].ParameterName);
+            Assert.AreEqual("Parameter4", command.Parameters["Parameter4"].ParameterName); //Should this work?
 
-            Assert.AreEqual("Parameter1", command.Parameters[0].ParameterName);
-            Assert.AreEqual("Parameter2", command.Parameters[1].ParameterName);
-            Assert.AreEqual("Parameter3", command.Parameters[2].ParameterName);
+            Assert.AreEqual(":Parameter1", command.Parameters[0].ParameterName);
+            Assert.AreEqual(":Parameter2", command.Parameters[1].ParameterName);
+            Assert.AreEqual(":Parameter3", command.Parameters[2].ParameterName);
             Assert.AreEqual("Parameter4", command.Parameters[3].ParameterName);
         }
 
@@ -834,6 +834,24 @@ namespace Npgsql.Tests
                 {
                     Assert.AreEqual(5, b.Value);
                     Assert.AreEqual(3, c.Value);
+                }
+            }
+        }
+
+        [Test]
+        public void SendUnknown([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT @p::TIMESTAMP", conn))
+            {
+                cmd.CommandText = "SELECT @p::TIMESTAMP";
+                cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Unknown) { Value = "2008-1-1" });
+                if (prepare == PrepareOrNot.Prepared)
+                    cmd.Prepare();
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetValue(0), Is.EqualTo(new DateTime(2008, 1, 1)));
                 }
             }
         }

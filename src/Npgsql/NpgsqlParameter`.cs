@@ -77,14 +77,7 @@ namespace Npgsql
             else if (_dbType.HasValue)
                 Handler = typeMapper.GetByDbType(_dbType.Value);
             else if (TypedValue != null)
-            {
-                // DateTime/NpgsqlDateTime are mapped to timestamp/timestamptz based on their
-                // Kind, so we need a special hack here
-                if (typeof(T) == typeof(DateTime) || typeof(T) == typeof(NpgsqlDateTime))
-                    Handler = typeMapper.GetByValue(TypedValue);   // Yeah, this boxes
-                else
-                    Handler = typeMapper.GetByClrType(typeof(T));
-            }
+                Handler = typeMapper.GetByClrType(typeof(T));
             else
                 throw new InvalidOperationException($"Parameter '{ParameterName}' must have its value set");
         }

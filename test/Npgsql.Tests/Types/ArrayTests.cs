@@ -60,7 +60,7 @@ namespace Npgsql.Tests.Types
                     using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
-                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("_int4"));
+                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("integer[]"));
                     }
                 }
 
@@ -72,7 +72,7 @@ namespace Npgsql.Tests.Types
                     using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
-                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("_int4"));
+                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("integer[]"));
                     }
                 }
 
@@ -82,7 +82,7 @@ namespace Npgsql.Tests.Types
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
-                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("_int4"));
+                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("integer[]"));
                 }
             }
         }
@@ -296,23 +296,46 @@ namespace Npgsql.Tests.Types
             }
         }
 
-        [Test, Description("Roundtrips a generic IList as an array")]
+        [Test, Description("Roundtrips a generic List as an array")]
         // ReSharper disable once InconsistentNaming
         public void IListGeneric()
         {
             using (var conn = OpenConnection())
             using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn))
             {
-                var expected = new[] {1, 2, 3};
-                var p1 = new NpgsqlParameter {ParameterName = "p1", Value = expected.ToList()};
-                var p2 = new NpgsqlParameter {ParameterName = "p2", Value = expected.ToList()};
+                var expected = new[] { 1, 2, 3 }.ToList();
+                var p1 = new NpgsqlParameter { ParameterName = "p1", Value = expected };
+                var p2 = new NpgsqlParameter { ParameterName = "p2", Value = expected };
                 cmd.Parameters.Add(p1);
                 cmd.Parameters.Add(p2);
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
-                    Assert.That(reader[0], Is.EqualTo(expected.ToArray()));
-                    Assert.That(reader[1], Is.EqualTo(expected.ToArray()));
+                    Assert.That(reader.GetValue(0), Is.EqualTo(expected));
+                    Assert.That(reader.GetFieldValue<List<int>>(1), Is.EqualTo(expected));
+                }
+            }
+        }
+
+        [Test, Description("Tests for failure when reading a generic IList from a multidimensional array")]
+        // ReSharper disable once InconsistentNaming
+        public void IListGenericFailsForMultidimensionalArray()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT @p1", conn))
+            {
+                var expected = new[,] { { 1, 2 }, { 3, 4 } };
+                var p1 = new NpgsqlParameter { ParameterName = "p1", Value = expected };
+                cmd.Parameters.Add(p1);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetValue(0), Is.EqualTo(expected));
+                    var exception = Assert.Throws<NotSupportedException>(() =>
+                    {
+                        reader.GetFieldValue<List<int>>(0);
+                    });
+                    Assert.That(exception.Message, Is.EqualTo("Can't read multidimensional array as List<Int32>"));
                 }
             }
         }
@@ -380,6 +403,69 @@ namespace Npgsql.Tests.Types
             Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Array | NpgsqlDbType.Integer));
         }
 
+        [Test, Description("Roundtrips one-dimensional and two-dimensional arrays of a PostgreSQL domain.")]
+        public void ArrayOfDomain()
+        {
+            using (var conn = OpenConnection())
+            {
+                TestUtil.MinimumPgVersion(conn, "11.0", "Arrays of domains were introduced in PostgreSQL 11");
+                conn.ExecuteNonQuery("CREATE DOMAIN pg_temp.posint AS integer CHECK (VALUE > 0);");
+                conn.ReloadTypes();
+                using (var cmd = new NpgsqlCommand("SELECT @p1::posint[], @p2::posint[][]", conn))
+                {
+                    var oneDim = new[] { 1, 3, 5, 9 };
+                    var twoDim = new[,] { { 1, 3 }, { 5, 9 } };
+                    cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Integer | NpgsqlDbType.Array, oneDim);
+                    cmd.Parameters.AddWithValue("p2", NpgsqlDbType.Integer | NpgsqlDbType.Array, twoDim);
+                    var reader = cmd.ExecuteRecord();
+
+                    Assert.That(reader.GetValue(0), Is.EqualTo(oneDim));
+                    Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(oneDim));
+                    Assert.That(reader.GetFieldValue<int[]>(0), Is.EqualTo(oneDim));
+                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
+                    Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof(Array)));
+
+                    Assert.That(reader.GetValue(1), Is.EqualTo(twoDim));
+                    Assert.That(reader.GetProviderSpecificValue(1), Is.EqualTo(twoDim));
+                    Assert.That(reader.GetFieldValue<int[,]>(1), Is.EqualTo(twoDim));
+                    Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(Array)));
+                    Assert.That(reader.GetProviderSpecificFieldType(1), Is.EqualTo(typeof(Array)));
+                }
+            }
+        }
+
+        [Test, Description("Roundtrips a PostgreSQL domain over a one-dimensional and a two-dimensional array.")]
+        public void DomainOfArray()
+        {
+            using (var conn = OpenConnection())
+            {
+                TestUtil.MinimumPgVersion(conn, "11.0", "Domains over arrays were introduced in PostgreSQL 11");
+                conn.ExecuteNonQuery("CREATE DOMAIN pg_temp.int_array_1d  AS int[] CHECK(array_length(VALUE, 1) = 4);" +
+                                     "CREATE DOMAIN pg_temp.int_array_2d  AS int[][] CHECK(array_length(VALUE, 2) = 2);");
+                conn.ReloadTypes();
+                using (var cmd = new NpgsqlCommand("SELECT @p1::int_array_1d, @p2::int_array_2d", conn))
+                {
+                    var oneDim = new[] { 1, 3, 5, 9 };
+                    var twoDim = new[,] { { 1, 3 }, { 5, 9 } };
+                    cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Integer | NpgsqlDbType.Array, oneDim);
+                    cmd.Parameters.AddWithValue("p2", NpgsqlDbType.Integer | NpgsqlDbType.Array, twoDim);
+                    var reader = cmd.ExecuteRecord();
+
+                    Assert.That(reader.GetValue(0), Is.EqualTo(oneDim));
+                    Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(oneDim));
+                    Assert.That(reader.GetFieldValue<int[]>(0), Is.EqualTo(oneDim));
+                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
+                    Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof(Array)));
+
+                    Assert.That(reader.GetValue(1), Is.EqualTo(twoDim));
+                    Assert.That(reader.GetProviderSpecificValue(1), Is.EqualTo(twoDim));
+                    Assert.That(reader.GetFieldValue<int[,]>(1), Is.EqualTo(twoDim));
+                    Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(Array)));
+                    Assert.That(reader.GetProviderSpecificFieldType(1), Is.EqualTo(typeof(Array)));
+                }
+            }
+        }
+
         void AssertIListRoundtrips<TElement>(NpgsqlConnection conn, IEnumerable<TElement> value)
         {
             using (var cmd = new NpgsqlCommand("SELECT @p", conn))
@@ -389,7 +475,7 @@ namespace Npgsql.Tests.Types
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
-                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("_int4"));
+                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("integer[]"));
                     Assert.That(reader[0], Is.EqualTo(value.ToArray()));
                 }
             }

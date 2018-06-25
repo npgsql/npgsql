@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Npgsql.TypeMapping;
 
 // This file contains some pretty awful hacks to make current version of the EF Core provider
-// compatible with the new type mapping/handling system introduced in Npgsql 3.3.
+// compatible with the new type mapping/handling system introduced in Npgsql 4.0.
 // The EF Core provider dynamically loads its type mappings from Npgsql, which allows it to
 // automatically support any type supported by Npgsql. Unfortunately, the current loading
 // system is very tightly coupled to pre-3.2 type mapping types (e.g. TypeHandlerRegistry),

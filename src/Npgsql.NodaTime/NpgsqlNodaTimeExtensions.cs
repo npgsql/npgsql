@@ -33,13 +33,13 @@ namespace Npgsql
     /// <summary>
     /// Extension adding the NodaTime plugin to an Npgsql type mapper.
     /// </summary>
-    public static class NpgsqlNodatimeExtensions
+    public static class NpgsqlNodaTimeExtensions
     {
         /// <summary>
         /// Sets up NodaTime mappings for the PostgreSQL date/time types.
         /// </summary>
         /// <param name="mapper">The type mapper to set up (global or connection-specific)</param>
-        public static INpgsqlTypeMapper UseNodatime(this INpgsqlTypeMapper mapper)
+        public static INpgsqlTypeMapper UseNodaTime(this INpgsqlTypeMapper mapper)
             => mapper
                 .AddMapping(new NpgsqlTypeMappingBuilder
                 {
@@ -52,9 +52,9 @@ namespace Npgsql
                 }.Build())
                 .AddMapping(new NpgsqlTypeMappingBuilder
                 {
-                    PgTypeName = "timestamptz",
+                    PgTypeName = "timestamp with time zone",
                     NpgsqlDbType = NpgsqlDbType.TimestampTz,
-                    ClrTypes = new[] { typeof(ZonedDateTime) },
+                    ClrTypes = new[] { typeof(ZonedDateTime), typeof(OffsetDateTime) },
                     TypeHandlerFactory = new TimestampTzHandlerFactory()
                 }.Build())
                 .AddMapping(new NpgsqlTypeMappingBuilder
@@ -75,8 +75,9 @@ namespace Npgsql
                 }.Build())
                 .AddMapping(new NpgsqlTypeMappingBuilder
                 {
-                    PgTypeName = "timetz",
+                    PgTypeName = "time with time zone",
                     NpgsqlDbType = NpgsqlDbType.TimeTz,
+                    ClrTypes = new[] { typeof(OffsetTime) },
                     TypeHandlerFactory = new TimeTzHandlerFactory()
                 }.Build())
                 .AddMapping(new NpgsqlTypeMappingBuilder

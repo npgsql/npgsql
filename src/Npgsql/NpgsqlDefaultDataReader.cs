@@ -33,100 +33,54 @@ namespace Npgsql
         internal override ValueTask<IBackendMessage> ReadMessage(bool async)
             => Connector.ReadMessage(async);
 
-        protected override Task<bool> Read(bool async)
-        {
-            // This is an optimized execution path that avoids calling any async methods for the (usual)
-            // case where the next row (or CommandComplete) is already in memory.
-
-            if ((Behavior & CommandBehavior.SingleRow) != 0)
-                return base.Read(async);
-
-            switch (State)
-            {
-            case ReaderState.BeforeResult:
-                // First Read() after NextResult. Data row has already been processed.
-                State = ReaderState.InResult;
-                return PGUtil.TrueTask;
-            case ReaderState.InResult:
-                ConsumeRow(false);
-                break;
-            case ReaderState.BetweenResults:
-            case ReaderState.Consumed:
-            case ReaderState.Closed:
-                return PGUtil.FalseTask;
-            }
-
-            var readBuf = Connector.ReadBuffer;
-            if (readBuf.ReadBytesLeft < 5)
-                return base.Read(async);
-            var messageCode = (BackendMessageCode)readBuf.ReadByte();
-            var len = readBuf.ReadInt32() - 4;  // Transmitted length includes itself
-            if (messageCode != BackendMessageCode.DataRow || readBuf.ReadBytesLeft < len)
-            {
-                readBuf.ReadPosition -= 5;
-                return base.Read(async);
-            }
-
-            var msg = Connector.ParseServerMessage(readBuf, messageCode, len, false);
-            ProcessMessage(msg);
-            return msg.Code == BackendMessageCode.DataRow
-                ? PGUtil.TrueTask : PGUtil.FalseTask;
-        }
-
         protected override Task<bool> NextResult(bool async, bool isConsuming=false)
         {
-            var task = base.NextResult(async, isConsuming);
+            return Command.Parameters.HasOutputParameters && StatementIndex == -1
+                ? NextResultWithOutputParams()
+                : base.NextResult(async, isConsuming);
 
-            if (Command.Parameters.HasOutputParameters && StatementIndex == 0)
+            async Task<bool> NextResultWithOutputParams()
             {
-                // Populate the output parameters from the first row of the first resultset
-                return task.ContinueWith((t, o) =>
+                var hasResultSet = await base.NextResult(async, isConsuming);
+
+                if (!hasResultSet || !HasRows)
+                    return hasResultSet;
+
+                // The first row in a stored procedure command that has output parameters needs to be traversed twice -
+                // once for populating the output parameters and once for the actual result set traversal. So in this
+                // case we can't be sequential.
+                Debug.Assert(Command.Parameters.Any(p => p.IsOutputDirection));
+                Debug.Assert(StatementIndex == 0);
+                Debug.Assert(RowDescription != null);
+                Debug.Assert(State == ReaderState.BeforeResult);
+
+                // Temporarily set our state to InResult to allow us to read the values
+                State = ReaderState.InResult;
+
+                var pending = new Queue<NpgsqlParameter>();
+                var taken = new List<int>();
+                foreach (var p in Command.Parameters.Where(p => p.IsOutputDirection))
                 {
-                    if (HasRows)
-                        PopulateOutputParameters();
-                    return t.Result;
-                }, null);
-            }
-
-            return task;
-        }
-
-        /// <summary>
-        /// The first row in a stored procedure command that has output parameters needs to be traversed twice -
-        /// once for populating the output parameters and once for the actual result set traversal. So in this
-        /// case we can't be sequential.
-        /// </summary>
-        void PopulateOutputParameters()
-        {
-            Debug.Assert(Command.Parameters.Any(p => p.IsOutputDirection));
-            Debug.Assert(StatementIndex == 0);
-            Debug.Assert(RowDescription != null);
-            Debug.Assert(State == ReaderState.BeforeResult);
-
-            // Temporarily set our state to InResult to allow us to read the values
-            State = ReaderState.InResult;
-
-            var pending = new Queue<NpgsqlParameter>();
-            var taken = new List<int>();
-            foreach (var p in Command.Parameters.Where(p => p.IsOutputDirection))
-            {
-                if (RowDescription.TryGetFieldIndex(p.ParameterName, out var idx))
-                {
-                    // TODO: Provider-specific check?
-                    p.Value = GetValue(idx);
-                    taken.Add(idx);
+                    if (RowDescription.TryGetFieldIndex(p.TrimmedName, out var idx))
+                    {
+                        // TODO: Provider-specific check?
+                        p.Value = GetValue(idx);
+                        taken.Add(idx);
+                    }
+                    else
+                        pending.Enqueue(p);
                 }
-                else
-                    pending.Enqueue(p);
-            }
-            for (var i = 0; pending.Count != 0 && i != RowDescription.NumFields; ++i)
-            {
-                // TODO: Need to get the provider-specific value based on the out param's type
-                if (!taken.Contains(i))
-                    pending.Dequeue().Value = GetValue(i);
-            }
+                for (var i = 0; pending.Count != 0 && i != RowDescription.NumFields; ++i)
+                {
+                    // TODO: Need to get the provider-specific value based on the out param's type
+                    if (!taken.Contains(i))
+                        pending.Dequeue().Value = GetValue(i);
+                }
 
-            State = ReaderState.BeforeResult;  // Set the state back
+                State = ReaderState.BeforeResult;  // Set the state back
+
+                return hasResultSet;
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

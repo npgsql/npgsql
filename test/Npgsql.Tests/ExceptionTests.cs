@@ -66,6 +66,10 @@ namespace Npgsql.Tests
                 Assert.That(data[nameof(PostgresException.SqlState)], Is.EqualTo("12345"));
                 Assert.That(data.Contains(nameof(PostgresException.Position)), Is.False);
 
+                var exString = ex.ToString();
+                Assert.That(exString, Contains.Substring(nameof(PostgresException.Severity) + ": ERROR"));
+                Assert.That(exString, Contains.Substring(nameof(PostgresException.SqlState) + ": 12345"));
+
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1), "Connection in bad state after an exception");
             }
         }

@@ -38,7 +38,7 @@ namespace Npgsql
     /// A buffer used by Npgsql to read data from the socket efficiently.
     /// Provides methods which decode different values types and tracks the current position.
     /// </summary>
-    public sealed class NpgsqlReadBuffer
+    public sealed partial class NpgsqlReadBuffer
     {
         #region Fields and Properties
 
@@ -62,20 +62,13 @@ namespace Npgsql
         internal Encoding TextEncoding { get; }
 
         internal int ReadPosition { get; set; }
-        internal int ReadBytesLeft => _filledBytes - ReadPosition;
+        internal int ReadBytesLeft => FilledBytes - ReadPosition;
 
         internal readonly byte[] Buffer;
-        int _filledBytes;
-        readonly Decoder _textDecoder;
+        internal int FilledBytes;
 
         [CanBeNull]
         ColumnStream _columnStream;
-
-        /// <summary>
-        /// Used for internal temporary purposes
-        /// </summary>
-        [CanBeNull]
-        char[] _tempCharBuf;
 
         /// <summary>
         /// The minimum buffer size possible.
@@ -99,7 +92,6 @@ namespace Npgsql
             Size = size;
             Buffer = new byte[Size];
             TextEncoding = textEncoding;
-            _textDecoder = TextEncoding.GetDecoder();
         }
 
         #endregion
@@ -120,67 +112,70 @@ namespace Npgsql
         }
 
         internal Task Ensure(int count, bool async, bool dontBreakOnTimeouts)
-            => count <= ReadBytesLeft ? PGUtil.CompletedTask : EnsureLong(count, async, dontBreakOnTimeouts);
-
-        async Task EnsureLong(int count, bool async, bool dontBreakOnTimeouts = false)
         {
-            Debug.Assert(count <= Size);
-            Debug.Assert(count > ReadBytesLeft);
-            count -= ReadBytesLeft;
-            if (count <= 0) { return; }
+            return count <= ReadBytesLeft ? PGUtil.CompletedTask : EnsureLong();
 
-            if (ReadPosition == _filledBytes)
+            async Task EnsureLong()
             {
-                Clear();
-            }
-            else if (count > Size - _filledBytes)
-            {
-                Array.Copy(Buffer, ReadPosition, Buffer, 0, ReadBytesLeft);
-                _filledBytes = ReadBytesLeft;
-                ReadPosition = 0;
-            }
+                Debug.Assert(count <= Size);
+                Debug.Assert(count > ReadBytesLeft);
+                count -= ReadBytesLeft;
+                if (count <= 0) { return; }
 
-            try
-            {
-                while (count > 0)
+                if (ReadPosition == FilledBytes)
                 {
-                    var toRead = Size - _filledBytes;
+                    Clear();
+                }
+                else if (count > Size - FilledBytes)
+                {
+                    Array.Copy(Buffer, ReadPosition, Buffer, 0, ReadBytesLeft);
+                    FilledBytes = ReadBytesLeft;
+                    ReadPosition = 0;
+                }
 
-                    int read;
-                    if (async)
+                try
+                {
+                    while (count > 0)
                     {
-                        if (AwaitableSocket == null)  // SSL
-                            read = await Underlying.ReadAsync(Buffer, _filledBytes, toRead);
-                        else  // Non-SSL async I/O, optimized
-                        {
-                            AwaitableSocket.SetBuffer(Buffer, _filledBytes, toRead);
-                            await AwaitableSocket.ReceiveAsync();
-                            read = AwaitableSocket.BytesTransferred;
-                        }
-                    } else  // Sync I/O
-                        read = Underlying.Read(Buffer, _filledBytes, toRead);
+                        var toRead = Size - FilledBytes;
 
-                    if (read == 0)
-                        throw new EndOfStreamException();
-                    count -= read;
-                    _filledBytes += read;
+                        int read;
+                        if (async)
+                        {
+                            if (AwaitableSocket == null)  // SSL
+                                read = await Underlying.ReadAsync(Buffer, FilledBytes, toRead);
+                            else  // Non-SSL async I/O, optimized
+                            {
+                                AwaitableSocket.SetBuffer(Buffer, FilledBytes, toRead);
+                                await AwaitableSocket.ReceiveAsync();
+                                read = AwaitableSocket.BytesTransferred;
+                            }
+                        } else  // Sync I/O
+                            read = Underlying.Read(Buffer, FilledBytes, toRead);
+
+                        if (read == 0)
+                            throw new EndOfStreamException();
+                        count -= read;
+                        FilledBytes += read;
+                    }
+                }
+                // We have a special case when reading async notifications - a timeout may be normal
+                // shouldn't be fatal
+                // Note that mono throws SocketException with the wrong error (see #1330)
+                catch (IOException e) when (
+                    dontBreakOnTimeouts && (e.InnerException as SocketException)?.SocketErrorCode ==
+                       (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock)
+                )
+                {
+                    throw new TimeoutException("Timeout while reading from stream");
+                }
+                catch (Exception e)
+                {
+                    Connector.Break();
+                    throw new NpgsqlException("Exception while reading from stream", e);
                 }
             }
-            // We have a special case when reading async notifications - a timeout may be normal
-            // shouldn't be fatal
-            // Note that mono throws SocketException with the wrong error (see #1330)
-            catch (IOException e) when (
-                dontBreakOnTimeouts && (e.InnerException as SocketException)?.SocketErrorCode ==
-                   (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock)
-            )
-            {
-                throw new TimeoutException("Timeout while reading from stream");
-            }
-            catch (Exception e)
-            {
-                Connector.Break();
-                throw new NpgsqlException("Exception while reading from stream", e);
-            }
+
         }
 
         internal Task ReadMore(bool async) => Ensure(ReadBytesLeft + 1, async);
@@ -443,75 +438,6 @@ namespace Npgsql
             return result;
         }
 
-        /// <summary>
-        /// Note that unlike the primitive readers, this reader can read any length, looping internally
-        /// and reading directly from the underlying stream.
-        /// </summary>
-        /// <param name="output">output buffer to fill</param>
-        /// <param name="outputOffset">offset in the output buffer in which to start writing</param>
-        /// <param name="charCount">number of character to be read into the output buffer</param>
-        /// <param name="byteCount">number of bytes left in the field. This method will not read bytes
-        /// beyond this count</param>
-        /// <param name="bytesRead">The number of bytes actually read.</param>
-        /// <param name="charsRead">The number of characters actually read.</param>
-        /// <returns>the number of bytes read</returns>
-        internal void ReadAllChars(char[] output, int outputOffset, int charCount, int byteCount, out int bytesRead, out int charsRead)
-        {
-            Debug.Assert(charCount <= output.Length - outputOffset);
-
-            bytesRead = 0;
-            charsRead = 0;
-            if (charCount == 0) { return; }
-
-            try
-            {
-                while (true)
-                {
-                    Ensure(1); // Make sure we have at least some data
-
-                    int bytesUsed, charsUsed;
-                    bool completed;
-                    var maxBytes = Math.Min(byteCount - bytesRead, ReadBytesLeft);
-                    _textDecoder.Convert(Buffer, ReadPosition, maxBytes, output, outputOffset, charCount - charsRead, false,
-                                         out bytesUsed, out charsUsed, out completed);
-                    ReadPosition += bytesUsed;
-                    bytesRead += bytesUsed;
-                    charsRead += charsUsed;
-                    if (charsRead == charCount || bytesRead == byteCount)
-                        return;
-                    outputOffset += charsUsed;
-                    Clear();
-                }
-            }
-            finally
-            {
-                _textDecoder.Reset();
-            }
-        }
-
-        /// <summary>
-        /// Skips over characters in the buffer, reading from the underlying stream as necessary.
-        /// </summary>
-        /// <param name="charCount">the number of characters to skip over.
-        /// int.MaxValue means all available characters (limited only by <paramref name="byteCount"/>).
-        /// </param>
-        /// <param name="byteCount">the maximal number of bytes to process</param>
-        /// <param name="bytesSkipped">The number of bytes actually skipped.</param>
-        /// <param name="charsSkipped">The number of characters actually skipped.</param>
-        /// <returns>the number of bytes read</returns>
-        internal void SkipChars(int charCount, int byteCount, out int bytesSkipped, out int charsSkipped)
-        {
-            if (_tempCharBuf == null)
-                _tempCharBuf = new char[1024];
-            charsSkipped = bytesSkipped = 0;
-            while (charsSkipped < charCount && bytesSkipped < byteCount)
-            {
-                ReadAllChars(_tempCharBuf, 0, Math.Min(charCount, _tempCharBuf.Length), byteCount, out var bSkipped, out var cSkipped);
-                charsSkipped += cSkipped;
-                bytesSkipped += bSkipped;
-            }
-        }
-
         #endregion
 
         #region Misc
@@ -519,14 +445,14 @@ namespace Npgsql
         internal void Clear()
         {
             ReadPosition = 0;
-            _filledBytes = 0;
+            FilledBytes = 0;
         }
 
         internal void CopyTo(NpgsqlReadBuffer other)
         {
-            Debug.Assert(other.Size - other._filledBytes >= ReadBytesLeft);
-            Array.Copy(Buffer, ReadPosition, other.Buffer, other._filledBytes, ReadBytesLeft);
-            other._filledBytes += ReadBytesLeft;
+            Debug.Assert(other.Size - other.FilledBytes >= ReadBytesLeft);
+            Array.Copy(Buffer, ReadPosition, other.Buffer, other.FilledBytes, ReadBytesLeft);
+            other.FilledBytes += ReadBytesLeft;
         }
 
         #endregion

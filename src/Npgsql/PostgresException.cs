@@ -24,12 +24,12 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Data.Common;
 using System.Linq;
 using System.Reflection;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using System.Runtime.Serialization;
+using System.Text;
 
 #pragma warning disable CA1032
 
@@ -270,6 +270,42 @@ namespace Npgsql
         /// Returns the statement which triggered this exception.
         /// </summary>
         public NpgsqlStatement Statement { get; internal set; }
+
+        /// <inheritdoc />
+        public override string ToString()
+        {
+            var builder = new StringBuilder(base.ToString());
+            builder.AppendLine().Append("  Exception data:");
+
+            void AppendPropertyLine(string propertyName, object propertyValue)
+            {
+                if (propertyValue == null || propertyValue is int intPropertyValue && intPropertyValue == 0)
+                {
+                    return;
+                }
+
+                builder.AppendLine().Append("    ").Append(propertyName).Append(": ").Append(propertyValue);
+            }
+
+            AppendPropertyLine(nameof(Severity), Severity);
+            AppendPropertyLine(nameof(SqlState), SqlState);
+            AppendPropertyLine(nameof(MessageText), MessageText);
+            AppendPropertyLine(nameof(Detail), Detail);
+            AppendPropertyLine(nameof(Hint), Hint);
+            AppendPropertyLine(nameof(Position), Position);
+            AppendPropertyLine(nameof(InternalPosition), InternalPosition);
+            AppendPropertyLine(nameof(InternalQuery), InternalQuery);
+            AppendPropertyLine(nameof(Where), Where);
+            AppendPropertyLine(nameof(SchemaName), SchemaName);
+            AppendPropertyLine(nameof(TableName), TableName);
+            AppendPropertyLine(nameof(ColumnName), ColumnName);
+            AppendPropertyLine(nameof(DataTypeName), DataTypeName);
+            AppendPropertyLine(nameof(ConstraintName), ConstraintName);
+            AppendPropertyLine(nameof(File), File);
+            AppendPropertyLine(nameof(Line), Line);
+            AppendPropertyLine(nameof(Routine), Routine);
+            return builder.ToString();
+        }
 
         /// <summary>
         /// Gets a collection of key/value pairs that provide additional PostgreSQL fields about the exception.

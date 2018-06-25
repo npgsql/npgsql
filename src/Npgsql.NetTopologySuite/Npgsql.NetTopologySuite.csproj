@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <VersionPrefix>1.0.1</VersionPrefix>
+    <Description>NetTopologySuite plugin for Npgsql, allowing mapping of PostGIS geometry types to NetTopologySuite types.</Description>
+    <Authors>Yoh Deadfall, Shay Rojansky</Authors>
+    <Copyright>Copyright 2018 © The Npgsql Development Team</Copyright>
+    <Company>Npgsql</Company>
+    <PackageTags>npgsql postgresql postgres postgis nts ado ado.net database sql</PackageTags>
+    <TargetFrameworks>net45;netstandard2.0</TargetFrameworks>
+    <AssemblyOriginatorKeyFile>../../Npgsql.snk</AssemblyOriginatorKeyFile>
+    <SignAssembly>true</SignAssembly>
+    <PublicSign Condition=" '$(OS)' != 'Windows_NT' ">true</PublicSign>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <NoWarn>NU5104</NoWarn>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageProjectUrl>http://www.npgsql.org</PackageProjectUrl>
+    <PackageIconUrl>http://www.npgsql.org/img/postgresql.gif</PackageIconUrl>
+    <PackageLicenseUrl>https://raw.githubusercontent.com/npgsql/npgsql/develop/LICENSE.txt</PackageLicenseUrl>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>git://github.com/npgsql/npgsql</RepositoryUrl>
+    <Deterministic>true</Deterministic>
+    <!-- This is somehow important for Microsoft.CodeQuality.Analyzers -->
+    <Features>IOperation</Features>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NetTopologySuite" Version="1.15.0-pre079" />
+    <PackageReference Include="NetTopologySuite.IO" Version="1.15.0-pre071" />
+    <PackageReference Include="GeoAPI" Version="1.7.5-pre025" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Npgsql/Npgsql.csproj" />
+  </ItemGroup>
+
+</Project>

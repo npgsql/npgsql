@@ -423,9 +423,9 @@ namespace NpgsqlTypes
         #region Range Types
 
         /// <summary>
-        /// Corresponds to the PostgreSQL "array" type, a variable-length multidimensional array of
-        /// another type. This value must be combined with another value from <see cref="NpgsqlDbType"/>
-        /// via a bit OR (e.g. NpgsqlDbType.Array | NpgsqlDbType.Integer)
+        /// Corresponds to the PostgreSQL "range" type, continuous range of values of specific type.
+        /// This value must be combined with another value from <see cref="NpgsqlDbType"/>
+        /// via a bit OR (e.g. NpgsqlDbType.Range | NpgsqlDbType.Integer)
         /// </summary>
         /// <remarks>
         /// Supported since PostgreSQL 9.2.
@@ -507,12 +507,17 @@ namespace NpgsqlTypes
 
         #endregion
 
-        #region Postgis
+        #region PostGIS
 
         /// <summary>
         /// The geometry type for PostgreSQL spatial extension PostGIS.
         /// </summary>
-        Geometry = 50     // Extension type
+        Geometry = 50,     // Extension type
+
+        /// <summary>
+        /// The geography (geodetic) type for PostgreSQL spatial extension PostGIS.
+        /// </summary>
+        Geography = 55     // Extension type
 
         #endregion
     }

@@ -52,5 +52,8 @@ namespace Npgsql.PostgresTypes
         {
             BaseType = baseType;
         }
+
+        internal override PostgresFacets GetFacets(int typeModifier)
+            => BaseType.GetFacets(typeModifier);
     }
 }

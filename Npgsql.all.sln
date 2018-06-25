@@ -22,6 +22,9 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Npgsql.Benchmarks", "test\Npgsql.Benchmarks\Npgsql.Benchmarks.csproj", "{8B4AE9B6-CDAC-44DD-A5CD-28A470D363B8}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VSIX", "src\VSIX\VSIX.csproj", "{ECFD8615-DEAD-4498-B262-85A4D0230229}"
+	ProjectSection(ProjectDependencies) = postProject
+		{9D13B739-62B1-4190-B386-7A9547304EB3} = {9D13B739-62B1-4190-B386-7A9547304EB3}
+	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Npgsql.Json.NET", "src\Npgsql.Json.NET\Npgsql.Json.NET.csproj", "{9CBE603F-6746-411D-A5FD-CB2C948CD7D0}"
 EndProject
@@ -29,9 +32,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Npgsql.NodaTime", "src\Npgs
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Npgsql.PluginTests", "test\Npgsql.PluginTests\Npgsql.PluginTests.csproj", "{9BD7FC3D-6956-42A8-A586-2558C499EBA2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Npgsql.LegacyPostgis", "src\Npgsql.LegacyPostgis\Npgsql.LegacyPostgis.csproj", "{EC0DCB3C-9401-47BB-A5E8-B8C7A47DF96A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Npgsql.LegacyPostgis", "src\Npgsql.LegacyPostgis\Npgsql.LegacyPostgis.csproj", "{EC0DCB3C-9401-47BB-A5E8-B8C7A47DF96A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Npgsql.RawPostgis", "src\Npgsql.RawPostgis\Npgsql.RawPostgis.csproj", "{B7E92398-DD4E-410E-923C-E256992F6687}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Npgsql.RawPostgis", "src\Npgsql.RawPostgis\Npgsql.RawPostgis.csproj", "{B7E92398-DD4E-410E-923C-E256992F6687}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Npgsql.NetTopologySuite", "src\Npgsql.NetTopologySuite\Npgsql.NetTopologySuite.csproj", "{20D889AA-82DC-4AA0-B508-7CE68B83BB27}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Npgsql.GeoJSON", "src\Npgsql.GeoJSON\Npgsql.GeoJSON.csproj", "{04052CCF-CABC-4B37-B89D-F95721D95407}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -121,6 +128,22 @@ Global
 		{B7E92398-DD4E-410E-923C-E256992F6687}.Release|Any CPU.Build.0 = Release|Any CPU
 		{B7E92398-DD4E-410E-923C-E256992F6687}.Release|x86.ActiveCfg = Release|Any CPU
 		{B7E92398-DD4E-410E-923C-E256992F6687}.Release|x86.Build.0 = Release|Any CPU
+		{20D889AA-82DC-4AA0-B508-7CE68B83BB27}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{20D889AA-82DC-4AA0-B508-7CE68B83BB27}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{20D889AA-82DC-4AA0-B508-7CE68B83BB27}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{20D889AA-82DC-4AA0-B508-7CE68B83BB27}.Debug|x86.Build.0 = Debug|Any CPU
+		{20D889AA-82DC-4AA0-B508-7CE68B83BB27}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{20D889AA-82DC-4AA0-B508-7CE68B83BB27}.Release|Any CPU.Build.0 = Release|Any CPU
+		{20D889AA-82DC-4AA0-B508-7CE68B83BB27}.Release|x86.ActiveCfg = Release|Any CPU
+		{20D889AA-82DC-4AA0-B508-7CE68B83BB27}.Release|x86.Build.0 = Release|Any CPU
+		{04052CCF-CABC-4B37-B89D-F95721D95407}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{04052CCF-CABC-4B37-B89D-F95721D95407}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{04052CCF-CABC-4B37-B89D-F95721D95407}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{04052CCF-CABC-4B37-B89D-F95721D95407}.Debug|x86.Build.0 = Debug|Any CPU
+		{04052CCF-CABC-4B37-B89D-F95721D95407}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{04052CCF-CABC-4B37-B89D-F95721D95407}.Release|Any CPU.Build.0 = Release|Any CPU
+		{04052CCF-CABC-4B37-B89D-F95721D95407}.Release|x86.ActiveCfg = Release|Any CPU
+		{04052CCF-CABC-4B37-B89D-F95721D95407}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -136,6 +159,8 @@ Global
 		{9BD7FC3D-6956-42A8-A586-2558C499EBA2} = {ED612DB1-AB32-4603-95E7-891BACA71C39}
 		{EC0DCB3C-9401-47BB-A5E8-B8C7A47DF96A} = {8537E50E-CF7F-49CB-B4EF-3E2A1B11F050}
 		{B7E92398-DD4E-410E-923C-E256992F6687} = {8537E50E-CF7F-49CB-B4EF-3E2A1B11F050}
+		{20D889AA-82DC-4AA0-B508-7CE68B83BB27} = {8537E50E-CF7F-49CB-B4EF-3E2A1B11F050}
+		{04052CCF-CABC-4B37-B89D-F95721D95407} = {8537E50E-CF7F-49CB-B4EF-3E2A1B11F050}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {C90AEECD-DB4C-4BE6-B506-16A449852FB8}

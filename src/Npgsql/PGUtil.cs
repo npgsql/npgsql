@@ -137,6 +137,14 @@ namespace Npgsql
         internal static readonly Task CompletedTask = Task.FromResult(0);
         internal static readonly Task<bool> TrueTask = Task.FromResult(true);
         internal static readonly Task<bool> FalseTask = Task.FromResult(false);
+        internal static readonly Task<int> CancelledTask = CreateCancelledTask<int>();
+
+        static Task<T> CreateCancelledTask<T>()
+        {
+            var source = new TaskCompletionSource<T>();
+            source.SetCanceled();
+            return source.Task;
+        }
 
         internal static StringComparer InvariantCaseIgnoringStringComparer => StringComparer.InvariantCultureIgnoreCase;
 
@@ -165,7 +173,7 @@ namespace Npgsql
     /// <summary>
     /// Represents a timeout that will expire at some point.
     /// </summary>
-    public struct NpgsqlTimeout
+    public readonly struct NpgsqlTimeout
     {
         readonly DateTime _expiration;
         internal DateTime Expiration => _expiration;

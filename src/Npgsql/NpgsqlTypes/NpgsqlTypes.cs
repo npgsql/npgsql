@@ -553,6 +553,7 @@ namespace NpgsqlTypes
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-net-types.html
     /// </remarks>
+    [Obsolete("Use ValueTuple<IPAddress, int> instead")]
     public struct NpgsqlInet : IEquatable<NpgsqlInet>
     {
         public IPAddress Address { get; set; }
@@ -619,6 +620,12 @@ namespace NpgsqlTypes
 
         public static implicit operator NpgsqlInet([CanBeNull] IPAddress ip) => ToNpgsqlInet(ip);
 
+        public void Deconstruct(out IPAddress address, out int netmask)
+        {
+            address = Address;
+            netmask = Netmask;
+        }
+
         public bool Equals(NpgsqlInet other) => Address.Equals(other.Address) && Netmask == other.Netmask;
 
         public override bool Equals([CanBeNull] object obj)
@@ -637,7 +644,7 @@ namespace NpgsqlTypes
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-oid.html
     /// </remarks>
-    public struct NpgsqlTid : IEquatable<NpgsqlTid>
+    public readonly struct NpgsqlTid : IEquatable<NpgsqlTid>
     {
         /// <summary>
         /// Block number

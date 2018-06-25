@@ -28,22 +28,19 @@ using NLog.Targets;
 using NLog;
 using Npgsql.Logging;
 using Npgsql.Tests;
+using Npgsql.Tests.Support;
 
 // ReSharper disable once CheckNamespace
 
 [SetUpFixture]
-public class GlobalSetup
+public class LoggingSetupFixture
 {
     [OneTimeSetUp]
     public void Setup()
     {
         if (TestUtil.IsOnBuildServer)
             Console.Error.WriteLine("Running tests on: " + TestBase.ConnectionString);
-        SetupLogging();
-    }
 
-    protected void SetupLogging()
-    {
         var logLevelText = Environment.GetEnvironmentVariable("NPGSQL_TEST_LOGGING");
         if (logLevelText == null)
             return;

@@ -249,7 +249,7 @@ namespace Npgsql.PluginTests
                     {
                         for (var i = 0; i < 1000; i++)
                             writer.WriteRow(a.Geom);
-                        writer.Commit();
+                        writer.Complete();
                     }
                 }
                 catch (Exception e)
@@ -290,7 +290,7 @@ namespace Npgsql.PluginTests
                     {
                         for (var i = 0; i < 1000; i++)
                             writer.WriteRow(new[] { t });
-                        writer.Commit();
+                        writer.Complete();
                     }
                 }
                 catch(Exception e)
@@ -394,6 +394,29 @@ namespace Npgsql.PluginTests
             {
                 cmd.Parameters.AddWithValue("p", collection);
                 cmd.ExecuteNonQuery();
+            }
+        }
+
+        [Test]
+        public void RoundtripGeometryGeography()
+        {
+            var point = new PostgisPoint(1d, 1d);
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (geom GEOMETRY, geog GEOGRAPHY)");
+                using (var cmd = new NpgsqlCommand("INSERT INTO data (geom, geog) VALUES (@p, @p)", conn))
+                {
+                    cmd.Parameters.AddWithValue("@p", point);
+                    cmd.ExecuteNonQuery();
+                }
+
+                using (var cmd = new NpgsqlCommand("SELECT geom, geog FROM data", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader[0], Is.EqualTo(point));
+                    Assert.That(reader[1], Is.EqualTo(point));
+                }
             }
         }
 

@@ -594,9 +594,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         {
             var connector = CheckReadyAndGetConnector();
             for (var i = 0; i < Parameters.Count; i++)
-                if (!Parameters[i].IsTypeExplicitlySet)
-                    throw new InvalidOperationException(
-                        "The Prepare method requires all parameters to have an explicitly set type.");
+                Parameters[i].Bind(connector.TypeMapper);
 
             ProcessRawQuery();
             Log.Debug($"Preparing: {CommandText}", connector.Id);
@@ -619,57 +617,57 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             // It's possible the command was already prepared, or that presistent prepared statements were found for
             // all statements. Nothing to do here, move along.
             return needToPrepare
-                ? PrepareLong(connector, async)
+                ? PrepareLong()
                 : PGUtil.CompletedTask;
-        }
 
-        async Task PrepareLong(NpgsqlConnector connector, bool async)
-        {
-            using (connector.StartUserAction())
+            async Task PrepareLong()
             {
-                var sendTask = SendPrepare(async);
-
-                // Loop over statements, skipping those that are already prepared (because they were persisted)
-                var isFirst = true;
-                foreach (var statement in _statements.Where(s =>
-                    s.PreparedStatement?.State == PreparedState.BeingPrepared))
+                using (connector.StartUserAction())
                 {
-                    var pStatement = statement.PreparedStatement;
-                    Debug.Assert(pStatement != null);
-                    Debug.Assert(pStatement.Description == null);
-                    if (pStatement.StatementBeingReplaced != null)
+                    var sendTask = SendPrepare(async);
+
+                    // Loop over statements, skipping those that are already prepared (because they were persisted)
+                    var isFirst = true;
+                    foreach (var statement in _statements.Where(s =>
+                        s.PreparedStatement?.State == PreparedState.BeingPrepared))
                     {
-                        Expect<CloseCompletedMessage>(await connector.ReadMessage(async));
-                        pStatement.StatementBeingReplaced.CompleteUnprepare();
-                        pStatement.StatementBeingReplaced = null;
+                        var pStatement = statement.PreparedStatement;
+                        Debug.Assert(pStatement != null);
+                        Debug.Assert(pStatement.Description == null);
+                        if (pStatement.StatementBeingReplaced != null)
+                        {
+                            Expect<CloseCompletedMessage>(await connector.ReadMessage(async));
+                            pStatement.StatementBeingReplaced.CompleteUnprepare();
+                            pStatement.StatementBeingReplaced = null;
+                        }
+
+                        Expect<ParseCompleteMessage>(await connector.ReadMessage(async));
+                        Expect<ParameterDescriptionMessage>(await connector.ReadMessage(async));
+                        var msg = await connector.ReadMessage(async);
+                        switch (msg.Code)
+                        {
+                        case BackendMessageCode.RowDescription:
+                            var description = (RowDescriptionMessage)msg;
+                            FixupRowDescription(description, isFirst);
+                            statement.Description = description;
+                            break;
+                        case BackendMessageCode.NoData:
+                            statement.Description = null;
+                            break;
+                        default:
+                            throw connector.UnexpectedMessageReceived(msg.Code);
+                        }
+                        pStatement.CompletePrepare();
+                        isFirst = false;
                     }
 
-                    Expect<ParseCompleteMessage>(await connector.ReadMessage(async));
-                    Expect<ParameterDescriptionMessage>(await connector.ReadMessage(async));
-                    var msg = await connector.ReadMessage(async);
-                    switch (msg.Code)
-                    {
-                    case BackendMessageCode.RowDescription:
-                        var description = (RowDescriptionMessage)msg;
-                        FixupRowDescription(description, isFirst);
-                        statement.Description = description;
-                        break;
-                    case BackendMessageCode.NoData:
-                        statement.Description = null;
-                        break;
-                    default:
-                        throw connector.UnexpectedMessageReceived(msg.Code);
-                    }
-                    pStatement.CompletePrepare();
-                    isFirst = false;
+                    Expect<ReadyForQueryMessage>(await connector.ReadMessage(async));
+
+                    if (async)
+                        await sendTask;
+                    else
+                        sendTask.GetAwaiter().GetResult();
                 }
-
-                Expect<ReadyForQueryMessage>(await connector.ReadMessage(async));
-
-                if (async)
-                    await sendTask;
-                else
-                    sendTask.GetAwaiter().GetResult();
             }
         }
 
@@ -739,7 +737,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 var hasWrittenFirst = false;
                 for (var i = 1; i <= numInput; i++) {
                     var param = inputList[i - 1];
-                    if (param.ParameterName == "")
+                    if (param.TrimmedName == "")
                     {
                         if (hasWrittenFirst)
                             sb.Append(',');
@@ -751,12 +749,12 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 for (var i = 1; i <= numInput; i++)
                 {
                     var param = inputList[i - 1];
-                    if (param.ParameterName != "")
+                    if (param.TrimmedName != "")
                     {
                         if (hasWrittenFirst)
                             sb.Append(',');
                         sb.Append('"');
-                        sb.Append(param.ParameterName.Replace("\"", "\"\""));
+                        sb.Append(param.TrimmedName.Replace("\"", "\"\""));
                         sb.Append("\" := ");
                         sb.Append('$');
                         sb.Append(i);

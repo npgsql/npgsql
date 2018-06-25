@@ -9,12 +9,16 @@
 # [Connection String Parameters](connection-string-parameters.md)
 # [Parameters](parameters.md)
 # [Security and Encryption](security.md)
-# Types
+# Type Mapping
 ## [Basic Type Mapping](types/basic.md)
 ## [Date and Time](types/datetime.md)
-## [NodaTime Plugin](types/nodatime.md)
-## [Json.NET Plugin](types/jsonnet.md)
 ## [Enums and Composites](types/enums_and_composites.md)
+## [NodaTime](types/nodatime.md)
+## [Json.NET](types/jsonnet.md)
+## Spatial
+### [NetTopologySuite](types/nts.md)
+### [GeoJSON](types/geojson.md)
+### [Legacy PostGIS](types/legacy-postgis.md)
 # [Transactions](transactions.md)
 # [Performance](performance.md)
 # [Prepared Statements](prepare.md)
@@ -23,3 +27,4 @@
 # [Bulk Copy](copy.md)
 # [Logging](logging.md)
 # [Visual Studio Integration](ddex.md)
+# [API Reference](../../obj/api/Npgsql/)

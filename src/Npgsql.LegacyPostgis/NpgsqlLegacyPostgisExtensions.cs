@@ -21,6 +21,7 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
+using System;
 using System.Data;
 using Npgsql.LegacyPostgis;
 using Npgsql.TypeMapping;
@@ -39,7 +40,10 @@ namespace Npgsql
         /// </summary>
         /// <param name="mapper">The type mapper to set up (global or connection-specific)</param>
         public static INpgsqlTypeMapper UseLegacyPostgis(this INpgsqlTypeMapper mapper)
-            => mapper
+        {
+            var typeHandlerFactory = new LegacyPostgisHandlerFactory();
+
+            return mapper
                 .AddMapping(new NpgsqlTypeMappingBuilder
                 {
                     PgTypeName = "geometry",
@@ -55,7 +59,17 @@ namespace Npgsql
                         typeof(PostgisMultiPolygon),
                         typeof(PostgisGeometryCollection),
                     },
-                    TypeHandlerFactory = new PostgisLegacyHandlerFactory()
+                    TypeHandlerFactory = typeHandlerFactory
+                }.Build())
+                .AddMapping(new NpgsqlTypeMappingBuilder
+                {
+                    PgTypeName = "geography",
+                    NpgsqlDbType = NpgsqlDbType.Geography,
+                    DbTypes = new DbType[0],
+                    ClrTypes = new Type[0],
+                    InferredDbType = DbType.Object,
+                    TypeHandlerFactory = typeHandlerFactory
                 }.Build());
+        }
     }
 }

@@ -31,6 +31,10 @@ var conn = new NpgsqlConnection(ConnectionString);
 conn.Open();
 conn.Notification += (o, e) => Console.WriteLine("Received notification");
 
+using (var cmd = new NpgsqlCommand("LISTEN channel_name", conn)) {
+  cmd.ExecuteNonQuery();
+}
+
 while (true) {
   conn.Wait();   // Thread will block here
 }

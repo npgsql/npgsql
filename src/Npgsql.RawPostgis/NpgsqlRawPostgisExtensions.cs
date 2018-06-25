@@ -32,7 +32,7 @@ namespace Npgsql
     /// <summary>
     /// Extension adding the legacy PostGIS types to an Npgsql type mapper.
     /// </summary>
-    public static class NpgsqlLegacyPostgisExtensions
+    public static class NpgsqlRawPostgisExtensions
     {
         /// <summary>
         /// Sets up the legacy PostGIS types to an Npgsql type mapper.

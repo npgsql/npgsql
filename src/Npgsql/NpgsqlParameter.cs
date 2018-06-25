@@ -21,25 +21,24 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using System;
-using System.ComponentModel;
-using System.Data;
-using System.Data.Common;
-using System.Diagnostics;
-using System.Reflection;
-using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
+using System;
+using System.ComponentModel;
+using System.Data;
+using System.Data.Common;
+using System.Diagnostics;
+using System.Threading.Tasks;
 
 namespace Npgsql
 {
     ///<summary>
     /// This class represents a parameter to a command that will be sent to server
     ///</summary>
-    public class NpgsqlParameter : DbParameter, ICloneable
+    public class NpgsqlParameter : DbParameter, IDbDataParameter, ICloneable
     {
         #region Fields and Properties
 
@@ -52,13 +51,15 @@ namespace Npgsql
         internal NpgsqlDbType? _npgsqlDbType;
         internal DbType? _dbType;
         [CanBeNull]
-        internal     string _dataTypeName;
+        internal string _dataTypeName;
         // ReSharper restore InconsistentNaming
         [CanBeNull]
         Type _specificType;
         string _name = string.Empty;
         [CanBeNull]
         object _value;
+
+        internal string TrimmedName { get; private set; } = string.Empty;
 
         /// <summary>
         /// Can be used to communicate a value from the validation phase to the writing phase.
@@ -71,6 +72,8 @@ namespace Npgsql
 
         [CanBeNull]
         internal NpgsqlTypeHandler Handler { get; set; }
+
+        internal FormatCode FormatCode { get; private set; }
 
         #endregion
 
@@ -267,11 +270,17 @@ namespace Npgsql
             set
             {
                 // ReSharper disable once ConditionIsAlwaysTrueOrFalse
-                _name = value == null
-                    ? string.Empty
-                    : value.Length > 0 && (value[0] == ':' || value[0] == '@')
-                        ? value.Substring(1)
-                        : value;
+                if (value == null)
+                {
+                    _name = TrimmedName = string.Empty;
+                }
+                else if (value.Length > 0 && (value[0] == ':' || value[0] == '@'))
+                {
+                    TrimmedName = value.Substring(1);
+                    _name = value;
+                }
+                else
+                    _name = TrimmedName = value;
 
                 Collection?.InvalidateHashLookups();
             }
@@ -361,14 +370,10 @@ namespace Npgsql
         {
             get
             {
-                if (_npgsqlDbType.HasValue) {
+                if (_npgsqlDbType.HasValue)
                     return _npgsqlDbType.Value;
-                }
-
-                if (_value != null) {   // Infer from value
-                    return GlobalTypeMapper.Instance.ToNpgsqlDbType(_value);
-                }
-
+                if (_value != null)   // Infer from value
+                    return GlobalTypeMapper.Instance.ToNpgsqlDbType(_value.GetType());
                 return NpgsqlDbType.Unknown;
             }
             set
@@ -415,7 +420,7 @@ namespace Npgsql
         [Category("Data")]
         public sealed override ParameterDirection Direction { get; set; }
 
-        // Implementation of IDbDataParameter
+#pragma warning disable CS0109
         /// <summary>
         /// Gets or sets the maximum number of digits used to represent the
         /// <see cref="NpgsqlParameter.Value">Value</see> property.
@@ -426,14 +431,7 @@ namespace Npgsql
         /// sets the precision for <b>Value</b>.</value>
         [DefaultValue((byte)0)]
         [Category("Data")]
-#if NET45
-// In mono .NET 4.5 is actually a later version, meaning that virtual Precision and Scale already exist in DbParameter
-#pragma warning disable CS0114
-        public byte Precision
-#pragma warning restore CS0114
-#else
-        public sealed override byte Precision
-#endif
+        public new byte Precision
         {
             get => _precision;
             set
@@ -451,14 +449,7 @@ namespace Npgsql
         /// <see cref="NpgsqlParameter.Value">Value</see> is resolved. The default is 0.</value>
         [DefaultValue((byte)0)]
         [Category("Data")]
-#if NET45
-// In mono .NET 4.5 is actually a later version, meaning that virtual Precision and Scale already exist in DbParameter
-#pragma warning disable CS0114
-        public byte Scale
-#pragma warning restore CS0114
-#else
-        public sealed override byte Scale
-#endif
+        public new byte Scale
         {
             get => _scale;
             set
@@ -467,6 +458,7 @@ namespace Npgsql
                 Handler = null;
             }
         }
+#pragma warning restore CS0109
 
         /// <inheritdoc />
         [DefaultValue(0)]
@@ -534,7 +526,7 @@ namespace Npgsql
             else if (_dbType.HasValue)
                 Handler = typeMapper.GetByDbType(_dbType.Value);
             else if (_value != null)
-                Handler = typeMapper.GetByValue(_value);
+                Handler = typeMapper.GetByClrType(_value.GetType());
             else
                 throw new InvalidOperationException($"Parameter '{ParameterName}' must have its value set");
         }
@@ -543,6 +535,7 @@ namespace Npgsql
         {
             ResolveHandler(typeMapper);
             Debug.Assert(Handler != null);
+            FormatCode = Handler.PreferTextWrite ? FormatCode.Text : FormatCode.Binary;
         }
 
         internal virtual int ValidateAndGetLength()
@@ -604,6 +597,7 @@ namespace Npgsql
                 Direction = Direction,
                 IsNullable = IsNullable,
                 _name = _name,
+                TrimmedName = TrimmedName,
                 SourceColumn = SourceColumn,
                 SourceVersion = SourceVersion,
                 _value = _value,

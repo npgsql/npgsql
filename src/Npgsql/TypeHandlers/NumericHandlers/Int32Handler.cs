@@ -36,11 +36,10 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-numeric.html
     /// </remarks>
-    [TypeMapping("int4", NpgsqlDbType.Integer, DbType.Int32, typeof(int))]
+    [TypeMapping("integer", NpgsqlDbType.Integer, DbType.Int32, typeof(int))]
     class Int32Handler : NpgsqlSimpleTypeHandler<int>,
         INpgsqlSimpleTypeHandler<byte>, INpgsqlSimpleTypeHandler<short>, INpgsqlSimpleTypeHandler<long>,
-        INpgsqlSimpleTypeHandler<float>, INpgsqlSimpleTypeHandler<double>, INpgsqlSimpleTypeHandler<decimal>,
-        INpgsqlSimpleTypeHandler<string>
+        INpgsqlSimpleTypeHandler<float>, INpgsqlSimpleTypeHandler<double>, INpgsqlSimpleTypeHandler<decimal>
     {
         #region Read
 
@@ -65,9 +64,6 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         decimal INpgsqlSimpleTypeHandler<decimal>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => Read(buf, len, fieldDescription);
 
-        string INpgsqlSimpleTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
-            => Read(buf, len, fieldDescription).ToString();
-
         #endregion Read
 
         #region Write
@@ -79,15 +75,6 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         public int ValidateAndGetLength(double value, NpgsqlParameter parameter)       => 4;
         public int ValidateAndGetLength(decimal value, NpgsqlParameter parameter)      => 4;
         public int ValidateAndGetLength(byte value, NpgsqlParameter parameter)         => 4;
-
-        public int ValidateAndGetLength(string value, NpgsqlParameter parameter)
-        {
-            var converted = Convert.ToInt32(value);
-            if (parameter == null)
-                throw CreateConversionButNoParamException(value.GetType());
-            parameter.ConvertedValue = converted;
-            return 4;
-        }
 
         public override void Write(int value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
             => buf.WriteInt32(value);
@@ -103,11 +90,6 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             => buf.WriteInt32(checked((int)value));
         public void Write(decimal value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
             => buf.WriteInt32((int)value);
-        public void Write(string value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
-        {
-            Debug.Assert(parameter != null);
-            buf.WriteInt32((int)parameter.ConvertedValue);
-        }
 
         #endregion Write
     }

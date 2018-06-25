@@ -137,20 +137,18 @@ namespace Npgsql.TypeHandling
         /// Called to validate and get the length of a value of an arbitrary type.
         /// Checks that the current handler supports that type and throws an exception otherwise.
         /// </summary>
-        public override int ValidateAndGetLength<TAny>(TAny value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        protected internal override int ValidateAndGetLength<TAny>(TAny value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
             => this is INpgsqlTypeHandler<TAny> typedHandler
                 ? typedHandler.ValidateAndGetLength(value, ref lengthCache, parameter)
                 : throw new InvalidCastException($"Can't write CLR type {typeof(TAny)} to database type {PgDisplayName}");
 
         /// <summary>
         /// In the vast majority of cases writing a parameter to the buffer won't need to perform I/O.
-        /// This version of WriteWithLengthInternal isn't async to avoid that overhead, but will delegate
-        /// to <see cref="WriteWithLengthLong{TAny}"/> if needed.
         /// </summary>
         internal override Task WriteWithLengthInternal<TAny>(TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
             if (buf.WriteSpaceLeft < 4)
-                return WriteWithLengthLong(value, buf, lengthCache, parameter, async);
+                return WriteWithLengthLong();
 
             if (value == null || typeof(TAny) == typeof(DBNull))
             {
@@ -159,20 +157,20 @@ namespace Npgsql.TypeHandling
             }
 
             return WriteWithLength(value, buf, lengthCache, parameter, async);
-        }
 
-        async Task WriteWithLengthLong<TAny>([CanBeNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-        {
-            if (buf.WriteSpaceLeft < 4)
-                await buf.Flush(async);
-
-            if (value == null || typeof(TAny) == typeof(DBNull))
+            async Task WriteWithLengthLong()
             {
-                buf.WriteInt32(-1);
-                return;
-            }
+                if (buf.WriteSpaceLeft < 4)
+                    await buf.Flush(async);
 
-            await WriteWithLength(value, buf, lengthCache, parameter, async);
+                if (value == null || typeof(TAny) == typeof(DBNull))
+                {
+                    buf.WriteInt32(-1);
+                    return;
+                }
+
+                await WriteWithLength(value, buf, lengthCache, parameter, async);
+            }
         }
 
         /// <summary>
@@ -296,7 +294,10 @@ namespace Npgsql.TypeHandling
         internal override Type GetFieldType(FieldDescription fieldDescription = null) => typeof(TDefault);
         internal override Type GetProviderSpecificFieldType(FieldDescription fieldDescription = null) => typeof(TDefault);
 
-        internal override ArrayHandler CreateArrayHandler(PostgresType arrayBackendType)
+        /// <summary>
+        /// Creates a type handler for arrays of this handler's type.
+        /// </summary>
+        protected internal override ArrayHandler CreateArrayHandler(PostgresType arrayBackendType)
             => new ArrayHandler<TDefault>(this) { PostgresType = arrayBackendType };
 
         internal override NpgsqlTypeHandler CreateRangeHandler(PostgresType rangeBackendType)

@@ -82,7 +82,7 @@ namespace Npgsql
         // Order by primitives first, container later.
         // For arrays and ranges, join in the element OID and type (to filter out arrays of unhandled
         // types).
-        static string GenerateTypesQuery(bool withRange, bool loadTableComposites)
+        static string GenerateTypesQuery(bool withRange, bool withEnum, bool loadTableComposites)
             => $@"
 /*** Load all supported types ***/
 SELECT ns.nspname, a.typname, a.oid, a.typrelid, a.typbasetype,
@@ -109,7 +109,8 @@ WHERE
   a.typtype IN ('b', 'r', 'e', 'd') OR         /* Base, range, enum, domain */
   (a.typtype = 'c' AND {(loadTableComposites ? "ns.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')" : "cls.relkind='c'")}) OR /* User-defined free-standing composites (not table composites) by default */
   (pg_proc.proname='array_recv' AND (
-    b.typtype IN ('b', 'r', 'e', 'd') OR       /* Array of base, range, enum domain */
+    b.typtype IN ('b', 'r', 'e', 'd') OR       /* Array of base, range, enum, domain */
+    (b.typtype = 'p' AND b.typname IN ('record', 'void')) OR /* Arrays of special supported pseudo-types */
     (b.typtype = 'c' AND elemcls.relkind='c')  /* Array of user-defined free-standing composites (not table composites) */
   )) OR
   (a.typtype = 'p' AND a.typname IN ('record', 'void'))  /* Some special supported pseudo-types */
@@ -126,12 +127,12 @@ WHERE
   attnum > 0 AND     /* Don't load system attributes */
   NOT attisdropped
 ORDER BY typ.typname, att.attnum;
-
+{(withEnum ? @"
 /*** Load enum fields ***/
 SELECT pg_type.oid, enumlabel
 FROM pg_enum
 JOIN pg_type ON pg_type.oid=enumtypid
-ORDER BY oid, enumsortorder;
+ORDER BY oid, enumsortorder;" : "")}
 ";
 
         internal async Task<List<PostgresType>> LoadBackendTypes(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
@@ -144,7 +145,7 @@ ORDER BY oid, enumsortorder;
                     throw new TimeoutException();
             }
 
-            var typeLoadingQuery = GenerateTypesQuery(SupportsRangeTypes, conn.Settings.LoadTableComposites);
+            var typeLoadingQuery = GenerateTypesQuery(SupportsRangeTypes, SupportsEnumTypes, conn.Settings.LoadTableComposites);
 
             using (var command = new NpgsqlCommand(typeLoadingQuery, conn))
             {
@@ -160,17 +161,17 @@ ORDER BY oid, enumsortorder;
                         timeout.Check();
 
                         var ns = reader.GetString(reader.GetOrdinal("nspname"));
-                        var name = reader.GetString(reader.GetOrdinal("typname"));
+                        var internalName = reader.GetString(reader.GetOrdinal("typname"));
                         var oid = Convert.ToUInt32(reader[reader.GetOrdinal("oid")]);
 
-                        Debug.Assert(name != null);
+                        Debug.Assert(internalName != null);
                         Debug.Assert(oid != 0);
 
                         var typeChar = reader.GetString(reader.GetOrdinal("type"))[0];
                         switch (typeChar)
                         {
                         case 'b':  // Normal base type
-                            var baseType = new PostgresBaseType(ns, name, oid);
+                            var baseType = new PostgresBaseType(ns, internalName, oid);
                             byOID[baseType.OID] = baseType;
                             continue;
 
@@ -180,11 +181,11 @@ ORDER BY oid, enumsortorder;
                             Debug.Assert(elementOID > 0);
                             if (!byOID.TryGetValue(elementOID, out var elementPostgresType))
                             {
-                                Log.Trace($"Array type '{name}' refers to unknown element with OID {elementOID}, skipping", conn.ProcessID);
+                                Log.Trace($"Array type '{internalName}' refers to unknown element with OID {elementOID}, skipping", conn.ProcessID);
                                 continue;
                             }
 
-                            var arrayType = new PostgresArrayType(ns, name, oid, elementPostgresType);
+                            var arrayType = new PostgresArrayType(ns, internalName, oid, elementPostgresType);
                             byOID[arrayType.OID] = arrayType;
                             continue;
                         }
@@ -195,23 +196,23 @@ ORDER BY oid, enumsortorder;
                             Debug.Assert(elementOID > 0);
                             if (!byOID.TryGetValue(elementOID, out var subtypePostgresType))
                             {
-                                Log.Trace($"Range type '{name}' refers to unknown subtype with OID {elementOID}, skipping", conn.ProcessID);
+                                Log.Trace($"Range type '{internalName}' refers to unknown subtype with OID {elementOID}, skipping", conn.ProcessID);
                                 continue;
                             }
 
-                            var rangeType = new PostgresRangeType(ns, name, oid, subtypePostgresType);
+                            var rangeType = new PostgresRangeType(ns, internalName, oid, subtypePostgresType);
                             byOID[rangeType.OID] = rangeType;
                             continue;
                         }
 
                         case 'e':   // Enum
-                            var enumType = new PostgresEnumType(ns, name, oid);
+                            var enumType = new PostgresEnumType(ns, internalName, oid);
                             byOID[enumType.OID] = enumType;
                             continue;
 
                         case 'c':   // Composite
                             // Unlike other types, we don't
-                            var compositeType = new PostgresCompositeType(ns, name, oid);
+                            var compositeType = new PostgresCompositeType(ns, internalName, oid);
                             byOID[compositeType.OID] = compositeType;
                             continue;
 
@@ -220,10 +221,10 @@ ORDER BY oid, enumsortorder;
                             Debug.Assert(baseTypeOID > 0);
                             if (!byOID.TryGetValue(baseTypeOID, out var basePostgresType))
                             {
-                                Log.Trace($"Domain type '{name}' refers to unknown base type with OID {baseTypeOID}, skipping", conn.ProcessID);
+                                Log.Trace($"Domain type '{internalName}' refers to unknown base type with OID {baseTypeOID}, skipping", conn.ProcessID);
                                 continue;
                             }
-                            var domainType = new PostgresDomainType(ns, name, oid, basePostgresType);
+                            var domainType = new PostgresDomainType(ns, internalName, oid, basePostgresType);
                             byOID[domainType.OID] = domainType;
                             continue;
 
@@ -232,7 +233,7 @@ ORDER BY oid, enumsortorder;
                             goto case 'b';
 
                         default:
-                            throw new ArgumentOutOfRangeException($"Unknown typtype for type '{name}' in pg_type: {typeChar}");
+                            throw new ArgumentOutOfRangeException($"Unknown typtype for type '{internalName}' in pg_type: {typeChar}");
                         }
                     }
 
@@ -243,12 +244,15 @@ ORDER BY oid, enumsortorder;
 
                     LoadCompositeFields(reader, byOID);
 
-                    if (async)
-                        await reader.NextResultAsync();
-                    else
-                        reader.NextResult();
+                    if (SupportsEnumTypes)
+                    {
+                        if (async)
+                            await reader.NextResultAsync();
+                        else
+                            reader.NextResult();
 
-                    LoadEnumLabels(reader, byOID);
+                        LoadEnumLabels(reader, byOID);
+                    }
 
                     return byOID.Values.ToList();
                 }

@@ -52,7 +52,7 @@ namespace Npgsql
 
         /// <summary>
         /// Stores a length value in the cache, to be fetched later via <see cref="Get"/>.
-        /// Called at the <see cref="NpgsqlTypeHandler.ValidateAndGetLength"/> phase.
+        /// Called at the <see cref="NpgsqlTypeHandler.ValidateAndGetLength{TAny}"/> phase.
         /// </summary>
         /// <returns>The length parameter.</returns>
         public int Set(int len)

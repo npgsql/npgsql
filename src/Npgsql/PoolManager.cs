@@ -46,6 +46,7 @@ namespace Npgsql
         {
             // Note that pools never get removed. _pools is strictly append-only.
             var pools = _pools;
+            var sw = new SpinWait();
 
             // First scan the pools and do reference equality on the connection strings
             for (var i = 0; i < _nextSlot; i++)
@@ -55,8 +56,8 @@ namespace Npgsql
                     // It's possible that this pool entry is currently being written: the connection string
                     // component has already been writte, but the pool component is just about to be. So we
                     // loop on the pool until it's non-null
-                    while (pools[i].Pool == null)
-                        Thread.Yield();
+                    while (Volatile.Read(ref pools[i].Pool) == null)
+                        sw.SpinOnce();
                     pool = pools[i].Pool;
                     return true;
                 }
@@ -68,8 +69,8 @@ namespace Npgsql
                 if (pools[i].Key == key)
                 {
                     // See comment above
-                    while (pools[i].Pool == null)
-                        Thread.Yield();
+                    while (Volatile.Read(ref pools[i].Pool) == null)
+                        sw.SpinOnce();
                     pool = pools[i].Pool;
                     return true;
                 }

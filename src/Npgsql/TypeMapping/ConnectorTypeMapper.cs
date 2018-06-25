@@ -102,12 +102,7 @@ namespace Npgsql.TypeMapping
             => TryGetByOID(oid, out var result) ? result : UnrecognizedTypeHandler;
 
         internal bool TryGetByOID(uint oid, out NpgsqlTypeHandler handler)
-        {
-            if (_byOID.TryGetValue(oid, out handler))
-                return true;
-            // TODO: Late activation (composite/enum)
-            return false;
-        }
+            => _byOID.TryGetValue(oid, out handler);
 
         internal NpgsqlTypeHandler GetByNpgsqlDbType(NpgsqlDbType npgsqlDbType)
             => _byNpgsqlDbType.TryGetValue(npgsqlDbType, out var handler)
@@ -117,43 +112,16 @@ namespace Npgsql.TypeMapping
 
 
         internal NpgsqlTypeHandler GetByDbType(DbType dbType)
-        {
-            if (_byDbType.TryGetValue(dbType, out var handler))
-                return handler;
-            throw new NotSupportedException("This DbType is not supported in Npgsql: " + dbType);
-        }
+            => _byDbType.TryGetValue(dbType, out var handler)
+                ? handler
+                : throw new NotSupportedException("This DbType is not supported in Npgsql: " + dbType);
 
         internal NpgsqlTypeHandler GetByDataTypeName(string typeName)
-        {
-            if (_byTypeName.TryGetValue(typeName, out var handler))
-                return handler;
-            throw new NotSupportedException("Could not find PostgreSQL type " + typeName);
-        }
+            => _byTypeName.TryGetValue(typeName, out var handler)
+                ? handler
+                : throw new NotSupportedException("Could not find PostgreSQL type " + typeName);
 
-        internal NpgsqlTypeHandler GetByValue(object value)
-        {
-            Debug.Assert(value != null);
-
-            if (value is DateTime)
-            {
-                return ((DateTime)value).Kind == DateTimeKind.Utc
-                    ? GetByNpgsqlDbType(NpgsqlDbType.TimestampTz)
-                    : GetByNpgsqlDbType(NpgsqlDbType.Timestamp);
-            }
-
-            if (value is NpgsqlDateTime)
-            {
-                return ((NpgsqlDateTime)value).Kind == DateTimeKind.Utc
-                    ? GetByNpgsqlDbType(NpgsqlDbType.TimestampTz)
-                    : GetByNpgsqlDbType(NpgsqlDbType.Timestamp);
-            }
-
-            return GetByClrType(value.GetType());
-        }
-
-#pragma warning disable CA1043
         internal NpgsqlTypeHandler GetByClrType(Type type)
-#pragma warning restore CA1043
         {
             if (_byClrType.TryGetValue(type, out var handler))
                 return handler;
@@ -290,7 +258,11 @@ namespace Npgsql.TypeMapping
             // for reading domain fields of composites
             foreach (var domain in DatabaseInfo.DomainTypes)
                 if (_byOID.TryGetValue(domain.BaseType.OID, out var baseTypeHandler))
+                {
                     _byOID[domain.OID] = baseTypeHandler;
+                    if (domain.Array != null)
+                        BindType(baseTypeHandler.CreateArrayHandler(domain.Array), domain.Array);
+                }
 
             // Composites
             var dynamicCompositeFactory = new UnmappedCompositeTypeHandlerFactory(DefaultNameTranslator);
@@ -304,31 +276,36 @@ namespace Npgsql.TypeMapping
             // 1. When a user adds a mapping for a specific connection (and exception should bubble up to them)
             // 2. When binding the global mappings, in which case we want to log rather than throw
             // (i.e. missing database type for some unused defined binding shouldn't fail the connection)
-            try
-            {
-                DoBindType(mapping, connector);
-            }
-            catch (Exception e)
-            {
-                if (throwOnError)
-                    throw;
-                Log.Warn($"Exception while binding type {mapping.PgTypeName}", e);
-            }
-        }
 
-        void DoBindType(NpgsqlTypeMapping mapping, NpgsqlConnector connector)
-        {
             var pgName = mapping.PgTypeName;
             var found = pgName.IndexOf('.') == -1
                 ? DatabaseInfo.ByName.TryGetValue(pgName, out var pgType)  // No dot, partial type name
                 : DatabaseInfo.ByFullName.TryGetValue(pgName, out pgType); // Full type name with namespace
 
             if (!found)
-                throw new ArgumentException($"A PostgreSQL type with the name {mapping.PgTypeName} was not found in the database");
-            if (pgType == null)
-                throw new ArgumentException($"More than one PostgreSQL type was found with the name {mapping.PgTypeName}, please specify a full name including schema");
-            if (pgType is PostgresDomainType)
-                throw new NotSupportedException("Cannot add a mapping to a PostgreSQL domain type");
+            {
+                var msg = $"A PostgreSQL type with the name {mapping.PgTypeName} was not found in the database";
+                if (throwOnError)
+                    throw new ArgumentException(msg);
+                Log.Debug(msg);
+                return;
+            }
+            else if (pgType == null)
+            {
+                var msg = $"More than one PostgreSQL type was found with the name {mapping.PgTypeName}, please specify a full name including schema";
+                if (throwOnError)
+                    throw new ArgumentException(msg);
+                Log.Debug(msg);
+                return;
+            }
+            else if (pgType is PostgresDomainType)
+            {
+                var msg = "Cannot add a mapping to a PostgreSQL domain type";
+                if (throwOnError)
+                    throw new NotSupportedException(msg);
+                Log.Debug(msg);
+                return;
+            }
 
             var handler = mapping.TypeHandlerFactory.Create(pgType, connector.Connection);
             BindType(handler, pgType, mapping.NpgsqlDbType, mapping.DbTypes, mapping.ClrTypes);

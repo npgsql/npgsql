@@ -54,7 +54,7 @@ namespace Npgsql.Tests.Types
                     using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
-                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4"));
+                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("integer"));
                     }
                 }
 
@@ -66,7 +66,7 @@ namespace Npgsql.Tests.Types
                     using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
-                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4"));
+                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("integer"));
                     }
                 }
 
@@ -78,7 +78,7 @@ namespace Npgsql.Tests.Types
                     using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
-                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4"));
+                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("integer"));
                     }
                 }
 
@@ -88,7 +88,7 @@ namespace Npgsql.Tests.Types
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
-                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4"));
+                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("integer"));
                 }
             }
         }
@@ -96,7 +96,6 @@ namespace Npgsql.Tests.Types
         /// <summary>
         /// http://www.postgresql.org/docs/current/static/datatype-boolean.html
         /// </summary>
-        /// <param name="prepare"></param>
         [Test, Description("Roundtrips a bool")]
         public void Bool()
         {
@@ -127,7 +126,7 @@ namespace Npgsql.Tests.Types
                         Assert.That(reader.GetValue(i), Is.True);
                         Assert.That(reader.GetProviderSpecificValue(i), Is.True);
                         Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(bool)));
-                        Assert.That(reader.GetDataTypeName(i), Is.EqualTo("bool"));
+                        Assert.That(reader.GetDataTypeName(i), Is.EqualTo("boolean"));
                     }
                 }
             }
@@ -159,7 +158,6 @@ namespace Npgsql.Tests.Types
                         Assert.That(reader.GetGuid(i), Is.EqualTo(expected));
                         Assert.That(reader.GetFieldValue<Guid>(i), Is.EqualTo(expected));
                         Assert.That(reader.GetValue(i), Is.EqualTo(expected));
-                        Assert.That(reader.GetString(i), Is.EqualTo(expected.ToString()));
                         Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(Guid)));
                     }
                 }
@@ -325,19 +323,23 @@ namespace Npgsql.Tests.Types
 
         [Test, Description("PostgreSQL records should be returned as arrays of objects")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/724")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/1980")]
         public void Record()
         {
+            var recordLiteral = "(1,'foo'::text)::record";
             using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand($"SELECT {recordLiteral}, ARRAY[{recordLiteral}, {recordLiteral}]", conn))
+            using (var reader = cmd.ExecuteReader())
             {
-                conn.ExecuteNonQuery("CREATE FUNCTION pg_temp.foo () RETURNS RECORD AS $$ SELECT 1,2 $$ LANGUAGE SQL");
-                using (var cmd = new NpgsqlCommand("SELECT pg_temp.foo()", conn))
-                {
-                    var record = cmd.ExecuteScalar();
-                    Assert.That(record, Is.TypeOf<object[]>());
-                    var array = (object[]) record;
-                    Assert.That(array[0], Is.EqualTo(1));
-                    Assert.That(array[1], Is.EqualTo(2));
-                }
+                reader.Read();
+                var record = (object[])reader[0];
+                Assert.That(record[0], Is.EqualTo(1));
+                Assert.That(record[1], Is.EqualTo("foo"));
+
+                var arr = (object[][])reader[1];
+                Assert.That(arr.Length, Is.EqualTo(2));
+                Assert.That(arr[0][0], Is.EqualTo(1));
+                Assert.That(arr[1][0], Is.EqualTo(1));
             }
         }
 
@@ -370,7 +372,7 @@ namespace Npgsql.Tests.Types
         {
             using (var conn = OpenConnection())
             {
-                conn.TypeMapper.RemoveMapping("bool");
+                conn.TypeMapper.RemoveMapping("boolean");
                 using (var cmd = new NpgsqlCommand("SELECT TRUE", conn))
                 using (var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess))
                 {
@@ -732,7 +734,9 @@ namespace Npgsql.Tests.Types
             using (var conn = OpenConnection())
             using (var cmd = conn.CreateCommand())
             {
-                var query = NpgsqlTsQuery.Parse("(a & !(c | d)) & (!!a&b) | ä | d | e");
+                var query = conn.PostgreSqlVersion < new Version(9, 6)
+                    ? NpgsqlTsQuery.Parse("(a & !(c | d)) & (!!a&b) | ä | f")
+                    : NpgsqlTsQuery.Parse("(a & !(c | d)) & (!!a&b) | ä | x <-> y | x <10> y | d <0> e | f");
 
                 cmd.CommandText = "Select :p";
                 cmd.Parameters.AddWithValue("p", query);

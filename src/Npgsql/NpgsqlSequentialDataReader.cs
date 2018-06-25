@@ -39,20 +39,16 @@ namespace Npgsql
         internal NpgsqlSequentialDataReader(NpgsqlConnector connector)
             : base(connector) {}
 
-        internal override void Init(NpgsqlCommand command, CommandBehavior behavior, List<NpgsqlStatement> statements, Task sendTask)
-        {
-            base.Init(command, behavior, statements, sendTask);
-            Debug.Assert(!command.Parameters.HasOutputParameters);
-            // In sequential reading mode we always use the connector's buffer, unlike in non-sequential
-            // where an oversize buffer may be allocated for a big DataRow
-            Buffer = Connector.ReadBuffer;
-        }
-
         internal override ValueTask<IBackendMessage> ReadMessage(bool async)
             => Connector.ReadMessage(async, DataRowLoadingMode.Sequential);
 
         internal override void ProcessDataMessage(DataRowMessage dataMsg)
         {
+            // When reading sequentially, we never allocate oversize buffers for data rows since they don't have
+            // to fit in the buffer (that's the point of sequential). However, if the row description message is bigger
+            // than the buffer, an oversize buffer will be allocated (see #2003). This is hacky and needs to be redone.
+            Buffer = Connector.ReadBuffer;
+
             _column = -1;
             ColumnLen = -1;
             PosInColumn = 0;
@@ -222,37 +218,39 @@ namespace Npgsql
             if (column < _column)
                 throw new InvalidOperationException($"Invalid attempt to read from column ordinal '{column}'. With CommandBehavior.SequentialAccess, you may only read from column ordinal '{_column}' or greater.");
 
-            if (column > _column)
+            if (column == _column)
+                return;
+
+            // Need to seek forward
+
+            // Shut down any streaming going on on the column
+            if (ColumnStream != null)
             {
-                // Shut down any streaming going on on the column
-                if (ColumnStream != null)
-                {
-                    ColumnStream.Dispose();
-                    ColumnStream = null;
-                    // Disposing the stream leaves us at the end of the column
-                    PosInColumn = ColumnLen;
-                }
-
-                // Skip to end of column if needed
-                // TODO: Simplify by better initializing _columnLen/_posInColumn
-                var remainingInColumn = ColumnLen == -1 ? 0 : ColumnLen - PosInColumn;
-                if (remainingInColumn > 0)
-                    await Buffer.Skip(remainingInColumn, async);
-
-                // Skip over unwanted fields
-                for (; _column < column - 1; _column++)
-                {
-                    await Buffer.Ensure(4, async);
-                    var len = Buffer.ReadInt32();
-                    if (len != -1)
-                        await Buffer.Skip(len, async);
-                }
-
-                await Buffer.Ensure(4, async);
-                ColumnLen = Buffer.ReadInt32();
-                PosInColumn = 0;
-                _column = column;
+                ColumnStream.Dispose();
+                ColumnStream = null;
+                // Disposing the stream leaves us at the end of the column
+                PosInColumn = ColumnLen;
             }
+
+            // Skip to end of column if needed
+            // TODO: Simplify by better initializing _columnLen/_posInColumn
+            var remainingInColumn = ColumnLen == -1 ? 0 : ColumnLen - PosInColumn;
+            if (remainingInColumn > 0)
+                await Buffer.Skip(remainingInColumn, async);
+
+            // Skip over unwanted fields
+            for (; _column < column - 1; _column++)
+            {
+                await Buffer.Ensure(4, async);
+                var len = Buffer.ReadInt32();
+                if (len != -1)
+                    await Buffer.Skip(len, async);
+            }
+
+            await Buffer.Ensure(4, async);
+            ColumnLen = Buffer.ReadInt32();
+            PosInColumn = 0;
+            _column = column;
         }
 
         internal override async Task SeekInColumn(int posInColumn, bool async)

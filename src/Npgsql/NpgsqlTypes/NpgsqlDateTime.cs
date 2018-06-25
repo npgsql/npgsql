@@ -37,8 +37,8 @@ namespace NpgsqlTypes
     /// while PostgreSQL's timestamps store values from 4713BC to 5874897AD with 1-microsecond precision.
     /// </summary>
     [Serializable]
-    public struct NpgsqlDateTime : IEquatable<NpgsqlDateTime>, IComparable<NpgsqlDateTime>, IComparable,
-                                    IComparer<NpgsqlDateTime>, IComparer
+    public readonly struct NpgsqlDateTime : IEquatable<NpgsqlDateTime>, IComparable<NpgsqlDateTime>, IComparable,
+        IComparer<NpgsqlDateTime>, IComparer
     {
         #region Fields
 

@@ -56,7 +56,7 @@ namespace NpgsqlTypes
     /// <seealso cref="JustifyMonths"/>
     /// <seealso cref="Canonicalize()"/>
     [Serializable]
-    public struct NpgsqlTimeSpan : IComparable, IComparer, IEquatable<NpgsqlTimeSpan>, IComparable<NpgsqlTimeSpan>,
+    public readonly struct NpgsqlTimeSpan : IComparable, IComparer, IEquatable<NpgsqlTimeSpan>, IComparable<NpgsqlTimeSpan>,
                                    IComparer<NpgsqlTimeSpan>
     {
         #region Constants
@@ -130,9 +130,9 @@ namespace NpgsqlTypes
 
         #endregion
 
-        private readonly int _months;
-        private readonly int _days;
-        private readonly long _ticks;
+        readonly int _months;
+        readonly int _days;
+        readonly long _ticks;
 
         #region Constructors
 

@@ -31,7 +31,7 @@ using Npgsql.TypeMapping;
 
 namespace Npgsql.TypeHandlers.DateTimeHandlers
 {
-    [TypeMapping("timestamptz", NpgsqlDbType.TimestampTz, DbType.DateTimeOffset, typeof(DateTimeOffset))]
+    [TypeMapping("timestamp with time zone", NpgsqlDbType.TimestampTz, DbType.DateTimeOffset, typeof(DateTimeOffset))]
     class TimestampTzHandlerFactory : NpgsqlTypeHandlerFactory<DateTime>
     {
         // Check for the legacy floating point timestamps feature
@@ -42,7 +42,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-datetime.html
     /// </remarks>
-    class TimestampTzHandler : TimestampHandler
+    class TimestampTzHandler : TimestampHandler, INpgsqlSimpleTypeHandler<DateTimeOffset>
     {
         public TimestampTzHandler(bool integerFormat, bool convertInfinityDateTime)
             : base(integerFormat, convertInfinityDateTime) {}
@@ -73,11 +73,19 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             return new NpgsqlDateTime(ts.Date, ts.Time, DateTimeKind.Utc).ToLocalTime();
         }
 
-        protected override DateTimeOffset ReadDateTimeOffset(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        DateTimeOffset INpgsqlSimpleTypeHandler<DateTimeOffset>.Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription)
         {
+            // TODO: Convert directly to DateTime without passing through NpgsqlTimeStamp?
+            var ts = ReadTimeStamp(buf, len, fieldDescription);
             try
             {
-                return new DateTimeOffset(ReadTimeStamp(buf, len, fieldDescription).ToDateTime(), TimeSpan.Zero);
+                if (ts.IsFinite)
+                    return ts.ToDateTime().ToLocalTime();
+                if (!ConvertInfinityDateTime)
+                    throw new InvalidCastException("Can't convert infinite timestamptz values to DateTime");
+                if (ts.IsInfinity)
+                    return DateTimeOffset.MaxValue;
+                return DateTimeOffset.MinValue;
             } catch (Exception e) {
                 throw new NpgsqlSafeReadException(e);
             }
@@ -86,6 +94,9 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         #endregion Read
 
         #region Write
+
+        public int ValidateAndGetLength(DateTimeOffset value, NpgsqlParameter parameter)
+            => 8;
 
         public override void Write(NpgsqlDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
@@ -119,8 +130,8 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             base.Write(value, buf, parameter);
         }
 
-        public override void Write(DateTimeOffset value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
-            => base.Write(value.ToUniversalTime(), buf, parameter);
+        public void Write(DateTimeOffset value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => base.Write(value.ToUniversalTime().DateTime, buf, parameter);
 
         #endregion Write
     }

@@ -36,8 +36,7 @@ namespace Npgsql.Tests
 {
     public static class TestUtil
     {
-        public static bool IsOnBuildServer
-            => Environment.GetEnvironmentVariable("CI") != null;
+        public static bool IsOnBuildServer => Environment.GetEnvironmentVariable("CI") != null;
 
         /// <summary>
         /// Calls Assert.Ignore() unless we're on the build server, in which case calls
@@ -139,6 +138,22 @@ namespace Npgsql.Tests
             var cmd = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
             using (cmd)
                 return await cmd.ExecuteScalarAsync();
+        }
+    }
+
+    public static class NpgsqlCommandExtensions
+    {
+        public static T ExecuteScalar<T>(this NpgsqlCommand cmd)
+        {
+            using (var rdr = cmd.ExecuteReader())
+                return rdr.Read() ? rdr.GetFieldValue<T>(0) : default;
+        }
+
+        public static NpgsqlDataReader ExecuteRecord(this NpgsqlCommand cmd)
+        {
+            var rdr = cmd.ExecuteReader();
+            Assert.That(rdr.Read());
+            return rdr;
         }
     }
 

@@ -21,21 +21,25 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using System;
-using Npgsql.Logging;
-using NpgsqlTypes;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandlers.NumericHandlers;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
+using NpgsqlTypes;
+using System;
 
 namespace Npgsql.TypeHandlers.InternalTypesHandlers
 {
     [TypeMapping("oidvector", NpgsqlDbType.Oidvector)]
-    class OIDectorHandlerFactory : NpgsqlTypeHandlerFactory<Array>
+    class OIDVectorHandlerFactory : NpgsqlTypeHandlerFactory
     {
-        protected override NpgsqlTypeHandler<Array> Create(NpgsqlConnection conn)
-            => new OIDVectorHandler(conn.Connector.TypeMapper.DatabaseInfo.ByName["oid"]);
+        internal override NpgsqlTypeHandler Create(PostgresType pgType, NpgsqlConnection conn)
+            => new OIDVectorHandler(conn.Connector.TypeMapper.DatabaseInfo.ByName["oid"])
+            {
+                PostgresType = pgType
+            };
+
+        internal override Type DefaultValueType => null;
     }
 
     /// <summary>
@@ -45,9 +49,9 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
     class OIDVectorHandler : ArrayHandler<uint>
     {
         public OIDVectorHandler(PostgresType postgresOIDType)
-            : base(null, 0)
-        {
-            ElementHandler = new UInt32Handler { PostgresType = postgresOIDType };
-        }
+            : base(new UInt32Handler { PostgresType = postgresOIDType }, 0) { }
+
+        protected internal override ArrayHandler CreateArrayHandler(PostgresType arrayBackendType)
+            => new ArrayHandler<ArrayHandler<uint>>(this) { PostgresType = arrayBackendType };
     }
 }

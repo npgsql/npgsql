@@ -30,13 +30,13 @@ using Npgsql.TypeHandling;
 
 namespace Npgsql.LegacyPostgis
 {
-    public class PostgisLegacyHandlerFactory : NpgsqlTypeHandlerFactory<PostgisGeometry>
+    public class LegacyPostgisHandlerFactory : NpgsqlTypeHandlerFactory<PostgisGeometry>
     {
         protected override NpgsqlTypeHandler<PostgisGeometry> Create(NpgsqlConnection conn)
-            => new PostgisLegacyHandler();
+            => new LegacyPostgisHandler();
     }
 
-    class PostgisLegacyHandler : NpgsqlTypeHandler<PostgisGeometry>,
+    class LegacyPostgisHandler : NpgsqlTypeHandler<PostgisGeometry>,
         INpgsqlTypeHandler<PostgisPoint>, INpgsqlTypeHandler<PostgisMultiPoint>,
         INpgsqlTypeHandler<PostgisLineString>, INpgsqlTypeHandler<PostgisMultiLineString>,
         INpgsqlTypeHandler<PostgisPolygon>, INpgsqlTypeHandler<PostgisMultiPolygon>,

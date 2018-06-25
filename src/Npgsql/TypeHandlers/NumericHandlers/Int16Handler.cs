@@ -36,11 +36,10 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-numeric.html
     /// </remarks>
-    [TypeMapping("int2", NpgsqlDbType.Smallint, new[] { DbType.Int16, DbType.Byte, DbType.SByte }, new[] { typeof(short), typeof(byte), typeof(sbyte) }, DbType.Int16)]
+    [TypeMapping("smallint", NpgsqlDbType.Smallint, new[] { DbType.Int16, DbType.Byte, DbType.SByte }, new[] { typeof(short), typeof(byte), typeof(sbyte) }, DbType.Int16)]
     class Int16Handler : NpgsqlSimpleTypeHandler<short>,
         INpgsqlSimpleTypeHandler<byte>, INpgsqlSimpleTypeHandler<sbyte>, INpgsqlSimpleTypeHandler<int>, INpgsqlSimpleTypeHandler<long>,
-        INpgsqlSimpleTypeHandler<float>, INpgsqlSimpleTypeHandler<double>, INpgsqlSimpleTypeHandler<decimal>,
-        INpgsqlSimpleTypeHandler<string>
+        INpgsqlSimpleTypeHandler<float>, INpgsqlSimpleTypeHandler<double>, INpgsqlSimpleTypeHandler<decimal>
     {
         #region Read
 
@@ -68,9 +67,6 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         decimal INpgsqlSimpleTypeHandler<decimal>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => Read(buf, len, fieldDescription);
 
-        string INpgsqlSimpleTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
-            => Read(buf, len, fieldDescription).ToString();
-
         #endregion Read
 
         #region Write
@@ -83,15 +79,6 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         public int ValidateAndGetLength(float value, NpgsqlParameter parameter)          => 2;
         public int ValidateAndGetLength(double value, NpgsqlParameter parameter)         => 2;
         public int ValidateAndGetLength(decimal value, NpgsqlParameter parameter)        => 2;
-
-        public int ValidateAndGetLength(string value, NpgsqlParameter parameter)
-        {
-            var converted = Convert.ToInt16(value);
-            if (parameter == null)
-                throw CreateConversionButNoParamException(value.GetType());
-            parameter.ConvertedValue = converted;
-            return 2;
-        }
 
         public override void Write(short value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
             => buf.WriteInt16(value);
@@ -109,12 +96,6 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             => buf.WriteInt16(checked((short)value));
         public void Write(float value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
             => buf.WriteInt16(checked((short)value));
-
-        public void Write(string value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
-        {
-            Debug.Assert(parameter != null);
-            buf.WriteInt16((short)parameter.ConvertedValue);
-        }
 
         #endregion Write
     }
