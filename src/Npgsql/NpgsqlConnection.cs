@@ -1426,7 +1426,7 @@ namespace Npgsql
         public void ReloadTypes()
         {
             var conn = CheckReadyAndGetConnector();
-            NpgsqlDatabaseInfo.Cache.TryRemove(_connectionString, out var _);
+            NpgsqlDatabaseInfo.Cache.TryRemove(conn.ConnectionString, out var _);
             conn.LoadDatabaseInfo(NpgsqlTimeout.Infinite, false).GetAwaiter().GetResult();
         }
 
