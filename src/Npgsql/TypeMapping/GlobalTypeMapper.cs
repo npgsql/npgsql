@@ -71,7 +71,7 @@ namespace Npgsql.TypeMapping
             try
             {
                 base.AddMapping(mapping);
-                _changeCounter++;
+                RecordChange();
 
                 if (mapping.NpgsqlDbType.HasValue)
                 {
@@ -103,7 +103,7 @@ namespace Npgsql.TypeMapping
             try
             {
                 var result = base.RemoveMapping(pgTypeName);
-                _changeCounter++;
+                RecordChange();
                 return result;
             }
             finally
@@ -119,13 +119,15 @@ namespace Npgsql.TypeMapping
             {
                 Mappings.Clear();
                 SetupGlobalTypeMapper();
-                _changeCounter++;
+                RecordChange();
             }
             finally
             {
                 Lock.ExitWriteLock();
             }
         }
+
+        internal void RecordChange() => Interlocked.Increment(ref _changeCounter);
 
         #endregion Mapping management
 

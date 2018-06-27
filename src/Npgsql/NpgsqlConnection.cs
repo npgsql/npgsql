@@ -234,11 +234,15 @@ namespace Npgsql
 
             Counters.SoftConnectsPerSecond.Increment();
 
-            // Since this pooled connector was opened, global mappings may have
-            // changed. Bring this up to date if needed.
+            // Since this pooled connector was opened, types may have been added (and ReloadTypes() called),
+            // or global mappings may have changed. Bring this up to date if needed.
             var mapper = Connector.TypeMapper;
             if (mapper.ChangeCounter != TypeMapping.GlobalTypeMapper.Instance.ChangeCounter)
+            {
+                // We always do this synchronously which isn't amazing but not very important
+                Connector.LoadDatabaseInfo(NpgsqlTimeout.Infinite, false).GetAwaiter().GetResult();
                 mapper.Reset();
+            }
 
             Debug.Assert(Connector.Connection != null, "Open done but connector not set on Connection");
             Log.Debug("Connection opened", Connector.Id);
@@ -301,11 +305,14 @@ namespace Npgsql
                         else  // No enlist
                             Connector = await _pool.AllocateLong(this, timeout, async, cancellationToken);
 
-                        // Since this pooled connector was opened, global mappings may have
-                        // changed. Bring this up to date if needed.
+                        // Since this pooled connector was opened, types may have been added (and ReloadTypes() called),
+                        // or global mappings may have changed. Bring this up to date if needed.
                         mapper = Connector.TypeMapper;
                         if (mapper.ChangeCounter != TypeMapping.GlobalTypeMapper.Instance.ChangeCounter)
+                        {
+                            await Connector.LoadDatabaseInfo(NpgsqlTimeout.Infinite, async);
                             mapper.Reset();
+                        }
                     }
 
                     // We may have gotten an already enlisted pending connector above, no need to enlist in that case
@@ -321,7 +328,6 @@ namespace Npgsql
                 Log.Debug("Connection opened", Connector.Id);
                 OnStateChange(ClosedToOpenEventArgs);
             }
-
         }
 
         #endregion Open / Init
@@ -1420,14 +1426,17 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Flushes the type cache for this connection's connection string and reloads the
-        /// types for this connection only.
+        /// Flushes the type cache for this connection's connection string and reloads the types for this connection only.
+        /// Type changes will appear for other connections only after they are re-opened from the pool.
         /// </summary>
         public void ReloadTypes()
         {
             var conn = CheckReadyAndGetConnector();
             NpgsqlDatabaseInfo.Cache.TryRemove(_connectionString, out var _);
             conn.LoadDatabaseInfo(NpgsqlTimeout.Infinite, false).GetAwaiter().GetResult();
+            // Increment the change counter on the global type mapper. This will make conn.Open() pick up the
+            // new DatabaseInfo and set up a new connection type mapper
+            TypeMapping.GlobalTypeMapper.Instance.RecordChange();
         }
 
         #endregion Misc
