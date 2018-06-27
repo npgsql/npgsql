@@ -896,13 +896,28 @@ namespace Npgsql.Tests
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/824")]
         public void ReloadTypes()
         {
-            using (var conn = OpenConnection())
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                Assert.That(conn.ExecuteScalar("SELECT EXISTS (SELECT * FROM pg_type WHERE typname='reload_types_enum')"), Is.False);
+                ApplicationName = nameof(ReloadTypes)
+            }.ToString();
+            using (var conn = OpenConnection(connString))
+            using (var conn2 = OpenConnection(connString))
+            {
+                Assert.That(conn.ExecuteScalar("SELECT EXISTS (SELECT * FROM pg_type WHERE typname='reload_types_enum')"),
+                    Is.False);
                 conn.ExecuteNonQuery("CREATE TYPE pg_temp.reload_types_enum AS ENUM ('First', 'Second')");
                 Assert.That(() => conn.TypeMapper.MapEnum<ReloadTypesEnum>(), Throws.Exception.TypeOf<ArgumentException>());
                 conn.ReloadTypes();
                 conn.TypeMapper.MapEnum<ReloadTypesEnum>();
+
+                // Make sure conn2 picks up the new type after a pooled close
+                var connId = conn2.ProcessID;
+                conn2.Close();
+                conn2.Open();
+                Assert.That(conn2.ProcessID, Is.EqualTo(connId), "Didn't get the same connector back");
+                conn2.TypeMapper.MapEnum<ReloadTypesEnum>();
+
+                NpgsqlConnection.ClearPool(conn);
             }
         }
         enum ReloadTypesEnum { First, Second };
