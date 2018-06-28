@@ -456,6 +456,30 @@ $$ LANGUAGE SQL;
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2022")]
+        public void DeriveFunctionParameters_FunctionReturningSetofTypeWithDroppedColumn()
+        {
+            using (var conn = OpenConnection())
+            {
+                TestUtil.MinimumPgVersion(conn, "9.2.0");
+                conn.ExecuteNonQuery(@"
+                    CREATE TABLE pg_temp.test (id serial PRIMARY KEY, t1 text, t2 text);
+                    CREATE FUNCTION pg_temp.test_func() RETURNS SETOF test AS $$
+                        SELECT * FROM test
+                    $$LANGUAGE SQL;
+                    ALTER TABLE test DROP t2;
+                ");
+
+                var cmd = new NpgsqlCommand("pg_temp.test_func", conn) { CommandType = CommandType.StoredProcedure };
+                NpgsqlCommandBuilder.DeriveParameters(cmd);
+                Assert.That(cmd.Parameters, Has.Count.EqualTo(2));
+                Assert.That(cmd.Parameters[0].Direction, Is.EqualTo(ParameterDirection.Output));
+                Assert.That(cmd.Parameters[0].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Integer));
+                Assert.That(cmd.Parameters[1].Direction, Is.EqualTo(ParameterDirection.Output));
+                Assert.That(cmd.Parameters[1].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Text));
+            }
+        }
+
         #endregion
 
         #region CommandType.Text
