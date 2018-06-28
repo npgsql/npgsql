@@ -399,7 +399,7 @@ CASE
 END AS proargmodes
 FROM pg_proc
 LEFT JOIN pg_type ON pg_proc.prorettype = pg_type.oid
-LEFT JOIN pg_attribute ON pg_type.typrelid = pg_attribute.attrelid AND pg_attribute.attnum >= 1
+LEFT JOIN pg_attribute ON pg_type.typrelid = pg_attribute.attrelid AND pg_attribute.attnum >= 1 AND NOT pg_attribute.attisdropped
 WHERE pg_proc.oid = :proname::regproc
 GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_proc.proargmodes, pg_proc.pronargs;
 ";
