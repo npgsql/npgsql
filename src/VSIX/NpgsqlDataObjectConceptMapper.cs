@@ -19,9 +19,7 @@ namespace Npgsql.VSIX
             public const string REFCURSOR = "REFCURSOR";
             public const string CHAR = "CHAR";
             public const string BPCHAR = "BPCHAR";
-            public const string NBPCHAR = "NBPCHAR";
             public const string VARCHAR = "VARCHAR";
-            public const string NVARCHAR = "NVARCHAR";
             public const string TEXT = "TEXT";
             public const string NAME = "NAME";
             public const string BYTEA = "BYTEA";
@@ -48,9 +46,7 @@ namespace Npgsql.VSIX
             public const string INTERVAL = "INTERVAL";
             public const string DATE = "DATE";
             public const string TIME = "TIME";
-            public const string TIMETZ = "TIMETZ";
             public const string TIMESTAMP = "TIMESTAMP";
-            public const string TIMESTAMPTZ = "TIMESTAMPTZ";
         }
         #endregion
 
@@ -90,13 +86,7 @@ namespace Npgsql.VSIX
                 case NpgsqlColumnDataTypes.BPCHAR:
                     ret = DbType.String;
                     break;
-                case NpgsqlColumnDataTypes.NBPCHAR:
-                    ret = DbType.String;
-                    break;
                 case NpgsqlColumnDataTypes.VARCHAR:
-                    ret = DbType.String;
-                    break;
-                case NpgsqlColumnDataTypes.NVARCHAR:
                     ret = DbType.String;
                     break;
                 case NpgsqlColumnDataTypes.TEXT:
@@ -144,14 +134,8 @@ namespace Npgsql.VSIX
                 case NpgsqlColumnDataTypes.DATE:
                     ret = DbType.Date;
                     break;
-                case NpgsqlColumnDataTypes.TIMETZ:
+               case NpgsqlColumnDataTypes.TIME:
                     ret = DbType.Time;
-                    break;
-                case NpgsqlColumnDataTypes.TIME:
-                    ret = DbType.Time;
-                    break;
-                case NpgsqlColumnDataTypes.TIMESTAMPTZ:
-                    ret = DbType.DateTime;
                     break;
                 case NpgsqlColumnDataTypes.TIMESTAMP:
                     ret = DbType.DateTime;
@@ -191,13 +175,7 @@ namespace Npgsql.VSIX
                 case NpgsqlColumnDataTypes.BPCHAR:
                     ret = typeof(string);
                     break;
-                case NpgsqlColumnDataTypes.NBPCHAR:
-                    ret = typeof(string);
-                    break;
                 case NpgsqlColumnDataTypes.VARCHAR:
-                    ret = typeof(string);
-                    break;
-                case NpgsqlColumnDataTypes.NVARCHAR:
                     ret = typeof(string);
                     break;
                 case NpgsqlColumnDataTypes.TEXT:
@@ -260,13 +238,7 @@ namespace Npgsql.VSIX
                 case NpgsqlColumnDataTypes.TIME:
                     ret = typeof(DateTime);
                     break;
-                case NpgsqlColumnDataTypes.TIMETZ:
-                    ret = typeof(DateTimeOffset);
-                    break;
                 case NpgsqlColumnDataTypes.TIMESTAMP:
-                    ret = typeof(DateTime);
-                    break;
-                case NpgsqlColumnDataTypes.TIMESTAMPTZ:
                     ret = typeof(DateTime);
                     break;
                 default:
@@ -304,14 +276,8 @@ namespace Npgsql.VSIX
                 case NpgsqlColumnDataTypes.BPCHAR:
                     ret = NpgsqlDbType.Char;
                     break;
-                case NpgsqlColumnDataTypes.NBPCHAR:
-                    ret = NpgsqlDbType.NChar;
-                    break;
                 case NpgsqlColumnDataTypes.VARCHAR:
                     ret = NpgsqlDbType.Varchar;
-                    break;
-                case NpgsqlColumnDataTypes.NVARCHAR:
-                    ret = NpgsqlDbType.NVarchar;
                     break;
                 case NpgsqlColumnDataTypes.TEXT:
                     ret = NpgsqlDbType.Text;
@@ -385,14 +351,8 @@ namespace Npgsql.VSIX
                 case NpgsqlColumnDataTypes.DATE:
                     ret = NpgsqlDbType.Date;
                     break;
-                case NpgsqlColumnDataTypes.TIMETZ:
-                    ret = NpgsqlDbType.TimeTZ;
-                    break;
                 case NpgsqlColumnDataTypes.TIME:
                     ret = NpgsqlDbType.Time;
-                    break;
-                case NpgsqlColumnDataTypes.TIMESTAMPTZ:
-                    ret = NpgsqlDbType.TimestampTZ;
                     break;
                 case NpgsqlColumnDataTypes.TIMESTAMP:
                     ret = NpgsqlDbType.Timestamp;
