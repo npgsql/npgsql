@@ -84,6 +84,7 @@
     <Compile Include="NpgsqlConnectionUIControl.Designer.cs">
       <DependentUpon>NpgsqlConnectionUIControl.cs</DependentUpon>
     </Compile>
+    <Compile Include="NpgsqlDataObjectConceptMapper.cs" />
     <Compile Include="NpgsqlProviderRegistration.cs" />
     <Compile Include="NpgsqlProviderObjectFactory.cs" />
     <Compile Include="NpgsqlSourceInformation.cs" />

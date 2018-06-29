@@ -356,20 +356,21 @@
       <Properties>
         <Property name="Name" isIdentifierPart="true" />
         <Property name="Ordinal" underlyingMember="ordinal_position" />
+        <Property name="UserDataType" underlyingMember="data_type" />
         <Property name="NativeDataType" underlyingMember="data_type" />
-        <Property name="AdoDotNetDataType" underlyingMember="data_type">
+        <Property name="ProviderDataType" underlyingMember="data_type">
           <Conversion>
-            <CallMapper implementationType="Microsoft.VisualStudio.Data.Framework.AdoDotNet.AdoDotNetMappedObjectConverter" />
+            <CallMapper implementationType="Npgsql.VSIX.NpgsqlDataObjectConceptMapper" />
           </Conversion>
         </Property>
-        <Property name="AdoDotNetDbType" underlyingMember="data_type">
+        <Property name="ProviderDbType" underlyingMember="data_type">
           <Conversion>
-            <CallMapper />
+            <CallMapper implementationType="Npgsql.VSIX.NpgsqlDataObjectConceptMapper"/>
           </Conversion>
         </Property>
         <Property name="FrameworkDataType" underlyingMember="data_type">
           <Conversion>
-            <CallMapper />
+            <CallMapper implementationType="Npgsql.VSIX.NpgsqlDataObjectConceptMapper"/>
           </Conversion>
         </Property>
         <Property name="Length" underlyingMember="character_maximum_length" />
@@ -473,20 +474,21 @@
       <Properties>
         <Property name="Name" isIdentifierPart="true" />
         <Property name="Ordinal" underlyingMember="ordinal_position" />
+        <Property name="UserDataType" underlyingMember="data_type" />
         <Property name="NativeDataType" underlyingMember="data_type" />
-        <Property name="AdoDotNetDataType" underlyingMember="data_type">
+        <Property name="ProviderDataType" underlyingMember="data_type">
           <Conversion>
-            <CallMapper implementationType="Microsoft.VisualStudio.Data.Framework.AdoDotNet.AdoDotNetMappedObjectConverter" />
+            <CallMapper implementationType="Npgsql.VSIX.NpgsqlDataObjectConceptMapper" />
           </Conversion>
         </Property>
-        <Property name="AdoDotNetDbType" underlyingMember="data_type">
+        <Property name="ProviderDbType" underlyingMember="data_type">
           <Conversion>
-            <CallMapper />
+            <CallMapper implementationType="Npgsql.VSIX.NpgsqlDataObjectConceptMapper"/>
           </Conversion>
         </Property>
         <Property name="FrameworkDataType" underlyingMember="data_type">
           <Conversion>
-            <CallMapper />
+            <CallMapper implementationType="Npgsql.VSIX.NpgsqlDataObjectConceptMapper"/>
           </Conversion>
         </Property>
         <Property name="Length" underlyingMember="character_maximum_length" />
