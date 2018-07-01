@@ -211,6 +211,82 @@ namespace Npgsql.Tests
             }, Throws.InvalidOperationException.With.Message.EqualTo("Some problem parsing the returned data"));
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1964")]
+        public void Bug1964()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("INVALID SQL", conn))
+            {
+                cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Direction = ParameterDirection.Output });
+                Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception.TypeOf<PostgresException>()
+                    .With.Property(nameof(PostgresException.SqlState)).EqualTo("42601"));
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1986")]
+        public void Bug1986()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT 'hello', 'goodbye'", conn))
+            using (var reader = cmd.ExecuteReader())
+            {
+                reader.Read();
+                using (var textReader1 = reader.GetTextReader(0))
+                {
+
+                }
+                using (var textReader2 = reader.GetTextReader(1))
+                {
+
+                }
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1987")]
+        public void Bug1987()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                MaxAutoPrepare = 10,
+                AutoPrepareMinUsages = 2,
+                Pooling = false
+            };
+
+            using (var conn = OpenConnection(csb))
+            {
+                conn.ExecuteNonQuery("CREATE TYPE pg_temp.mood AS ENUM ('sad', 'ok', 'happy')");
+                conn.ReloadTypes();
+                conn.TypeMapper.MapEnum<Mood>("mood");
+                for (var i = 0; i < 2; i++)
+                {
+                    using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+                    {
+                        cmd.Parameters.AddWithValue("p", Mood.Happy);
+                        Assert.That(cmd.ExecuteScalar(), Is.EqualTo(Mood.Happy));
+                    }
+                }
+            }
+        }
+
+        enum Mood { Sad, Ok, Happy };
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2003")]
+        public void Bug2003()
+        {
+            // A big RowDescription (larger than buffer size) causes an oversize buffer allocation, but which isn't
+            // picked up by sequential reader which continues to read from the original buffer.
+            using (var conn = OpenConnection())
+            {
+                var longFieldName = new string('x', conn.Settings.ReadBufferSize);
+                using (var cmd = new NpgsqlCommand($"SELECT 8 AS {longFieldName}", conn))
+                using (var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess))
+                {
+                    reader.Read();
+                    Assert.That(reader.GetInt32(0), Is.EqualTo(8));
+                }
+            }
+        }
+
         #region Bug1285
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1285")]

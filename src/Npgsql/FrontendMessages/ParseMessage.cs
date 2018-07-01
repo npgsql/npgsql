@@ -62,7 +62,7 @@ namespace Npgsql.FrontendMessages
             Populate(sql, statementName);
             foreach (var inputParam in inputParameters)
             {
-                inputParam.ResolveHandler(typeMapper);
+                Debug.Assert(inputParam.Handler != null, "Input parameter doesn't have a resolved handler when populating Parse message");
                 ParameterTypeOIDs.Add(inputParam.Handler.PostgresType.OID);
             }
             return this;

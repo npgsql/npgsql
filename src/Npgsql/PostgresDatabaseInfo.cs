@@ -1,4 +1,5 @@
 ﻿#region License
+
 // The PostgreSQL License
 //
 // Copyright (C) 2018 The Npgsql Development Team
@@ -19,24 +20,29 @@
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+
 #endregion
 
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data.Common;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using JetBrains.Annotations;
 using Npgsql.Logging;
 using Npgsql.PostgresTypes;
 
 namespace Npgsql
 {
+    /// <summary>
+    /// The default implementation of <see cref="INpgsqlDatabaseInfoFactory"/>, for standard PostgreSQL databases..
+    /// </summary>
     class PostgresDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
     {
-        public async Task<NpgsqlDatabaseInfo> Load(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
+        /// <inheritdoc />
+        [NotNull]
+        public async Task<NpgsqlDatabaseInfo> Load([NotNull] NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
         {
             var db = new PostgresDatabaseInfo();
             await db.LoadPostgresInfo(conn, timeout, async);
@@ -49,13 +55,44 @@ namespace Npgsql
     /// </summary>
     class PostgresDatabaseInfo : NpgsqlDatabaseInfo
     {
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+        /// <summary>
+        /// The Npgsql logger instance.
+        /// </summary>
+        [NotNull] static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
-        List<PostgresType> _types;
+        /// <summary>
+        /// The PostgreSQL types detected in the database.
+        /// </summary>
+        [CanBeNull] List<PostgresType> _types;
 
-        protected override IEnumerable<PostgresType> GetTypes() => _types;
+        /// <inheritdoc />
+        [NotNull]
+        protected override IEnumerable<PostgresType> GetTypes() => _types ?? Enumerable.Empty<PostgresType>();
 
-        internal async Task LoadPostgresInfo(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
+        /// <summary>
+        /// True if the backend is Amazon Redshift; otherwise, false.
+        /// </summary>
+        public bool IsRedshift { get; private set; }
+
+        /// <inheritdoc />
+        public override bool SupportsUnlisten => Version >= new Version(6, 4, 0) && !IsRedshift;
+
+        /// <summary>
+        /// True if the 'pg_enum' table includes the 'enumsortorder' column; otherwise, false.
+        /// </summary>
+        public virtual bool HasEnumSortOrder => Version >= new Version(9, 1, 0);
+
+        /// <summary>
+        /// Loads database information from the PostgreSQL database specified by <paramref name="conn"/>.
+        /// </summary>
+        /// <param name="conn">The database connection.</param>
+        /// <param name="timeout">The timeout while loading types from the backend.</param>
+        /// <param name="async">True to load types asynchronously.</param>
+        /// <returns>
+        /// A task representing the asynchronous operation.
+        /// </returns>
+        [NotNull]
+        internal async Task LoadPostgresInfo([NotNull] NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
         {
             var csb = new NpgsqlConnectionStringBuilder(conn.ConnectionString);
             Host = csb.Host;
@@ -72,17 +109,25 @@ namespace Npgsql
             _types = await LoadBackendTypes(conn, timeout, async);
         }
 
-        public bool IsRedshift { get; private set; }
-
-        /// <inheritdoc />
-        public override bool SupportsUnlisten => Version >= new Version(6, 4, 0) && !IsRedshift;
-
-        // Select all types (base, array which is also base, enum, range, composite).
-        // Note that arrays are distinguished from primitive types through them having typreceive=array_recv.
-        // Order by primitives first, container later.
-        // For arrays and ranges, join in the element OID and type (to filter out arrays of unhandled
-        // types).
-        static string GenerateTypesQuery(bool withRange, bool withEnum, bool loadTableComposites)
+        /// <summary>
+        /// Generates a raw SQL query string to select type information.
+        /// </summary>
+        /// <param name="withRange">True to load range types.</param>
+        /// <param name="withEnum">True to load enum types.</param>
+        /// <param name="withEnumSortOrder"></param>
+        /// <param name="loadTableComposites">True to load table composites.</param>
+        /// <returns>
+        /// A raw SQL query string that selects type information.
+        /// </returns>
+        /// <remarks>
+        /// Select all types (base, array which is also base, enum, range, composite).
+        /// Note that arrays are distinguished from primitive types through them having typreceive=array_recv.
+        /// Order by primitives first, container later.
+        /// For arrays and ranges, join in the element OID and type (to filter out arrays of unhandled
+        /// types).
+        /// </remarks>
+        [NotNull]
+        static string GenerateTypesQuery(bool withRange, bool withEnum, bool withEnumSortOrder, bool loadTableComposites)
             => $@"
 /*** Load all supported types ***/
 SELECT ns.nspname, a.typname, a.oid, a.typrelid, a.typbasetype,
@@ -109,7 +154,8 @@ WHERE
   a.typtype IN ('b', 'r', 'e', 'd') OR         /* Base, range, enum, domain */
   (a.typtype = 'c' AND {(loadTableComposites ? "ns.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')" : "cls.relkind='c'")}) OR /* User-defined free-standing composites (not table composites) by default */
   (pg_proc.proname='array_recv' AND (
-    b.typtype IN ('b', 'r', 'e', 'd') OR       /* Array of base, range, enum domain */
+    b.typtype IN ('b', 'r', 'e', 'd') OR       /* Array of base, range, enum, domain */
+    (b.typtype = 'p' AND b.typname IN ('record', 'void')) OR /* Arrays of special supported pseudo-types */
     (b.typtype = 'c' AND elemcls.relkind='c')  /* Array of user-defined free-standing composites (not table composites) */
   )) OR
   (a.typtype = 'p' AND a.typname IN ('record', 'void'))  /* Some special supported pseudo-types */
@@ -126,15 +172,27 @@ WHERE
   attnum > 0 AND     /* Don't load system attributes */
   NOT attisdropped
 ORDER BY typ.typname, att.attnum;
-{(withEnum ? @"
+{(withEnum ? $@"
 /*** Load enum fields ***/
 SELECT pg_type.oid, enumlabel
 FROM pg_enum
 JOIN pg_type ON pg_type.oid=enumtypid
-ORDER BY oid, enumsortorder;" : "")}
+ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
 ";
 
-        internal async Task<List<PostgresType>> LoadBackendTypes(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
+        /// <summary>
+        /// Loads type information from the backend specified by <paramref name="conn"/>.
+        /// </summary>
+        /// <param name="conn">The database connection.</param>
+        /// <param name="timeout">The timeout while loading types from the backend.</param>
+        /// <param name="async">True to load types asynchronously.</param>
+        /// <returns>
+        /// A collection of types loaded from the backend.
+        /// </returns>
+        /// <exception cref="TimeoutException" />
+        /// <exception cref="ArgumentOutOfRangeException">Unknown typtype for type '{internalName}' in pg_type: {typeChar}.</exception>
+        [NotNull]
+        internal async Task<List<PostgresType>> LoadBackendTypes([NotNull] NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
         {
             var commandTimeout = 0;  // Default to infinity
             if (timeout.IsSet)
@@ -144,7 +202,7 @@ ORDER BY oid, enumsortorder;" : "")}
                     throw new TimeoutException();
             }
 
-            var typeLoadingQuery = GenerateTypesQuery(SupportsRangeTypes, SupportsEnumTypes, conn.Settings.LoadTableComposites);
+            var typeLoadingQuery = GenerateTypesQuery(SupportsRangeTypes, SupportsEnumTypes, HasEnumSortOrder, conn.Settings.LoadTableComposites);
 
             using (var command = new NpgsqlCommand(typeLoadingQuery, conn))
             {
@@ -258,7 +316,12 @@ ORDER BY oid, enumsortorder;" : "")}
             }
         }
 
-        void LoadCompositeFields(DbDataReader reader, Dictionary<uint, PostgresType> byOID)
+        /// <summary>
+        /// Loads composite fields for the composite type specified by the OID.
+        /// </summary>
+        /// <param name="reader">The reader from which to read composite fields.</param>
+        /// <param name="byOID">The OID of the composite type for which fields are read.</param>
+        static void LoadCompositeFields([NotNull] DbDataReader reader, [NotNull] Dictionary<uint, PostgresType> byOID)
         {
             PostgresCompositeType currentComposite = null;
             while (reader.Read())
@@ -287,7 +350,12 @@ ORDER BY oid, enumsortorder;" : "")}
             }
         }
 
-        void LoadEnumLabels(DbDataReader reader, Dictionary<uint, PostgresType> byOID)
+        /// <summary>
+        /// Loads enum labels for the enum type specified by the OID.
+        /// </summary>
+        /// <param name="reader">The reader from which to read enum labels.</param>
+        /// <param name="byOID">The OID of the enum type for which labels are read.</param>
+        static void LoadEnumLabels([NotNull] DbDataReader reader, [NotNull] Dictionary<uint, PostgresType> byOID)
         {
             PostgresEnumType currentEnum = null;
             while (reader.Read())
