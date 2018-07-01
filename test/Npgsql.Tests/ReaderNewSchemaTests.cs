@@ -679,9 +679,7 @@ namespace Npgsql.Tests
         {
             using (var conn = OpenConnection())
             {
-                TestUtil.MinimumPgVersion(conn, "9.1.0", "HSTORE data type not yet introduced");
-                conn.ExecuteNonQuery(@"CREATE EXTENSION IF NOT EXISTS hstore");
-                conn.ReloadTypes();
+                TestUtil.EnsureExtension(conn, "hstore", "9.1");
 
                 using (var cmd = new NpgsqlCommand("SELECT NULL::HSTORE", conn))
                 using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
