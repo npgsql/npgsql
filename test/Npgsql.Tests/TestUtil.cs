@@ -54,7 +54,7 @@ namespace Npgsql.Tests
         public static void IgnoreExceptOnBuildServer(string message, params object[] args)
             => IgnoreExceptOnBuildServer(string.Format(message, args));
 
-        public static void MinimumPgVersion(NpgsqlConnection conn, string minVersion, string ignoreText=null)
+        public static void MinimumPgVersion(NpgsqlConnection conn, string minVersion, string ignoreText = null)
         {
             var min = new Version(minVersion);
             if (conn.PostgreSqlVersion < min)
@@ -64,6 +64,20 @@ namespace Npgsql.Tests
                     msg += ": " + ignoreText;
                 Assert.Ignore(msg);
             }
+        }
+
+        static readonly Version MinCreateExtensionVersion = new Version(9, 1);
+        public static void EnsureExtension(NpgsqlConnection conn, string extension, string minVersion = null)
+        {
+            if (minVersion != null)
+                MinimumPgVersion(conn, minVersion,
+                    $"The extension '{extension}' only works for PostgreSQL {minVersion} and higher.");
+
+            if (conn.PostgreSqlVersion < MinCreateExtensionVersion)
+                Assert.Ignore($"The 'CREATE EXTENSION' command only works for PostgreSQL {MinCreateExtensionVersion} and higher.");
+
+            conn.ExecuteNonQuery($"CREATE EXTENSION IF NOT EXISTS {extension}");
+            conn.ReloadTypes();
         }
 
         public static string GetUniqueIdentifier(string prefix)

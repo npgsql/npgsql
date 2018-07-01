@@ -161,6 +161,8 @@ CHECK
         {
             using (var conn = OpenLocalConnection())
             {
+                TestUtil.EnsureExtension(conn, "citext");
+
                 conn.TypeMapper.RemoveMapping("text");
                 conn.TypeMapper.AddMapping(new NpgsqlTypeMappingBuilder
                 {

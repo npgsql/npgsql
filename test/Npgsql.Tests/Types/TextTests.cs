@@ -253,11 +253,7 @@ namespace Npgsql.Tests.Types
         {
             using (var conn = OpenConnection())
             {
-                if (conn.PostgreSqlVersion >= new Version(9, 1, 0))
-                {
-                    conn.ExecuteNonQuery("CREATE EXTENSION IF NOT EXISTS citext");
-                    conn.ReloadTypes();
-                }
+                TestUtil.EnsureExtension(conn, "citext");
 
                 var value = "Foo";
                 using (var cmd = new NpgsqlCommand("SELECT @p::CITEXT", conn))

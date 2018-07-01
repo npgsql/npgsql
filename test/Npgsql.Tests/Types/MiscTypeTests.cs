@@ -266,9 +266,7 @@ namespace Npgsql.Tests.Types
         {
             using (var conn = OpenConnection())
             {
-                TestUtil.MinimumPgVersion(conn, "9.1.0", "HSTORE data type not yet introduced");
-                conn.ExecuteNonQuery(@"CREATE EXTENSION IF NOT EXISTS hstore");
-                conn.ReloadTypes();
+                TestUtil.EnsureExtension(conn, "hstore", "9.1");
 
                 var expected = new Dictionary<string, string> {
                     {"a", "3"},
