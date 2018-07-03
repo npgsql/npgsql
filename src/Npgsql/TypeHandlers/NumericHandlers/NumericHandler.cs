@@ -99,12 +99,12 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             value._low = (uint)integer;
             remainder = (uint)(integer >> 32);
 
-            integer = (ulong)value._mid * multiplier;
-            value._mid = (uint)integer + remainder;
+            integer = (ulong)value._mid * multiplier + remainder;
+            value._mid = (uint)integer;
             remainder = (uint)(integer >> 32);
 
-            integer = (ulong)value._high * multiplier;
-            value._high = (uint)integer + remainder;
+            integer = (ulong)value._high * multiplier + remainder;
+            value._high = (uint)integer;
             remainder = (uint)(integer >> 32);
 
             if (remainder != 0)
@@ -263,7 +263,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         double INpgsqlSimpleTypeHandler<double>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
             => (double)Read(buf, len, fieldDescription);
 
-        #endregion Read
+        #endregion
 
         #region Write
 
@@ -379,6 +379,6 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         public void Write(double value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
             => Write((decimal)value, buf, parameter);
 
-        #endregion Write
+        #endregion
     }
 }
