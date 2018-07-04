@@ -20,7 +20,7 @@ namespace Npgsql.TypeHandlers
         Type CompositeType { get; }
     }
 
-    class MappedCompositeHandler<T> : NpgsqlTypeHandler<T>, IMappedCompositeHandler where T : new()
+    class MappedCompositeHandler<T> : NpgsqlBaseTypeHandler<T>, IMappedCompositeHandler where T : new()
     {
         readonly INpgsqlNameTranslator _nameTranslator;
         readonly NpgsqlConnection _conn;

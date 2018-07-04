@@ -36,7 +36,7 @@ namespace Npgsql.LegacyPostgis
             => new LegacyPostgisHandler();
     }
 
-    class LegacyPostgisHandler : NpgsqlTypeHandler<PostgisGeometry>,
+    class LegacyPostgisHandler : NpgsqlBaseTypeHandler<PostgisGeometry>,
         INpgsqlTypeHandler<PostgisPoint>, INpgsqlTypeHandler<PostgisMultiPoint>,
         INpgsqlTypeHandler<PostgisLineString>, INpgsqlTypeHandler<PostgisMultiLineString>,
         INpgsqlTypeHandler<PostgisPolygon>, INpgsqlTypeHandler<PostgisMultiPolygon>,

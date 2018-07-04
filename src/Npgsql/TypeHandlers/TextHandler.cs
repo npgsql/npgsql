@@ -57,7 +57,7 @@ namespace Npgsql.TypeHandlers
             => new TextHandler(conn);
     }
 
-    public class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler<char[]>, INpgsqlTypeHandler<ArraySegment<char>>,
+    public class TextHandler : NpgsqlBaseTypeHandler<string>, INpgsqlTypeHandler<char[]>, INpgsqlTypeHandler<ArraySegment<char>>,
         INpgsqlTypeHandler<char>, INpgsqlTypeHandler<byte[]>, ITextReaderHandler
     {
         // Text types are handled a bit more efficiently when sent as text than as binary
@@ -275,7 +275,7 @@ namespace Npgsql.TypeHandlers
             return buf.WriteChars(value, 0, charLen, lengthCache.GetLast(), async);
         }
 
-        public virtual Task Write(ArraySegment<char> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async) => 
+        public virtual Task Write(ArraySegment<char> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async) =>
             buf.WriteChars(value.Array, value.Offset, value.Count, lengthCache.GetLast(), async);
 
         Task WriteString(string str, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter, bool async)

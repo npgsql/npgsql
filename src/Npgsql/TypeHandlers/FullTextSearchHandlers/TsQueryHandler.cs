@@ -40,7 +40,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
         typeof(NpgsqlTsQuery), typeof(NpgsqlTsQueryAnd), typeof(NpgsqlTsQueryEmpty), typeof(NpgsqlTsQueryFollowedBy),
         typeof(NpgsqlTsQueryLexeme), typeof(NpgsqlTsQueryNot), typeof(NpgsqlTsQueryOr), typeof(NpgsqlTsQueryBinOp) })
     ]
-    class TsQueryHandler : NpgsqlTypeHandler<NpgsqlTsQuery>,
+    class TsQueryHandler : NpgsqlBaseTypeHandler<NpgsqlTsQuery>,
         INpgsqlTypeHandler<NpgsqlTsQueryEmpty>, INpgsqlTypeHandler<NpgsqlTsQueryLexeme>,
         INpgsqlTypeHandler<NpgsqlTsQueryNot>, INpgsqlTypeHandler<NpgsqlTsQueryAnd>,
         INpgsqlTypeHandler<NpgsqlTsQueryOr>, INpgsqlTypeHandler<NpgsqlTsQueryFollowedBy>

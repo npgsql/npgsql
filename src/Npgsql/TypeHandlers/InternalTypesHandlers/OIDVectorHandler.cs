@@ -46,12 +46,14 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
     /// An OIDVector is simply a regular array of uints, with the sole exception that its lower bound must
     /// be 0 (we send 1 for regular arrays).
     /// </summary>
-    class OIDVectorHandler : ArrayHandler<uint>
+    class OIDVectorHandler : ArrayHandler<uint>, INpgsqlArrayHandlerFactory
     {
         public OIDVectorHandler(PostgresType postgresOIDType)
             : base(new UInt32Handler { PostgresType = postgresOIDType }, 0) { }
 
-        protected internal override ArrayHandler CreateArrayHandler(PostgresType arrayBackendType)
+        // Arrays can't be elements of arrays, but int2vector can be an element of an array even if it's internally
+        // implemented as an array itself.
+        public ArrayHandler CreateArrayHandler(PostgresType arrayBackendType)
             => new ArrayHandler<ArrayHandler<uint>>(this) { PostgresType = arrayBackendType };
     }
 }

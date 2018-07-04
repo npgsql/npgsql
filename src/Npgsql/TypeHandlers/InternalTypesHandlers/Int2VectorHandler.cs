@@ -46,12 +46,14 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
     /// An int2vector is simply a regular array of shorts, with the sole exception that its lower bound must
     /// be 0 (we send 1 for regular arrays).
     /// </summary>
-    class Int2VectorHandler : ArrayHandler<short>
+    class Int2VectorHandler : ArrayHandler<short>, INpgsqlArrayHandlerFactory
     {
         public Int2VectorHandler(PostgresType postgresShortType)
             : base(new Int16Handler { PostgresType = postgresShortType }, 0) { }
 
-        protected internal override ArrayHandler CreateArrayHandler(PostgresType arrayBackendType)
+        // Arrays can't be elements of arrays, but int2vector can be an element of an array even if it's internally
+        // implemented as an array itself.
+        public ArrayHandler CreateArrayHandler(PostgresType arrayBackendType)
             => new ArrayHandler<ArrayHandler<short>>(this) { PostgresType = arrayBackendType };
     }
 }

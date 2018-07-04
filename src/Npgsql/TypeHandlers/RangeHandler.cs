@@ -38,7 +38,7 @@ namespace Npgsql.TypeHandlers
     /// http://www.postgresql.org/docs/current/static/rangetypes.html
     /// </remarks>
     /// <typeparam name="TElement">the range subtype</typeparam>
-    class RangeHandler<TElement> : NpgsqlTypeHandler<NpgsqlRange<TElement>>
+    class RangeHandler<TElement> : NpgsqlTypeHandler<NpgsqlRange<TElement>>, INpgsqlArrayHandlerFactory
     {
         /// <summary>
         /// The type handler for the element that this range type holds
@@ -50,10 +50,11 @@ namespace Npgsql.TypeHandlers
             ElementHandler = elementHandler;
         }
 
-        internal override NpgsqlTypeHandler CreateRangeHandler(PostgresType backendType)
-        {
-            throw new Exception("Can't create range handler of range types, this is an Npgsql bug, please report.");
-        }
+        /// <summary>
+        /// Creates a type handler for arrays of this handler's type.
+        /// </summary>
+        public ArrayHandler CreateArrayHandler(PostgresType arrayBackendType)
+            => new ArrayHandler<NpgsqlRange<TElement>>(this) { PostgresType = arrayBackendType };
 
         #region Read
 

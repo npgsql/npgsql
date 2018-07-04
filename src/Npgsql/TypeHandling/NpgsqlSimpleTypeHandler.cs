@@ -43,7 +43,7 @@ namespace Npgsql.TypeHandling
     /// on a column with this handler will return a value with type <typeparamref name="TDefault"/>.
     /// Type handlers can support additional types by implementing <see cref="INpgsqlTypeHandler{T}"/>.
     /// </typeparam>
-    public abstract class NpgsqlSimpleTypeHandler<TDefault> : NpgsqlTypeHandler<TDefault>, INpgsqlSimpleTypeHandler<TDefault>
+    public abstract class NpgsqlSimpleTypeHandler<TDefault> : NpgsqlBaseTypeHandler<TDefault>, INpgsqlSimpleTypeHandler<TDefault>
     {
         delegate int NonGenericValidateAndGetLength(NpgsqlTypeHandler handler, object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter);
 

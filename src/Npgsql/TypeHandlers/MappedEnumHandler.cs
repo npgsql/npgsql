@@ -20,7 +20,7 @@ namespace Npgsql.TypeHandlers
         Type EnumType { get; }
     }
 
-    class MappedEnumHandler<T> : NpgsqlTypeHandler<T>, IMappedEnumHandler where T : new()
+    class MappedEnumHandler<T> : NpgsqlBaseTypeHandler<T>, IMappedEnumHandler where T : new()
     {
         readonly INpgsqlNameTranslator _nameTranslator;
         readonly NpgsqlConnection _conn;

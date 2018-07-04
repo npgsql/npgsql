@@ -50,7 +50,7 @@ namespace Npgsql.NetTopologySuite
             => new NetTopologySuiteHandler(_reader, _writer);
     }
 
-    class NetTopologySuiteHandler : NpgsqlTypeHandler<IGeometry>, INpgsqlTypeHandler<Geometry>,
+    class NetTopologySuiteHandler : NpgsqlBaseTypeHandler<IGeometry>, INpgsqlTypeHandler<Geometry>,
         INpgsqlTypeHandler<IPoint>, INpgsqlTypeHandler<Point>,
         INpgsqlTypeHandler<ILineString>, INpgsqlTypeHandler<LineString>,
         INpgsqlTypeHandler<IPolygon>, INpgsqlTypeHandler<Polygon>,

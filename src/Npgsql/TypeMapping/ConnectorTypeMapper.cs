@@ -260,8 +260,8 @@ namespace Npgsql.TypeMapping
                 if (_byOID.TryGetValue(domain.BaseType.OID, out var baseTypeHandler))
                 {
                     _byOID[domain.OID] = baseTypeHandler;
-                    if (domain.Array != null)
-                        BindType(baseTypeHandler.CreateArrayHandler(domain.Array), domain.Array);
+                    if (domain.Array != null && baseTypeHandler is INpgsqlArrayHandlerFactory arrayHandlerFactory)
+                        BindType(arrayHandlerFactory.CreateArrayHandler(domain.Array), domain.Array);
                 }
 
             // Composites
@@ -354,7 +354,13 @@ namespace Npgsql.TypeMapping
 
         void BindArrayType(NpgsqlTypeHandler elementHandler, PostgresArrayType pgArrayType, NpgsqlDbType? elementNpgsqlDbType, Type[] elementClrTypes)
         {
-            var arrayHandler = elementHandler.CreateArrayHandler(pgArrayType);
+            if (!(elementHandler is INpgsqlArrayHandlerFactory arrayHandlerFactory))
+            {
+                Log.Warn($"{pgArrayType} exists as an array type in PostgreSQL, but its element handler {elementClrTypes.GetType().Name} doesn't support arrays");
+                return;
+            }
+
+            var arrayHandler = arrayHandlerFactory.CreateArrayHandler(pgArrayType);
 
             var arrayNpgsqlDbType = elementNpgsqlDbType.HasValue
                 ? NpgsqlDbType.Array | elementNpgsqlDbType.Value
@@ -380,7 +386,13 @@ namespace Npgsql.TypeMapping
 
         void BindRangeType(NpgsqlTypeHandler elementHandler, PostgresRangeType pgRangeType, NpgsqlDbType? elementNpgsqlDbType, Type[] elementClrTypes)
         {
-            var rangeHandler = elementHandler.CreateRangeHandler(pgRangeType);
+            if (!(elementHandler is INpgsqlRangeHandlerFactory rangeHandlerFactory))
+            {
+                Log.Warn($"{pgRangeType} exists as a range type in PostgreSQL, but its element handler {elementClrTypes.GetType().Name} doesn't support ranges");
+                return;
+            }
+
+            var rangeHandler = rangeHandlerFactory.CreateRangeHandler(pgRangeType);
 
             var rangeNpgsqlDbType = elementNpgsqlDbType.HasValue
                 ? NpgsqlDbType.Range | elementNpgsqlDbType.Value

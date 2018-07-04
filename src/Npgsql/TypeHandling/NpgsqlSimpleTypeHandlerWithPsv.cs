@@ -52,7 +52,7 @@ namespace Npgsql.TypeHandling
         /// <summary>
         /// Reads a value of type <typeparamref name="TPsv"/> with the given length from the provided buffer,
         /// with the assumption that it is entirely present in the provided memory buffer and no I/O will be
-        /// required. 
+        /// required.
         /// </summary>
         /// <param name="buf">The buffer from which to read.</param>
         /// <param name="len">The byte length of the value. The buffer might not contain the full length, requiring I/O to be performed.</param>
@@ -117,7 +117,7 @@ namespace Npgsql.TypeHandling
         /// <summary>
         /// Creates a type handler for arrays of this handler's type.
         /// </summary>
-        protected internal override ArrayHandler CreateArrayHandler(PostgresType arrayBackendType)
+        public override ArrayHandler CreateArrayHandler(PostgresType arrayBackendType)
             => new ArrayHandlerWithPsv<TDefault, TPsv>(this) { PostgresType = arrayBackendType };
 
         #endregion Misc

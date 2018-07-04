@@ -53,7 +53,7 @@ namespace Npgsql.TypeHandlers
     /// * The length of the column(32-bit integer), or -1 if null
     /// * The column data encoded as binary
     /// </remarks>
-    class UnmappedCompositeHandler : NpgsqlTypeHandler<object>
+    class UnmappedCompositeHandler : NpgsqlBaseTypeHandler<object>
     {
         readonly ConnectorTypeMapper _typeMapper;
         readonly INpgsqlNameTranslator _nameTranslator;

@@ -39,7 +39,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-geometric.html
     /// </remarks>
     [TypeMapping("path", NpgsqlDbType.Path, typeof(NpgsqlPath))]
-    class PathHandler : NpgsqlTypeHandler<NpgsqlPath>
+    class PathHandler : NpgsqlBaseTypeHandler<NpgsqlPath>
     {
         #region Read
 
