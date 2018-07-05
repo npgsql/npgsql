@@ -1445,6 +1445,12 @@ namespace Npgsql
                 CurrentReader = null;
             }
 
+            if (!IsSecure)
+            {
+                ReadBuffer.AwaitableSocket.Dispose();
+                WriteBuffer.AwaitableSocket.Dispose();
+            }
+
             ClearTransaction();
             _stream = null;
             _baseStream = null;
