@@ -231,9 +231,16 @@ ORDER BY attnum";
         /// </summary>
         void ColumnPostConfig(NpgsqlDbColumn column, int typeModifier)
         {
-            column.DataType = _connection.Connector.TypeHandlerRegistry.TryGetByOID(column.TypeOID, out var handler)
-                ? handler.GetFieldType()
-                : null;
+            if (_connection.Connector.TypeHandlerRegistry.TryGetByOID(column.TypeOID, out var handler))
+            {
+                column.DataType = handler.GetFieldType();
+                column.NpgsqlDbType = handler.PostgresType.NpgsqlDbType;
+            }
+            else
+            {
+                column.DataType = null;
+                column.NpgsqlDbType = null;
+            }
 
             if (column.DataType != null)
             {

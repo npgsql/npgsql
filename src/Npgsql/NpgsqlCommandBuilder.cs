@@ -355,9 +355,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// <param name="statementType">Type of the statement.</param>
         /// <param name="whereClause">if set to <c>true</c> [where clause].</param>
         protected override void ApplyParameterInfo(DbParameter p, DataRow row, System.Data.StatementType statementType, bool whereClause)
-        {
-            // TODO: We may need to set NpgsqlDbType, as well as other properties, on p
-        }
+            => ((NpgsqlParameter)p).NpgsqlDbType = (NpgsqlDbType)row[SchemaTableColumn.ProviderType];
 
         /// <summary>
         /// Returns the name of the specified parameter in the format of @p#.
