@@ -1445,16 +1445,12 @@ namespace Npgsql
                 CurrentReader = null;
             }
 
-            if (!IsSecure)
-            {
-                ReadBuffer.AwaitableSocket.Dispose();
-                WriteBuffer.AwaitableSocket.Dispose();
-            }
-
             ClearTransaction();
             _stream = null;
             _baseStream = null;
+            ReadBuffer?.AwaitableSocket?.Dispose();
             ReadBuffer = null;
+            WriteBuffer?.AwaitableSocket?.Dispose();
             WriteBuffer = null;
             Connection = null;
             PostgresParameters.Clear();
