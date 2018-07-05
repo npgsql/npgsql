@@ -1448,7 +1448,9 @@ namespace Npgsql
             ClearTransaction();
             _stream = null;
             _baseStream = null;
+            ReadBuffer?.AwaitableSocket?.Dispose();
             ReadBuffer = null;
+            WriteBuffer?.AwaitableSocket?.Dispose();
             WriteBuffer = null;
             Connection = null;
             PostgresParameters.Clear();
