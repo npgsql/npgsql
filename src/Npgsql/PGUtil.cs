@@ -120,20 +120,6 @@ namespace Npgsql
         internal static ulong ReverseEndianness(ulong value)
             => ((ulong)ReverseEndianness((uint)value) << 32) + ReverseEndianness((uint)(value >> 32));
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal unsafe static float ReverseEndianness(float value)
-        {
-            var result = ReverseEndianness(*(int*)(&value));
-            return *(float*)(&result);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal unsafe static double ReverseEndianness(double value)
-        {
-            var result = ReverseEndianness(*(long*)(&value));
-            return *(double*)(&result);
-        }
-
         internal static readonly Task CompletedTask = Task.FromResult(0);
         internal static readonly Task<bool> TrueTask = Task.FromResult(true);
         internal static readonly Task<bool> FalseTask = Task.FromResult(false);
