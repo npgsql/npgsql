@@ -267,7 +267,7 @@ namespace Npgsql
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteSingle(float value, bool littleEndian)
-            => Write(littleEndian == BitConverter.IsLittleEndian ? value : PGUtil.ReverseEndianness(value));
+            => WriteInt32(Unsafe.As<float, int>(ref value), littleEndian);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteDouble(double value)
@@ -275,10 +275,10 @@ namespace Npgsql
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteDouble(double value, bool littleEndian)
-            => Write(littleEndian == BitConverter.IsLittleEndian ? value : PGUtil.ReverseEndianness(value));
+            => WriteInt64(Unsafe.As<double, long>(ref value), littleEndian);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void Write<T>(T value)
+        void Write<T>(T value)
         {
             Debug.Assert(Unsafe.SizeOf<T>() <= WriteSpaceLeft);
             Unsafe.WriteUnaligned(ref Buffer[WritePosition], value);

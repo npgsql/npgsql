@@ -287,6 +287,23 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test]
+        public void Bug2046()
+        {
+            var expected = 64.27245f;
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT @p = 64.27245::real, 64.27245::real, @p", conn))
+            {
+                cmd.Parameters.AddWithValue("p", expected);
+                using (var rdr = cmd.ExecuteRecord())
+                {
+                    Assert.That(rdr.GetFieldValue<bool>(0));
+                    Assert.That(rdr.GetFieldValue<float>(1), Is.EqualTo(expected));
+                    Assert.That(rdr.GetFieldValue<float>(2), Is.EqualTo(expected));
+                }
+            }
+        }
+
         #region Bug1285
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1285")]
