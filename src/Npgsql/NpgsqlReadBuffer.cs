@@ -52,7 +52,7 @@ namespace Npgsql
         /// Wraps SocketAsyncEventArgs for better async I/O as long as we're not doing SSL.
         /// </summary>
         [CanBeNull]
-        internal AwaitableSocket AwaitableSocket { private get; set; }
+        internal AwaitableSocket AwaitableSocket { get; set; }
 
         /// <summary>
         /// The total byte length of the buffer.

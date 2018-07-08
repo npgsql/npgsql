@@ -41,6 +41,8 @@
              Display="expand" >
       <ComponentRef Id="Npgsql" />
       <ComponentRef Id="System.Threading.Tasks.Extensions" />
+      <ComponentRef Id="System.ValueTuple" />
+      <ComponentRef Id="System.Runtime.CompilerServices.Unsafe" />
       <ComponentRef Id="MachineConfig_x86" />
       <ComponentRef Id="MachineConfig_x64" />
 
@@ -114,6 +116,20 @@
           <File Id="System.Threading.Tasks.Extensions"
                 Name="System.Threading.Tasks.Extensions.dll"
                 Source="..\npgsql\bin\$(var.Configuration)\net451\System.Threading.Tasks.Extensions.dll"
+                KeyPath="yes"
+                Assembly=".net" />
+        </Component>
+        <Component Id="System.ValueTuple" Guid="07cfe929-4a0c-4b90-87df-37cceaa970b8">
+          <File Id="System.ValueTuple"
+                Name="System.ValueTuple.dll"
+                Source="..\npgsql\bin\$(var.Configuration)\net451\System.ValueTuple.dll"
+                KeyPath="yes"
+                Assembly=".net" />
+        </Component>
+        <Component Id="System.Runtime.CompilerServices.Unsafe" Guid="36194b8d-d2af-4dd6-a9a0-fb6942502e53">
+          <File Id="System.Runtime.CompilerServices.Unsafe"
+                Name="System.Runtime.CompilerServices.Unsafe.dll"
+                Source="..\npgsql\bin\$(var.Configuration)\net451\System.Runtime.CompilerServices.Unsafe.dll"
                 KeyPath="yes"
                 Assembly=".net" />
         </Component>
