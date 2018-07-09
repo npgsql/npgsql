@@ -1445,7 +1445,7 @@ namespace Npgsql
         /// </summary>
         Prefer,
         /// <summary>
-        /// Fail the connection if the server doesn't suppotr SSL.
+        /// Fail the connection if the server doesn't support SSL.
         /// </summary>
         Require,
     }
