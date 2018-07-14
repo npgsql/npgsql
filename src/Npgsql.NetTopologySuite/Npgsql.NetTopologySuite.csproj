@@ -25,9 +25,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="NetTopologySuite" Version="1.15.0-pre079" />
     <PackageReference Include="NetTopologySuite.IO" Version="1.15.0-pre071" />
-    <PackageReference Include="GeoAPI" Version="1.7.5-pre025" />
   </ItemGroup>
 
   <ItemGroup>
