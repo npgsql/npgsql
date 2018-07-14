@@ -28,13 +28,13 @@ using Npgsql.TypeMapping;
 using NpgsqlTypes;
 using System;
 
-namespace Npgsql.TypeHandlers.InternalTypeHandlers
+namespace Npgsql.TypeHandlers.InternalTypesHandlers
 {
     [TypeMapping("oidvector", NpgsqlDbType.Oidvector)]
-    class OIDVectorHandlerFactory : NpgsqlTypeHandlerFactory
+    class OidVectorHandlerFactory : NpgsqlTypeHandlerFactory
     {
         internal override NpgsqlTypeHandler Create(PostgresType pgType, NpgsqlConnection conn)
-            => new OIDVectorHandler(conn.Connector.TypeMapper.DatabaseInfo.ByName["oid"])
+            => new OidVectorHandler(conn.Connector.TypeMapper.DatabaseInfo.ByName["oid"])
             {
                 PostgresType = pgType
             };
@@ -46,12 +46,12 @@ namespace Npgsql.TypeHandlers.InternalTypeHandlers
     /// An OIDVector is simply a regular array of uints, with the sole exception that its lower bound must
     /// be 0 (we send 1 for regular arrays).
     /// </summary>
-    class OIDVectorHandler : ArrayHandler<uint>
+    class OidVectorHandler : ArrayHandler<uint>
     {
-        public OIDVectorHandler(PostgresType postgresOIDType)
-            : base(new UInt32Handler { PostgresType = postgresOIDType }, 0) { }
+        public OidVectorHandler(PostgresType postgresOidType)
+            : base(new UInt32Handler { PostgresType = postgresOidType }, 0) { }
 
         public override ArrayHandler CreateArrayHandler(PostgresType arrayBackendType)
-            => new ArrayHandler<ArrayHandler<uint>>(this) { PostgresType = arrayBackendType };
+            => new ArrayHandler<OidVectorHandler>(this) { PostgresType = arrayBackendType };
     }
 }
