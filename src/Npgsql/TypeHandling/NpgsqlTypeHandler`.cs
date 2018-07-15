@@ -294,15 +294,30 @@ namespace Npgsql.TypeHandling
         internal override Type GetFieldType(FieldDescription fieldDescription = null) => typeof(TDefault);
         internal override Type GetProviderSpecificFieldType(FieldDescription fieldDescription = null) => typeof(TDefault);
 
+        #endregion Misc
+    }
+
+    /// <summary>
+    /// Base class for type handlers of PostgreSQL base (or scalar) types, which can be elements of ranges and arrays.
+    /// </summary>
+    /// <typeparam name="TDefault">
+    /// The default CLR type that this handler will read and write. For example, calling <see cref="DbDataReader.GetValue"/>
+    /// on a column with this handler will return a value with type <typeparamref name="TDefault"/>.
+    /// Type handlers can support additional types by implementing <see cref="INpgsqlTypeHandler{T}"/>.
+    /// </typeparam>
+    public abstract class NpgsqlBaseTypeHandler<TDefault> : NpgsqlTypeHandler<TDefault>,
+        INpgsqlRangeHandlerFactory, INpgsqlArrayHandlerFactory
+    {
         /// <summary>
         /// Creates a type handler for arrays of this handler's type.
         /// </summary>
-        protected internal override ArrayHandler CreateArrayHandler(PostgresType arrayBackendType)
+        public virtual ArrayHandler CreateArrayHandler(PostgresType arrayBackendType)
             => new ArrayHandler<TDefault>(this) { PostgresType = arrayBackendType };
 
-        internal override NpgsqlTypeHandler CreateRangeHandler(PostgresType rangeBackendType)
+        /// <summary>
+        /// Creates a type handler for ranges of this handler's type.
+        /// </summary>
+        public virtual NpgsqlTypeHandler CreateRangeHandler(PostgresType rangeBackendType)
             => new RangeHandler<TDefault>(this) { PostgresType = rangeBackendType };
-
-        #endregion Misc
     }
 }

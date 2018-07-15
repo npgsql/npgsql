@@ -166,16 +166,6 @@ namespace Npgsql.TypeHandling
         internal virtual bool PreferTextWrite => false;
 
         /// <summary>
-        /// Creates a type handler for arrays of this handler's type.
-        /// </summary>
-        protected internal abstract ArrayHandler CreateArrayHandler(PostgresType arrayBackendType);
-
-        /// <summary>
-        /// Creates a type handler for ranges of this handler's type.
-        /// </summary>
-        internal abstract NpgsqlTypeHandler CreateRangeHandler(PostgresType rangeBackendType);
-
-        /// <summary>
         /// Used to create an exception when the provided type can be converted and written, but an
         /// instance of <see cref="NpgsqlParameter"/> is required for caching of the converted value
         /// (in <see cref="NpgsqlParameter.ConvertedValue"/>.

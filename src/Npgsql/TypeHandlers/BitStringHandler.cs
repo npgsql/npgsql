@@ -45,7 +45,7 @@ namespace Npgsql.TypeHandlers
     /// </remarks>
     [TypeMapping("bit varying", NpgsqlDbType.Varbit, new[] { typeof(BitArray), typeof(BitVector32) })]
     [TypeMapping("bit", NpgsqlDbType.Bit)]
-    class BitStringHandler : NpgsqlTypeHandler<BitArray>,
+    class BitStringHandler : NpgsqlBaseTypeHandler<BitArray>,
         INpgsqlTypeHandler<BitVector32>, INpgsqlTypeHandler<bool>, INpgsqlTypeHandler<string>
     {
         internal override Type GetFieldType(FieldDescription fieldDescription = null)
@@ -55,7 +55,7 @@ namespace Npgsql.TypeHandlers
             => GetFieldType(fieldDescription);
 
         // BitString requires a special array handler which returns bool or BitArray
-        protected internal override ArrayHandler CreateArrayHandler(PostgresType backendType)
+        public override ArrayHandler CreateArrayHandler(PostgresType backendType)
             => new BitStringArrayHandler(this) { PostgresType = backendType };
 
         #region Read

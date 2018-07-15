@@ -36,7 +36,7 @@ namespace Npgsql.TypeHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-binary.html
     /// </remarks>
     [TypeMapping("bytea", NpgsqlDbType.Bytea, DbType.Binary, new[] { typeof(byte[]), typeof(ArraySegment<byte>) })]
-    public class ByteaHandler : NpgsqlTypeHandler<byte[]>, INpgsqlTypeHandler<ArraySegment<byte>>
+    public class ByteaHandler : NpgsqlBaseTypeHandler<byte[]>, INpgsqlTypeHandler<ArraySegment<byte>>
     {
         /// <inheritdoc />
         public override async ValueTask<byte[]> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)

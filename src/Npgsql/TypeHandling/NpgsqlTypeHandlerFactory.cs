@@ -24,6 +24,7 @@
 using System;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeHandlers;
 using Npgsql.TypeMapping;
 
 namespace Npgsql.TypeHandling
@@ -71,5 +72,31 @@ namespace Npgsql.TypeHandling
         /// The default CLR type that handlers produced by this factory will read and write.
         /// </summary>
         internal override Type DefaultValueType => typeof(TDefault);
+    }
+
+    // Ranges and arrays are special - their factories are their elements' type handlers.
+
+    /// <summary>
+    /// Implemented by type handlers representing types that can be elements in PostgreSQL ranges.
+    /// While all base types can be range elements, range types cannot.
+    /// </summary>
+    public interface INpgsqlRangeHandlerFactory
+    {
+        /// <summary>
+        /// Creates a type handler for ranges of this handler's type.
+        /// </summary>
+        NpgsqlTypeHandler CreateRangeHandler(PostgresType rangeBackendType);
+    }
+
+    /// <summary>
+    /// Implemented by type handlers representing types that can be elements in PostgreSQL arrays.
+    /// While all base types can be array elements, array types cannot.
+    /// </summary>
+    public interface INpgsqlArrayHandlerFactory
+    {
+        /// <summary>
+        /// Creates a type handler for arrays of this handler's type.
+        /// </summary>
+        ArrayHandler CreateArrayHandler(PostgresType arrayBackendType);
     }
 }

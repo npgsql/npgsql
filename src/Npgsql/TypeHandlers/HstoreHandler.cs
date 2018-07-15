@@ -40,7 +40,7 @@ namespace Npgsql.TypeHandlers
     }
 
 #pragma warning disable CA1061 // Do not hide base class methods
-    class HstoreHandler : NpgsqlTypeHandler<Dictionary<string, string>>, INpgsqlTypeHandler<IDictionary<string, string>>
+    class HstoreHandler : NpgsqlBaseTypeHandler<Dictionary<string, string>>, INpgsqlTypeHandler<IDictionary<string, string>>
     {
         /// <summary>
         /// The text handler to which we delegate encoding/decoding of the actual strings
