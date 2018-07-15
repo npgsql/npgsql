@@ -23,6 +23,18 @@ namespace Npgsql.Benchmarks.TypeHandlers
     }
 
     [Config(typeof(Config))]
+    public class Single : TypeHandlerBenchmarks<float>
+    {
+        public Single() : base(new SingleHandler()) { }
+    }
+
+    [Config(typeof(Config))]
+    public class Double : TypeHandlerBenchmarks<double>
+    {
+        public Double() : base(new DoubleHandler()) { }
+    }
+
+    [Config(typeof(Config))]
     public class Numeric : TypeHandlerBenchmarks<decimal>
     {
         public Numeric() : base(new NumericHandler()) { }
