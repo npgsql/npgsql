@@ -256,8 +256,8 @@ namespace NpgsqlTypes
             if (!HasEquatableBounds)
                 return lowerBound?.Equals(upperBound) ?? false;
 
-            IEquatable<T> lower = (IEquatable<T>)lowerBound;
-            IEquatable<T> upper = (IEquatable<T>)upperBound;
+            var lower = (IEquatable<T>)lowerBound;
+            var upper = (IEquatable<T>)upperBound;
 
             return
                 !(lower?.Equals(default) ?? true) &&
