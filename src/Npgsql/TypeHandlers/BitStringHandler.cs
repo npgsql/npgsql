@@ -55,7 +55,7 @@ namespace Npgsql.TypeHandlers
             => GetFieldType(fieldDescription);
 
         // BitString requires a special array handler which returns bool or BitArray
-        protected internal override ArrayHandler CreateArrayHandler(PostgresType backendType)
+        public override ArrayHandler CreateArrayHandler(PostgresType backendType)
             => new BitStringArrayHandler(this) { PostgresType = backendType };
 
         #region Read
