@@ -535,6 +535,24 @@ namespace Npgsql
         SslMode _sslmode;
 
         /// <summary>
+        /// Specifies the file name of the client SSL certificate.
+        /// </summary>
+        [Category("Security")]
+        [Description("Specifies the file name of the client SSL certificate.")]
+        [DisplayName("SSL Cert")]
+        [NpgsqlConnectionStringProperty]
+        public string SslCert
+        {
+            get => _sslCert;
+            set
+            {
+                _sslCert = value;
+                SetValue(nameof(SslCert), value);
+            }
+        }
+        string _sslCert;
+
+        /// <summary>
         /// Whether to trust the server certificate without validating it.
         /// </summary>
         [Category("Security")]
