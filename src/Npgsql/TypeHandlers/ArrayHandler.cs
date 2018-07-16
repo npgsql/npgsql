@@ -47,7 +47,7 @@ namespace Npgsql.TypeHandlers
         internal override NpgsqlTypeHandler CreateRangeHandler(PostgresType rangeBackendType)
             => throw new NotSupportedException();
     }
-    
+
     /// <summary>
     /// Base class for all type handlers which handle PostgreSQL arrays.
     /// </summary>
@@ -217,7 +217,7 @@ namespace Npgsql.TypeHandlers
                 if (element != null && typeof(TElement) != typeof(DBNull))
                     try
                     {
-                        len += _elementHandler.ValidateAndGetLength(element, ref lengthCache, null);
+                        len += _elementHandler.ValidateAndGetLengthEntry(element, ref lengthCache, null);
                     }
                     catch (Exception e)
                     {
@@ -259,53 +259,25 @@ namespace Npgsql.TypeHandlers
             return len;
         }
 
-        internal override Task WriteWithLengthInternal<TAny>(TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        protected internal override Task WriteWithLength<TAny>(TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
-            if (buf.WriteSpaceLeft < 4)
-                return WriteWithLengthLong();
+            buf.WriteInt32(ValidateAndGetLength(value, ref lengthCache, parameter));
 
-            if (value == null || typeof(TAny) == typeof(DBNull))
-            {
-                buf.WriteInt32(-1);
-                return PGUtil.CompletedTask;
-            }
+            if (value is ICollection<TElement> list)
+                return WriteGeneric(list, buf, lengthCache, async);
 
-            return WriteWithLength();
+            if (value is ICollection nonGeneric)
+                return WriteNonGeneric(nonGeneric, buf, lengthCache, async);
 
-            async Task WriteWithLengthLong()
-            {
-                if (buf.WriteSpaceLeft < 4)
-                    await buf.Flush(async);
-
-                if (value == null || typeof(TAny) == typeof(DBNull))
-                {
-                    buf.WriteInt32(-1);
-                    return;
-                }
-
-                await WriteWithLength();
-            }
-
-            Task WriteWithLength()
-            {
-                buf.WriteInt32(ValidateAndGetLength(value, ref lengthCache, parameter));
-
-                if (value is ICollection<TElement> list)
-                    return WriteGeneric(list, buf, lengthCache, async);
-
-                if (value is ICollection nonGeneric)
-                    return WriteNonGeneric(nonGeneric, buf, lengthCache, async);
-
-                throw CantWriteTypeException(value.GetType());
-            }
+            throw CantWriteTypeException(value.GetType());
         }
 
         // The default WriteObjectWithLength casts the type handler to INpgsqlTypeHandler<T>, but that's not sufficient for
         // us (need to handle many types of T, e.g. int[], int[,]...)
         protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
             => value == null || value is DBNull
-                ? WriteWithLengthInternal<DBNull>(null, buf, lengthCache, parameter, async)
-                : WriteWithLengthInternal(value, buf, lengthCache, parameter, async);
+                ? WriteWithLengthEntry<DBNull>(null, buf, lengthCache, parameter, async)
+                : WriteWithLength(value, buf, lengthCache, parameter, async);
 
         async Task WriteGeneric(ICollection<TElement> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, bool async)
         {

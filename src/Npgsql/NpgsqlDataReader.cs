@@ -703,53 +703,6 @@ namespace Npgsql
 
         #endregion
 
-        #region Generic value getters
-
-        internal delegate T ReadDelegate<T>(NpgsqlReadBuffer buffer, int columnLen, FieldDescription fieldDescription);
-
-        internal delegate ValueTask<T> ReadAsyncDelegate<T>(NpgsqlReadBuffer buffer, int columnLen, bool async, FieldDescription fieldDescription);
-
-        internal static class NullableHandler<T>
-        {
-            public static readonly ReadDelegate<T> Read;
-            public static readonly ReadAsyncDelegate<T> ReadAsync;
-            public static readonly bool Exists;
-
-            static NullableHandler()
-                => Exists = NullableHandler.Construct(out Read, out ReadAsync);
-        }
-
-        static class NullableHandler
-        {
-            static readonly MethodInfo _readNullableMethod = new ReadDelegate<int?>(ReadNullable<int>).Method.GetGenericMethodDefinition();
-            static readonly MethodInfo _readNullableAsyncMethod = new ReadAsyncDelegate<int?>(ReadNullable<int>).Method.GetGenericMethodDefinition();
-
-            static T? ReadNullable<T>(NpgsqlReadBuffer buffer, int columnLen, FieldDescription fieldDescription) where T : struct
-                => fieldDescription.Handler.Read<T>(buffer, columnLen, fieldDescription);
-
-            static async ValueTask<T?> ReadNullable<T>(NpgsqlReadBuffer buffer, int columnLen, bool async, FieldDescription fieldDescription) where T : struct
-                => await fieldDescription.Handler.Read<T>(buffer, columnLen, async, fieldDescription);
-
-            public static bool Construct<T>(out ReadDelegate<T> read, out ReadAsyncDelegate<T> readAsync)
-            {
-                var underlyingType = Nullable.GetUnderlyingType(typeof(T));
-                if (underlyingType != null)
-                {
-                    read = (ReadDelegate<T>)_readNullableMethod.MakeGenericMethod(underlyingType).CreateDelegate(typeof(ReadDelegate<T>));
-                    readAsync = (ReadAsyncDelegate<T>)_readNullableAsyncMethod.MakeGenericMethod(underlyingType).CreateDelegate(typeof(ReadAsyncDelegate<T>));
-                    return true;
-                }
-                else
-                {
-                    read = null;
-                    readAsync = null;
-                    return false;
-                }
-            }
-        }
-
-        #endregion Generic value getters
-
         #region Simple value getters
 
         /// <summary>

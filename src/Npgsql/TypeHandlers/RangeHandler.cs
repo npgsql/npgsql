@@ -84,9 +84,9 @@ namespace Npgsql.TypeHandlers
             if (!value.IsEmpty)
             {
                 if (!value.LowerBoundInfinite)
-                    totalLen += 4 + ElementHandler.ValidateAndGetLength(value.LowerBound, ref lengthCache, null);
+                    totalLen += 4 + ElementHandler.ValidateAndGetLengthEntry(value.LowerBound, ref lengthCache, null);
                 if (!value.UpperBoundInfinite)
-                    totalLen += 4 + ElementHandler.ValidateAndGetLength(value.UpperBound, ref lengthCache, null);
+                    totalLen += 4 + ElementHandler.ValidateAndGetLengthEntry(value.UpperBound, ref lengthCache, null);
             }
 
             // If we're traversing an already-populated length cache, rewind to first element slot so that
@@ -105,9 +105,9 @@ namespace Npgsql.TypeHandlers
             if (value.IsEmpty)
                 return;
             if (!value.LowerBoundInfinite)
-                await ElementHandler.WriteWithLengthInternal(value.LowerBound, buf, lengthCache, null, async);
+                await ElementHandler.WriteWithLengthEntry(value.LowerBound, buf, lengthCache, null, async);
             if (!value.UpperBoundInfinite)
-                await ElementHandler.WriteWithLengthInternal(value.UpperBound, buf, lengthCache, null, async);
+                await ElementHandler.WriteWithLengthEntry(value.UpperBound, buf, lengthCache, null, async);
         }
 
         #endregion

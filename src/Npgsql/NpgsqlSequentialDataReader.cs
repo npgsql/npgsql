@@ -81,13 +81,6 @@ namespace Npgsql
             var fieldDescription = RowDescription[column];
             try
             {
-                if (NullableHandler<T>.Exists)
-                {
-                    return ColumnLen <= Buffer.ReadBytesLeft
-                        ? NullableHandler<T>.Read(Buffer, ColumnLen, fieldDescription)
-                        : await NullableHandler<T>.ReadAsync(Buffer, ColumnLen, async, fieldDescription);
-                }
-
                 if (typeof(T) == typeof(object))
                 {
                     return ColumnLen <= Buffer.ReadBytesLeft
@@ -97,8 +90,8 @@ namespace Npgsql
                 else
                 {
                     return ColumnLen <= Buffer.ReadBytesLeft
-                        ? fieldDescription.Handler.Read<T>(Buffer, ColumnLen, fieldDescription)
-                        : await fieldDescription.Handler.Read<T>(Buffer, ColumnLen, async, fieldDescription);
+                        ? fieldDescription.Handler.ReadEntry<T>(Buffer, ColumnLen, fieldDescription)
+                        : await fieldDescription.Handler.ReadEntry<T>(Buffer, ColumnLen, async, fieldDescription);
                 }
             }
             catch (NpgsqlSafeReadException e)

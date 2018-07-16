@@ -63,8 +63,8 @@ namespace Npgsql.Benchmarks.TypeHandlers
                 NpgsqlLengthCache cache = null;
 
                 _value = value;
-                _elementSize = _handler.ValidateAndGetLength<T>(value, ref cache, null);
-                _handler.WriteWithLengthInternal(_value, _writeBuffer, null, null, false);
+                _elementSize = _handler.ValidateAndGetLengthEntry<T>(value, ref cache, null);
+                _handler.WriteWithLengthEntry(_value, _writeBuffer, null, null, false);
 
                 Buffer.BlockCopy(_writeBuffer.Buffer, 0, _readBuffer.Buffer, 0, _elementSize);
 
@@ -77,14 +77,14 @@ namespace Npgsql.Benchmarks.TypeHandlers
         public T Read()
         {
             _readBuffer.ReadPosition = 0;
-            return _handler.Read<T>(_readBuffer, _elementSize);
+            return _handler.ReadEntry<T>(_readBuffer, _elementSize);
         }
 
         [Benchmark]
         public void Write()
         {
             _writeBuffer.WritePosition = 0;
-            _handler.WriteWithLengthInternal(_value, _writeBuffer, null, null, false);
+            _handler.WriteWithLengthEntry(_value, _writeBuffer, null, null, false);
         }
     }
 }

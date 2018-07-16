@@ -185,11 +185,10 @@ namespace Npgsql
             if (_column == -1 || _column == NumColumns) {
                 throw new InvalidOperationException("Not reading a row");
             }
-
-            var type = typeof(T);
+            
             var handler = _typeHandlerCache[_column];
             if (handler == null)
-                handler = _typeHandlerCache[_column] = _typeMapper.GetByClrType(type);
+                handler = _typeHandlerCache[_column] = _typeMapper.GetByClrType(NullableHandler<T>.UnderlyingType ?? typeof(T));
             return DoRead<T>(handler);
         }
 
@@ -228,8 +227,8 @@ namespace Npgsql
 
                 // If we know the entire column is already in memory, use the code path without async
                 var result = _columnLen <= _buf.ReadBytesLeft
-                    ? handler.Read<T>(_buf, _columnLen)
-                    : handler.Read<T>(_buf, _columnLen, false).GetAwaiter().GetResult();
+                    ? handler.ReadEntry<T>(_buf, _columnLen)
+                    : handler.ReadEntry<T>(_buf, _columnLen, false).GetAwaiter().GetResult();
 
                 _leftToReadInDataMsg -= _columnLen;
                 _columnLen = int.MinValue;   // Mark that the (next) column length hasn't been read yet

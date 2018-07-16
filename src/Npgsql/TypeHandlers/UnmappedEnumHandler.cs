@@ -100,13 +100,13 @@ namespace Npgsql.TypeHandlers
         }
 
         // TODO: This boxes the enum (again)
-        protected override Task WriteWithLength<TAny>(TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        protected internal override Task WriteWithLength<TAny>(TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
             => WriteObjectWithLength(value, buf, lengthCache, parameter, async);
 
         protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
             if (value == null || value is DBNull)
-                return WriteWithLengthInternal<DBNull>(null, buf, lengthCache, parameter, async);
+                return WriteWithLengthEntry<DBNull>(null, buf, lengthCache, parameter, async);
             buf.WriteInt32(ValidateAndGetLength(value, ref lengthCache, parameter));
             return Write(value, buf, lengthCache, parameter, async);
         }

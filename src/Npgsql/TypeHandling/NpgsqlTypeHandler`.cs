@@ -142,44 +142,8 @@ namespace Npgsql.TypeHandling
                 ? typedHandler.ValidateAndGetLength(value, ref lengthCache, parameter)
                 : throw new InvalidCastException($"Can't write CLR type {typeof(TAny)} to database type {PgDisplayName}");
 
-        /// <summary>
-        /// In the vast majority of cases writing a parameter to the buffer won't need to perform I/O.
-        /// </summary>
-        internal override Task WriteWithLengthInternal<TAny>(TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-        {
-            if (buf.WriteSpaceLeft < 4)
-                return WriteWithLengthLong();
-
-            if (value == null || typeof(TAny) == typeof(DBNull))
-            {
-                buf.WriteInt32(-1);
-                return PGUtil.CompletedTask;
-            }
-
-            return WriteWithLength(value, buf, lengthCache, parameter, async);
-
-            async Task WriteWithLengthLong()
-            {
-                if (buf.WriteSpaceLeft < 4)
-                    await buf.Flush(async);
-
-                if (value == null || typeof(TAny) == typeof(DBNull))
-                {
-                    buf.WriteInt32(-1);
-                    return;
-                }
-
-                await WriteWithLength(value, buf, lengthCache, parameter, async);
-            }
-        }
-
-        /// <summary>
-        /// Typically does not need to be overridden by type handlers, but may be needed in some
-        /// cases (e.g. <see cref="ArrayHandler"/>.
-        /// Note that this method assumes it can write 4 bytes of length (already verified by
-        /// <see cref="WriteWithLengthInternal{TAny}"/>).
-        /// </summary>
-        protected virtual Task WriteWithLength<TAny>([CanBeNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        /// <inheritdoc />
+        protected internal override Task WriteWithLength<TAny>([CanBeNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
             Debug.Assert(this is INpgsqlTypeHandler<TAny>);
 
@@ -205,7 +169,7 @@ namespace Npgsql.TypeHandling
         /// </summary>
         protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
             => value == null || value is DBNull
-                ? WriteWithLengthInternal<DBNull>(null, buf, lengthCache, parameter, async)
+                ? WriteWithLengthEntry<DBNull>(null, buf, lengthCache, parameter, async)
                 : _nonGenericWriteWithLength(this, value, buf, lengthCache, parameter, async);
 
         #endregion Write
