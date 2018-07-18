@@ -1306,7 +1306,7 @@ namespace Npgsql
                 case "DATASOURCEINFORMATION":
                     return NpgsqlSchema.GetDataSourceInformation();
                 case "DATATYPES":
-                    throw new NotSupportedException();
+                    return NpgsqlSchema.GetDataTypes();
                 case "RESERVEDWORDS":
                     return NpgsqlSchema.GetReservedWords();
                 // custom collections for npgsql
