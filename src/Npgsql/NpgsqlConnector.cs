@@ -215,6 +215,11 @@ namespace Npgsql
         NpgsqlCommand _currentCommand;
 
         /// <summary>
+        /// If pooled, the timestamp when this connector was first added to the pool.
+        /// </summary>
+        internal DateTime CreationTimestamp { get; set; } = DateTime.MaxValue;
+
+        /// <summary>
         /// If pooled, the timestamp when this connector was returned to the pool.
         /// </summary>
         internal DateTime ReleaseTimestamp { get; set; } = DateTime.MaxValue;
@@ -439,8 +444,11 @@ namespace Npgsql
 
                 if (Settings.Pooling && DatabaseInfo.SupportsDiscard)
                     GenerateResetMessage();
+
                 Counters.NumberOfNonPooledConnections.Increment();
                 Counters.HardConnectsPerSecond.Increment();
+                CreationTimestamp = DateTime.UtcNow;
+
                 Log.Trace($"Opened connection to {Host}:{Port}");
 
                 // If an exception occurs during open, Break() below shouldn't close the connection, which would also
