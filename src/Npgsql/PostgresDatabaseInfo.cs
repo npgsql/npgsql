@@ -129,6 +129,8 @@ namespace Npgsql
         [NotNull]
         static string GenerateTypesQuery(bool withRange, bool withEnum, bool withEnumSortOrder, bool loadTableComposites)
             => $@"
+BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE READ ONLY;
+
 /*** Load all supported types ***/
 SELECT ns.nspname, a.typname, a.oid, a.typrelid, a.typbasetype,
 CASE WHEN pg_proc.proname='array_recv' THEN 'a' ELSE a.typtype END AS type,
@@ -179,6 +181,8 @@ SELECT pg_type.oid, enumlabel
 FROM pg_enum
 JOIN pg_type ON pg_type.oid=enumtypid
 ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
+
+COMMIT TRANSACTION;
 ";
 
         /// <summary>
