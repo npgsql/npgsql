@@ -28,7 +28,7 @@ using Npgsql.TypeMapping;
 using NpgsqlTypes;
 using System;
 
-namespace Npgsql.TypeHandlers.InternalTypesHandlers
+namespace Npgsql.TypeHandlers.InternalTypeHandlers
 {
     [TypeMapping("oidvector", NpgsqlDbType.Oidvector)]
     class OIDVectorHandlerFactory : NpgsqlTypeHandlerFactory
