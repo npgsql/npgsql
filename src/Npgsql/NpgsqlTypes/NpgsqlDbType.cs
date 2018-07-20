@@ -351,6 +351,13 @@ namespace NpgsqlTypes
         [BuiltInPostgresType("tsquery", 3615)]
         TsQuery = 46,
 
+        /// <summary>
+        /// Corresponds to the PostgreSQL "tsquery" type.
+        /// </summary>
+        /// <remarks>See http://www.postgresql.org/docs/current/static/datatype-textsearch.html</remarks>
+        [BuiltInPostgresType("regconfig", 3734)]
+        Regconfig = 56,
+
         #endregion
 
         #region UUID Type

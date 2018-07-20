@@ -305,13 +305,15 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public void RegType()
+        [TestCase(NpgsqlDbType.Regtype)]
+        [TestCase(NpgsqlDbType.Regconfig)]
+        public void InternalUintTypes(NpgsqlDbType npgsqlDbType)
         {
             const uint expected = 8u;
             using (var conn = OpenConnection())
             using (var cmd = new NpgsqlCommand("SELECT @p", conn))
             {
-                cmd.Parameters.AddWithValue("p", NpgsqlDbType.Regtype, expected);
+                cmd.Parameters.AddWithValue("p", npgsqlDbType, expected);
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
