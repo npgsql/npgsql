@@ -164,21 +164,6 @@ namespace Npgsql.Tests.Types
             }
         }
 
-        [Test]
-        public void ReadInternalChar()
-        {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT typdelim FROM pg_type WHERE typname='int4'", conn))
-            using (var reader = cmd.ExecuteReader())
-            {
-                reader.Read();
-                Assert.That(reader.GetChar(0), Is.EqualTo(','));
-                Assert.That(reader.GetValue(0), Is.EqualTo(','));
-                Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(','));
-                Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(char)));
-            }
-        }
-
         [Test, Description("Makes sure that the PostgreSQL 'unknown' type (OID 705) is read properly")]
         public void ReadUnknown()
         {
@@ -298,25 +283,6 @@ namespace Npgsql.Tests.Types
                             Assert.That(reader.GetFieldValue<IDictionary<string, string>>(i), Is.EqualTo(expected2));
                         }
                     }
-                }
-            }
-        }
-
-        [Test]
-        [TestCase(NpgsqlDbType.Regtype)]
-        [TestCase(NpgsqlDbType.Regconfig)]
-        public void InternalUintTypes(NpgsqlDbType npgsqlDbType)
-        {
-            const uint expected = 8u;
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
-            {
-                cmd.Parameters.AddWithValue("p", npgsqlDbType, expected);
-                using (var reader = cmd.ExecuteReader())
-                {
-                    reader.Read();
-                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(uint)));
-                    Assert.That(reader.GetValue(0), Is.EqualTo(expected));
                 }
             }
         }
@@ -485,26 +451,6 @@ namespace Npgsql.Tests.Types
                 {
                     reader.Read();
                     Assert.That(reader.GetFieldValue<short[]>(0), Is.EqualTo(expected));
-                }
-            }
-        }
-
-        [Test]
-        public void Tid()
-        {
-            var expected = new NpgsqlTid(3, 5);
-            using (var conn = OpenConnection())
-            using (var cmd = conn.CreateCommand())
-            {
-                cmd.CommandText = "SELECT '(1234,40000)'::tid, @p::tid";
-                cmd.Parameters.AddWithValue("p", NpgsqlDbType.Tid, expected);
-                using (var reader = cmd.ExecuteReader())
-                {
-                    reader.Read();
-                    Assert.AreEqual(1234, reader.GetFieldValue<NpgsqlTid>(0).BlockNumber);
-                    Assert.AreEqual(40000, reader.GetFieldValue<NpgsqlTid>(0).OffsetNumber);
-                    Assert.AreEqual(expected.BlockNumber, reader.GetFieldValue<NpgsqlTid>(1).BlockNumber);
-                    Assert.AreEqual(expected.OffsetNumber, reader.GetFieldValue<NpgsqlTid>(1).OffsetNumber);
                 }
             }
         }
@@ -710,38 +656,6 @@ namespace Npgsql.Tests.Types
                     Assert.IsTrue(rdr.GetFieldValue<uint[]>(0).SequenceEqual(new uint[] { 1, 2, 3 }));
                     Assert.IsTrue(rdr.GetFieldValue<uint[]>(1).SequenceEqual(new uint[] { 4, 5, 6 }));
                 }
-            }
-        }
-
-        [Test]
-        public void TsVector()
-        {
-            using (var conn = OpenConnection())
-            using (var cmd = conn.CreateCommand())
-            {
-                var inputVec = NpgsqlTsVector.Parse(" a:12345C  a:24D a:25B b c d 1 2 a:25A,26B,27,28");
-
-                cmd.CommandText = "Select :p";
-                cmd.Parameters.AddWithValue("p", inputVec);
-                var outputVec = cmd.ExecuteScalar();
-                Assert.AreEqual(inputVec.ToString(), outputVec.ToString());
-            }
-        }
-
-        [Test]
-        public void TsQuery()
-        {
-            using (var conn = OpenConnection())
-            using (var cmd = conn.CreateCommand())
-            {
-                var query = conn.PostgreSqlVersion < new Version(9, 6)
-                    ? NpgsqlTsQuery.Parse("(a & !(c | d)) & (!!a&b) | ä | f")
-                    : NpgsqlTsQuery.Parse("(a & !(c | d)) & (!!a&b) | ä | x <-> y | x <10> y | d <0> e | f");
-
-                cmd.CommandText = "Select :p";
-                cmd.Parameters.AddWithValue("p", query);
-                var output = cmd.ExecuteScalar();
-                Assert.AreEqual(query.ToString(), output.ToString());
             }
         }
     }
