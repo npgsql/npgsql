@@ -74,8 +74,9 @@ namespace Npgsql
             {
                 if (NullableHandler<T>.Exists)
                     return default;
-                else
-                    throw new InvalidCastException("Column is null");
+                if (typeof(T) == typeof(object))
+                    return (T)(object)DBNull.Value;
+                throw new InvalidCastException("Column is null");
             }
 
             var fieldDescription = RowDescription[column];
