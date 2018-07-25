@@ -16,8 +16,8 @@ namespace Npgsql.Tests.Types
             new object[] { "1000000000000.22::money", 1000000000000.22M },
             new object[] { "1000000000000000.22::money", 1000000000000000.22M },
 
-            new object[] { "+92233720368547758.07::numeric::money", +92233720368547758.07M },
-            new object[] { "-92233720368547758.08::numeric::money", -92233720368547758.08M },
+            new object[] { "(+92233720368547758.07::numeric)::money", +92233720368547758.07M },
+            new object[] { "(-92233720368547758.08::numeric)::money", -92233720368547758.08M },
         };
 
         [Test]
@@ -39,6 +39,28 @@ namespace Npgsql.Tests.Types
             using (var cmd = new NpgsqlCommand("SELECT @p, @p = " + query, conn))
             {
                 cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Money) { Value = expected });
+                using (var rdr = cmd.ExecuteRecord())
+                {
+                    Assert.That(decimal.GetBits(rdr.GetFieldValue<decimal>(0)), Is.EqualTo(decimal.GetBits(expected)));
+                    Assert.That(rdr.GetFieldValue<bool>(1));
+                }
+            }
+        }
+
+        static readonly object[] WriteWithLargeScaleCases = new[]
+        {
+            new object[] { "0.004::money", 0.004M, 0.00M },
+            new object[] { "0.005::money", 0.005M, 0.01M },
+        };
+
+        [Test]
+        [TestCaseSource(nameof(WriteWithLargeScaleCases))]
+        public void WriteWithLargeScale(string query, decimal parameter, decimal expected)
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT @p, @p = " + query, conn))
+            {
+                cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Money) { Value = parameter });
                 using (var rdr = cmd.ExecuteRecord())
                 {
                     Assert.That(decimal.GetBits(rdr.GetFieldValue<decimal>(0)), Is.EqualTo(decimal.GetBits(expected)));
