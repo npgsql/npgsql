@@ -28,3 +28,6 @@
 # [Logging](logging.md)
 # [Visual Studio Integration](ddex.md)
 # [API Reference](../../obj/api/Npgsql/)
+# Developer Notes
+## [Tests](dev/tests.md)
+## [Type representations](dev/type-representations.md)
