@@ -199,10 +199,11 @@ namespace Npgsql.Tests.Types
         public void Null()
         {
             using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT @p1::TEXT, @p2::TEXT", conn))
+            using (var cmd = new NpgsqlCommand("SELECT @p1::TEXT, @p2::TEXT, @p3::TEXT", conn))
             {
                 cmd.Parameters.AddWithValue("p1", DBNull.Value);
-                cmd.Parameters.Add(new NpgsqlParameter<DBNull>("p2", DBNull.Value));
+                cmd.Parameters.Add(new NpgsqlParameter<string>("p2", null));
+                cmd.Parameters.Add(new NpgsqlParameter<DBNull>("p3", DBNull.Value));
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
