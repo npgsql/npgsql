@@ -64,7 +64,7 @@ You can also control the socket's receive buffer size (not to be confused with N
 
 ## Avoiding boxing when writing parameter values
 
-See [this page](parameters.md).
+See [this section](basic-usage.md#strongly-typed-parameters).
 
 ## Unix Domain Socket
 
