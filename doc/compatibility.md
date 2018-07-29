@@ -1,10 +1,6 @@
 # Compatibility Notes
 
-This page centralizes Npgsql's compatibility status with PostgreSQL and other components,
-and documents some important gotchas.
-
-We aim to be compatible with all [currently supported PostgreSQL versions](http://www.postgresql.org/support/versioning/), which means 5 years back.
-Earlier versions may still work but we don't perform continuous testing on them or commit to resolving issues on them.
+This page centralizes Npgsql's compatibility status with PostgreSQL and other components, and documents some important gotchas.
 
 ## PostgreSQL
 
@@ -18,38 +14,7 @@ Please let us know if you notice any non-standard behavior.
 
 ## .NET Framework/.NET Core/mono
 
-Npgsql 3.1 targets .NET Framework 4.5 and 4.5.1, as well as the [.NET Standard 1.3](https://github.com/dotnet/corefx) which allows it
-to run on .NET Core. It is also tested and runs well on mono.
-
-Here is a sample project.json to get you started with .NET Core:
-
-```json
-{
-  "buildOptions": {
-    "emitEntryPoint": "true"
-  },
-  "dependencies": {
-    "Npgsql" : "3.1.8"
-  },
-  "frameworks": {
-    "net451": {
-      "frameworkAssemblies": {
-        "System.Data": { "version": "4.0.0.0", "type": "build" }
-      }
-    },
-    "netcoreapp1.0": {
-      "dependencies": {
-        "Microsoft.NETCore.App": {
-          "version": "1.0.1",
-          "type": "platform"
-        }
-      }
-    }
-  }
-}
-```
-
-Note that `netcoreapp1.0` can be replaced with `netstandard13` (or up) to create a library.
+Npgsql currently targets .NET Framework 4.5 and 4.5.1, as well as the [.NET Standard 2.0](https://docs.microsoft.com/en-us/dotnet/standard/net-standard) which allows it to run on .NET Core. It is also tested and runs well on mono.
 
 ## Amazon Redshift
 

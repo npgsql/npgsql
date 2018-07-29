@@ -6,8 +6,8 @@
 ## [3.0](release-notes/3.0.md)
 # [FAQ](faq.md)
 # [Compatibility Notes](compatibility.md)
+# [Basic Usage](basic-usage.md)
 # [Connection String Parameters](connection-string-parameters.md)
-# [Parameters](parameters.md)
 # [Security and Encryption](security.md)
 # Type Mapping
 ## [Basic Type Mapping](types/basic.md)
