@@ -115,7 +115,7 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test]
+        [Test, Ignore("Flaky, see #2070")]
         public void WaitWithKeepalive()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
