@@ -67,6 +67,9 @@ namespace Npgsql.PluginTests
 
         protected NpgsqlConnection OpenConnection(string connectionString = null, Ordinates handleOrdinates = Ordinates.None)
         {
+            if (handleOrdinates == Ordinates.None)
+                handleOrdinates = Ordinates.XY;
+
             NetTopologySuiteBootstrapper.Bootstrap();
             var conn = base.OpenConnection(connectionString);
             conn.TypeMapper.UseNetTopologySuite(
@@ -86,17 +89,14 @@ namespace Npgsql.PluginTests
         {
             // Two dimensional data
             new TestData {
-                Ordinates = Ordinates.XY,
                 Geometry = new Point(new Coordinate(1d, 2500d)),
                 CommandText = "st_makepoint(1,2500)"
             },
             new TestData {
-                Ordinates = Ordinates.XY,
                 Geometry = new LineString(new[] { new Coordinate(1d, 1d), new Coordinate(1d, 2500d) }),
                 CommandText = "st_makeline(st_makepoint(1,1),st_makepoint(1,2500))"
             },
             new TestData {
-                Ordinates = Ordinates.XY,
                 Geometry = new Polygon(
                     new LinearRing(new[] {
                         new Coordinate(1d, 1d),
@@ -108,12 +108,10 @@ namespace Npgsql.PluginTests
                 CommandText = "st_makepolygon(st_makeline(ARRAY[st_makepoint(1,1),st_makepoint(2,2),st_makepoint(3,3),st_makepoint(1,1)]))"
             },
             new TestData {
-                Ordinates = Ordinates.XY,
                 Geometry = new MultiPoint(new[] { new Point (new Coordinate(1d, 1d)) }),
                 CommandText = "st_multi(st_makepoint(1, 1))"
             },
             new TestData {
-                Ordinates = Ordinates.XY,
                 Geometry = new MultiLineString(new[] {
                     new LineString(new[] {
                         new Coordinate(1d, 1d),
@@ -123,7 +121,6 @@ namespace Npgsql.PluginTests
                 CommandText = "st_multi(st_makeline(st_makepoint(1,1),st_makepoint(1,2500)))"
             },
             new TestData {
-                Ordinates = Ordinates.XY,
                 Geometry = new MultiPolygon(new[] {
                     new Polygon(
                         new LinearRing(new[] {
@@ -137,7 +134,6 @@ namespace Npgsql.PluginTests
                 CommandText = "st_multi(st_makepolygon(st_makeline(ARRAY[st_makepoint(1,1),st_makepoint(2,2),st_makepoint(3,3),st_makepoint(1,1)])))"
             },
             new TestData {
-                Ordinates = Ordinates.XY,
                 Geometry = new GeometryCollection(new IGeometry[] {
                     new Point(new Coordinate(1d, 1d)),
                     new MultiPolygon(new[] {
@@ -154,7 +150,6 @@ namespace Npgsql.PluginTests
                 CommandText = "st_collect(st_makepoint(1,1),st_multi(st_makepolygon(st_makeline(ARRAY[st_makepoint(1,1),st_makepoint(2,2),st_makepoint(3,3),st_makepoint(1,1)]))))"
             },
             new TestData {
-                Ordinates = Ordinates.XY,
                 Geometry = new GeometryCollection(new IGeometry[] {
                     new Point(new Coordinate(1d, 1d)),
                     new GeometryCollection(new IGeometry[] {
