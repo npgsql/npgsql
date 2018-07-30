@@ -24,6 +24,7 @@
 using GeoAPI;
 using GeoAPI.Geometries;
 using NetTopologySuite.Geometries;
+using NetTopologySuite.Geometries.Implementation;
 using Npgsql.Tests;
 using NUnit.Framework;
 using System;
@@ -68,7 +69,9 @@ namespace Npgsql.PluginTests
         {
             NetTopologySuiteBootstrapper.Bootstrap();
             var conn = base.OpenConnection(connectionString);
-            conn.TypeMapper.UseNetTopologySuite(handleOrdinates: handleOrdinates);
+            conn.TypeMapper.UseNetTopologySuite(
+                new DotSpatialAffineCoordinateSequenceFactory(handleOrdinates),
+                handleOrdinates: handleOrdinates);
             return conn;
         }
 
@@ -175,6 +178,14 @@ namespace Npgsql.PluginTests
                 Ordinates = Ordinates.XYZ,
                 Geometry = new Point(new Coordinate(1d, 2d, 3d)),
                 CommandText = "st_makepoint(1,2,3)"
+            },
+            // Four dimensional data
+            new TestData {
+                Ordinates = Ordinates.XYZM,
+                Geometry = new Point(
+                    new DotSpatialAffineCoordinateSequence(new[] { 1d, 2d }, new[] { 3d }, new[] { 4d }),
+                    GeometryFactory.Default),
+                CommandText = "st_makepoint(1,2,3,4)"
             },
         };
 
