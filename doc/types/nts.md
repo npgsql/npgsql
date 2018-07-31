@@ -29,8 +29,28 @@ using Npgsql;
 // Place this at the beginning of your program to use NetTopologySuite everywhere (recommended)
 NpgsqlConnection.GlobalTypeMapper.UseNetTopologySuite();
 
-// Or to temporarily use NetTopologySuite on a single connection only:
+// Or to temporarily use NetTopologySuite on a single connection only
 conn.TypeMapper.UseNetTopologySuite();
+```
+
+By default the plugin handles only ordinates provided by the `DefaultCoordinateSequenceFactory` of `GeometryServiceProvider.Instance`. If `GeometryServiceProvider` is initialized automatically the X and Y ordinates are handled. To change the behavior specify the `handleOrdinates` parameter like in the following example:
+
+```c#
+conn.TypeMapper.UseNetTopologySuite(handleOrdinates: Ordinates.XYZ);
+```
+
+To process the M ordinate, you must initialize `GeometryServiceProvider.Instance` to a new `NtsGeometryServices` instance with `coordinateSequenceFactory` set to a `DotSpatialAffineCoordinateSequenceFactory`. Or you can specify the factory when calling `UseNetTopologySuite`.
+
+```c#
+// Place this at the beginning of your program to use the specified settings everywhere (recommended)
+GeometryServiceProvider.Instance = new NtsGeometryServices(
+    new DotSpatialAffineCoordinateSequenceFactory(Ordinates.XYM),
+    new PrecisionModel(PrecisionModels.Floating),
+    -1);
+
+// Or specify settings for Npgsql only
+conn.TypeMapper.UseNetTopologySuite(
+    new DotSpatialAffineCoordinateSequenceFactory(Ordinates.XYM));
 ```
 
 ## Reading and Writing Geometry Values
