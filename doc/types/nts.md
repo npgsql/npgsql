@@ -4,21 +4,6 @@ Before 4.0, Npgsql has supported reading and writing PostGIS types via some bund
 
 If you prefer to work with the pre-4.0 types, you can still do so by using the [Npgsql.LegacyPostgis plugin](legacy-postgis.md).
 
-## Adding the NetTopologySuite MyGet feed
-
-Unfortunately, the version of NetTopologySuite currently required by Npgsql (1.15.0) is still in preview. As a result, you will have to add the NetTopologySuite MyGet feed by dropping the following `NuGet.Config` file at the root of your project:
-
-```xml
-<configuration>
-  <packageSources>
-    <add key="NuGet" value="https://api.nuget.org/v3/index.json" />
-    <add key="NetTopologySuite" value="https://www.myget.org/F/nettopologysuite/api/v3/index.json" />
-  </packageSources>
-</configuration>
-```
-
-You will be able to remove this when NetTopologySuite make a final release.
-
 ## Setup
 
 To use the NetTopologySuite plugin, simply add a dependency on [Npgsql.NetTopologySuite](https://www.nuget.org/packages/Npgsql.NetTopologySuite) and set it up:
