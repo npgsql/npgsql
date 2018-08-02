@@ -73,7 +73,10 @@ namespace Npgsql.TypeHandlers
         #endregion
 
         protected internal TextHandler(NpgsqlConnection connection)
-            => _encoding = connection.Connector.TextEncoding;
+            : this(connection.Connector.TextEncoding) { }
+
+        protected internal TextHandler(Encoding encoding)
+            => _encoding = encoding;
 
         #region Read
 

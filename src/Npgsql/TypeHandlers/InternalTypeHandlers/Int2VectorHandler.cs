@@ -21,44 +21,37 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using System;
-using System.Diagnostics;
-using JetBrains.Annotations;
-using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
+using Npgsql.TypeHandlers.NumericHandlers;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
+using System;
 
-namespace Npgsql.TypeHandlers.InternalTypesHandlers
+namespace Npgsql.TypeHandlers.InternalTypeHandlers
 {
-    [TypeMapping("tid", NpgsqlDbType.Tid, typeof(NpgsqlTid))]
-    class TidHandler : NpgsqlSimpleTypeHandler<NpgsqlTid>
+    [TypeMapping("int2vector", NpgsqlDbType.Int2Vector)]
+    class Int2VectorHandlerFactory : NpgsqlTypeHandlerFactory
     {
-        #region Read
+        internal override NpgsqlTypeHandler Create(PostgresType pgType, NpgsqlConnection conn)
+            => new Int2VectorHandler(conn.Connector.TypeMapper.DatabaseInfo.ByName["smallint"])
+            {
+                PostgresType = pgType
+            };
 
-        public override NpgsqlTid Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
-        {
-            Debug.Assert(len == 6);
+        internal override Type DefaultValueType => null;
+    }
 
-            var blockNumber = buf.ReadUInt32();
-            var offsetNumber = buf.ReadUInt16();
+    /// <summary>
+    /// An int2vector is simply a regular array of shorts, with the sole exception that its lower bound must
+    /// be 0 (we send 1 for regular arrays).
+    /// </summary>
+    class Int2VectorHandler : ArrayHandler<short>
+    {
+        public Int2VectorHandler(PostgresType postgresShortType)
+            : base(new Int16Handler { PostgresType = postgresShortType }, 0) { }
 
-            return new NpgsqlTid(blockNumber, offsetNumber);
-        }
-
-        #endregion Read
-
-        #region Write
-
-        public override int ValidateAndGetLength(NpgsqlTid value, NpgsqlParameter parameter)
-            => 6;
-
-        public override void Write(NpgsqlTid value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
-        {
-            buf.WriteUInt32(value.BlockNumber);
-            buf.WriteUInt16(value.OffsetNumber);
-        }
-
-        #endregion Write
+        public override ArrayHandler CreateArrayHandler(PostgresType arrayBackendType)
+            => new ArrayHandler<ArrayHandler<short>>(this) { PostgresType = arrayBackendType };
     }
 }

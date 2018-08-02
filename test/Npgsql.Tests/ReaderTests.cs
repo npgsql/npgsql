@@ -832,6 +832,7 @@ namespace Npgsql.Tests
                         Assert.That(reader.IsDBNull(i), Is.True);
                         Assert.That(reader.IsDBNullAsync(i).Result, Is.True);
                         Assert.That(reader.GetValue(i), Is.EqualTo(DBNull.Value));
+                        Assert.That(reader.GetFieldValue<object>(i), Is.EqualTo(DBNull.Value));
                         Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(DBNull.Value));
                         Assert.That(() => reader.GetString(i), Throws.Exception.TypeOf<InvalidCastException>());
                     }
@@ -1026,7 +1027,7 @@ LANGUAGE plpgsql VOLATILE";
                         Assert.That(reader.GetDataTypeName(i), Is.EqualTo("smallint"));
                     }
 
-                    Assert.That(() => reader.GetFieldValue<object>(0), Throws.TypeOf<InvalidCastException>());
+                    Assert.That(() => reader.GetFieldValue<object>(0), Is.EqualTo(DBNull.Value));
                     Assert.That(() => reader.GetFieldValue<int>(0), Throws.TypeOf<InvalidCastException>());
                     Assert.That(() => reader.GetFieldValue<int?>(0), Throws.Nothing);
                     Assert.That(reader.GetFieldValue<int?>(0), Is.Null);

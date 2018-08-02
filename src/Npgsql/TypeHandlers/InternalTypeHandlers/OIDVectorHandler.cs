@@ -28,7 +28,7 @@ using Npgsql.TypeMapping;
 using NpgsqlTypes;
 using System;
 
-namespace Npgsql.TypeHandlers.InternalTypesHandlers
+namespace Npgsql.TypeHandlers.InternalTypeHandlers
 {
     [TypeMapping("oidvector", NpgsqlDbType.Oidvector)]
     class OIDVectorHandlerFactory : NpgsqlTypeHandlerFactory
@@ -51,7 +51,7 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
         public OIDVectorHandler(PostgresType postgresOIDType)
             : base(new UInt32Handler { PostgresType = postgresOIDType }, 0) { }
 
-        protected internal override ArrayHandler CreateArrayHandler(PostgresType arrayBackendType)
+        public override ArrayHandler CreateArrayHandler(PostgresType arrayBackendType)
             => new ArrayHandler<ArrayHandler<uint>>(this) { PostgresType = arrayBackendType };
     }
 }
