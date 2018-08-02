@@ -129,7 +129,7 @@ namespace Npgsql
         [NotNull]
         static string GenerateTypesQuery(bool withRange, bool withEnum, bool withEnumSortOrder, bool loadTableComposites)
             => $@"
-BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE READ ONLY;
+BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY;
 
 /*** Load all supported types ***/
 SELECT ns.nspname, a.typname, a.oid, a.typrelid, a.typbasetype,
