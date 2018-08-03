@@ -83,6 +83,11 @@ namespace Npgsql
         public virtual bool HasEnumSortOrder => Version >= new Version(9, 1, 0);
 
         /// <summary>
+        /// True if the 'pg_type' table includes the 'typcategory' column; otherwise, false.
+        /// </summary>
+        public virtual bool HasTypCategory => Version >= new Version(8, 4, 0);
+
+        /// <summary>
         /// Loads database information from the PostgreSQL database specified by <paramref name="conn"/>.
         /// </summary>
         /// <param name="conn">The database connection.</param>
@@ -116,7 +121,7 @@ namespace Npgsql
         /// <param name="withEnum">True to load enum types.</param>
         /// <param name="withEnumSortOrder"></param>
         /// <param name="loadTableComposites">True to load table composites.</param>
-        /// <param name="version">Postgres version</param>
+        /// <param name="withTypCategory">Field pg_type.typcategory is added after 8.4. refer: https://www.postgresql.org/docs/8.4/static/catalog-pg-type.html#CATALOG-TYPCATEGORY-TABLE</param>
         /// <returns>
         /// A raw SQL query string that selects type information.
         /// </returns>
@@ -126,10 +131,9 @@ namespace Npgsql
         /// Order by primitives first, container later.
         /// For arrays and ranges, join in the element OID and type (to filter out arrays of unhandled
         /// types).
-        /// Field pg_type.typcategory is added after 8.4. refer: https://www.postgresql.org/docs/8.4/static/catalog-pg-type.html#CATALOG-TYPCATEGORY-TABLE
         /// </remarks>
         [NotNull]
-        static string GenerateTypesQuery(bool withRange, bool withEnum, bool withEnumSortOrder, bool loadTableComposites, Version version)
+        static string GenerateTypesQuery(bool withRange, bool withEnum, bool withEnumSortOrder, bool loadTableComposites, bool withTypCategory)
             => $@"
 BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE READ ONLY;
 
@@ -142,7 +146,7 @@ CASE
   ELSE 0
 END AS elemoid,
 CASE
-  WHEN a.typtype='d' {(decimal.Parse(version.Major + "." + version.Minor) < 8.4m ? "" : "AND a.typcategory='A'")}  THEN 4                  /* Domains over arrays last */
+  {(withTypCategory ? "WHEN a.typtype='d' AND a.typcategory='A' THEN 4 /* Domains over arrays last */" : "")}
   WHEN pg_proc.proname IN ('array_recv','oidvectorrecv') THEN 3    /* Arrays before */
   WHEN a.typtype='r' THEN 2                                        /* Ranges before */
   WHEN a.typtype='d' THEN 1                                        /* Domains before */
@@ -209,7 +213,7 @@ COMMIT TRANSACTION;
                     throw new TimeoutException();
             }
 
-            var typeLoadingQuery = GenerateTypesQuery(SupportsRangeTypes, SupportsEnumTypes, HasEnumSortOrder, conn.Settings.LoadTableComposites, Version);
+            var typeLoadingQuery = GenerateTypesQuery(SupportsRangeTypes, SupportsEnumTypes, HasEnumSortOrder, conn.Settings.LoadTableComposites, HasTypCategory);
 
             using (var command = new NpgsqlCommand(typeLoadingQuery, conn))
             {
