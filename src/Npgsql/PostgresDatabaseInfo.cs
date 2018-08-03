@@ -125,7 +125,7 @@ namespace Npgsql
         /// <param name="withEnum">True to load enum types.</param>
         /// <param name="withEnumSortOrder"></param>
         /// <param name="loadTableComposites">True to load table composites.</param>
-        /// <param name="withTypeCategory">True to the 'pg_type' table includes the 'typcategory' column</param>
+        /// <param name="withTypeCategory">True if the 'pg_type' table includes the 'typcategory' column</param>
         /// <returns>
         /// A raw SQL query string that selects type information.
         /// </returns>
