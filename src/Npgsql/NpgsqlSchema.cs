@@ -27,6 +27,7 @@ using System.Globalization;
 using System.Reflection;
 using System.Text;
 using JetBrains.Annotations;
+using NpgsqlTypes;
 
 namespace Npgsql
 {
@@ -435,6 +436,291 @@ and n.nspname not in ('pg_catalog', 'pg_toast')");
             table.Columns.Add("ReservedWord", typeof(string));
             foreach (var keyword in ReservedKeywords)
                 table.Rows.Add(keyword);
+            return table;
+        }
+
+        internal static DataTable GetDataTypes()
+        {
+            var table = new DataTable("DataTypes");
+            table.Locale = CultureInfo.InvariantCulture;
+            table.Columns.Add("TypeName", typeof(string));
+            table.Columns.Add("ProviderDbType", typeof(string));
+            table.Columns.Add("ColumnSize", typeof(long));
+            table.Columns.Add("CreateFormat", typeof(string));
+            table.Columns.Add("CreateParameters", typeof(string));
+            table.Columns.Add("DataType", typeof(string));
+            table.Columns.Add("IsAutoincrementable", typeof(bool));
+            table.Columns.Add("IsBestMatch", typeof(bool));
+            table.Columns.Add("IsCaseSensitive", typeof(bool));
+            table.Columns.Add("IsFixedLength", typeof(bool));
+            table.Columns.Add("IsFixedPrecisionScale", typeof(bool));
+            table.Columns.Add("IsLong", typeof(bool));
+            table.Columns.Add("IsNullable", typeof(bool));
+            table.Columns.Add("IsSearchable", typeof(bool));
+            table.Columns.Add("IsSearchableWithLike", typeof(bool));
+            table.Columns.Add("IsUnsigned", typeof(bool));
+            table.Columns.Add("MaximumScale", typeof(short));
+            table.Columns.Add("MinimumScale", typeof(short));
+            table.Columns.Add("IsConcurrencyType", typeof(bool));
+            table.Columns.Add("IsLiteralSupported", typeof(bool));
+            table.Columns.Add("LiteralPrefix", typeof(string));
+            table.Columns.Add("LiteralSuffix", typeof(string));
+            table.Columns.Add("NativeDataType", typeof(string));
+
+
+            var obj = new object[40, 23] {
+            {"CHAR", (int)NpgsqlDbType.Char, DBNull.Value, "CHAR({0})",
+                    "length", "System.String",
+                    false, false, true, true, false,
+                    false, true, true, true, DBNull.Value,
+                    DBNull.Value, DBNull.Value,
+                    false, true, "'", "'", "DBTYPE_STR"},
+            {"VACHAR",(int)NpgsqlDbType.Varchar, DBNull.Value, "VARCHAR({0})",
+                    "max length", "System.String",
+                    false, false, true, false, false,
+                    false, true, true, true, DBNull.Value,
+                    DBNull.Value, DBNull.Value,
+                    false, true, "'", "'", "DBTYPE_STR"},
+            {"NUMERIC",(int)NpgsqlDbType.Numeric, DBNull.Value, "NUMERIC({0}, {1})",
+                    "precision,scale", "System.Decimal",
+                    false, false, false, false, false,
+                    false, true, true, false, false,
+                    1000, 0, false, true,
+                    DBNull.Value, DBNull.Value, "DBTYPE_DECIMAL"},
+            {"BIGINT", (int)NpgsqlDbType.Bigint, 8, "BIGINT",
+                    DBNull.Value, "System.Int64",
+                    true, true, false, true, true,
+                    false, true, true, false, false,
+                    DBNull.Value, DBNull.Value, false, true,
+                    DBNull.Value, DBNull.Value, "DBTYPE_I8"},
+            {"INTEGER",(int)NpgsqlDbType.Integer, 4, "INTEGER",
+                    DBNull.Value, "System.Int32",
+                    true, true, false, true, true,
+                    false, true, true, false, false,
+                    DBNull.Value, DBNull.Value, false, true,
+                    DBNull.Value, DBNull.Value, "DBTYPE_I4"},
+            {"SMALLINT",(int)NpgsqlDbType.Smallint, 2, "SMALLINT",
+                    DBNull.Value, "System.Int16",
+                    true, true, false, true, true,
+                    false, true, true, false, false,
+                    DBNull.Value, DBNull.Value, false, true,
+                    DBNull.Value, DBNull.Value, "DBTYPE_I2"},
+            {"REAL",(int)NpgsqlDbType.Real, 4, "REAL",
+                    DBNull.Value, "System.Float",
+                    false, true, false, true, false,
+                    false, true, true, false, false,
+                    DBNull.Value, DBNull.Value, false, true,
+                    DBNull.Value, DBNull.Value, "DBTYPE_R4"},
+            {"DOUBLE", (int)NpgsqlDbType.Double, 8, "DOUBLE",
+                    DBNull.Value, "System.Double",
+                    false, true, false, true, false,
+                    false, true, true, false, false,
+                    DBNull.Value, DBNull.Value, false, true,
+                    DBNull.Value, DBNull.Value, "DBTYPE_R8"},
+            {"DATE", (int)NpgsqlDbType.Date, 4, "DATE",
+                    DBNull.Value, "System.DateTime",
+                    false, true, false, true, true,
+                    false, true, true, false, DBNull.Value,
+                    DBNull.Value, DBNull.Value,
+                    false, true, "DATE '", "'", "DBTYPE_DATE"},
+            {"TIME", (int)NpgsqlDbType.Time, 8, "TIME({0})",
+                    "precision of fractional seconds", "System.DateTime",
+                    false, false, false, true, true,
+                    false, true, true, false, DBNull.Value,
+                    DBNull.Value, DBNull.Value,
+                    false, true, "TIME '", "'", "DBTYPE_DBTIME"},
+            {"TIMESTAMP", (int)NpgsqlDbType.Timestamp, 8, "TIMESTAMP({0})",
+                    "precision of fractional seconds", "System.DateTime",
+                    false, false, false, true, true,
+                    false, true, true, false, DBNull.Value,
+                    DBNull.Value, DBNull.Value,
+                    false, true, "TIMESTAMP '", "'", "DBTYPE_DBTIMESTAMP"},
+            {"INTERVAL", (int)NpgsqlDbType.Interval, 16, "INTERVAL {0}({1})",
+                    "quantity, unit", "System.TimeSpan",
+                    false, false, false, true, true,
+                    false, true, true, false, DBNull.Value,
+                    DBNull.Value, DBNull.Value,
+                    false, true,"INTERVAL '", "'", "DBTYPE_DBTIME"},
+            {"BYTEA",(int)NpgsqlDbType.Bytea, DBNull.Value, "BYTEA",
+                    DBNull.Value, "System.Byte[]",
+                    false, false, false, false, false,
+                    false, true, false, false,DBNull.Value,
+                    DBNull.Value, DBNull.Value, false, true,
+                    "BYTEA '", "'","DBTYPE_BYTES"},
+            {"TEXT", (int)NpgsqlDbType.Text, DBNull.Value, "TEXT",
+                    DBNull.Value, "System.String",
+                    false, true, true, false, false,
+                    false, true, true, true, DBNull.Value,
+                    DBNull.Value, DBNull.Value,
+                    false, true, "'", "'", "DBTYPE_STR"},
+            {"CITEXT", (int)NpgsqlDbType.Citext, DBNull.Value, "CITEXT",
+                    DBNull.Value, "System.String",
+                    false, false, true, false, false,
+                    false, true, true, true, DBNull.Value,
+                    DBNull.Value, DBNull.Value,
+                    false, true, "'", "'", "DBTYPE_STR"},
+            {"BOOLEAN", (int)NpgsqlDbType.Boolean, 1, "BOOLEAN",
+                    DBNull.Value,"System.Boolean",
+                    false, true, false, true, false,
+                    false, true, true, false, DBNull.Value,
+                    DBNull.Value, DBNull.Value, false, true,
+                    DBNull.Value, DBNull.Value, "DBTYPE_BOOL"},
+            {"BIT", (int)NpgsqlDbType.Bit, DBNull.Value, "BIT({0})",
+                    "length", "System.Collections.BitArray",
+                    false, true, false, true, true,
+                    false, true, true, false, DBNull.Value,
+                    DBNull.Value, DBNull.Value, false, true,
+                    "B'", "'", "DBTYPE_BYTES"},
+            {"MONEY", (int)NpgsqlDbType.Money, 8, "MONEY",
+                    DBNull.Value,"System.Decimal",
+                    false, false, false, true, false,
+                    false, true, true, false, DBNull.Value,
+                    DBNull.Value, DBNull.Value,false, true,
+                    "MONEY '", "'", "DBTYPE_CY"},
+            {"BOX", (int)NpgsqlDbType.Box, 32, "BOX",
+                    DBNull.Value, "NpgsqlBox",
+                    false, true, false, true, true,
+                    false, true, true, false, DBNull.Value,
+                    DBNull.Value, DBNull.Value, false, true,
+                    "BOX '", "'", "DBTYPE_VARIANT"},
+            {"CIRCLE", (int)NpgsqlDbType.Circle, 24, "CIRCLE",
+                    DBNull.Value, "NpgsqlCircle",
+                    false, true, false, true, true,
+                    false, true, true, false, DBNull.Value,
+                    DBNull.Value, DBNull.Value, false, true,
+                    "CIRCLE '", "'", "DBTYPE_VARIANT"},
+            {"LINE", (int)NpgsqlDbType.Line, 24, "LINE",
+                    DBNull.Value,"NpgsqlLine",
+                    false, true, false, true, true,
+                    false, true, true, false, false,
+                    DBNull.Value, DBNull.Value, false, true,
+                    DBNull.Value, DBNull.Value, "DBTYPE_VARIANT"},
+            {"LSEG", (int)NpgsqlDbType.LSeg, 32, "LSEG",
+                    DBNull.Value,"NpgsqlLseg",
+                    false, true, false, true, true,
+                    false, true, true, false, DBNull.Value,
+                    DBNull.Value, DBNull.Value, false, true,
+                    "LSEG '", "'","DBTYPE_VARIANT"},
+            {"PATH", (int)NpgsqlDbType.Path, DBNull.Value, "PATH",
+                    DBNull.Value,"NpgsqlPath",
+                    false, true, false, false, false,
+                    false, true, true, false, DBNull.Value,
+                    DBNull.Value, DBNull.Value, false, true,
+                    "PATH '", "'", "DBTYPE_VARIANT"},
+            {"POINT", (int)NpgsqlDbType.Point, DBNull.Value, "POINT",
+                    DBNull.Value,"NpgsqlPoint",
+                    false, true, false, false, false,
+                    false, true, true, false, DBNull.Value,
+                    DBNull.Value, DBNull.Value, false, true,
+                    "POINT '", "'", "DBTYPE_VARIANT"},
+            {"POLYGON", (int)NpgsqlDbType.Polygon, DBNull.Value, "POLYGON",
+                    DBNull.Value, "NpgsqlPolygon",
+                    false, true, false, false, false,
+                    false, true, true, false, DBNull.Value,
+                    DBNull.Value, DBNull.Value, false, true,
+                    "POLYGON '", "'", "DBTYPE_VARIANT"},
+            {"INET", (int)NpgsqlDbType.Inet, DBNull.Value, "INET",
+                    DBNull.Value, "NpgsqlInet",
+                    false, true, false, false, false,
+                    false, true, true, false, DBNull.Value,
+                    DBNull.Value, DBNull.Value, false, true,
+                    "INET '", "'", "DBTYPE_STR"},
+            {"CIDR", (int)NpgsqlDbType.Cidr, DBNull.Value, "CIDR",
+                    DBNull.Value, "NpgsqlInet",
+                    false, false, false, false, false,
+                    false, true, true, false, DBNull.Value,
+                    DBNull.Value, DBNull.Value, false, true,
+                    "CIDR '", "'", "DBTYPE_STR"},
+            {"MACADDR", (int)NpgsqlDbType.MacAddr, 6, "MACADDR",
+                    DBNull.Value, "System.String",
+                    false, true, false, true, true,
+                    false, true, true, false, DBNull.Value,
+                    DBNull.Value, DBNull.Value, false, true,
+                    "MACADDR '", "'", "DBTYPE_STR"},
+            {"UUID", (int)NpgsqlDbType.Uuid, DBNull.Value, "UUID",
+                    DBNull.Value, "System.Guid",
+                    false, true, false, true, false,
+                    false, true, true, false, DBNull.Value,
+                    DBNull.Value, DBNull.Value, false, true,
+                    "UUID '", "'", "DBTYPE_GUID"},
+             {"XML", (int)NpgsqlDbType.Xml, DBNull.Value, "XML",
+                    DBNull.Value, "System.String",
+                    false, false, true, false, false,
+                    false, true, false, false, DBNull.Value,
+                    DBNull.Value, DBNull.Value, false, true,
+                    "XML '", "'", "DBTYPE_XML"},
+             {"JSON", (int)NpgsqlDbType.Json, DBNull.Value, "JSON",
+                    DBNull.Value,"System.String",
+                    false, false, true, false, false,
+                    false, true, false, false, DBNull.Value,
+                    DBNull.Value, DBNull.Value, false, true,
+                    "JSON '", "'", "DBTYPE_STR"},
+             {"JSONB", (int)NpgsqlDbType.Jsonb, DBNull.Value, "JSONB",
+                    DBNull.Value,"System.String",
+                    false, false, true, false, false,
+                    false, true, false, false, DBNull.Value,
+                    DBNull.Value, DBNull.Value, false, true,
+                    "JSONB '", "'", "DBTYPE_STR"},
+             {"NAME", (int)NpgsqlDbType.Name, 64, "NAME",
+                    DBNull.Value, "System.String",
+                    false, false, true, true, false,
+                    false, true, true, true, DBNull.Value,
+                    DBNull.Value, DBNull.Value, false, true,
+                    DBNull.Value, DBNull.Value, "DBTYPE_STR" },
+             {"OIDVECTOR", (int)NpgsqlDbType.Oidvector, DBNull.Value, "OIDVECTOR",
+                    DBNull.Value, "System.UInt32[]",
+                    false, false, false, false, false,
+                    false, true, true, false, DBNull.Value,
+                    DBNull.Value, DBNull.Value, false, true,
+                    DBNull.Value, DBNull.Value, "DBTYPE_VARIANT"},
+             {"OID", (int)NpgsqlDbType.Oid, 4, "OID",
+                    DBNull.Value, "System.UInt32",
+                    false, false, false, true, false,
+                    false, true, true, false, DBNull.Value,
+                    DBNull.Value, DBNull.Value, false, true,
+                    DBNull.Value, DBNull.Value, "DBTYPE_UI4"},
+             {"XID", (int)NpgsqlDbType.Xid, 4, "XID",
+                    DBNull.Value, "System.UInt32",
+                    false, false, false, true, false,
+                    false, true, true, false, DBNull.Value,
+                    DBNull.Value, DBNull.Value, false, true,
+                    DBNull.Value, DBNull.Value, "DBTYPE_UI4"},
+             {"CID", (int)NpgsqlDbType.Cid, 4, "CID",
+                    DBNull.Value, "System.UInt32",
+                    false, false, false, true, false,
+                    false, true, true, false, DBNull.Value,
+                    DBNull.Value, DBNull.Value, false, true,
+                    DBNull.Value, DBNull.Value, "DBTYPE_UI4"},
+             {"HSTORE", (int)NpgsqlDbType.Hstore, DBNull.Value, "HSTORE",
+                    DBNull.Value, "System.Collections.Generic.Dictionary<string, string>",
+                    false, false, true, false, false,
+                    false, true, true, false, DBNull.Value,
+                    DBNull.Value, DBNull.Value, false, true,
+                    DBNull.Value, DBNull.Value, "DBTYPE_VARIANT"},
+             {"TSQUERY", (int)NpgsqlDbType.TsQuery, DBNull.Value, "TSQUERY",
+                    DBNull.Value, "System.String",
+                    false, false, true, false, false,
+                    false, true, true, true, DBNull.Value,
+                    DBNull.Value, DBNull.Value, false, true,
+                    DBNull.Value, DBNull.Value, "DBTYPE_VARIANT"},
+             {"TSVECTOR", (int)NpgsqlDbType.TsVector, DBNull.Value, "TSVECTOR",
+                    DBNull.Value, "System.String",
+                    false, false, true, false, false,
+                    false, true, true, true, DBNull.Value,
+                    DBNull.Value, DBNull.Value, false, true,
+                    DBNull.Value, DBNull.Value, "DBTYPE_VARIANT"},
+            };
+
+            for (var i = 0; i < 40; i++)
+            {
+                DataRow newRow = table.NewRow();
+                for (var j = 0; j < 23; j++)
+                {
+                    newRow[j] = obj[i, j];
+                }
+                table.Rows.Add(newRow);
+            }
+
             return table;
         }
 
