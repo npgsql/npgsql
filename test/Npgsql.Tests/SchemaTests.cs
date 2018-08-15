@@ -27,6 +27,7 @@ using System.Data;
 using System.Data.Common;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Npgsql;
 using Npgsql.Tests;
@@ -114,6 +115,33 @@ namespace Npgsql.Tests
                 Assert.That(collections1, Is.EquivalentTo(collections5));
                 Assert.That(collections1, Is.EquivalentTo(collections6));
                 Assert.That(collections1, Is.EquivalentTo(collections7));
+            }
+        }
+
+        [Test]
+        public void DataSourceInformation()
+        {
+            using (var conn = OpenConnection())
+            {
+                var metadata = conn.GetSchema(DbMetaDataCollectionNames.MetaDataCollections).Rows
+                    .Cast<DataRow>()
+                    .Single(r => (string)r["CollectionName"] == "DataSourceInformation");
+                Assert.That(metadata["NumberOfRestrictions"], Is.Zero);
+                Assert.That(metadata["NumberOfIdentifierParts"], Is.Zero);
+
+                var dataSourceInfo = conn.GetSchema(DbMetaDataCollectionNames.DataSourceInformation);
+                var row = dataSourceInfo.Rows.Cast<DataRow>().Single();
+
+                Assert.That(row["DataSourceProductName"], Is.EqualTo("Npgsql"));
+
+                var pgVersion = conn.PostgreSqlVersion;
+                Assert.That(row["DataSourceProductVersion"], Is.EqualTo(pgVersion.ToString()));
+
+                var parsedNormalizedVersion = Version.Parse((string)row["DataSourceProductVersionNormalized"]);
+                Assert.That(parsedNormalizedVersion, Is.EqualTo(conn.PostgreSqlVersion));
+
+                Assert.That(Regex.Match("\"some_identifier\"", (string)row["QuotedIdentifierPattern"]).Groups[1].Value,
+                    Is.EqualTo("some_identifier"));
             }
         }
 
@@ -272,7 +300,6 @@ namespace Npgsql.Tests
                     conn.ExecuteNonQuery("DROP VIEW IF EXISTS view");
                 }
             }
-
         }
     }
 }
