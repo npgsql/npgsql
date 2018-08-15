@@ -103,7 +103,7 @@ namespace Npgsql.BackendMessages
                 Rows = ParseNumber(bytes, ref i);
                 return this;
 
-                default:
+            default:
                 StatementType = StatementType.Other;
                 return this;
             }
