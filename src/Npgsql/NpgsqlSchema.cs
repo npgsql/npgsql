@@ -28,6 +28,8 @@ using System.Globalization;
 using System.Reflection;
 using System.Text;
 using JetBrains.Annotations;
+using Npgsql.PostgresTypes;
+using NpgsqlTypes;
 
 namespace Npgsql
 {
@@ -50,7 +52,7 @@ namespace Npgsql
             case "DATASOURCEINFORMATION":
                 return GetDataSourceInformation(conn);
             case "DATATYPES":
-                throw new NotSupportedException();
+                return GetDataTypes(conn);
             case "RESERVEDWORDS":
                 return GetReservedWords();
             // custom collections for npgsql
@@ -96,6 +98,7 @@ namespace Npgsql
             table.Rows.Add("MetaDataCollections", 0, 0);
             table.Rows.Add("DataSourceInformation", 0, 0);
             table.Rows.Add("Restrictions", 0, 0);
+            table.Rows.Add("DataTypes", 0, 0);  // TODO: Support type name restriction
             table.Rows.Add("Databases", 1, 1);
             table.Rows.Add("Tables", 4, 3);
             table.Rows.Add("Columns", 4, 4);
@@ -563,6 +566,248 @@ and n.nspname not in ('pg_catalog', 'pg_toast')");
             return table;
         }
 
+        #region DataTypes
+
+        static DataTable GetDataTypes(NpgsqlConnection conn)
+        {
+            var connector = conn.Connector;
+
+            var table = new DataTable("DataTypes");
+
+            table.Columns.Add("TypeName", typeof(string));
+            table.Columns.Add("ColumnSize", typeof(long));
+            table.Columns.Add("CreateFormat", typeof(string));
+            table.Columns.Add("CreateParameters", typeof(string));
+            table.Columns.Add("DataType", typeof(string));
+            table.Columns.Add("IsAutoIncrementable", typeof(bool));
+            table.Columns.Add("IsBestMatch", typeof(bool));
+            table.Columns.Add("IsCaseSensitive", typeof(bool));
+            table.Columns.Add("IsConcurrencyType", typeof(bool));
+            table.Columns.Add("IsFixedLength", typeof(bool));
+            table.Columns.Add("IsFixedPrecisionAndScale", typeof(bool));
+            table.Columns.Add("IsLiteralSupported", typeof(bool));
+            table.Columns.Add("IsLong", typeof(bool));
+            table.Columns.Add("IsNullable", typeof(bool));
+            table.Columns.Add("IsSearchable", typeof(bool));
+            table.Columns.Add("IsSearchableWithLike", typeof(bool));
+            table.Columns.Add("IsUnsigned", typeof(bool));
+            table.Columns.Add("LiteralPrefix", typeof(string));
+            table.Columns.Add("LiteralSuffix", typeof(string));
+            table.Columns.Add("MaximumScale", typeof(short));
+            table.Columns.Add("MinimumScale", typeof(short));
+            table.Columns.Add("NativeDataType", typeof(string));
+            table.Columns.Add("ProviderDbType", typeof(int));
+
+            // Npgsql-specific
+            table.Columns.Add("OID", typeof(uint));
+
+            // TODO: Support type name restriction
+
+            foreach (var baseType in connector.DatabaseInfo.BaseTypes)
+            {
+                if (!connector.TypeMapper.Mappings.TryGetValue(baseType.Name, out var mapping) &&
+                    !connector.TypeMapper.Mappings.TryGetValue(baseType.FullName, out mapping))
+                    continue;
+
+                var row = table.Rows.Add();
+
+                PopulateDefaultDataTypeInfo(row, baseType);
+                PopulateHardcodedDataTypeInfo(row, baseType);
+
+                if (mapping.ClrTypes.Length > 0)
+                    row["DataType"] = mapping.ClrTypes[0].FullName;
+                if (mapping.NpgsqlDbType.HasValue)
+                    row["ProviderDbType"] = (int)mapping.NpgsqlDbType.Value;
+            }
+
+            foreach (var arrayType in connector.DatabaseInfo.ArrayTypes)
+            {
+                if (!connector.TypeMapper.Mappings.TryGetValue(arrayType.Element.Name, out var elementMapping) &&
+                    !connector.TypeMapper.Mappings.TryGetValue(arrayType.Element.FullName, out elementMapping))
+                    continue;
+
+                var row = table.Rows.Add();
+
+                PopulateDefaultDataTypeInfo(row, arrayType.Element);
+                // Populate hardcoded values based on the element type (e.g. citext[] is case-insensitive).
+                PopulateHardcodedDataTypeInfo(row, arrayType.Element);
+
+                row["TypeName"] = arrayType.DisplayName;
+                row["OID"] = arrayType.OID;
+                row["CreateFormat"] += "[]";
+                if (elementMapping.ClrTypes.Length > 0)
+                    row["DataType"] = elementMapping.ClrTypes[0].MakeArrayType().FullName;
+                if (elementMapping.NpgsqlDbType.HasValue)
+                    row["ProviderDbType"] = (int)(elementMapping.NpgsqlDbType.Value | NpgsqlDbType.Array);
+            }
+
+            foreach (var rangeType in connector.DatabaseInfo.RangeTypes)
+            {
+                if (!connector.TypeMapper.Mappings.TryGetValue(rangeType.Subtype.Name, out var elementMapping) &&
+                    !connector.TypeMapper.Mappings.TryGetValue(rangeType.Subtype.FullName, out elementMapping))
+                    continue;
+
+                var row = table.Rows.Add();
+
+                PopulateDefaultDataTypeInfo(row, rangeType.Subtype);
+                // Populate hardcoded values based on the element type (e.g. citext[] is case-insensitive).
+                PopulateHardcodedDataTypeInfo(row, rangeType.Subtype);
+
+                row["TypeName"] = rangeType.DisplayName;
+                row["OID"] = rangeType.OID;
+                row["CreateFormat"] = rangeType.DisplayName.ToUpperInvariant();
+                if (elementMapping.ClrTypes.Length > 0)
+                    row["DataType"] = typeof(NpgsqlRange<>).MakeGenericType(elementMapping.ClrTypes[0]).FullName;
+                if (elementMapping.NpgsqlDbType.HasValue)
+                    row["ProviderDbType"] = (int)(elementMapping.NpgsqlDbType.Value | NpgsqlDbType.Range);
+            }
+
+            foreach (var enumType in connector.DatabaseInfo.EnumTypes)
+            {
+                if (!connector.TypeMapper.Mappings.TryGetValue(enumType.Name, out var mapping) &&
+                    !connector.TypeMapper.Mappings.TryGetValue(enumType.FullName, out mapping))
+                    continue;
+
+                var row = table.Rows.Add();
+
+                PopulateDefaultDataTypeInfo(row, enumType);
+                PopulateHardcodedDataTypeInfo(row, enumType);
+
+                if (mapping.ClrTypes.Length > 0)
+                    row["DataType"] = mapping.ClrTypes[0].FullName;
+            }
+
+            foreach (var compositeType in connector.DatabaseInfo.CompositeTypes)
+            {
+                if (!connector.TypeMapper.Mappings.TryGetValue(compositeType.Name, out var mapping) &&
+                    !connector.TypeMapper.Mappings.TryGetValue(compositeType.FullName, out mapping))
+                    continue;
+
+                var row = table.Rows.Add();
+
+                PopulateDefaultDataTypeInfo(row, compositeType);
+                PopulateHardcodedDataTypeInfo(row, compositeType);
+
+                if (mapping.ClrTypes.Length > 0)
+                    row["DataType"] = mapping.ClrTypes[0].FullName;
+            }
+
+            foreach (var domainType in connector.DatabaseInfo.DomainTypes)
+            {
+                if (!connector.TypeMapper.Mappings.TryGetValue(domainType.BaseType.Name, out var baseMapping) &&
+                    !connector.TypeMapper.Mappings.TryGetValue(domainType.BaseType.FullName, out baseMapping))
+                    continue;
+
+                var row = table.Rows.Add();
+
+                PopulateDefaultDataTypeInfo(row, domainType.BaseType);
+                // Populate hardcoded values based on the element type (e.g. citext[] is case-insensitive).
+                PopulateHardcodedDataTypeInfo(row, domainType.BaseType);
+                row["TypeName"] = domainType.DisplayName;
+                row["OID"] = domainType.OID;
+                // A domain is never the best match, since its underlying base type is
+                row["IsBestMatch"] = false;
+
+                if (baseMapping.ClrTypes.Length > 0)
+                    row["DataType"] = baseMapping.ClrTypes[0].FullName;
+                if (baseMapping.NpgsqlDbType.HasValue)
+                    row["ProviderDbType"] = (int)baseMapping.NpgsqlDbType.Value;
+            }
+
+            return table;
+        }
+
+        /// <summary>
+        /// Populates some generic type information that is common for base types, arrays, enums, etc. Some will
+        /// be overridden later.
+        /// </summary>
+        static void PopulateDefaultDataTypeInfo(DataRow row, PostgresType type)
+        {
+            row["TypeName"] = type.DisplayName;
+            // Skipping ColumnSize at least for now, not very meaningful
+            row["CreateFormat"] = type.DisplayName.ToUpperInvariant();
+            row["CreateParameters"] = "";
+            row["IsAutoIncrementable"] = false;
+            // We populate the DataType above from mapping.ClrTypes, which means we take the .NET type from
+            // which we *infer* the PostgreSQL type. Since only a single PostgreSQL type gets inferred from a given
+            // .NET type, we never have the same DataType in more than one row - so the mapping is always the
+            // best match. See the hardcoding override  below for some exceptions.
+            row["IsBestMatch"] = true;
+            row["IsCaseSensitive"] = true;
+            row["IsConcurrencyType"] = false;
+            row["IsFixedLength"] = false;
+            row["IsFixedPrecisionAndScale"] = false;
+            row["IsLiteralSupported"] = false;  // See hardcoding override below
+            row["IsLong"] = false;
+            row["IsNullable"] = true;
+            row["IsSearchable"] = true;
+            row["IsSearchableWithLike"] = false;
+            row["IsUnsigned"] = DBNull.Value; // See hardcoding override below
+            // LiteralPrefix/Suffix: no literal for now except for strings, see hardcoding override below
+            row["MaximumScale"] = DBNull.Value;
+            row["MinimumScale"] = DBNull.Value;
+            // NativeDataType is unset
+            row["OID"] = type.OID;
+        }
+
+        /// <summary>
+        /// Sets some custom, hardcoded info on a DataType row that cannot be loaded/inferred from PostgreSQL
+        /// </summary>
+        static void PopulateHardcodedDataTypeInfo(DataRow row, PostgresType type)
+        {
+            switch (type.Name)
+            {
+            case "varchar":
+            case "char":
+                row["DataType"] = "String";
+                row["IsBestMatch"] = false;
+                goto case "text";
+            case "text":
+                row["CreateFormat"] += "({0})";
+                row["CreateParameters"] = "size";
+                row["IsSearchableWithLike"] = true;
+                row["IsLiteralSupported"] = true;
+                row["LiteralPrefix"] = "'";
+                row["LiteralSuffix"] = "'";
+                return;
+            case "numeric":
+                row["CreateFormat"] += "({0},{1})";
+                row["CreateParameters"] = "precision, scale";
+                row["MaximumScale"] = 16383;
+                row["MinimumScale"] = 16383;
+                row["IsUnsigned"] = false;
+                return;
+            case "bytea":
+                row["IsLong"] = true;
+                return;
+            case "citext":
+                row["IsCaseSensitive"] = false;
+                return;
+            case "integer":
+            case "smallint":
+            case "bigint":
+            case "double precision":
+            case "real":
+            case "money":
+                row["IsUnsigned"] = false;
+                return;
+            case "oid":
+            case "cid":
+            case "regtype":
+            case "regconfig":
+                row["IsUnsigned"] = true;
+                return;
+            case "xid":
+                row["IsUnsigned"] = true;
+                row["IsConcurrencyType"] = true;
+                return;
+            }
+        }
+
+        #endregion DataTypes
+
+        #region Reserved Keywords
+
         static DataTable GetReservedWords()
         {
             var table = new DataTable("ReservedWords") { Locale = CultureInfo.InvariantCulture };
@@ -571,8 +816,6 @@ and n.nspname not in ('pg_catalog', 'pg_toast')");
                 table.Rows.Add(keyword);
             return table;
         }
-
-        #region Reserved Keywords
 
         /// <summary>
         /// List of keywords taken from PostgreSQL 9.0 reserved words documentation.
