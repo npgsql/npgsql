@@ -1304,7 +1304,7 @@ namespace Npgsql
                 case "RESTRICTIONS":
                     return NpgsqlSchema.GetRestrictions();
                 case "DATASOURCEINFORMATION":
-                    return NpgsqlSchema.GetDataSourceInformation();
+                    return NpgsqlSchema.GetDataSourceInformation(this);
                 case "DATATYPES":
                     throw new NotSupportedException();
                 case "RESERVEDWORDS":

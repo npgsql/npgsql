@@ -23,6 +23,7 @@
 
 using System;
 using System.Data;
+using System.Data.Common;
 using System.Globalization;
 using System.Reflection;
 using System.Text;
@@ -35,17 +36,29 @@ namespace Npgsql
     /// </summary>
     static class NpgsqlSchema
     {
-        const string MetaDataResourceName = "Npgsql.NpgsqlMetaData.xml";
-
         /// <summary>
         /// Returns the MetaDataCollections that lists all possible collections.
         /// </summary>
         /// <returns>The MetaDataCollections</returns>
         internal static DataTable GetMetaDataCollections()
         {
-            var ds = new DataSet { Locale = CultureInfo.InvariantCulture };
-            LoadMetaDataXmlResource(ds);
-            return ds.Tables["MetaDataCollections"].Copy();
+            var table = new DataTable("MetaDataCollections");
+            table.Columns.Add("CollectionName", typeof(string));
+            table.Columns.Add("NumberOfRestrictions", typeof(int));
+            table.Columns.Add("NumberOfIdentifierParts", typeof(int));
+
+            table.Rows.Add("MetaDataCollections", 0, 0);
+            table.Rows.Add("DataSourceInformation", 0, 0);
+            table.Rows.Add("Restrictions", 0, 0);
+            table.Rows.Add("Databases", 1, 1);
+            table.Rows.Add("Tables", 4, 3);
+            table.Rows.Add("Columns", 4, 4);
+            table.Rows.Add("Views", 3, 3);
+            table.Rows.Add("Users", 1, 1);
+            table.Rows.Add("Indexes", 4, 4);
+            table.Rows.Add("IndexColumns", 5, 5);
+
+            return table;
         }
 
         /// <summary>
@@ -54,9 +67,37 @@ namespace Npgsql
         /// <returns>The Restrictions</returns>
         internal static DataTable GetRestrictions()
         {
-            var ds = new DataSet { Locale = CultureInfo.InvariantCulture };
-            LoadMetaDataXmlResource(ds);
-            return ds.Tables["Restrictions"].Copy();
+            var table = new DataTable("Restrictions");
+
+            table.Columns.Add("CollectionName", typeof(string));
+            table.Columns.Add("RestrictionName", typeof(string));
+            table.Columns.Add("RestrictionDefault", typeof(string));
+            table.Columns.Add("RestrictionNumber", typeof(int));
+
+            table.Rows.Add("Database", "Name", "Name", 1);
+            table.Rows.Add("Tables", "Catalog", "table_catalog", 1);
+            table.Rows.Add("Tables", "Schema", "schema_catalog", 2);
+            table.Rows.Add("Tables", "Table", "table_name", 3);
+            table.Rows.Add("Tables", "TableType", "table_type", 4);
+            table.Rows.Add("Columns", "Catalog", "table_catalog", 1);
+            table.Rows.Add("Columns", "Schema", "table_schema", 2);
+            table.Rows.Add("Columns", "TableName", "table_name", 3);
+            table.Rows.Add("Columns", "Column", "column_name", 4);
+            table.Rows.Add("Views", "Catalog", "table_catalog", 1);
+            table.Rows.Add("Views", "Schema", "table_schema", 2);
+            table.Rows.Add("Views", "Table", "table_name", 3);
+            table.Rows.Add("Users", "User", "user_name", 1);
+            table.Rows.Add("Indexes", "Catalog", "table_catalog", 1);
+            table.Rows.Add("Indexes", "Schema", "table_schema", 2);
+            table.Rows.Add("Indexes", "Table", "table_name", 3);
+            table.Rows.Add("Indexes", "Index", "index_name", 4);
+            table.Rows.Add("IndexColumns", "Catalog", "table_catalog", 1);
+            table.Rows.Add("IndexColumns", "Schema", "table_schema", 2);
+            table.Rows.Add("IndexColumns", "Table", "table_name", 3);
+            table.Rows.Add("IndexColumns", "Index", "index_name", 4);
+            table.Rows.Add("IndexColumns", "Column", "column_name", 5);
+
+            return table;
         }
 
         static NpgsqlCommand BuildCommand(NpgsqlConnection conn, StringBuilder query, [CanBeNull] string[] restrictions, [CanBeNull] params string[] names)
@@ -422,11 +463,58 @@ and n.nspname not in ('pg_catalog', 'pg_toast')");
             }
         }
 
-        internal static DataTable GetDataSourceInformation()
+        internal static DataTable GetDataSourceInformation(NpgsqlConnection conn)
         {
-            var ds = new DataSet { Locale = CultureInfo.InvariantCulture };
-            LoadMetaDataXmlResource(ds);
-            return ds.Tables["DataSourceInformation"].Copy();
+            var table = new DataTable("DataSourceInformation");
+            var row = table.Rows.Add();
+
+            table.Columns.Add("CompositeIdentifierSeparatorPattern", typeof(string));
+            // TODO: DefaultCatalog? Was in XML (unfilled) but isn't in docs
+            table.Columns.Add("DataSourceProductName", typeof(string));
+            table.Columns.Add("DataSourceProductVersion", typeof(string));
+            table.Columns.Add("DataSourceProductVersionNormalized", typeof(string));
+            table.Columns.Add("GroupByBehavior", typeof(GroupByBehavior));
+            table.Columns.Add("IdentifierPattern", typeof(string));
+            table.Columns.Add("IdentifierCase", typeof(IdentifierCase));
+            table.Columns.Add("OrderByColumnsInSelect", typeof(bool));
+            table.Columns.Add("ParameterMarkerFormat", typeof(string));
+            table.Columns.Add("ParameterMarkerPattern", typeof(string));
+            table.Columns.Add("ParameterNameMaxLength", typeof(int));
+            table.Columns.Add("QuotedIdentifierPattern", typeof(string));
+            table.Columns.Add("QuotedIdentifierCase", typeof(IdentifierCase));
+            table.Columns.Add("ParameterNamePattern", typeof(string));
+            table.Columns.Add("StatementSeparatorPattern", typeof(string));
+            table.Columns.Add("StringLiteralPattern", typeof(string));
+            table.Columns.Add("SupportedJoinOperators", typeof(SupportedJoinOperators));
+
+            var version = conn.PostgreSqlVersion;
+            var normalizedVersion = $"{version.Major:00}.{version.Minor:00}";
+            if (version.Build >= 0)
+                normalizedVersion += $".{version.Build:00}";
+
+            row["CompositeIdentifierSeparatorPattern"] = @"\.";
+            row["DataSourceProductName"] = "Npgsql";
+            row["DataSourceProductVersion"] = version.ToString();
+            row["DataSourceProductVersionNormalized"] = normalizedVersion;
+            row["GroupByBehavior"] = GroupByBehavior.Unrelated;
+            row["IdentifierPattern"] = @"(^\[\p{Lo}\p{Lu}\p{Ll}_@#][\p{Lo}\p{Lu}\p{Ll}\p{Nd}@$#_]*$)|(^\[[^\]\0]|\]\]+\]$)|(^\""[^\""\0]|\""\""+\""$)";
+            row["IdentifierCase"] = IdentifierCase.Insensitive;
+            row["OrderByColumnsInSelect"] = false;
+            row["ParameterMarkerFormat"] = @"{0}";  // TODO: Not sure
+            row["ParameterMarkerPattern"] = @"@[\p{Lo}\p{Lu}\p{Ll}\p{Lm}_@#][\p{Lo}\p{Lu}\p{Ll}\p{Lm}\p{Nd}\uff3f_@#\$]*(?=\s+|$)";
+            row["ParameterNameMaxLength"] = 63; // For function out parameters
+            row["QuotedIdentifierPattern"] = @"""(([^\""]|\""\"")*)""";
+            row["QuotedIdentifierCase"] = IdentifierCase.Sensitive;
+            row["ParameterNamePattern"] = @"^[\p{Lo}\p{Lu}\p{Ll}\p{Lm}_@#][\p{Lo}\p{Lu}\p{Ll}\p{Lm}\p{Nd}\uff3f_@#\$]*(?=\s+|$)";
+            row["StatementSeparatorPattern"] = ";";
+            row["StringLiteralPattern"] = @"'(([^']|'')*)'";
+            row["SupportedJoinOperators"] =
+                SupportedJoinOperators.FullOuter |
+                SupportedJoinOperators.Inner |
+                SupportedJoinOperators.LeftOuter |
+                SupportedJoinOperators.RightOuter;
+
+            return table;
         }
 
         public static DataTable GetReservedWords()
@@ -436,16 +524,6 @@ and n.nspname not in ('pg_catalog', 'pg_toast')");
             foreach (var keyword in ReservedKeywords)
                 table.Rows.Add(keyword);
             return table;
-        }
-
-        static void LoadMetaDataXmlResource(DataSet dataSet)
-        {
-            var xmlStream = Assembly.GetExecutingAssembly().GetManifestResourceStream(MetaDataResourceName);
-            if (xmlStream == null)
-                throw new Exception($"Couldn't load {MetaDataResourceName} resource from assembly, Npgsql was compiled badly");
-
-            using (xmlStream)
-                dataSet.ReadXml(xmlStream);
         }
 
         #region Reserved Keywords
