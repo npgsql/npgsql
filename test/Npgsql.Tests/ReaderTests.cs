@@ -361,6 +361,38 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test]
+        public void GetNpgsqlDbType()
+        {
+            using (var conn = OpenConnection())
+            {
+                NpgsqlTypes.NpgsqlDbType intType;
+                using (var cmd = new NpgsqlCommand(@"SELECT 1::INTEGER AS some_column", conn))
+                using (var reader = cmd.ExecuteReader(Behavior))
+                {
+                    reader.Read();
+                    intType = reader.GetNpgsqlDbType(0);
+                    Assert.That(intType, Is.EqualTo(NpgsqlTypes.NpgsqlDbType.Integer));
+                }
+
+                using (var cmd = new NpgsqlCommand(@"SELECT '{1}'::INTEGER[] AS some_column", conn))
+                using (var reader = cmd.ExecuteReader(Behavior))
+                {
+                    reader.Read();
+                    NpgsqlTypes.NpgsqlDbType intArrayType = reader.GetNpgsqlDbType(0);
+                    Assert.That(intArrayType, Is.EqualTo(NpgsqlTypes.NpgsqlDbType.Array | NpgsqlTypes.NpgsqlDbType.Integer));
+                }
+
+                using (var cmd = new NpgsqlCommand(@"SELECT int4range(0, 1) AS some_column", conn))
+                using (var reader = cmd.ExecuteReader(Behavior))
+                {
+                    reader.Read();
+                    NpgsqlTypes.NpgsqlDbType intRangeType = reader.GetNpgsqlDbType(0);
+                    Assert.That(intRangeType, Is.EqualTo(NpgsqlTypes.NpgsqlDbType.Range | NpgsqlTypes.NpgsqlDbType.Integer));
+                }
+            }
+        }
+
         /// <seealso cref="ReaderNewSchemaTests.DataTypeName"/>
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/787")]
         [TestCase("integer")]

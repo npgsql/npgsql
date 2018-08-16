@@ -1223,6 +1223,46 @@ namespace Npgsql
         }
 
         /// <summary>
+        /// Gets the NpgsqlDbType for the specified field.
+        /// The returned value can be used for the Npgsql specific type about the field.
+        /// </summary>
+        /// <param name="ordinal">The zero-based column index.</param>
+        [PublicAPI]
+        public NpgsqlTypes.NpgsqlDbType GetNpgsqlDbType(int ordinal)
+        {
+            var pgType = GetPostgresType(ordinal);
+            var typeMapper = Connector.TypeMapper;
+
+            switch (pgType)
+            {
+                case PostgresArrayType pgArrayType:
+                    if ((typeMapper.Mappings.TryGetValue(pgArrayType.Element.Name, out var mapping) ||
+                            typeMapper.Mappings.TryGetValue(pgArrayType.Element.FullName, out mapping)) &&
+                            mapping.NpgsqlDbType.HasValue)
+                    {
+                        return mapping.NpgsqlDbType.Value | NpgsqlDbType.Array;
+                    }
+                    throw new InvalidOperationException($"No mapping found for PostgreSQL array element type {pgArrayType.Element.DisplayName}");
+                case PostgresRangeType pgRangeType:
+                    if ((typeMapper.Mappings.TryGetValue(pgRangeType.Subtype.Name, out mapping) ||
+                            typeMapper.Mappings.TryGetValue(pgRangeType.Subtype.FullName, out mapping)) &&
+                            mapping.NpgsqlDbType.HasValue)
+                    {
+                        return mapping.NpgsqlDbType.Value | NpgsqlDbType.Range;
+                    }
+                    throw new InvalidOperationException($"No mapping found for PostgreSQL range subtype {pgRangeType.Subtype.DisplayName}");
+                default:
+                    if ((typeMapper.Mappings.TryGetValue(pgType.Name, out mapping) ||
+                            typeMapper.Mappings.TryGetValue(pgType.FullName, out mapping)) &&
+                            mapping.NpgsqlDbType.HasValue)
+                    {
+                        return mapping.NpgsqlDbType.Value;
+                    }
+                    throw new InvalidOperationException($"No mapping found for PostgreSQL type {pgType.DisplayName}");
+            }
+        }
+
+        /// <summary>
         /// Gets the data type information for the specified field.
         /// This will be the PostgreSQL type name (e.g. double precision), not the .NET type
         /// (see <see cref="GetFieldType"/> for that).
