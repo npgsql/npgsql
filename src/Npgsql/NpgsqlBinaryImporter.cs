@@ -287,7 +287,6 @@ namespace Npgsql
         public int Complete()
         {
             CheckReady();
-            var copyRows = 0; // number of rows copied on success. See "Outputs" section of https://www.postgresql.org/docs/current/static/sql-copy.html
 
             if (InMiddleOfRow)
             {
@@ -302,22 +301,11 @@ namespace Npgsql
                 _buf.EndCopyMode();
 
                 _connector.SendMessage(CopyDoneMessage.Instance);
-
-                var msg1 = _connector.ReadMessage();
-                Expect<CommandCompleteMessage>(msg1);
+                var cmdComplete = Expect<CommandCompleteMessage>(_connector.ReadMessage());
                 Expect<ReadyForQueryMessage>(_connector.ReadMessage());
                 _state = ImporterState.Committed;
-
-                CommandCompleteMessage cmdComplete;
-                switch (msg1.Code)
-                {
-                    case BackendMessageCode.CompletedResponse:
-                        cmdComplete = (CommandCompleteMessage)msg1;
-                        if (cmdComplete.StatementType == StatementType.Copy)
-                            copyRows = (int)cmdComplete.Rows;
-                        break;
-                }
-                return copyRows;
+                // Number of rows copied on success - see "Outputs" section of https://www.postgresql.org/docs/current/static/sql-copy.html
+                return (int)cmdComplete.Rows;
             }
             catch
             {
