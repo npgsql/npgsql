@@ -44,7 +44,7 @@ namespace Npgsql.TypeHandlers
         Type EnumType { get; }
     }
 
-    class EnumHandler<TEnum> : NpgsqlSimpleTypeHandler<TEnum>, IEnumHandler where TEnum : struct
+    class EnumHandler<TEnum> : NpgsqlSimpleTypeHandler<TEnum>, IEnumHandler where TEnum : Enum
     {
         readonly Dictionary<TEnum, string> _enumToLabel;
         readonly Dictionary<string, TEnum> _labelToEnum;
@@ -107,7 +107,7 @@ namespace Npgsql.TypeHandlers
         INpgsqlNameTranslator NameTranslator { get; }
     }
 
-    class EnumTypeHandlerFactory<TEnum> : NpgsqlTypeHandlerFactory<TEnum>, IEnumTypeHandlerFactory where TEnum : struct
+    class EnumTypeHandlerFactory<TEnum> : NpgsqlTypeHandlerFactory<TEnum>, IEnumTypeHandlerFactory where TEnum : Enum
     {
         readonly Dictionary<TEnum, string> _enumToLabel = new Dictionary<TEnum, string>();
         readonly Dictionary<string, TEnum> _labelToEnum = new Dictionary<string, TEnum>();

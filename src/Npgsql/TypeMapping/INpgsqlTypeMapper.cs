@@ -34,7 +34,7 @@ namespace Npgsql.TypeMapping
     /// <summary>
     /// A type mapper, managing how to read and write CLR values to PostgreSQL data types.
     /// A type mapper exists for each connection, as well as a single global type mapper
-    /// (accessible via 
+    /// (accessible via
     /// </summary>
     /// <remarks>
     /// </remarks>
@@ -76,7 +76,7 @@ namespace Npgsql.TypeMapping
         /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
         /// <typeparam name="TEnum">The .NET enum type to be mapped</typeparam>
-        INpgsqlTypeMapper MapEnum<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null) where TEnum : struct;
+        INpgsqlTypeMapper MapEnum<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null) where TEnum : Enum;
 
         /// <summary>
         /// Removes an existing enum mapping.
@@ -89,7 +89,7 @@ namespace Npgsql.TypeMapping
         /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
         /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
-        bool UnmapEnum<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null) where TEnum : struct;
+        bool UnmapEnum<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null) where TEnum : Enum;
 
         /// <summary>
         /// Maps a CLR type to a PostgreSQL composite type.
