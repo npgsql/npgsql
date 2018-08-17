@@ -46,18 +46,30 @@ namespace Npgsql.TypeHandlers
            => _wrappedHandler.Write(value, buf, lengthCache, parameter, async);
     }
 
-    class MappedCompositeTypeHandlerFactory<T> : NpgsqlTypeHandlerFactory<T>
+    /// <summary>
+    /// Interface implemented by all mapped composite handler factories.
+    /// Used to expose the name translator for those reflecting enum mappings (e.g. EF Core).
+    /// </summary>
+    public interface IMappedCompositeTypeHandlerFactory
+    {
+        /// <summary>
+        /// The name translator used for this enum.
+        /// </summary>
+        INpgsqlNameTranslator NameTranslator { get; }
+    }
+
+    class MappedCompositeTypeHandlerFactory<T> : NpgsqlTypeHandlerFactory<T>, IMappedCompositeTypeHandlerFactory
         where T : new()
     {
-        readonly INpgsqlNameTranslator _nameTranslator;
+        public INpgsqlNameTranslator NameTranslator { get; }
 
         internal MappedCompositeTypeHandlerFactory(INpgsqlNameTranslator nameTranslator)
         {
-            _nameTranslator = nameTranslator;
+            NameTranslator = nameTranslator;
         }
 
         internal override NpgsqlTypeHandler Create(PostgresType pgType, NpgsqlConnection conn)
-            => new MappedCompositeHandler<T>(_nameTranslator, pgType, conn);
+            => new MappedCompositeHandler<T>(NameTranslator, pgType, conn);
 
         protected override NpgsqlTypeHandler<T> Create(NpgsqlConnection conn)
             => throw new InvalidOperationException($"Expect {nameof(PostgresType)}");
