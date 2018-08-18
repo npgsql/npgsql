@@ -56,7 +56,7 @@ namespace Npgsql.TypeMapping
         #region Enum mapping
 
         public INpgsqlTypeMapper MapEnum<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null)
-            where TEnum : Enum
+            where TEnum : struct, Enum
         {
             if (pgName != null && pgName.Trim() == "")
                 throw new ArgumentException("pgName can't be empty", nameof(pgName));
@@ -75,7 +75,7 @@ namespace Npgsql.TypeMapping
         }
 
         public bool UnmapEnum<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null)
-            where TEnum : Enum
+            where TEnum : struct, Enum
         {
             if (pgName != null && pgName.Trim() == "")
                 throw new ArgumentException("pgName can't be empty", nameof(pgName));

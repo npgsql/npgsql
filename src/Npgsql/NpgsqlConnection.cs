@@ -1037,7 +1037,7 @@ namespace Npgsql
         [PublicAPI]
         [Obsolete("Use NpgsqlConnection.TypeMapper.MapEnum() instead")]
         public void MapEnum<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null)
-            where TEnum : Enum
+            where TEnum : struct, Enum
             => TypeMapper.MapEnum<TEnum>(pgName, nameTranslator);
 
         /// <summary>
@@ -1065,7 +1065,7 @@ namespace Npgsql
         [PublicAPI]
         [Obsolete("Use NpgsqlConnection.GlobalTypeMapper.MapEnum() instead")]
         public static void MapEnumGlobally<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null)
-            where TEnum : Enum
+            where TEnum : struct, Enum
             => NpgsqlConnection.GlobalTypeMapper.MapEnum<TEnum>(pgName, nameTranslator);
 
         /// <summary>
@@ -1081,7 +1081,7 @@ namespace Npgsql
         /// </param>
         [Obsolete("Use NpgsqlConnection.GlobalTypeMapper.UnmapEnum() instead")]
         public static void UnmapEnumGlobally<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null)
-            where TEnum : Enum
+            where TEnum : struct, Enum
             => NpgsqlConnection.GlobalTypeMapper.UnmapEnum<TEnum>(pgName, nameTranslator);
 
         #endregion
