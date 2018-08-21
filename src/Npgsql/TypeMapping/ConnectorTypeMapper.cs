@@ -25,11 +25,8 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;
-using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.Logging;
 using Npgsql.PostgresTypes;
@@ -178,11 +175,11 @@ namespace Npgsql.TypeMapping
             return this;
         }
 
-        public override bool RemoveMapping(string pgTypeName)
+        public override bool RemoveMapping(string pgTypeName, string pgTypeSchema = null)
         {
             CheckReady();
 
-            var removed = base.RemoveMapping(pgTypeName);
+            var removed = base.RemoveMapping(pgTypeName, pgTypeSchema);
             if (!removed)
                 return false;
 
@@ -206,7 +203,7 @@ namespace Npgsql.TypeMapping
             globalMapper.Lock.EnterReadLock();
             try
             {
-                Mappings = new Dictionary<string, NpgsqlTypeMapping>(globalMapper.Mappings);
+                Mappings = new Dictionary<(string PgTypeName, string PgTypeSchema), NpgsqlTypeMapping>(globalMapper.Mappings);
             }
             finally
             {
@@ -428,11 +425,11 @@ namespace Npgsql.TypeMapping
             return (null, postgresType);
 
             bool TryGetMapping(PostgresType pgType, out NpgsqlTypeMapping mapping)
-                => Mappings.TryGetValue(pgType.Name, out mapping) ||
-                   Mappings.TryGetValue(pgType.FullName, out mapping) ||
+                => Mappings.TryGetValue((pgType.Name, null), out mapping) ||
+                   Mappings.TryGetValue((pgType.Name, pgType.Namespace), out mapping) ||
                    pgType is PostgresDomainType domain && (
-                       Mappings.TryGetValue(domain.BaseType.Name, out mapping) ||
-                       Mappings.TryGetValue(domain.BaseType.FullName, out mapping));
+                       Mappings.TryGetValue((domain.BaseType.Name, null), out mapping) ||
+                       Mappings.TryGetValue((domain.BaseType.Name, domain.BaseType.Namespace), out mapping));
         }
     }
 }

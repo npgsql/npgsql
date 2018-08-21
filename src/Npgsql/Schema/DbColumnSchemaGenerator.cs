@@ -1,14 +1,9 @@
 ﻿using System;
-using System.CodeDom;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Data;
-using System.Data.Common;
 using System.Diagnostics;
 using System.Linq;
 using Npgsql.BackendMessages;
-using Npgsql.PostgresTypes;
 using Npgsql.TypeHandlers;
 using System.Transactions;
 
@@ -228,14 +223,9 @@ ORDER BY attnum";
         {
             var typeMapper = _connection.Connector.TypeMapper;
 
-            if (typeMapper.Mappings.TryGetValue(column.PostgresType.Name, out var mapping))
+            if (typeMapper.Mappings.TryGetValue((column.PostgresType.Name, null), out var mapping) ||
+                typeMapper.Mappings.TryGetValue((column.PostgresType.Name, column.PostgresType.Namespace), out mapping))
                 column.NpgsqlDbType = mapping.NpgsqlDbType;
-            else if (
-                column.PostgresType.Name.Contains(".") &&
-                typeMapper.Mappings.TryGetValue(column.PostgresType.Name.Split('.')[1], out mapping)
-            ) {
-                column.NpgsqlDbType = mapping.NpgsqlDbType;
-            }
 
             column.DataType = typeMapper.TryGetByOID(column.TypeOID, out var handler)
                 ? handler.GetFieldType()

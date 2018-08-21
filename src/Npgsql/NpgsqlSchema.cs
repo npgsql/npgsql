@@ -25,7 +25,6 @@ using System;
 using System.Data;
 using System.Data.Common;
 using System.Globalization;
-using System.Reflection;
 using System.Text;
 using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
@@ -605,8 +604,8 @@ and n.nspname not in ('pg_catalog', 'pg_toast')");
 
             foreach (var baseType in connector.DatabaseInfo.BaseTypes)
             {
-                if (!connector.TypeMapper.Mappings.TryGetValue(baseType.Name, out var mapping) &&
-                    !connector.TypeMapper.Mappings.TryGetValue(baseType.FullName, out mapping))
+                if (!connector.TypeMapper.Mappings.TryGetValue((baseType.Name, null), out var mapping) &&
+                    !connector.TypeMapper.Mappings.TryGetValue((baseType.Name, baseType.Namespace), out mapping))
                     continue;
 
                 var row = table.Rows.Add();
@@ -622,8 +621,8 @@ and n.nspname not in ('pg_catalog', 'pg_toast')");
 
             foreach (var arrayType in connector.DatabaseInfo.ArrayTypes)
             {
-                if (!connector.TypeMapper.Mappings.TryGetValue(arrayType.Element.Name, out var elementMapping) &&
-                    !connector.TypeMapper.Mappings.TryGetValue(arrayType.Element.FullName, out elementMapping))
+                if (!connector.TypeMapper.Mappings.TryGetValue((arrayType.Element.Name, null), out var elementMapping) &&
+                    !connector.TypeMapper.Mappings.TryGetValue((arrayType.Element.Name, arrayType.Element.Namespace), out elementMapping))
                     continue;
 
                 var row = table.Rows.Add();
@@ -643,8 +642,8 @@ and n.nspname not in ('pg_catalog', 'pg_toast')");
 
             foreach (var rangeType in connector.DatabaseInfo.RangeTypes)
             {
-                if (!connector.TypeMapper.Mappings.TryGetValue(rangeType.Subtype.Name, out var elementMapping) &&
-                    !connector.TypeMapper.Mappings.TryGetValue(rangeType.Subtype.FullName, out elementMapping))
+                if (!connector.TypeMapper.Mappings.TryGetValue((rangeType.Subtype.Name, null), out var elementMapping) &&
+                    !connector.TypeMapper.Mappings.TryGetValue((rangeType.Subtype.Name, rangeType.Subtype.Namespace), out elementMapping))
                     continue;
 
                 var row = table.Rows.Add();
@@ -664,8 +663,8 @@ and n.nspname not in ('pg_catalog', 'pg_toast')");
 
             foreach (var enumType in connector.DatabaseInfo.EnumTypes)
             {
-                if (!connector.TypeMapper.Mappings.TryGetValue(enumType.Name, out var mapping) &&
-                    !connector.TypeMapper.Mappings.TryGetValue(enumType.FullName, out mapping))
+                if (!connector.TypeMapper.Mappings.TryGetValue((enumType.Name, null), out var mapping) &&
+                    !connector.TypeMapper.Mappings.TryGetValue((enumType.Name, enumType.Namespace), out mapping))
                     continue;
 
                 var row = table.Rows.Add();
@@ -679,8 +678,8 @@ and n.nspname not in ('pg_catalog', 'pg_toast')");
 
             foreach (var compositeType in connector.DatabaseInfo.CompositeTypes)
             {
-                if (!connector.TypeMapper.Mappings.TryGetValue(compositeType.Name, out var mapping) &&
-                    !connector.TypeMapper.Mappings.TryGetValue(compositeType.FullName, out mapping))
+                if (!connector.TypeMapper.Mappings.TryGetValue((compositeType.Name, null), out var mapping) &&
+                    !connector.TypeMapper.Mappings.TryGetValue((compositeType.Name, compositeType.Namespace), out mapping))
                     continue;
 
                 var row = table.Rows.Add();
@@ -694,8 +693,8 @@ and n.nspname not in ('pg_catalog', 'pg_toast')");
 
             foreach (var domainType in connector.DatabaseInfo.DomainTypes)
             {
-                if (!connector.TypeMapper.Mappings.TryGetValue(domainType.BaseType.Name, out var baseMapping) &&
-                    !connector.TypeMapper.Mappings.TryGetValue(domainType.BaseType.FullName, out baseMapping))
+                if (!connector.TypeMapper.Mappings.TryGetValue((domainType.BaseType.Name, null), out var baseMapping) &&
+                    !connector.TypeMapper.Mappings.TryGetValue((domainType.BaseType.Name, domainType.BaseType.Namespace), out baseMapping))
                     continue;
 
                 var row = table.Rows.Add();

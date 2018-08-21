@@ -31,7 +31,7 @@ namespace Npgsql.TypeMapping
 {
     abstract class TypeMapperBase : INpgsqlTypeMapper
     {
-        internal Dictionary<string, NpgsqlTypeMapping> Mappings { get; set; }
+        internal Dictionary<(string PgTypeName, string PgTypeSchema), NpgsqlTypeMapping> Mappings { get; set; }
 
         public INpgsqlNameTranslator DefaultNameTranslator { get; set; }
 
@@ -39,13 +39,14 @@ namespace Npgsql.TypeMapping
 
         public virtual INpgsqlTypeMapper AddMapping(NpgsqlTypeMapping mapping)
         {
-            if (Mappings.ContainsKey(mapping.PgTypeName))
-                RemoveMapping(mapping.PgTypeName);
-            Mappings[mapping.PgTypeName] = mapping;
+            if (Mappings.ContainsKey((mapping.PgTypeName, mapping.PgTypeSchema)))
+                RemoveMapping(mapping.PgTypeName, mapping.PgTypeSchema);
+            Mappings[(mapping.PgTypeName, mapping.PgTypeSchema)] = mapping;
             return this;
         }
 
-        public virtual bool RemoveMapping(string pgTypeName) => Mappings.Remove(pgTypeName);
+        public virtual bool RemoveMapping(string pgTypeName, string pgTypeSchema = null)
+            => Mappings.Remove((pgTypeName, pgTypeSchema));
 
         IEnumerable<NpgsqlTypeMapping> INpgsqlTypeMapper.Mappings => Mappings.Values;
 
@@ -55,7 +56,10 @@ namespace Npgsql.TypeMapping
 
         #region Enum mapping
 
-        public INpgsqlTypeMapper MapEnum<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null)
+        public INpgsqlTypeMapper MapEnum<TEnum>(
+            string pgName = null,
+            string pgSchema = null,
+            INpgsqlNameTranslator nameTranslator = null)
             where TEnum : struct, Enum
         {
             if (pgName != null && pgName.Trim() == "")
@@ -69,12 +73,16 @@ namespace Npgsql.TypeMapping
             return AddMapping(new NpgsqlTypeMappingBuilder
             {
                 PgTypeName = pgName,
+                PgTypeSchema = pgSchema,
                 ClrTypes = new[] { typeof(TEnum) },
                 TypeHandlerFactory = new EnumTypeHandlerFactory<TEnum>(nameTranslator)
             }.Build());
         }
 
-        public bool UnmapEnum<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null)
+        public bool UnmapEnum<TEnum>(
+            string pgName = null,
+            string pgSchema = null,
+            INpgsqlNameTranslator nameTranslator = null)
             where TEnum : struct, Enum
         {
             if (pgName != null && pgName.Trim() == "")
@@ -85,7 +93,7 @@ namespace Npgsql.TypeMapping
             if (pgName == null)
                 pgName = GetPgName<TEnum>(nameTranslator);
 
-            return RemoveMapping(pgName);
+            return RemoveMapping(pgName, pgSchema);
         }
 
         #endregion Enum mapping
@@ -106,6 +114,7 @@ namespace Npgsql.TypeMapping
             return AddMapping(new NpgsqlTypeMappingBuilder
             {
                 PgTypeName = pgName,
+                PgTypeSchema = null,
                 ClrTypes = new[] { typeof(T) },
                 TypeHandlerFactory = new MappedCompositeTypeHandlerFactory<T>(nameTranslator)
             }.Build());

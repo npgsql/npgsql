@@ -30,9 +30,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Net.Security;
 using System.Net.Sockets;
-using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
@@ -44,13 +42,14 @@ using NpgsqlTypes;
 using System.Transactions;
 using IsolationLevel = System.Data.IsolationLevel;
 
+// ReSharper disable ArrangeStaticMemberQualifier
+// ReSharper disable UnusedMember.Global
 namespace Npgsql
 {
     /// <summary>
     /// This class represents a connection to a PostgreSQL server.
     /// </summary>
-    // ReSharper disable once RedundantNameQualifier
-    [System.ComponentModel.DesignerCategory("")]
+    [DesignerCategory("")]
     public sealed class NpgsqlConnection : DbConnection, ICloneable
     {
         #region Fields
@@ -1038,7 +1037,7 @@ namespace Npgsql
         [Obsolete("Use NpgsqlConnection.TypeMapper.MapEnum() instead")]
         public void MapEnum<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null)
             where TEnum : struct, Enum
-            => TypeMapper.MapEnum<TEnum>(pgName, nameTranslator);
+            => TypeMapper.MapEnum<TEnum>(pgName, null, nameTranslator);
 
         /// <summary>
         /// Maps a CLR enum to a PostgreSQL enum type for use with all connections created from now on. Existing connections aren't affected.
@@ -1066,7 +1065,7 @@ namespace Npgsql
         [Obsolete("Use NpgsqlConnection.GlobalTypeMapper.MapEnum() instead")]
         public static void MapEnumGlobally<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null)
             where TEnum : struct, Enum
-            => NpgsqlConnection.GlobalTypeMapper.MapEnum<TEnum>(pgName, nameTranslator);
+            => NpgsqlConnection.GlobalTypeMapper.MapEnum<TEnum>(pgName, null, nameTranslator);
 
         /// <summary>
         /// Removes a previous global enum mapping.
@@ -1082,7 +1081,7 @@ namespace Npgsql
         [Obsolete("Use NpgsqlConnection.GlobalTypeMapper.UnmapEnum() instead")]
         public static void UnmapEnumGlobally<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null)
             where TEnum : struct, Enum
-            => NpgsqlConnection.GlobalTypeMapper.UnmapEnum<TEnum>(pgName, nameTranslator);
+            => NpgsqlConnection.GlobalTypeMapper.UnmapEnum<TEnum>(pgName, null, nameTranslator);
 
         #endregion
 

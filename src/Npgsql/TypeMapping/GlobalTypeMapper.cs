@@ -26,9 +26,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using Npgsql.NameTranslation;
 using Npgsql.TypeHandling;
 using NpgsqlTypes;
@@ -59,7 +57,7 @@ namespace Npgsql.TypeMapping
 
         internal GlobalTypeMapper()
         {
-            Mappings = new Dictionary<string, NpgsqlTypeMapping>();
+            Mappings = new Dictionary<(string PgTypeName, string PgTypeSchema), NpgsqlTypeMapping>();
             DefaultNameTranslator = new NpgsqlSnakeCaseNameTranslator();
         }
 
@@ -97,12 +95,12 @@ namespace Npgsql.TypeMapping
             }
         }
 
-        public override bool RemoveMapping(string pgTypeName)
+        public override bool RemoveMapping(string pgTypeName, string pgTypeSchema = null)
         {
             Lock.EnterWriteLock();
             try
             {
-                var result = base.RemoveMapping(pgTypeName);
+                var result = base.RemoveMapping(pgTypeName, pgTypeSchema);
                 RecordChange();
                 return result;
             }
@@ -200,6 +198,7 @@ namespace Npgsql.TypeMapping
                     AddMapping(new NpgsqlTypeMappingBuilder
                     {
                         PgTypeName = m.PgName,
+                        PgTypeSchema = null,
                         NpgsqlDbType = m.NpgsqlDbType,
                         DbTypes = m.DbTypes,
                         ClrTypes = m.ClrTypes,
@@ -225,6 +224,7 @@ namespace Npgsql.TypeMapping
                     AddMapping(new NpgsqlTypeMappingBuilder
                     {
                         PgTypeName = m.PgName,
+                        PgTypeSchema = null,
                         NpgsqlDbType = m.NpgsqlDbType,
                         DbTypes = m.DbTypes,
                         ClrTypes = m.ClrTypes,

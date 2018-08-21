@@ -1,4 +1,5 @@
 ﻿#region License
+
 // The PostgreSQL License
 //
 // Copyright (C) 2018 The Npgsql Development Team
@@ -19,13 +20,16 @@
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+
 #endregion
 
 using System;
 using System.Data;
+using JetBrains.Annotations;
 using Npgsql.TypeHandling;
 using NpgsqlTypes;
 
+// ReSharper disable UnusedMember.Global
 namespace Npgsql.TypeMapping
 {
     /// <summary>
@@ -37,11 +41,17 @@ namespace Npgsql.TypeMapping
         /// The name of the PostgreSQL type name, as it appears in the pg_type catalog.
         /// </summary>
         /// <remarks>
-        /// This can a a partial name (without the schema), or a fully-qualified name
-        /// (schema.typename) - the latter can be used if you have two types with the same
-        /// name in different schemas.
+        /// This should not be qualified by a schema.
         /// </remarks>
         public string PgTypeName { get; set; }
+
+        /// <summary>
+        /// The name of the PostgreSQL schema in which the type is defined, as it appears in the pg_type catalog.
+        /// </summary>
+        /// <remarks>
+        /// This can be used to differentiate between two types with the same name in different schemas.
+        /// </remarks>
+        public string PgTypeSchema { get; set; }
 
         /// <summary>
         /// The <see cref="NpgsqlDbType"/> that corresponds to this type. Setting an
@@ -85,7 +95,7 @@ namespace Npgsql.TypeMapping
                 throw new ArgumentException($"{PgTypeName} must contain the name of a PostgreSQL data type");
             if (TypeHandlerFactory == null)
                 throw new ArgumentException($"{TypeHandlerFactory} must refer to a type handler factory");
-            return new NpgsqlTypeMapping(PgTypeName, NpgsqlDbType, DbTypes, ClrTypes, InferredDbType, TypeHandlerFactory);
+            return new NpgsqlTypeMapping(PgTypeName, PgTypeSchema, NpgsqlDbType, DbTypes, ClrTypes, InferredDbType, TypeHandlerFactory);
         }
     }
 
@@ -99,10 +109,12 @@ namespace Npgsql.TypeMapping
     {
         internal NpgsqlTypeMapping(
             string pgTypeName,
+            [CanBeNull] string pgTypeSchema,
             NpgsqlDbType? npgsqlDbType, DbType[] dbTypes, Type[] clrTypes, DbType? inferredDbType,
             NpgsqlTypeHandlerFactory typeHandlerFactory)
         {
             PgTypeName = pgTypeName;
+            PgTypeSchema = string.IsNullOrWhiteSpace(pgTypeSchema) ? null : pgTypeSchema.Trim();
             NpgsqlDbType = npgsqlDbType;
             DbTypes = dbTypes ?? EmptyDbTypes;
             ClrTypes = clrTypes ?? EmptyClrTypes;
@@ -114,11 +126,19 @@ namespace Npgsql.TypeMapping
         /// The name of the PostgreSQL type name, as it appears in the pg_type catalog.
         /// </summary>
         /// <remarks>
-        /// This can a a partial name (without the schema), or a fully-qualified name
-        /// (schema.typename) - the latter can be used if you have two types with the same
-        /// name in different schemas.
+        /// This should not be qualified by a schema.
         /// </remarks>
+        [NotNull]
         public string PgTypeName { get; }
+
+        /// <summary>
+        /// The name of the PostgreSQL schema in which the type is defined, as it appears in the pg_type catalog.
+        /// </summary>
+        /// <remarks>
+        /// This can be used to differentiate between two types with the same name in different schemas.
+        /// </remarks>
+        [CanBeNull]
+        public string PgTypeSchema { get; }
 
         /// <summary>
         /// The <see cref="NpgsqlDbType"/> that corresponds to this type. Setting an
@@ -158,10 +178,9 @@ namespace Npgsql.TypeMapping
         /// </summary>
         internal Type DefaultClrType => TypeHandlerFactory.DefaultValueType;
 
-        /// <summary>
-        /// Returns a string that represents the current object.
-        /// </summary>
-        public override string ToString() => $"{PgTypeName} => {TypeHandlerFactory.GetType().Name}";
+        /// <inheritdoc />
+        public override string ToString()
+            => $"{(PgTypeSchema == null ? "" : $"{PgTypeSchema}.")}{PgTypeName} => {TypeHandlerFactory.GetType().Name}";
 
         static readonly DbType[] EmptyDbTypes = new DbType[0];
         static readonly Type[] EmptyClrTypes = new Type[0];

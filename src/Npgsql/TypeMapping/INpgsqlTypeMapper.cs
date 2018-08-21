@@ -23,12 +23,10 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Npgsql.NameTranslation;
 using NpgsqlTypes;
 
+// ReSharper disable UnusedMember.Global
 namespace Npgsql.TypeMapping
 {
     /// <summary>
@@ -49,7 +47,7 @@ namespace Npgsql.TypeMapping
         /// Removes an existing mapping from this mapper. Attempts to read or write this type
         /// after removal will result in an exception.
         /// </summary>
-        bool RemoveMapping(string pgTypeName);
+        bool RemoveMapping(string pgTypeName, string pgTypeSchema = null);
 
         /// <summary>
         /// Enumerates all mappings currently set up on this type mapper.
@@ -71,12 +69,15 @@ namespace Npgsql.TypeMapping
         /// A PostgreSQL type name for the corresponding enum type in the database.
         /// If null, the name translator given in <paramref name="nameTranslator"/>will be used.
         /// </param>
+        /// <param name="pgSchema">
+        /// A PostgreSQL schema name for the corresponding enum type in the database.
+        /// </param>
         /// <param name="nameTranslator">
         /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
         /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
         /// <typeparam name="TEnum">The .NET enum type to be mapped</typeparam>
-        INpgsqlTypeMapper MapEnum<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null)
+        INpgsqlTypeMapper MapEnum<TEnum>(string pgName = null, string pgSchema = null, INpgsqlNameTranslator nameTranslator = null)
             where TEnum : struct, Enum;
 
         /// <summary>
@@ -86,11 +87,14 @@ namespace Npgsql.TypeMapping
         /// A PostgreSQL type name for the corresponding enum type in the database.
         /// If null, the name translator given in <paramref name="nameTranslator"/> will be used.
         /// </param>
+        /// <param name="pgSchema">
+        /// A PostgreSQL schema name for the corresponding enum type in the database.
+        /// </param>
         /// <param name="nameTranslator">
         /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
         /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
-        bool UnmapEnum<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null)
+        bool UnmapEnum<TEnum>(string pgName = null, string pgSchema = null, INpgsqlNameTranslator nameTranslator = null)
             where TEnum : struct, Enum;
 
         /// <summary>
