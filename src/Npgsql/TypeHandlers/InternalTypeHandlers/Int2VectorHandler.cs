@@ -34,7 +34,7 @@ namespace Npgsql.TypeHandlers.InternalTypeHandlers
     class Int2VectorHandlerFactory : NpgsqlTypeHandlerFactory
     {
         internal override NpgsqlTypeHandler Create(PostgresType pgType, NpgsqlConnection conn)
-            => new Int2VectorHandler(conn.Connector.TypeMapper.DatabaseInfo.ByName["smallint"])
+            => new Int2VectorHandler(conn.Connector.TypeMapper.DatabaseInfo.ByNameSchema[("smallint", null)])
             {
                 PostgresType = pgType
             };

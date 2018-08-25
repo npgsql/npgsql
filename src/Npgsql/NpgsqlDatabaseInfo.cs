@@ -1,4 +1,5 @@
 ﻿#region License
+
 // The PostgreSQL License
 //
 // Copyright (C) 2018 The Npgsql Development Team
@@ -19,13 +20,12 @@
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+
 #endregion
 
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Data.Common;
-using System.Runtime.InteropServices.ComTypes;
 using System.Threading.Tasks;
 using Npgsql.PostgresTypes;
 
@@ -135,17 +135,8 @@ namespace Npgsql
 
         /// <summary>
         /// Indexes backend types by their PostgreSQL name, including namespace (e.g. pg_catalog.int4).
-        /// Only used for enums and composites.
         /// </summary>
-        internal Dictionary<string, PostgresType> ByFullName { get; } = new Dictionary<string, PostgresType>();
-
-        /// <summary>
-        /// Indexes backend types by their PostgreSQL name, not including namespace.
-        /// If more than one type exists with the same name (i.e. in different namespaces) this
-        /// table will contain an entry with a null value.
-        /// Only used for enums and composites.
-        /// </summary>
-        internal Dictionary<string, PostgresType> ByName { get; } = new Dictionary<string, PostgresType>();
+        internal Dictionary<(string Name, string Schema), PostgresType> ByNameSchema { get; } = new Dictionary<(string Name, string Schema), PostgresType>();
 
         internal void ProcessTypes()
         {
@@ -159,12 +150,7 @@ namespace Npgsql
             foreach (var type in GetTypes())
             {
                 ByOID[type.OID] = type;
-                ByFullName[type.FullName] = type;
-                // If more than one type exists with the same partial name, we place a null value.
-                // This allows us to detect this case later and force the user to use full names only.
-                ByName[type.Name] = ByName.ContainsKey(type.Name)
-                    ? null
-                    : type;
+                ByNameSchema[(type.Name, type.Namespace)] = type;
 
                 switch (type)
                 {

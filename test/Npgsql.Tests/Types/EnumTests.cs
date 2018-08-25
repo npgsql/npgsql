@@ -1,4 +1,5 @@
 ﻿#region License
+
 // The PostgreSQL License
 //
 // Copyright (C) 2018 The Npgsql Development Team
@@ -19,15 +20,12 @@
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+
 #endregion
 
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
-using System.Data;
-using System.Linq;
-using System.Text;
-using Npgsql;
 using Npgsql.NameTranslation;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
@@ -406,7 +404,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, Description("Tests that a a C# enum an be written to an enum backend when passed as dbUnknown")]
-        public void WriteEnumAsDbUnknwown()
+        public void WriteEnumAsDbUnknown()
         {
             using (var conn = OpenConnection())
             {
@@ -522,8 +520,8 @@ namespace Npgsql.Tests.Types
                     conn.ExecuteNonQuery("CREATE TYPE b.my_enum AS ENUM ('alpha')");
                     conn.ReloadTypes();
                     conn.TypeMapper
-                        .MapEnum<Enum1>("a.my_enum")
-                        .MapEnum<Enum2>("b.my_enum");
+                        .MapEnum<Enum1>("my_enum", "a")
+                        .MapEnum<Enum2>("my_enum", "b");
                     using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn))
                     {
                         cmd.Parameters.AddWithValue("p1", Enum1.One);
@@ -540,8 +538,8 @@ namespace Npgsql.Tests.Types
                 }
 
                 // Global mapping
-                NpgsqlConnection.GlobalTypeMapper.MapEnum<Enum1>("a.my_enum");
-                NpgsqlConnection.GlobalTypeMapper.MapEnum<Enum2>("b.my_enum");
+                NpgsqlConnection.GlobalTypeMapper.MapEnum<Enum1>("my_enum", "a");
+                NpgsqlConnection.GlobalTypeMapper.MapEnum<Enum2>("my_enum", "b");
                 using (var conn = OpenConnection())
                 {
                     using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn))
@@ -561,8 +559,8 @@ namespace Npgsql.Tests.Types
             }
             finally
             {
-                NpgsqlConnection.GlobalTypeMapper.UnmapEnum<Enum1>("a.my_enum");
-                NpgsqlConnection.GlobalTypeMapper.UnmapEnum<Enum2>("b.my_enum");
+                NpgsqlConnection.GlobalTypeMapper.UnmapEnum<Enum1>("my_enum", "a");
+                NpgsqlConnection.GlobalTypeMapper.UnmapEnum<Enum2>("my_enum", "b");
                 using (var conn = OpenConnection())
                     conn.ExecuteNonQuery("DROP SCHEMA IF EXISTS a CASCADE; DROP SCHEMA IF EXISTS b CASCADE");
             }

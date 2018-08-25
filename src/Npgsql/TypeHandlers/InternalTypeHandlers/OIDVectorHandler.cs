@@ -34,7 +34,7 @@ namespace Npgsql.TypeHandlers.InternalTypeHandlers
     class OIDVectorHandlerFactory : NpgsqlTypeHandlerFactory
     {
         internal override NpgsqlTypeHandler Create(PostgresType pgType, NpgsqlConnection conn)
-            => new OIDVectorHandler(conn.Connector.TypeMapper.DatabaseInfo.ByName["oid"])
+            => new OIDVectorHandler(conn.Connector.TypeMapper.DatabaseInfo.ByNameSchema[("oid", null)])
             {
                 PostgresType = pgType
             };

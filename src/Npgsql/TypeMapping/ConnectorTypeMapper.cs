@@ -54,7 +54,7 @@ namespace Npgsql.TypeMapping
         readonly Dictionary<uint, NpgsqlTypeHandler> _byOID = new Dictionary<uint, NpgsqlTypeHandler>();
         readonly Dictionary<NpgsqlDbType, NpgsqlTypeHandler> _byNpgsqlDbType = new Dictionary<NpgsqlDbType, NpgsqlTypeHandler>();
         readonly Dictionary<DbType, NpgsqlTypeHandler> _byDbType = new Dictionary<DbType, NpgsqlTypeHandler>();
-        readonly Dictionary<string, NpgsqlTypeHandler> _byTypeName = new Dictionary<string, NpgsqlTypeHandler>();
+        readonly Dictionary<(string Name, string Schema), NpgsqlTypeHandler> _byTypeName = new Dictionary<(string Name, string Schema), NpgsqlTypeHandler>();
 
         /// <summary>
         /// Maps CLR types to their type handlers.
@@ -113,8 +113,8 @@ namespace Npgsql.TypeMapping
                 ? handler
                 : throw new NotSupportedException("This DbType is not supported in Npgsql: " + dbType);
 
-        internal NpgsqlTypeHandler GetByDataTypeName(string typeName)
-            => _byTypeName.TryGetValue(typeName, out var handler)
+        internal NpgsqlTypeHandler GetByDataTypeName(string typeName, string schema)
+            => _byTypeName.TryGetValue((typeName, schema), out var handler)
                 ? handler
                 : throw new NotSupportedException("Could not find PostgreSQL type " + typeName);
 
@@ -274,12 +274,7 @@ namespace Npgsql.TypeMapping
             // 2. When binding the global mappings, in which case we want to log rather than throw
             // (i.e. missing database type for some unused defined binding shouldn't fail the connection)
 
-            var pgName = mapping.PgTypeName;
-            var found = pgName.IndexOf('.') == -1
-                ? DatabaseInfo.ByName.TryGetValue(pgName, out var pgType)  // No dot, partial type name
-                : DatabaseInfo.ByFullName.TryGetValue(pgName, out pgType); // Full type name with namespace
-
-            if (!found)
+            if (!DatabaseInfo.ByNameSchema.TryGetValue((mapping.PgTypeName, mapping.PgTypeSchema), out var pgType))
             {
                 var msg = $"A PostgreSQL type with the name {mapping.PgTypeName} was not found in the database";
                 if (throwOnError)
@@ -287,17 +282,9 @@ namespace Npgsql.TypeMapping
                 Log.Debug(msg);
                 return;
             }
-            else if (pgType == null)
+            if (pgType is PostgresDomainType)
             {
-                var msg = $"More than one PostgreSQL type was found with the name {mapping.PgTypeName}, please specify a full name including schema";
-                if (throwOnError)
-                    throw new ArgumentException(msg);
-                Log.Debug(msg);
-                return;
-            }
-            else if (pgType is PostgresDomainType)
-            {
-                var msg = "Cannot add a mapping to a PostgreSQL domain type";
+                const string msg = "Cannot add a mapping to a PostgreSQL domain type";
                 if (throwOnError)
                     throw new NotSupportedException(msg);
                 Log.Debug(msg);
@@ -311,8 +298,9 @@ namespace Npgsql.TypeMapping
         void BindType(NpgsqlTypeHandler handler, PostgresType pgType, NpgsqlDbType? npgsqlDbType = null, DbType[] dbTypes = null, Type[] clrTypes = null)
         {
             _byOID[pgType.OID] = handler;
-            _byTypeName[pgType.FullName] = handler;
-            _byTypeName[pgType.Name] = handler;
+            _byTypeName[(pgType.Name, pgType.Namespace)] = handler;
+            // TODO: needed?
+            _byTypeName[(pgType.Name, null)] = handler;
 
             if (npgsqlDbType.HasValue)
             {

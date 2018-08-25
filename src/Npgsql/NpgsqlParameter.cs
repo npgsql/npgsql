@@ -522,7 +522,7 @@ namespace Npgsql
             if (_npgsqlDbType.HasValue)
                 Handler = typeMapper.GetByNpgsqlDbType(_npgsqlDbType.Value);
             else if (_dataTypeName != null)
-                Handler = typeMapper.GetByDataTypeName(_dataTypeName);
+                Handler = typeMapper.GetByDataTypeName(_dataTypeName, _dataTypeName.IndexOf('.') == -1 ? null : _dataTypeName.Split('.')[0]);
             else if (_dbType.HasValue)
                 Handler = typeMapper.GetByDbType(_dbType.Value);
             else if (_value != null)
