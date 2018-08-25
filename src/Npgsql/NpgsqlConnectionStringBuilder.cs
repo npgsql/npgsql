@@ -572,25 +572,6 @@ namespace Npgsql
         bool _checkCertificateRevocation;
 
         /// <summary>
-        /// Npgsql uses its own internal implementation of TLS/SSL. Turn this on to use .NET SslStream instead.
-        /// </summary>
-        [Category("Security")]
-        [Description("Npgsql uses its own internal implementation of TLS/SSL. Turn this on to use .NET SslStream instead.")]
-        [DisplayName("Use SSL Stream")]
-        [DefaultValue(true)]
-        [NpgsqlConnectionStringProperty]
-        public bool UseSslStream
-        {
-            get => _useSslStream;
-            set
-            {
-                _useSslStream = value;
-                SetValue(nameof(UseSslStream), value);
-            }
-        }
-        bool _useSslStream;
-
-        /// <summary>
         /// Whether to use Windows integrated security to log in.
         /// </summary>
         [Category("Security")]
@@ -1208,73 +1189,87 @@ namespace Npgsql
         #region Properties - Obsolete
 
         /// <summary>
-        /// Obsolete, see http://www.npgsql.org/doc/migration/3.1.html
+        /// Obsolete, see http://www.npgsql.org/doc/release-notes/3.1.html
         /// </summary>
         [Category("Obsolete")]
-        [Description("Obsolete, see http://www.npgsql.org/doc/migration/3.1.html")]
+        [Description("Obsolete, see http://www.npgsql.org/doc/release-notes/3.1.html")]
         [DisplayName("Connection Lifetime")]
         [NpgsqlConnectionStringProperty]
         [Obsolete("The ConnectionLifeTime parameter is no longer supported")]
         public int ConnectionLifeTime
         {
             get => 0;
-            set => throw new NotSupportedException("The ConnectionLifeTime parameter is no longer supported. Please see http://www.npgsql.org/doc/migration/3.1.html");
+            set => throw new NotSupportedException("The ConnectionLifeTime parameter is no longer supported. Please see http://www.npgsql.org/doc/release-notes/3.1.html");
         }
 
         /// <summary>
-        /// Obsolete, see http://www.npgsql.org/doc/migration/3.1.html
+        /// Obsolete, see http://www.npgsql.org/doc/release-notes/3.1.html
         /// </summary>
         [Category("Obsolete")]
-        [Description("Obsolete, see http://www.npgsql.org/doc/migration/3.1.html")]
+        [Description("Obsolete, see http://www.npgsql.org/doc/release-notes/3.1.html")]
         [DisplayName("Continuous Processing")]
         [NpgsqlConnectionStringProperty]
         [Obsolete("The ContinuousProcessing parameter is no longer supported.")]
         public bool ContinuousProcessing
         {
             get => false;
-            set => throw new NotSupportedException("The ContinuousProcessing parameter is no longer supported. Please see http://www.npgsql.org/doc/migration/3.1.html");
+            set => throw new NotSupportedException("The ContinuousProcessing parameter is no longer supported. Please see http://www.npgsql.org/doc/release-notes/3.1.html");
         }
 
         /// <summary>
-        /// Obsolete, see http://www.npgsql.org/doc/migration/3.1.html
+        /// Obsolete, see http://www.npgsql.org/doc/release-notes/3.1.html
         /// </summary>
         [Category("Obsolete")]
-        [Description("Obsolete, see http://www.npgsql.org/doc/migration/3.1.html")]
+        [Description("Obsolete, see http://www.npgsql.org/doc/release-notes/3.1.html")]
         [DisplayName("Backend Timeouts")]
         [NpgsqlConnectionStringProperty]
         [Obsolete("The BackendTimeouts parameter is no longer supported")]
         public bool BackendTimeouts
         {
             get => false;
-            set => throw new NotSupportedException("The BackendTimeouts parameter is no longer supported. Please see http://www.npgsql.org/doc/migration/3.1.html");
+            set => throw new NotSupportedException("The BackendTimeouts parameter is no longer supported. Please see http://www.npgsql.org/doc/release-notes/3.1.html");
         }
 
         /// <summary>
-        /// Obsolete, see http://www.npgsql.org/doc/migration/3.0.html
+        /// Obsolete, see http://www.npgsql.org/doc/release-notes/3.0.html
         /// </summary>
         [Category("Obsolete")]
-        [Description("Obsolete, see http://www.npgsql.org/doc/migration/3.0.html")]
+        [Description("Obsolete, see http://www.npgsql.org/doc/v/3.0.html")]
         [DisplayName("Preload Reader")]
         [NpgsqlConnectionStringProperty]
         [Obsolete("The PreloadReader parameter is no longer supported")]
         public bool PreloadReader
         {
             get => false;
-            set => throw new NotSupportedException("The PreloadReader parameter is no longer supported. Please see http://www.npgsql.org/doc/migration/3.0.html");
+            set => throw new NotSupportedException("The PreloadReader parameter is no longer supported. Please see http://www.npgsql.org/doc/release-notes/3.0.html");
         }
 
         /// <summary>
-        /// Obsolete, see http://www.npgsql.org/doc/migration/3.0.html
+        /// Obsolete, see http://www.npgsql.org/doc/release-notes/3.0.html
         /// </summary>
         [Category("Obsolete")]
-        [Description("Obsolete, see http://www.npgsql.org/doc/migration/3.0.html")]
+        [Description("Obsolete, see http://www.npgsql.org/doc/release-notes/3.0.html")]
         [DisplayName("Use Extended Types")]
         [NpgsqlConnectionStringProperty]
         [Obsolete("The UseExtendedTypes parameter is no longer supported")]
         public bool UseExtendedTypes
         {
             get => false;
-            set => throw new NotSupportedException("The UseExtendedTypes parameter is no longer supported. Please see http://www.npgsql.org/doc/migration/3.0.html");
+            set => throw new NotSupportedException("The UseExtendedTypes parameter is no longer supported. Please see http://www.npgsql.org/doc/release-notes/3.0.html");
+        }
+
+        /// <summary>
+        /// Obsolete, see http://www.npgsql.org/doc/release-notes/4.1.html
+        /// </summary>
+        [Category("Obsolete")]
+        [Description("Obsolete, see http://www.npgsql.org/doc/release-notes/4.1.html")]
+        [DisplayName("Use Ssl Stream")]
+        [NpgsqlConnectionStringProperty]
+        [Obsolete("The UseSslStream parameter is no longer supported (always true)")]
+        public bool UseSslStream
+        {
+            get => true;
+            set => throw new NotSupportedException("The UseSslStream parameter is no longer supported (SslStream is always used). Please see http://www.npgsql.org/doc/release-notes/4.1.html");
         }
 
         #endregion

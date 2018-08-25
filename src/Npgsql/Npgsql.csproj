@@ -39,13 +39,4 @@
     <Reference Include="System.Transactions" Pack="false" />
     <Reference Include="System.DirectoryServices" Pack="false" />
   </ItemGroup>
-  <PropertyGroup Condition=" '$(Configuration)' == 'ReleaseOptimizedCryptography' ">
-    <DefineConstants>$(DefineConstants);RELEASE;TRACE;OPTIMIZED_CRYPTOGRAPHY</DefineConstants>
-    <Optimize>true</Optimize>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)' == 'DebugOptimizedCryptography' ">
-    <DefineConstants>$(DefineConstants);DEBUG;TRACE;OPTIMIZED_CRYPTOGRAPHY</DefineConstants>
-    <DebugSymbols>true</DebugSymbols>
-    <Optimize>false</Optimize>
-  </PropertyGroup>
 </Project>
