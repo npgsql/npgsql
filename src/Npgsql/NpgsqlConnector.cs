@@ -319,7 +319,6 @@ namespace Npgsql
         int Port => Settings.Port;
         string KerberosServiceName => Settings.KerberosServiceName;
         SslMode SslMode => Settings.SslMode;
-        bool UseSslStream => Settings.UseSslStream;
         int ConnectionTimeout => Settings.Timeout;
         bool IntegratedSecurity => Settings.IntegratedSecurity;
         internal bool ConvertInfinityDateTime => Settings.ConvertInfinityDateTime;
@@ -594,21 +593,12 @@ namespace Npgsql
                         else
                             certificateValidationCallback = DefaultUserCertificateValidationCallback;
 
-                        if (!UseSslStream)
-                        {
-                            var sslStream = new Tls.TlsClientStream(_stream);
-                            await sslStream.PerformInitialHandshake(Host, clientCertificates, certificateValidationCallback, Settings.CheckCertificateRevocation, async);
-                            _stream = sslStream;
-                        }
+                        var sslStream = new SslStream(_stream, false, certificateValidationCallback);
+                        if (async)
+                            await sslStream.AuthenticateAsClientAsync(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, Settings.CheckCertificateRevocation);
                         else
-                        {
-                            var sslStream = new SslStream(_stream, false, certificateValidationCallback);
-                            if (async)
-                                await sslStream.AuthenticateAsClientAsync(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, Settings.CheckCertificateRevocation);
-                            else
-                                sslStream.AuthenticateAsClient(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, Settings.CheckCertificateRevocation);
-                            _stream = sslStream;
-                        }
+                            sslStream.AuthenticateAsClient(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, Settings.CheckCertificateRevocation);
+                        _stream = sslStream;
                         timeout.Check();
                         ReadBuffer.Clear();  // Reset to empty after reading single SSL char
                         ReadBuffer.Underlying = _stream;

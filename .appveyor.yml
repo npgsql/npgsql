@@ -32,7 +32,7 @@ build_script:
   - msbuild src\VSIX\VSIX.csproj /p:Configuration=Release /v:Minimal
   - msbuild src\MSI\MSI.wixproj /p:Configuration=Release /v:Minimal
 after_build:
-  - dotnet pack src\Npgsql\Npgsql.csproj -c ReleaseOptimizedCryptography
+  - dotnet pack src\Npgsql\Npgsql.csproj -c Release
   - dotnet pack src\Npgsql.Json.NET\Npgsql.Json.NET.csproj -c Release
   - dotnet pack src\Npgsql.NodaTime\Npgsql.NodaTime.csproj -c Release
   - dotnet pack src\Npgsql.LegacyPostgis\Npgsql.LegacyPostgis.csproj -c Release
