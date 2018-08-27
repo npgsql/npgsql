@@ -170,6 +170,29 @@ namespace Npgsql
         /// <paramref name="npgsqlDbType"/> must be specified as <see cref="NpgsqlDbType.Jsonb"/>.
         /// </param>
         /// <typeparam name="T">The .NET type of the column to be written.</typeparam>
+        public void Write<T>(T? value, NpgsqlDbType npgsqlDbType) where T : struct
+        {
+            if (value.HasValue)
+            {
+                Write(value.Value, npgsqlDbType);
+            }
+            else
+            {
+                Write<T?>(null, npgsqlDbType);
+            }
+        }
+
+        /// <summary>
+        /// Writes a single column in the current row as type <paramref name="npgsqlDbType"/>.
+        /// </summary>
+        /// <param name="value">The value to be written</param>
+        /// <param name="npgsqlDbType">
+        /// In some cases <typeparamref name="T"/> isn't enough to infer the data type to be written to
+        /// the database. This parameter and be used to unambiguously specify the type. An example is
+        /// the JSONB type, for which <typeparamref name="T"/> will be a simple string but for which
+        /// <paramref name="npgsqlDbType"/> must be specified as <see cref="NpgsqlDbType.Jsonb"/>.
+        /// </param>
+        /// <typeparam name="T">The .NET type of the column to be written.</typeparam>
         public void Write<T>(T value, NpgsqlDbType npgsqlDbType)
         {
             var p = _params[_column];
