@@ -275,7 +275,7 @@ namespace Npgsql.NetTopologySuite
         Task WriteCore(IGeometry value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
             _writer.Write(value, buf.GetStream());
-#if NET45
+#if NET452
             return Task.Delay(0);
 #else
             return Task.CompletedTask;
