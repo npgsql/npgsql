@@ -967,5 +967,29 @@ CREATE TEMP TABLE ""OrganisatieQmo_Organisatie_QueryModelObjects_Imp""
   CONSTRAINT ""pk_OrganisatieQmo_Organisatie_QueryModelObjects_Imp"" PRIMARY KEY (""Id"")
 )";
         #endregion Bug1285
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2132")]
+        public void Bug2132()
+        {
+            const float expected = 3f;
+
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMPORARY TABLE ABC (Field1 float);");
+                using (var writer = conn.BeginBinaryImport(@"COPY ABC (Field1) FROM STDIN (FORMAT BINARY);"))
+                {
+                    writer.StartRow();
+                    writer.Write(expected, NpgsqlDbType.Real);
+                    writer.Complete();
+                }
+
+                using (var cmd = new NpgsqlCommand("SELECT Field1 FROM ABC", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetFloat(0), Is.EqualTo(expected));
+                }
+            }
+        }
     }
 }
