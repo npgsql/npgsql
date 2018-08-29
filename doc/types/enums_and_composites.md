@@ -6,7 +6,7 @@ PostgreSQL supports [enum types](http://www.postgresql.org/docs/current/static/d
 
 The recommended way to work with enums and composites is to set up a mapping for your CLR types. Doing so provides the following advantages:
 
-o set up a global mapping for all your connections, put this code before your first open:
+To set up a global mapping that applies to all connections, place this code before the initial connection is opened:
 
 ```c#
 NpgsqlConnection.GlobalTypeMapper.MapEnum<SomeEnum>("some_enum");
