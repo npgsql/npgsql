@@ -1,4 +1,5 @@
 ﻿#region License
+
 // The PostgreSQL License
 //
 // Copyright (C) 2018 The Npgsql Development Team
@@ -19,17 +20,15 @@
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+
 #endregion
 
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;
-using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.Logging;
 using Npgsql.PostgresTypes;
@@ -77,6 +76,8 @@ namespace Npgsql.TypeMapping
         internal int ChangeCounter { get; private set; }
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+
+        public override INpgsqlNameTranslator DefaultNameTranslator { get; }
 
         #region Construction
 
