@@ -26,6 +26,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using JetBrains.Annotations;
 using Npgsql.TypeHandlers;
 using NpgsqlTypes;
 
@@ -35,7 +36,15 @@ namespace Npgsql.TypeMapping
     {
         internal Dictionary<string, NpgsqlTypeMapping> Mappings { get; set; }
 
-        public abstract INpgsqlNameTranslator DefaultNameTranslator { get; }
+        public INpgsqlNameTranslator DefaultNameTranslator { get; }
+
+        protected TypeMapperBase([NotNull] INpgsqlNameTranslator defaultNameTranslator)
+        {
+            if (defaultNameTranslator == null)
+                throw new ArgumentNullException(nameof(defaultNameTranslator));
+
+            DefaultNameTranslator = defaultNameTranslator;
+        }
 
         #region Mapping management
 

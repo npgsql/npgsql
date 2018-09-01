@@ -39,8 +39,6 @@ namespace Npgsql.TypeMapping
     {
         public static GlobalTypeMapper Instance { get; }
 
-        public override INpgsqlNameTranslator DefaultNameTranslator { get; }
-
         /// <summary>
         /// A counter that is incremented whenever a global mapping change occurs.
         /// Used to invalidate bound type mappers.
@@ -59,11 +57,8 @@ namespace Npgsql.TypeMapping
             Instance = instance;
         }
 
-        internal GlobalTypeMapper()
-        {
-            Mappings = new Dictionary<string, NpgsqlTypeMapping>();
-            DefaultNameTranslator = new NpgsqlSnakeCaseNameTranslator();
-        }
+        internal GlobalTypeMapper() : base(new NpgsqlSnakeCaseNameTranslator())
+            => Mappings = new Dictionary<string, NpgsqlTypeMapping>();
 
         #region Mapping management
 

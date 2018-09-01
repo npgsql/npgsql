@@ -77,17 +77,14 @@ namespace Npgsql.TypeMapping
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
-        public override INpgsqlNameTranslator DefaultNameTranslator { get; }
-
         #region Construction
 
-        internal ConnectorTypeMapper(NpgsqlConnector connector)
+        internal ConnectorTypeMapper(NpgsqlConnector connector): base(GlobalTypeMapper.Instance.DefaultNameTranslator)
         {
             _connector = connector;
             UnrecognizedTypeHandler = new UnknownTypeHandler(_connector.Connection);
             ClearBindings();
             ResetMappings();
-            DefaultNameTranslator = GlobalTypeMapper.Instance.DefaultNameTranslator;
         }
 
         #endregion Constructors
