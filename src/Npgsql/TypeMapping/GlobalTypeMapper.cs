@@ -1,4 +1,5 @@
 ﻿#region License
+
 // The PostgreSQL License
 //
 // Copyright (C) 2018 The Npgsql Development Team
@@ -19,6 +20,7 @@
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+
 #endregion
 
 using System;
@@ -26,9 +28,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using Npgsql.NameTranslation;
 using Npgsql.TypeHandling;
 using NpgsqlTypes;
@@ -57,11 +57,8 @@ namespace Npgsql.TypeMapping
             Instance = instance;
         }
 
-        internal GlobalTypeMapper()
-        {
-            Mappings = new Dictionary<string, NpgsqlTypeMapping>();
-            DefaultNameTranslator = new NpgsqlSnakeCaseNameTranslator();
-        }
+        internal GlobalTypeMapper() : base(new NpgsqlSnakeCaseNameTranslator())
+            => Mappings = new Dictionary<string, NpgsqlTypeMapping>();
 
         #region Mapping management
 

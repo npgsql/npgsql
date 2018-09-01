@@ -1,4 +1,5 @@
 ﻿#region License
+
 // The PostgreSQL License
 //
 // Copyright (C) 2018 The Npgsql Development Team
@@ -19,42 +20,52 @@
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+
 #endregion
 
-using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using JetBrains.Annotations;
 using Npgsql.NameTranslation;
 using NpgsqlTypes;
 
+// ReSharper disable UnusedMember.Global
 namespace Npgsql.TypeMapping
 {
     /// <summary>
     /// A type mapper, managing how to read and write CLR values to PostgreSQL data types.
     /// A type mapper exists for each connection, as well as a single global type mapper
-    /// (accessible via 
+    /// (accessible via <see cref="P:NpgsqlConnection.GlobalTypeMapper"/>).
     /// </summary>
     /// <remarks>
     /// </remarks>
+    [PublicAPI]
     public interface INpgsqlTypeMapper
     {
         /// <summary>
+        /// The default name translator to convert CLR type names and member names.
+        /// </summary>
+        [NotNull]
+        INpgsqlNameTranslator DefaultNameTranslator { get; }
+
+        /// <summary>
+        /// Enumerates all mappings currently set up on this type mapper.
+        /// </summary>
+        [NotNull]
+        [ItemNotNull]
+        IEnumerable<NpgsqlTypeMapping> Mappings { get; }
+
+        /// <summary>
         /// Adds a new type mapping to this mapper, overwriting any existing mapping in the process.
         /// </summary>
-        INpgsqlTypeMapper AddMapping(NpgsqlTypeMapping mapping);
+        [NotNull]
+        INpgsqlTypeMapper AddMapping([NotNull] NpgsqlTypeMapping mapping);
 
         /// <summary>
         /// Removes an existing mapping from this mapper. Attempts to read or write this type
         /// after removal will result in an exception.
         /// </summary>
-        bool RemoveMapping(string pgTypeName);
-
-        /// <summary>
-        /// Enumerates all mappings currently set up on this type mapper.
-        /// </summary>
-        IEnumerable<NpgsqlTypeMapping> Mappings { get; }
+        /// <param name="pgTypeName">A PostgreSQL type name for the type in the database.</param>
+        bool RemoveMapping([NotNull] string pgTypeName);
 
         /// <summary>
         /// Maps a CLR enum to a PostgreSQL enum type.
@@ -111,7 +122,10 @@ namespace Npgsql.TypeMapping
         /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
         /// <typeparam name="T">The .NET type to be mapped</typeparam>
-        INpgsqlTypeMapper MapComposite<T>(string pgName = null, INpgsqlNameTranslator nameTranslator = null) where T : new();
+        [NotNull]
+        INpgsqlTypeMapper MapComposite<T>(
+            [CanBeNull] string pgName = null,
+            [CanBeNull] INpgsqlNameTranslator nameTranslator = null) where T : new();
 
         /// <summary>
         /// Removes an existing enum mapping.
@@ -124,7 +138,9 @@ namespace Npgsql.TypeMapping
         /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
         /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
-        bool UnmapComposite<T>(string pgName = null, INpgsqlNameTranslator nameTranslator = null) where T : new();
+        bool UnmapComposite<T>(
+            [CanBeNull] string pgName = null,
+            [CanBeNull] INpgsqlNameTranslator nameTranslator = null) where T : new();
 
         /// <summary>
         /// Resets all mapping changes performed on this type mapper and reverts it to its original, starting state.
