@@ -321,7 +321,15 @@ namespace Npgsql
                 }
                 catch
                 {
-                    Connector = null;
+                    if (Connector != null)
+                    {
+                        if (_pool == null)
+                            Connector.Close();
+                        else
+                            _pool.Release(Connector);
+                        Connector = null;
+                    }
+
                     throw;
                 }
                 Debug.Assert(Connector.Connection != null, "Open done but connector not set on Connection");

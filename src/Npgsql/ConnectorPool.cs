@@ -248,6 +248,8 @@ namespace Npgsql
                     catch
                     {
                         // Physical open failed, decrement busy back down
+                        conn.Connector = null;
+
                         var sw = new SpinWait();
                         while (true)
                         {
