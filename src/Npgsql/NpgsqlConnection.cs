@@ -179,15 +179,13 @@ namespace Npgsql
 
             if (!_countersInitialized)
             {
-                _countersInitialized = true;
                 Counters.Initialize(Settings.UsePerfCounters);
+                _countersInitialized = true;
             }
 
             // Maybe pooling is off
             if (!Settings.Pooling)
-            {
                 return;
-            }
 
             // Connstring may be equivalent to one that has already been seen though (e.g. different
             // ordering). Have NpgsqlConnectionStringBuilder produce a canonical string representation
