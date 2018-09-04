@@ -7,7 +7,7 @@ title: Tests
 
 Npgsql has an extensive test suite to guard against regressions. The test suite is run on the official build server for all supported .NET versions (including a recent version of mono) and all supported PostgreSQL backends.
 
-Npgsql also includes a growing suite of performance tests. These tests are marked `[Explicit]` and can be executed manually.
+Continuous integration results are publicly available from [AppVeyor](https://ci.appveyor.com/project/roji/npgsql) and [Travis CI](https://travis-ci.org/npgsql).
 
 ## Getting Started
 
