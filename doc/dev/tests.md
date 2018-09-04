@@ -5,22 +5,26 @@ title: Tests
 
 ## Overview
 
-Npgsql has an extensive test suite to guard against regressions. The test suite is run on the official build server for all supported .NET versions (including a recent version of mono) and all supported PostgreSQL backends.
+Npgsql has an extensive test suite to guard against regressions. The test suite is run on the official build server for
+the .NET Framework and .NET Core with all supported PostgreSQL backends.
 
-Continuous integration results are publicly available from [AppVeyor](https://ci.appveyor.com/project/roji/npgsql) and [Travis CI](https://travis-ci.org/npgsql).
+Continuous integration results are publicly available from [AppVeyor](https://ci.appveyor.com/project/roji/npgsql) and
+[Travis CI](https://travis-ci.org/npgsql).
 
 ## Getting Started
 
 ### Setup PostgreSQL
 
-The Npgsql test suite requires a PostgreSQL backend for tests to run. By default, the test suite expects PostgreSQL to be running on the local machine with the default port (5432). 
+The Npgsql test suite requires a PostgreSQL backend for tests to run. By default, the test suite expects PostgreSQL to be running
+on the local machine with the default port (5432). 
 
 1. Install PostgreSQL: https://www.postgresql.org/download
 2. Start the PostgreSQL backend.
 
 ### Create the `npgsql_tests` account
 
-By default, the test suite expects an account named `npgsql_tests` with a password of `npgsql_tests`. This account is used by the test suite to create a database named `npgsql_tests` and run the tests. 
+By default, the test suite expects an account named `npgsql_tests` with a password of `npgsql_tests`. This account is used by the
+test suite to create a database named `npgsql_tests` and run the tests. 
 
 ```
 $ psql -h localhost -U postgres
