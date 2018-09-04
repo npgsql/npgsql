@@ -11,9 +11,9 @@ Npgsql also includes a growing suite of performance tests. These tests are marke
 
 ## Getting Started
 
-The Npgsql test suite requires a PostgreSQL backend for tests to run. By default, the test suite expects PostgreSQL to be running on the local machine with the default port (5432). 
-
 ### Setup PostgreSQL
+
+The Npgsql test suite requires a PostgreSQL backend for tests to run. By default, the test suite expects PostgreSQL to be running on the local machine with the default port (5432). 
 
 1. Install PostgreSQL: https://www.postgresql.org/download
 2. Start the PostgreSQL backend.
