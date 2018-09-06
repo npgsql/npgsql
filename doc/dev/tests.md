@@ -5,24 +5,42 @@ title: Tests
 
 ## Overview
 
-Npgsql comes with an extensive test suite to make sure no regressions occur. All tests are run on our build server on all supported .NET versions (including a recent version of mono) and all supported PostgreSQL backends.
+Npgsql has an extensive test suite to guard against regressions. The test suite is run on the official build server for the .NET Framework and .NET Core with all supported PostgreSQL backends.
 
-There is also a growing suite of speed tests to be able to measure performance. These tests are currently marked [Explicit] and aren't executed automatically.
+Continuous integration results are publicly available from [AppVeyor](https://ci.appveyor.com/project/roji/npgsql) and [Travis CI](https://travis-ci.org/npgsql).
 
-## Simple setup
+## Getting Started
 
-The Npgsql test suite requires a PostgreSQL backend to test against. Simply use the latest version of PostgreSQL on your dev machine on the default port (5432).
-By default, all tests will be run using user *npgsql_tests*, and password *npgsql_tests*. Npgsql will automatically create a database called *npgsql_tests* and
-run its tests against this.
+### Setup PostgreSQL
 
-To set this up, connect to PostgreSQL as the admin user as follows:
+The Npgsql test suite requires a PostgreSQL backend for tests to run. By default, the test suite expects PostgreSQL to be running on the local machine with the default port (5432). 
+
+1. Install PostgreSQL: https://www.postgresql.org/download
+2. Start the PostgreSQL backend.
+
+### Create the `npgsql_tests` account
+
+By default, the test suite expects an account named `npgsql_tests` with a password of `npgsql_tests`. This account is used by the test suite to create a database named `npgsql_tests` and run the tests. 
 
 ```
-psql -h localhost -U postgres
-<enter the admin password>
-create user npgsql_tests password 'npgsql_tests' superuser;
+$ psql -h localhost -U postgres
+postgres=# CREATE USER npgsql_tests PASSWORD 'npgsql_tests' SUPERUSER;
 ```
 
-And you're done.
+_Note: superuser access is required to create and drop test databases, load extensions (e.g. `hstore`, `postgis`), etc._
 
-Superuser access is needed for some tests, e.g. loading the `hstore` extension, creating and dropping test databases in the Entity Framework tests...
+### Clone the repository
+
+```
+cd ~
+git clone git@github.com:npgsql/npgsql.git
+```
+
+### Run the test suite
+
+```
+cd ~/npgsql
+dotnet test ./test/Npgsql.Tests
+dotnet test ./test/Npgsql.PluginTests
+dotnet test ./test/Npgsql.Benchmarks
+```
