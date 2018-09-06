@@ -329,7 +329,7 @@ namespace Npgsql.TypeHandlers
             buf.WriteInt32(_lowerBound); // We don't map .NET lower bounds to PG
 
             foreach (var element in value)
-                await _elementHandler.WriteObjectWithLength(element, buf, lengthCache, null, async);
+                await _elementHandler.WriteWithLengthInternal(element, buf, lengthCache, null, async);
         }
 
         async Task WriteNonGeneric(ICollection value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, bool async)
