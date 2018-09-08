@@ -527,7 +527,7 @@ namespace Npgsql.Tests
         public void GenericParameter()
         {
             using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3,@p4", conn))
+            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4", conn))
             {
                 cmd.Parameters.Add(new NpgsqlParameter<int>("p1", 8));
                 cmd.Parameters.Add(new NpgsqlParameter<short>("p2", 8) { NpgsqlDbType = NpgsqlDbType.Integer });

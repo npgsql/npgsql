@@ -199,10 +199,11 @@ namespace Npgsql.Tests.Types
         public void Null()
         {
             using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT @p1::TEXT, @p2::TEXT", conn))
+            using (var cmd = new NpgsqlCommand("SELECT @p1::TEXT, @p2::TEXT, @p3::TEXT", conn))
             {
                 cmd.Parameters.AddWithValue("p1", DBNull.Value);
-                cmd.Parameters.Add(new NpgsqlParameter<DBNull>("p2", DBNull.Value));
+                cmd.Parameters.Add(new NpgsqlParameter<string>("p2", null));
+                cmd.Parameters.Add(new NpgsqlParameter<DBNull>("p3", DBNull.Value));
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
@@ -305,13 +306,15 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public void RegType()
+        [TestCase(NpgsqlDbType.Regtype)]
+        [TestCase(NpgsqlDbType.Regconfig)]
+        public void InternalUintTypes(NpgsqlDbType npgsqlDbType)
         {
             const uint expected = 8u;
             using (var conn = OpenConnection())
             using (var cmd = new NpgsqlCommand("SELECT @p", conn))
             {
-                cmd.Parameters.AddWithValue("p", NpgsqlDbType.Regtype, expected);
+                cmd.Parameters.AddWithValue("p", npgsqlDbType, expected);
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();

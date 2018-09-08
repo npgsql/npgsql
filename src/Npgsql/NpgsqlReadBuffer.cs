@@ -319,9 +319,8 @@ namespace Npgsql
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public float ReadSingle(bool littleEndian)
         {
-            var result = Read<float>();
-            return littleEndian == BitConverter.IsLittleEndian
-                ? result : PGUtil.ReverseEndianness(result);
+            var result = ReadInt32(littleEndian);
+            return Unsafe.As<int, float>(ref result);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -331,9 +330,8 @@ namespace Npgsql
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public double ReadDouble(bool littleEndian)
         {
-            var result = Read<double>();
-            return littleEndian == BitConverter.IsLittleEndian
-                ? result : PGUtil.ReverseEndianness(result);
+            var result = ReadInt64(littleEndian);
+            return Unsafe.As<long, double>(ref result);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

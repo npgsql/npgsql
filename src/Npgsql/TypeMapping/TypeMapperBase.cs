@@ -1,4 +1,5 @@
 ﻿#region License
+
 // The PostgreSQL License
 //
 // Copyright (C) 2018 The Npgsql Development Team
@@ -19,11 +20,13 @@
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+
 #endregion
 
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using JetBrains.Annotations;
 using Npgsql.TypeHandlers;
 using NpgsqlTypes;
 
@@ -33,7 +36,15 @@ namespace Npgsql.TypeMapping
     {
         internal Dictionary<string, NpgsqlTypeMapping> Mappings { get; set; }
 
-        public INpgsqlNameTranslator DefaultNameTranslator { get; set; }
+        public INpgsqlNameTranslator DefaultNameTranslator { get; }
+
+        protected TypeMapperBase([NotNull] INpgsqlNameTranslator defaultNameTranslator)
+        {
+            if (defaultNameTranslator == null)
+                throw new ArgumentNullException(nameof(defaultNameTranslator));
+
+            DefaultNameTranslator = defaultNameTranslator;
+        }
 
         #region Mapping management
 
@@ -115,7 +126,7 @@ namespace Npgsql.TypeMapping
         }
 
         public bool UnmapComposite<T>(string pgName = null, INpgsqlNameTranslator nameTranslator = null)
-            where T: new()
+            where T : new()
         {
             if (pgName != null && pgName.Trim() == "")
                 throw new ArgumentException("pgName can't be empty", nameof(pgName));
@@ -132,13 +143,11 @@ namespace Npgsql.TypeMapping
 
         #region Misc
 
+        // TODO: why does ReSharper think `GetCustomAttribute<T>` is non-nullable?
+        // ReSharper disable once ConstantConditionalAccessQualifier ConstantNullCoalescingCondition
         static string GetPgName<T>(INpgsqlNameTranslator nameTranslator)
-        {
-            var attr = typeof(T).GetTypeInfo().GetCustomAttribute<PgNameAttribute>();
-            return attr == null
-                ? nameTranslator.TranslateTypeName(typeof(T).Name)
-                : attr.PgName;
-        }
+            => typeof(T).GetCustomAttribute<PgNameAttribute>()?.PgName
+               ?? nameTranslator.TranslateTypeName(typeof(T).Name);
 
         #endregion Misc
     }

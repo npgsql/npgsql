@@ -57,12 +57,10 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             if (scaleDifference > 0)
                 DecimalRaw.Multiply(ref raw, DecimalRaw.Powers10[scaleDifference]);
             else
-                while (scaleDifference < 0)
-                {
-                    var scaleChunk = Math.Min(DecimalRaw.MaxUInt32Scale, -scaleDifference);
-                    DecimalRaw.Divide(ref raw, DecimalRaw.Powers10[scaleChunk]);
-                    scaleDifference -= scaleChunk;
-                }
+            {
+                value = Math.Round(value, MoneyScale, MidpointRounding.AwayFromZero);
+                raw = Unsafe.As<decimal, DecimalRaw>(ref value);
+            }
 
             var result = (long)raw.Mid << 32 | (long)raw.Low;
             if (raw.Negative) result = -result;
