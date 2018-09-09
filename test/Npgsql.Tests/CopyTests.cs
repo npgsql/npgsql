@@ -270,7 +270,8 @@ namespace Npgsql.Tests
                 {
                     writer.StartRow();
                     writer.Write(data, NpgsqlDbType.Bytea);
-                    writer.Complete();
+                    var rowsWritten = writer.Complete();
+                    Assert.That(rowsWritten, Is.EqualTo(1));
                 }
 
                 Assert.That(conn.ExecuteScalar("SELECT field FROM data"), Is.EqualTo(data));
@@ -289,7 +290,8 @@ namespace Npgsql.Tests
                 {
                     writer.StartRow();
                     writer.Write(data, NpgsqlDbType.Array | NpgsqlDbType.Text);
-                    writer.Complete();
+                    var rowsWritten = writer.Complete();
+                    Assert.That(rowsWritten, Is.EqualTo(3));
                 }
 
                 Assert.That(conn.ExecuteScalar("SELECT field FROM data"), Is.EqualTo(data));
@@ -308,7 +310,8 @@ namespace Npgsql.Tests
                 {
                     writer.StartRow();
                     writer.Write(data, NpgsqlDbType.Text);
-                    writer.Complete();
+                    var rowsWritten = writer.Complete();
+                    Assert.That(rowsWritten, Is.EqualTo(1));
                 }
                 Assert.That(conn.ExecuteScalar("SELECT field FROM data"), Is.EqualTo(data));
             }
@@ -447,7 +450,8 @@ namespace Npgsql.Tests
                 {
                     writer.StartRow();
                     writer.Write(expected);
-                    writer.Complete();
+                    var rowsWritten = writer.Complete();
+                    Assert.That(rowsWritten, Is.EqualTo(1));
                 }
 
                 using (var reader = conn.BeginBinaryExport("COPY data (arr) TO STDIN BINARY"))
@@ -475,7 +479,8 @@ namespace Npgsql.Tests
                 {
                     writer.StartRow();
                     writer.Write(expected);
-                    writer.Complete();
+                    var rowsWritten = writer.Complete();
+                    Assert.That(rowsWritten, Is.EqualTo(1));
                 }
 
                 using (var reader = conn.BeginBinaryExport("COPY data (mymood) TO STDIN BINARY"))
@@ -518,7 +523,8 @@ namespace Npgsql.Tests
                     {
                         writer.StartRow();
                         writer.Write(8);
-                        writer.Complete();
+                        var rowsWritten = writer.Complete();
+                        Assert.That(rowsWritten, Is.EqualTo(1));
                         writer.StartRow();
                         Assert.Fail("StartRow should have thrown");
                     }
@@ -755,7 +761,8 @@ namespace Npgsql.Tests
                     writer.Write((string)null, NpgsqlDbType.Uuid);
                     writer.Write(DBNull.Value);
                     writer.Write((string)null);
-                    writer.Complete();
+                    var rowsWritten = writer.Complete();
+                    Assert.That(rowsWritten, Is.EqualTo(4));
                 }
                 using (var cmd = new NpgsqlCommand("SELECT foo1,foo2,foo3,foo4 FROM data", conn))
                 using (var reader = cmd.ExecuteReader())
@@ -782,7 +789,8 @@ namespace Npgsql.Tests
                     writer.StartRow();
                     writer.Write(3, NpgsqlDbType.Integer);
                     writer.Write((object)new List<int> { 4, 5, 6 });
-                    writer.Complete();
+                    var rowsWritten = writer.Complete();
+                    Assert.That(rowsWritten, Is.EqualTo(2));
                 }
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(2));
             }
