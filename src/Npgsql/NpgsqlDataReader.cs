@@ -100,7 +100,7 @@ namespace Npgsql
         [CanBeNull]
         internal RowDescriptionMessage RowDescription;
 
-        uint? _recordsAffected;
+        ulong? _recordsAffected;
 
         /// <summary>
         /// Whether the current result set has rows

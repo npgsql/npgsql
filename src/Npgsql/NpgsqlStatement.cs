@@ -35,13 +35,13 @@ namespace Npgsql
         /// See the command tag in the CommandComplete message,
         /// http://www.postgresql.org/docs/current/static/protocol-message-formats.html
         /// </remarks>
-        public uint Rows { get; internal set; }
+        public ulong Rows { get; internal set; }
 
         /// <summary>
         /// For an INSERT, the object ID of the inserted row if <see cref="Rows"/> is 1 and
         /// the target table has OIDs; otherwise 0.
         /// </summary>
-        public uint OID { get; internal set; }
+        public ulong OID { get; internal set; }
 
         /// <summary>
         /// The input parameters sent with this statement.

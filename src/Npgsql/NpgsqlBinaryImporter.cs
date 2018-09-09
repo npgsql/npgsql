@@ -284,7 +284,7 @@ namespace Npgsql
         /// <summary>
         /// Completes the import operation. The writer is unusable after this operation.
         /// </summary>
-        public int Complete()
+        public ulong Complete()
         {
             CheckReady();
 
@@ -305,7 +305,7 @@ namespace Npgsql
                 Expect<ReadyForQueryMessage>(_connector.ReadMessage());
                 _state = ImporterState.Committed;
                 // Number of rows copied on success - see "Outputs" section of https://www.postgresql.org/docs/current/static/sql-copy.html
-                return (int)cmdComplete.Rows;
+                return cmdComplete.Rows;
             }
             catch
             {

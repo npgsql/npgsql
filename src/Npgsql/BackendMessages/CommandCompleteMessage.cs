@@ -32,8 +32,8 @@ namespace Npgsql.BackendMessages
     class CommandCompleteMessage : IBackendMessage
     {
         internal StatementType StatementType { get; private set; }
-        internal uint OID { get; private set; }
-        internal uint Rows { get; private set; }
+        internal ulong OID { get; private set; }
+        internal ulong Rows { get; private set; }
 
         internal CommandCompleteMessage Load(NpgsqlReadBuffer buf, int len)
         {
@@ -119,10 +119,10 @@ namespace Npgsql.BackendMessages
             return true;
         }
 
-        static uint ParseNumber(byte[] bytes, ref int pos)
+        static ulong ParseNumber(byte[] bytes, ref int pos)
         {
             Debug.Assert(bytes[pos] >= '0' && bytes[pos] <= '9');
-            uint result = 0;
+            ulong result = 0;
             do
             {
                 result = result * 10 + bytes[pos++] - '0';
