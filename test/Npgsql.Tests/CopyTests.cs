@@ -291,7 +291,7 @@ namespace Npgsql.Tests
                     writer.StartRow();
                     writer.Write(data, NpgsqlDbType.Array | NpgsqlDbType.Text);
                     var rowsWritten = writer.Complete();
-                    Assert.That(rowsWritten, Is.EqualTo(3));
+                    Assert.That(rowsWritten, Is.EqualTo(1));
                 }
 
                 Assert.That(conn.ExecuteScalar("SELECT field FROM data"), Is.EqualTo(data));
@@ -762,7 +762,7 @@ namespace Npgsql.Tests
                     writer.Write(DBNull.Value);
                     writer.Write((string)null);
                     var rowsWritten = writer.Complete();
-                    Assert.That(rowsWritten, Is.EqualTo(4));
+                    Assert.That(rowsWritten, Is.EqualTo(1));
                 }
                 using (var cmd = new NpgsqlCommand("SELECT foo1,foo2,foo3,foo4 FROM data", conn))
                 using (var reader = cmd.ExecuteReader())
