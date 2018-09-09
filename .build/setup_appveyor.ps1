@@ -23,9 +23,14 @@ iex ".\$env:POSTGIS_EXE /S /D='C:\Program Files\PostgreSQL\10'"
 
 Set-Variable -Name TruncatedSha1 -Value $env:APPVEYOR_REPO_COMMIT.subString(0, 9)
 
-if ($env:APPVEYOR_REPO_TAG -eq 'true' -and $env:APPVEYOR_REPO_TAG_NAME -match '^v\d+\.\d+\.\d+')
+if ($env:APPVEYOR_REPO_TAG -eq 'true' -and $env:APPVEYOR_REPO_TAG_NAME -match '^v\d+\.\d+\.\d+(-(\w+))?')
 {
-    Write-Host "Release tag detected ($env:APPVEYOR_REPO_TAG_NAME), no version suffix is set."
+    if ($matches[2]) {
+        Write-Host "Prerelease tag detected ($env:APPVEYOR_REPO_TAG_NAME), version suffix set to $($matches[2])."
+        Set-AppveyorBuildVariable -Name VersionSuffix -Value $matches[2]
+    } else {
+        Write-Host "Release tag detected ($env:APPVEYOR_REPO_TAG_NAME), no version suffix will be set."
+    }
     Set-AppveyorBuildVariable -Name deploy_github_release -Value true
 }
 #elseif (Test-Path env:APPVEYOR_PULL_REQUEST_NUMBER)
