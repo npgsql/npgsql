@@ -210,7 +210,7 @@ namespace Npgsql.Tests
                     writer.WriteNull();
 
                     var rowsWritten = writer.Complete();
-                    Assert.That(rowsWritten, Is.EqualTo(2));
+                    Assert.That(rowsWritten, Is.EqualTo(3));
                 }
 
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
