@@ -46,9 +46,9 @@ namespace Npgsql.BackendMessages
                     goto default;
                 StatementType = StatementType.Insert;
                 i += 7;
-                OID = ParseNumber(bytes, ref i);
+                OID = (uint) ParseNumber(bytes, ref i);
                 i++;
-                Rows = ParseLong(bytes, ref i);
+                Rows = ParseNumber(bytes, ref i);
                 return this;
 
             case (byte)'D':
@@ -56,7 +56,7 @@ namespace Npgsql.BackendMessages
                     goto default;
                 StatementType = StatementType.Delete;
                 i += 7;
-                Rows = ParseLong(bytes, ref i);
+                Rows = ParseNumber(bytes, ref i);
                 return this;
 
             case (byte)'U':
@@ -64,7 +64,7 @@ namespace Npgsql.BackendMessages
                     goto default;
                 StatementType = StatementType.Update;
                 i += 7;
-                Rows = ParseLong(bytes, ref i);
+                Rows = ParseNumber(bytes, ref i);
                 return this;
 
             case (byte)'S':
@@ -72,7 +72,7 @@ namespace Npgsql.BackendMessages
                     goto default;
                 StatementType = StatementType.Select;
                 i += 7;
-                Rows = ParseLong(bytes, ref i);
+                Rows = ParseNumber(bytes, ref i);
                 return this;
 
             case (byte)'M':
@@ -80,7 +80,7 @@ namespace Npgsql.BackendMessages
                     goto default;
                 StatementType = StatementType.Move;
                 i += 5;
-                Rows = ParseLong(bytes, ref i);
+                Rows = ParseNumber(bytes, ref i);
                 return this;
 
             case (byte)'F':
@@ -88,7 +88,7 @@ namespace Npgsql.BackendMessages
                     goto default;
                 StatementType = StatementType.Fetch;
                 i += 6;
-                Rows = ParseLong(bytes, ref i);
+                Rows = ParseNumber(bytes, ref i);
                 return this;
 
             case (byte)'C':
@@ -96,7 +96,7 @@ namespace Npgsql.BackendMessages
                     goto default;
                 StatementType = StatementType.Copy;
                 i += 5;
-                Rows = ParseLong(bytes, ref i);
+                Rows = ParseNumber(bytes, ref i);
                 return this;
 
             default:
@@ -115,21 +115,10 @@ namespace Npgsql.BackendMessages
             return true;
         }
 
-        static uint ParseNumber(byte[] bytes, ref int pos)
+        static ulong ParseNumber(byte[] bytes, ref int pos)
         {
             Debug.Assert(bytes[pos] >= '0' && bytes[pos] <= '9');
             uint result = 0;
-            do
-            {
-                result = result * 10 + bytes[pos++] - '0';
-            } while (bytes[pos] >= '0' && bytes[pos] <= '9');
-            return result;
-        }
-
-        static ulong ParseLong(byte[] bytes, ref int pos)
-        {
-            Debug.Assert(bytes[pos] >= '0' && bytes[pos] <= '9');
-            ulong result = 0;
             do
             {
                 result = result * 10 + bytes[pos++] - '0';
