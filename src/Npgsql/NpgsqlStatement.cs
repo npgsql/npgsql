@@ -41,7 +41,7 @@ namespace Npgsql
         /// For an INSERT, the object ID of the inserted row if <see cref="Rows"/> is 1 and
         /// the target table has OIDs; otherwise 0.
         /// </summary>
-        public ulong OID { get; internal set; }
+        public uint OID { get; internal set; }
 
         /// <summary>
         /// The input parameters sent with this statement.
