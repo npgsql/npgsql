@@ -142,7 +142,7 @@ namespace Npgsql
                 try
                 {
                     var targetName = $"{KerberosServiceName}/{Host}";
-                    if (async)
+                    if (!async)
                         negotiateStream.AuthenticateAsClient(CredentialCache.DefaultNetworkCredentials, targetName);
                     else
                         await negotiateStream.AuthenticateAsClientAsync(CredentialCache.DefaultNetworkCredentials, targetName);
