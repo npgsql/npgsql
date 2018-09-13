@@ -3,7 +3,7 @@ using System.Linq;
 using Npgsql.Tests;
 using NUnit.Framework;
 
-#if NET451 || NET45
+#if NET452
 // ReSharper disable once CheckNamespace
 [SetUpFixture]
 public class DebugAssertSetupFixture

@@ -24,6 +24,7 @@
 using GeoAPI;
 using GeoAPI.Geometries;
 using NetTopologySuite.Geometries;
+using NetTopologySuite.Geometries.Implementation;
 using Npgsql.Tests;
 using NUnit.Framework;
 using System;
@@ -62,22 +63,35 @@ namespace Npgsql.PluginTests
         }
 
         protected override NpgsqlConnection OpenConnection(string connectionString = null)
+            => OpenConnection(connectionString);
+
+        protected NpgsqlConnection OpenConnection(string connectionString = null, Ordinates handleOrdinates = Ordinates.None)
         {
+            if (handleOrdinates == Ordinates.None)
+                handleOrdinates = Ordinates.XY;
+
             NetTopologySuiteBootstrapper.Bootstrap();
             var conn = base.OpenConnection(connectionString);
-            conn.TypeMapper.UseNetTopologySuite();
+            conn.TypeMapper.UseNetTopologySuite(
+                new DotSpatialAffineCoordinateSequenceFactory(handleOrdinates),
+                handleOrdinates: handleOrdinates);
             return conn;
         }
 
         public struct TestData
         {
+            public Ordinates Ordinates;
             public IGeometry Geometry;
             public string CommandText;
         }
 
         static readonly TestData[] Tests =
         {
-            new TestData { Geometry = new Point(new Coordinate(1d, 2500d)), CommandText = "st_makepoint(1,2500)" },
+            // Two dimensional data
+            new TestData {
+                Geometry = new Point(new Coordinate(1d, 2500d)),
+                CommandText = "st_makepoint(1,2500)"
+            },
             new TestData {
                 Geometry = new LineString(new[] { new Coordinate(1d, 1d), new Coordinate(1d, 2500d) }),
                 CommandText = "st_makeline(st_makepoint(1,1),st_makepoint(1,2500))"
@@ -153,7 +167,21 @@ namespace Npgsql.PluginTests
                     })
                 }),
                 CommandText = "st_collect(st_makepoint(1,1),st_collect(st_makepoint(1,1),st_multi(st_makepolygon(st_makeline(ARRAY[st_makepoint(1,1),st_makepoint(2,2),st_makepoint(3,3),st_makepoint(1,1)])))))"
-            }
+            },
+            // Three dimensional data
+            new TestData {
+                Ordinates = Ordinates.XYZ,
+                Geometry = new Point(new Coordinate(1d, 2d, 3d)),
+                CommandText = "st_makepoint(1,2,3)"
+            },
+            // Four dimensional data
+            new TestData {
+                Ordinates = Ordinates.XYZM,
+                Geometry = new Point(
+                    new DotSpatialAffineCoordinateSequence(new[] { 1d, 2d }, new[] { 3d }, new[] { 4d }),
+                    GeometryFactory.Default),
+                CommandText = "st_makepoint(1,2,3,4)"
+            },
         };
 
         [Test, TestCaseSource(nameof(Tests))]
@@ -170,7 +198,7 @@ namespace Npgsql.PluginTests
         [Test, TestCaseSource(nameof(Tests))]
         public void TestWrite(TestData data)
         {
-            using (var conn = OpenConnection())
+            using (var conn = OpenConnection(handleOrdinates: data.Ordinates))
             using (var cmd = conn.CreateCommand())
             {
                 cmd.Parameters.AddWithValue("p1", data.Geometry);
@@ -182,7 +210,7 @@ namespace Npgsql.PluginTests
         [Test]
         public void TestArrayRead()
         {
-            using (var conn = OpenConnection())
+            using (var conn = OpenConnection(handleOrdinates: Ordinates.XY))
             using (var cmd = conn.CreateCommand())
             {
                 cmd.CommandText = "SELECT ARRAY(SELECT st_makepoint(1,1))";
@@ -195,7 +223,7 @@ namespace Npgsql.PluginTests
         [Test]
         public void TestArrayWrite()
         {
-            using (var conn = OpenConnection())
+            using (var conn = OpenConnection(handleOrdinates: Ordinates.XY))
             using (var cmd = conn.CreateCommand())
             {
                 cmd.Parameters.AddWithValue("@p1", new[] { new Point(new Coordinate(1d, 1d)) });
@@ -207,7 +235,7 @@ namespace Npgsql.PluginTests
         [Test]
         public void ReadAsConcreteType()
         {
-            using (var conn = OpenConnection())
+            using (var conn = OpenConnection(handleOrdinates: Ordinates.XY))
             using (var cmd = new NpgsqlCommand("SELECT st_makepoint(1,1)", conn))
             using (var reader = cmd.ExecuteReader())
             {
@@ -221,7 +249,7 @@ namespace Npgsql.PluginTests
         public void RoundtripGeometryGeography()
         {
             var point = new Point(new Coordinate(1d, 1d));
-            using (var conn = OpenConnection())
+            using (var conn = OpenConnection(handleOrdinates: Ordinates.XY))
             {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (geom GEOMETRY, geog GEOGRAPHY)");
                 using (var cmd = new NpgsqlCommand("INSERT INTO data (geom, geog) VALUES (@p, @p)", conn))

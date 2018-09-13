@@ -76,10 +76,8 @@ namespace Npgsql
                 Handler = typeMapper.GetByDataTypeName(_dataTypeName);
             else if (_dbType.HasValue)
                 Handler = typeMapper.GetByDbType(_dbType.Value);
-            else if (TypedValue != null)
-                Handler = typeMapper.GetByClrType(typeof(T));
             else
-                throw new InvalidOperationException($"Parameter '{ParameterName}' must have its value set");
+                Handler = typeMapper.GetByClrType(typeof(T));
         }
 
         internal override int ValidateAndGetLength()
@@ -87,7 +85,8 @@ namespace Npgsql
             Debug.Assert(Handler != null);
 
             if (TypedValue == null)
-                throw new InvalidCastException($"Parameter {ParameterName} must be set");
+                return 0;
+
             // TODO: Why do it like this rather than a handler?
             if (typeof(T) == typeof(DBNull))
                 return 0;

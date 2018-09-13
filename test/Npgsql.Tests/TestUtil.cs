@@ -274,7 +274,7 @@ namespace Npgsql.Tests
         NotPrepared
     }
 
-#if !(NET45 || NET451)
+#if !NET452
     // When using netcoreapp, we use NUnit's portable library which doesn't include TimeoutAttribute
     // (probably because it can't enforce it). So we define it here to allow us to compile, once there's
     // proper support for netcoreapp this should be removed.

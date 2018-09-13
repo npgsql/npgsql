@@ -21,7 +21,7 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-#if NET451
+#if NET452
 using System;
 using System.Diagnostics;
 using System.Threading;

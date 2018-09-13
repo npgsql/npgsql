@@ -179,15 +179,13 @@ namespace Npgsql
 
             if (!_countersInitialized)
             {
-                _countersInitialized = true;
                 Counters.Initialize(Settings.UsePerfCounters);
+                _countersInitialized = true;
             }
 
             // Maybe pooling is off
             if (!Settings.Pooling)
-            {
                 return;
-            }
 
             // Connstring may be equivalent to one that has already been seen though (e.g. different
             // ordering). Have NpgsqlConnectionStringBuilder produce a canonical string representation
@@ -321,7 +319,15 @@ namespace Npgsql
                 }
                 catch
                 {
-                    Connector = null;
+                    if (Connector != null)
+                    {
+                        if (_pool == null)
+                            Connector.Close();
+                        else
+                            _pool.Release(Connector);
+                        Connector = null;
+                    }
+
                     throw;
                 }
                 Debug.Assert(Connector.Connection != null, "Open done but connector not set on Connection");
@@ -1036,7 +1042,8 @@ namespace Npgsql
         /// <typeparam name="TEnum">The .NET enum type to be mapped</typeparam>
         [PublicAPI]
         [Obsolete("Use NpgsqlConnection.TypeMapper.MapEnum() instead")]
-        public void MapEnum<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null) where TEnum : struct
+        public void MapEnum<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null)
+            where TEnum : struct, Enum
             => TypeMapper.MapEnum<TEnum>(pgName, nameTranslator);
 
         /// <summary>
@@ -1063,7 +1070,8 @@ namespace Npgsql
         /// <typeparam name="TEnum">The .NET enum type to be mapped</typeparam>
         [PublicAPI]
         [Obsolete("Use NpgsqlConnection.GlobalTypeMapper.MapEnum() instead")]
-        public static void MapEnumGlobally<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null) where TEnum : struct
+        public static void MapEnumGlobally<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null)
+            where TEnum : struct, Enum
             => NpgsqlConnection.GlobalTypeMapper.MapEnum<TEnum>(pgName, nameTranslator);
 
         /// <summary>
@@ -1078,7 +1086,8 @@ namespace Npgsql
         /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
         [Obsolete("Use NpgsqlConnection.GlobalTypeMapper.UnmapEnum() instead")]
-        public static void UnmapEnumGlobally<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null) where TEnum : struct
+        public static void UnmapEnumGlobally<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null)
+            where TEnum : struct, Enum
             => NpgsqlConnection.GlobalTypeMapper.UnmapEnum<TEnum>(pgName, nameTranslator);
 
         #endregion
@@ -1273,7 +1282,8 @@ namespace Npgsql
         /// <summary>
         /// Returns the supported collections
         /// </summary>
-        public override DataTable GetSchema() => NpgsqlSchema.GetMetaDataCollections();
+        public override DataTable GetSchema()
+            => GetSchema("MetaDataCollections", null);
 
         /// <summary>
         /// Returns the schema collection specified by the collection name.
@@ -1293,50 +1303,7 @@ namespace Npgsql
         /// </param>
         /// <returns>The collection specified.</returns>
         public override DataTable GetSchema([CanBeNull] string collectionName, [CanBeNull] string[] restrictions)
-        {
-            if (string.IsNullOrEmpty(collectionName))
-                throw new ArgumentException("Collection name cannot be null or empty", nameof(collectionName));
-
-            switch (collectionName.ToUpperInvariant())
-            {
-                case "METADATACOLLECTIONS":
-                    return NpgsqlSchema.GetMetaDataCollections();
-                case "RESTRICTIONS":
-                    return NpgsqlSchema.GetRestrictions();
-                case "DATASOURCEINFORMATION":
-                    return NpgsqlSchema.GetDataSourceInformation();
-                case "DATATYPES":
-                    throw new NotSupportedException();
-                case "RESERVEDWORDS":
-                    return NpgsqlSchema.GetReservedWords();
-                // custom collections for npgsql
-                case "DATABASES":
-                    return NpgsqlSchema.GetDatabases(this, restrictions);
-                case "SCHEMATA":
-                    return NpgsqlSchema.GetSchemata(this, restrictions);
-                case "TABLES":
-                    return NpgsqlSchema.GetTables(this, restrictions);
-                case "COLUMNS":
-                    return NpgsqlSchema.GetColumns(this, restrictions);
-                case "VIEWS":
-                    return NpgsqlSchema.GetViews(this, restrictions);
-                case "USERS":
-                    return NpgsqlSchema.GetUsers(this, restrictions);
-                case "INDEXES":
-                    return NpgsqlSchema.GetIndexes(this, restrictions);
-                case "INDEXCOLUMNS":
-                    return NpgsqlSchema.GetIndexColumns(this, restrictions);
-                case "CONSTRAINTS":
-                case "PRIMARYKEY":
-                case "UNIQUEKEYS":
-                case "FOREIGNKEYS":
-                    return NpgsqlSchema.GetConstraints(this, restrictions, collectionName);
-                case "CONSTRAINTCOLUMNS":
-                    return NpgsqlSchema.GetConstraintColumns(this, restrictions);
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(collectionName), collectionName, "Invalid collection name");
-            }
-        }
+            => NpgsqlSchema.GetSchema(this, collectionName, restrictions);
 
         #endregion Schema operations
 

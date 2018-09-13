@@ -63,7 +63,7 @@
   <Import Project="$(WixTargetsPath)" />
   <Target Name="CreateWixProperties" BeforeTargets="Compile">
     <!-- Get the programs assembly version from the .exe file -->
-    <GetAssemblyIdentity AssemblyFiles="..\Npgsql\bin\$(Configuration)\net451\Npgsql.dll">
+    <GetAssemblyIdentity AssemblyFiles="..\Npgsql\bin\$(Configuration)\net452\Npgsql.dll">
       <Output TaskParameter="Assemblies" ItemName="AsmInfo" />
     </GetAssemblyIdentity>
     <CreateProperty Value="%(AsmInfo.Version)">
