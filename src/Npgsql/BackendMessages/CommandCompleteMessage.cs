@@ -95,6 +95,14 @@ namespace Npgsql.BackendMessages
                 Rows = ParseNumber(bytes, ref i);
                 return this;
 
+            case (byte)'C':
+                if (!AreEqual(bytes, i, "COPY "))
+                    goto default;
+                StatementType = StatementType.Copy;
+                i += 5;
+                Rows = ParseNumber(bytes, ref i);
+                return this;
+
             default:
                 StatementType = StatementType.Other;
                 return this;
