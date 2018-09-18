@@ -1,0 +1,57 @@
+name: 4.1.0-ci.$(Date:yyyyMMdd).$(Rev:r)
+variables:
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
+  NoPackageAnalysis: true  # Suppresses warning about SemVer 2.0.0 version suffixes when packing
+  CI_VERSION: $(Build.BuildNumber) # Equal to the 'name' field above.
+jobs:
+- job: Windows
+  pool:
+    vmImage: vs2017-win2016
+  steps:
+  - powershell: .build/set_version.ps1
+    displayName: 'Set version variables'
+  - powershell: .build/setup_postgres.ps1
+    displayName: 'Setup PostgreSQL'
+  - script: dotnet restore Npgsql.sln
+    displayName: 'Restore'
+    #  - task: NuGetCommand@2
+    #displayName: 'Restore VSIX'
+    #inputs:
+    #  command: 'restore'
+    #  restoreSolution: 'src/VSIX/packages.config'
+    #  basePath: .
+    #- script: dotnet build Npgsql.sln --configuration Release
+    #displayName: 'Build'
+    #  - task: MSBuild@1
+    #    displayName: 'Build VSIX'
+    #    inputs:
+    #      solution: 'src/VSIX/VSIX.csproj'
+    #      configuration: Release
+  - task: DotNetCoreCLI@2
+    displayName: 'Test'
+    inputs:
+      command: 'test'
+      configuration: 'Debug'
+      publishtestResults: true
+      projects: |
+        test/Npgsql.Tests/Npgsql.Tests.csproj
+        test/Npgsql.PluginTests/Npgsql.PluginTests.csproj
+  - task: DotNetCoreCLI@2
+    displayName: 'Pack'
+    inputs:
+      command: 'pack'
+      configuration: 'Release'
+      #packagesToPack: 'src/**/*.csproj;-:'
+      #projects: |
+      packagesToPack: |
+        src/Npgsql/Npgsql.csproj
+        src/Npgsql.GeoJSON/Npgsql.GeoJSON.csproj     
+        src/Npgsql.Json.NET/Npgsql.Json.NET.csproj     
+        src/Npgsql.LegacyPostgis/Npgsql.LegacyPostgis.csproj     
+        src/Npgsql.NetTopologySuite/Npgsql.NetTopologySuite.csproj     
+        src/Npgsql.NodaTime/Npgsql.NodaTime.csproj     
+        src/Npgsql.RawPostgis/Npgsql.RawPostgis.csproj     
+      verbosityPack: 'normal'
+      versioningScheme: 'byEnvVar'
+      versionEnvVar: 'CI_VERSION'
