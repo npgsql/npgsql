@@ -284,7 +284,7 @@ namespace Npgsql
         /// <summary>
         /// Completes the import operation. The writer is unusable after this operation.
         /// </summary>
-        public void Complete()
+        public ulong Complete()
         {
             CheckReady();
 
@@ -301,9 +301,10 @@ namespace Npgsql
                 _buf.EndCopyMode();
 
                 _connector.SendMessage(CopyDoneMessage.Instance);
-                Expect<CommandCompleteMessage>(_connector.ReadMessage());
+                var cmdComplete = Expect<CommandCompleteMessage>(_connector.ReadMessage());
                 Expect<ReadyForQueryMessage>(_connector.ReadMessage());
                 _state = ImporterState.Committed;
+                return cmdComplete.Rows;
             }
             catch
             {

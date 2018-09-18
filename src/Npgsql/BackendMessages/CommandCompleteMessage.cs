@@ -21,11 +21,7 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using System;
 using System.Diagnostics;
-using System.Security.Cryptography;
-using System.Text;
-using Npgsql.Logging;
 
 namespace Npgsql.BackendMessages
 {
@@ -33,7 +29,7 @@ namespace Npgsql.BackendMessages
     {
         internal StatementType StatementType { get; private set; }
         internal uint OID { get; private set; }
-        internal uint Rows { get; private set; }
+        internal ulong Rows { get; private set; }
 
         internal CommandCompleteMessage Load(NpgsqlReadBuffer buf, int len)
         {
@@ -50,7 +46,7 @@ namespace Npgsql.BackendMessages
                     goto default;
                 StatementType = StatementType.Insert;
                 i += 7;
-                OID = ParseNumber(bytes, ref i);
+                OID = (uint) ParseNumber(bytes, ref i);
                 i++;
                 Rows = ParseNumber(bytes, ref i);
                 return this;
@@ -95,6 +91,14 @@ namespace Npgsql.BackendMessages
                 Rows = ParseNumber(bytes, ref i);
                 return this;
 
+            case (byte)'C':
+                if (!AreEqual(bytes, i, "COPY "))
+                    goto default;
+                StatementType = StatementType.Copy;
+                i += 5;
+                Rows = ParseNumber(bytes, ref i);
+                return this;
+
             default:
                 StatementType = StatementType.Other;
                 return this;
@@ -111,7 +115,7 @@ namespace Npgsql.BackendMessages
             return true;
         }
 
-        static uint ParseNumber(byte[] bytes, ref int pos)
+        static ulong ParseNumber(byte[] bytes, ref int pos)
         {
             Debug.Assert(bytes[pos] >= '0' && bytes[pos] <= '9');
             uint result = 0;
