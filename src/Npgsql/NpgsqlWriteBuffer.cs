@@ -280,7 +280,9 @@ namespace Npgsql
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void Write<T>(T value)
         {
-            Debug.Assert(Unsafe.SizeOf<T>() <= WriteSpaceLeft);
+            if (Unsafe.SizeOf<T>() > WriteSpaceLeft)
+                throw new InvalidOperationException("There is not enough space left in the buffer.");
+            
             Unsafe.WriteUnaligned(ref Buffer[WritePosition], value);
             WritePosition += Unsafe.SizeOf<T>();
         }

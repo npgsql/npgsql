@@ -337,7 +337,9 @@ namespace Npgsql
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private T Read<T>()
         {
-            Debug.Assert(Unsafe.SizeOf<T>() <= ReadBytesLeft);
+            if (Unsafe.SizeOf<T>() > ReadBytesLeft)
+                throw new InvalidOperationException("There is not enough space left in the buffer.");
+
             var result = Unsafe.ReadUnaligned<T>(ref Buffer[ReadPosition]);
             ReadPosition += Unsafe.SizeOf<T>();
             return result;
