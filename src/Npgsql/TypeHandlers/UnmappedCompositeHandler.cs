@@ -192,10 +192,13 @@ namespace Npgsql.TypeHandlers
                 ? WriteWithLengthInternal<DBNull>(null, buf, lengthCache, parameter, async)
                 : WriteWithLength(value, buf, lengthCache, parameter, async);
 
-        protected override Task WriteWithLength<T2>(T2 value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        protected override async Task WriteWithLength<T2>(T2 value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
+            if (buf.WriteSpaceLeft < 4)
+                await buf.Flush(async);
+
             buf.WriteInt32(ValidateAndGetLength(value, ref lengthCache, parameter));
-            return Write(value, buf, lengthCache, parameter, async);
+            await Write(value, buf, lengthCache, parameter, async);
         }
 
         public override async Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
