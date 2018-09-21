@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <VersionPrefix>4.1.0</VersionPrefix>
+    <VersionPrefix>4.0.4</VersionPrefix>
     <Description>NodaTime plugin for Npgsql, allowing mapping of PostgreSQL date/time types to NodaTime types.</Description>
     <Authors>Shay Rojansky</Authors>
     <Copyright>Copyright 2018 © The Npgsql Development Team</Copyright>
