@@ -335,7 +335,7 @@ namespace Npgsql
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private T Read<T>()
+        T Read<T>()
         {
             Debug.Assert(Unsafe.SizeOf<T>() <= ReadBytesLeft);
             var result = Unsafe.ReadUnaligned<T>(ref Buffer[ReadPosition]);
