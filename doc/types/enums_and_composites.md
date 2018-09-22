@@ -27,23 +27,23 @@ After mapping, you can read and write your CLR types as usual:
 
 ```c#
 // Writing
-using (var cmd = new NpgsqlCommand("INSERT INTO some_table (some_enum, some_composite) VALUES (@p1, @p2)", Conn))
+using (var cmd = new NpgsqlCommand("INSERT INTO some_table (some_enum_column, some_composite_column) VALUES (@p1, @p2)", Conn))
 {
     cmd.Parameters.Add(new NpgsqlParameter
     {
-        ParameterName = "some_enum",
+        ParameterName = "p1",
         Value = SomeEnum.Good
     });
     cmd.Parameters.Add(new NpgsqlParameter
     {
-        ParameterName = "some_composite",
+        ParameterName = "p2",
         Value = new SomeType { ... }
     });
     cmd.ExecuteNonQuery();
 }
 
 // Reading
-using (var cmd = new NpgsqlCommand("SELECT some_enum, some_composite FROM some_table", Conn))
+using (var cmd = new NpgsqlCommand("SELECT some_enum_column, some_composite_column FROM some_table", Conn))
 using (var reader = cmd.ExecuteReader()) {
     reader.Read();
     var enumValue = reader.GetFieldValue<SomeEnum>(0);
@@ -52,7 +52,7 @@ using (var reader = cmd.ExecuteReader()) {
 ```
 
 
-Note that your PostgreSQL enum and composites types (`pg_enum_type` and `pg_composite_type` in the sample above) must be defined in your database before the first connection is created (see `CREATE TYPE`). If you're creating PostgreSQL types within your program, call `NpgsqlConnection.ReloadTypes()` to make sure Npgsql becomes properly aware of them.
+Note that your PostgreSQL enum and composites types (`enum_type` and `composite_type` in the sample above) must be defined in your database before the first connection is created (see `CREATE TYPE`). If you're creating PostgreSQL types within your program, call `NpgsqlConnection.ReloadTypes()` to make sure Npgsql becomes properly aware of them.
 
 # Name Translation
 
@@ -83,19 +83,19 @@ Enums can be read and written as simple strings:
 
 ```c#
 // Writing enum as string
-using (var cmd = new NpgsqlCommand("INSERT INTO some_table (some_enum) VALUES (@p1)", Conn))
+using (var cmd = new NpgsqlCommand("INSERT INTO some_table (some_enum_column) VALUES (@p1)", Conn))
 {
     cmd.Parameters.Add(new NpgsqlParameter
     {
-        ParameterName = "some_enum",
+        ParameterName = "p1",
         Value = "Good"
-        DataTypeName = "pg_enum_type"
+        DataTypeName = "some_enum"
     });
     cmd.ExecuteNonQuery();
 }
 
 // Reading enum as string
-using (var cmd = new NpgsqlCommand("SELECT some_enum FROM some_table", Conn))
+using (var cmd = new NpgsqlCommand("SELECT some_enum_column FROM some_table", Conn))
 using (var reader = cmd.ExecuteReader()) {
     reader.Read();
     var enumValue = reader.GetFieldValue<string>(0);
@@ -106,22 +106,22 @@ Composites can be read and written as C# dynamic ExpandoObjects:
 
 ```c#
 // Writing composite as ExpandoObject
-using (var cmd = new NpgsqlCommand("INSERT INTO some_table (some_composite) VALUES (@p1)", Conn))
+using (var cmd = new NpgsqlCommand("INSERT INTO some_table (some_composite_column) VALUES (@p1)", Conn))
 {
     var someComposite = new ExpandoObject();
     some_composite.Foo = 8;
     some_composite.Bar = "hello";
     cmd.Parameters.Add(new NpgsqlParameter
     {
-        ParameterName = "some_enum",
+        ParameterName = "p1",
         Value = someComposite,
-        DataTypeName = "pg_enum_type"
+        DataTypeName = "some_composite"
     });
     cmd.ExecuteNonQuery();
 }
 
 // Reading composite as ExpandoObject
-using (var cmd = new NpgsqlCommand("SELECT some_composite FROM some_table", Conn))
+using (var cmd = new NpgsqlCommand("SELECT some_composite_column FROM some_table", Conn))
 using (var reader = cmd.ExecuteReader()) {
     reader.Read();
     var compositeValue = (dynamic)reader.GetValue(0);
