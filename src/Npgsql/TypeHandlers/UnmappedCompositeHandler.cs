@@ -190,7 +190,7 @@ namespace Npgsql.TypeHandlers
         protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
             => value == null || value is DBNull
                 ? WriteWithLengthInternal<DBNull>(null, buf, lengthCache, parameter, async)
-                : WriteWithLength(value, buf, lengthCache, parameter, async);
+                : WriteWithLengthInternal(value, buf, lengthCache, parameter, async);
 
         protected override Task WriteWithLength<T2>(T2 value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
