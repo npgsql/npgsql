@@ -227,18 +227,10 @@ namespace Npgsql
         #region Read Simple
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public sbyte ReadSByte()
-        {
-            Debug.Assert(sizeof(sbyte) <= ReadBytesLeft);
-            return (sbyte)Buffer[ReadPosition++];
-        }
+        public sbyte ReadSByte() => Read<sbyte>();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public byte ReadByte()
-        {
-            Debug.Assert(sizeof(byte) <= ReadBytesLeft);
-            return Buffer[ReadPosition++];
-        }
+        public byte ReadByte() => Read<byte>();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public short ReadInt16()
@@ -337,11 +329,17 @@ namespace Npgsql
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private T Read<T>()
         {
-            Debug.Assert(Unsafe.SizeOf<T>() <= ReadBytesLeft);
+            if (Unsafe.SizeOf<T>() > ReadBytesLeft)
+                ThrowNotSpaceLeft();
+
             var result = Unsafe.ReadUnaligned<T>(ref Buffer[ReadPosition]);
             ReadPosition += Unsafe.SizeOf<T>();
             return result;
         }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        static void ThrowNotSpaceLeft()
+            => throw new InvalidOperationException("There is not enough space left in the buffer.");
 
         public string ReadString(int byteLen)
         {
