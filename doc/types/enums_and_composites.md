@@ -9,25 +9,25 @@ The recommended way to work with enums and composites is to set up a mapping for
 To set up a global mapping that applies to all connections, place this code before the initial connection is opened:
 
 ```c#
-NpgsqlConnection.GlobalTypeMapper.MapEnum<SomeEnum>("some_enum");
-NpgsqlConnection.GlobalTypeMapper.MapComposite<SomeType>("some_composite");
+NpgsqlConnection.GlobalTypeMapper.MapEnum<SomeEnum>("some_enum_type");
+NpgsqlConnection.GlobalTypeMapper.MapComposite<SomeType>("some_composite_type");
 ```
 
-This sets up a mapping between your CLR types `SomeEnum` and `SomeType` to the PostgreSQL types `some_enum` and `some_composite`.
+This sets up a mapping between your CLR types `SomeEnum` and `SomeType` to the PostgreSQL types `some_enum_type` and `some_composite_type`.
 
 If you don't want to set up a mapping for all your connections, you can set it up one connection only:
 
 ```c#
 var conn = new NpgsqlConnection(...);
-conn.TypeMapper.MapEnum<SomeEnum>("some_enum");
-conn.TypeMapper.MapComposite<SomeType>("some_composite");
+conn.TypeMapper.MapEnum<SomeEnum>("some_enum_type");
+conn.TypeMapper.MapComposite<SomeType>("some_composite_type");
 ```
 
 After mapping, you can read and write your CLR types as usual:
 
 ```c#
 // Writing
-using (var cmd = new NpgsqlCommand("INSERT INTO some_table (some_enum_column, some_composite_column) VALUES (@p1, @p2)", Conn))
+using (var cmd = new NpgsqlCommand("INSERT INTO some_table (some_enum_column, some_composite_column) VALUES (@p1, @p2)", conn))
 {
     cmd.Parameters.Add(new NpgsqlParameter
     {
@@ -43,7 +43,7 @@ using (var cmd = new NpgsqlCommand("INSERT INTO some_table (some_enum_column, so
 }
 
 // Reading
-using (var cmd = new NpgsqlCommand("SELECT some_enum_column, some_composite_column FROM some_table", Conn))
+using (var cmd = new NpgsqlCommand("SELECT some_enum_column, some_composite_column FROM some_table", conn))
 using (var reader = cmd.ExecuteReader()) {
     reader.Read();
     var enumValue = reader.GetFieldValue<SomeEnum>(0);
@@ -52,7 +52,7 @@ using (var reader = cmd.ExecuteReader()) {
 ```
 
 
-Note that your PostgreSQL enum and composites types (`enum_type` and `composite_type` in the sample above) must be defined in your database before the first connection is created (see `CREATE TYPE`). If you're creating PostgreSQL types within your program, call `NpgsqlConnection.ReloadTypes()` to make sure Npgsql becomes properly aware of them.
+Note that your PostgreSQL enum and composites types (`some_enum_type` and `some_composite_type` in the sample above) must be defined in your database before the first connection is created (see `CREATE TYPE`). If you're creating PostgreSQL types within your program, call `NpgsqlConnection.ReloadTypes()` to make sure Npgsql becomes properly aware of them.
 
 # Name Translation
 
@@ -83,19 +83,19 @@ Enums can be read and written as simple strings:
 
 ```c#
 // Writing enum as string
-using (var cmd = new NpgsqlCommand("INSERT INTO some_table (some_enum_column) VALUES (@p1)", Conn))
+using (var cmd = new NpgsqlCommand("INSERT INTO some_table (some_enum_column) VALUES (@p1)", conn))
 {
     cmd.Parameters.Add(new NpgsqlParameter
     {
         ParameterName = "p1",
         Value = "Good"
-        DataTypeName = "some_enum"
+        DataTypeName = "some_enum_type"
     });
     cmd.ExecuteNonQuery();
 }
 
 // Reading enum as string
-using (var cmd = new NpgsqlCommand("SELECT some_enum_column FROM some_table", Conn))
+using (var cmd = new NpgsqlCommand("SELECT some_enum_column FROM some_table", conn))
 using (var reader = cmd.ExecuteReader()) {
     reader.Read();
     var enumValue = reader.GetFieldValue<string>(0);
@@ -115,13 +115,13 @@ using (var cmd = new NpgsqlCommand("INSERT INTO some_table (some_composite_colum
     {
         ParameterName = "p1",
         Value = someComposite,
-        DataTypeName = "some_composite"
+        DataTypeName = "some_composite_type"
     });
     cmd.ExecuteNonQuery();
 }
 
 // Reading composite as ExpandoObject
-using (var cmd = new NpgsqlCommand("SELECT some_composite_column FROM some_table", Conn))
+using (var cmd = new NpgsqlCommand("SELECT some_composite_column FROM some_table", conn))
 using (var reader = cmd.ExecuteReader()) {
     reader.Read();
     var compositeValue = (dynamic)reader.GetValue(0);
