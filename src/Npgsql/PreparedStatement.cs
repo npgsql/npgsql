@@ -84,7 +84,11 @@ namespace Npgsql
         {
             Debug.Assert(HandlerParamTypes == null);
             if (parameters.Count == 0)
+            {
                 HandlerParamTypes = EmptyParamTypes;
+                return;
+            }
+
             HandlerParamTypes = new Type[parameters.Count];
             for (var i = 0; i < parameters.Count; i++)
             {
