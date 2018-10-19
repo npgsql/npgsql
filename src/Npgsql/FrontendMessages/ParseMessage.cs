@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -28,6 +28,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Npgsql.TypeMapping;
 
 namespace Npgsql.FrontendMessages
 {
@@ -56,25 +57,32 @@ namespace Npgsql.FrontendMessages
             ParameterTypeOIDs = new List<uint>();
         }
 
-        internal ParseMessage Populate(string sql, string statementName, List<NpgsqlParameter> inputParameters, TypeHandlerRegistry typeHandlerRegistry)
+        internal ParseMessage Populate(string sql, string statementName, List<NpgsqlParameter> inputParameters, ConnectorTypeMapper typeMapper)
         {
-            ParameterTypeOIDs.Clear();
-            Query = sql;
-            Statement = statementName;
-            foreach (var inputParam in inputParameters) {
-                inputParam.ResolveHandler(typeHandlerRegistry);
+            Populate(sql, statementName);
+            foreach (var inputParam in inputParameters)
+            {
+                Debug.Assert(inputParam.Handler != null, "Input parameter doesn't have a resolved handler when populating Parse message");
                 ParameterTypeOIDs.Add(inputParam.Handler.PostgresType.OID);
             }
             return this;
         }
 
-        internal override async Task Write(WriteBuffer buf, bool async, CancellationToken cancellationToken)
+        internal ParseMessage Populate(string sql, string statementName)
+        {
+            ParameterTypeOIDs.Clear();
+            Query = sql;
+            Statement = statementName;
+            return this;
+        }
+
+        internal override async Task Write(NpgsqlWriteBuffer buf, bool async)
         {
             Debug.Assert(Statement != null && Statement.All(c => c < 128));
 
             var queryByteLen = _encoding.GetByteCount(Query);
             if (buf.WriteSpaceLeft < 1 + 4 + Statement.Length + 1)
-                await buf.Flush(async, cancellationToken);
+                await buf.Flush(async);
 
             var messageLength =
                 1 +                         // Message code
@@ -90,17 +98,17 @@ namespace Npgsql.FrontendMessages
             buf.WriteInt32(messageLength - 1);
             buf.WriteNullTerminatedString(Statement);
 
-            await buf.WriteString(Query, queryByteLen, async, cancellationToken);
+            await buf.WriteString(Query, queryByteLen, async);
 
             if (buf.WriteSpaceLeft < 1 + 2)
-                await buf.Flush(async, cancellationToken);
+                await buf.Flush(async);
             buf.WriteByte(0); // Null terminator for the query
             buf.WriteInt16((short)ParameterTypeOIDs.Count);
 
             foreach (var t in ParameterTypeOIDs)
             {
                 if (buf.WriteSpaceLeft < 4)
-                    await buf.Flush(async, cancellationToken);
+                    await buf.Flush(async);
                 buf.WriteInt32((int)t);
             }
         }

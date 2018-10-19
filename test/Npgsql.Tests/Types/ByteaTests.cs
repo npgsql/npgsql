@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -27,6 +27,7 @@ using System.Data;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using Npgsql;
 using NpgsqlTypes;
 using NUnit.Framework;
@@ -97,7 +98,7 @@ namespace Npgsql.Tests.Types
                 // TODO: This is too small to actually test any interesting sequential behavior
                 byte[] expected = {1, 2, 3, 4, 5};
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (bytes BYTEA)");
-                conn.ExecuteNonQuery($@"INSERT INTO data (bytes) VALUES ({EncodeHex(expected)})");
+                conn.ExecuteNonQuery($@"INSERT INTO data (bytes) VALUES ({TestUtil.EncodeByteaHex(expected)})");
 
                 const string queryText = @"SELECT bytes, 'foo', bytes, bytes, bytes FROM data";
                 using (var cmd = new NpgsqlCommand(queryText, conn))
@@ -108,7 +109,7 @@ namespace Npgsql.Tests.Types
                     var actual = reader.GetFieldValue<byte[]>(0);
                     Assert.That(actual, Is.EqualTo(expected));
 
-                    if (IsSequential(behavior))
+                    if (behavior.IsSequential())
                         Assert.That(() => reader[0], Throws.Exception.TypeOf<InvalidOperationException>(), "Seek back sequential");
                     else
                         Assert.That(reader.GetFieldValue<byte[]>(0), Is.EqualTo(expected));
@@ -118,132 +119,6 @@ namespace Npgsql.Tests.Types
                     Assert.That(reader[2], Is.EqualTo(expected));
                     Assert.That(reader.GetValue(3), Is.EqualTo(expected));
                     Assert.That(reader.GetFieldValue<byte[]>(4), Is.EqualTo(expected));
-                }
-            }
-        }
-
-        [Test]
-        public void GetBytes([Values(CommandBehavior.Default, CommandBehavior.SequentialAccess)] CommandBehavior behavior)
-        {
-            using (var conn = OpenConnection())
-            {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (bytes BYTEA)");
-
-                // TODO: This is too small to actually test any interesting sequential behavior
-                byte[] expected = {1, 2, 3, 4, 5};
-                var actual = new byte[expected.Length];
-                conn.ExecuteNonQuery($"INSERT INTO data (bytes) VALUES ({EncodeHex(expected)})");
-
-                const string queryText = @"SELECT bytes, 'foo', bytes, 'bar', bytes, bytes FROM data";
-                using (var cmd = new NpgsqlCommand(queryText, conn))
-                using (var reader = cmd.ExecuteReader(behavior))
-                {
-                    reader.Read();
-
-                    Assert.That(reader.GetBytes(0, 0, actual, 0, 2), Is.EqualTo(2));
-                    Assert.That(actual[0], Is.EqualTo(expected[0]));
-                    Assert.That(actual[1], Is.EqualTo(expected[1]));
-                    Assert.That(reader.GetBytes(0, 0, null, 0, 0), Is.EqualTo(expected.Length), "Bad column length");
-                    if (IsSequential(behavior))
-                        Assert.That(() => reader.GetBytes(0, 0, actual, 4, 1),
-                            Throws.Exception.TypeOf<InvalidOperationException>(), "Seek back sequential");
-                    else
-                    {
-                        Assert.That(reader.GetBytes(0, 0, actual, 4, 1), Is.EqualTo(1));
-                        Assert.That(actual[4], Is.EqualTo(expected[0]));
-                    }
-                    Assert.That(reader.GetBytes(0, 2, actual, 2, 3), Is.EqualTo(3));
-                    Assert.That(actual, Is.EqualTo(expected));
-                    Assert.That(reader.GetBytes(0, 0, null, 0, 0), Is.EqualTo(expected.Length), "Bad column length");
-
-                    Assert.That(() => reader.GetBytes(1, 0, null, 0, 0), Throws.Exception.TypeOf<InvalidCastException>(),
-                        "GetBytes on non-bytea");
-                    Assert.That(() => reader.GetBytes(1, 0, actual, 0, 1),
-                        Throws.Exception.TypeOf<InvalidCastException>(),
-                        "GetBytes on non-bytea");
-                    Assert.That(reader.GetString(1), Is.EqualTo("foo"));
-                    reader.GetBytes(2, 0, actual, 0, 2);
-                    // Jump to another column from the middle of the column
-                    reader.GetBytes(4, 0, actual, 0, 2);
-                    Assert.That(reader.GetBytes(4, expected.Length - 1, actual, 0, 2), Is.EqualTo(1),
-                        "Length greater than data length");
-                    Assert.That(actual[0], Is.EqualTo(expected[expected.Length - 1]), "Length greater than data length");
-                    Assert.That(() => reader.GetBytes(4, 0, actual, 0, actual.Length + 1),
-                        Throws.Exception.TypeOf<IndexOutOfRangeException>(), "Length great than output buffer length");
-                    // Close in the middle of a column
-                    reader.GetBytes(5, 0, actual, 0, 2);
-                }
-
-                //var result = (byte[]) cmd.ExecuteScalar();
-                //Assert.AreEqual(2, result.Length);
-            }
-        }
-
-        [Test]
-        public void GetStream([Values(CommandBehavior.Default, CommandBehavior.SequentialAccess)] CommandBehavior behavior)
-        {
-            using (var conn = OpenConnection())
-            {
-                // TODO: This is too small to actually test any interesting sequential behavior
-                byte[] expected = { 1, 2, 3, 4, 5 };
-                var actual = new byte[expected.Length];
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (bytes BYTEA)");
-                conn.ExecuteNonQuery($"INSERT INTO data (bytes) VALUES ({EncodeHex(expected)})");
-
-                using (var cmd = new NpgsqlCommand(@"SELECT bytes, 'foo' FROM data", conn))
-                using (var reader = cmd.ExecuteReader(behavior))
-                {
-                    reader.Read();
-
-                    var stream = reader.GetStream(0);
-                    Assert.That(stream.CanSeek, Is.EqualTo(behavior == CommandBehavior.Default));
-                    Assert.That(stream.Length, Is.EqualTo(expected.Length));
-                    stream.Read(actual, 0, 2);
-                    Assert.That(actual[0], Is.EqualTo(expected[0]));
-                    Assert.That(actual[1], Is.EqualTo(expected[1]));
-                    if (behavior == CommandBehavior.Default)
-                    {
-                        var stream2 = reader.GetStream(0);
-                        var actual2 = new byte[2];
-                        stream2.Read(actual2, 0, 2);
-                        Assert.That(actual2[0], Is.EqualTo(expected[0]));
-                        Assert.That(actual2[1], Is.EqualTo(expected[1]));
-                    }
-                    else
-                    {
-                        Assert.That(() => reader.GetStream(0), Throws.Exception.TypeOf<InvalidOperationException>(), "Sequential stream twice on same column");
-                    }
-                    stream.Read(actual, 2, 1);
-                    Assert.That(actual[2], Is.EqualTo(expected[2]));
-                    stream.Dispose();
-
-                    if (IsSequential(behavior))
-                        Assert.That(() => reader.GetBytes(0, 0, actual, 4, 1), Throws.Exception.TypeOf<InvalidOperationException>(), "Seek back sequential");
-                    else
-                    {
-                        Assert.That(reader.GetBytes(0, 0, actual, 4, 1), Is.EqualTo(1));
-                        Assert.That(actual[4], Is.EqualTo(expected[0]));
-                    }
-                    Assert.That(reader.GetString(1), Is.EqualTo("foo"));
-                }
-            }
-        }
-
-        [Test]
-        public void GetNull([Values(CommandBehavior.Default, CommandBehavior.SequentialAccess)] CommandBehavior behavior)
-        {
-            using (var conn = OpenConnection())
-            {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (bytes BYTEA)");
-                var buf = new byte[8];
-                conn.ExecuteNonQuery(@"INSERT INTO data (bytes) VALUES (NULL)");
-                using (var cmd = new NpgsqlCommand("SELECT bytes FROM data", conn))
-                using (var reader = cmd.ExecuteReader(behavior)) {
-                    reader.Read();
-                    Assert.That(reader.IsDBNull(0), Is.True);
-                    Assert.That(() => reader.GetBytes(0, 0, buf, 0, 1), Throws.Exception.TypeOf<InvalidCastException>(), "GetBytes");
-                    Assert.That(() => reader.GetStream(0), Throws.Exception.TypeOf<InvalidCastException>(), "GetStream");
-                    Assert.That(() => reader.GetBytes(0, 0, null, 0, 0), Throws.Exception.TypeOf<InvalidCastException>(), "GetBytes with null buffer");
                 }
             }
         }
@@ -259,45 +134,6 @@ namespace Npgsql.Tests.Types
                 cmd.Parameters["val"].Value = expected;
                 var result = (byte[])cmd.ExecuteScalar();
                 Assert.That(result, Is.EqualTo(expected));
-            }
-        }
-
-        [Test, Description("In sequential mode, checks that moving to the next column disposes a currently open stream")]
-        public void StreamDisposeOnSequentialColumn()
-        {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand(@"SELECT @p, @p", conn))
-            {
-                var data = new byte[] { 1, 2, 3 };
-                cmd.Parameters.Add(new NpgsqlParameter("p", data));
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess))
-                {
-                    reader.Read();
-                    var stream = reader.GetStream(0);
-                    // ReSharper disable once UnusedVariable
-                    var v = reader.GetValue(1);
-                    Assert.That(() => stream.ReadByte(), Throws.Exception.TypeOf<ObjectDisposedException>());
-                }
-            }
-        }
-
-        [Test, Description("In non-sequential mode, checks that moving to the next row disposes all currently open streams")]
-        public void StreamDisposeOnNonSequentialRow()
-        {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand(@"SELECT @p", conn))
-            {
-                var data = new byte[] { 1, 2, 3 };
-                cmd.Parameters.Add(new NpgsqlParameter("p", data));
-                using (var reader = cmd.ExecuteReader())
-                {
-                    reader.Read();
-                    var s1 = reader.GetStream(0);
-                    var s2 = reader.GetStream(0);
-                    reader.Read();
-                    Assert.That(() => s1.ReadByte(), Throws.Exception.TypeOf<ObjectDisposedException>());
-                    Assert.That(() => s2.ReadByte(), Throws.Exception.TypeOf<ObjectDisposedException>());
-                }
             }
         }
 
@@ -365,6 +201,7 @@ namespace Npgsql.Tests.Types
                 Assert.AreEqual(inVal[1], retVal[1]);
             }
         }
+
 
         // Older tests from here
 
@@ -465,23 +302,5 @@ namespace Npgsql.Tests.Types
                 }
             }
         }
-
-        #region Utilities
-
-        /// <summary>
-        /// Utility to encode a byte array in Postgresql hex format
-        /// See http://www.postgresql.org/docs/current/static/datatype-binary.html
-        /// </summary>
-        static string EncodeHex(ICollection<byte> buf)
-        {
-            var hex = new StringBuilder(@"E'\\x", buf.Count * 2 + 3);
-            foreach (var b in buf) {
-                hex.Append($"{b:x2}");
-            }
-            hex.Append("'");
-            return hex.ToString();
-        }
-
-        #endregion
     }
 }

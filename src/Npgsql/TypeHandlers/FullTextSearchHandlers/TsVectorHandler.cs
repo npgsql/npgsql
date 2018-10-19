@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -25,12 +25,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
-using JetBrains.Annotations;
 using NpgsqlTypes;
 using Npgsql.BackendMessages;
-using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
+using Npgsql.TypeMapping;
 
 namespace Npgsql.TypeHandlers.FullTextSearchHandlers
 {
@@ -38,15 +37,15 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-textsearch.html
     /// </summary>
     [TypeMapping("tsvector", NpgsqlDbType.TsVector, typeof(NpgsqlTsVector))]
-    class TsVectorHandler : ChunkingTypeHandler<NpgsqlTsVector>
+    class TsVectorHandler : NpgsqlTypeHandler<NpgsqlTsVector>
     {
         // 2561 = 2046 (max length lexeme string) + (1) null terminator +
         // 2 (num_pos) + sizeof(int16) * 256 (max_num_pos (positions/wegihts))
         const int MaxSingleLexemeBytes = 2561;
 
-        internal TsVectorHandler(PostgresType postgresType) : base(postgresType) { }
+        #region Read
 
-        public override async ValueTask<NpgsqlTsVector> Read(ReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+        public override async ValueTask<NpgsqlTsVector> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
         {
             await buf.Ensure(4, async);
             var numLexemes = buf.ReadInt32();
@@ -78,30 +77,24 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             return new NpgsqlTsVector(lexemes, true);
         }
 
-        public override int ValidateAndGetLength(object value, ref LengthCache lengthCache, NpgsqlParameter parameter=null)
+        #endregion Read
+
+        #region Write
+
+        // TODO: Implement length cache
+        public override int ValidateAndGetLength(NpgsqlTsVector value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+            => 4 + value.Sum(l => Encoding.UTF8.GetByteCount(l.Text) + 1 + 2 + l.Count * 2);
+
+        public override async Task Write(NpgsqlTsVector vector, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
-            // TODO: Implement length cache
-            var vec = value as NpgsqlTsVector;
-            if (vec == null) {
-                throw CreateConversionException(value.GetType());
-            }
-
-            return 4 + vec.Sum(l => Encoding.UTF8.GetByteCount(l.Text) + 1 + 2 + l.Count * 2);
-        }
-
-        protected override async Task Write(object value, WriteBuffer buf, LengthCache lengthCache, NpgsqlParameter parameter,
-            bool async, CancellationToken cancellationToken)
-        {
-            var vector = (NpgsqlTsVector)value;
-
             if (buf.WriteSpaceLeft < 4)
-                await buf.Flush(async, cancellationToken);
+                await buf.Flush(async);
             buf.WriteInt32(vector.Count);
 
             foreach (var lexeme in vector)
             {
                 if (buf.WriteSpaceLeft < MaxSingleLexemeBytes)
-                    await buf.Flush(async, cancellationToken);
+                    await buf.Flush(async);
 
                 buf.WriteString(lexeme.Text);
                 buf.WriteByte(0);
@@ -110,5 +103,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
                     buf.WriteInt16(lexeme[i].Value);
             }
         }
+
+        #endregion Write
     }
 }

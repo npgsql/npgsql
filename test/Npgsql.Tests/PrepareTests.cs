@@ -14,20 +14,41 @@ namespace Npgsql.Tests
         [Test]
         public void Basic()
         {
-            using (var conn = OpenConnection())
+            using (var conn = OpenConnectionAndUnprepare())
             {
                 using (var cmd = new NpgsqlCommand("SELECT 1", conn))
                 {
-                    Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(0));
+                    AssertNumPreparedStatements(conn, 0);
                     Assert.That(cmd.ExecuteScalar(), Is.EqualTo(1));
                     Assert.That(cmd.IsPrepared, Is.False);
 
                     cmd.Prepare();
-                    Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1));
+                    AssertNumPreparedStatements(conn, 1);
                     Assert.That(cmd.IsPrepared, Is.True);
                     Assert.That(cmd.ExecuteScalar(), Is.EqualTo(1));
                 }
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1));
+                AssertNumPreparedStatements(conn, 1);
+                conn.UnprepareAll();
+            }
+        }
+
+        [Test]
+        public async Task Async()
+        {
+            using (var conn = OpenConnectionAndUnprepare())
+            {
+                using (var cmd = new NpgsqlCommand("SELECT 1", conn))
+                {
+                    AssertNumPreparedStatements(conn, 0);
+                    Assert.That(cmd.ExecuteScalar(), Is.EqualTo(1));
+                    Assert.That(cmd.IsPrepared, Is.False);
+
+                    await cmd.PrepareAsync();
+                    AssertNumPreparedStatements(conn, 1);
+                    Assert.That(cmd.IsPrepared, Is.True);
+                    Assert.That(cmd.ExecuteScalar(), Is.EqualTo(1));
+                }
+                AssertNumPreparedStatements(conn, 1);
                 conn.UnprepareAll();
             }
         }
@@ -35,15 +56,15 @@ namespace Npgsql.Tests
         [Test]
         public void Unprepare()
         {
-            using (var conn = OpenConnection())
+            using (var conn = OpenConnectionAndUnprepare())
             {
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(0));
+                AssertNumPreparedStatements(conn, 0);
                 using (var cmd = new NpgsqlCommand("SELECT 1", conn))
                 {
                     cmd.Prepare();
-                    Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1));
+                    AssertNumPreparedStatements(conn, 1);
                     cmd.Unprepare();
-                    Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(0));
+                    AssertNumPreparedStatements(conn, 0);
                     Assert.That(cmd.IsPrepared, Is.False);
                     Assert.That(cmd.ExecuteScalar(), Is.EqualTo(1));
                 }
@@ -53,11 +74,11 @@ namespace Npgsql.Tests
         [Test]
         public void Parameters()
         {
-            using (var conn = OpenConnection())
+            using (var conn = OpenConnectionAndUnprepare())
             using (var command = new NpgsqlCommand("SELECT @a, @b", conn))
             {
                 command.Parameters.Add(new NpgsqlParameter("a", DbType.Int32));
-                command.Parameters.Add(new NpgsqlParameter("b", DbType.Int64));
+                command.Parameters.Add(new NpgsqlParameter("b", 8));
                 command.Prepare();
                 command.Parameters[0].Value = 3;
                 command.Parameters[1].Value = 5;
@@ -74,21 +95,21 @@ namespace Npgsql.Tests
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1207")]
         public void DoublePrepareSameSql()
         {
-            using (var conn = OpenConnection())
+            using (var conn = OpenConnectionAndUnprepare())
             using (var cmd = new NpgsqlCommand("SELECT 1", conn))
             {
                 cmd.Prepare();
                 cmd.Prepare();
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1));
+                AssertNumPreparedStatements(conn, 1);
                 cmd.Unprepare();
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.Zero);
+                AssertNumPreparedStatements(conn, 0);
             }
         }
 
         [Test]
         public void DoublePrepareDifferentSql()
         {
-            using (var conn = OpenConnection())
+            using (var conn = OpenConnectionAndUnprepare())
             using (var cmd = new NpgsqlCommand())
             {
                 cmd.Connection = conn;
@@ -99,22 +120,10 @@ namespace Npgsql.Tests
 
                 cmd.CommandText = "SELECT 2";
                 cmd.Prepare();
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(2));
+                AssertNumPreparedStatements(conn, 2);
                 cmd.ExecuteNonQuery();
 
                 conn.UnprepareAll();
-            }
-        }
-
-        [Test, Description("Checks that prepares requires all params to have explicitly set types (NpgsqlDbType or DbType)")]
-        public void RequiresParamTypesSet()
-        {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
-            {
-                var p = new NpgsqlParameter("p", 8);
-                cmd.Parameters.Add(p);
-                Assert.That(() => cmd.Prepare(), Throws.InvalidOperationException);
             }
         }
 
@@ -125,7 +134,7 @@ namespace Npgsql.Tests
             {
                 ApplicationName = nameof(PrepareTests) + '.' + nameof(AcrossCloseOpenSameConnector)
             };
-            using (var conn = OpenConnection(csb))
+            using (var conn = OpenConnectionAndUnprepare(csb))
             using (var cmd = new NpgsqlCommand("SELECT 1", conn))
             {
                 cmd.Prepare();
@@ -172,7 +181,7 @@ namespace Npgsql.Tests
         [Test]
         public void Multistatement()
         {
-            using (var conn = OpenConnection())
+            using (var conn = OpenConnectionAndUnprepare())
             {
                 using (var cmd = new NpgsqlCommand("SELECT 1; SELECT 2", conn))
                 {
@@ -187,7 +196,7 @@ namespace Npgsql.Tests
                     }
                 }
 
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(2));
+                AssertNumPreparedStatements(conn, 2);
 
                 using (var cmd = new NpgsqlCommand("SELECT 1; SELECT 2", conn))
                 {
@@ -202,7 +211,7 @@ namespace Npgsql.Tests
                     }
                 }
 
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(2));
+                AssertNumPreparedStatements(conn, 2);
                 conn.UnprepareAll();
             }
         }
@@ -210,12 +219,58 @@ namespace Npgsql.Tests
         [Test]
         public void OneCommandSameSqlTwice()
         {
-            using (var conn = OpenConnection())
+            using (var conn = OpenConnectionAndUnprepare())
             using (var cmd = new NpgsqlCommand("SELECT 1; SELECT 1", conn))
             {
                 cmd.Prepare();
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1));
+                AssertNumPreparedStatements(conn, 1);
                 cmd.ExecuteNonQuery();
+                cmd.Unprepare();
+            }
+        }
+
+        [Test]
+        public void OneCommandSameSqlAutoPrepare()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                MaxAutoPrepare = 5,
+                AutoPrepareMinUsages = 2
+            };
+            using (var conn = OpenConnectionAndUnprepare(csb))
+            {
+                var sql = new StringBuilder();
+                for (var i = 0; i < 2 + 1; i++)
+                    sql.Append("SELECT 1;");
+                using (var cmd = new NpgsqlCommand(sql.ToString(), conn))
+                    cmd.ExecuteNonQuery();
+                AssertNumPreparedStatements(conn, 1);
+            }
+        }
+
+        [Test]
+        public void OneCommandSameSqlTwiceWithParams()
+        {
+            using (var conn = OpenConnectionAndUnprepare())
+            using (var cmd = new NpgsqlCommand("SELECT @p1; SELECT @p2", conn))
+            {
+                cmd.Parameters.Add("p1", NpgsqlDbType.Integer);
+                cmd.Parameters.Add("p2", NpgsqlDbType.Integer);
+                cmd.Prepare();
+                AssertNumPreparedStatements(conn, 1);
+
+                cmd.Parameters[0].Value = 8;
+                cmd.Parameters[1].Value = 9;
+                using (var reader = cmd.ExecuteReader())
+                {
+                    Assert.That(reader.Read(), Is.True);
+                    Assert.That(reader.GetInt32(0), Is.EqualTo(8));
+                    Assert.That(reader.NextResult(), Is.True);
+                    Assert.That(reader.Read(), Is.True);
+                    Assert.That(reader.GetInt32(0), Is.EqualTo(9));
+                    Assert.That(reader.NextResult(), Is.False);
+                }
+
                 cmd.Unprepare();
             }
         }
@@ -223,20 +278,20 @@ namespace Npgsql.Tests
         [Test]
         public void UnprepareViaDifferentCommand()
         {
-            using (var conn = OpenConnection())
+            using (var conn = OpenConnectionAndUnprepare())
             using (var cmd1 = new NpgsqlCommand("SELECT 1; SELECT 2", conn))
             using (var cmd2 = new NpgsqlCommand("SELECT 2; SELECT 3", conn))
             {
                 cmd1.Prepare();
                 cmd2.Prepare();
                 // Both commands reference the same prepared statement
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(3));
+                AssertNumPreparedStatements(conn, 3);
                 cmd2.Unprepare();
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1));
+                AssertNumPreparedStatements(conn, 1);
                 Assert.That(cmd1.IsPrepared, Is.False);  // Only partially prepared, so no
                 cmd1.ExecuteNonQuery();
                 cmd1.Unprepare();
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(0));
+                AssertNumPreparedStatements(conn, 0);
                 Assert.That(cmd1.IsPrepared, Is.False);
                 cmd1.ExecuteNonQuery();
 
@@ -247,7 +302,7 @@ namespace Npgsql.Tests
         [Test, Description("Prepares the same SQL with different parameters (overloading)")]
         public void OverloadedSql()
         {
-            using (var conn = OpenConnection())
+            using (var conn = OpenConnectionAndUnprepare())
             {
                 using (var cmd = new NpgsqlCommand("SELECT @p", conn))
                 {
@@ -266,7 +321,7 @@ namespace Npgsql.Tests
                 // SQL overloading is a pretty rare/exotic scenario. Handling it properly would involve keying
                 // prepared statements not just by SQL but also by the parameter types, which would pointlessly
                 // increase allocations. Instead, the second execution simply reuns unprepared
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1));
+                AssertNumPreparedStatements(conn, 1);
                 conn.UnprepareAll();
             }
         }
@@ -274,7 +329,7 @@ namespace Npgsql.Tests
         [Test]
         public void ManyStatementsOnUnprepare()
         {
-            using (var conn = OpenConnection())
+            using (var conn = OpenConnectionAndUnprepare())
             using (var cmd = new NpgsqlCommand())
             {
                 cmd.Connection = conn;
@@ -290,16 +345,16 @@ namespace Npgsql.Tests
         [Test]
         public void IsPreparedIsFalseAfterChangingCommandText()
         {
-            using (var conn = OpenConnection())
+            using (var conn = OpenConnectionAndUnprepare())
             using (var cmd = new NpgsqlCommand("SELECT 1", conn))
             {
                 cmd.Prepare();
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1));
+                AssertNumPreparedStatements(conn, 1);
                 cmd.CommandText = "SELECT 2";
                 Assert.That(cmd.IsPrepared, Is.False);
                 cmd.ExecuteNonQuery();
                 Assert.That(cmd.IsPrepared, Is.False);
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1));
+                AssertNumPreparedStatements(conn, 1);
                 cmd.Unprepare();
             }
         }
@@ -307,29 +362,30 @@ namespace Npgsql.Tests
         [Test, Description("Basic persistent prepared system scenario. Checks that statement is not deallocated in the backend after command dispose.")]
         public void PersistentAcrossCommands()
         {
-            using (var conn = OpenConnection())
+            using (var conn = OpenConnectionAndUnprepare())
             {
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(0));
+                AssertNumPreparedStatements(conn, 0);
 
                 using (var cmd = new NpgsqlCommand("SELECT 1", conn))
                 {
                     cmd.Prepare();
-                    Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1));
+                    AssertNumPreparedStatements(conn, 1);
                     Assert.That(cmd.ExecuteScalar(), Is.EqualTo(1));
                 }
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1));
+                AssertNumPreparedStatements(conn, 1);
 
-                var stmtName = (string)conn.ExecuteScalar("SELECT name FROM pg_prepared_statements LIMIT 1");
+                var stmtName = GetPreparedStatements(conn).Single();
 
                 // Rerun the test using the persistent prepared statement
                 using (var cmd = new NpgsqlCommand("SELECT 1", conn))
                 {
                     cmd.Prepare();
-                    Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1));
+                    Assert.That(cmd.IsPrepared, Is.True);
+                    AssertNumPreparedStatements(conn, 1);
                     Assert.That(cmd.ExecuteScalar(), Is.EqualTo(1));
                 }
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1));
-                Assert.That(conn.ExecuteScalar("SELECT name FROM pg_prepared_statements LIMIT 1"), Is.EqualTo(stmtName));
+                AssertNumPreparedStatements(conn, 1);
+                Assert.That(GetPreparedStatements(conn).Single(), Is.EqualTo(stmtName));
                 conn.UnprepareAll();
             }
         }
@@ -342,24 +398,22 @@ namespace Npgsql.Tests
                 ApplicationName = nameof(PersistentAcrossConnections)
             };
 
-            using (var conn = OpenConnection(connSettings))
+            using (var conn = OpenConnectionAndUnprepare(connSettings))
             {
                 var processId = conn.ProcessID;
 
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(0));
+                AssertNumPreparedStatements(conn, 0);
                 using (var cmd = new NpgsqlCommand("SELECT 1", conn))
                     cmd.Prepare();
 
-                var stmtName = (string)conn.ExecuteScalar("SELECT name FROM pg_prepared_statements LIMIT 1");
+                var stmtName = GetPreparedStatements(conn).Single();
                 conn.Close();
 
                 conn.Open();
                 Assert.That(conn.ProcessID, Is.EqualTo(processId), "Unexpected connection received from the pool");
 
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1),
-                    "Prepared statement deallocated");
-                Assert.That(conn.ExecuteScalar("SELECT name FROM pg_prepared_statements LIMIT 1"), Is.EqualTo(stmtName),
-                    "Prepared statement name changed unexpectedly");
+                AssertNumPreparedStatements(conn, 1, "Prepared statement deallocated");
+                Assert.That(GetPreparedStatements(conn).Single(), Is.EqualTo(stmtName), "Prepared statement name changed unexpectedly");
 
                 // Rerun the test using the persistent prepared statement
                 using (var cmd = new NpgsqlCommand("SELECT 1", conn))
@@ -367,10 +421,8 @@ namespace Npgsql.Tests
                     cmd.Prepare();
                     Assert.That(cmd.ExecuteScalar(), Is.EqualTo(1));
                 }
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1),
-                    "Prepared statement deallocated");
-                Assert.That(conn.ExecuteScalar("SELECT name FROM pg_prepared_statements LIMIT 1") as string,
-                    Is.EqualTo(stmtName), "Prepared statement name changed unexpectedly");
+                AssertNumPreparedStatements(conn, 1, "Prepared statement deallocated");
+                Assert.That(GetPreparedStatements(conn).Single(), Is.EqualTo(stmtName), "Prepared statement name changed unexpectedly");
 
                 NpgsqlConnection.ClearPool(conn);
             }
@@ -379,19 +431,19 @@ namespace Npgsql.Tests
         [Test, Description("Makes sure that calling Prepare() twice on a command does not deallocate or make a new one after the first prepared statement when command does not change")]
         public void PersistentDoublePrepareCommandUnchanged()
         {
-            using (var conn = OpenConnection())
+            using (var conn = OpenConnectionAndUnprepare())
             {
                 using (var cmd = new NpgsqlCommand("SELECT 1", conn))
                 {
                     cmd.Prepare();
                     cmd.ExecuteNonQuery();
-                    var stmtName = (string)conn.ExecuteScalar("SELECT name FROM pg_prepared_statements LIMIT 1");
+                    var stmtName = GetPreparedStatements(conn).Single();
                     cmd.Prepare();
                     cmd.ExecuteNonQuery();
-                    Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1), "Unexpected count of prepared statements");
-                    Assert.That(conn.ExecuteScalar("SELECT name FROM pg_prepared_statements LIMIT 1") as string, Is.EqualTo(stmtName), "Persistent prepared statement name changed unexpectedly");
+                    AssertNumPreparedStatements(conn, 1, "Unexpected count of prepared statements");
+                    Assert.That(GetPreparedStatements(conn).Single(), Is.EqualTo(stmtName), "Persistent prepared statement name changed unexpectedly");
                 }
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1), "Persistent prepared statement deallocated");
+                AssertNumPreparedStatements(conn, 1, "Persistent prepared statement deallocated");
                 conn.UnprepareAll();
             }
         }
@@ -399,19 +451,19 @@ namespace Npgsql.Tests
         [Test]
         public void PersistentDoublePrepareCommandChanged()
         {
-            using (var conn = OpenConnection())
+            using (var conn = OpenConnectionAndUnprepare())
             {
                 using (var cmd = new NpgsqlCommand("SELECT 1", conn))
                 {
                     cmd.Prepare();
                     cmd.ExecuteNonQuery();
                     cmd.CommandText = "SELECT 2";
-                    Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1));
+                    AssertNumPreparedStatements(conn, 1);
                     cmd.Prepare();
-                    Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(2));
+                    AssertNumPreparedStatements(conn, 2);
                     cmd.ExecuteNonQuery();
                 }
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(2));
+                AssertNumPreparedStatements(conn, 2);
                 conn.UnprepareAll();
             }
         }
@@ -420,7 +472,7 @@ namespace Npgsql.Tests
         [Test]
         public void Unpersist()
         {
-            using (var conn = OpenConnection())
+            using (var conn = OpenConnectionAndUnprepare())
             {
                 using (var cmd = new NpgsqlCommand("SELECT 1", conn))
                     cmd.Prepare(true);
@@ -430,7 +482,7 @@ namespace Npgsql.Tests
                 {
                     cmd.Prepare(true);
                     cmd.Unpersist();
-                    Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(0));
+                    AssertNumPreparedStatements(conn, 0);
                 }
 
                 // Repersist
@@ -439,7 +491,7 @@ namespace Npgsql.Tests
                     cmd.Prepare(true);
                     Assert.That(cmd.ExecuteScalar(), Is.EqualTo(1));
                     cmd.Unpersist();
-                    Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(0));
+                    AssertNumPreparedStatements(conn, 0);
                 }
 
                 // Unpersist via an unprepared command
@@ -447,7 +499,7 @@ namespace Npgsql.Tests
                     cmd.Prepare(true);
                 using (var cmd = new NpgsqlCommand("SELECT 1", conn))
                     cmd.Unpersist();
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(0));
+                AssertNumPreparedStatements(conn, 0);
 
                 // Unpersist via a prepared but unpersisted command
                 using (var cmd = new NpgsqlCommand("SELECT 1", conn))
@@ -457,14 +509,14 @@ namespace Npgsql.Tests
                     cmd.Prepare(false);
                     cmd.Unpersist();
                 }
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(0));
+                AssertNumPreparedStatements(conn, 0);
             }
         }
 
         [Test]
         public void SameSqlDifferentParams()
         {
-            using (var conn = OpenConnection())
+            using (var conn = OpenConnectionAndUnprepare())
             using (var cmd = new NpgsqlCommand("SELECT @p", conn))
             {
                 throw new NotImplementedException("Problem: currentl setting NpgsqlParameter.Value clears/invalidates...");
@@ -486,11 +538,39 @@ namespace Npgsql.Tests
                         }
                     }
                 }
-                //Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(2));
+                //AssertNumPreparedStatements(conn, 2);
                 cmd.Parameters[0].Value = "hello";
                 Console.WriteLine(cmd.ExecuteScalar());
             }
         }
         */
+
+        NpgsqlConnection OpenConnectionAndUnprepare(string connectionString = null)
+        {
+            var conn = OpenConnection(connectionString);
+            conn.UnprepareAll();
+            return conn;
+        }
+
+        NpgsqlConnection OpenConnectionAndUnprepare(NpgsqlConnectionStringBuilder csb)
+            => OpenConnectionAndUnprepare(csb.ToString());
+
+        void AssertNumPreparedStatements(NpgsqlConnection conn, int expected)
+            => Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements WHERE statement NOT LIKE '%FROM pg_prepared_statements%'"), Is.EqualTo(expected));
+
+        void AssertNumPreparedStatements(NpgsqlConnection conn, int expected, string message)
+            => Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements WHERE statement NOT LIKE '%FROM pg_prepared_statements%'"), Is.EqualTo(expected), message);
+
+        List<string> GetPreparedStatements(NpgsqlConnection conn)
+        {
+            var statements = new List<string>();
+            using (var cmd = new NpgsqlCommand("SELECT name FROM pg_prepared_statements WHERE statement NOT LIKE '%FROM pg_prepared_statement%'", conn))
+            using (var reader = cmd.ExecuteReader())
+            {
+                while (reader.Read())
+                    statements.Add(reader.GetString(0));
+            }
+            return statements;
+        }
     }
 }

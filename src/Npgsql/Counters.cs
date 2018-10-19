@@ -52,6 +52,7 @@ namespace Npgsql
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
+#pragma warning disable CA1801 // Review unused parameters
         internal static void Initialize(bool usePerfCounters)
         {
             lock (InitLock)
@@ -62,7 +63,7 @@ namespace Npgsql
                 var enabled = false;
                 var expensiveEnabled = false;
 
-#if NET45 || NET451
+#if NET452
                 try
                 {
                     if (usePerfCounters)
@@ -100,15 +101,16 @@ namespace Npgsql
             }
         }
     }
+#pragma warning restore CA1801 // Review unused parameters
 
     /// <summary>
     /// This class is currently a simple wrapper around System.Diagnostics.PerformanceCounter.
-    /// Since these aren't supported in netstandard13, all the ifdef'ing happens here.
+    /// Since these aren't supported in .NET Standard, all the ifdef'ing happens here.
     /// When an alternative performance counter API emerges for netstandard, it can be added here.
     /// </summary>
     sealed class Counter : IDisposable
     {
-#if NET45 || NET451
+#if NET452
         internal const string DiagnosticsCounterCategory = ".NET Data Provider for PostgreSQL (Npgsql)";
 
         [CanBeNull]
@@ -122,7 +124,7 @@ namespace Npgsql
             if (!enabled)
                 return;
 
-#if NET45 || NET451
+#if NET452
             DiagnosticsCounter = new PerformanceCounter
             {
                 CategoryName = DiagnosticsCounterCategory,
@@ -141,28 +143,28 @@ namespace Npgsql
 
         internal void Increment()
         {
-#if NET45 || NET451
+#if NET452
             DiagnosticsCounter?.Increment();
 #endif
         }
 
         internal void Decrement()
         {
-#if NET45 || NET451
+#if NET452
             DiagnosticsCounter?.Decrement();
 #endif
         }
 
         public void Dispose()
         {
-#if NET45 || NET451
+#if NET452
             var diagnosticsCounter = DiagnosticsCounter;
             DiagnosticsCounter = null;
             diagnosticsCounter?.RemoveInstance();
 #endif
         }
 
-#if NET45 || NET451
+#if NET452
         void OnProcessExit(object sender, EventArgs e) => Dispose();
         void OnDomainUnload(object sender, EventArgs e) => Dispose();
         void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)

@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -26,15 +26,22 @@ using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
 using JetBrains.Annotations;
-using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
+using Npgsql.TypeMapping;
 
 namespace Npgsql.TypeHandlers.DateTimeHandlers
 {
+    [TypeMapping("date", NpgsqlDbType.Date, DbType.Date, typeof(NpgsqlDate))]
+    class DateHandlerFactory : NpgsqlTypeHandlerFactory<DateTime>
+    {
+        protected override NpgsqlTypeHandler<DateTime> Create(NpgsqlConnection conn)
+            => new DateHandler(conn.Connector.ConvertInfinityDateTime);
+    }
+
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-datetime.html
     /// </remarks>
-    [TypeMapping("date", NpgsqlDbType.Date, DbType.Date, typeof(NpgsqlDate))]
-    class DateHandler : SimpleTypeHandlerWithPsv<DateTime, NpgsqlDate>
+    class DateHandler : NpgsqlSimpleTypeHandlerWithPsv<DateTime, NpgsqlDate>
     {
         internal const int PostgresEpochJdate = 2451545; // == date2j(2000, 1, 1)
         internal const int MonthsPerYear = 12;
@@ -45,16 +52,16 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         /// </summary>
         readonly bool _convertInfinityDateTime;
 
-        public DateHandler(PostgresType postgresType, TypeHandlerRegistry registry)
-            : base(postgresType)
+        public DateHandler(bool convertInfinityDateTime)
         {
-            _convertInfinityDateTime = registry.Connector.ConvertInfinityDateTime;
+            _convertInfinityDateTime = convertInfinityDateTime;
         }
 
-        public override DateTime Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        #region Read
+
+        public override DateTime Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
-            // TODO: Convert directly to DateTime without passing through NpgsqlDate?
-            var npgsqlDate = ((ISimpleTypeHandler<NpgsqlDate>) this).Read(buf, len, fieldDescription);
+            var npgsqlDate = ReadPsv(buf, len, fieldDescription);
             try {
                 if (npgsqlDate.IsFinite)
                     return (DateTime)npgsqlDate;
@@ -64,14 +71,14 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                     return DateTime.MaxValue;
                 return DateTime.MinValue;
             } catch (Exception e) {
-                throw new SafeReadException(e);
+                throw new NpgsqlSafeReadException(e);
             }
         }
 
         /// <remarks>
         /// Copied wholesale from Postgresql backend/utils/adt/datetime.c:j2date
         /// </remarks>
-        internal override NpgsqlDate ReadPsv(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        protected override NpgsqlDate ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             var binDate = buf.ReadInt32();
 
@@ -86,50 +93,44 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             }
         }
 
-        public override int ValidateAndGetLength(object value, [CanBeNull] NpgsqlParameter parameter)
-        {
-            if (!(value is DateTime) && !(value is NpgsqlDate))
-            {
-                var converted = Convert.ToDateTime(value);
-                if (parameter == null)
-                    throw CreateConversionButNoParamException(value.GetType());
-                parameter.ConvertedValue = converted;
-            }
-            return 4;
-        }
+        #endregion Read
 
-        protected override void Write(object value, WriteBuffer buf, [CanBeNull] NpgsqlParameter parameter)
-        {
-            if (parameter?.ConvertedValue != null)
-                value = parameter.ConvertedValue;
+        #region Write
 
-            NpgsqlDate date;
-            if (value is NpgsqlDate)
-                date = (NpgsqlDate)value;
-            else if (value is DateTime)
+        public override int ValidateAndGetLength(DateTime value, NpgsqlParameter parameter)
+            => 4;
+
+        public override int ValidateAndGetLength(NpgsqlDate value, NpgsqlParameter parameter)
+            => 4;
+
+        public override void Write(DateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        {
+            NpgsqlDate value2;
+            if (_convertInfinityDateTime)
             {
-                var dt = (DateTime)value;
-                if (_convertInfinityDateTime)
-                {
-                    if (dt == DateTime.MaxValue)
-                        date = NpgsqlDate.Infinity;
-                    else if (dt == DateTime.MinValue)
-                        date = NpgsqlDate.NegativeInfinity;
-                    else
-                        date = new NpgsqlDate(dt);
-                }
+                if (value == DateTime.MaxValue)
+                    value2 = NpgsqlDate.Infinity;
+                else if (value == DateTime.MinValue)
+                    value2 = NpgsqlDate.NegativeInfinity;
                 else
-                    date = new NpgsqlDate(dt);
+                    value2 = new NpgsqlDate(value);
             }
             else
-                throw new InvalidOperationException("Internal Npgsql bug, please report.");
+                value2 = new NpgsqlDate(value);
 
-            if (date == NpgsqlDate.NegativeInfinity)
+            Write(value2, buf, parameter);
+        }
+
+        public override void Write(NpgsqlDate value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        {
+            if (value == NpgsqlDate.NegativeInfinity)
                 buf.WriteInt32(int.MinValue);
-            else if (date == NpgsqlDate.Infinity)
+            else if (value == NpgsqlDate.Infinity)
                 buf.WriteInt32(int.MaxValue);
             else
-                buf.WriteInt32(date.DaysSinceEra - 730119);
+                buf.WriteInt32(value.DaysSinceEra - 730119);
         }
+
+        #endregion Write
     }
 }

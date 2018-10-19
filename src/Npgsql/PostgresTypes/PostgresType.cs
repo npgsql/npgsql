@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -22,6 +22,7 @@
 #endregion
 
 using System;
+using System.Text;
 using JetBrains.Annotations;
 using NpgsqlTypes;
 
@@ -47,15 +48,33 @@ namespace Npgsql.PostgresTypes
         /// <param name="name">The data type's name.</param>
         /// <param name="oid">The data type's OID.</param>
         protected PostgresType(string ns, string name, uint oid)
+            : this(ns, name, name, oid) {}
+
+        /// <summary>
+        /// Constructs a representation of a PostgreSQL data type.
+        /// </summary>
+        /// <param name="ns">The data type's namespace (or schema).</param>
+        /// <param name="name">The data type's name.</param>
+        /// <param name="internalName">The data type's internal name (e.g. _int4 for integer[]).</param>
+        /// <param name="oid">The data type's OID.</param>
+        protected PostgresType(string ns, string name, string internalName, uint oid)
         {
             Namespace = ns;
             Name = name;
+            FullName = Namespace + '.' + Name;
+            InternalName = internalName;
             OID = oid;
         }
 
         #endregion
 
         #region Public Properties
+
+        /// <summary>
+        /// The data type's OID - a unique id identifying the data type in a given database (in pg_type).
+        /// </summary>
+        [PublicAPI]
+        public uint OID { get; }
 
         /// <summary>
         /// The data type's namespace (or schema).
@@ -66,32 +85,32 @@ namespace Npgsql.PostgresTypes
         /// <summary>
         /// The data type's name.
         /// </summary>
+        /// <remarks>
+        /// Note that this is the standard, user-displayable type name (e.g. integer[]) rather than the internal
+        /// PostgreSQL name as it is in pg_type (_int4). See <see cref="InternalName"/> for the latter.
+        /// </remarks>
         [PublicAPI]
         public string Name { get; }
-
-        /// <summary>
-        /// The data type's OID - a unique id identifying the data type in a given database (in pg_type).
-        /// </summary>
-        [PublicAPI]
-        public uint OID { get; }
 
         /// <summary>
         /// The full name of the backend type, including its namespace.
         /// </summary>
         [PublicAPI]
-        public string FullName => Namespace + '.' + Name;
+        public string FullName { get; }
 
         /// <summary>
-        /// A display name for this backend type, suitable for display purposes.
-        /// If the backend type is defined in the default namespace (pg_catalog), it will be omitted.
+        /// A display name for this backend type, including the namespace unless it is pg_catalog (the namespace
+        /// for all built-in types).
         /// </summary>
         [PublicAPI]
-        public string DisplayName => Namespace == "pg_catalog" || Namespace == "" ? Name : FullName;
+        public string DisplayName => Namespace == "pg_catalog" ? Name : FullName;
 
         /// <summary>
-        /// The <see cref="NpgsqlDbType"/> associated with this backend type, if any.
+        /// The data type's internal PostgreSQL name (e.g. integer[] not _int4).
+        /// See <see cref="Name"/> for a more user-friendly name.
         /// </summary>
-        public NpgsqlDbType? NpgsqlDbType { get; protected set; }
+        [PublicAPI]
+        public string InternalName { get; }
 
         /// <summary>
         /// If a PostgreSQL array type exists for this type, it will be referenced here.
@@ -109,21 +128,17 @@ namespace Npgsql.PostgresTypes
 
         #endregion
 
+        internal virtual string GetPartialNameWithFacets(int typeModifier) => Name;
+
         /// <summary>
-        /// For base types, contains the handler type.
-        /// If null, this backend type isn't supported by Npgsql.
+        /// Generates the type name including any facts (size, precision, scale), given the PostgreSQL type modifier.
         /// </summary>
-        [CanBeNull]
-        protected Type HandlerType;
+        internal string GetDisplayNameWithFacets(int typeModifier)
+            => Namespace == "pg_catalog"
+                ? GetPartialNameWithFacets(typeModifier)
+                : Namespace + '.' + GetPartialNameWithFacets(typeModifier);
 
-        internal virtual void AddTo(TypeHandlerRegistry.AvailablePostgresTypes types)
-        {
-            types.ByOID[OID] = this;
-            if (NpgsqlDbType != null)
-                types.ByNpgsqlDbType[NpgsqlDbType.Value] = this;
-        }
-
-        internal abstract TypeHandler Activate(TypeHandlerRegistry registry);
+        internal virtual PostgresFacets GetFacets(int typeModifier) => PostgresFacets.None;
 
         /// <summary>
         /// Returns a string that represents the current object.

@@ -1,7 +1,8 @@
 ﻿#region License
+
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -19,50 +20,56 @@
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+
 #endregion
 
-using System;
 using System.Diagnostics;
 using System.Net.NetworkInformation;
-using JetBrains.Annotations;
 using Npgsql.BackendMessages;
-using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
+using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers.NetworkHandlers
 {
+    /// <summary>
+    /// Defines the type handler for macaddr and macaddr8.
+    /// </summary>
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-net-types.html
     /// </remarks>
+    [TypeMapping("macaddr8", NpgsqlDbType.MacAddr8)]
     [TypeMapping("macaddr", NpgsqlDbType.MacAddr, typeof(PhysicalAddress))]
-    class MacaddrHandler : SimpleTypeHandler<PhysicalAddress>, ISimpleTypeHandler<string>
+    class MacaddrHandler : NpgsqlSimpleTypeHandler<PhysicalAddress>
     {
-        internal MacaddrHandler(PostgresType postgresType) : base(postgresType) { }
+        #region Read
 
-        public override PhysicalAddress Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        /// <inheritdoc />
+        public override PhysicalAddress Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
-            Debug.Assert(len == 6);
+            Debug.Assert(len == 6 || len == 8);
 
-            var bytes = new byte[6];
+            var bytes = new byte[len];
 
-            buf.ReadBytes(bytes, 0, 6);
+            buf.ReadBytes(bytes, 0, len);
             return new PhysicalAddress(bytes);
         }
 
-        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
-            => Read(buf, len, fieldDescription).ToString();
+        #endregion Read
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
+        #region Write
+
+        /// <inheritdoc />
+        public override int ValidateAndGetLength(PhysicalAddress value, NpgsqlParameter parameter)
+            => value.GetAddressBytes().Length;
+
+        /// <inheritdoc />
+        public override void Write(PhysicalAddress value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
-            var address = value as PhysicalAddress;
-            if (address == null)
-                throw CreateConversionException(value.GetType());
-            if (address.GetAddressBytes().Length != 6)
-                throw new FormatException("MAC addresses must have length 6 in PostgreSQL");
-            return 6;
+            var bytes = value.GetAddressBytes();
+            buf.WriteBytes(bytes, 0, bytes.Length);
         }
 
-        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
-            => buf.WriteBytes(((PhysicalAddress)value).GetAddressBytes(), 0, 6);
+        #endregion Write
     }
 }

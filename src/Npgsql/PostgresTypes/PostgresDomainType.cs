@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -53,20 +53,7 @@ namespace Npgsql.PostgresTypes
             BaseType = baseType;
         }
 
-        internal override TypeHandler Activate(TypeHandlerRegistry registry)
-        {
-            TypeHandler baseTypeHandler;
-            if (!registry.TryGetByOID(BaseType.OID, out baseTypeHandler))
-            {
-                // Base type hasn't been set up yet, do it now
-                baseTypeHandler = BaseType.Activate(registry);
-            }
-
-            // Make the domain type OID point to the base type's type handler, the wire encoding
-            // is the same
-            registry.ByOID[OID] = baseTypeHandler;
-
-            return baseTypeHandler;
-        }
+        internal override PostgresFacets GetFacets(int typeModifier)
+            => BaseType.GetFacets(typeModifier);
     }
 }

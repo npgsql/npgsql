@@ -3,16 +3,54 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
+using NpgsqlTypes;
 using NUnit.Framework;
-#if NET451
 using System.Transactions;
-#endif
 
 namespace Npgsql.Tests
 {
     public class BugTests : TestBase
     {
+        #region Sequential reader bugs
+
+        [Test, Description("In sequential access, performing a null check on a non-first field would check the first field")]
+        public void SequentialNullCheckOnNonFirstField()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT 'X', NULL", conn))
+            using (var dr = cmd.ExecuteReader(CommandBehavior.SequentialAccess))
+            {
+                dr.Read();
+                Assert.That(dr.IsDBNull(1), Is.True);
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1034")]
+        public void SequentialSkipOverFirstRow()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT 1; SELECT 2", conn))
+            using (var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess))
+            {
+                Assert.That(reader.NextResult(), Is.True);
+                Assert.That(reader.Read(), Is.True);
+                Assert.That(reader.GetInt32(0), Is.EqualTo(2));
+            }
+        }
+
+        [Test]
+        public void SequentialConsumeWithNull()
+        {
+            using (var conn = OpenConnection())
+            using (var command = new NpgsqlCommand("SELECT 1, NULL", conn))
+            using (var reader = command.ExecuteReader(CommandBehavior.SequentialAccess))
+                reader.Read();
+        }
+
+        #endregion
+
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1210")]
         public void ManyParametersWithMixedFormatCode()
         {
@@ -42,7 +80,7 @@ namespace Npgsql.Tests
         public void RecordWithNonIntField()
         {
             using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT ('one', 2)", conn))
+            using (var cmd = new NpgsqlCommand("SELECT ('one'::TEXT, 2)", conn))
             using (var reader = cmd.ExecuteReader())
             {
                 reader.Read();
@@ -67,7 +105,31 @@ namespace Npgsql.Tests
             }
         }
 
-#if NET451
+        [Test]
+        public void Bug1645()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER)");
+                Assert.That(() =>
+                {
+                    using (var writer = conn.BeginBinaryImport("COPY data (field_text, field_int4) FROM STDIN BINARY"))
+                    {
+                        writer.StartRow();
+                        writer.Write("foo");
+                        writer.Write(8);
+
+                        writer.StartRow();
+                        throw new InvalidOperationException("Catch me outside the using statement if you can!");
+                    }
+                }, Throws.Exception
+                    .TypeOf<InvalidOperationException>()
+                    .With.Property(nameof(InvalidOperationException.Message)).EqualTo("Catch me outside the using statement if you can!")
+                );
+                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.Zero);
+            }
+        }
+
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1497")]
         public void Bug1497()
         {
@@ -83,9 +145,7 @@ namespace Npgsql.Tests
                 }
             }
         }
-#endif
 
-#if NET451
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1558")]
         public void Bug1558()
         {
@@ -100,7 +160,189 @@ namespace Npgsql.Tests
                 conn.Open();
             }
         }
-#endif
+
+        [Test]
+        public void Bug1695()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Pooling = false,
+                MaxAutoPrepare = 10,
+                AutoPrepareMinUsages = 1
+            };
+            using (var conn = OpenConnection(csb))
+            {
+                using (var cmd = new NpgsqlCommand("SELECT 1; SELECT 2", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    // Both statements should get prepared. However, purposefully skip processing the
+                    // second resultset and make sure the second statement got prepared correctly.
+                }
+                Assert.That(conn.ExecuteScalar("SELECT 2"), Is.EqualTo(2));
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1700")]
+        public void Bug1700()
+        {
+            Assert.That(() =>
+            {
+                using (var conn = OpenConnection())
+                using (var tx = conn.BeginTransaction())
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = "SELECT 1";
+                    var reader = cmd.ExecuteReader();
+
+                    while (reader.Read())
+                    {
+                        // Simulate exception whilst processing the data reader...
+                        throw new InvalidOperationException("Some problem parsing the returned data");
+
+                        // As this exception unwinds the stack, it calls Dispose on the NpgsqlTransaction
+                        // which then throws a NpgsqlOperationInProgressException as it tries to rollback
+                        // the transaction. This hides the underlying cause of the problem (in this case
+                        // our InvalidOperationException exception)
+                    }
+
+                    // Note, we never get here
+                    tx.Commit();
+                }
+            }, Throws.InvalidOperationException.With.Message.EqualTo("Some problem parsing the returned data"));
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1964")]
+        public void Bug1964()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("INVALID SQL", conn))
+            {
+                cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Direction = ParameterDirection.Output });
+                Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception.TypeOf<PostgresException>()
+                    .With.Property(nameof(PostgresException.SqlState)).EqualTo("42601"));
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1986")]
+        public void Bug1986()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT 'hello', 'goodbye'", conn))
+            using (var reader = cmd.ExecuteReader())
+            {
+                reader.Read();
+                using (var textReader1 = reader.GetTextReader(0))
+                {
+
+                }
+                using (var textReader2 = reader.GetTextReader(1))
+                {
+
+                }
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1987")]
+        public void Bug1987()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                MaxAutoPrepare = 10,
+                AutoPrepareMinUsages = 2,
+                Pooling = false
+            };
+
+            using (var conn = OpenConnection(csb))
+            {
+                conn.ExecuteNonQuery("CREATE TYPE pg_temp.mood AS ENUM ('sad', 'ok', 'happy')");
+                conn.ReloadTypes();
+                conn.TypeMapper.MapEnum<Mood>("mood");
+                for (var i = 0; i < 2; i++)
+                {
+                    using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+                    {
+                        cmd.Parameters.AddWithValue("p", Mood.Happy);
+                        Assert.That(cmd.ExecuteScalar(), Is.EqualTo(Mood.Happy));
+                    }
+                }
+            }
+        }
+
+        enum Mood { Sad, Ok, Happy };
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2003")]
+        public void Bug2003()
+        {
+            // A big RowDescription (larger than buffer size) causes an oversize buffer allocation, but which isn't
+            // picked up by sequential reader which continues to read from the original buffer.
+            using (var conn = OpenConnection())
+            {
+                var longFieldName = new string('x', conn.Settings.ReadBufferSize);
+                using (var cmd = new NpgsqlCommand($"SELECT 8 AS {longFieldName}", conn))
+                using (var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess))
+                {
+                    reader.Read();
+                    Assert.That(reader.GetInt32(0), Is.EqualTo(8));
+                }
+            }
+        }
+
+        [Test]
+        public void Bug2046()
+        {
+            var expected = 64.27245f;
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT @p = 64.27245::real, 64.27245::real, @p", conn))
+            {
+                cmd.Parameters.AddWithValue("p", expected);
+                using (var rdr = cmd.ExecuteRecord())
+                {
+                    Assert.That(rdr.GetFieldValue<bool>(0));
+                    Assert.That(rdr.GetFieldValue<float>(1), Is.EqualTo(expected));
+                    Assert.That(rdr.GetFieldValue<float>(2), Is.EqualTo(expected));
+                }
+            }
+        }
+
+        [Test]
+        public void Bug1761()
+        {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Enlist = true,
+                Pooling = true,
+                MinPoolSize = 1,
+                MaxPoolSize = 1
+            }.ConnectionString;
+
+            for (var i = 0; i < 2; i++)
+            {
+                try
+                {
+                    using (var scope = new TransactionScope(TransactionScopeOption.Required, TimeSpan.FromMilliseconds(100)))
+                    {
+                        Thread.Sleep(1000);
+
+                        // Ambient transaction is now unusable, attempts to enlist to it will fail. We should recover
+                        // properly from this failure.
+
+                        using (var connection = OpenConnection(connString))
+                        using (var cmd = new NpgsqlCommand("SELECT 1", connection))
+                        {
+                            cmd.CommandText = "select 1;";
+                            cmd.ExecuteNonQuery();
+                        }
+
+                        scope.Complete();
+                    }
+                }
+                catch (TransactionException)
+                {
+                    //do nothing
+                }
+            }
+        }
 
         #region Bug1285
 

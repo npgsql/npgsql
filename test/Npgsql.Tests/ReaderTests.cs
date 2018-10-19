@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -23,28 +23,85 @@
 
 using System;
 using System.Data;
+using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using NUnit.Framework.Constraints;
 using Npgsql;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
+using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
 namespace Npgsql.Tests
 {
+    [TestFixture(CommandBehavior.Default)]
+    [TestFixture(CommandBehavior.SequentialAccess)]
     public class ReaderTests : TestBase
     {
+        [Test]
+        public void SeekColumns()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT 1,2,3", conn))
+            using (var reader = cmd.ExecuteReader(Behavior))
+            {
+                Assert.That(reader.Read(), Is.True);
+                Assert.That(reader.GetInt32(0), Is.EqualTo(1));
+                if (IsSequential)
+                    Assert.That(() => reader.GetInt32(0), Throws.Exception.TypeOf<InvalidOperationException>());
+                else
+                    Assert.That(reader.GetInt32(0), Is.EqualTo(1));
+                Assert.That(reader.GetInt32(1), Is.EqualTo(2));
+                if (IsSequential)
+                    Assert.That(() => reader.GetInt32(0), Throws.Exception.TypeOf<InvalidOperationException>());
+                else
+                    Assert.That(reader.GetInt32(0), Is.EqualTo(1));
+            }
+        }
+
+        [Test]
+        public void NoResultSet()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (id INT)");
+                using (var cmd = new NpgsqlCommand("INSERT INTO data VALUES (8)", conn))
+                using (var reader = cmd.ExecuteReader(Behavior))
+                {
+                    Assert.That(() => reader.GetOrdinal("foo"), Throws.Exception.TypeOf<InvalidOperationException>());
+                    Assert.That(reader.Read(), Is.False);
+                    Assert.That(() => reader.GetOrdinal("foo"), Throws.Exception.TypeOf<InvalidOperationException>());
+                    Assert.That(reader.FieldCount, Is.EqualTo(0));
+                    Assert.That(reader.NextResult(), Is.False);
+                    Assert.That(() => reader.GetOrdinal("foo"), Throws.Exception.TypeOf<InvalidOperationException>());
+                }
+
+                using (var cmd = new NpgsqlCommand("SELECT 1; INSERT INTO data VALUES (8)", conn))
+                using (var reader = cmd.ExecuteReader(Behavior))
+                {
+                    reader.NextResult();
+                    Assert.That(() => reader.GetOrdinal("foo"), Throws.Exception.TypeOf<InvalidOperationException>());
+                    Assert.That(reader.Read(), Is.False);
+                    Assert.That(() => reader.GetOrdinal("foo"), Throws.Exception.TypeOf<InvalidOperationException>());
+                    Assert.That(reader.FieldCount, Is.EqualTo(0));
+                }
+            }
+        }
+
         [Test]
         public void EmptyResultSet()
         {
             using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT 1 WHERE FALSE", conn))
-            using (var reader = cmd.ExecuteReader())
+            using (var cmd = new NpgsqlCommand("SELECT 1 AS foo WHERE FALSE", conn))
+            using (var reader = cmd.ExecuteReader(Behavior))
             {
                 Assert.That(reader.Read(), Is.False);
                 Assert.That(reader.FieldCount, Is.EqualTo(1));
+                Assert.That(reader.GetOrdinal("foo"), Is.EqualTo(0));
                 Assert.That(() => reader[0], Throws.Exception.TypeOf<InvalidOperationException>());
             }
         }
@@ -57,7 +114,7 @@ namespace Npgsql.Tests
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (int INTEGER)");
                 using (var cmd = new NpgsqlCommand("SELECT 1; SELECT 2,3", conn))
                 {
-                    using (var reader = cmd.ExecuteReader())
+                    using (var reader = cmd.ExecuteReader(Behavior))
                     {
                         Assert.That(reader.FieldCount, Is.EqualTo(1));
                         Assert.That(reader.Read(), Is.True);
@@ -71,7 +128,7 @@ namespace Npgsql.Tests
                     }
 
                     cmd.CommandText = "INSERT INTO data (int) VALUES (1)";
-                    using (var reader = cmd.ExecuteReader())
+                    using (var reader = cmd.ExecuteReader(Behavior))
                     {
                         // Note MSDN docs that seem to say we should case -1 in this case: http://msdn.microsoft.com/en-us/library/system.data.idatarecord.fieldcount(v=vs.110).aspx
                         // But SqlClient returns 0
@@ -93,27 +150,27 @@ namespace Npgsql.Tests
                 for (var i = 0; i < 15; i++)
                     sb.Append($"INSERT INTO data (int) VALUES ({i});");
                 var cmd = new NpgsqlCommand(sb.ToString(), conn);
-                var reader = cmd.ExecuteReader();
+                var reader = cmd.ExecuteReader(Behavior);
                 reader.Close();
                 Assert.That(reader.RecordsAffected, Is.EqualTo(15));
 
                 cmd = new NpgsqlCommand("SELECT * FROM data", conn);
-                reader = cmd.ExecuteReader();
+                reader = cmd.ExecuteReader(Behavior);
                 reader.Close();
                 Assert.That(reader.RecordsAffected, Is.EqualTo(-1));
 
                 cmd = new NpgsqlCommand("UPDATE data SET int=int+1 WHERE int > 10", conn);
-                reader = cmd.ExecuteReader();
+                reader = cmd.ExecuteReader(Behavior);
                 reader.Close();
                 Assert.That(reader.RecordsAffected, Is.EqualTo(4));
 
                 cmd = new NpgsqlCommand("UPDATE data SET int=8 WHERE int=666", conn);
-                reader = cmd.ExecuteReader();
+                reader = cmd.ExecuteReader(Behavior);
                 reader.Close();
                 Assert.That(reader.RecordsAffected, Is.EqualTo(0));
 
                 cmd = new NpgsqlCommand("DELETE FROM data WHERE int > 10", conn);
-                reader = cmd.ExecuteReader();
+                reader = cmd.ExecuteReader(Behavior);
                 reader.Close();
                 Assert.That(reader.RecordsAffected, Is.EqualTo(4));
             }
@@ -131,7 +188,7 @@ namespace Npgsql.Tests
                     "UPDATE data SET name='b' WHERE name='doesnt_exist'",
                     conn)
                     )
-                using (var reader = cmd.ExecuteReader())
+                using (var reader = cmd.ExecuteReader(Behavior))
                 {
                     Assert.That(reader.Statements, Has.Count.EqualTo(2));
                     Assert.That(reader.Statements[0].SQL, Is.EqualTo("INSERT INTO data (name) VALUES ('a')"));
@@ -146,7 +203,7 @@ namespace Npgsql.Tests
                 }
 
                 using (var cmd = new NpgsqlCommand("SELECT name FROM data; DELETE FROM data", conn))
-                using (var reader = cmd.ExecuteReader())
+                using (var reader = cmd.ExecuteReader(Behavior))
                 {
                     reader.NextResult(); // Consume SELECT result set
                     Assert.That(reader.Statements, Has.Count.EqualTo(2));
@@ -182,7 +239,7 @@ namespace Npgsql.Tests
                 //param.NpgsqlDbType = NpgsqlDbType.Text;
                 command.Parameters.Add(param);
 
-                using (var dr = command.ExecuteReader())
+                using (var dr = command.ExecuteReader(Behavior))
                 {
                     dr.Read();
                     var result = dr.GetString(0);
@@ -210,7 +267,7 @@ namespace Npgsql.Tests
                 param.Value = test;
                 command.Parameters.Add(param);
 
-                using (var dr = command.ExecuteReader())
+                using (var dr = command.ExecuteReader(Behavior))
                 {
                     dr.Read();
                     var result = dr.GetString(0);
@@ -225,7 +282,7 @@ namespace Npgsql.Tests
             using (var conn = OpenConnection())
             {
                 using (var command = new NpgsqlCommand(@"SELECT 'Random text' AS real_column", conn))
-                using (var dr = command.ExecuteReader())
+                using (var dr = command.ExecuteReader(Behavior))
                 {
                     dr.Read();
                     Assert.That(dr["real_column"], Is.EqualTo("Random text"));
@@ -241,7 +298,7 @@ namespace Npgsql.Tests
             using (var conn = OpenConnection())
             {
                 using (var cmd = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", conn))
-                using (var reader = cmd.ExecuteReader())
+                using (var reader = cmd.ExecuteReader(Behavior))
                 {
                     reader.Read();
                     Assert.That(reader.GetFieldType(0), Is.SameAs(typeof(int)));
@@ -249,7 +306,7 @@ namespace Npgsql.Tests
                 using (var cmd = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", conn))
                 {
                     cmd.AllResultTypesAreUnknown = true;
-                    using (var reader = cmd.ExecuteReader())
+                    using (var reader = cmd.ExecuteReader(Behavior))
                     {
                         reader.Read();
                         Assert.That(reader.GetFieldType(0), Is.SameAs(typeof(string)));
@@ -278,66 +335,114 @@ namespace Npgsql.Tests
             using (var conn = OpenConnection())
             {
                 PostgresType intType;
-                using (var cmd = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", conn))
-                using (var reader = cmd.ExecuteReader())
+                using (var cmd = new NpgsqlCommand(@"SELECT 1::INTEGER AS some_column", conn))
+                using (var reader = cmd.ExecuteReader(Behavior))
                 {
                     reader.Read();
                     intType = (PostgresBaseType)reader.GetPostgresType(0);
                     Assert.That(intType.Namespace, Is.EqualTo("pg_catalog"));
-                    Assert.That(intType.Name, Is.EqualTo("int4"));
-                    Assert.That(intType.FullName, Is.EqualTo("pg_catalog.int4"));
-                    Assert.That(intType.DisplayName, Is.EqualTo("int4"));
-                    Assert.That(intType.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Integer));
+                    Assert.That(intType.Name, Is.EqualTo("integer"));
+                    Assert.That(intType.FullName, Is.EqualTo("pg_catalog.integer"));
+                    Assert.That(intType.DisplayName, Is.EqualTo("integer"));
+                    Assert.That(intType.InternalName, Is.EqualTo("int4"));
                 }
 
-                using (var cmd = new NpgsqlCommand(@"SELECT '{1}'::INT4[] AS some_column", conn))
-                using (var reader = cmd.ExecuteReader())
+                using (var cmd = new NpgsqlCommand(@"SELECT '{1}'::INTEGER[] AS some_column", conn))
+                using (var reader = cmd.ExecuteReader(Behavior))
                 {
                     reader.Read();
                     var intArrayType = (PostgresArrayType)reader.GetPostgresType(0);
-                    Assert.That(intArrayType.Name, Is.EqualTo("_int4"));
+                    Assert.That(intArrayType.Name, Is.EqualTo("integer[]"));
                     Assert.That(intArrayType.Element, Is.SameAs(intType));
+                    Assert.That(intArrayType.DisplayName, Is.EqualTo("integer[]"));
+                    Assert.That(intArrayType.InternalName, Is.EqualTo("_int4"));
                     Assert.That(intType.Array, Is.SameAs(intArrayType));
-                    Assert.That(intArrayType.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Integer | NpgsqlDbType.Array));
+                }
+            }
+        }
+
+        /// <seealso cref="ReaderNewSchemaTests.DataTypeName"/>
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/787")]
+        [TestCase("integer")]
+        [TestCase("real")]
+        [TestCase("integer[]")]
+        [TestCase("character varying(10)")]
+        [TestCase("character varying")]
+        [TestCase("character varying(10)[]")]
+        [TestCase("character(10)")]
+        [TestCase("character")]
+        [TestCase("numeric(1000, 2)")]
+        [TestCase("numeric(1000)")]
+        [TestCase("numeric")]
+        [TestCase("timestamp")]
+        [TestCase("timestamp(2)")]
+        [TestCase("timestamp(2) with time zone")]
+        [TestCase("time")]
+        [TestCase("time(2)")]
+        [TestCase("time(2) with time zone")]
+        [TestCase("interval")]
+        [TestCase("interval(2)")]
+        [TestCase("bit")]
+        [TestCase("bit(3)")]
+        [TestCase("bit varying")]
+        [TestCase("bit varying(3)")]
+        public void GetDataTypeName(string typeName)
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand($"SELECT NULL::{typeName} AS some_column", conn))
+            using (var reader = cmd.ExecuteReader(Behavior))
+            {
+                reader.Read();
+                Assert.That(reader.GetDataTypeName(0), Is.EqualTo(typeName));
+            }
+        }
+
+        [Test]
+        public void GetDataTypeNameEnum()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TYPE pg_temp.my_enum AS ENUM ('one')");
+                conn.ReloadTypes();
+                using (var cmd = new NpgsqlCommand("SELECT 'one'::my_enum", conn))
+                using (var reader = cmd.ExecuteReader(Behavior))
+                {
+                    reader.Read();
+                    Assert.That(reader.GetDataTypeName(0), Does.StartWith("pg_temp").And.EndWith(".my_enum"));
                 }
             }
         }
 
         [Test]
-        [IssueLink("https://github.com/npgsql/npgsql/issues/787")]
-        [IssueLink("https://github.com/npgsql/npgsql/issues/794")]
-        public void GetDataTypeName()
+        public void GetDataTypeNameDomain()
         {
             using (var conn = OpenConnection())
             {
-                using (var cmd = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", conn))
-                using (var reader = cmd.ExecuteReader())
+                conn.ExecuteNonQuery("CREATE DOMAIN pg_temp.my_domain AS VARCHAR(10)");
+                conn.ReloadTypes();
+                using (var cmd = new NpgsqlCommand("SELECT 'one'::my_domain", conn))
+                using (var reader = cmd.ExecuteReader(Behavior))
                 {
                     reader.Read();
-                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4"));
+                    // In the RowDescription, PostgreSQL sends the type OID of the underlying type and not of the domain.
+                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("character varying(10)"));
                 }
-                using (var cmd = new NpgsqlCommand(@"SELECT '{1}'::INT4[] AS some_column", conn))
-                using (var reader = cmd.ExecuteReader())
-                {
-                    reader.Read();
-                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("_int4"));
-                }
-                using (var cmd = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", conn))
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/794")]
+        public void GetDataTypeNameTypesUnknown()
+        {
+            using (var conn = OpenConnection())
+            {
+                using (var cmd = new NpgsqlCommand(@"SELECT 1::INTEGER AS some_column", conn))
                 {
                     cmd.AllResultTypesAreUnknown = true;
-                    using (var reader = cmd.ExecuteReader())
+                    using (var reader = cmd.ExecuteReader(Behavior))
                     {
                         reader.Read();
-                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4"));
+                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("integer"));
                     }
-                }
-                conn.ExecuteNonQuery("CREATE TYPE pg_temp.my_enum AS ENUM ('one')");
-                conn.ReloadTypes();
-                using (var cmd = new NpgsqlCommand("SELECT 'one'::my_enum", conn))
-                using (var reader = cmd.ExecuteReader())
-                {
-                    reader.Read();
-                    Assert.That(reader.GetDataTypeName(0), Does.StartWith("pg_temp").And.EndWith(".my_enum"));
                 }
             }
         }
@@ -351,7 +456,7 @@ namespace Npgsql.Tests
             {
                 var int4OID = conn.ExecuteScalar("SELECT oid FROM pg_type WHERE typname = 'int4'");
                 using (var cmd = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", conn))
-                using (var reader = cmd.ExecuteReader())
+                using (var reader = cmd.ExecuteReader(Behavior))
                 {
                     reader.Read();
                     Assert.That(reader.GetDataTypeOID(0), Is.EqualTo(int4OID));
@@ -359,7 +464,7 @@ namespace Npgsql.Tests
                 using (var cmd = new NpgsqlCommand(@"SELECT 1::INT4 AS some_column", conn))
                 {
                     cmd.AllResultTypesAreUnknown = true;
-                    using (var reader = cmd.ExecuteReader())
+                    using (var reader = cmd.ExecuteReader(Behavior))
                     {
                         reader.Read();
                         Assert.That(reader.GetDataTypeOID(0), Is.EqualTo(int4OID));
@@ -373,7 +478,7 @@ namespace Npgsql.Tests
         {
             using (var conn = OpenConnection())
             using (var command = new NpgsqlCommand(@"SELECT 1 AS some_column", conn))
-            using (var dr = command.ExecuteReader())
+            using (var dr = command.ExecuteReader(Behavior))
             {
                 dr.Read();
                 Assert.That(dr.GetName(0), Is.EqualTo("some_column"));
@@ -382,23 +487,11 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void GetOrdinal()
-        {
-            using (var conn = OpenConnection())
-            using (var command = new NpgsqlCommand(@"SELECT 0, 1 AS some_column WHERE 1=0", conn))
-            using (var dr = command.ExecuteReader())
-            {
-                Assert.That(dr.GetOrdinal("some_column"), Is.EqualTo(1));
-                Assert.That(() => dr.GetOrdinal("doesn't_exist"), Throws.Exception.TypeOf<IndexOutOfRangeException>());
-            }
-        }
-
-        [Test]
         public void GetFieldValueAsObject()
         {
             using (var conn = OpenConnection())
             using (var cmd = new NpgsqlCommand("SELECT 'foo'::TEXT", conn))
-            using (var reader = cmd.ExecuteReader())
+            using (var reader = cmd.ExecuteReader(Behavior))
             {
                 reader.Read();
                 Assert.That(reader.GetFieldValue<object>(0), Is.EqualTo("foo"));
@@ -410,15 +503,21 @@ namespace Npgsql.Tests
         {
             using (var conn = OpenConnection())
             using (var command = new NpgsqlCommand(@"SELECT 'hello', 1, '2014-01-01'::DATE", conn))
-            using (var dr = command.ExecuteReader())
             {
-                dr.Read();
-                var values = new object[4];
-                Assert.That(dr.GetValues(values), Is.EqualTo(3));
-                Assert.That(values, Is.EqualTo(new object[] {"hello", 1, new DateTime(2014, 1, 1), null}));
-                values = new object[2];
-                Assert.That(dr.GetValues(values), Is.EqualTo(2));
-                Assert.That(values, Is.EqualTo(new object[] {"hello", 1}));
+                using (var dr = command.ExecuteReader(Behavior))
+                {
+                    dr.Read();
+                    var values = new object[4];
+                    Assert.That(dr.GetValues(values), Is.EqualTo(3));
+                    Assert.That(values, Is.EqualTo(new object[] { "hello", 1, new DateTime(2014, 1, 1), null }));
+                }
+                using (var dr = command.ExecuteReader(Behavior))
+                {
+                    dr.Read();
+                    var values = new object[2];
+                    Assert.That(dr.GetValues(values), Is.EqualTo(2));
+                    Assert.That(values, Is.EqualTo(new object[] { "hello", 1 }));
+                }
             }
         }
 
@@ -427,21 +526,29 @@ namespace Npgsql.Tests
         {
             using (var conn = OpenConnection())
             using (var command = new NpgsqlCommand(@"SELECT 'hello', 1, '2014-01-01'::DATE", conn))
-            using (var dr = command.ExecuteReader())
             {
-                dr.Read();
-                var values = new object[4];
-                Assert.That(dr.GetProviderSpecificValues(values), Is.EqualTo(3));
-                Assert.That(values, Is.EqualTo(new object[] {"hello", 1, new NpgsqlDate(2014, 1, 1), null}));
-                values = new object[2];
-                Assert.That(dr.GetProviderSpecificValues(values), Is.EqualTo(2));
-                Assert.That(values, Is.EqualTo(new object[] {"hello", 1}));
+                using (var dr = command.ExecuteReader(Behavior))
+                {
+                    dr.Read();
+                    var values = new object[4];
+                    Assert.That(dr.GetProviderSpecificValues(values), Is.EqualTo(3));
+                    Assert.That(values, Is.EqualTo(new object[] { "hello", 1, new NpgsqlDate(2014, 1, 1), null }));
+                }
+                using (var dr = command.ExecuteReader(Behavior))
+                {
+                    dr.Read();
+                    var values = new object[2];
+                    Assert.That(dr.GetProviderSpecificValues(values), Is.EqualTo(2));
+                    Assert.That(values, Is.EqualTo(new object[] { "hello", 1 }));
+                }
             }
         }
 
         [Test]
         public void ExecuteReaderGettingEmptyResultSetWithOutputParameter()
         {
+            if (IsSequential)
+                Assert.Pass("Not supported in sequential mode");
             using (var conn = OpenConnection())
             {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
@@ -449,7 +556,7 @@ namespace Npgsql.Tests
                 var param = new NpgsqlParameter("some_param", NpgsqlDbType.Varchar);
                 param.Direction = ParameterDirection.Output;
                 command.Parameters.Add(param);
-                using (var dr = command.ExecuteReader())
+                using (var dr = command.ExecuteReader(Behavior))
                     Assert.IsFalse(dr.NextResult());
             }
         }
@@ -471,7 +578,7 @@ namespace Npgsql.Tests
                     param.Value = test;
                     command.Parameters.Add(param);
 
-                    using (var dr = command.ExecuteReader())
+                    using (var dr = command.ExecuteReader(Behavior))
                     {
                         dr.Read();
                         // This line should throw the invalid operation exception as the datareader will
@@ -489,7 +596,7 @@ namespace Npgsql.Tests
             using (var conn = OpenConnection())
             {
                 var command = new NpgsqlCommand("SELECT 1", conn);
-                using (var dr = command.ExecuteReader())
+                using (var dr = command.ExecuteReader(Behavior))
                 {
                     while (dr.Read()) {}
                     Assert.That(() => dr[0], Throws.Exception.TypeOf<InvalidOperationException>());
@@ -510,31 +617,6 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test, Description("In sequential access, performing a null check on a non-first field would check the first field")]
-        public void SequentialNullCheckOnNonFirstField()
-        {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT 'X', NULL", conn))
-            using (var dr = cmd.ExecuteReader(CommandBehavior.SequentialAccess))
-            {
-                dr.Read();
-                Assert.That(dr.IsDBNull(1), Is.True);
-            }
-        }
-
-        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1034")]
-        public void SequentialSkipOverFirstRow()
-        {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT 1; SELECT 2", conn))
-            using (var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess))
-            {
-                Assert.That(reader.NextResult(), Is.True);
-                Assert.That(reader.Read(), Is.True);
-                Assert.That(reader.GetInt32(0), Is.EqualTo(2));
-            }
-        }
-
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/400")]
         public void ExceptionThrownFromExecuteQuery([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
         {
@@ -550,7 +632,7 @@ namespace Npgsql.Tests
                 {
                     if (prepare == PrepareOrNot.Prepared)
                         cmd.Prepare();
-                    Assert.That(() => cmd.ExecuteReader(), Throws.Exception.TypeOf<PostgresException>());
+                    Assert.That(() => cmd.ExecuteReader(Behavior), Throws.Exception.TypeOf<PostgresException>());
                 }
             }
         }
@@ -570,7 +652,7 @@ namespace Npgsql.Tests
                 {
                     if (prepare == PrepareOrNot.Prepared)
                         cmd.Prepare();
-                    using (var reader = cmd.ExecuteReader())
+                    using (var reader = cmd.ExecuteReader(Behavior))
                         Assert.That(() => reader.NextResult(), Throws.Exception.TypeOf<PostgresException>());
                 }
             }
@@ -592,7 +674,7 @@ namespace Npgsql.Tests
                 {
                     try
                     {
-                        cmd.ExecuteReader();
+                        cmd.ExecuteReader(Behavior);
                         Assert.Fail();
                     }
                     catch (PostgresException e)
@@ -603,7 +685,7 @@ namespace Npgsql.Tests
 
                 // Exception in multi-statement command
                 using (var cmd = new NpgsqlCommand("SELECT 1; SELECT pg_temp.emit_exception()", conn))
-                using (var reader = cmd.ExecuteReader())
+                using (var reader = cmd.ExecuteReader(Behavior))
                 {
                     try
                     {
@@ -644,38 +726,52 @@ namespace Npgsql.Tests
             }
         }
 
+        #region GetOrdinal
+
         [Test]
-        public void FieldNameKanaWidthWideRequestForNarrowFieldName()
-        {//Should ignore Kana width and hence find the first of these two fields
+        public void GetOrdinal()
+        {
             using (var conn = OpenConnection())
-            using (var command = new NpgsqlCommand("select 123 as ｦｧｨｩｪｫｬ, 124 as ヲァィゥェォャ", conn))
-            using (var dr = command.ExecuteReader())
+            using (var command = new NpgsqlCommand(@"SELECT 0, 1 AS some_column WHERE 1=0", conn))
+            using (var reader = command.ExecuteReader(Behavior))
             {
-                dr.Read();
-                Assert.AreEqual(dr["ｦｧｨｩｪｫｬ"], 123);
-                Assert.AreEqual(dr["ヲァィゥェォャ"], 123);// Wide version.
+                Assert.That(reader.GetOrdinal("some_column"), Is.EqualTo(1));
+                Assert.That(() => reader.GetOrdinal("doesn't_exist"), Throws.Exception.TypeOf<IndexOutOfRangeException>());
             }
         }
 
         [Test]
-        public void FieldNameKanaWidthNarrowRequestForWideFieldName()
-        {//Should ignore Kana width and hence find the first of these two fields
+        public void GetOrdinalInsensitivity()
+        {
             using (var conn = OpenConnection())
-            using (var command = new NpgsqlCommand("select 123 as ヲァィゥェォャ, 124 as ｦｧｨｩｪｫｬ", conn))
-            using (var dr = command.ExecuteReader())
+            using (var command = new NpgsqlCommand("select 123 as FIELD1", conn))
+            using (var reader = command.ExecuteReader(Behavior))
             {
-                dr.Read();
-                Assert.AreEqual(dr["ヲァィゥェォャ"], 123);
-                Assert.AreEqual(dr["ｦｧｨｩｪｫｬ"], 123);// Narrow version.
+                reader.Read();
+                Assert.That(reader.GetOrdinal("fieLd1"), Is.EqualTo(0));
             }
         }
+
+        [Test]
+        public void GetOrdinalKanaInsensitive()
+        {
+            using (var conn = OpenConnection())
+            using (var command = new NpgsqlCommand("select 123 as ｦｧｨｩｪｫｬ", conn))
+            using (var reader = command.ExecuteReader(Behavior))
+            {
+                reader.Read();
+                Assert.That(reader["ヲァィゥェォャ"], Is.EqualTo(123));
+            }
+        }
+
+        #endregion GetOrdinal
 
         [Test]
         public void FieldIndexDoesntExist()
         {
             using (var conn = OpenConnection())
             using (var command = new NpgsqlCommand("SELECT 1", conn))
-            using (var dr = command.ExecuteReader())
+            using (var dr = command.ExecuteReader(Behavior))
             {
                 dr.Read();
                 Assert.That(() => dr[5], Throws.Exception.TypeOf<IndexOutOfRangeException>());
@@ -687,14 +783,14 @@ namespace Npgsql.Tests
         {
             using (var conn = OpenConnection())
             using (var cmd1 = new NpgsqlCommand("SELECT 1", conn))
-            using (var reader1 = cmd1.ExecuteReader())
+            using (var reader1 = cmd1.ExecuteReader(Behavior))
             {
                 Assert.That(() => conn.ExecuteNonQuery("SELECT 1"), Throws.Exception.TypeOf<NpgsqlOperationInProgressException>());
                 Assert.That(() => conn.ExecuteScalar("SELECT 1"), Throws.Exception.TypeOf<NpgsqlOperationInProgressException>());
 
                 using (var cmd2 = new NpgsqlCommand("SELECT 2", conn))
                 {
-                    Assert.That(() => cmd2.ExecuteReader(), Throws.Exception.TypeOf<NpgsqlOperationInProgressException>());
+                    Assert.That(() => cmd2.ExecuteReader(Behavior), Throws.Exception.TypeOf<NpgsqlOperationInProgressException>());
                     Assert.That(() => cmd2.Prepare(), Throws.Exception.TypeOf<NpgsqlOperationInProgressException>());
                 }
             }
@@ -705,7 +801,7 @@ namespace Npgsql.Tests
         {
             using (var conn = OpenConnection())
             using (var command = new NpgsqlCommand("SELECT 1", conn))
-            using (var dr = command.ExecuteReader())
+            using (var dr = command.ExecuteReader(Behavior))
             {
                 dr.Read();
                 dr.Close();
@@ -719,22 +815,27 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void Null()
+        public void Null([Values(CommandBehavior.Default, CommandBehavior.SequentialAccess)] CommandBehavior behavior)
         {
             using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT @p::TEXT", conn))
+            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2::TEXT", conn))
             {
-                cmd.Parameters.Add(new NpgsqlParameter("p", DbType.String) { Value = DBNull.Value });
+                cmd.Parameters.Add(new NpgsqlParameter("p1", DbType.String) { Value = DBNull.Value });
+                cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p2", Value = DBNull.Value });
 
-                using (var reader = cmd.ExecuteReader())
+                using (var reader = cmd.ExecuteReader(behavior))
                 {
                     reader.Read();
 
-                    Assert.That(reader.IsDBNull(0), Is.True);
-                    Assert.That(reader.IsDBNullAsync(0).Result, Is.True);
-                    Assert.That(reader.GetValue(0), Is.EqualTo(DBNull.Value));
-                    Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(DBNull.Value));
-                    Assert.That(() => reader.GetString(0), Throws.Exception.TypeOf<InvalidCastException>());
+                    for (var i = 0; i < cmd.Parameters.Count; i++)
+                    {
+                        Assert.That(reader.IsDBNull(i), Is.True);
+                        Assert.That(reader.IsDBNullAsync(i).Result, Is.True);
+                        Assert.That(reader.GetValue(i), Is.EqualTo(DBNull.Value));
+                        Assert.That(reader.GetFieldValue<object>(i), Is.EqualTo(DBNull.Value));
+                        Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(DBNull.Value));
+                        Assert.That(() => reader.GetString(i), Throws.Exception.TypeOf<InvalidCastException>());
+                    }
                 }
             }
         }
@@ -743,6 +844,7 @@ namespace Npgsql.Tests
         [IssueLink("https://github.com/npgsql/npgsql/issues/742")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/800")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/1234")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/1898")]
         public void HasRows([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
         {
             using (var conn = OpenConnection())
@@ -751,24 +853,45 @@ namespace Npgsql.Tests
                 var command = new NpgsqlCommand("SELECT 1; SELECT * FROM data WHERE name='does_not_exist'", conn);
                 if (prepare == PrepareOrNot.Prepared)
                     command.Prepare();
-                using (var dr = command.ExecuteReader())
+                using (var reader = command.ExecuteReader(Behavior))
                 {
-                    Assert.That(dr.HasRows, Is.True);
-                    Assert.That(dr.HasRows, Is.True);
-                    Assert.That(dr.Read(), Is.True);
-                    Assert.That(dr.HasRows, Is.True);
-                    Assert.That(dr.Read(), Is.False);
-                    dr.NextResult();
-                    Assert.That(dr.HasRows, Is.False);
+                    Assert.That(reader.HasRows, Is.True);
+                    Assert.That(reader.HasRows, Is.True);
+                    Assert.That(reader.Read(), Is.True);
+                    Assert.That(reader.HasRows, Is.True);
+                    Assert.That(reader.Read(), Is.False);
+                    Assert.That(reader.HasRows, Is.True);
+                    reader.NextResult();
+                    Assert.That(reader.HasRows, Is.False);
                 }
 
                 command.CommandText = "SELECT * FROM data";
                 if (prepare == PrepareOrNot.Prepared)
                     command.Prepare();
-                using (var dr = command.ExecuteReader())
+                using (var reader = command.ExecuteReader(Behavior))
                 {
-                    dr.Read();
-                    Assert.That(dr.HasRows, Is.False);
+                    reader.Read();
+                    Assert.That(reader.HasRows, Is.False);
+                }
+
+                command.CommandText = "SELECT 1";
+                if (prepare == PrepareOrNot.Prepared)
+                    command.Prepare();
+                using (var reader = command.ExecuteReader(Behavior))
+                {
+                    reader.Read();
+                    reader.Close();
+                    Assert.That(() => reader.HasRows, Throws.Exception.TypeOf<InvalidOperationException>());
+                }
+
+                command.CommandText = "INSERT INTO data (name) VALUES ('foo'); SELECT * FROM data";
+                if (prepare == PrepareOrNot.Prepared)
+                    command.Prepare();
+                using (var reader = command.ExecuteReader())
+                {
+                    Assert.That(reader.HasRows, Is.True);
+                    reader.Read();
+                    Assert.That(reader.GetString(0), Is.EqualTo("foo"));
                 }
 
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
@@ -782,7 +905,7 @@ namespace Npgsql.Tests
             {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
                 using (var command = new NpgsqlCommand("DELETE FROM data WHERE name = 'unknown'", conn))
-                using (var dr = command.ExecuteReader())
+                using (var dr = command.ExecuteReader(Behavior))
                     Assert.IsFalse(dr.HasRows);
             }
         }
@@ -792,7 +915,7 @@ namespace Npgsql.Tests
         {
             using (var conn = OpenConnection())
             using (var command = new NpgsqlCommand("SELECT CAST('1 hour' AS interval) AS dauer", conn))
-            using (var dr = command.ExecuteReader())
+            using (var dr = command.ExecuteReader(Behavior))
             {
                 Assert.IsTrue(dr.HasRows);
                 Assert.IsTrue(dr.Read());
@@ -802,21 +925,12 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void SequentialConsumeWithNull()
-        {
-            using (var conn = OpenConnection())
-            using (var command = new NpgsqlCommand("SELECT 1, NULL", conn))
-            using (var reader = command.ExecuteReader(CommandBehavior.SequentialAccess))
-                reader.Read();
-        }
-
-        [Test]
         public void CloseConnectionInMiddleOfRow()
         {
             using (var conn = OpenConnection())
             {
                 using (var cmd = new NpgsqlCommand("SELECT 1, 2", conn))
-                using (var reader = cmd.ExecuteReader())
+                using (var reader = cmd.ExecuteReader(Behavior))
                 {
                     reader.Read();
                 }
@@ -843,7 +957,7 @@ LANGUAGE plpgsql VOLATILE";
             {
                 conn.ExecuteNonQuery(initializeTablesSql);
                 using (var cmd = new NpgsqlCommand("SELECT pg_temp.C(1)", conn))
-                using (var reader = cmd.ExecuteReader()) {
+                using (var reader = cmd.ExecuteReader(Behavior)) {
                     Assert.That(() => reader.NextResult(),
                         Throws.Exception.TypeOf<PostgresException>()
                         .With.Property(nameof(PostgresException.SqlState)).EqualTo("23503"));
@@ -851,96 +965,516 @@ LANGUAGE plpgsql VOLATILE";
             }
         }
 
+        [Test]
+        public void InvalidCast()
+        {
+            using (var conn = OpenConnection())
+            {
+                // Chunking type handler
+                using (var cmd = new NpgsqlCommand("SELECT 'foo'", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(() => reader.GetInt32(0), Throws.Exception.TypeOf<InvalidCastException>());
+                }
+                // Simple type handler
+                using (var cmd = new NpgsqlCommand("SELECT 1", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(() => reader.GetDate(0), Throws.Exception.TypeOf<InvalidCastException>());
+                }
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+            }
+        }
+
+        [Test, Description("Reads a lot of rows to make sure the long unoptimized path for Read() works")]
+        public void ManyReads()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand($"SELECT generate_series(1, {conn.Settings.ReadBufferSize})", conn))
+            using (var reader = cmd.ExecuteReader())
+            {
+                for (var i = 1; i <= conn.Settings.ReadBufferSize; i++)
+                {
+                    Assert.That(reader.Read(), Is.True);
+                    Assert.That(reader.GetInt32(0), Is.EqualTo(i));
+                }
+                Assert.That(reader.Read(), Is.False);
+            }
+        }
+
+
+        [Test]
+        public void NullableScalar()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn))
+            {
+                var p1 = new NpgsqlParameter { ParameterName = "p1", Value = DBNull.Value, NpgsqlDbType = NpgsqlDbType.Smallint };
+                var p2 = new NpgsqlParameter { ParameterName = "p2", Value = (short)8 };
+                Assert.That(p2.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Smallint));
+                Assert.That(p2.DbType, Is.EqualTo(DbType.Int16));
+                cmd.Parameters.Add(p1);
+                cmd.Parameters.Add(p2);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+
+                    for (var i = 0; i < cmd.Parameters.Count; i++)
+                    {
+                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(short)));
+                        Assert.That(reader.GetDataTypeName(i), Is.EqualTo("smallint"));
+                    }
+
+                    Assert.That(() => reader.GetFieldValue<object>(0), Is.EqualTo(DBNull.Value));
+                    Assert.That(() => reader.GetFieldValue<int>(0), Throws.TypeOf<InvalidCastException>());
+                    Assert.That(() => reader.GetFieldValue<int?>(0), Throws.Nothing);
+                    Assert.That(reader.GetFieldValue<int?>(0), Is.Null);
+
+                    Assert.That(() => reader.GetFieldValue<object>(1), Throws.Nothing);
+                    Assert.That(() => reader.GetFieldValue<int>(1), Throws.Nothing);
+                    Assert.That(() => reader.GetFieldValue<int?>(1), Throws.Nothing);
+                    Assert.That(reader.GetFieldValue<object>(1), Is.EqualTo(8));
+                    Assert.That(reader.GetFieldValue<int>(1), Is.EqualTo(8));
+                    Assert.That(reader.GetFieldValue<int?>(1), Is.EqualTo(8));
+                }
+            }
+        }
+
+        #region GetBytes / GetStream
+
+        [Test]
+        public void GetBytes()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (bytes BYTEA)");
+
+                // TODO: This is too small to actually test any interesting sequential behavior
+                byte[] expected = { 1, 2, 3, 4, 5 };
+                var actual = new byte[expected.Length];
+                conn.ExecuteNonQuery($"INSERT INTO data (bytes) VALUES ({TestUtil.EncodeByteaHex(expected)})");
+
+                const string queryText = @"SELECT bytes, 'foo', bytes, 'bar', bytes, bytes FROM data";
+                using (var cmd = new NpgsqlCommand(queryText, conn))
+                using (var reader = cmd.ExecuteReader(Behavior))
+                {
+                    reader.Read();
+
+                    Assert.That(reader.GetBytes(0, 0, actual, 0, 2), Is.EqualTo(2));
+                    Assert.That(actual[0], Is.EqualTo(expected[0]));
+                    Assert.That(actual[1], Is.EqualTo(expected[1]));
+                    Assert.That(reader.GetBytes(0, 0, null, 0, 0), Is.EqualTo(expected.Length), "Bad column length");
+                    if (IsSequential)
+                        Assert.That(() => reader.GetBytes(0, 0, actual, 4, 1),
+                            Throws.Exception.TypeOf<InvalidOperationException>(), "Seek back sequential");
+                    else
+                    {
+                        Assert.That(reader.GetBytes(0, 0, actual, 4, 1), Is.EqualTo(1));
+                        Assert.That(actual[4], Is.EqualTo(expected[0]));
+                    }
+                    Assert.That(reader.GetBytes(0, 2, actual, 2, 3), Is.EqualTo(3));
+                    Assert.That(actual, Is.EqualTo(expected));
+                    Assert.That(reader.GetBytes(0, 0, null, 0, 0), Is.EqualTo(expected.Length), "Bad column length");
+
+                    Assert.That(() => reader.GetBytes(1, 0, null, 0, 0), Throws.Exception.TypeOf<InvalidCastException>(),
+                        "GetBytes on non-bytea");
+                    Assert.That(() => reader.GetBytes(1, 0, actual, 0, 1),
+                        Throws.Exception.TypeOf<InvalidCastException>(),
+                        "GetBytes on non-bytea");
+                    Assert.That(reader.GetString(1), Is.EqualTo("foo"));
+                    reader.GetBytes(2, 0, actual, 0, 2);
+                    // Jump to another column from the middle of the column
+                    reader.GetBytes(4, 0, actual, 0, 2);
+                    Assert.That(reader.GetBytes(4, expected.Length - 1, actual, 0, 2), Is.EqualTo(1),
+                        "Length greater than data length");
+                    Assert.That(actual[0], Is.EqualTo(expected[expected.Length - 1]), "Length greater than data length");
+                    Assert.That(() => reader.GetBytes(4, 0, actual, 0, actual.Length + 1),
+                        Throws.Exception.TypeOf<IndexOutOfRangeException>(), "Length great than output buffer length");
+                    // Close in the middle of a column
+                    reader.GetBytes(5, 0, actual, 0, 2);
+                }
+
+                //var result = (byte[]) cmd.ExecuteScalar();
+                //Assert.AreEqual(2, result.Length);
+            }
+        }
+
+        [Test]
+        public async Task GetStream([Values(true, false)] bool isAsync)
+        {
+            var streamGetter = BuildStreamGetter(isAsync);
+
+            using (var conn = OpenConnection())
+            {
+                // TODO: This is too small to actually test any interesting sequential behavior
+                byte[] expected = { 1, 2, 3, 4, 5 };
+                var actual = new byte[expected.Length];
+                using (var cmd = new NpgsqlCommand($@"SELECT {TestUtil.EncodeByteaHex(expected)}::bytea, {TestUtil.EncodeByteaHex(expected)}::bytea", conn))
+                using (var reader = cmd.ExecuteReader(Behavior))
+                {
+                    reader.Read();
+
+                    using (var stream = await streamGetter(reader, 0))
+                    {
+                        Assert.That(stream.CanSeek, Is.EqualTo(Behavior == CommandBehavior.Default));
+                        Assert.That(stream.Length, Is.EqualTo(expected.Length));
+                        stream.Read(actual, 0, 2);
+                        Assert.That(actual[0], Is.EqualTo(expected[0]));
+                        Assert.That(actual[1], Is.EqualTo(expected[1]));
+                        Assert.That(async () => await streamGetter(reader, 0),
+                            Throws.Exception.TypeOf<InvalidOperationException>());
+                        stream.Read(actual, 2, 1);
+                        Assert.That(actual[2], Is.EqualTo(expected[2]));
+                    }
+
+                    if (IsSequential)
+                        Assert.That(() => reader.GetBytes(0, 0, actual, 4, 1), Throws.Exception.TypeOf<InvalidOperationException>(), "Seek back sequential");
+                    else
+                    {
+                        Assert.That(reader.GetBytes(0, 0, actual, 4, 1), Is.EqualTo(1));
+                        Assert.That(actual[4], Is.EqualTo(expected[0]));
+                    }
+
+                    using (var stream2 = await streamGetter(reader, 1))
+                    {
+                        Assert.That(stream2.ReadByte(), Is.EqualTo(1));
+                    }
+                }
+            }
+        }
+
+        [Test]
+        public async Task OpenStreamWhenChangingColumns([Values(true, false)] bool isAsync)
+        {
+            var streamGetter = BuildStreamGetter(isAsync);
+
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand(@"SELECT @p, @p", conn))
+            {
+                var data = new byte[] { 1, 2, 3 };
+                cmd.Parameters.Add(new NpgsqlParameter("p", data));
+                using (var reader = cmd.ExecuteReader(Behavior))
+                {
+                    reader.Read();
+                    var stream = await streamGetter(reader, 0);
+                    // ReSharper disable once UnusedVariable
+                    var v = reader.GetValue(1);
+                    Assert.That(() => stream.ReadByte(), Throws.Exception.TypeOf<ObjectDisposedException>());
+                }
+            }
+        }
+
+        [Test]
+        public async Task OpenStreamWhenChangingRows([Values(true, false)] bool isAsync)
+        {
+            var streamGetter = BuildStreamGetter(isAsync);
+
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand(@"SELECT @p", conn))
+            {
+                var data = new byte[] { 1, 2, 3 };
+                cmd.Parameters.Add(new NpgsqlParameter("p", data));
+                using (var reader = cmd.ExecuteReader(Behavior))
+                {
+                    reader.Read();
+                    var s1 = await streamGetter(reader, 0);
+                    reader.Read();
+                    Assert.That(() => s1.ReadByte(), Throws.Exception.TypeOf<ObjectDisposedException>());
+                }
+            }
+        }
+
+        [Test]
+        public void GetBytesWithNull([Values(true, false)] bool isAsync)
+        {
+            var streamGetter = BuildStreamGetter(isAsync);
+
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (bytes BYTEA)");
+                var buf = new byte[8];
+                conn.ExecuteNonQuery(@"INSERT INTO data (bytes) VALUES (NULL)");
+                using (var cmd = new NpgsqlCommand("SELECT bytes FROM data", conn))
+                using (var reader = cmd.ExecuteReader(Behavior))
+                {
+                    reader.Read();
+                    Assert.That(reader.IsDBNull(0), Is.True);
+                    Assert.That(() => reader.GetBytes(0, 0, buf, 0, 1), Throws.Exception.TypeOf<InvalidCastException>(), "GetBytes");
+                    Assert.That(async () => await streamGetter(reader, 0), Throws.Exception.TypeOf<InvalidCastException>(), "GetStream");
+                    Assert.That(() => reader.GetBytes(0, 0, null, 0, 0), Throws.Exception.TypeOf<InvalidCastException>(), "GetBytes with null buffer");
+                }
+            }
+        }
+
+        static Func<NpgsqlDataReader, int, Task<Stream>> BuildStreamGetter(bool isAsync)
+            => isAsync
+                ? (Func<NpgsqlDataReader, int, Task<Stream>>)((r, index) => r.GetStreamAsync(index))
+                : (r, index) => Task.FromResult(r.GetStream(index));
+
+        #endregion GetBytes / GetStream
+
+        #region GetChars / GetTextReader
+
+        [Test]
+        public void GetChars()
+        {
+            using (var conn = OpenConnection())
+            {
+                // TODO: This is too small to actually test any interesting sequential behavior
+                const string str = "ABCDE";
+                var expected = str.ToCharArray();
+                var actual = new char[expected.Length];
+
+                var queryText = $@"SELECT '{str}', 3, '{str}', 4, '{str}', '{str}', '{str}'";
+                using (var cmd = new NpgsqlCommand(queryText, conn))
+                using (var reader = cmd.ExecuteReader(Behavior))
+                {
+                    reader.Read();
+
+                    Assert.That(reader.GetChars(0, 0, actual, 0, 2), Is.EqualTo(2));
+                    Assert.That(actual[0], Is.EqualTo(expected[0]));
+                    Assert.That(actual[1], Is.EqualTo(expected[1]));
+                    Assert.That(reader.GetChars(0, 0, null, 0, 0), Is.EqualTo(expected.Length), "Bad column length");
+                    // Note: Unlike with bytea, finding out the length of the column consumes it (variable-width
+                    // UTF8 encoding)
+                    Assert.That(reader.GetChars(2, 0, actual, 0, 2), Is.EqualTo(2));
+                    if (IsSequential)
+                        Assert.That(() => reader.GetChars(2, 0, actual, 4, 1), Throws.Exception.TypeOf<InvalidOperationException>(), "Seek back sequential");
+                    else
+                    {
+                        Assert.That(reader.GetChars(2, 0, actual, 4, 1), Is.EqualTo(1));
+                        Assert.That(actual[4], Is.EqualTo(expected[0]));
+                    }
+                    Assert.That(reader.GetChars(2, 2, actual, 2, 3), Is.EqualTo(3));
+                    Assert.That(actual, Is.EqualTo(expected));
+                    //Assert.That(reader.GetChars(2, 0, null, 0, 0), Is.EqualTo(expected.Length), "Bad column length");
+
+                    Assert.That(() => reader.GetChars(3, 0, null, 0, 0), Throws.Exception.TypeOf<InvalidCastException>(), "GetChars on non-text");
+                    Assert.That(() => reader.GetChars(3, 0, actual, 0, 1), Throws.Exception.TypeOf<InvalidCastException>(), "GetChars on non-text");
+                    Assert.That(reader.GetInt32(3), Is.EqualTo(4));
+                    reader.GetChars(4, 0, actual, 0, 2);
+                    // Jump to another column from the middle of the column
+                    reader.GetChars(5, 0, actual, 0, 2);
+                    Assert.That(reader.GetChars(5, expected.Length - 1, actual, 0, 2), Is.EqualTo(1), "Length greater than data length");
+                    Assert.That(actual[0], Is.EqualTo(expected[expected.Length - 1]), "Length greater than data length");
+                    Assert.That(() => reader.GetChars(5, 0, actual, 0, actual.Length + 1), Throws.Exception.TypeOf<IndexOutOfRangeException>(), "Length great than output buffer length");
+                    // Close in the middle of a column
+                    reader.GetChars(6, 0, actual, 0, 2);
+                }
+            }
+        }
+
+        [Test]
+        public async Task GetTextReader([Values(true, false)] bool isAsync)
+        {
+            Func<NpgsqlDataReader, int, Task<TextReader>> textReaderGetter;
+            if (isAsync)
+                textReaderGetter = (r, index) => r.GetTextReaderAsync(index);
+            else
+                textReaderGetter = (r, index) => Task.FromResult(r.GetTextReader(index));
+
+            using (var conn = OpenConnection())
+            {
+                // TODO: This is too small to actually test any interesting sequential behavior
+                const string str = "ABCDE";
+                var expected = str.ToCharArray();
+                var actual = new char[expected.Length];
+                //ExecuteNonQuery(String.Format(@"INSERT INTO data (field_text) VALUES ('{0}')", str));
+
+                var queryText = $@"SELECT '{str}', 'foo'";
+                using (var cmd = new NpgsqlCommand(queryText, conn))
+                using (var reader = cmd.ExecuteReader(Behavior))
+                {
+                    reader.Read();
+
+                    var textReader = await textReaderGetter(reader, 0);
+                    textReader.Read(actual, 0, 2);
+                    Assert.That(actual[0], Is.EqualTo(expected[0]));
+                    Assert.That(actual[1], Is.EqualTo(expected[1]));
+                    Assert.That(async () => await textReaderGetter(reader, 0),
+                        Throws.Exception.TypeOf<InvalidOperationException>(),
+                        "Sequential text reader twice on same column");
+                    textReader.Read(actual, 2, 1);
+                    Assert.That(actual[2], Is.EqualTo(expected[2]));
+                    textReader.Dispose();
+
+                    if (IsSequential)
+                        Assert.That(() => reader.GetChars(0, 0, actual, 4, 1),
+                            Throws.Exception.TypeOf<InvalidOperationException>(), "Seek back sequential");
+                    else
+                    {
+                        Assert.That(reader.GetChars(0, 0, actual, 4, 1), Is.EqualTo(1));
+                        Assert.That(actual[4], Is.EqualTo(expected[0]));
+                    }
+                    Assert.That(reader.GetString(1), Is.EqualTo("foo"));
+                }
+            }
+        }
+
+        [Test]
+        public void OpenTextReaderWhenChangingColumns()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand(@"SELECT 'some_text', 'some_text'", conn))
+            using (var reader = cmd.ExecuteReader(Behavior))
+            {
+                reader.Read();
+                var textReader = reader.GetTextReader(0);
+                // ReSharper disable once UnusedVariable
+                var v = reader.GetValue(1);
+                Assert.That(() => textReader.Peek(), Throws.Exception.TypeOf<ObjectDisposedException>());
+            }
+        }
+
+        [Test]
+        public void OpenReaderWhenChangingRows()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand(@"SELECT 'some_text', 'some_text'", conn))
+            using (var reader = cmd.ExecuteReader(Behavior))
+            {
+                reader.Read();
+                var tr1 = reader.GetTextReader(0);
+                reader.Read();
+                Assert.That(() => tr1.Peek(), Throws.Exception.TypeOf<ObjectDisposedException>());
+            }
+        }
+
+        [Test]
+        public void GetCharsWhenNull([Values(CommandBehavior.Default, CommandBehavior.SequentialAccess)] CommandBehavior behavior)
+        {
+            var buf = new char[8];
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT NULL::TEXT", conn))
+            using (var reader = cmd.ExecuteReader(behavior))
+            {
+                reader.Read();
+                Assert.That(reader.IsDBNull(0), Is.True);
+                Assert.That(() => reader.GetChars(0, 0, buf, 0, 1), Throws.Exception.TypeOf<InvalidCastException>(), "GetChars");
+                Assert.That(() => reader.GetTextReader(0), Throws.Exception.TypeOf<InvalidCastException>(), "GetTextReader");
+                Assert.That(() => reader.GetChars(0, 0, null, 0, 0), Throws.Exception.TypeOf<InvalidCastException>(), "GetChars with null buffer");
+            }
+        }
+
+        [Test]
+        public void ReaderIsReused()
+        {
+            using (var conn = OpenConnection())
+            {
+                NpgsqlDataReader reader1;
+
+                using (var cmd = new NpgsqlCommand("SELECT 8", conn))
+                using (reader1 = cmd.ExecuteReader(Behavior))
+                {
+                    reader1.Read();
+                    Assert.That(reader1.GetInt32(0), Is.EqualTo(8));
+                }
+
+                using (var cmd = new NpgsqlCommand("SELECT 9", conn))
+                using (var reader2 = cmd.ExecuteReader(Behavior))
+                {
+                    Assert.That(reader2, Is.SameAs(reader1));
+                    reader2.Read();
+                    Assert.That(reader2.GetInt32(0), Is.EqualTo(9));
+                }
+            }
+        }
+
+        #endregion GetChars / GetTextReader
+
 #if DEBUG
-        [Test, Description("Tests that everything goes well when a type handler generates a SafeReadException")]
+        [Test, Description("Tests that everything goes well when a type handler generates a NpgsqlSafeReadException")]
         [Timeout(5000)]
         public void SafeReadException()
         {
             using (var conn = OpenConnection())
             {
                 // Temporarily reroute integer to go to a type handler which generates SafeReadExceptions
-                var registry = conn.Connector.TypeHandlerRegistry;
-                var intHandler = registry[typeof(int)];
-                registry.ByOID[intHandler.PostgresType.OID] = new SafeExceptionGeneratingHandler(intHandler.PostgresType);
-                try
+                conn.TypeMapper.AddMapping(new NpgsqlTypeMappingBuilder
                 {
-                    using (var cmd = new NpgsqlCommand(@"SELECT 1, 'hello'", conn))
-                    using (var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess))
-                    {
-                        reader.Read();
-                        Assert.That(() => reader.GetInt32(0),
-                            Throws.Exception.With.Message.EqualTo("Safe read exception as requested"));
-                        Assert.That(reader.GetString(1), Is.EqualTo("hello"));
-                    }
-                }
-                finally
+                    PgTypeName = "integer",
+                    TypeHandlerFactory = new ExplodingTypeHandlerFactory(true)
+                }.Build());
+                using (var cmd = new NpgsqlCommand(@"SELECT 1, 'hello'", conn))
+                using (var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess))
                 {
-                    registry.ByOID[intHandler.PostgresType.OID] = intHandler;
+                    reader.Read();
+                    Assert.That(() => reader.GetInt32(0),
+                        Throws.Exception.With.Message.EqualTo("Safe read exception as requested"));
+                    Assert.That(reader.GetString(1), Is.EqualTo("hello"));
                 }
             }
         }
 
-        [Test, Description("Tests that when a type handler generates an exception that isn't a SafeReadException, the connection is properly broken")]
+        [Test, Description("Tests that when a type handler generates an exception that isn't a NpgsqlSafeReadException, the connection is properly broken")]
         [Timeout(5000)]
         public void NonSafeReadException()
         {
             using (var conn = OpenConnection())
             {
                 // Temporarily reroute integer to go to a type handler which generates some exception
-                var registry = conn.Connector.TypeHandlerRegistry;
-                var intHandler = registry[typeof(int)];
-                registry.ByOID[intHandler.PostgresType.OID] = new NonSafeExceptionGeneratingHandler(intHandler.PostgresType);
-                try
+                conn.TypeMapper.AddMapping(new NpgsqlTypeMappingBuilder()
                 {
-                    using (var cmd = new NpgsqlCommand(@"SELECT 1, 'hello'", conn))
-                    using (var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess))
-                    {
-                        reader.Read();
-                        Assert.That(() => reader.GetInt32(0),
-                            Throws.Exception.With.Message.EqualTo("Non-safe read exception as requested"));
-                        Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
-                        Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
-                    }
-                }
-                finally
+                    PgTypeName = "integer",
+                    TypeHandlerFactory = new ExplodingTypeHandlerFactory(false)
+                }.Build());
+                using (var cmd = new NpgsqlCommand(@"SELECT 1, 'hello'", conn))
+                using (var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess))
                 {
-                    registry.ByOID[intHandler.PostgresType.OID] = intHandler;
+                    reader.Read();
+                    Assert.That(() => reader.GetInt32(0),
+                        Throws.Exception.With.Message.EqualTo("Non-safe read exception as requested"));
+                    Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+                    Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
                 }
             }
         }
 #endif
+
+        #region Initialization / setup / teardown
+
+        // ReSharper disable InconsistentNaming
+        readonly bool IsSequential;
+        readonly CommandBehavior Behavior;
+        // ReSharper restore InconsistentNaming
+
+        public ReaderTests(CommandBehavior behavior)
+        {
+            Behavior = behavior;
+            IsSequential = (Behavior & CommandBehavior.SequentialAccess) != 0;
+        }
+
+        #endregion
     }
 
     #region Mock Type Handlers
-#if DEBUG
-    class SafeExceptionGeneratingHandler : SimpleTypeHandler<int>
-    {
-        internal SafeExceptionGeneratingHandler(PostgresType postgresType)
-            : base (postgresType) {}
 
-        public override int Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
+    class ExplodingTypeHandlerFactory : NpgsqlTypeHandlerFactory<int>
+    {
+        readonly bool _safe;
+        internal ExplodingTypeHandlerFactory(bool safe) { _safe = safe; }
+        protected override NpgsqlTypeHandler<int> Create(NpgsqlConnection conn)
+            => new ExplodingTypeHandler(_safe);
+    }
+
+    class ExplodingTypeHandler : NpgsqlSimpleTypeHandler<int>
+    {
+        readonly bool _safe;
+        internal ExplodingTypeHandler(bool safe) { _safe = safe; }
+
+        public override int Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             buf.ReadInt32();
-            throw new SafeReadException(new Exception("Safe read exception as requested"));
+            throw _safe
+                ? new NpgsqlSafeReadException(new Exception("Safe read exception as requested"))
+                : throw new Exception("Non-safe read exception as requested");
         }
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter) { throw new NotSupportedException(); }
-        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter) { throw new NotSupportedException(); }
+        public override int ValidateAndGetLength(int value, NpgsqlParameter parameter) { throw new NotSupportedException(); }
+        public override void Write(int value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter) { throw new NotSupportedException(); }
     }
 
-    class NonSafeExceptionGeneratingHandler : SimpleTypeHandler<int>
-    {
-        internal NonSafeExceptionGeneratingHandler(PostgresType postgresType)
-            : base (postgresType) { }
-
-        public override int Read(ReadBuffer buf, int len, FieldDescription fieldDescription)
-        {
-            throw new Exception("Non-safe read exception as requested");
-        }
-
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter) { throw new NotSupportedException(); }
-        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter) { throw new NotSupportedException();}
-    }
-#endif
     #endregion
 }

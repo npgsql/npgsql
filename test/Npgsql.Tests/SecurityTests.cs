@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -22,6 +22,7 @@
 #endregion
 
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
 
@@ -30,15 +31,12 @@ namespace Npgsql.Tests
     public class SecurityTests : TestBase
     {
         [Test, Description("Establishes an SSL connection, assuming a self-signed server certificate")]
-        [TestCase(false, TestName = "BasicSslWithTlsClientStream")]
-        [TestCase(true,  TestName = "BasicSslWithSslStream")]
-        public void BasicSsl(bool useSslStream)
+        public void BasicSsl()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 SslMode = SslMode.Require,
-                TrustServerCertificate = true,
-                UseSslStream = useSslStream
+                TrustServerCertificate = true
             };
 
             using (var conn = OpenConnection(csb))
@@ -46,14 +44,11 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Makes sure a certificate whose root CA isn't known isn't accepted")]
-        [TestCase(false, TestName = "RejectSelfSignedCertificateWithTlsClientStream")]
-        [TestCase(true,  TestName = "RejectSelfSignedCertificateWithSslStream")]
-        public void RejectSelfSignedCertificate(bool useSslStream)
+        public void RejectSelfSignedCertificate()
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                SslMode = SslMode.Require,
-                UseSslStream = useSslStream
+                SslMode = SslMode.Require
             }.ToString();
 
             using (var conn = new NpgsqlConnection(connString))
@@ -91,7 +86,7 @@ namespace Npgsql.Tests
                 Assert.That(conn.IsSecure, Is.False);
         }
 
-        [Test, LinuxIgnore("Needs to be run explicitly with Kerberos credentials")]
+        [Test, Explicit("Needs to be set up (and run with with Kerberos credentials on Linux)")]
         public void IntegratedSecurityWithUsername()
         {
             var username = Environment.GetEnvironmentVariable("USERNAME") ??
@@ -120,7 +115,7 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test, LinuxIgnore("Needs to be run explicitly with Kerberos credentials")]
+        [Test, Explicit("Needs to be set up (and run with with Kerberos credentials on Linux)")]
         public void IntegratedSecurityWithoutUsername()
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
@@ -145,7 +140,7 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test, LinuxIgnore("Needs to be run explicitly with Kerberos credentials")]
+        [Test, Explicit("Needs to be set up (and run with with Kerberos credentials on Linux)")]
         public void ConnectionDatabasePopulatedOnConnect()
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
@@ -172,28 +167,23 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1454")]
-        public async Task Bug1454()
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1718")]
+        [Timeout(12000)]
+        public void Bug1718()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 SslMode = SslMode.Require,
-                TrustServerCertificate = true,
-                UseSslStream = false
+                TrustServerCertificate = true
             };
 
-            for (var i = 0; i < 100; i++)
+            using (var conn = OpenConnection(csb))
+            using (var cmd = CreateSleepCommand(conn, 10000))
             {
-                using (var conn = new NpgsqlConnection(csb.ToString()))
-                {
-                    await conn.OpenAsync().ConfigureAwait(false);
-                    using (conn.BeginTransaction())
-                    {
-                        var cmd = new NpgsqlCommand("SELECT relname FROM pg_class", conn);
-                        using (var reader = await cmd.ExecuteReaderAsync().ConfigureAwait(false))
-                            while (await reader.ReadAsync().ConfigureAwait(false)) {}
-                    }
-                }
+                var cts = new CancellationTokenSource(1000).Token;
+                Assert.That(async () => await cmd.ExecuteNonQueryAsync(cts), Throws.Exception
+                    .TypeOf<PostgresException>()
+                    .With.Property(nameof(PostgresException.SqlState)).EqualTo("57014"));
             }
         }
 

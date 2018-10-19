@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -26,37 +26,24 @@ using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
+using Npgsql.TypeMapping;
 
 namespace Npgsql.TypeHandlers
 {
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-boolean.html
     /// </remarks>
-    [TypeMapping("bool", NpgsqlDbType.Boolean, DbType.Boolean, typeof(bool))]
-    class BoolHandler : SimpleTypeHandler<bool>
+    [TypeMapping("boolean", NpgsqlDbType.Boolean, DbType.Boolean, typeof(bool))]
+    class BoolHandler : NpgsqlSimpleTypeHandler<bool>
     {
-        internal BoolHandler(PostgresType postgresType) : base(postgresType) {}
-
-        public override bool Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override bool Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => buf.ReadByte() != 0;
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
-        {
-            if (!(value is bool))
-            {
-                var converted = Convert.ToBoolean(value);
-                if (parameter == null)
-                    throw CreateConversionButNoParamException(value.GetType());
-                parameter.ConvertedValue = converted;
-            }
-            return 1;
-        }
+        public override int ValidateAndGetLength(bool value, NpgsqlParameter parameter)
+            => 1;
 
-        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
-        {
-            if (parameter?.ConvertedValue != null)
-                value = parameter.ConvertedValue;
-            buf.WriteByte((bool)value ? (byte)1 : (byte)0);
-        }
+        public override void Write(bool value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => buf.WriteByte(value ? (byte)1 : (byte)0);
     }
 }

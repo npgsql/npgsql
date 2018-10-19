@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -81,48 +81,15 @@ namespace Npgsql.Tests
             Assert.That(ReadBuffer.ReadByte(), Is.EqualTo(8));
         }
 
-        [Test]
-        public void ReadChars()
-        {
-            const string expected = "This string is bigger than the buffer length";
-            var bytes = Encoding.UTF8.GetBytes(expected);
-            Underlying.Write(bytes, 0, bytes.Length);
-            Underlying.Seek(0, SeekOrigin.Begin);
-
-            var chars = new char[expected.Length + 5];
-            ReadBuffer.ReadAllChars(chars, 5, expected.Length, bytes.Length, out var bytesRead, out var charsRead);
-            Assert.That(charsRead, Is.EqualTo(expected.Length));
-            Assert.That(bytesRead, Is.EqualTo(bytes.Length));
-            var actual = new string(chars, 5, expected.Length);
-            Assert.That(actual, Is.EqualTo(expected));
-        }
-
-        [Test]
-        public void ReadCharsTooMany()
-        {
-            const string expected = "This string is bigger than the buffer length";
-            var bytes = Encoding.UTF8.GetBytes(expected);
-            Underlying.Write(bytes, 0, bytes.Length);
-            Underlying.Seek(0, SeekOrigin.Begin);
-
-            var chars = new char[expected.Length + 5];
-            int bytesRead, charsRead;
-            ReadBuffer.ReadAllChars(chars, 0, expected.Length + 5, bytes.Length, out bytesRead, out charsRead);
-            Assert.That(charsRead, Is.EqualTo(expected.Length));
-            Assert.That(bytesRead, Is.EqualTo(bytes.Length));
-            var actual = new string(chars, 0, expected.Length);
-            Assert.That(actual, Is.EqualTo(expected));
-        }
-
         [SetUp]
         public void SetUp()
         {
             Underlying = new MemoryStream();
-            ReadBuffer = new ReadBuffer(null, Underlying, ReadBuffer.DefaultSize, PGUtil.UTF8Encoding);
+            ReadBuffer = new NpgsqlReadBuffer(null, Underlying, NpgsqlReadBuffer.DefaultSize, PGUtil.UTF8Encoding);
         }
 
         // ReSharper disable once InconsistentNaming
-        ReadBuffer ReadBuffer;
+        NpgsqlReadBuffer ReadBuffer;
         // ReSharper disable once InconsistentNaming
         MemoryStream Underlying;
     }

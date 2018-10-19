@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -24,6 +24,8 @@
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
+using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers.GeometricHandlers
@@ -35,29 +37,19 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-geometric.html
     /// </remarks>
     [TypeMapping("line", NpgsqlDbType.Line, typeof(NpgsqlLine))]
-    class LineHandler : SimpleTypeHandler<NpgsqlLine>, ISimpleTypeHandler<string>
+    class LineHandler : NpgsqlSimpleTypeHandler<NpgsqlLine>
     {
-        internal LineHandler(PostgresType postgresType) : base(postgresType) { }
-
-        public override NpgsqlLine Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override NpgsqlLine Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => new NpgsqlLine(buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble());
 
-        string ISimpleTypeHandler<string>.Read(ReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
-            => Read(buf, len, fieldDescription).ToString();
+        public override int ValidateAndGetLength(NpgsqlLine value, NpgsqlParameter parameter)
+            => 24;
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
+        public override void Write(NpgsqlLine value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
-            if (!(value is NpgsqlLine))
-                throw CreateConversionException(value.GetType());
-            return 24;
-        }
-
-        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
-        {
-            var v = (NpgsqlLine)value;
-            buf.WriteDouble(v.A);
-            buf.WriteDouble(v.B);
-            buf.WriteDouble(v.C);
+            buf.WriteDouble(value.A);
+            buf.WriteDouble(value.B);
+            buf.WriteDouble(value.C);
         }
     }
 }

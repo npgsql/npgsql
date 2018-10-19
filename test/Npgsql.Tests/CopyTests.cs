@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -26,14 +26,10 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
-using System.Linq;
-using System.Net.Sockets;
 using System.Text;
 using System.Threading;
-using Npgsql;
 using NpgsqlTypes;
 using NUnit.Framework;
-using NUnit.Framework.Constraints;
 
 namespace Npgsql.Tests
 {
@@ -196,7 +192,7 @@ namespace Npgsql.Tests
         {
             using (var conn = OpenConnection())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER)");
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (field_text TEXT, field_int2 SMALLINT)");
                 var longString = new StringBuilder(conn.Settings.WriteBufferSize + 50).Append('a').ToString();
 
                 using (var writer = conn.BeginBinaryImport("COPY data (field_text, field_int2) FROM STDIN BINARY"))
@@ -205,13 +201,16 @@ namespace Npgsql.Tests
 
                     writer.StartRow();
                     writer.Write("Hello");
-                    writer.Write(8, NpgsqlDbType.Smallint);
+                    writer.Write((short)8, NpgsqlDbType.Smallint);
 
-                    writer.WriteRow("Something", (short) 9);
+                    writer.WriteRow("Something", (short)9);
 
                     writer.StartRow();
-                    writer.Write(longString);
+                    writer.Write(longString, "text");
                     writer.WriteNull();
+
+                    var rowsWritten = writer.Complete();
+                    Assert.That(rowsWritten, Is.EqualTo(3));
                 }
 
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
@@ -252,8 +251,7 @@ namespace Npgsql.Tests
                     writer.StartRow();
                     writer.Write("Hello");
                     writer.Write(8);
-
-                    writer.Cancel();
+                    // No commit should rollback
                 }
                 Assert.That(conn.ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(0));
             }
@@ -272,6 +270,8 @@ namespace Npgsql.Tests
                 {
                     writer.StartRow();
                     writer.Write(data, NpgsqlDbType.Bytea);
+                    var rowsWritten = writer.Complete();
+                    Assert.That(rowsWritten, Is.EqualTo(1));
                 }
 
                 Assert.That(conn.ExecuteScalar("SELECT field FROM data"), Is.EqualTo(data));
@@ -290,6 +290,8 @@ namespace Npgsql.Tests
                 {
                     writer.StartRow();
                     writer.Write(data, NpgsqlDbType.Array | NpgsqlDbType.Text);
+                    var rowsWritten = writer.Complete();
+                    Assert.That(rowsWritten, Is.EqualTo(1));
                 }
 
                 Assert.That(conn.ExecuteScalar("SELECT field FROM data"), Is.EqualTo(data));
@@ -308,6 +310,8 @@ namespace Npgsql.Tests
                 {
                     writer.StartRow();
                     writer.Write(data, NpgsqlDbType.Text);
+                    var rowsWritten = writer.Complete();
+                    Assert.That(rowsWritten, Is.EqualTo(1));
                 }
                 Assert.That(conn.ExecuteScalar("SELECT field FROM data"), Is.EqualTo(data));
             }
@@ -385,6 +389,33 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test]
+        public void ExportLongString()
+        {
+            const int iterations = 100;
+            using (var conn = OpenConnection())
+            {
+                var len = conn.Settings.WriteBufferSize;
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo1 TEXT, foo2 TEXT, foo3 TEXT, foo4 TEXT, foo5 TEXT)");
+                using (var cmd = new NpgsqlCommand("INSERT INTO data VALUES (@p, @p, @p, @p, @p)", conn))
+                {
+                    cmd.Parameters.AddWithValue("p", new string('x', len));
+                    for (var i = 0; i < iterations; i++)
+                        cmd.ExecuteNonQuery();
+                }
+
+                using (var reader = conn.BeginBinaryExport("COPY data (foo1, foo2, foo3, foo4, foo5) TO STDIN BINARY"))
+                {
+                    for (var row = 0; row < iterations; row++)
+                    {
+                        Assert.That(reader.StartRow(), Is.EqualTo(5));
+                        for (var col = 0; col < 5; col++)
+                            Assert.That(reader.Read<string>().Length, Is.EqualTo(len));
+                    }
+                }
+            }
+        }
+
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1134")]
         public void ReadBitString()
         {
@@ -419,6 +450,8 @@ namespace Npgsql.Tests
                 {
                     writer.StartRow();
                     writer.Write(expected);
+                    var rowsWritten = writer.Complete();
+                    Assert.That(rowsWritten, Is.EqualTo(1));
                 }
 
                 using (var reader = conn.BeginBinaryExport("COPY data (arr) TO STDIN BINARY"))
@@ -428,6 +461,37 @@ namespace Npgsql.Tests
                 }
             }
         }
+
+        [Test]
+        public void Enum()
+        {
+            var expected = Mood.Happy;
+
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TYPE pg_temp.mood AS ENUM ('sad', 'ok', 'happy')");
+                conn.ReloadTypes();
+                conn.TypeMapper.MapEnum<Mood>();
+
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (mymood mood)");
+
+                using (var writer = conn.BeginBinaryImport("COPY data (mymood) FROM STDIN BINARY"))
+                {
+                    writer.StartRow();
+                    writer.Write(expected);
+                    var rowsWritten = writer.Complete();
+                    Assert.That(rowsWritten, Is.EqualTo(1));
+                }
+
+                using (var reader = conn.BeginBinaryExport("COPY data (mymood) TO STDIN BINARY"))
+                {
+                    reader.StartRow();
+                    Assert.That(reader.Read<Mood>(), Is.EqualTo(expected));
+                }
+            }
+        }
+
+        enum Mood { Sad, Ok, Happy };
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1440")]
         public void ErrorDuringImport()
@@ -440,10 +504,83 @@ namespace Npgsql.Tests
                 writer.Write(8);
                 writer.StartRow();
                 writer.Write(8);
-                Assert.That(() => writer.Dispose(), Throws.Exception
+                Assert.That(() => writer.Complete(), Throws.Exception
                     .TypeOf<PostgresException>()
                     .With.Property(nameof(PostgresException.SqlState)).EqualTo("23505"));
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+            }
+        }
+
+        [Test]
+        public void ImportCannotWriteAfterCommit()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo INT)");
+                try
+                {
+                    using (var writer = conn.BeginBinaryImport("COPY DATA (foo) FROM STDIN BINARY"))
+                    {
+                        writer.StartRow();
+                        writer.Write(8);
+                        var rowsWritten = writer.Complete();
+                        Assert.That(rowsWritten, Is.EqualTo(1));
+                        writer.StartRow();
+                        Assert.Fail("StartRow should have thrown");
+                    }
+                }
+                catch (InvalidOperationException)
+                {
+                    Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(1));
+                }
+            }
+        }
+
+        [Test]
+        public void ImportCommitInMiddleOfRow()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo INT, bar TEXT)");
+                try
+                {
+                    using (var writer = conn.BeginBinaryImport("COPY DATA (foo, bar) FROM STDIN BINARY"))
+                    {
+                        writer.StartRow();
+                        writer.Write(8);
+                        writer.Write("hello");
+                        writer.StartRow();
+                        writer.Write(9);
+                        writer.Complete();
+                        Assert.Fail("Commit should have thrown");
+                    }
+                }
+                catch (InvalidOperationException)
+                {
+                    Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
+                }
+            }
+        }
+
+        [Test]
+        public void ImportExceptionDoesNotCommit()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo INT)");
+                try
+                {
+                    using (var writer = conn.BeginBinaryImport("COPY DATA (foo) FROM STDIN BINARY"))
+                    {
+                        writer.StartRow();
+                        writer.Write(8);
+                        throw new Exception("FOO");
+                    }
+                }
+                catch (Exception e) when (e.Message == "FOO")
+                {
+                    Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.Zero);
+                }
             }
         }
 
@@ -469,7 +606,7 @@ namespace Npgsql.Tests
                 conn.ExecuteNonQuery("TRUNCATE data");
 
                 // Long (multi-buffer) write
-                var iterations = WriteBuffer.MinimumSize/line.Length + 100;
+                var iterations = NpgsqlWriteBuffer.MinimumSize/line.Length + 100;
                 writer = conn.BeginTextImport("COPY data (field_text, field_int4) FROM STDIN");
                 for (var i = 0; i < iterations; i++)
                     writer.Write(line);
@@ -624,6 +761,8 @@ namespace Npgsql.Tests
                     writer.Write((string)null, NpgsqlDbType.Uuid);
                     writer.Write(DBNull.Value);
                     writer.Write((string)null);
+                    var rowsWritten = writer.Complete();
+                    Assert.That(rowsWritten, Is.EqualTo(1));
                 }
                 using (var cmd = new NpgsqlCommand("SELECT foo1,foo2,foo3,foo4 FROM data", conn))
                 using (var reader = cmd.ExecuteReader())
@@ -632,6 +771,28 @@ namespace Npgsql.Tests
                     for (var i = 0; i < reader.FieldCount; i++)
                         Assert.That(reader.IsDBNull(i), Is.True);
                 }
+            }
+        }
+
+        [Test]
+        public void WriteDifferentTypes()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo INT, bar INT[])");
+
+                using (var writer = conn.BeginBinaryImport("COPY data (foo, bar) FROM STDIN BINARY"))
+                {
+                    writer.StartRow();
+                    writer.Write(3.0, NpgsqlDbType.Integer);
+                    writer.Write((object)new[] { 1, 2, 3 });
+                    writer.StartRow();
+                    writer.Write(3, NpgsqlDbType.Integer);
+                    writer.Write((object)new List<int> { 4, 5, 6 });
+                    var rowsWritten = writer.Complete();
+                    Assert.That(rowsWritten, Is.EqualTo(2));
+                }
+                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(2));
             }
         }
 

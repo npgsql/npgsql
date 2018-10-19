@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -21,17 +21,17 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-#if NET451
-
 using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Npgsql;
 using Npgsql.Tests;
+using NpgsqlTypes;
 using NUnit.Framework;
 
 namespace Npgsql.Tests
@@ -120,6 +120,107 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        public void DataSourceInformation()
+        {
+            using (var conn = OpenConnection())
+            {
+                var metadata = conn.GetSchema(DbMetaDataCollectionNames.MetaDataCollections).Rows
+                    .Cast<DataRow>()
+                    .Single(r => r["CollectionName"].Equals("DataSourceInformation"));
+                Assert.That(metadata["NumberOfRestrictions"], Is.Zero);
+                Assert.That(metadata["NumberOfIdentifierParts"], Is.Zero);
+
+                var dataSourceInfo = conn.GetSchema(DbMetaDataCollectionNames.DataSourceInformation);
+                var row = dataSourceInfo.Rows.Cast<DataRow>().Single();
+
+                Assert.That(row["DataSourceProductName"], Is.EqualTo("Npgsql"));
+
+                var pgVersion = conn.PostgreSqlVersion;
+                Assert.That(row["DataSourceProductVersion"], Is.EqualTo(pgVersion.ToString()));
+
+                var parsedNormalizedVersion = Version.Parse((string)row["DataSourceProductVersionNormalized"]);
+                Assert.That(parsedNormalizedVersion, Is.EqualTo(conn.PostgreSqlVersion));
+
+                Assert.That(Regex.Match("\"some_identifier\"", (string)row["QuotedIdentifierPattern"]).Groups[1].Value,
+                    Is.EqualTo("some_identifier"));
+            }
+        }
+
+        [Test]
+        public void DataTypes()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TYPE pg_temp.test_enum AS ENUM ('a', 'b')");
+                conn.ExecuteNonQuery("CREATE TYPE pg_temp.test_composite AS (a INTEGER)");
+                conn.ExecuteNonQuery("CREATE DOMAIN pg_temp.us_postal_code AS TEXT");
+                conn.ReloadTypes();
+                conn.TypeMapper.MapEnum<TestEnum>();
+                conn.TypeMapper.MapComposite<TestComposite>();
+
+                var metadata = conn.GetSchema(DbMetaDataCollectionNames.MetaDataCollections).Rows
+                    .Cast<DataRow>()
+                    .Single(r => r["CollectionName"].Equals("DataTypes"));
+                Assert.That(metadata["NumberOfRestrictions"], Is.Zero);
+                Assert.That(metadata["NumberOfIdentifierParts"], Is.Zero);
+
+                var dataTypes = conn.GetSchema(DbMetaDataCollectionNames.DataTypes);
+
+                var intRow = dataTypes.Rows.Cast<DataRow>().Single(r => r["TypeName"].Equals("integer"));
+                Assert.That(intRow["DataType"], Is.EqualTo("System.Int32"));
+                Assert.That(intRow["ProviderDbType"], Is.EqualTo((int)NpgsqlDbType.Integer));
+                Assert.That(intRow["IsUnsigned"], Is.False);
+                Assert.That(intRow["OID"], Is.EqualTo(23));
+
+                var textRow = dataTypes.Rows.Cast<DataRow>().Single(r => r["TypeName"].Equals("text"));
+                Assert.That(textRow["DataType"], Is.EqualTo("System.String"));
+                Assert.That(textRow["ProviderDbType"], Is.EqualTo((int)NpgsqlDbType.Text));
+                Assert.That(textRow["IsUnsigned"], Is.SameAs(DBNull.Value));
+                Assert.That(textRow["OID"], Is.EqualTo(25));
+
+                var numericRow = dataTypes.Rows.Cast<DataRow>().Single(r => r["TypeName"].Equals("numeric"));
+                Assert.That(numericRow["DataType"], Is.EqualTo("System.Decimal"));
+                Assert.That(numericRow["ProviderDbType"], Is.EqualTo((int)NpgsqlDbType.Numeric));
+                Assert.That(numericRow["IsUnsigned"], Is.False);
+                Assert.That(numericRow["OID"], Is.EqualTo(1700));
+                Assert.That(numericRow["CreateFormat"], Is.EqualTo("NUMERIC({0},{1})"));
+                Assert.That(numericRow["CreateParameters"], Is.EqualTo("precision, scale"));
+
+                var intArrayRow = dataTypes.Rows.Cast<DataRow>().Single(r => r["TypeName"].Equals("integer[]"));
+                Assert.That(intArrayRow["DataType"], Is.EqualTo("System.Int32[]"));
+                Assert.That(intArrayRow["ProviderDbType"], Is.EqualTo((int)(NpgsqlDbType.Integer | NpgsqlDbType.Array)));
+                Assert.That(intArrayRow["OID"], Is.EqualTo(1007));
+                Assert.That(intArrayRow["CreateFormat"], Is.EqualTo("INTEGER[]"));
+
+                var numericArrayRow = dataTypes.Rows.Cast<DataRow>().Single(r => r["TypeName"].Equals("numeric[]"));
+                Assert.That(numericArrayRow["CreateFormat"], Is.EqualTo("NUMERIC({0},{1})[]"));
+                Assert.That(numericArrayRow["CreateParameters"], Is.EqualTo("precision, scale"));
+
+                var intRangeRow = dataTypes.Rows.Cast<DataRow>().Single(r => ((string)r["TypeName"]).EndsWith("int4range"));
+                Assert.That(intRangeRow["DataType"], Does.StartWith("NpgsqlTypes.NpgsqlRange`1[[System.Int32"));
+                Assert.That(intRangeRow["ProviderDbType"], Is.EqualTo((int)(NpgsqlDbType.Integer | NpgsqlDbType.Range)));
+                Assert.That(intRangeRow["OID"], Is.EqualTo(3904));
+
+                var enumRow = dataTypes.Rows.Cast<DataRow>().Single(r => ((string)r["TypeName"]).EndsWith(".test_enum"));
+                Assert.That(enumRow["DataType"], Is.EqualTo("Npgsql.Tests.SchemaTests+TestEnum"));
+                Assert.That(enumRow["ProviderDbType"], Is.SameAs(DBNull.Value));
+
+                var compositeRow = dataTypes.Rows.Cast<DataRow>().Single(r => ((string)r["TypeName"]).EndsWith(".test_composite"));
+                Assert.That(compositeRow["DataType"], Is.EqualTo("Npgsql.Tests.SchemaTests+TestComposite"));
+                Assert.That(compositeRow["ProviderDbType"], Is.SameAs(DBNull.Value));
+
+                var domainRow = dataTypes.Rows.Cast<DataRow>().Single(r => ((string)r["TypeName"]).EndsWith(".us_postal_code"));
+                Assert.That(domainRow["DataType"], Is.EqualTo("System.String"));
+                Assert.That(domainRow["ProviderDbType"], Is.EqualTo((int)NpgsqlDbType.Text));
+                Assert.That(domainRow["IsBestMatch"], Is.False);
+            }
+        }
+
+        enum TestEnum { A, B };
+
+        class TestComposite { int A { get; set; } }
+
+        [Test]
         public void Restrictions()
         {
             using (var conn = OpenConnection())
@@ -204,7 +305,76 @@ namespace Npgsql.Tests
                 Assert.That(text["numeric_scale"], Is.EqualTo(DBNull.Value));
             }
         }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1831")]
+        public void NoSystemTables()
+        {
+            using (var conn = OpenConnection())
+            {
+                var tables = conn.GetSchema("Tables").Rows
+                    .Cast<DataRow>()
+                    .Select(r => (string)r["TABLE_NAME"])
+                    .ToList();
+                Assert.That(tables, Does.Not.Contain("pg_type"));  // schema pg_catalog
+                Assert.That(tables, Does.Not.Contain("tables"));   // schema information_schema
+            }
+
+            using (var conn = OpenConnection())
+            {
+                var views = conn.GetSchema("Views").Rows
+                    .Cast<DataRow>()
+                    .Select(r => (string)r["TABLE_NAME"])
+                    .ToList();
+                Assert.That(views, Does.Not.Contain("pg_user"));  // schema pg_catalog
+                Assert.That(views, Does.Not.Contain("views"));    // schema information_schema
+            }
+        }
+
+        [Test]
+        public void GetSchemaWithRestrictions()
+        {
+            // We can't use temporary tables because GetSchema filters out that in WHERE clause.
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("DROP TABLE IF EXISTS data");
+                conn.ExecuteNonQuery("CREATE TABLE data (bar INTEGER)");
+
+                try
+                {
+                    string[] restrictions = { null, null, "data" };
+                    var dt = conn.GetSchema("Tables", restrictions);
+                    foreach (DataRow row in dt.Rows)
+                    {
+                        var d = row["table_name"];
+                        Assert.That(row["table_name"], Is.EqualTo("data"));
+                    }
+                }
+                finally
+                {
+                    conn.ExecuteNonQuery("DROP TABLE IF EXISTS data");
+                }
+            }
+
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("DROP VIEW IF EXISTS view");
+                conn.ExecuteNonQuery("CREATE VIEW view AS SELECT 8 AS foo");
+
+                try
+                {
+                    string[] restrictions = { null, null, "view" };
+                    var dt = conn.GetSchema("Views", restrictions);
+                    foreach (DataRow row in dt.Rows)
+                    {
+                        var d = row["table_name"];
+                        Assert.That(row["table_name"], Is.EqualTo("view"));
+                    }
+                }
+                finally
+                {
+                    conn.ExecuteNonQuery("DROP VIEW IF EXISTS view");
+                }
+            }
+        }
     }
 }
-
-#endif

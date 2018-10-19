@@ -1,0 +1,40 @@
+language: csharp
+dist: trusty
+sudo: false
+mono: none
+dotnet: 2.1.400
+
+services:
+  - postgresql
+addons:
+  postgresql: "9.6"
+
+env:
+  global:
+    - NPGSQL_TEST_DB: '"Host=localhost;Port=5433;Database=travis;Username=travis;Password=travis"'
+    - PGPORT: 5433
+
+before_script:
+  - psql -c "ALTER USER travis WITH PASSWORD 'travis'"  # For PG 10 hack
+  - psql -c "CREATE EXTENSION citext" travis
+  - psql -c "CREATE EXTENSION postgis" travis
+  - dotnet restore -v Minimal Npgsql.sln
+script:
+  - dotnet build "test/Npgsql.Tests" -c Debug -f netcoreapp2.1
+  - dotnet build "test/Npgsql.PluginTests" -c Debug -f netcoreapp2.1
+  - dotnet test "test/Npgsql.Tests/Npgsql.Tests.csproj" -c Debug -f netcoreapp2.1
+  - dotnet test "test/Npgsql.PluginTests/Npgsql.PluginTests.csproj" -c Debug -f netcoreapp2.1
+
+cache:
+  directories:
+    - $HOME/.nuget/packages
+
+# The following is necessary because of https://github.com/travis-ci/travis-ci/issues/6972
+addons:
+  apt:
+    packages:
+    - postgresql-10
+    - postgresql-client-10
+    - postgresql-10-postgis-2.4
+    - postgresql-10-postgis-2.4-scripts
+  postgresql: 10

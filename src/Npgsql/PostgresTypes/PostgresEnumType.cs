@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -21,6 +21,7 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
+using System.Collections.Generic;
 using Npgsql.TypeHandlers;
 
 namespace Npgsql.PostgresTypes
@@ -34,40 +35,17 @@ namespace Npgsql.PostgresTypes
     public class PostgresEnumType : PostgresType
     {
         /// <summary>
+        /// The enum's fields.
+        /// </summary>
+        public IReadOnlyList<string> Labels => MutableLabels;
+
+        internal List<string> MutableLabels { get; } = new List<string>();
+
+        /// <summary>
         /// Constructs a representation of a PostgreSQL enum data type.
         /// </summary>
-        protected internal PostgresEnumType(string ns, string name, uint oid) : base(ns, name, oid)
-        {
-            NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Enum;
-        }
-
-        internal override void AddTo(TypeHandlerRegistry.AvailablePostgresTypes types)
-        {
-            base.AddTo(types);
-            types.ByFullName[FullName] = this;
-            types.ByName[Name] = types.ByName.ContainsKey(Name)
-                ? null
-                : this;
-        }
-
-        internal override TypeHandler Activate(TypeHandlerRegistry registry)
-        {
-            // Enums need to be mapped by the user with an explicit mapping call (MapComposite or MapCompositeGlobally).
-            // If we're here the enum hasn't been mapped to a CLR type and we should activate it as text.
-            return new PostgresBaseType(Namespace, Name, OID, typeof(TextHandler), new TypeMappingAttribute(Name))
-                .Activate(registry);
-        }
-
-        internal void Activate(TypeHandlerRegistry registry, IEnumHandlerFactory handlerFactory)
-            => Activate(registry, handlerFactory.Create(this));
-
-        internal void Activate(TypeHandlerRegistry registry, IEnumHandler enumHandler)
-        {
-            var handler = (TypeHandler)enumHandler;
-            registry.ByOID[OID] = handler;
-            registry.ByType[enumHandler.EnumType] = handler;
-
-            Array?.Activate(registry);
-        }
+        protected internal PostgresEnumType(string ns, string name, uint oid)
+            : base(ns, name, oid)
+        {}
     }
 }

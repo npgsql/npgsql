@@ -1,7 +1,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -22,12 +22,8 @@
 #endregion
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Data;
 using System.Globalization;
-using System.IO;
-using System.Net;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
@@ -35,6 +31,15 @@ using System.Threading.Tasks;
 
 namespace Npgsql
 {
+    static class Statics
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static T Expect<T>(IBackendMessage msg)
+            => msg is T asT
+                ? asT
+                : throw new NpgsqlException($"Received backend message {msg.Code} while expecting {typeof(T).Name}. Please file a bug.");
+    }
+
     // ReSharper disable once InconsistentNaming
     static class PGUtil
     {
@@ -42,6 +47,8 @@ namespace Npgsql
 
         internal static readonly UTF8Encoding UTF8Encoding = new UTF8Encoding(false, true);
         internal static readonly UTF8Encoding RelaxedUTF8Encoding = new UTF8Encoding(false, false);
+
+        internal const int BitsInInt = sizeof(int) * 8;
 
         internal static void ValidateBackendMessageCode(BackendMessageCode code)
         {
@@ -80,21 +87,57 @@ namespace Npgsql
             }
         }
 
-        public static int RotateShift(int val, int shift)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static int RotateShift(int val, int shift)
+            => (val << shift) | (val >> (BitsInInt - shift));
+
+        // All ReverseEndianness methods came from the System.Buffers.Binary.BinaryPrimitives class.
+        // This takes advantage of the fact that the JIT can detect ROL32 / ROR32 patterns and output the correct intrinsic.
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static short ReverseEndianness(short value)
+            => (short)ReverseEndianness((ushort)value);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static int ReverseEndianness(int value)
+            => (int)ReverseEndianness((uint)value);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static long ReverseEndianness(long value)
+            => (long)ReverseEndianness((ulong)value);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static ushort ReverseEndianness(ushort value)
+            => (ushort)((value >> 8) + (value << 8));
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static uint ReverseEndianness(uint value)
         {
-            return (val << shift) | (val >> (sizeof (int) - shift));
+            var mask_xx_zz = (value & 0x00FF00FFU);
+            var mask_ww_yy = (value & 0xFF00FF00U);
+            return ((mask_xx_zz >> 8) | (mask_xx_zz << 24))
+                 + ((mask_ww_yy << 8) | (mask_ww_yy >> 24));
         }
 
-        internal static readonly Task CompletedTask = Task.FromResult(0);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static ulong ReverseEndianness(ulong value)
+            => ((ulong)ReverseEndianness((uint)value) << 32) + ReverseEndianness((uint)(value >> 32));
 
-#if NET45 || NET451
+        internal static readonly Task CompletedTask = Task.FromResult(0);
+        internal static readonly Task<bool> TrueTask = Task.FromResult(true);
+        internal static readonly Task<bool> FalseTask = Task.FromResult(false);
+        internal static readonly Task<int> CancelledTask = CreateCancelledTask<int>();
+
+        static Task<T> CreateCancelledTask<T>()
+        {
+            var source = new TaskCompletionSource<T>();
+            source.SetCanceled();
+            return source.Task;
+        }
+
         internal static StringComparer InvariantCaseIgnoringStringComparer => StringComparer.InvariantCultureIgnoreCase;
-#else
-        internal static StringComparer InvariantCaseIgnoringStringComparer => CultureInfo.InvariantCulture.CompareInfo.GetStringComparer(CompareOptions.IgnoreCase);
-#endif
 
         internal static bool IsWindows =>
-#if NET45 || NET451
+#if NET452
             Environment.OSVersion.Platform == PlatformID.Win32NT;
 #else
             System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows);
@@ -118,7 +161,7 @@ namespace Npgsql
     /// <summary>
     /// Represents a timeout that will expire at some point.
     /// </summary>
-    internal struct NpgsqlTimeout
+    public readonly struct NpgsqlTimeout
     {
         readonly DateTime _expiration;
         internal DateTime Expiration => _expiration;
@@ -152,7 +195,7 @@ namespace Npgsql
         internal CultureSetter(CultureInfo newCulture)
         {
             _oldCulture = CultureInfo.CurrentCulture;
-#if NET45 || NET451
+#if NET452
             Thread.CurrentThread.CurrentCulture = newCulture;
 #else
             CultureInfo.CurrentCulture = newCulture;
@@ -161,42 +204,11 @@ namespace Npgsql
 
         public void Dispose()
         {
-#if NET45 || NET451
+#if NET452
             Thread.CurrentThread.CurrentCulture = _oldCulture;
 #else
             CultureInfo.CurrentCulture = _oldCulture;
 #endif
-        }
-    }
-
-    /// <summary>
-    /// This mechanism is used to temporarily set the current synchronization context to null while
-    /// executing Npgsql code, making all await continuations execute on the thread pool. This replaces
-    /// the need to place ConfigureAwait(false) everywhere, and should be used in all surface async methods,
-    /// without exception.
-    /// </summary>
-    /// <remarks>
-    /// http://stackoverflow.com/a/28307965/640325
-    /// </remarks>
-    static class NoSynchronizationContextScope
-    {
-        internal static Disposable Enter()
-        {
-            var sc = SynchronizationContext.Current;
-            SynchronizationContext.SetSynchronizationContext(null);
-            return new Disposable(sc);
-        }
-
-        internal struct Disposable : IDisposable
-        {
-            readonly SynchronizationContext _synchronizationContext;
-
-            internal Disposable(SynchronizationContext synchronizationContext)
-            {
-                _synchronizationContext = synchronizationContext;
-            }
-
-            public void Dispose() => SynchronizationContext.SetSynchronizationContext(_synchronizationContext);
         }
     }
 }

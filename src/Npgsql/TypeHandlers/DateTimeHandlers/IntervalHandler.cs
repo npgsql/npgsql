@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -24,75 +24,77 @@
 using System;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
+using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers.DateTimeHandlers
 {
+    [TypeMapping("interval", NpgsqlDbType.Interval, new[] { typeof(TimeSpan), typeof(NpgsqlTimeSpan) })]
+    class IntervalHandlerFactory : NpgsqlTypeHandlerFactory<TimeSpan>
+    {
+        // Check for the legacy floating point timestamps feature
+        protected override NpgsqlTypeHandler<TimeSpan> Create(NpgsqlConnection conn)
+            => new IntervalHandler(conn.HasIntegerDateTimes);
+    }
+
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-datetime.html
     /// </remarks>
-    [TypeMapping("interval", NpgsqlDbType.Interval, new[] { typeof(TimeSpan), typeof(NpgsqlTimeSpan) })]
-    class IntervalHandler : SimpleTypeHandlerWithPsv<TimeSpan, NpgsqlTimeSpan>
+    class IntervalHandler : NpgsqlSimpleTypeHandlerWithPsv<TimeSpan, NpgsqlTimeSpan>
     {
         /// <summary>
         /// A deprecated compile-time option of PostgreSQL switches to a floating-point representation of some date/time
-        /// fields. Npgsql (currently) does not support this mode.
+        /// fields. Some PostgreSQL-like databases (e.g. CrateDB) use floating-point representation by default and do not
+        /// provide the option of switching to integer format.
         /// </summary>
         readonly bool _integerFormat;
 
-        public IntervalHandler(PostgresType postgresType, TypeHandlerRegistry registry)
-            : base(postgresType)
+        public IntervalHandler(bool integerFormat)
         {
-            // Check for the legacy floating point timestamps feature, defaulting to integer timestamps
-            _integerFormat = !registry.Connector.BackendParams.TryGetValue("integer_datetimes", out var s) || s == "on";
+            _integerFormat = integerFormat;
         }
 
-        public override TimeSpan Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
-        {
-            return (TimeSpan)((ISimpleTypeHandler<NpgsqlTimeSpan>)this).Read(buf, len, fieldDescription);
-        }
+        public override TimeSpan Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+            => (TimeSpan)((INpgsqlSimpleTypeHandler<NpgsqlTimeSpan>)this).Read(buf, len, fieldDescription);
 
-        internal override NpgsqlTimeSpan ReadPsv(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        protected override NpgsqlTimeSpan ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
-            if (!_integerFormat) {
-                throw new NotSupportedException("Old floating point representation for timestamps not supported");
-            }
-            var ticks = buf.ReadInt64();
-            var day = buf.ReadInt32();
-            var month = buf.ReadInt32();
-            return new NpgsqlTimeSpan(month, day, ticks * 10);
-        }
-
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
-        {
-            if (!_integerFormat) {
-                throw new NotSupportedException("Old floating point representation for timestamps not supported");
-            }
-
-            var asString = value as string;
-            if (asString != null)
+            if (_integerFormat)
             {
-                var converted = NpgsqlTimeSpan.Parse(asString);
-                if (parameter == null)
-                    throw CreateConversionButNoParamException(value.GetType());
-                parameter.ConvertedValue = converted;
+                var ticks = buf.ReadInt64();
+                var day = buf.ReadInt32();
+                var month = buf.ReadInt32();
+                return new NpgsqlTimeSpan(month, day, ticks * 10);
             }
-            else if (!(value is TimeSpan) && !(value is NpgsqlTimeSpan))
-                throw CreateConversionException(value.GetType());
-
-            return 16;
+            else
+            {
+                var seconds = buf.ReadDouble();
+                var day = buf.ReadInt32();
+                var month = buf.ReadInt32();
+                return new NpgsqlTimeSpan(month, day, (long)(seconds * TimeSpan.TicksPerSecond));
+            }
         }
 
-        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
+        public override int ValidateAndGetLength(TimeSpan value, NpgsqlParameter parameter)
+            => 16;
+
+        public override int ValidateAndGetLength(NpgsqlTimeSpan value, NpgsqlParameter parameter)
+            => 16;
+
+        public override void Write(NpgsqlTimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
-            if (parameter?.ConvertedValue != null)
-                value = parameter.ConvertedValue;
+            if (_integerFormat)
+                buf.WriteInt64(value.Ticks / 10); // TODO: round?
+            else
+                buf.WriteDouble(value.TotalSeconds - (value.Days * 86400) - (value.Months * NpgsqlTimeSpan.DaysPerMonth * 86400));
 
-            var interval = value as TimeSpan? ?? (NpgsqlTimeSpan)value;
-
-            buf.WriteInt64(interval.Ticks / 10); // TODO: round?
-            buf.WriteInt32(interval.Days);
-            buf.WriteInt32(interval.Months);
+            buf.WriteInt32(value.Days);
+            buf.WriteInt32(value.Months);
         }
+
+        // TODO: Can write directly from TimeSpan
+        public override void Write(TimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => Write(value, buf, parameter);
     }
 }

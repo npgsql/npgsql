@@ -52,15 +52,15 @@
             this.hostLabel.AutoSize = true;
             this.hostLabel.Location = new System.Drawing.Point(10, 32);
             this.hostLabel.Name = "hostLabel";
-            this.hostLabel.Size = new System.Drawing.Size(47, 20);
+            this.hostLabel.Size = new System.Drawing.Size(81, 32);
             this.hostLabel.TabIndex = 0;
             this.hostLabel.Text = "Host:";
             // 
             // hostTextBox
             // 
-            this.hostTextBox.Location = new System.Drawing.Point(99, 29);
+            this.hostTextBox.Location = new System.Drawing.Point(161, 29);
             this.hostTextBox.Name = "hostTextBox";
-            this.hostTextBox.Size = new System.Drawing.Size(388, 26);
+            this.hostTextBox.Size = new System.Drawing.Size(326, 38);
             this.hostTextBox.TabIndex = 1;
             this.hostTextBox.TextChanged += new System.EventHandler(this.SetProperty);
             // 
@@ -69,7 +69,7 @@
             this.windowsAuthCheckbox.AutoSize = true;
             this.windowsAuthCheckbox.Location = new System.Drawing.Point(14, 39);
             this.windowsAuthCheckbox.Name = "windowsAuthCheckbox";
-            this.windowsAuthCheckbox.Size = new System.Drawing.Size(206, 24);
+            this.windowsAuthCheckbox.Size = new System.Drawing.Size(358, 36);
             this.windowsAuthCheckbox.TabIndex = 4;
             this.windowsAuthCheckbox.Text = "Windows Authentication";
             this.windowsAuthCheckbox.UseVisualStyleBackColor = true;
@@ -92,10 +92,10 @@
             // 
             // passwordTextBox
             // 
-            this.passwordTextBox.Location = new System.Drawing.Point(113, 114);
+            this.passwordTextBox.Location = new System.Drawing.Point(176, 109);
             this.passwordTextBox.Name = "passwordTextBox";
             this.passwordTextBox.PasswordChar = '*';
-            this.passwordTextBox.Size = new System.Drawing.Size(188, 26);
+            this.passwordTextBox.Size = new System.Drawing.Size(188, 38);
             this.passwordTextBox.TabIndex = 6;
             this.passwordTextBox.TextChanged += new System.EventHandler(this.SetProperty);
             // 
@@ -104,7 +104,7 @@
             this.passwordLabel.AutoSize = true;
             this.passwordLabel.Location = new System.Drawing.Point(10, 117);
             this.passwordLabel.Name = "passwordLabel";
-            this.passwordLabel.Size = new System.Drawing.Size(82, 20);
+            this.passwordLabel.Size = new System.Drawing.Size(147, 32);
             this.passwordLabel.TabIndex = 2;
             this.passwordLabel.Text = "Password:";
             // 
@@ -113,15 +113,15 @@
             this.usernameLabel.AutoSize = true;
             this.usernameLabel.Location = new System.Drawing.Point(10, 78);
             this.usernameLabel.Name = "usernameLabel";
-            this.usernameLabel.Size = new System.Drawing.Size(91, 20);
+            this.usernameLabel.Size = new System.Drawing.Size(160, 32);
             this.usernameLabel.TabIndex = 1;
             this.usernameLabel.Text = "User name:";
             // 
             // usernameTextBox
             // 
-            this.usernameTextBox.Location = new System.Drawing.Point(113, 75);
+            this.usernameTextBox.Location = new System.Drawing.Point(176, 72);
             this.usernameTextBox.Name = "usernameTextBox";
-            this.usernameTextBox.Size = new System.Drawing.Size(188, 26);
+            this.usernameTextBox.Size = new System.Drawing.Size(188, 38);
             this.usernameTextBox.TabIndex = 5;
             this.usernameTextBox.TextChanged += new System.EventHandler(this.SetProperty);
             // 
@@ -142,9 +142,9 @@
             // 
             // databaseTextBox
             // 
-            this.databaseTextBox.Location = new System.Drawing.Point(99, 105);
+            this.databaseTextBox.Location = new System.Drawing.Point(161, 105);
             this.databaseTextBox.Name = "databaseTextBox";
-            this.databaseTextBox.Size = new System.Drawing.Size(388, 26);
+            this.databaseTextBox.Size = new System.Drawing.Size(326, 38);
             this.databaseTextBox.TabIndex = 3;
             this.databaseTextBox.TextChanged += new System.EventHandler(this.SetProperty);
             // 
@@ -153,20 +153,20 @@
             this.label1.AutoSize = true;
             this.label1.Location = new System.Drawing.Point(10, 108);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(83, 20);
+            this.label1.Size = new System.Drawing.Size(145, 32);
             this.label1.TabIndex = 4;
             this.label1.Text = "Database:";
             // 
             // portNumericUpDown
             // 
-            this.portNumericUpDown.Location = new System.Drawing.Point(99, 68);
+            this.portNumericUpDown.Location = new System.Drawing.Point(161, 68);
             this.portNumericUpDown.Maximum = new decimal(new int[] {
             65535,
             0,
             0,
             0});
             this.portNumericUpDown.Name = "portNumericUpDown";
-            this.portNumericUpDown.Size = new System.Drawing.Size(88, 26);
+            this.portNumericUpDown.Size = new System.Drawing.Size(110, 38);
             this.portNumericUpDown.TabIndex = 2;
             this.portNumericUpDown.Value = new decimal(new int[] {
             5432,
@@ -180,7 +180,7 @@
             this.portLabel.AutoSize = true;
             this.portLabel.Location = new System.Drawing.Point(10, 70);
             this.portLabel.Name = "portLabel";
-            this.portLabel.Size = new System.Drawing.Size(42, 20);
+            this.portLabel.Size = new System.Drawing.Size(75, 32);
             this.portLabel.TabIndex = 2;
             this.portLabel.Text = "Port:";
             // 
@@ -189,7 +189,7 @@
             this.savePasswordCheckBox.AutoSize = true;
             this.savePasswordCheckBox.Location = new System.Drawing.Point(113, 153);
             this.savePasswordCheckBox.Name = "savePasswordCheckBox";
-            this.savePasswordCheckBox.Size = new System.Drawing.Size(167, 24);
+            this.savePasswordCheckBox.Size = new System.Drawing.Size(290, 36);
             this.savePasswordCheckBox.TabIndex = 7;
             this.savePasswordCheckBox.Text = "Save my password";
             this.savePasswordCheckBox.UseVisualStyleBackColor = true;
@@ -197,6 +197,8 @@
             // 
             // NpgsqlConnectionUIControl
             // 
+            this.AutoScaleDimensions = new System.Drawing.SizeF(16F, 31F);
+            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.Controls.Add(this.connectionGroupBox);
             this.Controls.Add(this.credentialsGroupBox);
             this.Name = "NpgsqlConnectionUIControl";

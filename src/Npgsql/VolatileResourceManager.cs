@@ -1,8 +1,7 @@
-#if NET45 || NET451
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -98,7 +97,7 @@ namespace Npgsql
             Debug.Assert(_localTx != null, "No local transaction");
             Debug.Assert(_connector != null, "No connector");
 
-            Log.Debug($"Two-phase transaction prepare (localid={_txId}", _connector.Id);
+            Log.Debug($"Two-phase transaction prepare (localid={_txId})", _connector.Id);
 
             // The PostgreSQL prepared transaction name is the distributed GUID + our connection's process ID, for uniqueness
             _preparedTxName = $"{_transaction.TransactionInformation.DistributedIdentifier}/{_connector.BackendProcessId}";
@@ -107,6 +106,17 @@ namespace Npgsql
             {
                 using (_connector.StartUserAction())
                     _connector.ExecuteInternalCommand($"PREPARE TRANSACTION '{_preparedTxName}'");
+
+                // The MSDTC, which manages escalated distributed transactions, performs the 2nd phase
+                // asynchronously - this means that TransactionScope.Dispose() will return before all
+                // resource managers have actually commit.
+                // If the same connection tries to enlist to a new TransactionScope immediately after
+                // disposing an old TransactionScope, its EnlistedTransaction must have been cleared
+                // (or we'll throw a double enlistment exception). This must be done here at the 1st phase
+                // (which is sync).
+                if (_connector.Connection != null)
+                    _connector.Connection.EnlistedTransaction = null;
+
                 preparingEnlistment.Prepared();
             }
             catch (Exception e)
@@ -122,16 +132,41 @@ namespace Npgsql
             Debug.Assert(_transaction != null, "No transaction");
             Debug.Assert(_connector != null, "No connector");
 
-            Log.Debug($"Two-phase transaction commit (localid={_txId}", _connector.Id);
+            Log.Debug($"Two-phase transaction commit (localid={_txId})", _connector.Id);
 
             try
             {
-                using (_connector.StartUserAction())
-                    _connector.ExecuteInternalCommand($"COMMIT PREPARED '{_preparedTxName}'");
+                if (_connector.Connection == null)
+                {
+                    // The connection has been closed before the TransactionScope was disposed.
+                    // The connector is unbound from its connection and is sitting in the pool's
+                    // pending enlisted connector list. Since there's no risk of the connector being
+                    // used by anyone we can executed the 2nd phase on it directly (see below).
+                    using (_connector.StartUserAction())
+                        _connector.ExecuteInternalCommand($"COMMIT PREPARED '{_preparedTxName}'");
+                }
+                else
+                {
+                    // The connection is still open and potentially will be reused by by the user.
+                    // The MSDTC, which manages escalated distributed transactions, performs the 2nd phase
+                    // asynchronously - this means that TransactionScope.Dispose() will return before all
+                    // resource managers have actually commit. This can cause a concurrent connection use scenario
+                    // if the user continues to use their connection after disposing the scope, and the MSDTC
+                    // requests a commit at that exact time.
+                    // To avoid this, we open a new connection for performing the 2nd phase.
+                    using (var conn2 = (NpgsqlConnection)((ICloneable)_connector.Connection).Clone())
+                    {
+                        conn2.Open();
+                        var connector = conn2.Connector;
+                        Debug.Assert(connector != null);
+                        using (connector.StartUserAction())
+                            connector.ExecuteInternalCommand($"COMMIT PREPARED '{_preparedTxName}'");
+                    }
+                }
             }
             catch (Exception e)
             {
-                Log.Error("Exception during two-phase transaction commit (localid={TransactionId}", e, _connector.Id);
+                Log.Error("Exception during two-phase transaction commit (localid={TransactionId})", e, _connector.Id);
             }
             finally
             {
@@ -149,22 +184,13 @@ namespace Npgsql
             try
             {
                 if (IsPrepared)
-                {
-                    // This only occurs if we've started a two-phase commit but one of the commits has failed.
-                    Log.Debug($"Two-phase transaction rollback (localid={_txId}", _connector.Id);
-                    using (_connector.StartUserAction())
-                        _connector.ExecuteInternalCommand($"ROLLBACK PREPARED '{_preparedTxName}'");
-                }
+                    RollbackTwoPhase();
                 else
-                {
-                    Log.Debug($"Single-phase transaction rollback (localid={_txId}", _connector.Id);
-                    Debug.Assert(_localTx != null);
                     RollbackLocal();
-                }
             }
             catch (Exception e)
             {
-                Log.Error($"Exception during transaction rollback (localid={_txId}", e, _connector.Id);
+                Log.Error($"Exception during transaction rollback (localid={_txId})", e, _connector.Id);
             }
             finally
             {
@@ -178,16 +204,16 @@ namespace Npgsql
             Debug.Assert(_transaction != null, "No transaction");
             Debug.Assert(_connector != null, "No connector");
 
-            Log.Warn($"Two-phase transaction in doubt (localid={_txId}", _connector.Id);
+            Log.Warn($"Two-phase transaction in doubt (localid={_txId})", _connector.Id);
 
             // TODO: Is this the correct behavior?
             try
             {
-                _connector.ExecuteInternalCommand($"ROLLBACK PREPARED '{_preparedTxName}'");
+                RollbackTwoPhase();
             }
             catch (Exception e)
             {
-                Log.Error($"Exception during transaction rollback (localid={_txId}", e, _connector.Id);
+                Log.Error($"Exception during transaction rollback (localid={_txId})", e, _connector.Id);
             }
             finally
             {
@@ -196,13 +222,12 @@ namespace Npgsql
             }
         }
 
-        /// <summary>
-        /// Repeatedly attempts to rollback, to support timeout-triggered rollbacks that occur while the connection is busy.
-        /// </summary>
         void RollbackLocal()
         {
             Debug.Assert(_connector != null, "No connector");
             Debug.Assert(_localTx != null, "No local transaction");
+
+            Log.Debug($"Single-phase transaction rollback (localid={_txId})", _connector.Id);
 
             var attempt = 0;
             while (true)
@@ -214,6 +239,9 @@ namespace Npgsql
                 }
                 catch (NpgsqlOperationInProgressException)
                 {
+                    // Repeatedly attempts to rollback, to support timeout-triggered rollbacks that occur
+                    // while the connection is busy.
+
                     // This really shouldn't be necessary, but just in case
                     if (attempt++ == MaximumRollbackAttempts)
                         throw new Exception($"Could not roll back after {MaximumRollbackAttempts} attempts, aborting. Transaction is in an unknown state.");
@@ -222,6 +250,40 @@ namespace Npgsql
                     _connector.CancelRequest();
                     // Cancellations are asynchronous, give it some time
                     Thread.Sleep(500);
+                }
+            }
+        }
+
+        void RollbackTwoPhase()
+        {
+            // This only occurs if we've started a two-phase commit but one of the commits has failed.
+            Log.Debug($"Two-phase transaction rollback (localid={_txId})", _connector.Id);
+
+            if (_connector.Connection == null)
+            {
+                // The connection has been closed before the TransactionScope was disposed.
+                // The connector is unbound from its connection and is sitting in the pool's
+                // pending enlisted connector list. Since there's no risk of the connector being
+                // used by anyone we can executed the 2nd phase on it directly (see below).
+                using (_connector.StartUserAction())
+                    _connector.ExecuteInternalCommand($"ROLLBACK PREPARED '{_preparedTxName}'");
+            }
+            else
+            {
+                // The connection is still open and potentially will be reused by by the user.
+                // The MSDTC, which manages escalated distributed transactions, performs the 2nd phase
+                // asynchronously - this means that TransactionScope.Dispose() will return before all
+                // resource managers have actually commit. This can cause a concurrent connection use scenario
+                // if the user continues to use their connection after disposing the scope, and the MSDTC
+                // requests a commit at that exact time.
+                // To avoid this, we open a new connection for performing the 2nd phase.
+                using (var conn2 = (NpgsqlConnection)((ICloneable)_connector.Connection).Clone())
+                {
+                    conn2.Open();
+                    var connector = conn2.Connector;
+                    Debug.Assert(connector != null);
+                    using (connector.StartUserAction())
+                        connector.ExecuteInternalCommand($"ROLLBACK PREPARED '{_preparedTxName}'");
                 }
             }
         }
@@ -250,13 +312,9 @@ namespace Npgsql
                 // These need to be closed now.
                 if (_connector.Settings.Pooling)
                 {
-                    ConnectorPool pool;
-                    lock (PoolManager.Pools)
-                    {
-                        var found = PoolManager.Pools.TryGetValue(_connector.ConnectionString, out pool);
-                        Debug.Assert(found);
-                    }
-                    pool.RemovePendingEnlistedConnector(_connector, _transaction);
+                    var found = PoolManager.TryGetValue(_connector.ConnectionString, out var pool);
+                    Debug.Assert(found);
+                    pool.TryRemovePendingEnlistedConnector(_connector, _transaction);
                     pool.Release(_connector);
                 }
                 else
@@ -300,4 +358,3 @@ namespace Npgsql
 
     }
 }
-#endif

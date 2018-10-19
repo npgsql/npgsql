@@ -1,7 +1,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -94,9 +94,12 @@ namespace Npgsql
             Debug.Assert(conn != null);
             Debug.Assert(isolationLevel != IsolationLevel.Chaos);
 
-
             Connection = conn;
             _connector = Connection.CheckReadyAndGetConnector();
+
+            if (!_connector.DatabaseInfo.SupportsTransactions)
+                return;
+
             Log.Debug($"Beginning transaction with isolation level {isolationLevel}", _connector.Id);
             _connector.Transaction = this;
             _connector.TransactionStatus = TransactionStatus.Pending;
@@ -138,15 +141,19 @@ namespace Npgsql
         /// <summary>
         /// Commits the database transaction.
         /// </summary>
-        public override void Commit() => Commit(false, CancellationToken.None).GetAwaiter().GetResult();
+        public override void Commit() => Commit(false).GetAwaiter().GetResult();
 
-        async Task Commit(bool async, CancellationToken cancellationToken)
+        async Task Commit(bool async)
         {
             CheckReady();
+
+            if (!_connector.DatabaseInfo.SupportsTransactions)
+                return;
+
             using (_connector.StartUserAction())
             {
                 Log.Debug("Committing transaction", _connector.Id);
-                await _connector.ExecuteInternalCommand(PregeneratedMessage.CommitTransaction, async, cancellationToken);
+                await _connector.ExecuteInternalCommand(PregeneratedMessage.CommitTransaction, async);
                 Clear();
             }
         }
@@ -155,11 +162,11 @@ namespace Npgsql
         /// Commits the database transaction.
         /// </summary>
         [PublicAPI]
-        public async Task CommitAsync(CancellationToken cancellationToken)
+        public Task CommitAsync(CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
             using (NoSynchronizationContextScope.Enter())
-                await Commit(true, cancellationToken);
+                return Commit(true);
         }
 
         /// <summary>
@@ -175,12 +182,14 @@ namespace Npgsql
         /// <summary>
         /// Rolls back a transaction from a pending state.
         /// </summary>
-        public override void Rollback() => Rollback(false, CancellationToken.None).GetAwaiter().GetResult();
+        public override void Rollback() => Rollback(false).GetAwaiter().GetResult();
 
-        async Task Rollback(bool async, CancellationToken cancellationToken)
+        async Task Rollback(bool async)
         {
             CheckReady();
-            await _connector.Rollback(async, cancellationToken);
+            if (!_connector.DatabaseInfo.SupportsTransactions)
+                return;
+            await _connector.Rollback(async);
             Clear();
         }
 
@@ -188,11 +197,11 @@ namespace Npgsql
         /// Rolls back a transaction from a pending state.
         /// </summary>
         [PublicAPI]
-        public async Task RollbackAsync(CancellationToken cancellationToken)
+        public Task RollbackAsync(CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
             using (NoSynchronizationContextScope.Enter())
-                await Rollback(true, cancellationToken);
+                return Rollback(true);
         }
 
         /// <summary>
@@ -218,6 +227,8 @@ namespace Npgsql
                 throw new ArgumentException("name can't contain a semicolon");
 
             CheckReady();
+            if (!_connector.DatabaseInfo.SupportsTransactions)
+                return;
             using (_connector.StartUserAction())
             {
                 Log.Debug($"Creating savepoint {name}", _connector.Id);
@@ -238,6 +249,8 @@ namespace Npgsql
                 throw new ArgumentException("name can't contain a semicolon");
 
             CheckReady();
+            if (!_connector.DatabaseInfo.SupportsTransactions)
+                return;
             using (_connector.StartUserAction())
             {
                 Log.Debug($"Rolling back savepoint {name}", _connector.Id);
@@ -258,6 +271,8 @@ namespace Npgsql
                 throw new ArgumentException("name can't contain a semicolon");
 
             CheckReady();
+            if (!_connector.DatabaseInfo.SupportsTransactions)
+                return;
             using (_connector.StartUserAction())
             {
                 Log.Debug($"Releasing savepoint {name}", _connector.Id);
@@ -270,17 +285,17 @@ namespace Npgsql
         #region Dispose
 
         /// <summary>
-        /// Dispose.
+        /// Disposes the transaction, rolling it back if it is still pending.
         /// </summary>
-        /// <param name="disposing"></param>
-        protected override void Dispose(bool disposing) => Dispose(disposing, true);
-
-        internal void Dispose(bool disposing, bool doRollbackIfNeeded)
+        protected override void Dispose(bool disposing)
         {
             if (_isDisposed) { return; }
 
-            if (disposing && doRollbackIfNeeded && !IsCompleted)
+            if (disposing && !IsCompleted)
+            {
+                _connector.CloseOngoingOperations();
                 Rollback();
+            }
 
             Clear();
 

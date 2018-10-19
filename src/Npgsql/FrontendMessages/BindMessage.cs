@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -66,7 +66,7 @@ namespace Npgsql.FrontendMessages
             return this;
         }
 
-        internal override async Task Write(WriteBuffer buf, bool async, CancellationToken cancellationToken)
+        internal override async Task Write(NpgsqlWriteBuffer buf, bool async)
         {
             Debug.Assert(Statement != null && Statement.All(c => c < 128));
             Debug.Assert(Portal != null && Portal.All(c => c < 128));
@@ -81,7 +81,7 @@ namespace Npgsql.FrontendMessages
             if (buf.WriteSpaceLeft < headerLength)
             {
                 Debug.Assert(buf.Size >= headerLength, "Buffer too small for Bind header");
-                await buf.Flush(async, cancellationToken);
+                await buf.Flush(async);
             }
 
             var formatCodesSum = 0;
@@ -115,7 +115,7 @@ namespace Npgsql.FrontendMessages
             if (formatCodeListLength == 1)
             {
                 if (buf.WriteSpaceLeft < 2)
-                    await buf.Flush(async, cancellationToken);
+                    await buf.Flush(async);
                 buf.WriteInt16((short)FormatCode.Binary);
             }
             else if (formatCodeListLength > 1)
@@ -123,26 +123,26 @@ namespace Npgsql.FrontendMessages
                 foreach (var p in InputParameters)
                 {
                     if (buf.WriteSpaceLeft < 2)
-                        await buf.Flush(async, cancellationToken);
+                        await buf.Flush(async);
                     buf.WriteInt16((short)p.FormatCode);
                 }
             }
 
             if (buf.WriteSpaceLeft < 2)
-                await buf.Flush(async, cancellationToken);
+                await buf.Flush(async);
 
             buf.WriteInt16(InputParameters.Count);
 
             foreach (var param in InputParameters)
             {
                 param.LengthCache?.Rewind();
-                await param.WriteWithLength(buf, async, cancellationToken);
+                await param.WriteWithLength(buf, async);
             }
 
             if (UnknownResultTypeList != null)
             {
                 if (buf.WriteSpaceLeft < 2 + UnknownResultTypeList.Length * 2)
-                    await buf.Flush(async, cancellationToken);
+                    await buf.Flush(async);
                 buf.WriteInt16(UnknownResultTypeList.Length);
                 foreach (var t in UnknownResultTypeList)
                     buf.WriteInt16(t ? 0 : 1);
@@ -150,7 +150,7 @@ namespace Npgsql.FrontendMessages
             else
             {
                 if (buf.WriteSpaceLeft < 4)
-                    await buf.Flush(async, cancellationToken);
+                    await buf.Flush(async);
                 buf.WriteInt16(1);
                 buf.WriteInt16(AllResultTypesAreUnknown ? 0 : 1);
             }

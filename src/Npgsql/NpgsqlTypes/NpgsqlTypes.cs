@@ -1,7 +1,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -69,7 +69,7 @@ namespace NpgsqlTypes
         public static bool operator !=(NpgsqlPoint x, NpgsqlPoint y) => !(x == y);
 
         public override int GetHashCode()
-            => X.GetHashCode() ^ PGUtil.RotateShift(Y.GetHashCode(), sizeof (int)/2);
+            => X.GetHashCode() ^ PGUtil.RotateShift(Y.GetHashCode(), PGUtil.BitsInInt / 2);
 
         public static NpgsqlPoint Parse(string s)
         {
@@ -174,8 +174,10 @@ namespace NpgsqlTypes
             => string.Format(CultureInfo.InvariantCulture, "[{0},{1}]", Start, End);
 
         public override int GetHashCode()
-            => Start.X.GetHashCode() ^ PGUtil.RotateShift(Start.Y.GetHashCode(), sizeof(int) / 4) ^
-               PGUtil.RotateShift(End.X.GetHashCode(), sizeof(int) / 2) ^ PGUtil.RotateShift(End.Y.GetHashCode(), sizeof(int) * 3 / 4);
+            => Start.X.GetHashCode() ^
+               PGUtil.RotateShift(Start.Y.GetHashCode(), PGUtil.BitsInInt / 4) ^
+               PGUtil.RotateShift(End.X.GetHashCode(), PGUtil.BitsInInt / 2) ^
+               PGUtil.RotateShift(End.Y.GetHashCode(), PGUtil.BitsInInt * 3 / 4);
 
         public bool Equals(NpgsqlLSeg other) => Start == other.Start && End == other.End;
 
@@ -239,9 +241,10 @@ namespace NpgsqlTypes
         }
 
         public override int GetHashCode()
-            => Top.GetHashCode() ^ PGUtil.RotateShift(Right.GetHashCode(), sizeof (int)/4) ^
-               PGUtil.RotateShift(Bottom.GetHashCode(), sizeof (int)/2) ^
-               PGUtil.RotateShift(LowerLeft.GetHashCode(), sizeof (int)*3/4);
+            => Top.GetHashCode() ^
+               PGUtil.RotateShift(Right.GetHashCode(), PGUtil.BitsInInt / 4) ^
+               PGUtil.RotateShift(Bottom.GetHashCode(), PGUtil.BitsInInt / 2) ^
+               PGUtil.RotateShift(LowerLeft.GetHashCode(), PGUtil.BitsInInt * 3 / 4);
     }
 
     /// <summary>
@@ -322,7 +325,7 @@ namespace NpgsqlTypes
                 //The ideal amount to shift each value is one that would evenly spread it throughout
                 //the resultant bytes. Using the current result % 32 is essentially using a random value
                 //but one that will be the same on subsequent calls.
-                ret ^= PGUtil.RotateShift(point.GetHashCode(), ret%sizeof (int));
+                ret ^= PGUtil.RotateShift(point.GetHashCode(), ret % PGUtil.BitsInInt);
             }
             return Open ? ret : -ret;
         }
@@ -438,7 +441,7 @@ namespace NpgsqlTypes
                 //The ideal amount to shift each value is one that would evenly spread it throughout
                 //the resultant bytes. Using the current result % 32 is essentially using a random value
                 //but one that will be the same on subsequent calls.
-                ret ^= PGUtil.RotateShift(point.GetHashCode(), ret%sizeof (int));
+                ret ^= PGUtil.RotateShift(point.GetHashCode(), ret % PGUtil.BitsInInt);
             }
             return ret;
         }
@@ -550,6 +553,7 @@ namespace NpgsqlTypes
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-net-types.html
     /// </remarks>
+    [Obsolete("Use ValueTuple<IPAddress, int> instead")]
     public struct NpgsqlInet : IEquatable<NpgsqlInet>
     {
         public IPAddress Address { get; set; }
@@ -616,6 +620,12 @@ namespace NpgsqlTypes
 
         public static implicit operator NpgsqlInet([CanBeNull] IPAddress ip) => ToNpgsqlInet(ip);
 
+        public void Deconstruct(out IPAddress address, out int netmask)
+        {
+            address = Address;
+            netmask = Netmask;
+        }
+
         public bool Equals(NpgsqlInet other) => Address.Equals(other.Address) && Netmask == other.Netmask;
 
         public override bool Equals([CanBeNull] object obj)
@@ -634,7 +644,7 @@ namespace NpgsqlTypes
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-oid.html
     /// </remarks>
-    public struct NpgsqlTid : IEquatable<NpgsqlTid>
+    public readonly struct NpgsqlTid : IEquatable<NpgsqlTid>
     {
         /// <summary>
         /// Block number

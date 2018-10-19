@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -23,6 +23,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using JetBrains.Annotations;
 using Npgsql.TypeHandlers;
 
@@ -45,52 +46,21 @@ namespace Npgsql.PostgresTypes
         /// <summary>
         /// Constructs a representation of a PostgreSQL array data type.
         /// </summary>
-        protected internal PostgresArrayType(string ns, string name, uint oid, PostgresType elementPostgresType)
-            : base(ns, name, oid)
+        protected internal PostgresArrayType(string ns, string internalName, uint oid, PostgresType elementPostgresType)
+            : base(ns, elementPostgresType.Name + "[]", internalName, oid)
         {
+            Debug.Assert(internalName == '_' + elementPostgresType.InternalName);
             Element = elementPostgresType;
-            if (elementPostgresType.NpgsqlDbType.HasValue)
-                NpgsqlDbType = NpgsqlTypes.NpgsqlDbType.Array | elementPostgresType.NpgsqlDbType;
             Element.Array = this;
         }
 
-        internal override TypeHandler Activate(TypeHandlerRegistry registry)
-        {
-            if (!registry.TryGetByOID(Element.OID, out var elementHandler))
-            {
-                // Element type hasn't been set up yet, do it now
-                elementHandler = Element.Activate(registry);
-            }
+        // PostgreSQL array types have an underscore-prefixed name (_text), but we
+        // want to return the public text[] instead
+        /// <inheritdoc/>
+        internal override string GetPartialNameWithFacets(int typeModifier)
+            => Element.GetPartialNameWithFacets(typeModifier) + "[]";
 
-            var arrayHandler = elementHandler.CreateArrayHandler(this);
-            registry.ByOID[OID] = arrayHandler;
-
-            var asEnumHandler = elementHandler as IEnumHandler;
-            if (asEnumHandler != null)
-            {
-                if (registry.ArrayHandlerByType == null)
-                    registry.ArrayHandlerByType = new Dictionary<Type, TypeHandler>();
-                registry.ArrayHandlerByType[asEnumHandler.EnumType] = arrayHandler;
-                return arrayHandler;
-            }
-
-            var asCompositeHandler = elementHandler as ICompositeHandler;
-            if (asCompositeHandler != null)
-            {
-                if (registry.ArrayHandlerByType == null)
-                    registry.ArrayHandlerByType = new Dictionary<Type, TypeHandler>();
-                registry.ArrayHandlerByType[asCompositeHandler.CompositeType] = arrayHandler;
-                return arrayHandler;
-            }
-
-            if (NpgsqlDbType.HasValue)
-                registry.ByNpgsqlDbType[NpgsqlDbType.Value] = arrayHandler;
-
-            // Note that array handlers aren't registered in _byType, because they handle all dimension types and not just one CLR type
-            // (e.g. int[], int[,], int[,,]). So the by-type lookup is special, see this[Type type]
-            // TODO: register single-dimensional in _byType as a specific optimization? But do PSV as well...
-
-            return arrayHandler;
-        }
+        internal override PostgresFacets GetFacets(int typeModifier)
+            => Element.GetFacets(typeModifier);
     }
 }
