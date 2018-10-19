@@ -441,7 +441,7 @@ namespace Npgsql
                         }
                     }
 
-                    if (_connector.Settings.ReplicationMode == ReplicationMode.None)
+                    if (Connector.Settings.ReplicationMode == ReplicationMode.None)
                     {
                         Expect<ParseCompleteMessage>(await Connector.ReadMessage(async));
                         Expect<BindCompleteMessage>(await Connector.ReadMessage(async));
@@ -460,7 +460,7 @@ namespace Npgsql
                         RowDescription = statement.Description = (RowDescriptionMessage)msg;
                         break;
                     case BackendMessageCode.CompletedResponse:
-                        if (_connector.Settings.ReplicationMode != ReplicationMode.None)
+                        if (Connector.Settings.ReplicationMode != ReplicationMode.None)
                         {
                                 RowDescription = statement.Description = null;
                             break;

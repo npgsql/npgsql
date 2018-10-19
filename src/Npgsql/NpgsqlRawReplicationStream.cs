@@ -9,6 +9,7 @@ using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
 using Npgsql.Logging;
 using NpgsqlTypes;
+using static Npgsql.Statics;
 
 #pragma warning disable CA2222 // Do not decrease inherited member visibility
 
@@ -26,7 +27,7 @@ namespace Npgsql
         readonly object _writeSyncObject = new object();
 
         readonly NpgsqlConnector _connector;
-        readonly ReadBuffer _buffer;
+        readonly NpgsqlReadBuffer _buffer;
 
         // Backend messages
         readonly WalDataResponseMessage _walDataResponse;
@@ -112,7 +113,7 @@ namespace Npgsql
             {
                 _connector.CurrentCancelableOperation = this;
                 _connector.SendQuery(replicationCommand);
-                _connector.ReadExpecting<CopyBothResponseMessage>();
+                Expect<CopyBothResponseMessage>(_connector.ReadMessage());
                 _copyInMode = _copyOutMode = true;
             }
             catch
@@ -218,8 +219,8 @@ namespace Npgsql
                         dontWait = false;
                         continue;
                     case BackendMessageCode.CompletedResponse:
-                        await _connector.ReadExpecting<CommandCompleteMessage>(async);
-                        await _connector.ReadExpecting<ReadyForQueryMessage>(async);
+                        Expect<CommandCompleteMessage>(await _connector.ReadMessage(async));
+                        Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async));
 
                         lock (_writeSyncObject)
                         {
@@ -350,7 +351,10 @@ namespace Npgsql
             if (_bytesLeft <= 0)
                 return 0;
 
-            var bytesRead = await _buffer.ReadAllBytes(buffer, offset, Math.Min(_bytesLeft, count), false, async);
+            // TODO: review this change, not sure about it
+            var bytesRead = await _buffer.ReadBytes(buffer, offset, Math.Min(_bytesLeft, count), async);
+            //var bytesRead = await _buffer.ReadAllBytes(buffer, offset, Math.Min(_bytesLeft, count), false, async);
+
             _bytesLeft -= bytesRead;
 
             return bytesRead;
@@ -423,12 +427,8 @@ namespace Npgsql
         /// <summary>
         /// Send CopyDone request and wait for confirmation.
         /// </summary>
-#if NET45 || NET451
-        public override void Close()
-#else
         [PublicAPI]
-        public void Close()
-#endif
+        public override void Close()
         {
             Close(true);
         }

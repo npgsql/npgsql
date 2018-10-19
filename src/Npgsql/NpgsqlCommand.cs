@@ -932,9 +932,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
             await connector.QueryMessage
                 .Populate(statement.SQL)
-                .Write(buff, async, cancellationToken);
+                .Write(buff, async);
 
-            await buff.Flush(async, cancellationToken);
+            await buff.Flush(async);
 
             CleanupSend();
         }

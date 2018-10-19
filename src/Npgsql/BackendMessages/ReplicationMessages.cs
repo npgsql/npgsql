@@ -33,7 +33,7 @@ namespace Npgsql.BackendMessages
             + 8  // EndLsn
             + 8; // SystemClock
 
-        internal void Load(ReadBuffer buffer)
+        internal void Load(NpgsqlReadBuffer buffer)
         {
             var upper = buffer.ReadUInt32();
             var lower = buffer.ReadUInt32();
@@ -72,7 +72,7 @@ namespace Npgsql.BackendMessages
             + 8  // SystemClock
             + 1; // ReplyImmediately
 
-        internal void Load(ReadBuffer buffer)
+        internal void Load(NpgsqlReadBuffer buffer)
         {
             var upper = buffer.ReadUInt32();
             var lower = buffer.ReadUInt32();

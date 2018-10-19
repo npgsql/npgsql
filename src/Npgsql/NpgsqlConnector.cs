@@ -1315,21 +1315,21 @@ namespace Npgsql
         internal void CloseOngoingOperations()
         {
             CurrentReader?.Close(true, false);
-            var currentCopyOperation = CurrentCopyOperation;
-            if (currentCopyOperation != null)
+            var currentCancelableOperation = CurrentCancelableOperation;
+            if (currentCancelableOperation != null)
             {
                 // TODO: There's probably a race condition as the COPY operation may finish on its own during the next few lines
 
                 // Note: we only want to cancel import operations, since in these cases cancel is safe.
                 // Export cancellations go through the PostgreSQL "asynchronous" cancel mechanism and are
                 // therefore vulnerable to the race condition in #615.
-                if (currentCopyOperation is NpgsqlBinaryImporter ||
-                    currentCopyOperation is NpgsqlCopyTextWriter ||
-                    (currentCopyOperation is NpgsqlRawCopyStream && ((NpgsqlRawCopyStream)currentCopyOperation).CanWrite))
+                if (currentCancelableOperation is NpgsqlBinaryImporter ||
+                    currentCancelableOperation is NpgsqlCopyTextWriter ||
+                    (currentCancelableOperation is NpgsqlRawCopyStream && ((NpgsqlRawCopyStream)currentCancelableOperation).CanWrite))
                 {
                     try
                     {
-                        currentCopyOperation.Cancel();
+                        currentCancelableOperation.Cancel();
                     }
                     catch (Exception e)
                     {
@@ -1339,7 +1339,7 @@ namespace Npgsql
 
                 try
                 {
-                    currentCopyOperation.Dispose();
+                    currentCancelableOperation.Dispose();
                 }
                 catch (Exception e)
                 {
@@ -2032,12 +2032,13 @@ namespace Npgsql
             if (ReadBuffer.ReadBytesLeft > 0)
                 return true;
 
-            if (_stream is Tls.TlsClientStream tlsStream)
-            {
-                if (!tlsStream.HasBufferedReadData(false))
-                    return _baseStream.DataAvailable;
-                return true;
-            }
+            // TODO: as TlsClientStream was removed and all connections by default use SslStream, this logic was removed.
+            //if (_stream is Tls.TlsClientStream tlsStream)
+            //{
+            //    if (!tlsStream.HasBufferedReadData(false))
+            //        return _baseStream.DataAvailable;
+            //    return true;
+            //}
 
             if (ReferenceEquals(_stream, _baseStream))
             {

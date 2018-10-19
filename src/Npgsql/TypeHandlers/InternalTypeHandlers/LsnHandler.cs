@@ -21,27 +21,18 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Npgsql.BackendMessages;
-using Npgsql.PostgresTypes;
 using NpgsqlTypes;
+using Npgsql.TypeMapping;
+using Npgsql.TypeHandling;
 
 namespace Npgsql.TypeHandlers.InternalTypesHandlers
 {
     [TypeMapping("pg_lsn", NpgsqlDbType.Lsn, typeof(NpgsqlLsn))]
-    class LsnHandler : SimpleTypeHandler<NpgsqlLsn> 
+    class LsnHandler : NpgsqlSimpleTypeHandler<NpgsqlLsn> 
     {
-        public LsnHandler(PostgresType postgresType)
-            : base(postgresType)
-        {
-        }
-
-        public override NpgsqlLsn Read(ReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override NpgsqlLsn Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             Debug.Assert(len == 8);
 
@@ -51,26 +42,13 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
             return new NpgsqlLsn(upper, lower);
         }
 
-        public override int ValidateAndGetLength(object value, NpgsqlParameter parameter = null)
+        public override int ValidateAndGetLength(NpgsqlLsn value, NpgsqlParameter parameter = null)
+            => 8;
+
+        public override void Write(NpgsqlLsn value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
         {
-            if (value is string)
-                NpgsqlLsn.Parse((string)value);
-            else if (!(value is NpgsqlLsn))
-                throw CreateConversionException(value.GetType());
-
-            return 8;
-        }
-
-        protected override void Write(object value, WriteBuffer buf, NpgsqlParameter parameter = null)
-        {
-            NpgsqlLsn lsn;
-            if (value is string)
-                lsn = NpgsqlLsn.Parse((string)value);
-            else
-                lsn = (NpgsqlLsn)value;
-
-            buf.WriteUInt32(lsn.Upper);
-            buf.WriteUInt32(lsn.Lower);
+            buf.WriteUInt32(value.Upper);
+            buf.WriteUInt32(value.Lower);
         }
     }
 }

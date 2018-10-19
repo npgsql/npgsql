@@ -39,7 +39,7 @@ namespace Npgsql.FrontendMessages
         /// </summary>
         public bool ReplyImmediately { get; set; }
 
-        internal override void WriteFully(WriteBuffer buf)
+        internal override void WriteFully(NpgsqlWriteBuffer buf)
         {
             buf.WriteByte((byte)'r');
 
