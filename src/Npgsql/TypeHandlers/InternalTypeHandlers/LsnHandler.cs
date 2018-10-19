@@ -26,13 +26,12 @@ using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using Npgsql.TypeMapping;
 using Npgsql.TypeHandling;
-using System.Threading.Tasks;
 using JetBrains.Annotations;
 
 namespace Npgsql.TypeHandlers.InternalTypesHandlers
 {
     [TypeMapping("pg_lsn", NpgsqlDbType.Lsn, typeof(NpgsqlLsn))]
-    class LsnHandler : NpgsqlSimpleTypeHandler<NpgsqlLsn>, INpgsqlTypeHandler<string>
+    class LsnHandler : NpgsqlSimpleTypeHandler<NpgsqlLsn>, INpgsqlSimpleTypeHandler<string>
     {
         public override NpgsqlLsn Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
@@ -47,10 +46,11 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
         public override int ValidateAndGetLength(NpgsqlLsn value, NpgsqlParameter parameter = null)
             => 8;
 
-        public int ValidateAndGetLength(string value, ref NpgsqlLengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter)
+        public int ValidateAndGetLength(string value, [CanBeNull] NpgsqlParameter parameter)
         {
             var parsed = NpgsqlLsn.Parse(value);
-            return ValidateAndGetLength(parsed, ref lengthCache, parameter);
+
+            return ValidateAndGetLength(parsed, parameter);
         }
 
         public override void Write(NpgsqlLsn value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
@@ -59,22 +59,16 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
             buf.WriteUInt32(value.Lower);
         }
 
-        public Task Write(string value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter, bool async)
+        public void Write(string value, NpgsqlWriteBuffer buf, [CanBeNull] NpgsqlParameter parameter)
         {
             var parsed = NpgsqlLsn.Parse(value);
-            return WriteWithLengthInternal(parsed, buf, lengthCache, parameter, async);
+
+            Write(parsed, buf, parameter);
         }
 
-        async ValueTask<string> INpgsqlTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        string INpgsqlSimpleTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription)
         {
-            await buf.Ensure(8, async);
-
-            var upper = buf.ReadUInt32();
-            var lower = buf.ReadUInt32();
-
-            var value = new NpgsqlLsn(upper, lower);
-
-            return value.ToString();
+            return Read(buf, len, fieldDescription).ToString();
         }
     }
 }
