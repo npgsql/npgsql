@@ -26,11 +26,13 @@ using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using Npgsql.TypeMapping;
 using Npgsql.TypeHandling;
+using System.Threading.Tasks;
+using JetBrains.Annotations;
 
 namespace Npgsql.TypeHandlers.InternalTypesHandlers
 {
     [TypeMapping("pg_lsn", NpgsqlDbType.Lsn, typeof(NpgsqlLsn))]
-    class LsnHandler : NpgsqlSimpleTypeHandler<NpgsqlLsn> 
+    class LsnHandler : NpgsqlSimpleTypeHandler<NpgsqlLsn>, INpgsqlTypeHandler<string>
     {
         public override NpgsqlLsn Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
@@ -45,10 +47,34 @@ namespace Npgsql.TypeHandlers.InternalTypesHandlers
         public override int ValidateAndGetLength(NpgsqlLsn value, NpgsqlParameter parameter = null)
             => 8;
 
+        public int ValidateAndGetLength(string value, ref NpgsqlLengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter)
+        {
+            var parsed = NpgsqlLsn.Parse(value);
+            return ValidateAndGetLength(parsed, ref lengthCache, parameter);
+        }
+
         public override void Write(NpgsqlLsn value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
         {
             buf.WriteUInt32(value.Upper);
             buf.WriteUInt32(value.Lower);
+        }
+
+        public Task Write(string value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter, bool async)
+        {
+            var parsed = NpgsqlLsn.Parse(value);
+            return WriteWithLengthInternal(parsed, buf, lengthCache, parameter, async);
+        }
+
+        async ValueTask<string> INpgsqlTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        {
+            await buf.Ensure(8, async);
+
+            var upper = buf.ReadUInt32();
+            var lower = buf.ReadUInt32();
+
+            var value = new NpgsqlLsn(upper, lower);
+
+            return value.ToString();
         }
     }
 }
