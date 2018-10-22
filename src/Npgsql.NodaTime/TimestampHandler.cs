@@ -208,7 +208,7 @@ namespace Npgsql.NodaTime
 
         // We need to write the number of microseconds from 2000-01-01T00:00:00.
         internal static void WriteInteger(Instant instant, NpgsqlWriteBuffer buf)
-            => buf.WriteInt64((long)(instant - Instant2000).TotalNanoseconds / 1000);
+            => buf.WriteInt64((long)((instant - Instant2000).ToBigIntegerNanoseconds() / 1000));
 
         // This is legacy support for PostgreSQL's old floating-point timestamp encoding - finally removed in PG 10 and not used for a long
         // time. Unfortunately CrateDB seems to use this for some reason.

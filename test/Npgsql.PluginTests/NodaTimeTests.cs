@@ -50,16 +50,20 @@ namespace Npgsql.PluginTests
             using (var conn = OpenConnection())
             {
                 var instant = localDateTime.InUtc().ToInstant();
+                var minTimestampPostgres = Instant.FromUtc(-4713, 12, 31, 00, 00, 00);
+                var maxTimestampPostgres = Instant.MaxValue;
 
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (d1 TIMESTAMP, d2 TIMESTAMP, d3 TIMESTAMP, d4 TIMESTAMP, d5 TIMESTAMP)");
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (d1 TIMESTAMP, d2 TIMESTAMP, d3 TIMESTAMP, d4 TIMESTAMP, d5 TIMESTAMP, d6 TIMESTAMP, d7 TIMESTAMP)");
 
-                using (var cmd = new NpgsqlCommand("INSERT INTO data VALUES (@p1, @p2, @p3, @p4, @p5)", conn))
+                using (var cmd = new NpgsqlCommand("INSERT INTO data VALUES (@p1, @p2, @p3, @p4, @p5, @p6, @p7)", conn))
                 {
                     cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.Timestamp) { Value = instant });
                     cmd.Parameters.Add(new NpgsqlParameter("p2", DbType.DateTime) { Value = instant });
                     cmd.Parameters.Add(new NpgsqlParameter("p3", DbType.DateTime2) { Value = instant });
                     cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p4", Value = instant });
                     cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p5", Value = localDateTime });
+                    cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p6", Value = minTimestampPostgres });
+                    cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p7", Value = maxTimestampPostgres });
                     cmd.ExecuteNonQuery();
                 }
 
@@ -72,7 +76,15 @@ namespace Npgsql.PluginTests
                         Assert.That(reader.GetValue(i), Is.EqualTo(instant.ToString("yyyy'-'MM'-'dd' 'HH':'mm':'ss'.'FFFFFF", CultureInfo.InvariantCulture)));
                 }
 
-                using (var cmd = new NpgsqlCommand("SELECT * FROM data", conn))
+                using (var cmd = new NpgsqlCommand("SELECT d6::TEXT, d7::TEXT FROM data", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetValue(0), Is.EqualTo("4714-12-31 00:00:00 BC"));
+                    Assert.That(reader.GetValue(1), Is.EqualTo(maxTimestampPostgres.ToString("yyyy'-'MM'-'dd' 'HH':'mm':'ss'.'FFFFFF", CultureInfo.InvariantCulture)));
+                }
+
+                using (var cmd = new NpgsqlCommand("SELECT d1, d2, d3, d4, d5 FROM data", conn))
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
