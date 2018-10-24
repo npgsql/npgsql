@@ -20,7 +20,6 @@ before_script:
   - psql -c "CREATE EXTENSION postgis" travis
   - sudo /etc/init.d/postgresql stop
   - echo "wal_level = logical" | sudo tee -a /etc/postgresql/9.*/main/postgresql.conf
-  - echo "max_replication_slots = 1" | sudo tee -a /etc/postgresql/9.*/main/postgresql.conf
   - sudo /etc/init.d/postgresql start
   - dotnet restore -v Minimal Npgsql.sln
 script:
