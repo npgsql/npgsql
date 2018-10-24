@@ -224,8 +224,8 @@ COMMIT TRANSACTION;
             var backendCommandBehavior = CommandBehavior.Default;
 
             // Because a logical replication connection string does not support multiple statements,
-            // we will need to open a non-replication connection to collect types if the user openend a
-            // replication connection. We also change the command behavior to close this new connection after runing
+            // we will need to open a non-replication connection to load backend types if the user openend a
+            // replication connection. We also change the command behavior to close this new connection after running
             // the query to get backend types.
             if (conn.Connector.Settings.ReplicationMode == ReplicationMode.Logical)
             {
