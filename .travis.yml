@@ -21,6 +21,7 @@ before_script:
   - psql -c "CREATE EXTENSION citext" travis
   - psql -c "CREATE EXTENSION postgis" travis
   - sudo service postgresql stop
+  - sudo cp /etc/postgresql/{9.6,10}/main/pg_hba.conf
   - echo "wal_level = logical" | sudo tee -a /etc/postgresql/10/main/postgresql.conf
   - echo "max_replication_slots = 1" | sudo tee -a /etc/postgresql/10/main/postgresql.conf
   - sudo service postgresql start
