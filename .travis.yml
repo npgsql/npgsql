@@ -13,18 +13,17 @@ addons:
 
 env:
   global:
-    - NPGSQL_TEST_DB: '"Host=localhost;Port=5433;Database=travis;Username=travis;Password=travis"'
-    - PGPORT: 5433
+    - NPGSQL_TEST_DB: '"Host=localhost;Port=5432;Database=travis;Username=travis;Password=travis"'
+    - PGPORT: 5432
 
 before_script:
   - psql -c "ALTER USER travis WITH PASSWORD 'travis'"  # For PG 10 hack
   - psql -c "CREATE EXTENSION citext" travis
   - psql -c "CREATE EXTENSION postgis" travis
-  - sudo service postgresql stop
-  - sudo cp /etc/postgresql/{9.6,10}/main/pg_hba.conf
+  - sudo sed -i 's/port = 5433/port = 5432/' /etc/postgresql/10/main/postgresql.conf
   - echo "wal_level = logical" | sudo tee -a /etc/postgresql/10/main/postgresql.conf
   - echo "max_replication_slots = 1" | sudo tee -a /etc/postgresql/10/main/postgresql.conf
-  - sudo service postgresql start
+  - sudo service postgresql restart
   - dotnet restore -v Minimal Npgsql.sln
 script:
   - dotnet build "test/Npgsql.Tests" -c Debug -f netcoreapp2.1
