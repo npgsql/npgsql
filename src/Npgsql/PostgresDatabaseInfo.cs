@@ -346,6 +346,39 @@ COMMIT TRANSACTION;
                 if (commandTimeout <= 0)
                     throw new TimeoutException();
             }
+            var isReadOnlyQuery = GenerateIsReadOnlyQuery();
+            using (var command = new NpgsqlCommand(isReadOnlyQuery, conn))
+            {
+                command.CommandTimeout = commandTimeout;
+                command.AllResultTypesAreUnknown = true;
+                try
+                {
+                    using (var reader = async ? await command.ExecuteReaderAsync() : command.ExecuteReader())
+                    {
+                        timeout.Check();
+                        if (reader.HasRows)
+                        {
+                            reader.Read();
+                            switch (reader[0])
+                            {
+                                case "t":
+                                    return true;
+
+                                case "f":
+                                    return false;
+                                default:
+                                    throw new Exception("Recovery Mode Undefined.");
+                            }
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    Debug.WriteLine(e);
+                }
+                return false;
+            }
+        }
         /// <summary>
         /// Loads composite fields for the composite type specified by the OID.
         /// </summary>
