@@ -24,8 +24,6 @@ services:
 before_build:
   - '"C:\Program Files\PostgreSQL\10\bin\psql" -c "CREATE EXTENSION citext"'
   - '"C:\Program Files\PostgreSQL\10\bin\psql" -c "CREATE EXTENSION postgis"'
-  - '"C:\Program Files\PostgreSQL\10\bin\psql" -c "SET wal_level TO logical"'
-  - '"C:\Program Files\PostgreSQL\10\bin\psql" -c "SET max_replication_slots TO 1"'
   - appveyor-retry dotnet restore -v Minimal Npgsql.sln
   - appveyor-retry nuget restore src\VSIX\packages.config -SolutionDirectory . -Verbosity quiet -NonInteractive
 build_script:
