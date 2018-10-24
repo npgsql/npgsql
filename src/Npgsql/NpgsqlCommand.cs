@@ -911,7 +911,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             CleanupSend();
         }
 
-        async Task SendReplication(bool async, CancellationToken cancellationToken)
+        async Task SendReplication(bool async)
         {
             if (_statements.Count == 0)
                 return;
@@ -1157,6 +1157,43 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         [NotNull]
         protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior) => ExecuteDbDataReader(behavior, false, CancellationToken.None).GetAwaiter().GetResult();
 
+        Task SendNonReplication(CommandBehavior behavior, [NotNull] NpgsqlConnector connector, bool async)
+        {
+            if ((behavior & CommandBehavior.SchemaOnly) == 0)
+            {
+                if (connector.Settings.MaxAutoPrepare > 0)
+                {
+                    foreach (var statement in _statements)
+                    {
+                        // If this statement isn't prepared, see if it gets implicitly prepared.
+                        // Note that this may return null (not enough usages for automatic preparation).
+                        if (!statement.IsPrepared)
+                            statement.PreparedStatement =
+                                connector.PreparedStatementManager.TryGetAutoPrepared(statement);
+                        if (statement.PreparedStatement != null)
+                            statement.PreparedStatement.LastUsed = DateTime.UtcNow;
+                    }
+                    _connectorPreparedOn = connector;
+                }
+
+                // We do not wait for the entire send to complete before proceeding to reading -
+                // the sending continues in parallel with the user's reading. Waiting for the
+                // entire send to complete would trigger a deadlock for multistatement commands,
+                // where PostgreSQL sends large results for the first statement, while we're sending large
+                // parameter data for the second. See #641.
+                // Instead, all sends for non-first statements and for non-first buffers are performed
+                // asynchronously (even if the user requested sync), in a special synchronization context
+                // to prevents a dependency on the thread pool (which would also trigger deadlocks).
+                // The WriteBuffer notifies this command when the first buffer flush occurs, so that the
+                // send functions can switch to the special async mode when needed.
+                return SendExecute(async);
+            }
+            else
+            {
+                return SendExecuteSchemaOnly(async);
+            }
+        }
+
         async ValueTask<DbDataReader> ExecuteDbDataReader(CommandBehavior behavior, bool async, CancellationToken cancellationToken)
         {
             var connector = CheckReadyAndGetConnector();
@@ -1195,38 +1232,20 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                     connector.UserTimeout = CommandTimeout * 1000;
 
-                    if ((behavior & CommandBehavior.SchemaOnly) == 0)
-                    {
-                        if (connector.Settings.MaxAutoPrepare > 0)
-                        {
-                            foreach (var statement in _statements)
-                            {
-                                // If this statement isn't prepared, see if it gets implicitly prepared.
-                                // Note that this may return null (not enough usages for automatic preparation).
-                                if (!statement.IsPrepared)
-                                    statement.PreparedStatement =
-                                        connector.PreparedStatementManager.TryGetAutoPrepared(statement);
-                                if (statement.PreparedStatement != null)
-                                    statement.PreparedStatement.LastUsed = DateTime.UtcNow;
-                            }
-                            _connectorPreparedOn = connector;
-                        }
+                    var replicationMode = connector.Settings.ReplicationMode;
 
-                        // We do not wait for the entire send to complete before proceeding to reading -
-                        // the sending continues in parallel with the user's reading. Waiting for the
-                        // entire send to complete would trigger a deadlock for multistatement commands,
-                        // where PostgreSQL sends large results for the first statement, while we're sending large
-                        // parameter data for the second. See #641.
-                        // Instead, all sends for non-first statements and for non-first buffers are performed
-                        // asynchronously (even if the user requested sync), in a special synchronization context
-                        // to prevents a dependency on the thread pool (which would also trigger deadlocks).
-                        // The WriteBuffer notifies this command when the first buffer flush occurs, so that the
-                        // send functions can switch to the special async mode when needed.
-                        sendTask = SendExecute(async);
-                    }
-                    else
+                    switch (replicationMode)
                     {
-                        sendTask = SendExecuteSchemaOnly(async);
+                        case ReplicationMode.None:
+                            sendTask = SendNonReplication(behavior, connector, async);
+                            break;
+
+                        case ReplicationMode.Logical:
+                            sendTask = SendReplication(async);
+                            break;
+
+                        default:
+                            throw new NotSupportedException($"The specified replication mode \"{replicationMode}\" not supported.");
                     }
 
                     // The following is a hack. It raises an exception if one was thrown in the first phases

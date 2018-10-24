@@ -25,6 +25,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
 using System.Linq;
@@ -219,11 +220,32 @@ COMMIT TRANSACTION;
 
             var typeLoadingQuery = GenerateTypesQuery(SupportsRangeTypes, SupportsEnumTypes, HasEnumSortOrder, conn.Settings.LoadTableComposites, HasTypeCategory);
 
-            using (var command = new NpgsqlCommand(typeLoadingQuery, conn))
+            var backendTypesConn = conn;
+
+            var behavior = CommandBehavior.Default;
+
+            // Because a logical replication connection string does not support multiple statements,
+            // we will need to open a non-replication connection to collect types if the user openend a
+            // replication connection. We also change the command behavior to close this new connection after runing
+            // the query to get backend types.
+            if (conn.Connector.Settings.ReplicationMode == ReplicationMode.Logical)
+            {
+                var csb = new NpgsqlConnectionStringBuilder(conn.ConnectionString)
+                {
+                    ReplicationMode = ReplicationMode.None
+                };
+
+                backendTypesConn = new NpgsqlConnection(csb.ToString());
+
+                behavior = CommandBehavior.CloseConnection;
+            }
+
+            using (var command = new NpgsqlCommand(typeLoadingQuery, backendTypesConn))
             {
                 command.CommandTimeout = commandTimeout;
                 command.AllResultTypesAreUnknown = true;
-                using (var reader = async ? await command.ExecuteReaderAsync() : command.ExecuteReader())
+
+                using (var reader = async ? await command.ExecuteReaderAsync(behavior) : command.ExecuteReader(behavior))
                 {
                     var byOID = new Dictionary<uint, PostgresType>();
 
@@ -253,7 +275,7 @@ COMMIT TRANSACTION;
                             Debug.Assert(elementOID > 0);
                             if (!byOID.TryGetValue(elementOID, out var elementPostgresType))
                             {
-                                Log.Trace($"Array type '{internalName}' refers to unknown element with OID {elementOID}, skipping", conn.ProcessID);
+                                Log.Trace($"Array type '{internalName}' refers to unknown element with OID {elementOID}, skipping", backendTypesConn.ProcessID);
                                 continue;
                             }
 
@@ -268,7 +290,7 @@ COMMIT TRANSACTION;
                             Debug.Assert(elementOID > 0);
                             if (!byOID.TryGetValue(elementOID, out var subtypePostgresType))
                             {
-                                Log.Trace($"Range type '{internalName}' refers to unknown subtype with OID {elementOID}, skipping", conn.ProcessID);
+                                Log.Trace($"Range type '{internalName}' refers to unknown subtype with OID {elementOID}, skipping", backendTypesConn.ProcessID);
                                 continue;
                             }
 
@@ -293,7 +315,7 @@ COMMIT TRANSACTION;
                             Debug.Assert(baseTypeOID > 0);
                             if (!byOID.TryGetValue(baseTypeOID, out var basePostgresType))
                             {
-                                Log.Trace($"Domain type '{internalName}' refers to unknown base type with OID {baseTypeOID}, skipping", conn.ProcessID);
+                                Log.Trace($"Domain type '{internalName}' refers to unknown base type with OID {baseTypeOID}, skipping", backendTypesConn.ProcessID);
                                 continue;
                             }
                             var domainType = new PostgresDomainType(ns, internalName, oid, basePostgresType);
