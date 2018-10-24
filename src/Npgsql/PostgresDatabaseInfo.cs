@@ -75,7 +75,8 @@ namespace Npgsql
         public bool IsRedshift { get; private set; }
 
         /// <inheritdoc />
-        public override bool SupportsUnlisten => Version >= new Version(6, 4, 0) && !IsRedshift;
+        public bool IsReadOnly {get; private set; }
+        public override bool SupportsUnlisten => Version >= new Version(6, 4, 0) && !IsRedshift &&!IsReadOnly;
 
         /// <summary>
         /// True if the 'pg_enum' table includes the 'enumsortorder' column; otherwise, false.
@@ -116,6 +117,11 @@ namespace Npgsql
 
             IsRedshift = csb.ServerCompatibilityMode == ServerCompatibilityMode.Redshift;
             _types = await LoadBackendTypes(conn, timeout, async);
+            IsReadOnly = await LoadIsReadOnly(conn, timeout, async);
+        }
+        static string GenerateIsReadOnlyQuery()
+        {
+            return "select pg_is_in_recovery() ";
         }
 
         /// <summary>
@@ -331,6 +337,15 @@ COMMIT TRANSACTION;
             }
         }
 
+        internal async Task<bool> LoadIsReadOnly([NotNull] NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
+        {
+            var commandTimeout = 0;  // Default to infinity
+            if (timeout.IsSet)
+            {
+                commandTimeout = (int)timeout.TimeLeft.TotalSeconds;
+                if (commandTimeout <= 0)
+                    throw new TimeoutException();
+            }
         /// <summary>
         /// Loads composite fields for the composite type specified by the OID.
         /// </summary>
