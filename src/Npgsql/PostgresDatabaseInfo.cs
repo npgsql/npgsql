@@ -221,8 +221,7 @@ COMMIT TRANSACTION;
             var typeLoadingQuery = GenerateTypesQuery(SupportsRangeTypes, SupportsEnumTypes, HasEnumSortOrder, conn.Settings.LoadTableComposites, HasTypeCategory);
 
             var backendTypesConn = conn;
-
-            var behavior = CommandBehavior.Default;
+            var backendCommandBehavior = CommandBehavior.Default;
 
             // Because a logical replication connection string does not support multiple statements,
             // we will need to open a non-replication connection to collect types if the user openend a
@@ -230,19 +229,19 @@ COMMIT TRANSACTION;
             // the query to get backend types.
             if (conn.Connector.Settings.ReplicationMode == ReplicationMode.Logical)
             {
-                var csb = new NpgsqlConnectionStringBuilder(conn.ConnectionString)
+                var csb = new NpgsqlConnectionStringBuilder(conn.OriginalConnectionString)
                 {
                     ReplicationMode = ReplicationMode.None
                 };
 
                 backendTypesConn = new NpgsqlConnection(csb.ToString());
+                backendCommandBehavior = CommandBehavior.CloseConnection;
 
                 if (async)
                     await backendTypesConn.OpenAsync();
                 else
                     backendTypesConn.Open();
 
-                behavior = CommandBehavior.CloseConnection;
             }
 
             using (var command = new NpgsqlCommand(typeLoadingQuery, backendTypesConn))
@@ -250,7 +249,7 @@ COMMIT TRANSACTION;
                 command.CommandTimeout = commandTimeout;
                 command.AllResultTypesAreUnknown = true;
 
-                using (var reader = async ? await command.ExecuteReaderAsync(behavior) : command.ExecuteReader(behavior))
+                using (var reader = async ? await command.ExecuteReaderAsync(backendCommandBehavior) : command.ExecuteReader(backendCommandBehavior))
                 {
                     var byOID = new Dictionary<uint, PostgresType>();
 
