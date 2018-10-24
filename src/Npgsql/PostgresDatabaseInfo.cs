@@ -237,6 +237,11 @@ COMMIT TRANSACTION;
 
                 backendTypesConn = new NpgsqlConnection(csb.ToString());
 
+                if (async)
+                    await backendTypesConn.OpenAsync();
+                else
+                    backendTypesConn.Open();
+
                 behavior = CommandBehavior.CloseConnection;
             }
 
