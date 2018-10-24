@@ -18,6 +18,8 @@ before_script:
   - psql -c "ALTER USER travis WITH PASSWORD 'travis'"  # For PG 10 hack
   - psql -c "CREATE EXTENSION citext" travis
   - psql -c "CREATE EXTENSION postgis" travis
+  - psql -c "SET wal_level TO logical"
+  - psql -c "SET max_replication_slots TO 1"
   - dotnet restore -v Minimal Npgsql.sln
 script:
   - dotnet build "test/Npgsql.Tests" -c Debug -f netcoreapp2.1
