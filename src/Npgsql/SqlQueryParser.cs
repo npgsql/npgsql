@@ -273,7 +273,7 @@ namespace Npgsql
                     goto NoneContinue;
 
                 }
-                if (ch != ' ' && ch != '\t' && ch != '\n' & ch != '\r' && ch != '\f') {
+                if (ch != ' ' && ch != '\t' && ch != '\n' && ch != '\r' && ch != '\f') {
                     lastChar = '\0';
                     goto NoneContinue;
                 }
