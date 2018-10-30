@@ -234,7 +234,7 @@ COMMIT TRANSACTION;
                     ReplicationMode = ReplicationMode.None
                 };
 
-                backendTypesConn = new NpgsqlConnection(csb.ToString());
+                backendTypesConn = backendTypesConn.CloneWith(csb.ToString());
                 backendCommandBehavior = CommandBehavior.CloseConnection;
 
                 if (async)
