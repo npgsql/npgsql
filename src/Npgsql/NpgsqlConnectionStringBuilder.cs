@@ -526,7 +526,10 @@ namespace Npgsql
             set
             {
                 _replicationMode = value;
-                SetValue(nameof(ReplicationMode), value);
+                if (value == ReplicationMode.None)
+                    base.Remove(nameof(ReplicationMode));
+                else
+                    SetValue(nameof(ReplicationMode), value);
             }
         }
         ReplicationMode _replicationMode;

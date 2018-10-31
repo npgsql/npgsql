@@ -452,22 +452,22 @@ namespace Npgsql
                     msg = await Connector.ReadMessage(async);
                     switch (msg.Code)
                     {
-                    case BackendMessageCode.NoData:
-                        RowDescription = statement.Description = null;
-                        break;
-                    case BackendMessageCode.RowDescription:
-                        // We have a resultset
-                        RowDescription = statement.Description = (RowDescriptionMessage)msg;
-                        break;
-                    case BackendMessageCode.CompletedResponse:
-                        if (Connector.Settings.ReplicationMode != ReplicationMode.None)
-                        {
-                                RowDescription = statement.Description = null;
+                        case BackendMessageCode.NoData:
+                            RowDescription = statement.Description = null;
                             break;
-                        }
-                        goto default;
-                    default:
-                        throw Connector.UnexpectedMessageReceived(msg.Code);
+                        case BackendMessageCode.RowDescription:
+                            // We have a resultset
+                            RowDescription = statement.Description = (RowDescriptionMessage)msg;
+                            break;
+                        case BackendMessageCode.CompletedResponse:
+                            if (Connector.Settings.ReplicationMode != ReplicationMode.None)
+                            {
+                                RowDescription = statement.Description = null;
+                                break;
+                            }
+                            goto default;
+                        default:
+                            throw Connector.UnexpectedMessageReceived(msg.Code);
                     }
 
                     if (pStatement != null)
@@ -478,18 +478,18 @@ namespace Npgsql
                 }
 
                 msg = await ReadMessage(async);
+
                 if (RowDescription == null)
                 {
                     // Statement did not generate a resultset (e.g. INSERT)
                     // Read and process its completion message and move on to the next statement
-
                     switch (msg.Code)
                     {
-                    case BackendMessageCode.CompletedResponse:
-                    case BackendMessageCode.EmptyQueryResponse:
-                        break;
-                    default:
-                        throw Connector.UnexpectedMessageReceived(msg.Code);
+                        case BackendMessageCode.CompletedResponse:
+                        case BackendMessageCode.EmptyQueryResponse:
+                            break;
+                        default:
+                            throw Connector.UnexpectedMessageReceived(msg.Code);
                     }
 
                     ProcessMessage(msg);

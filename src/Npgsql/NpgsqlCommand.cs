@@ -1232,21 +1232,10 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                     connector.UserTimeout = CommandTimeout * 1000;
 
-                    var replicationMode = connector.Settings.ReplicationMode;
-
-                    switch (replicationMode)
-                    {
-                        case ReplicationMode.None:
-                            sendTask = SendNonReplication(behavior, connector, async);
-                            break;
-
-                        case ReplicationMode.Logical:
-                            sendTask = SendReplication(async);
-                            break;
-
-                        default:
-                            throw new NotSupportedException($"The specified replication mode \"{replicationMode}\" not supported.");
-                    }
+                    if (connector.Settings.ReplicationMode == ReplicationMode.None)
+                        sendTask = SendNonReplication(behavior, connector, async);
+                    else
+                        sendTask = SendReplication(async);
 
                     // The following is a hack. It raises an exception if one was thrown in the first phases
                     // of the send (i.e. in parts of the send that executed synchronously). Exceptions may

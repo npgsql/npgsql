@@ -497,13 +497,13 @@ namespace Npgsql
                 startupMessage["ssl_renegotiation_limit"] = "0";
             switch (Settings.ReplicationMode)
             {
-            case ReplicationMode.Logical:
-                startupMessage["replication"] = "database";
-                break;
-            case ReplicationMode.None:
-                break;
-            default:
-                throw new NotSupportedException($"The specified replication mode \"{Settings.ReplicationMode}\" not supported.");
+                case ReplicationMode.Logical:
+                    startupMessage["replication"] = "database";
+                    break;
+                case ReplicationMode.None:
+                    break;
+                default:
+                    throw new NotSupportedException($"The specified replication mode \"{Settings.ReplicationMode}\" not supported.");
             }
 
             var timezone = Settings.Timezone ?? Environment.GetEnvironmentVariable("PGTZ");
@@ -1323,9 +1323,7 @@ namespace Npgsql
                 // Note: we only want to cancel import operations, since in these cases cancel is safe.
                 // Export cancellations go through the PostgreSQL "asynchronous" cancel mechanism and are
                 // therefore vulnerable to the race condition in #615.
-                if (currentCancelableOperation is NpgsqlBinaryImporter ||
-                    currentCancelableOperation is NpgsqlCopyTextWriter ||
-                    (currentCancelableOperation is NpgsqlRawCopyStream && ((NpgsqlRawCopyStream)currentCancelableOperation).CanWrite))
+                if (currentCancelableOperation.CancellationRequired)
                 {
                     try
                     {
