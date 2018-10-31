@@ -527,9 +527,14 @@ namespace Npgsql
             {
                 _replicationMode = value;
                 if (value == ReplicationMode.None)
-                    base.Remove(nameof(ReplicationMode));
+                {
+                    var canonicalKeyword = PropertyNameToCanonicalKeyword[nameof(ReplicationMode)];
+                    base.Remove(canonicalKeyword);
+                }
                 else
+                {
                     SetValue(nameof(ReplicationMode), value);
+                }
             }
         }
         ReplicationMode _replicationMode;
