@@ -1032,8 +1032,18 @@ namespace Npgsql
 
             var connector = CheckReadyAndGetConnector();
             Log.Debug("Starting raw START_REPLICATION operation", connector.Id);
-            var stream = new NpgsqlRawReplicationStream(connector, replicationCommand, startLsn);
-            return stream;
+            connector.StartUserAction(ConnectorState.Replication);
+            try
+            {
+                var stream = new NpgsqlRawReplicationStream(connector, replicationCommand, startLsn);
+                connector.CurrentCancelableOperation = stream;
+                return stream;
+            }
+            catch
+            {
+                connector.EndUserAction();
+                throw;
+            }
         }
 
         #endregion

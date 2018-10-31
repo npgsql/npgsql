@@ -93,9 +93,6 @@ namespace Npgsql
 
         internal NpgsqlRawReplicationStream([NotNull] NpgsqlConnector connector, string replicationCommand, NpgsqlLsn startLsn)
         {
-            if (connector == null)
-                throw new ArgumentNullException(nameof(connector));
-
             _connector = connector;
             _buffer = _connector.ReadBuffer;
             _walDataResponse = new WalDataResponseMessage();
@@ -108,20 +105,9 @@ namespace Npgsql
                 LastFlushedLsn = startLsn
             };
 
-            _connector.StartUserAction(ConnectorState.Replication);
-            try
-            {
-                _connector.CurrentCancelableOperation = this;
-                _connector.SendQuery(replicationCommand);
-                Expect<CopyBothResponseMessage>(_connector.ReadMessage());
-                _copyInMode = _copyOutMode = true;
-            }
-            catch
-            {
-                _connector.CurrentCancelableOperation = null;
-                _connector.EndUserAction();
-                throw;
-            }
+            _connector.SendQuery(replicationCommand);
+            Expect<CopyBothResponseMessage>(_connector.ReadMessage());
+            _copyInMode = _copyOutMode = true;
         }
 
         /// <summary>
