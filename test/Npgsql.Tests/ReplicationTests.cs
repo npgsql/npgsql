@@ -295,10 +295,19 @@ namespace Npgsql.Tests
                 var replSlots = int.Parse(replSlotsStr);
                 if (replSlots == 0)
                     TestUtil.IgnoreExceptOnBuildServer("max_replication_slots is set to 0 in your postgresql.conf");
+            }
+        }
 
+        [TearDown]
+        public void Teardown()
+        {
+            using (var connection = OpenConnection())
+            {
                 var cmd = connection.CreateCommand();
                 cmd.CommandText = $"SELECT count(*) FROM pg_replication_slots WHERE slot_name = '{TestSlotName}'";
+
                 var value = (long)cmd.ExecuteScalar();
+
                 if (value > 0)
                 {
                     // cleanup after previously failed tests
