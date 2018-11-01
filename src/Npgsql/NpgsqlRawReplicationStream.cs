@@ -183,46 +183,46 @@ namespace Npgsql
 
                     switch (msg.Code)
                     {
-                    case BackendMessageCode.CopyData:
-                        _bytesLeft = ((CopyDataMessage)msg).Length;
-                        _length = _bytesLeft;
-                        break;
-                    case BackendMessageCode.CopyDone:
-                        if (!_copyOutMode)
-                        {
-                            // Protocol violation. CopyDone received twice.
+                        case BackendMessageCode.CopyData:
+                            _bytesLeft = ((CopyDataMessage)msg).Length;
+                            _length = _bytesLeft;
+                            break;
+                        case BackendMessageCode.CopyDone:
+                            if (!_copyOutMode)
+                            {
+                                // Protocol violation. CopyDone received twice.
+                                throw _connector.UnexpectedMessageReceived(msg.Code);
+                            }
+                            lock (_writeSyncObject)
+                            {
+                                _copyOutMode = false;
+                                if (_copyInMode)
+                                {
+                                    _connector.SendMessage(CopyDoneMessage.Instance);
+                                    _copyInMode = false;
+                                }
+                            }
+                            dontWait = false;
+                            continue;
+                        case BackendMessageCode.CompletedResponse:
+                            Expect<CommandCompleteMessage>(await _connector.ReadMessage(async));
+                            Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async));
+
+                            lock (_writeSyncObject)
+                            {
+                                Debug.Assert(!_copyInMode && !_copyOutMode);
+
+                                if (!_disposed)
+                                {
+                                    if (_connector.State == ConnectorState.Replication)
+                                        _connector.EndUserAction();
+                                    Cleanup();
+                                }
+                            }
+                            EndOfStream = true;
+                            return NpgsqlReplicationStreamFetchStatus.Closed;
+                        default:
                             throw _connector.UnexpectedMessageReceived(msg.Code);
-                        }
-                        lock (_writeSyncObject)
-                        {
-                            _copyOutMode = false;
-                            if (_copyInMode)
-                            {
-                                _connector.SendMessage(CopyDoneMessage.Instance);
-                                _copyInMode = false;
-                            }
-                        }
-                        dontWait = false;
-                        continue;
-                    case BackendMessageCode.CompletedResponse:
-                        Expect<CommandCompleteMessage>(await _connector.ReadMessage(async));
-                        Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async));
-
-                        lock (_writeSyncObject)
-                        {
-                            Debug.Assert(!_copyInMode && !_copyOutMode);
-
-                            if (!_disposed)
-                            {
-                                if (_connector.State == ConnectorState.Replication)
-                                    _connector.EndUserAction();
-                                Cleanup();
-                            }
-                        }
-                        EndOfStream = true;
-                        return NpgsqlReplicationStreamFetchStatus.Closed;
-                    default:
-                        throw _connector.UnexpectedMessageReceived(msg.Code);
                     }
                 }
                 Debug.Assert(_bytesLeft > 0);
