@@ -207,7 +207,6 @@ namespace Npgsql
                         case BackendMessageCode.CompletedResponse:
                             Expect<CommandCompleteMessage>(await _connector.ReadMessage(async));
                             Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async));
-
                             lock (_writeSyncObject)
                             {
                                 Debug.Assert(!_copyInMode && !_copyOutMode);
