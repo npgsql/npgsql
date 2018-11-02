@@ -32,33 +32,28 @@ It's critical to understand exactly how timezones and timezone conversions are h
 In particular, .NET's DateTime has a [Kind](https://msdn.microsoft.com/en-us/library/system.datetime.kind(v=vs.110).aspx) property which impacts how
 Npgsql reads and writes the value.
 
-For PostgreSQL `timestamp without time zone` and time (without time zone), the database value's timezone is unknown or undefined.
-Therefore, Npgsql does no timezone conversion whatsoever and always sends your DateTime as-is, regardless of its Kind.
-For DateTimeOffset, the timestamp component is sent as-is (i.e. the timezone component is discarded).
+By default, `DateTime` is sent to PostgreSQL as a `timestamp without time zone` - no timezone conversion of any kind will occur, and your `DateTime` instance will be transferred as-is to PostgreSQL. This is the recommended way to store timestamps in the database. Note that you may still send `DateTime` as `timestamp with time zone` by setting `NpgsqlDbType.TimestampTz` on your `NpgsqlParameter`; in this case, if the `Kind` is `Local`, Npgsql will convert the value to UTC before sending it to PostgreSQL. Otherwise, it will be sent as-is.
 
-For PostgreSQL `timestamp with time zone`, the database value's timezone is expected to always be UTC (the timezone isn't saved in the database).
-As a result, a DateTime Offset as well as a DateTime with Kind=Local Npgsql will be converted to UTC before being sent to the database.
-When reading a timestamptz, the database UTC timestamp will be returned as a DateTime with Kind=Local or a DateTimeOffset in the local timezone (*UNIMPLEMENTED?*).
+You can also send `DateTimeOffset` values, which are written as `timestamptz` and are converted to UTC before sending.
 
-PostgreSQL `time with time zone` is the only date/time type which stores a timezone in the database.
-Accordingly, your DateTime's Kind will determine the the timezone sent to the database.
+PostgreSQL `time with time zone` is the only date/time type which actually stores a timezone in the database. You can use a `DateTimeOffset` to send one to PostgreSQL, in which case the date component is dropped and the time and timezone are preserved. You can also send a `DateTime`, in which case the `Kind` will determine the the timezone sent to the database.
 
 ## Detailed Behavior: Sending values to the database
 
-.NET value                     | PG type               | Action
--------------------------------|-----------------------|--------------------------------------------------
-DateTime                       | timestamp (default)   | Send as-is
-                               |                       |
-DateTime(Kind=UTC,Unspecified) | timestamptz           | Send as-is
-DateTime(Kind=Local)           | timestamptz           | Convert to UTC locally before sending
-DateTimeOffset                 | timestamptz (default) | Convert to UTC locally before sending
-                               |                       |
-TimeSpan                       | time                  | Send as-is
-                               |                       |
-DateTime(Kind=UTC)             | timetz                | Send time and UTC timezone
-DateTime(Kind=Local)           | timetz                | Send time and local system timezone
-DateTime(Kind=Unspecified)     | timetz                | Assume local, send time and local system timezone
-DateTimeOffset                 | timetz                | Send time and timezone
+.NET value                     | NpgsqlDbType                       | Action
+-------------------------------|------------------------------------|--------------------------------------------------
+DateTime                       | NpgsqlDbType.Timestamp (default)   | Send as-is
+DateTime(Kind=UTC,Unspecified) | NpgsqlDbType.TimestampTz           | Send as-is
+DateTime(Kind=Local)           | NpgsqlDbType.TimestampTz           | Convert to UTC locally before sending
+                               |                                    |
+DateTimeOffset                 | NpgsqlDbType.TimestampTz (default) | Convert to UTC locally before sending
+                               |                                    |
+TimeSpan                       | NpgsqlDbType.Time (default)        | Send as-is
+                               |                                    |
+DateTimeOffset                 | NpgsqlDbType.TimeTz                | Send time and timezone
+DateTime(Kind=UTC)             | NpgsqlDbType.TimeTz                | Send time and UTC timezone
+DateTime(Kind=Local)           | NpgsqlDbType.TimeTz                | Send time and local system timezone
+DateTime(Kind=Unspecified)     | NpgsqlDbType.TimeTz                | Assume local, send time and local system timezone
 
 ## Detailed Behavior: Reading values from the database
 
@@ -70,12 +65,10 @@ timestamptz | DateTime (default)       | Kind=Local (according to system timezon
 timestamptz | DateTimeOffset           | In local timezone offset
             |                          |
 time        | TimeSpan (default)       | As-is
-time        | DateTime                 | **Use only time component**
-time        | DateTimeOffset           | **Exception?**
             |                          |
+timetz      | DateTimeOffset (default) | Date component is empty
 timetz      | TimeSpan                 | Strip offset, read as-is
-timetz      | DateTime                 | **Use only time component, throw away time zone**
-timetz      | DateTimeOffset (default) | **Use only time- and time zone component**
+timetz      | DateTime                 | Strip offset, date is empty
 
 ## Further Reading
 
