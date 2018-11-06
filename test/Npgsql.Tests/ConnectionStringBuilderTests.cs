@@ -31,6 +31,38 @@ namespace Npgsql.Tests
 {
     class ConnectionStringBuilderTests
     {
+        [Test, Description("When creating a builder, if ReplicationMode is not None, Pooling should be disabled")]
+        public void ConstructorWhenReplicationModeIsNotNoneShouldDisablePooling()
+        {
+            var builder = new NpgsqlConnectionStringBuilder()
+            {
+                ReplicationMode = ReplicationMode.Logical
+            };
+
+            Assert.That(builder.Pooling, Is.False);
+        }
+
+        [Test, Description("When setting ReplicationMode to something different than None, Pooling should be disabled")]
+        public void ShouldDisablePoolingWhenReplicationModeIsSet()
+        {
+            var builder = new NpgsqlConnectionStringBuilder();
+
+            builder.ReplicationMode = ReplicationMode.Logical;
+
+            Assert.That(builder.Pooling, Is.False);
+        }
+
+        [Test, Description("When setting ReplicationMode to something different than None, Pooling should be disabled")]
+        public void ShouldNotEnablePoolingIfReplicationModeIsNotNone()
+        {
+            var builder = new NpgsqlConnectionStringBuilder();
+
+            builder.ReplicationMode = ReplicationMode.Logical;
+            builder.Pooling = true;
+
+            Assert.That(builder.Pooling, Is.False);
+        }
+
         [Test]
         public void Basic()
         {
