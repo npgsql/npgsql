@@ -209,16 +209,21 @@ namespace Npgsql
                             Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async));
                             lock (_writeSyncObject)
                             {
-                                Debug.Assert(!_copyInMode && !_copyOutMode);
-
                                 if (!_disposed)
                                 {
                                     if (_connector.State == ConnectorState.Replication)
                                         _connector.EndUserAction();
+
                                     Cleanup();
                                 }
                             }
                             EndOfStream = true;
+                            if (_copyInMode || _copyOutMode)
+                            {
+                                // There is currently an issue with the PostgreSQL that we can not run a replication stream more than once in the same connection.
+                                // If this connection already rans a stream before, it should be discarded.
+                                throw new InvalidOperationException("Unexpected message received from server. If this connection already ran a replication stream before, it should be discarded. Replication connections can only run replication stream once.");
+                            }
                             return NpgsqlReplicationStreamFetchStatus.Closed;
                         default:
                             throw _connector.UnexpectedMessageReceived(msg.Code);

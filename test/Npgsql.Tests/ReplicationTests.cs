@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Threading;
 using NpgsqlTypes;
@@ -30,7 +31,7 @@ namespace Npgsql.Tests
                 Assert.Throws<PostgresException>(() => connection.BeginReplication(incorrectCmdText, new NpgsqlLsn(0, 0)));
             }
         }
-        
+
         [Test]
         public void ReplicationCommands()
         {
@@ -171,6 +172,87 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        public void MultipleStreamsInSameConnection()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ReplicationMode = ReplicationMode.Logical
+            };
+
+            using (var connection = new NpgsqlConnection(csb.ToString()))
+            {
+                connection.Open();
+
+                var dropSlot = false;
+
+                try
+                {
+                    var cmd = connection.CreateCommand();
+                    cmd.CommandText = "CREATE_REPLICATION_SLOT " + TestSlotName + " LOGICAL " + TestPlugin;
+                    NpgsqlLsn lsn;
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        dropSlot = true;
+                        Assert.IsTrue(reader.Read());
+                        lsn = NpgsqlLsn.Parse(reader.GetString(1));
+                        Assert.IsFalse(reader.Read());
+                    }
+
+                    const int flushTimeout = 1000;
+                    Stopwatch sw;
+
+                    for (var i = 0; i < 2; i++)
+                    {
+                        sw = Stopwatch.StartNew();
+
+                        using (var stream = connection.BeginReplication("START_REPLICATION SLOT " + TestSlotName + " LOGICAL " + lsn, lsn))
+                        {
+                            var keepFetching = true;
+                            while (keepFetching)
+                            {
+                                if (i == 0)
+                                {
+                                    var status = stream.FetchNext();
+
+                                    switch (status)
+                                    {
+                                        case NpgsqlReplicationStreamFetchStatus.None:
+                                            if (sw.ElapsedMilliseconds <= flushTimeout)
+                                            {
+                                                Thread.Sleep(50);
+                                                break;
+                                            }
+                                            Assert.That(stream.Flush(true), Is.True);
+                                            sw.Reset();
+                                            break;
+                                        case NpgsqlReplicationStreamFetchStatus.KeepAlive:
+                                            keepFetching = false;
+                                            break;
+                                        default:
+                                            Assert.That(status, Is.EqualTo(NpgsqlReplicationStreamFetchStatus.None).Or.EqualTo(NpgsqlReplicationStreamFetchStatus.KeepAlive), "Iteration {0}", i);
+                                            break;
+                                    }
+                                }
+                                else
+                                {
+                                    Thread.Sleep(50);
+                                    var ex = Assert.Throws<InvalidOperationException>(() => stream.FetchNext());
+                                    Assert.That(ex.Message, Is.EqualTo("Unexpected message received from server. If this connection already ran a replication stream before, it should be discarded. Replication connections can only run replication stream once."));
+                                    keepFetching = false;
+                                }
+                            }
+                        }
+                    }
+                }
+                finally
+                {
+                    if (dropSlot)
+                        connection.ExecuteNonQuery("DROP_REPLICATION_SLOT " + TestSlotName);
+                }
+            }
+        }
+
+        [Test]
         public void MultipleStreamsInOneSlot()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
@@ -288,6 +370,13 @@ namespace Npgsql.Tests
                         Assert.IsTrue(stream.EndOfStream);
                         Assert.That(stream.StartLsn, Is.EqualTo(lastLsn));
                     }
+                    using (var stream = connection.BeginReplication("START_REPLICATION SLOT " + TestSlotName + " LOGICAL " + lsn, lsn))
+                    using (var reader = new StreamReader(stream))
+                    {
+                        Thread.Sleep(50);
+                        var ex = Assert.Throws<InvalidOperationException>(() => stream.FetchNext());
+                        Assert.That(ex.Message, Is.EqualTo("Unexpected message received from server. If this connection already ran a replication stream before, it should be discarded. Replication connections can only run replication stream once."));
+                    }
                 }
                 finally
                 {
@@ -309,8 +398,8 @@ namespace Npgsql.Tests
             }
         }
 
-        [TearDown]
-        public void Teardown()
+        [SetUp]
+        public void SetUp()
         {
             using (var connection = OpenConnection())
             {
