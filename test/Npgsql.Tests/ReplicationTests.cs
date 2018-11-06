@@ -38,6 +38,7 @@ namespace Npgsql.Tests
             {
                 ReplicationMode = ReplicationMode.Logical
             };
+
             const string createCmd = "CREATE_REPLICATION_SLOT " + TestSlotName + " LOGICAL " + TestPlugin;
             const string dropCmd = "DROP_REPLICATION_SLOT " + TestSlotName;
             using (var connection = OpenConnection(csb))
@@ -170,7 +171,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void MultipleOpenInOneConnection()
+        public void MultipleStreamsInOneSlot()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -180,7 +181,9 @@ namespace Npgsql.Tests
             using (var connection = new NpgsqlConnection(csb.ToString()))
             {
                 connection.Open();
+
                 var dropSlot = false;
+
                 try
                 {
                     var cmd = connection.CreateCommand();
@@ -196,38 +199,46 @@ namespace Npgsql.Tests
 
                     const int flushTimeout = 1000;
                     Stopwatch sw;
+
                     for (var i = 0; i < 3; i++)
                     {
-                        sw = Stopwatch.StartNew();
-                        using (var stream = connection.BeginReplication("START_REPLICATION SLOT " + TestSlotName + " LOGICAL " + lsn, lsn))
+                        using (var replConnection = new NpgsqlConnection(csb.ToString()))
                         {
-                            var keepFetching = true;
-                            while (keepFetching)
+                            replConnection.Open();
+                            sw = Stopwatch.StartNew();
+
+                            using (var stream = replConnection.BeginReplication("START_REPLICATION SLOT " + TestSlotName + " LOGICAL " + lsn, lsn))
                             {
-                                var status = stream.FetchNext();
-                                switch (status)
+                                var keepFetching = true;
+                                while (keepFetching)
                                 {
-                                case NpgsqlReplicationStreamFetchStatus.None:
-                                    if (sw.ElapsedMilliseconds <= flushTimeout)
+                                    var status = stream.FetchNext();
+                                    switch (status)
                                     {
-                                        Thread.Sleep(50);
-                                        break;
+                                        case NpgsqlReplicationStreamFetchStatus.None:
+                                            if (sw.ElapsedMilliseconds <= flushTimeout)
+                                            {
+                                                Thread.Sleep(50);
+                                                break;
+                                            }
+                                            Assert.That(stream.Flush(true), Is.True);
+                                            sw.Reset();
+                                            break;
+                                        case NpgsqlReplicationStreamFetchStatus.KeepAlive:
+                                            keepFetching = false;
+                                            break;
+                                        default:
+                                            Assert.That(status, Is.EqualTo(NpgsqlReplicationStreamFetchStatus.None).Or.EqualTo(NpgsqlReplicationStreamFetchStatus.KeepAlive), "Iteration {0}", i);
+                                            break;
                                     }
-                                    Assert.That(stream.Flush(true), Is.True);
-                                    sw.Reset();
-                                    break;
-                                case NpgsqlReplicationStreamFetchStatus.KeepAlive:
-                                    keepFetching = false;
-                                    break;
-                                default:
-                                    Assert.That(status, Is.EqualTo(NpgsqlReplicationStreamFetchStatus.None).Or.EqualTo(NpgsqlReplicationStreamFetchStatus.KeepAlive), "Iteration {0}", i);
-                                    break;
                                 }
                             }
                         }
                     }
 
                     csb.ReplicationMode = ReplicationMode.None;
+                    csb.Pooling = true;
+
                     using (var normalConnection = new NpgsqlConnection(csb.ToString()))
                     {
                         normalConnection.Open();

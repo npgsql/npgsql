@@ -526,6 +526,7 @@ namespace Npgsql
             set
             {
                 _replicationMode = value;
+
                 if (value == ReplicationMode.None)
                 {
                     var canonicalKeyword = PropertyNameToCanonicalKeyword[nameof(ReplicationMode)];
@@ -534,6 +535,10 @@ namespace Npgsql
                 else
                 {
                     SetValue(nameof(ReplicationMode), value);
+
+                    // Replication connections can not be pooled at the moment
+                    if (Pooling)
+                        Pooling = false;
                 }
             }
         }
@@ -692,10 +697,28 @@ namespace Npgsql
             get => _pooling;
             set
             {
-                _pooling = value;
-                SetValue(nameof(Pooling), value);
+                if (ReplicationMode == ReplicationMode.None)
+                {
+                    _pooling = value;
+
+                    if (value)
+                    {
+                        var canonicalKeyword = PropertyNameToCanonicalKeyword[nameof(ReplicationMode)];
+                        base.Remove(canonicalKeyword);
+                    }
+                    else
+                    {
+                        SetValue(nameof(Pooling), false);
+                    }
+                }
+                else
+                {
+                    _pooling = false;
+                    SetValue(nameof(Pooling), false);
+                }
             }
         }
+
         bool _pooling;
 
         /// <summary>
