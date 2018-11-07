@@ -166,7 +166,6 @@ namespace Npgsql.BackendMessages
             TypeModifier = typeModifier;
             FormatCode = formatCode;
 
-            RealHandler = typeMapper.GetByOID(TypeOID);
             ResolveHandler();
         }
 
@@ -224,11 +223,6 @@ namespace Npgsql.BackendMessages
         /// Returns <see cref="UnknownTypeHandler"/> for fields with format text.
         /// </summary>
         internal NpgsqlTypeHandler Handler { get; private set; }
-
-        /// <summary>
-        /// The type handler resolved for this field, regardless of whether it's binary or text.
-        /// </summary>
-        internal NpgsqlTypeHandler RealHandler { get; private set; }
 
         internal PostgresType PostgresType
             => _typeMapper.DatabaseInfo.ByOID.TryGetValue(TypeOID, out var postgresType)

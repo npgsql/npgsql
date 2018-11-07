@@ -271,6 +271,26 @@ namespace Npgsql.Tests
 
         enum Mood { Sad, Ok, Happy };
 
+        [Test]
+        public void Crap()
+        {
+            using (var conn = OpenConnection())
+            {
+                using (var cmd = new NpgsqlCommand("SELECT 1 WHERE 1 = 0", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    if (reader.HasRows)
+                    {
+                        while (reader.Read())
+                        {
+                            Console.WriteLine("READ ROWS");
+                        }
+                    }
+                }
+            }
+
+        }
+
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2003")]
         public void Bug2003()
         {
