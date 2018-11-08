@@ -38,7 +38,7 @@ cmd.ExecuteNonQuery();
 // And so on
 ```
 
-Note that all parameters must be set before calling `Prepare()` - they are part of the information transmitted to PostgreSQL and used to effectively plan the statement. You must also set the `DbType` or `NpgsqlDbType` on your parameters to unambiguously specify the data type (setting the value isn't support).
+Note that all parameters must be set before calling `Prepare()` - they are part of the information transmitted to PostgreSQL and used to effectively plan the statement. You must also set the `DbType` or `NpgsqlDbType` on your parameters to unambiguously specify the data type (setting the value isn't supported).
 
 Note that preparation happens on individual statements, and not on commands, which can contain multiple statements, batching them together. This can be important in cases such as the following:
 
