@@ -46,6 +46,8 @@ Connection reset happens via the PostgreSQL [`DISCARD ALL` command](https://www.
 
 If you really want to squeeze every last bit of performance from PostgreSQL, you may disable connect reset by specifying `No Reset On Close` on your connection string - this will slightly improve performance in scenarios where connection are very short-lived, and especially if prepared statements are in use.
 
+Connection reset handling logic isn't compatible with the PgBouncer's idea of transaction pooling. If you are using PgBouncer polling together with Npgsql pooling, and if your PgBouncer is running in transaction/statement mode, you must turn `No Reset On Close` on. 
+
 ## Reading Large Values
 
 When reading results from PostgreSQL, Npgsql first reads raw binary data from the network into an internal read buffer, and then parses that data as you call methods such as `NpgsqlDataReader.GetString()`. While this allows for efficient network reads, it's worth thinking about the size of this buffer, which is 8K by default. Under normal usage,, Npgsql attempts to read each row into the buffer; if that entire row fits in 8K, you'll have optimal performance. However, if a row is bigger than 8K, Npgsql will allocate an "oversize buffer", which will be used until the connection is closed or returned to the pool. If you're not careful, this can create significant memory churn that will slow down your application. To avoid this, if you know you're going to be reading 16k rows, you can specify `Read Buffer Size=18000` in your connection string (leaving some margin for protocol overhead), this will ensure that the read buffer is reused and no extra allocation occur.
