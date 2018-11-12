@@ -69,9 +69,10 @@ Additional known issues:
 
 ## pgbouncer
 
-Npgsql works well with pgbouncer, but there are some quirks to be aware of.
+Npgsql works well with PgBouncer, but there are some quirks to be aware of.
 
-* Don't forget to turn off Npgsql's internal connection pool by specifying `Pooling=false` on the connection string.
+* In many cases, you'll want to turn off Npgsql's internal connection pool by specifying `Pooling=false` on the connection string.
+* If you decide to keep Npgsql pooling on along with PgBouncer, and are using PgBouncer's transaction or statement mode, then you  need to specify `No Reset On Close=true` on the connection string. This disables Npgsql's connection reset logic (`DISCARD ALL`), which gets executed when a connection is return to Npgsql's pool, and which makes no sense in these modes.
 * Prior to version 3.1, Npgsql sends the `statement_timeout` startup parameter when it connects, but this parameter isn't supported by pgbouncer.
   You can get around this by specifying `CommandTimeout=0` on the connection string, and then manually setting the `CommandTimeout`
   property on your `NpgsqlCommand` objects. Version 3.1 no longer sends `statement_timeout`.
