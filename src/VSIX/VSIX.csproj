@@ -225,6 +225,9 @@
     <Reference Include="System.Threading.Tasks.Extensions">
       <HintPath>..\Npgsql\bin\$(Configuration)\net451\System.Threading.Tasks.Extensions.dll</HintPath>
     </Reference>
+    <Reference Include="System.ValueTuple">
+      <HintPath>..\Npgsql\bin\$(Configuration)\net452\System.ValueTuple.dll</HintPath>
+    </Reference>
     <Reference Include="stdole, Version=7.0.3300.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
       <EmbedInteropTypes>False</EmbedInteropTypes>
     </Reference>
