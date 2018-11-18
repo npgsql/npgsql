@@ -7,7 +7,7 @@ environment:
     NPGSQL_TEST_DB: Host=localhost;Database=postgres;Username=postgres;Password=Password12!
     PGUSER: postgres
     PGPASSWORD: Password12!
-    POSTGIS_EXE: postgis-bundle-pg96x64-setup-2.4.4-1.exe
+    POSTGIS_EXE: postgis-bundle-pg10x64-setup-2.5.0-1.exe
 cache:
   - '%USERPROFILE%\.nuget\packages -> **\*.csproj'
   - 'C:\projects\npgsql\packages -> **\*.csproj'  # For VSIX
