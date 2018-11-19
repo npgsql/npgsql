@@ -58,9 +58,9 @@ namespace Npgsql.Tests
             }
             catch (PostgresException e)
             {
-                if (e.SqlState == "3D000")
+                if (e.SqlState == PostgresErrorCodes.InvalidCatalogName)
                     TestUtil.IgnoreExceptOnBuildServer("Please create a database npgsql_tests, owned by user npgsql_tests");
-                else if (e.SqlState == "28P01")
+                else if (e.SqlState == PostgresErrorCodes.InvalidPassword)
                     TestUtil.IgnoreExceptOnBuildServer("Please create a user npgsql_tests as follows: create user npgsql_tests with password 'npgsql_tests'");
                 else
                     throw;
