@@ -1,19 +1,20 @@
 ﻿namespace Npgsql
 {
     /// <summary>
-    /// Provides constants to PostgreSQL's error codes.
+    /// Provides constants for PostgreSQL error codes.
     /// </summary>
     /// <remarks>
     /// See http://www.postgresql.org/docs/current/static/errcodes-appendix.html
     /// </remarks>
     public static class PostgresErrorCodes
     {
-#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+        #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
-        // Class 00 - Successful Completion
+        #region Class 00 - Successful Completion
         public const string SuccessfulCompletion = "00000";
+        #endregion Class 00 - Successful Completion
 
-        // Class 01 - Warning
+        #region Class 01 - Warning
         public const string Warning = "01000";
         public const string DynamicResultSetsReturnedWarning = "0100C";
         public const string ImplicitZeroBitPaddingWarning = "01008";
@@ -22,54 +23,67 @@
         public const string PrivilegeNotRevokedWarning = "01006";
         public const string StringDataRightTruncationWarning = "01004";
         public const string DeprecatedFeatureWarning = "01P01";
+        #endregion Class 01 - Warning
 
-        // Class 02 - No Data
+        #region Class 02 - No Data
         public const string NoData = "02000";
         public const string NoAdditionalDynamicResultSetsReturned = "02001";
+        #endregion Class 02 - No Data
 
-        // Class 03 - SQL Statement Not Yet Complete
+        #region Class 03 - SQL Statement Not Yet Complete
         public const string SqlStatementNotYetComplete = "03000";
+        #endregion Class 03 - SQL Statement Not Yet Complete
 
-        // Class 08 - Connection Exception
+        #region Class 08 - Connection Exception
         public const string ConnectionException = "08000";
         public const string ConnectionDoesNotExist = "08003";
         public const string ConnectionFailure = "08006";
-        public const string SqlclientUnableToEstablishSqlconnection = "08001";
-        public const string SqlserverRejectedEstablishmentOfSqlconnection = "08004";
+        public const string SqlClientUnableToEstablishSqlConnection = "08001";
+        public const string SqlServerRejectedEstablishmentOfSqlConnection = "08004";
         public const string TransactionResolutionUnknown = "08007";
         public const string ProtocolViolation = "08P01";
+        #endregion Class 08 - Connection Exception
 
-        // Class 09 - Triggered Action Exception
+        #region Class 09 - Triggered Action Exception
         public const string TriggeredActionException = "09000";
+        #endregion Class 09 - Triggered Action Exception
 
-        // Class 0A - Feature Not Supported
+        #region Class 0A - Feature Not Supported
         public const string FeatureNotSupported = "0A000";
+        #endregion Class 0A - Feature Not Supported
 
-        // Class 0B - Invalid Transaction Initiation
+        #region Class 0B - Invalid Transaction Initiation
         public const string InvalidTransactionInitiation = "0B000";
+        #endregion Class 0B - Invalid Transaction Initiation
 
-        // Class 0F - Locator Exception
+        #region Class 0F - Locator Exception
         public const string LocatorException = "0F000";
         public const string InvalidLocatorSpecification = "0F001";
+        #endregion Class 0F - Locator Exception
 
-        // Class 0L - Invalid Grantor
+        #region Class 0L - Invalid Grantor
         public const string InvalidGrantor = "0L000";
         public const string InvalidGrantOperation = "0LP01";
+        #endregion Class 0L - Invalid Grantor
 
-        // Class 0P - Invalid Role Specification
+        #region Class 0P - Invalid Role Specification
         public const string InvalidRoleSpecification = "0P000";
+        #endregion Class 0P - Invalid Role Specification
 
-        // Class 0Z - Diagnostics Exception
+        #region Class 0Z - Diagnostics Exception
         public const string DiagnosticsException = "0Z000";
         public const string StackedDiagnosticsAccessedWithoutActiveHandler = "0Z002";
+        #endregion Class 0Z - Diagnostics Exception
 
-        // Class 20 - Case Not Found
+        #region Class 20 - Case Not Found
         public const string CaseNotFound = "20000";
+        #endregion Class 20 - Case Not Found
 
-        // Class 21 - CardinalityViolation
+        #region Class 21 - CardinalityViolation
         public const string CardinalityViolation = "21000";
+        #endregion Class 21 - CardinalityViolation
 
-        // Class 22 - Data Exception
+        #region Class 22 - Data Exception
         public const string DataException = "22000";
         public const string ArraySubscriptError = "2202E";
         public const string CharacterNotInRepertoire = "22021";
@@ -119,8 +133,9 @@
         public const string InvalidXmlContent = "2200N";
         public const string InvalidXmlComment = "2200S";
         public const string InvalidXmlProcessingInstruction = "2200T";
+        #endregion Class 22 - Data Exception
 
-        // Class 23 - Integrity Constraint Violation
+        #region Class 23 - Integrity Constraint Violation
         public const string IntegrityConstraintViolation = "23000";
         public const string RestrictViolation = "23001";
         public const string NotNullViolation = "23502";
@@ -128,11 +143,13 @@
         public const string UniqueViolation = "23505";
         public const string CheckViolation = "23514";
         public const string ExclusionViolation = "23P01";
+        #endregion Class 23 - Integrity Constraint Violation
 
-        // Class 24 - Invalid Cursor State
+        #region Class 24 - Invalid Cursor State
         public const string InvalidCursorState = "24000";
+        #endregion Class 24 - Invalid Cursor State
 
-        // Class 25 - Invalid Transaction State
+        #region Class 25 - Invalid Transaction State
         public const string InvalidTransactionState = "25000";
         public const string ActiveSqlTransaction = "25001";
         public const string BranchTransactionAlreadyActive = "25002";
@@ -144,67 +161,81 @@
         public const string SchemaAndDataStatementMixingNotSupported = "25007";
         public const string NoActiveSqlTransaction = "25P01";
         public const string InFailedSqlTransaction = "25P02";
+        #endregion Class 25 - Invalid Transaction State
 
-        // Class 26 - Invalid SQL Statement Name
+        #region Class 26 - Invalid SQL Statement Name
         public const string InvalidSqlStatementName = "26000";
+        #endregion Class 26 - Invalid SQL Statement Name
 
-        // Class 27 - Triggered Data Change Violation
+        #region Class 27 - Triggered Data Change Violation
         public const string TriggeredDataChangeViolation = "27000";
+        #endregion Class 27 - Triggered Data Change Violation
 
-        // Class 28 - Invalid Authorization Scheme
+        #region Class 28 - Invalid Authorization Scheme
         public const string InvalidAuthorizationSpecification = "28000";
         public const string InvalidPassword = "28P01";
+        #endregion Class 28 - Invalid Authorization Scheme
 
-        // Class 2B - Dependent Privilege Descriptors Still Exist
+        #region Class 2B - Dependent Privilege Descriptors Still Exist
         public const string DependentPrivilegeDescriptorsStillExist = "2B000";
         public const string DependentObjectsStillExist = "2BP01";
+        #endregion Class 2B - Dependent Privilege Descriptors Still Exist
 
-        // Class 2D - Invalid Transaction Termination
+        #region Class 2D - Invalid Transaction Termination
         public const string InvalidTransactionTermination = "2D000";
+        #endregion Class 2D - Invalid Transaction Termination
 
-        // Class 2F - SQL Routine Exception
+        #region Class 2F - SQL Routine Exception
         public const string SqlRoutineException = "2F000";
         public const string FunctionExecutedNoReturnStatementSqlRoutineException = "2F005";
         public const string ModifyingSqlDataNotPermittedSqlRoutineException = "2F002";
         public const string ProhibitedSqlStatementAttemptedSqlRoutineException = "2F003";
         public const string ReadingSqlDataNotPermittedSqlRoutineException = "2F004";
+        #endregion Class 2F - SQL Routine Exception
 
-        // Class 34 - Invalid Cursor Name
+        #region Class 34 - Invalid Cursor Name
         public const string InvalidCursorName = "34000";
+        #endregion Class 34 - Invalid Cursor Name
 
-        // Class 38 - External Routine Exception
+        #region Class 38 - External Routine Exception
         public const string ExternalRoutineException = "38000";
         public const string ContainingSqlNotPermittedExternalRoutineException = "38001";
         public const string ModifyingSqlDataNotPermittedExternalRoutineException = "38002";
         public const string ProhibitedSqlStatementAttemptedExternalRoutineException = "38003";
         public const string ReadingSqlDataNotPermittedExternalRoutineException = "38004";
+        #endregion Class 38 - External Routine Exception
 
-        // Class 39 - External Routine Invocation Exception
+        #region Class 39 - External Routine Invocation Exception
         public const string ExternalRoutineInvocationException = "39000";
         public const string InvalidSqlstateReturnedExternalRoutineInvocationException = "39001";
         public const string NullValueNotAllowedExternalRoutineInvocationException = "39004";
         public const string TriggerProtocolViolatedExternalRoutineInvocationException = "39P01";
         public const string SrfProtocolViolatedExternalRoutineInvocationException = "39P02";
         public const string EventTriggerProtocolViolatedExternalRoutineInvocationException = "39P03";
+        #endregion Class 39 - External Routine Invocation Exception
 
-        // Class 3B - Savepoint Exception
+        #region Class 3B - Savepoint Exception
         public const string SavepointException = "3B000";
         public const string InvalidSavepointSpecification = "3B001";
+        #endregion Class 3B - Savepoint Exception
 
-        // Class 3D - Invalid Catalog Name
+        #region Class 3D - Invalid Catalog Name
         public const string InvalidCatalogName = "3D000";
+        #endregion Class 3D - Invalid Catalog Name
 
-        // Class 3F - Invalid Schema Name
+        #region Class 3F - Invalid Schema Name
         public const string InvalidSchemaName = "3F000";
+        #endregion Class 3F - Invalid Schema Name
 
-        // Class 40 - Transaction Rollback
+        #region Class 40 - Transaction Rollback
         public const string TransactionRollback = "40000";
         public const string TransactionIntegrityConstraintViolation = "40002";
         public const string SerializationFailure = "40001";
         public const string StatementCompletionUnknown = "40003";
         public const string DeadlockDetected = "40P01";
+        #endregion Class 40 - Transaction Rollback
 
-        // Class 42 - Syntax Error or Access Rule Violation
+        #region Class 42 - Syntax Error or Access Rule Violation
         public const string SyntaxErrorOrAccessRuleViolation = "42000";
         public const string SyntaxError = "42601";
         public const string InsufficientPrivilege = "42501";
@@ -248,51 +279,60 @@
         public const string InvalidSchemaDefinition = "42P15";
         public const string InvalidTableDefinition = "42P16";
         public const string InvalidObjectDefinition = "42P17";
+        #endregion Class 42 - Syntax Error or Access Rule Violation
 
-        // Class 44 - WITH CHECK OPTION Violation
+        #region Class 44 - WITH CHECK OPTION Violation
         public const string WithCheckOptionViolation = "44000";
+        #endregion Class 44 - WITH CHECK OPTION Violation
 
-        // Class 53 - Insufficient Resources
+        #region Class 53 - Insufficient Resources
         public const string InsufficientResources = "53000";
         public const string DiskFull = "53100";
         public const string OutOfMemory = "53200";
         public const string TooManyConnections = "53300";
         public const string ConfigurationLimitExceeded = "53400";
+        #endregion Class 53 - Insufficient Resources
 
-        // Class 54 - Program Limit Exceeded
+        #region Class 54 - Program Limit Exceeded
         public const string ProgramLimitExceeded = "54000";
         public const string StatementTooComplex = "54001";
         public const string TooManyColumns = "54011";
         public const string TooManyArguments = "54023";
+        #endregion Class 54 - Program Limit Exceeded
 
-        // Class 55 - Object Not In Prerequisite State
+        #region Class 55 - Object Not In Prerequisite State
         public const string ObjectNotInPrerequisiteState = "55000";
         public const string ObjectInUse = "55006";
         public const string CantChangeRuntimeParam = "55P02";
         public const string LockNotAvailable = "55P03";
+        #endregion Class 55 - Object Not In Prerequisite State
 
-        // Class 57 - Operator Intervention
+        #region Class 57 - Operator Intervention
         public const string OperatorIntervention = "57000";
         public const string QueryCanceled = "57014";
         public const string AdminShutdown = "57P01";
         public const string CrashShutdown = "57P02";
         public const string CannotConnectNow = "57P03";
         public const string DatabaseDropped = "57P04";
+        #endregion Class 57 - Operator Intervention
 
-        // Class 58 - System Error (errors external to PostgreSQL itself)
+        #region Class 58 - System Error (errors external to PostgreSQL itself)
         public const string SystemError = "58000";
         public const string IoError = "58030";
         public const string UndefinedFile = "58P01";
         public const string DuplicateFile = "58P02";
+        #endregion Class 58 - System Error (errors external to PostgreSQL itself)
 
-        // Class 72 - Snapshot Failure
+        #region Class 72 - Snapshot Failure
         public const string SnapshotFailure = "72000";
+        #endregion Class 72 - Snapshot Failure
 
-        // Class F0 - Configuration File Error
+        #region Class F0 - Configuration File Error
         public const string ConfigFileError = "F0000";
         public const string LockFileExists = "F0001";
+        #endregion Class F0 - Configuration File Error
 
-        // Class HV - Foreign Data Wrapper Error (SQL/MED)
+        #region Class HV - Foreign Data Wrapper Error (SQL/MED)
         public const string FdwError = "HV000";
         public const string FdwColumnNameNotFound = "HV005";
         public const string FdwDynamicParameterValueNeeded = "HV002";
@@ -320,19 +360,23 @@
         public const string FdwUnableToCreateExecution = "HV00L";
         public const string FdwUnableToCreateReply = "HV00M";
         public const string FdwUnableToEstablishConnection = "HV00N";
+        #endregion Class HV - Foreign Data Wrapper Error (SQL/MED)
 
-        // Class P0 - PL/pgSQL Error
+        #region Class P0 - PL/pgSQL Error
         public const string PlpgsqlError = "P0000";
         public const string RaiseException = "P0001";
         public const string NoDataFound = "P0002";
         public const string TooManyRows = "P0003";
         public const string AssertFailure = "P0004";
+        #endregion Class P0 - PL/pgSQL Error
 
-        // Class XX - Internal Error
+        #region Class XX - Internal Error
         public const string InternalError = "XX000";
         public const string DataCorrupted = "XX001";
         public const string IndexCorrupted = "XX002";
+        #endregion Class XX - Internal Error
+
+        #pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
     }
 
-#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
 }

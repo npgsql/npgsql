@@ -258,8 +258,8 @@ namespace Npgsql
                 case PostgresErrorCodes.ConnectionException:
                 case PostgresErrorCodes.ConnectionDoesNotExist:
                 case PostgresErrorCodes.ConnectionFailure:
-                case PostgresErrorCodes.SqlclientUnableToEstablishSqlconnection:
-                case PostgresErrorCodes.SqlserverRejectedEstablishmentOfSqlconnection:
+                case PostgresErrorCodes.SqlClientUnableToEstablishSqlConnection:
+                case PostgresErrorCodes.SqlServerRejectedEstablishmentOfSqlConnection:
                 case PostgresErrorCodes.TransactionResolutionUnknown:
                     return true;
                 default:
