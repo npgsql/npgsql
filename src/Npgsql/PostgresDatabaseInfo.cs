@@ -33,6 +33,9 @@ using JetBrains.Annotations;
 using Npgsql.Logging;
 using Npgsql.PostgresTypes;
 
+// ReSharper disable StringLiteralTypo
+// ReSharper disable CommentTypo
+
 namespace Npgsql
 {
     /// <summary>
@@ -86,7 +89,7 @@ namespace Npgsql
         /// True if the 'pg_type' table includes the 'typcategory' column; otherwise, false.
         /// </summary>
         /// <remarks>
-        /// pg_type.typcategory is added after 8.4. 
+        /// pg_type.typcategory is added after 8.4.
         /// see: https://www.postgresql.org/docs/8.4/static/catalog-pg-type.html#CATALOG-TYPCATEGORY-TABLE
         /// </remarks>
         public virtual bool HasTypeCategory => Version >= new Version(8, 4, 0);

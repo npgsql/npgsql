@@ -345,9 +345,7 @@ namespace Npgsql
 
                     while (true)
                     {
-                        int charsUsed;
-                        bool completed;
-                        WriteStringChunked(chars, charPos + offset, charLen - charPos, true, out charsUsed, out completed);
+                        WriteStringChunked(chars, charPos + offset, charLen - charPos, true, out var charsUsed, out var completed);
                         if (completed)
                             break;
                         await Flush(async);
@@ -512,7 +510,7 @@ namespace Npgsql
 
         /// <summary>
         /// Returns all contents currently written to the buffer (but not flushed).
-        /// Useful for pregenerating messages.
+        /// Useful for pre-generating messages.
         /// </summary>
         internal byte[] GetContents()
         {

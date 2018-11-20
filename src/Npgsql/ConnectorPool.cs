@@ -666,7 +666,7 @@ namespace Npgsql
             }
         }
 
-        // Note that while the dictionary is threadsafe, we assume that the lists it contains don't need to be
+        // Note that while the dictionary is thread-safe, we assume that the lists it contains don't need to be
         // (i.e. access to connectors of a specific transaction won't be concurrent)
         readonly Dictionary<Transaction, List<NpgsqlConnector>> _pendingEnlistedConnectors
             = new Dictionary<Transaction, List<NpgsqlConnector>>();

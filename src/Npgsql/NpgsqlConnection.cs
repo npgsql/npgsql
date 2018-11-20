@@ -187,7 +187,7 @@ namespace Npgsql
             if (!Settings.Pooling)
                 return;
 
-            // Connstring may be equivalent to one that has already been seen though (e.g. different
+            // The connection string may be equivalent to one that has already been seen though (e.g. different
             // ordering). Have NpgsqlConnectionStringBuilder produce a canonical string representation
             // and recheck.
             var canonical = Settings.ConnectionString;
@@ -208,7 +208,7 @@ namespace Npgsql
 
             if (_pool == newPool)
             {
-                // If the pool we created was the one that ened up being stored we need to increment the appropriate counter.
+                // If the pool we created was the one that ended up being stored we need to increment the appropriate counter.
                 // Avoids a race condition where multiple threads will create a pool but only one will be stored.
                 Counters.NumberOfActiveConnectionPools.Increment();
             }
@@ -262,7 +262,7 @@ namespace Npgsql
                     var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
                     Transaction transaction = null;
 
-                    if (_pool == null) // Unpooled connection
+                    if (_pool == null) // Un-pooled connection
                     {
                         if (!Settings.PersistSecurityInfo)
                             _userFacingConnectionString = Settings.ToStringWithoutPassword();
@@ -424,8 +424,10 @@ namespace Npgsql
         internal string Password => Settings.Password;
 
         // The following two lines are here for backwards compatibility with the EF6 provider
+        // ReSharper disable UnusedMember.Global
         internal string EntityTemplateDatabase => Settings.EntityTemplateDatabase;
         internal string EntityAdminDatabase => Settings.EntityAdminDatabase;
+        // ReSharper restore UnusedMember.Global
 
         #endregion Configuration settings
 
@@ -569,7 +571,7 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Enlist transation.
+        /// Enlist transaction.
         /// </summary>
         public override void EnlistTransaction(Transaction transaction)
         {
@@ -793,7 +795,7 @@ namespace Npgsql
         /// <summary>
         /// Reports whether the backend uses the newer integer timestamp representation.
         /// Note that the old floating point representation is not supported.
-        /// Meant for use by type plugins (e.g. Nodatime)
+        /// Meant for use by type plugins (e.g. NodaTime)
         /// </summary>
         [Browsable(false)]
         [PublicAPI]
@@ -1072,7 +1074,7 @@ namespace Npgsql
         [Obsolete("Use NpgsqlConnection.GlobalTypeMapper.MapEnum() instead")]
         public static void MapEnumGlobally<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null)
             where TEnum : struct, Enum
-            => NpgsqlConnection.GlobalTypeMapper.MapEnum<TEnum>(pgName, nameTranslator);
+            => GlobalTypeMapper.MapEnum<TEnum>(pgName, nameTranslator);
 
         /// <summary>
         /// Removes a previous global enum mapping.
@@ -1085,10 +1087,11 @@ namespace Npgsql
         /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
         /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
+        [PublicAPI]
         [Obsolete("Use NpgsqlConnection.GlobalTypeMapper.UnmapEnum() instead")]
         public static void UnmapEnumGlobally<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null)
             where TEnum : struct, Enum
-            => NpgsqlConnection.GlobalTypeMapper.UnmapEnum<TEnum>(pgName, nameTranslator);
+            => GlobalTypeMapper.UnmapEnum<TEnum>(pgName, nameTranslator);
 
         #endregion
 
@@ -1118,6 +1121,7 @@ namespace Npgsql
         /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
         /// <typeparam name="T">The .NET type to be mapped</typeparam>
+        [PublicAPI]
         [Obsolete("Use NpgsqlConnection.TypeMapper.MapComposite() instead")]
         public void MapComposite<T>(string pgName = null, INpgsqlNameTranslator nameTranslator = null) where T : new()
             => TypeMapper.MapComposite<T>(pgName, nameTranslator);
@@ -1144,9 +1148,10 @@ namespace Npgsql
         /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
         /// <typeparam name="T">The .NET type to be mapped</typeparam>
+        [PublicAPI]
         [Obsolete("Use NpgsqlConnection.GlobalTypeMapper.MapComposite() instead")]
         public static void MapCompositeGlobally<T>(string pgName = null, INpgsqlNameTranslator nameTranslator = null) where T : new()
-            => NpgsqlConnection.GlobalTypeMapper.MapComposite<T>(pgName, nameTranslator);
+            => GlobalTypeMapper.MapComposite<T>(pgName, nameTranslator);
 
         /// <summary>
         /// Removes a previous global enum mapping.
@@ -1159,9 +1164,10 @@ namespace Npgsql
         /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
         /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
+        [PublicAPI]
         [Obsolete("Use NpgsqlConnection.GlobalTypeMapper.UnmapComposite() instead")]
         public static void UnmapCompositeGlobally<T>(string pgName, INpgsqlNameTranslator nameTranslator = null) where T : new()
-            => NpgsqlConnection.GlobalTypeMapper.UnmapComposite<T>(pgName, nameTranslator);
+            => GlobalTypeMapper.UnmapComposite<T>(pgName, nameTranslator);
 
         #endregion
 
@@ -1214,7 +1220,7 @@ namespace Npgsql
         /// Waits asynchronously until an asynchronous PostgreSQL messages (e.g. a notification)
         /// arrives, and exits immediately. The asynchronous message is delivered via the normal events
         /// (<see cref="Notification"/>, <see cref="Notice"/>).
-        /// CancelationToken can not cancel wait operation if underlying NetworkStream does not support it
+        /// CancellationToken can not cancel wait operation if underlying NetworkStream does not support it
         /// (see https://stackoverflow.com/questions/12421989/networkstream-readasync-with-a-cancellation-token-never-cancels ).
         /// </summary>
         [PublicAPI]

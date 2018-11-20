@@ -54,7 +54,7 @@ namespace Npgsql
         [CanBeNull]
         internal RowDescriptionMessage Description
         {
-            get { return PreparedStatement == null ? _description : PreparedStatement.Description; }
+            get => PreparedStatement == null ? _description : PreparedStatement.Description;
             set
             {
                 if (PreparedStatement == null)
@@ -74,12 +74,9 @@ namespace Npgsql
         [CanBeNull]
         internal PreparedStatement PreparedStatement
         {
-            get
-            {
-                if (_preparedStatement != null && _preparedStatement.State == PreparedState.Unprepared)
-                    _preparedStatement = null;
-                return _preparedStatement;
-            }
+            get => _preparedStatement != null && _preparedStatement.State == PreparedState.Unprepared
+                ? _preparedStatement = null
+                : _preparedStatement;
             set => _preparedStatement = value;
         }
 

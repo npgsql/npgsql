@@ -40,15 +40,9 @@ namespace Npgsql
         internal int Position;
         internal List<int> Lengths;
 
-        internal NpgsqlLengthCache()
-        {
-            Lengths = new List<int>();
-        }
+        internal NpgsqlLengthCache() => Lengths = new List<int>();
 
-        internal NpgsqlLengthCache(int capacity)
-        {
-            Lengths = new List<int>(capacity);
-        }
+        internal NpgsqlLengthCache(int capacity) => Lengths = new List<int>(capacity);
 
         /// <summary>
         /// Stores a length value in the cache, to be fetched later via <see cref="Get"/>.

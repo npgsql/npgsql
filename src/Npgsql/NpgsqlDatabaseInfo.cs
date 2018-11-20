@@ -24,8 +24,6 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Data.Common;
-using System.Runtime.InteropServices.ComTypes;
 using System.Threading.Tasks;
 using Npgsql.PostgresTypes;
 

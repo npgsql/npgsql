@@ -487,7 +487,7 @@ namespace Npgsql
                 startupMessage["search_path"] = Settings.SearchPath;
 
             // SSL renegotiation support has been dropped in recent versions of PostgreSQL
-            // (OpenSSL implementations were buggy etc.), but disable them for older unpatched
+            // (OpenSSL implementations were buggy etc.), but disable them for older un-patched
             // versions which turns it on by default.
             // Amazon Redshift doesn't recognize the ssl_renegotiation_limit parameter and bombs
             // (https://forums.aws.amazon.com/thread.jspa?messageID=721898&#721898)
@@ -648,7 +648,7 @@ namespace Npgsql
             }
             else
             {
-                // Note that there aren't any timeoutable DNS methods, and we want to use sync-only
+                // Note that there aren't any timeout-able DNS methods, and we want to use sync-only
                 // methods (not to rely on any TP threads etc.)
                 endpoints = Dns.GetHostAddresses(Host).Select(a => new IPEndPoint(a, Port)).ToArray();
                 timeout.Check();
@@ -1294,35 +1294,35 @@ namespace Npgsql
         {
             CurrentReader?.Close(true, false);
             var currentCopyOperation = CurrentCopyOperation;
-            if (currentCopyOperation != null)
+            if (currentCopyOperation == null)
+                return;
+
+            // TODO: There's probably a race condition as the COPY operation may finish on its own during the next few lines
+
+            // Note: we only want to cancel import operations, since in these cases cancel is safe.
+            // Export cancellations go through the PostgreSQL "asynchronous" cancel mechanism and are
+            // therefore vulnerable to the race condition in #615.
+            if (currentCopyOperation is NpgsqlBinaryImporter ||
+                currentCopyOperation is NpgsqlCopyTextWriter ||
+                (currentCopyOperation is NpgsqlRawCopyStream rawCopyStream && rawCopyStream.CanWrite))
             {
-                // TODO: There's probably a race condition as the COPY operation may finish on its own during the next few lines
-
-                // Note: we only want to cancel import operations, since in these cases cancel is safe.
-                // Export cancellations go through the PostgreSQL "asynchronous" cancel mechanism and are
-                // therefore vulnerable to the race condition in #615.
-                if (currentCopyOperation is NpgsqlBinaryImporter ||
-                    currentCopyOperation is NpgsqlCopyTextWriter ||
-                    (currentCopyOperation is NpgsqlRawCopyStream && ((NpgsqlRawCopyStream)currentCopyOperation).CanWrite))
-                {
-                    try
-                    {
-                        currentCopyOperation.Cancel();
-                    }
-                    catch (Exception e)
-                    {
-                        Log.Warn("Error while cancelling COPY on connector close", e, Id);
-                    }
-                }
-
                 try
                 {
-                    currentCopyOperation.Dispose();
+                    currentCopyOperation.Cancel();
                 }
                 catch (Exception e)
                 {
-                    Log.Warn("Error while disposing cancelled COPY on connector close", e, Id);
+                    Log.Warn("Error while cancelling COPY on connector close", e, Id);
                 }
+            }
+
+            try
+            {
+                currentCopyOperation.Dispose();
+            }
+            catch (Exception e)
+            {
+                Log.Warn("Error while disposing cancelled COPY on connector close", e, Id);
             }
         }
 
@@ -1587,7 +1587,7 @@ namespace Npgsql
         internal UserAction StartUserAction(ConnectorState newState=ConnectorState.Executing, NpgsqlCommand command=null)
         {
             // If keepalive is enabled, we must protect state transitions with a SemaphoreSlim
-            // (which itself must be protected by a lock, since its dispose isn't threadsafe).
+            // (which itself must be protected by a lock, since its dispose isn't thread-safe).
             // This will make the keepalive abort safely if a user query is in progress, and make
             // the user query wait if a keepalive is in progress.
 
@@ -1707,7 +1707,7 @@ namespace Npgsql
         {
             Debug.Assert(_isKeepAliveEnabled);
 
-            // SemaphoreSlim.Dispose() isn't threadsafe - it may be in progress so we shouldn't try to wait on it;
+            // SemaphoreSlim.Dispose() isn't thread-safe - it may be in progress so we shouldn't try to wait on it;
             // we need a standard lock to protect it.
             if (!Monitor.TryEnter(this))
                 return;
@@ -2007,7 +2007,7 @@ namespace Npgsql
     /// <summary>
     /// Expresses the exact state of a connector.
     /// </summary>
-    internal enum ConnectorState
+    enum ConnectorState
     {
         /// <summary>
         /// The connector has either not yet been opened or has been closed.
@@ -2015,7 +2015,7 @@ namespace Npgsql
         Closed,
 
         /// <summary>
-        /// The connector is currently connecting to a Postgresql server.
+        /// The connector is currently connecting to a PostgreSQL server.
         /// </summary>
         Connecting,
 

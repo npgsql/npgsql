@@ -25,8 +25,7 @@ using System;
 using System.Data;
 using System.Data.Common;
 using System.Globalization;
-using System.Linq;
-using System.Reflection;
+using JetBrains.Annotations;
 using NpgsqlTypes;
 
 namespace Npgsql
@@ -70,7 +69,7 @@ namespace Npgsql
         ///   </PermissionSet>
         public override string QuotePrefix
         {
-            get { return base.QuotePrefix; }
+            get => base.QuotePrefix;
             // TODO: Why should it be possible to remove the QuotePrefix?
             set
             {
@@ -96,7 +95,7 @@ namespace Npgsql
         ///   </PermissionSet>
         public override string QuoteSuffix
         {
-            get { return base.QuoteSuffix; }
+            get => base.QuoteSuffix;
             // TODO: Why should it be possible to remove the QuoteSuffix?
             set
             {
@@ -113,15 +112,12 @@ namespace Npgsql
 
         ///<summary>
         ///
-        /// This method is reponsible to derive the command parameter list with values obtained from function definition.
+        /// This method is responsible to derive the command parameter list with values obtained from function definition.
         /// It clears the Parameters collection of command. Also, if there is any parameter type which is not supported by Npgsql, an InvalidOperationException will be thrown.
         /// Parameters name will be parameter1, parameter2, ... for CommandType.StoredProcedure and named after the placeholder for CommandType.Text
         ///</summary>
         /// <param name="command">NpgsqlCommand whose function parameters will be obtained.</param>
-        public static void DeriveParameters(NpgsqlCommand command)
-        {
-            command.DeriveParameters();
-        }
+        public static void DeriveParameters(NpgsqlCommand command) => command.DeriveParameters();
 
         /// <summary>
         /// Gets the automatically generated <see cref="NpgsqlCommand"/> object required
@@ -130,10 +126,7 @@ namespace Npgsql
         /// <returns>
         /// The automatically generated <see cref="NpgsqlCommand"/> object required to perform insertions.
         /// </returns>
-        public new NpgsqlCommand GetInsertCommand()
-        {
-            return GetInsertCommand(false);
-        }
+        public new NpgsqlCommand GetInsertCommand() => GetInsertCommand(false);
 
         /// <summary>
         /// Gets the automatically generated <see cref="NpgsqlCommand"/> object required to perform insertions
@@ -160,10 +153,7 @@ namespace Npgsql
         /// <returns>
         /// The automatically generated System.Data.Common.DbCommand object required to perform updates.
         /// </returns>
-        public new NpgsqlCommand GetUpdateCommand()
-        {
-            return GetUpdateCommand(false);
-        }
+        public new NpgsqlCommand GetUpdateCommand() => GetUpdateCommand(false);
 
         /// <summary>
         /// Gets the automatically generated <see cref="NpgsqlCommand"/> object required to perform updates
@@ -190,10 +180,7 @@ namespace Npgsql
         /// <returns>
         /// The automatically generated System.Data.Common.DbCommand object required to perform deletions.
         /// </returns>
-        public new NpgsqlCommand GetDeleteCommand()
-        {
-            return GetDeleteCommand(false);
-        }
+        public new NpgsqlCommand GetDeleteCommand() => GetDeleteCommand(false);
 
         /// <summary>
         /// Gets the automatically generated <see cref="NpgsqlCommand"/> object required to perform deletions
@@ -257,9 +244,7 @@ namespace Npgsql
         /// The name of the parameter with the specified number appended as part of the parameter name.
         /// </returns>
         protected override string GetParameterName(int parameterOrdinal)
-        {
-            return string.Format(CultureInfo.InvariantCulture, "@p{0}", parameterOrdinal);
-        }
+            => string.Format(CultureInfo.InvariantCulture, "@p{0}", parameterOrdinal);
 
         /// <summary>
         /// Returns the full parameter name, given the partial parameter name.
@@ -269,9 +254,7 @@ namespace Npgsql
         /// The full parameter name corresponding to the partial parameter name requested.
         /// </returns>
         protected override string GetParameterName(string parameterName)
-        {
-            return string.Format(CultureInfo.InvariantCulture, "@{0}", parameterName);
-        }
+            => string.Format(CultureInfo.InvariantCulture, "@{0}", parameterName);
 
         /// <summary>
         /// Returns the placeholder for the parameter in the associated SQL statement.
@@ -281,9 +264,7 @@ namespace Npgsql
         /// The name of the parameter with the specified number appended.
         /// </returns>
         protected override string GetParameterPlaceholder(int parameterOrdinal)
-        {
-            return GetParameterName(parameterOrdinal);
-        }
+            => GetParameterName(parameterOrdinal);
 
         /// <summary>
         /// Registers the <see cref="NpgsqlCommandBuilder" /> to handle the <see cref="NpgsqlDataAdapter.RowUpdating"/> event for a <see cref="NpgsqlDataAdapter" />.
@@ -307,10 +288,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="sender">The sender</param>
         /// <param name="e">A <see cref="NpgsqlRowUpdatingEventArgs"/> instance containing information about the event.</param>
-        private void RowUpdatingHandler(object sender, NpgsqlRowUpdatingEventArgs e)
-        {
-            base.RowUpdatingHandler(e);
-        }
+        void RowUpdatingHandler(object sender, NpgsqlRowUpdatingEventArgs e) => base.RowUpdatingHandler(e);
 
         /// <summary>
         /// Given an unquoted identifier in the correct catalog case, returns the correct quoted form of that identifier, including properly escaping any embedded quotes in the identifier.
@@ -323,17 +301,10 @@ namespace Npgsql
         ///   <IPermission class="System.Security.Permissions.FileIOPermission, mscorlib, Version=2.0.3600.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" version="1" PathDiscovery="*AllFiles*" />
         ///   </PermissionSet>
         /// <exception cref="System.ArgumentNullException">Unquoted identifier parameter cannot be null</exception>
-        public override string QuoteIdentifier(string unquotedIdentifier)
-
-        {
-            if (unquotedIdentifier == null)
-
-            {
-                throw new ArgumentNullException(nameof(unquotedIdentifier), "Unquoted identifier parameter cannot be null");
-            }
-
-            return $"{QuotePrefix}{unquotedIdentifier.Replace(QuotePrefix, QuotePrefix + QuotePrefix)}{QuoteSuffix}";
-        }
+        public override string QuoteIdentifier([CanBeNull] string unquotedIdentifier)
+            => unquotedIdentifier == null
+                ? throw new ArgumentNullException(nameof(unquotedIdentifier), "Unquoted identifier parameter cannot be null")
+                : $"{QuotePrefix}{unquotedIdentifier.Replace(QuotePrefix, QuotePrefix + QuotePrefix)}{QuoteSuffix}";
 
         /// <summary>
         /// Given a quoted identifier, returns the correct unquoted form of that identifier, including properly un-escaping any embedded quotes in the identifier.
@@ -347,27 +318,17 @@ namespace Npgsql
         ///   </PermissionSet>
         /// <exception cref="System.ArgumentNullException">Quoted identifier parameter cannot be null</exception>
         public override string UnquoteIdentifier(string quotedIdentifier)
-
         {
             if (quotedIdentifier == null)
-
-            {
                 throw new ArgumentNullException(nameof(quotedIdentifier), "Quoted identifier parameter cannot be null");
-            }
 
             var unquotedIdentifier = quotedIdentifier.Trim().Replace(QuotePrefix + QuotePrefix, QuotePrefix);
 
             if (unquotedIdentifier.StartsWith(QuotePrefix))
-
-            {
                 unquotedIdentifier = unquotedIdentifier.Remove(0, 1);
-            }
 
             if (unquotedIdentifier.EndsWith(QuoteSuffix))
-
-            {
                 unquotedIdentifier = unquotedIdentifier.Remove(unquotedIdentifier.Length - 1, 1);
-            }
 
             return unquotedIdentifier;
         }

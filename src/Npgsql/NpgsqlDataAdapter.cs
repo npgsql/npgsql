@@ -95,9 +95,7 @@ namespace Npgsql
         protected override RowUpdatedEventArgs CreateRowUpdatedEvent([NotNull] DataRow dataRow, [NotNull] IDbCommand command,
                                                                      System.Data.StatementType statementType,
                                                                      [NotNull] DataTableMapping tableMapping)
-        {
-            return new NpgsqlRowUpdatedEventArgs(dataRow, command, statementType, tableMapping);
-        }
+            => new NpgsqlRowUpdatedEventArgs(dataRow, command, statementType, tableMapping);
 
         /// <summary>
         /// Create row updating event.
@@ -105,9 +103,7 @@ namespace Npgsql
         protected override RowUpdatingEventArgs CreateRowUpdatingEvent([NotNull] DataRow dataRow, [NotNull] IDbCommand command,
                                                                        System.Data.StatementType statementType,
                                                                        [NotNull] DataTableMapping tableMapping)
-        {
-            return new NpgsqlRowUpdatingEventArgs(dataRow, command, statementType, tableMapping);
-        }
+            => new NpgsqlRowUpdatingEventArgs(dataRow, command, statementType, tableMapping);
 
         /// <summary>
         /// Raise the RowUpdated event.
@@ -116,8 +112,10 @@ namespace Npgsql
         protected override void OnRowUpdated([NotNull] RowUpdatedEventArgs value)
         {
             //base.OnRowUpdated(value);
-            if (RowUpdated != null && value is NpgsqlRowUpdatedEventArgs)
-                RowUpdated(this, (NpgsqlRowUpdatedEventArgs)value);
+            if (value is NpgsqlRowUpdatedEventArgs args)
+                RowUpdated?.Invoke(this, args);
+            //if (RowUpdated != null && value is NpgsqlRowUpdatedEventArgs args)
+            //    RowUpdated(this, args);
         }
 
         /// <summary>
@@ -126,8 +124,8 @@ namespace Npgsql
         /// <param name="value"></param>
         protected override void OnRowUpdating([NotNull] RowUpdatingEventArgs value)
         {
-            if (RowUpdating != null && value is NpgsqlRowUpdatingEventArgs)
-                RowUpdating(this, (NpgsqlRowUpdatingEventArgs) value);
+            if (value is NpgsqlRowUpdatingEventArgs args)
+                RowUpdating?.Invoke(this, args);
         }
 
         /// <summary>
@@ -135,8 +133,8 @@ namespace Npgsql
         /// </summary>
         public new NpgsqlCommand DeleteCommand
         {
-            get { return (NpgsqlCommand)base.DeleteCommand; }
-            set { base.DeleteCommand = value; }
+            get => (NpgsqlCommand)base.DeleteCommand;
+            set => base.DeleteCommand = value;
         }
 
         /// <summary>
@@ -144,8 +142,8 @@ namespace Npgsql
         /// </summary>
         public new NpgsqlCommand SelectCommand
         {
-            get { return (NpgsqlCommand)base.SelectCommand; }
-            set { base.SelectCommand = value; }
+            get => (NpgsqlCommand)base.SelectCommand;
+            set => base.SelectCommand = value;
         }
 
         /// <summary>
@@ -153,8 +151,8 @@ namespace Npgsql
         /// </summary>
         public new NpgsqlCommand UpdateCommand
         {
-            get { return (NpgsqlCommand)base.UpdateCommand; }
-            set { base.UpdateCommand = value; }
+            get => (NpgsqlCommand)base.UpdateCommand;
+            set => base.UpdateCommand = value;
         }
 
         /// <summary>
@@ -162,8 +160,8 @@ namespace Npgsql
         /// </summary>
         public new NpgsqlCommand InsertCommand
         {
-            get { return (NpgsqlCommand)base.InsertCommand; }
-            set { base.InsertCommand = value; }
+            get => (NpgsqlCommand)base.InsertCommand;
+            set => base.InsertCommand = value;
         }
     }
 

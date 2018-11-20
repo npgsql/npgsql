@@ -187,11 +187,11 @@ namespace Npgsql
         public override bool Remove([NotNull] string keyword)
         {
             var p = GetProperty(keyword);
-            var cannonicalName = PropertyNameToCanonicalKeyword[p.Name];
-            var removed = base.ContainsKey(cannonicalName);
+            var canonicalName = PropertyNameToCanonicalKeyword[p.Name];
+            var removed = base.ContainsKey(canonicalName);
             // Note that string property setters call SetValue, which itself calls base.Remove().
             p.SetValue(this, PropertyDefaults[p]);
-            base.Remove(cannonicalName);
+            base.Remove(canonicalName);
             return removed;
         }
 
@@ -220,30 +220,23 @@ namespace Npgsql
         /// <param name="keyword">The key to locate in the <see cref="NpgsqlConnectionStringBuilder"/>.</param>
         /// <returns><b>true</b> if the <see cref="NpgsqlConnectionStringBuilder"/> contains an entry with the specified key; otherwise <b>false</b>.</returns>
         public override bool ContainsKey([CanBeNull] string keyword)
-        {
-            if (keyword == null)
-                throw new ArgumentNullException(nameof(keyword));
-
-            return PropertiesByKeyword.ContainsKey(keyword.ToUpperInvariant());
-        }
+            => keyword == null
+                ? throw new ArgumentNullException(nameof(keyword))
+                : PropertiesByKeyword.ContainsKey(keyword.ToUpperInvariant());
 
         /// <summary>
         /// Determines whether the <see cref="NpgsqlConnectionStringBuilder"/> contains a specific key-value pair.
         /// </summary>
-        /// <param name="item">The itemto locate in the <see cref="NpgsqlConnectionStringBuilder"/>.</param>
+        /// <param name="item">The item to locate in the <see cref="NpgsqlConnectionStringBuilder"/>.</param>
         /// <returns><b>true</b> if the <see cref="NpgsqlConnectionStringBuilder"/> contains the entry; otherwise <b>false</b>.</returns>
         public bool Contains(KeyValuePair<string, object> item)
-        {
-            return TryGetValue(item.Key, out var value) &&
-                ((value == null && item.Value == null) || (value != null && value.Equals(item.Value)));
-        }
+            => TryGetValue(item.Key, out var value) &&
+               ((value == null && item.Value == null) || (value != null && value.Equals(item.Value)));
 
         PropertyInfo GetProperty(string keyword)
-        {
-            if (!PropertiesByKeyword.TryGetValue(keyword.ToUpperInvariant(), out var p))
-                throw new ArgumentException("Keyword not supported: " + keyword, nameof(keyword));
-            return p;
-        }
+            => PropertiesByKeyword.TryGetValue(keyword.ToUpperInvariant(), out var p)
+                ? p
+                : throw new ArgumentException("Keyword not supported: " + keyword, nameof(keyword));
 
         /// <summary>
         /// Retrieves a value corresponding to the supplied key from this <see cref="NpgsqlConnectionStringBuilder"/>.
@@ -270,11 +263,10 @@ namespace Npgsql
         void SetValue(string propertyName, [CanBeNull] object value)
         {
             var canonicalKeyword = PropertyNameToCanonicalKeyword[propertyName];
-            if (value == null) {
+            if (value == null)
                 base.Remove(canonicalKeyword);
-            } else {
+            else
                 base[canonicalKeyword] = value;
-            }
         }
 
         #endregion
@@ -446,14 +438,14 @@ namespace Npgsql
         [NpgsqlConnectionStringProperty]
         public string SearchPath
         {
-            get => _searchpath;
+            get => _searchPath;
             set
             {
-                _searchpath = value;
+                _searchPath = value;
                 SetValue(nameof(SearchPath), value);
             }
         }
-        string _searchpath;
+        string _searchPath;
 
         /// <summary>
         /// Gets or sets the client_encoding parameter.
@@ -1289,10 +1281,7 @@ namespace Npgsql
         /// Determines whether the specified object is equal to the current object.
         /// </summary>
         public override bool Equals(object obj)
-        {
-            var o = obj as NpgsqlConnectionStringBuilder;
-            return o != null && EquivalentTo(o);
-        }
+            => obj is NpgsqlConnectionStringBuilder o && EquivalentTo(o);
 
         /// <summary>
         /// Hash function.
