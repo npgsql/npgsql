@@ -336,7 +336,7 @@ namespace Npgsql
             }
             catch (PostgresException e)
             {
-                if (e.SqlState != "57014")
+                if (e.SqlState != PostgresErrorCodes.QueryCanceled)
                     throw;
             }
         }
