@@ -1,4 +1,6 @@
-﻿namespace Npgsql
+﻿#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+
+namespace Npgsql
 {
     /// <summary>
     /// Provides constants for PostgreSQL error codes.
@@ -8,8 +10,6 @@
     /// </remarks>
     public static class PostgresErrorCodes
     {
-        #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
-
         #region Class 00 - Successful Completion
 
         public const string SuccessfulCompletion = "00000";
@@ -461,8 +461,5 @@
         public const string IndexCorrupted = "XX002";
 
         #endregion Class XX - Internal Error
-
-        #pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
     }
-
 }
