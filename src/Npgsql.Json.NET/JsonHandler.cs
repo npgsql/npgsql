@@ -86,6 +86,9 @@ namespace Npgsql.Json.NET
 
         protected override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
         {
+            if (value == null || value is DBNull)
+                return base.WriteObjectWithLength(value, buf, lengthCache, parameter, async);
+
             if (parameter?.ConvertedValue != null)
                 value = parameter.ConvertedValue;
             var s = value as string ?? JsonConvert.SerializeObject(value, _settings);
