@@ -162,33 +162,27 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Tests that the isolation levels are properly supported")]
-        public void IsolationLevels()
+        [TestCase(IsolationLevel.ReadCommitted,   "read committed")]
+        [TestCase(IsolationLevel.ReadUncommitted, "read uncommitted")]
+        [TestCase(IsolationLevel.RepeatableRead,  "repeatable read")]
+        [TestCase(IsolationLevel.Serializable,    "serializable")]
+        [TestCase(IsolationLevel.Snapshot,        "repeatable read")]
+        [TestCase(IsolationLevel.Unspecified,     "read committed")]
+        public void IsolationLevels(IsolationLevel level, string expectedName)
         {
             using (var conn = OpenConnection())
             {
-                foreach (var level in new[]
-                {
-                    IsolationLevel.Unspecified,
-                    IsolationLevel.ReadCommitted,
-                    IsolationLevel.ReadUncommitted,
-                    IsolationLevel.RepeatableRead,
-                    IsolationLevel.Serializable,
-                    IsolationLevel.Snapshot,
-                })
-                {
-                    var tx = conn.BeginTransaction(level);
-                    tx.Commit();
-                }
-
-                foreach (var level in new[]
-                {
-                    IsolationLevel.Chaos,
-                })
-                {
-                    var level2 = level;
-                    Assert.That(() => conn.BeginTransaction(level2), Throws.Exception.TypeOf<NotSupportedException>());
-                }
+                var tx = conn.BeginTransaction(level);
+                Assert.That(conn.ExecuteScalar("SHOW TRANSACTION ISOLATION LEVEL"), Is.EqualTo(expectedName));
+                tx.Commit();
             }
+        }
+
+        [Test]
+        public void IsolationLevelChaosUnsupported()
+        {
+            using (var conn = OpenConnection())
+                Assert.That(() => conn.BeginTransaction(IsolationLevel.Chaos), Throws.Exception.TypeOf<NotSupportedException>());
         }
 
         [Test, Description("Rollback of an already rolled back transaction")]
