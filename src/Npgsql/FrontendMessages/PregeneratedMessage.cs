@@ -71,16 +71,14 @@ namespace Npgsql.FrontendMessages
             var buf = new NpgsqlWriteBuffer(null, new MemoryStream(), NpgsqlWriteBuffer.MinimumSize, Encoding.ASCII);
             var message = new QueryMessage(PGUtil.UTF8Encoding);
 
-            BeginTrans                = Generate(buf, message, "BEGIN");
-            SetTransRepeatableRead    = Generate(buf, message, "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ");
-            SetTransSerializable      = Generate(buf, message, "SET TRANSACTION ISOLATION LEVEL SERIALIZABLE");
-            SetTransReadCommitted     = Generate(buf, message, "SET TRANSACTION ISOLATION LEVEL READ COMMITTED");
-            SetTransReadUncommitted   = Generate(buf, message, "SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED");
-            CommitTransaction         = Generate(buf, message, "COMMIT");
-            RollbackTransaction       = Generate(buf, message, "ROLLBACK");
-            KeepAlive                 = Generate(buf, message, "SELECT NULL");
-
-            DiscardAll                = Generate(buf, message, "DISCARD ALL");
+            BeginTransRepeatableRead    = Generate(buf, message, "BEGIN ISOLATION LEVEL REPEATABLE READ");
+            BeginTransSerializable      = Generate(buf, message, "BEGIN TRANSACTION ISOLATION LEVEL SERIALIZABLE");
+            BeginTransReadCommitted     = Generate(buf, message, "BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED");
+            BeginTransReadUncommitted   = Generate(buf, message, "BEGIN TRANSACTION ISOLATION LEVEL READ UNCOMMITTED");
+            CommitTransaction           = Generate(buf, message, "COMMIT");
+            RollbackTransaction         = Generate(buf, message, "ROLLBACK");
+            KeepAlive                   = Generate(buf, message, "SELECT NULL");
+            DiscardAll                  = Generate(buf, message, "DISCARD ALL");
         }
 
         internal static PregeneratedMessage Generate(NpgsqlWriteBuffer buf, QueryMessage queryMessage, string query, int responseMessageCount=2)
@@ -94,11 +92,10 @@ namespace Npgsql.FrontendMessages
             return new PregeneratedMessage(bytes, description, responseMessageCount);
         }
 
-        internal static readonly PregeneratedMessage BeginTrans;
-        internal static readonly PregeneratedMessage SetTransRepeatableRead;
-        internal static readonly PregeneratedMessage SetTransSerializable;
-        internal static readonly PregeneratedMessage SetTransReadCommitted;
-        internal static readonly PregeneratedMessage SetTransReadUncommitted;
+        internal static readonly PregeneratedMessage BeginTransRepeatableRead;
+        internal static readonly PregeneratedMessage BeginTransSerializable;
+        internal static readonly PregeneratedMessage BeginTransReadCommitted;
+        internal static readonly PregeneratedMessage BeginTransReadUncommitted;
         internal static readonly PregeneratedMessage CommitTransaction;
         internal static readonly PregeneratedMessage RollbackTransaction;
         internal static readonly PregeneratedMessage KeepAlive;
