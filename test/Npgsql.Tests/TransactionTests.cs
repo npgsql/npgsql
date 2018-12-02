@@ -163,7 +163,7 @@ namespace Npgsql.Tests
 
         [Test, Description("Tests that the isolation levels are properly supported")]
         [TestCase(IsolationLevel.ReadCommitted,   "read committed")]
-        [TestCase(IsolationLevel.ReadUncommitted, "read uncommitted")]  // Not actually supported in PostgreSQL
+        [TestCase(IsolationLevel.ReadUncommitted, "read uncommitted")]
         [TestCase(IsolationLevel.RepeatableRead,  "repeatable read")]
         [TestCase(IsolationLevel.Serializable,    "serializable")]
         [TestCase(IsolationLevel.Snapshot,        "repeatable read")]
