@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -33,6 +33,7 @@ using Npgsql.TypeHandlers;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
+using static Npgsql.Statics;
 
 namespace Npgsql
 {
@@ -108,7 +109,7 @@ namespace Npgsql
 
         void ReadHeader()
         {
-            _leftToReadInDataMsg = _connector.ReadExpecting<CopyDataMessage>().Length;
+            _leftToReadInDataMsg = Expect<CopyDataMessage>(_connector.ReadMessage()).Length;
             var headerLen = NpgsqlRawCopyStream.BinarySignature.Length + 4 + 4;
             _buf.Ensure(headerLen);
             if (NpgsqlRawCopyStream.BinarySignature.Any(t => _buf.ReadByte() != t)) {
@@ -143,7 +144,7 @@ namespace Npgsql
             // message per row).
             if (_column == NumColumns)
             {
-                _leftToReadInDataMsg = _connector.ReadExpecting<CopyDataMessage>().Length;
+                _leftToReadInDataMsg = Expect<CopyDataMessage>(_connector.ReadMessage()).Length;
             }
             else if (_column != -1)
             {
@@ -155,9 +156,9 @@ namespace Npgsql
             if (numColumns == -1)
             {
                 Debug.Assert(_leftToReadInDataMsg == 0);
-                _connector.ReadExpecting<CopyDoneMessage>();
-                _connector.ReadExpecting<CommandCompleteMessage>();
-                _connector.ReadExpecting<ReadyForQueryMessage>();
+                Expect<CopyDoneMessage>(_connector.ReadMessage());
+                Expect<CommandCompleteMessage>(_connector.ReadMessage());
+                Expect<ReadyForQueryMessage>(_connector.ReadMessage());
                 _column = -1;
                 _isConsumed = true;
                 return -1;
@@ -188,7 +189,7 @@ namespace Npgsql
             var type = typeof(T);
             var handler = _typeHandlerCache[_column];
             if (handler == null)
-                handler = _typeHandlerCache[_column] = _typeMapper[type];
+                handler = _typeHandlerCache[_column] = _typeMapper.GetByClrType(type);
             return DoRead<T>(handler);
         }
 
@@ -214,7 +215,7 @@ namespace Npgsql
 
             var handler = _typeHandlerCache[_column];
             if (handler == null)
-                handler = _typeHandlerCache[_column] = _typeMapper[type];
+                handler = _typeHandlerCache[_column] = _typeMapper.GetByNpgsqlDbType(type);
             return DoRead<T>(handler);
         }
 
@@ -311,8 +312,8 @@ namespace Npgsql
                 _buf.Skip(_leftToReadInDataMsg);
                 // Read to the end
                 _connector.SkipUntil(BackendMessageCode.CopyDone);
-                _connector.ReadExpecting<CommandCompleteMessage>();
-                _connector.ReadExpecting<ReadyForQueryMessage>();
+                Expect<CommandCompleteMessage>(_connector.ReadMessage());
+                Expect<ReadyForQueryMessage>(_connector.ReadMessage());
             }
 
             var connector = _connector;

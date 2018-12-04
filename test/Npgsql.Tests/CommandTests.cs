@@ -1,7 +1,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -496,14 +496,14 @@ namespace Npgsql.Tests
 
             // Get by indexers.
 
-            Assert.AreEqual("Parameter1", command.Parameters["Parameter1"].ParameterName);
-            Assert.AreEqual("Parameter2", command.Parameters["Parameter2"].ParameterName);
-            Assert.AreEqual("Parameter3", command.Parameters["Parameter3"].ParameterName);
-            //Assert.AreEqual("Parameter4", command.Parameters["Parameter4"].ParameterName); //Should this work?
+            Assert.AreEqual(":Parameter1", command.Parameters["Parameter1"].ParameterName);
+            Assert.AreEqual(":Parameter2", command.Parameters["Parameter2"].ParameterName);
+            Assert.AreEqual(":Parameter3", command.Parameters["Parameter3"].ParameterName);
+            Assert.AreEqual("Parameter4", command.Parameters["Parameter4"].ParameterName); //Should this work?
 
-            Assert.AreEqual("Parameter1", command.Parameters[0].ParameterName);
-            Assert.AreEqual("Parameter2", command.Parameters[1].ParameterName);
-            Assert.AreEqual("Parameter3", command.Parameters[2].ParameterName);
+            Assert.AreEqual(":Parameter1", command.Parameters[0].ParameterName);
+            Assert.AreEqual(":Parameter2", command.Parameters[1].ParameterName);
+            Assert.AreEqual(":Parameter3", command.Parameters[2].ParameterName);
             Assert.AreEqual("Parameter4", command.Parameters[3].ParameterName);
         }
 
@@ -527,7 +527,7 @@ namespace Npgsql.Tests
         public void GenericParameter()
         {
             using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3,@p4", conn))
+            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4", conn))
             {
                 cmd.Parameters.Add(new NpgsqlParameter<int>("p1", 8));
                 cmd.Parameters.Add(new NpgsqlParameter<short>("p2", 8) { NpgsqlDbType = NpgsqlDbType.Integer });
@@ -781,7 +781,6 @@ namespace Npgsql.Tests
             }
         }
 
-#if !NETCOREAPP1_1
         [Test]
         public void Bug1010788UpdateRowSource()
         {
@@ -801,7 +800,6 @@ namespace Npgsql.Tests
                 Assert.AreEqual(UpdateRowSource.None, updateCommand.UpdatedRowSource);
             }
         }
-#endif
 
         [Test]
         public void TableDirect()

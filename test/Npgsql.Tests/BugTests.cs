@@ -3,12 +3,11 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
-#if !NETCOREAPP1_1
 using System.Transactions;
-#endif
 
 namespace Npgsql.Tests
 {
@@ -131,7 +130,6 @@ namespace Npgsql.Tests
             }
         }
 
-#if !NETCOREAPP1_1
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1497")]
         public void Bug1497()
         {
@@ -147,9 +145,7 @@ namespace Npgsql.Tests
                 }
             }
         }
-#endif
 
-#if !NETCOREAPP1_1
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1558")]
         public void Bug1558()
         {
@@ -164,7 +160,6 @@ namespace Npgsql.Tests
                 conn.Open();
             }
         }
-#endif
 
         [Test]
         public void Bug1695()
@@ -215,6 +210,138 @@ namespace Npgsql.Tests
                     tx.Commit();
                 }
             }, Throws.InvalidOperationException.With.Message.EqualTo("Some problem parsing the returned data"));
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1964")]
+        public void Bug1964()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("INVALID SQL", conn))
+            {
+                cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Direction = ParameterDirection.Output });
+                Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception.TypeOf<PostgresException>()
+                    .With.Property(nameof(PostgresException.SqlState)).EqualTo("42601"));
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1986")]
+        public void Bug1986()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT 'hello', 'goodbye'", conn))
+            using (var reader = cmd.ExecuteReader())
+            {
+                reader.Read();
+                using (var textReader1 = reader.GetTextReader(0))
+                {
+
+                }
+                using (var textReader2 = reader.GetTextReader(1))
+                {
+
+                }
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1987")]
+        public void Bug1987()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                MaxAutoPrepare = 10,
+                AutoPrepareMinUsages = 2,
+                Pooling = false
+            };
+
+            using (var conn = OpenConnection(csb))
+            {
+                conn.ExecuteNonQuery("CREATE TYPE pg_temp.mood AS ENUM ('sad', 'ok', 'happy')");
+                conn.ReloadTypes();
+                conn.TypeMapper.MapEnum<Mood>("mood");
+                for (var i = 0; i < 2; i++)
+                {
+                    using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+                    {
+                        cmd.Parameters.AddWithValue("p", Mood.Happy);
+                        Assert.That(cmd.ExecuteScalar(), Is.EqualTo(Mood.Happy));
+                    }
+                }
+            }
+        }
+
+        enum Mood { Sad, Ok, Happy };
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2003")]
+        public void Bug2003()
+        {
+            // A big RowDescription (larger than buffer size) causes an oversize buffer allocation, but which isn't
+            // picked up by sequential reader which continues to read from the original buffer.
+            using (var conn = OpenConnection())
+            {
+                var longFieldName = new string('x', conn.Settings.ReadBufferSize);
+                using (var cmd = new NpgsqlCommand($"SELECT 8 AS {longFieldName}", conn))
+                using (var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess))
+                {
+                    reader.Read();
+                    Assert.That(reader.GetInt32(0), Is.EqualTo(8));
+                }
+            }
+        }
+
+        [Test]
+        public void Bug2046()
+        {
+            var expected = 64.27245f;
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT @p = 64.27245::real, 64.27245::real, @p", conn))
+            {
+                cmd.Parameters.AddWithValue("p", expected);
+                using (var rdr = cmd.ExecuteRecord())
+                {
+                    Assert.That(rdr.GetFieldValue<bool>(0));
+                    Assert.That(rdr.GetFieldValue<float>(1), Is.EqualTo(expected));
+                    Assert.That(rdr.GetFieldValue<float>(2), Is.EqualTo(expected));
+                }
+            }
+        }
+
+        [Test]
+        public void Bug1761()
+        {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Enlist = true,
+                Pooling = true,
+                MinPoolSize = 1,
+                MaxPoolSize = 1
+            }.ConnectionString;
+
+            for (var i = 0; i < 2; i++)
+            {
+                try
+                {
+                    using (var scope = new TransactionScope(TransactionScopeOption.Required, TimeSpan.FromMilliseconds(100)))
+                    {
+                        Thread.Sleep(1000);
+
+                        // Ambient transaction is now unusable, attempts to enlist to it will fail. We should recover
+                        // properly from this failure.
+
+                        using (var connection = OpenConnection(connString))
+                        using (var cmd = new NpgsqlCommand("SELECT 1", connection))
+                        {
+                            cmd.CommandText = "select 1;";
+                            cmd.ExecuteNonQuery();
+                        }
+
+                        scope.Complete();
+                    }
+                }
+                catch (TransactionException)
+                {
+                    //do nothing
+                }
+            }
         }
 
         #region Bug1285

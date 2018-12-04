@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -23,6 +23,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using NodaTime;
 using Npgsql.BackendMessages;
 using Npgsql.TypeHandling;
@@ -61,6 +62,8 @@ namespace Npgsql.NodaTime
             _convertInfinityDateTime = convertInfinityDateTime;
         }
 
+        #region Read
+
         public override Instant Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             if (_integerFormat)
@@ -73,7 +76,7 @@ namespace Npgsql.NodaTime
                     if (value == long.MinValue)
                         return Instant.MinValue;
                 }
-                return DecodeZonedDateTimeUsingIntegerFormat(value).ToInstant();
+                return Decode(value);
             }
             else
             {
@@ -85,7 +88,7 @@ namespace Npgsql.NodaTime
                     if (double.IsNegativeInfinity(value))
                         return Instant.MinValue;
                 }
-                return DecodeZonedDateTimeUsingFloatingPointFormat(value).ToInstant();
+                return Decode(value);
             }
         }
 
@@ -95,50 +98,31 @@ namespace Npgsql.NodaTime
             {
                 var value = buf.ReadInt64();
                 if (value == long.MaxValue || value == long.MinValue)
-                    throw new NpgsqlSafeReadException(new NotSupportedException("Infinity values not supported when reading ZonedDateTime, read as Instant instead"));
-                return DecodeZonedDateTimeUsingIntegerFormat(value).LocalDateTime;
+                    throw new NpgsqlSafeReadException(new NotSupportedException("Infinity values not supported when reading LocalDateTime, read as Instant instead"));
+                return Decode(value).InUtc().LocalDateTime;
             }
             else
             {
                 var value = buf.ReadDouble();
                 if (double.IsPositiveInfinity(value) || double.IsNegativeInfinity(value))
-                    throw new NpgsqlSafeReadException(new NotSupportedException("Infinity values not supported when reading ZonedDateTime, read as Instant instead"));
-                return DecodeZonedDateTimeUsingFloatingPointFormat(value).LocalDateTime;
+                    throw new NpgsqlSafeReadException(new NotSupportedException("Infinity values not supported when reading LocalDateTime, read as Instant instead"));
+                return Decode(value).InUtc().LocalDateTime;
             }
         }
 
-        internal static ZonedDateTime DecodeZonedDateTimeUsingIntegerFormat(long value)
-        {
-            Debug.Assert(value != long.MaxValue && value != long.MinValue);
+        static readonly Instant Instant2000 = Instant.FromUtc(2000, 1, 1, 0, 0, 0);
 
-            if (value >= 0)
-            {
-                var date = (int)(value / 86400000000L);
-                var time = value % 86400000000L;
+        // value is the number of microseconds from 2000-01-01T00:00:00.
+        // Unfortunately NodaTime doesn't have Duration.FromMicroseconds(), so we decompose into milliseconds
+        // and nanoseconds
+        internal static Instant Decode(long value)
+            => Instant2000 + Duration.FromMilliseconds(value / 1000) + Duration.FromNanoseconds(value % 1000 * 1000);
 
-                date += 730119; // 730119 = days since era (0001-01-01) for 2000-01-01
-                time *= 1000;   // From microseconds to nanoseconds
+        static readonly Instant Instant0 = Instant.FromUtc(1, 1, 1, 0, 0, 0);
 
-                return new ZonedDateTime().Plus(Duration.FromDays(date) + Duration.FromNanoseconds(time));
-            }
-            else
-            {
-                value = -value;
-                var date = (int)(value / 86400000000L);
-                var time = value % 86400000000L;
-                if (time != 0)
-                {
-                    ++date;
-                    time = 86400000000L - time;
-                }
-                date = 730119 - date; // 730119 = days since era (0001-01-01) for 2000-01-01
-                time *= 1000;           // From microseconds to nanoseconds
-
-                return new ZonedDateTime().Plus(Duration.FromDays(date) + Duration.FromNanoseconds(time));
-            }
-        }
-        
-        internal static ZonedDateTime DecodeZonedDateTimeUsingFloatingPointFormat(double value)
+        // This is legacy support for PostgreSQL's old floating-point timestamp encoding - finally removed in PG 10 and not used for a long
+        // time. Unfortunately CrateDB seems to use this for some reason.
+        internal static Instant Decode(double value)
         {
             Debug.Assert(!double.IsPositiveInfinity(value) && !double.IsNegativeInfinity(value));
 
@@ -147,8 +131,8 @@ namespace Npgsql.NodaTime
                 var date = (int)value / 86400;
                 date += 730119; // 730119 = days since era (0001-01-01) for 2000-01-01
                 var microsecondOfDay = (long)((value % 86400d) * 1000000d);
-                
-                return new ZonedDateTime().Plus(Duration.FromDays(date) + Duration.FromNanoseconds(microsecondOfDay*1000));
+
+                return Instant0 + Duration.FromDays(date) + Duration.FromNanoseconds(microsecondOfDay*1000);
             }
             else
             {
@@ -162,9 +146,13 @@ namespace Npgsql.NodaTime
                 }
                 date = 730119 - date; // 730119 = days since era (0001-01-01) for 2000-01-01
 
-                return new ZonedDateTime().Plus(Duration.FromDays(date) + Duration.FromNanoseconds(microsecondOfDay * 1000));
+                return Instant0 + Duration.FromDays(date) + Duration.FromNanoseconds(microsecondOfDay*1000);
             }
         }
+
+        #endregion Read
+
+        #region Write
 
         public override int ValidateAndGetLength(Instant value, NpgsqlParameter parameter)
             => 8;
@@ -189,7 +177,7 @@ namespace Npgsql.NodaTime
                         return;
                     }
                 }
-                WriteDateTimeUsingIntegerFormat(value.InUtc().LocalDateTime, buf);
+                WriteInteger(value, buf);
             }
             else
             {
@@ -206,39 +194,29 @@ namespace Npgsql.NodaTime
                         return;
                     }
                 }
-                WriteDateTimeUsingFloatingPointFormat(value.InUtc().LocalDateTime, buf);
+                WriteDouble(value, buf);
             }
         }
 
         void INpgsqlSimpleTypeHandler<LocalDateTime>.Write(LocalDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
             if (_integerFormat)
-                WriteDateTimeUsingIntegerFormat(value, buf);
+                WriteInteger(value.InUtc().ToInstant(), buf);
             else
-                WriteDateTimeUsingFloatingPointFormat(value, buf);
+                WriteDouble(value.InUtc().ToInstant(), buf);
         }
 
-        internal static void WriteDateTimeUsingIntegerFormat(LocalDateTime value, NpgsqlWriteBuffer buf)
-        {
-            var totalDaysSinceEra = Period.Between(default(LocalDateTime), value, PeriodUnits.Days).Days;
-            var microsecondOfDay = value.NanosecondOfDay / 1000;
+        // We need to write the number of microseconds from 2000-01-01T00:00:00.
+        internal static void WriteInteger(Instant instant, NpgsqlWriteBuffer buf)
+            => buf.WriteInt64((long)(instant - Instant2000).TotalNanoseconds / 1000);
 
-            if (totalDaysSinceEra >= 730119)   // 1/1/2000
-            {
-                var uSecsDate = (totalDaysSinceEra - 730119) * 86400000000L;
-                buf.WriteInt64(uSecsDate + microsecondOfDay);
-            }
-            else
-            {
-                var uSecsDate = (730119 - totalDaysSinceEra) * 86400000000L;
-                buf.WriteInt64(-(uSecsDate - microsecondOfDay));
-            }
-        }
-
-        internal static void WriteDateTimeUsingFloatingPointFormat(LocalDateTime value, NpgsqlWriteBuffer buf)
+        // This is legacy support for PostgreSQL's old floating-point timestamp encoding - finally removed in PG 10 and not used for a long
+        // time. Unfortunately CrateDB seems to use this for some reason.
+        internal static void WriteDouble(Instant instant, NpgsqlWriteBuffer buf)
         {
-            var totalDaysSinceEra = Period.Between(default(LocalDateTime), value, PeriodUnits.Days).Days;
-            var secondOfDay = value.NanosecondOfDay / 1000000000d;
+            var localDateTime = instant.InUtc().LocalDateTime;
+            var totalDaysSinceEra = Period.Between(default(LocalDateTime), localDateTime, PeriodUnits.Days).Days;
+            var secondOfDay = localDateTime.NanosecondOfDay / 1000000000d;
 
             if (totalDaysSinceEra >= 730119)
             {
@@ -251,5 +229,7 @@ namespace Npgsql.NodaTime
                 buf.WriteDouble(-(uSecsDate - secondOfDay));
             }
         }
+
+        #endregion Write
     }
 }

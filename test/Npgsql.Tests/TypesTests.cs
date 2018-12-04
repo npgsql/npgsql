@@ -1,7 +1,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -458,6 +458,12 @@ namespace Npgsql.Tests
             Assert.AreEqual(@"a\b'cde", ((NpgsqlTsQueryLexeme)query).Text);
             Assert.AreEqual(@"'a\\b''cde'", query.ToString());
 
+            query = NpgsqlTsQuery.Parse(@"a <-> b");
+            Assert.AreEqual("'a' <-> 'b'", query.ToString());
+
+            query = NpgsqlTsQuery.Parse("((a & b) <5> c) <-> !d <0> e");
+            Assert.AreEqual("( ( 'a' & 'b' <5> 'c' ) <-> !'d' ) <0> 'e'", query.ToString());
+
             Assert.Throws(typeof(FormatException), () => NpgsqlTsQuery.Parse("a b c & &"));
             Assert.Throws(typeof(FormatException), () => NpgsqlTsQuery.Parse("&"));
             Assert.Throws(typeof(FormatException), () => NpgsqlTsQuery.Parse("|"));
@@ -465,6 +471,21 @@ namespace Npgsql.Tests
             Assert.Throws(typeof(FormatException), () => NpgsqlTsQuery.Parse("("));
             Assert.Throws(typeof(FormatException), () => NpgsqlTsQuery.Parse(")"));
             Assert.Throws(typeof(FormatException), () => NpgsqlTsQuery.Parse("()"));
+            Assert.Throws(typeof(FormatException), () => NpgsqlTsQuery.Parse("<"));
+            Assert.Throws(typeof(FormatException), () => NpgsqlTsQuery.Parse("<-"));
+            Assert.Throws(typeof(FormatException), () => NpgsqlTsQuery.Parse("<->"));
+            Assert.Throws(typeof(FormatException), () => NpgsqlTsQuery.Parse("a <->"));
+            Assert.Throws(typeof(FormatException), () => NpgsqlTsQuery.Parse("<>"));
+            Assert.Throws(typeof(FormatException), () => NpgsqlTsQuery.Parse("a <a> b"));
+            Assert.Throws(typeof(FormatException), () => NpgsqlTsQuery.Parse("a <-1> b"));
+        }
+
+        [Test]
+        public void TsQueryOperatorPrecedence()
+        {
+            var query = NpgsqlTsQuery.Parse("!a <-> b & c | d & e");
+            var expectedGrouping = NpgsqlTsQuery.Parse("((!(a) <-> b) & c) | (d & e)");
+            Assert.AreEqual(expectedGrouping.ToString(), query.ToString());
         }
 
         [Test]
@@ -476,6 +497,7 @@ namespace Npgsql.Tests
             var o = p.Value;
         }
 
+#pragma warning disable 618
         [Test]
         [IssueLink("https://github.com/npgsql/npgsql/issues/750")]
         public void NpgsqlInet()
@@ -485,5 +507,6 @@ namespace Npgsql.Tests
 
             Assert.That(v != null);  // #776
         }
+#pragma warning restore 618
     }
 }

@@ -3,9 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
@@ -38,24 +36,19 @@ namespace Npgsql
         /// </summary>
         int _column;
 
-        /// <summary>
-        /// A stream that has been opened on this colun, and needs to be disposed of when the column is consumed.
-        /// </summary>
-        [CanBeNull]
-        SequentialByteaStream _stream;
-
-        internal NpgsqlSequentialDataReader(NpgsqlCommand command, CommandBehavior behavior, List<NpgsqlStatement> statements, Task sendTask)
-            : base(command, behavior, statements, sendTask)
-        {
-            Debug.Assert(!command.Parameters.HasOutputParameters);
-            Buffer = Connector.ReadBuffer;
-        }
+        internal NpgsqlSequentialDataReader(NpgsqlConnector connector)
+            : base(connector) {}
 
         internal override ValueTask<IBackendMessage> ReadMessage(bool async)
             => Connector.ReadMessage(async, DataRowLoadingMode.Sequential);
 
         internal override void ProcessDataMessage(DataRowMessage dataMsg)
         {
+            // When reading sequentially, we never allocate oversize buffers for data rows since they don't have
+            // to fit in the buffer (that's the point of sequential). However, if the row description message is bigger
+            // than the buffer, an oversize buffer will be allocated (see #2003). This is hacky and needs to be redone.
+            Buffer = Connector.ReadBuffer;
+
             _column = -1;
             ColumnLen = -1;
             PosInColumn = 0;
@@ -78,11 +71,24 @@ namespace Npgsql
             await SeekToColumn(column, async);
             CheckColumnStart();
             if (ColumnLen == -1)
+            {
+                if (NullableHandler<T>.Exists)
+                    return default;
+                if (typeof(T) == typeof(object))
+                    return (T)(object)DBNull.Value;
                 throw new InvalidCastException("Column is null");
+            }
 
             var fieldDescription = RowDescription[column];
             try
             {
+                if (NullableHandler<T>.Exists)
+                {
+                    return ColumnLen <= Buffer.ReadBytesLeft
+                        ? NullableHandler<T>.Read(Buffer, ColumnLen, fieldDescription)
+                        : await NullableHandler<T>.ReadAsync(Buffer, ColumnLen, async, fieldDescription);
+                }
+
                 if (typeof(T) == typeof(object))
                 {
                     return ColumnLen <= Buffer.ReadBytesLeft
@@ -213,35 +219,39 @@ namespace Npgsql
             if (column < _column)
                 throw new InvalidOperationException($"Invalid attempt to read from column ordinal '{column}'. With CommandBehavior.SequentialAccess, you may only read from column ordinal '{_column}' or greater.");
 
-            if (column > _column)
+            if (column == _column)
+                return;
+
+            // Need to seek forward
+
+            // Shut down any streaming going on on the column
+            if (ColumnStream != null)
             {
-                // Skip to end of column if needed
-                // TODO: Simplify by better initializing _columnLen/_posInColumn
-                var remainingInColumn = ColumnLen == -1 ? 0 : ColumnLen - PosInColumn;
-                if (remainingInColumn > 0)
-                    await Buffer.Skip(remainingInColumn, async);
-
-                // Shut down any streaming going on on the column
-                if (_stream != null)
-                {
-                    _stream.Dispose();
-                    _stream = null;
-                }
-
-                // Skip over unwanted fields
-                for (; _column < column - 1; _column++)
-                {
-                    await Buffer.Ensure(4, async);
-                    var len = Buffer.ReadInt32();
-                    if (len != -1)
-                        await Buffer.Skip(len, async);
-                }
-
-                await Buffer.Ensure(4, async);
-                ColumnLen = Buffer.ReadInt32();
-                PosInColumn = 0;
-                _column = column;
+                ColumnStream.Dispose();
+                ColumnStream = null;
+                // Disposing the stream leaves us at the end of the column
+                PosInColumn = ColumnLen;
             }
+
+            // Skip to end of column if needed
+            // TODO: Simplify by better initializing _columnLen/_posInColumn
+            var remainingInColumn = ColumnLen == -1 ? 0 : ColumnLen - PosInColumn;
+            if (remainingInColumn > 0)
+                await Buffer.Skip(remainingInColumn, async);
+
+            // Skip over unwanted fields
+            for (; _column < column - 1; _column++)
+            {
+                await Buffer.Ensure(4, async);
+                var len = Buffer.ReadInt32();
+                if (len != -1)
+                    await Buffer.Skip(len, async);
+            }
+
+            await Buffer.Ensure(4, async);
+            ColumnLen = Buffer.ReadInt32();
+            PosInColumn = 0;
+            _column = column;
         }
 
         internal override async Task SeekInColumn(int posInColumn, bool async)
@@ -269,10 +279,12 @@ namespace Npgsql
                 _numColumns = Buffer.ReadInt16();
             }
 
-            if (_stream != null)
+            if (ColumnStream != null)
             {
-                _stream.Dispose();
-                _stream = null;
+                ColumnStream.Dispose();
+                ColumnStream = null;
+                // Disposing the stream leaves us at the end of the column
+                PosInColumn = ColumnLen;
             }
 
             // TODO: Potential for code-sharing with ReadColumn above, which also skips
@@ -343,108 +355,10 @@ namespace Npgsql
 
         #endregion
 
-        internal override async ValueTask<Stream> GetStreamInternal(int column, bool async)
-        {
-            CheckRowAndOrdinal(column);
-            if (_stream != null)
-                throw new InvalidOperationException("Attempt to read a position in the column which has already been read");
-
-            await SeekToColumn(column, false);
-            if (ColumnLen == -1)
-                throw new InvalidCastException("Column is null");
-
-            return _stream = new SequentialByteaStream(this);
-        }
-
         void CheckColumnStart()
         {
             if (PosInColumn != 0)
                 throw new InvalidOperationException("Attempt to read a position in the column which has already been read");
-        }
-
-        class SequentialByteaStream : Stream
-        {
-            readonly NpgsqlSequentialDataReader _reader;
-            bool _disposed;
-
-            internal SequentialByteaStream(NpgsqlSequentialDataReader reader)
-            {
-                _reader = reader;
-            }
-
-            public override int Read(byte[] buffer, int offset, int count)
-                => Read(buffer, offset, count, false).GetAwaiter().GetResult();
-
-            public override Task<int> ReadAsync([NotNull] byte[] buffer, int offset, int count, CancellationToken token)
-            {
-                token.ThrowIfCancellationRequested();
-                using (NoSynchronizationContextScope.Enter())
-                    return Read(buffer, offset, count, true);
-            }
-
-            async Task<int> Read(byte[] buffer, int offset, int count, bool async)
-            {
-                CheckDisposed();
-                count = Math.Min(count, _reader.ColumnLen - _reader.PosInColumn);
-                var read = await _reader.Buffer.ReadAllBytes(buffer, offset, count, true, async);
-                _reader.PosInColumn += read;
-                return read;
-            }
-
-            public override long Length
-            {
-                get
-                {
-                    CheckDisposed();
-                    return _reader.ColumnLen;
-                }
-            }
-
-            public override long Position
-            {
-                get
-                {
-                    CheckDisposed();
-                    return _reader.PosInColumn;
-                }
-                set => throw new NotSupportedException();
-            }
-
-            protected override void Dispose(bool disposing) => _disposed = true;
-
-            public override bool CanRead => true;
-            public override bool CanSeek => false;
-            public override bool CanWrite => false;
-
-            void CheckDisposed()
-            {
-                if (_disposed)
-                    throw new ObjectDisposedException(null);
-            }
-
-            #region Not Supported
-
-            public override void Flush()
-            {
-                throw new NotSupportedException();
-            }
-
-            public override long Seek(long offset, SeekOrigin origin)
-            {
-                throw new NotSupportedException();
-            }
-
-            public override void SetLength(long value)
-            {
-                throw new NotSupportedException();
-            }
-
-            public override void Write(byte[] buffer, int offset, int count)
-            {
-                throw new NotSupportedException();
-            }
-
-            #endregion
         }
     }
 }

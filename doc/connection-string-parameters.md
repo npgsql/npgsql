@@ -1,6 +1,8 @@
 # Connection String Parameters
 
-Parameter keywords are case-insensitive.
+To connect to a database, the application provides a connection string which specifies parameters such as the host, the username, the password, etc. Connection strings have the form `keyword1=value; keyword2=value;` and are case-insensitive. Values containing special characters (e.g. semicolons) can be double-quoted. For more information, [see the official doc page on connection strings](https://docs.microsoft.com/en-us/dotnet/framework/data/adonet/connection-strings).
+
+Below are the connection string parameters which Npgsql understands.
 
 ## Basic Connection
 
@@ -44,6 +46,7 @@ Parameter keywords are case-insensitive.
 | Command Timeout          | The time to wait (in seconds) while trying to execute a command before terminating the attempt and generating an error. Set to zero for infinity. | 30 |
 | Internal Command Timeout | The time to wait (in seconds) while trying to execute a an internal command before terminating the attempt and generating an error. -1 uses CommandTimeout, 0 means no timeout. | -1 |
 | Keepalive                | The number of seconds of connection inactivity before Npgsql sends a keepalive query. | disabled |
+| Tcp Keepalive            | Whether to use TCP keepalive with system defaults if overrides isn't specified. | disabled |
 | Tcp Keepalive Time       | The number of milliseconds of connection inactivity before a TCP keepalive query is sent. Use of this option is discouraged, use KeepAlive instead if possible. Supported only on Windows. | disabled |
 | Tcp Keepalive Interval   | The interval, in milliseconds, between when successive keep-alive packets are sent if no acknowledgement is received. TcpKeepAliveTime must be non-zero as well. Supported only on Windows. | value of TcpKeepAliveTime |
 
@@ -58,21 +61,23 @@ Parameter keywords are case-insensitive.
 | Write Buffer Size          | Determines the size of the internal buffer Npgsql uses when writing. Increasing may improve performance if transferring large values to the database. | 8192 |
 | Socket Receive Buffer Size | Determines the size of socket receive buffer. | System-dependent |
 | Socket Send Buffer Size    | Determines the size of socket send buffer. | System-dependent |
+| No Reset On Close          | Improves performance in some cases by not resetting the connection state when it is returned to the pool, at the cost of leaking state. Use only if benchmarking shows a performance improvement | false |
 
 ## Misc
 
 | Parameter                | Description                                                                                     | Default   |
 |--------------------------|-------------------------------------------------------------------------------------------------|-----------|
 | Application Name         | The optional application name parameter to be sent to the backend during connection initiation. |           |
-| Enlist                   | Whether to enlist in an ambient TransactionScope.                                               | false     |
+| Enlist                   | Whether to enlist in an ambient TransactionScope.                                               | true      |
 | Search Path              | Sets the schema search path.                                                                    |           |
 | Client Encoding          | Gets or sets the client_encoding parameter. Since 3.1.                                          |           |
 | Timezone                 | Gets or sets the session timezone, PGTZ environment variable can be used instead. Since 3.3.    |           |
 | EF Template Database     | The database template to specify when creating a database in Entity Framework.                  | template1 |
+| Load Table Composites    | Load table composite type definitions, and not just free-standing composite types.              | false     |
 
 ## Compatibility
 
 | Parameter                 | Description                                                                                       | Default |
 |---------------------------|---------------------------------------------------------------------------------------------------|---------|
-| Server Compatibility Mode | A compatibility mode for special PostgreSQL server types. Currently only "Redshift" is supported. | none    |
+| Server Compatibility Mode | A compatibility mode for special PostgreSQL server types. Currently "Redshift" is supported, as well as "NoTypeLoading", which will bypass the normal type loading mechanism from the PostgreSQL catalog tables and supports a hardcoded list of basic types . | none    |
 | Convert Infinity DateTime | Makes MaxValue and MinValue timestamps and dates readable as infinity and negative infinity.      | false   |

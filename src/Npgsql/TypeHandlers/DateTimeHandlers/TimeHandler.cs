@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -46,7 +46,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     {
         /// <summary>
         /// A deprecated compile-time option of PostgreSQL switches to a floating-point representation of some date/time
-        /// fields. Some PostgreSQL-like databases (e.g. CrateDB) use floating-point representation by default and do not 
+        /// fields. Some PostgreSQL-like databases (e.g. CrateDB) use floating-point representation by default and do not
         /// provide the option of switching to integer format.
         /// </summary>
         readonly bool _integerFormat;

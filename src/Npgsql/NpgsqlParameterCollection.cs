@@ -1,7 +1,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -289,8 +289,8 @@ namespace Npgsql
                         var item = _internalList[i];
 
                         // Store only the first of each distinct value
-                        if (!_lookup.ContainsKey(item.ParameterName))
-                            _lookup.Add(item.ParameterName, i);
+                        if (!_lookup.ContainsKey(item.TrimmedName))
+                            _lookup.Add(item.TrimmedName, i);
                     }
                 }
 
@@ -307,8 +307,8 @@ namespace Npgsql
                         var item = _internalList[i];
 
                         // Store only the first of each distinct value
-                        if (!_lookupIgnoreCase.ContainsKey(item.ParameterName))
-                            _lookupIgnoreCase.Add(item.ParameterName, i);
+                        if (!_lookupIgnoreCase.ContainsKey(item.TrimmedName))
+                            _lookupIgnoreCase.Add(item.TrimmedName, i);
                     }
                 }
 
@@ -321,12 +321,12 @@ namespace Npgsql
 
             // First try a case-sensitive match
             for (var i = 0; i < _internalList.Count; i++)
-                if (parameterName == _internalList[i].ParameterName)
+                if (parameterName == _internalList[i].TrimmedName)
                     return i;
 
             // If not fond, try a case-insensitive match
             for (var i = 0; i < _internalList.Count; i++)
-                if (string.Equals(parameterName, _internalList[i].ParameterName, StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(parameterName, _internalList[i].TrimmedName, StringComparison.OrdinalIgnoreCase))
                     return i;
 
             return -1;
@@ -336,10 +336,8 @@ namespace Npgsql
 
         #region IList Member
 
-#if !NETSTANDARD1_3
         /// <inheritdoc />
         public override bool IsReadOnly => false;
-#endif
 
         /// <summary>
         /// Removes the specified <see cref="NpgsqlParameter">NpgsqlParameter</see> from the collection using a specific index.
@@ -453,19 +451,15 @@ namespace Npgsql
             return Count - 1;
         }
 
-#if !NETSTANDARD1_3
         /// <inheritdoc />
         public override bool IsFixedSize => false;
-#endif
 
         #endregion
 
         #region ICollection Member
 
-#if !NETSTANDARD1_3
         /// <inheritdoc />
         public override bool IsSynchronized => (_internalList as ICollection).IsSynchronized;
-#endif
 
         /// <summary>
         /// Gets the number of <see cref="NpgsqlParameter">NpgsqlParameter</see> objects in the collection.

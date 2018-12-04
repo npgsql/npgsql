@@ -1,4 +1,4 @@
-﻿#if NET45 || NET451
+﻿#if NET452
 using System;
 using System.Collections.Generic;
 using System.DirectoryServices;

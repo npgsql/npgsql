@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -34,7 +34,7 @@ namespace Npgsql.TypeHandlers
     /// http://www.postgresql.org/docs/current/static/datatype-uuid.html
     /// </remarks>
     [TypeMapping("uuid", NpgsqlDbType.Uuid, DbType.Guid, typeof(Guid))]
-    class UuidHandler : NpgsqlSimpleTypeHandler<Guid>, INpgsqlSimpleTypeHandler<string>
+    class UuidHandler : NpgsqlSimpleTypeHandler<Guid>
     {
         public override Guid Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
@@ -46,25 +46,10 @@ namespace Npgsql.TypeHandlers
             return new Guid(a, b, c, d);
         }
 
-        string INpgsqlSimpleTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription)
-            => Read(buf, len, fieldDescription).ToString();
-
         #region Write
 
         public override int ValidateAndGetLength(Guid value, NpgsqlParameter parameter)
             => 16;
-
-        public int ValidateAndGetLength(string value, NpgsqlParameter parameter)
-        {
-            var converted = Guid.Parse(value);
-            if (parameter == null)
-                throw CreateConversionButNoParamException(value.GetType());
-            parameter.ConvertedValue = converted;
-            return 16;
-        }
-
-        public void Write(string value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
-            => Write((Guid)parameter.ConvertedValue, buf, parameter);
 
         public override void Write(Guid value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {

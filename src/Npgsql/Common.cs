@@ -1,7 +1,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -144,70 +144,4 @@ namespace Npgsql
         Other
 #pragma warning restore 1591
     }
-
-    /// <summary>
-    /// The way how to order bytes.
-    /// </summary>
-    enum ByteOrder
-    {
-        // ReSharper disable once InconsistentNaming
-        /// <summary>
-        /// Most significant byte first (XDR)
-        /// </summary>
-        MSB = 0,
-        // ReSharper disable once InconsistentNaming
-        /// <summary>
-        /// Less significant byte first (NDR)
-        /// </summary>
-        LSB = 1
-    }
-
-    #region Component model attributes missing from CoreCLR
-
-#if NETSTANDARD1_3
-#pragma warning disable CA1801 // Review unused parameters
-    [AttributeUsage(AttributeTargets.Property)]
-    class DisplayNameAttribute : Attribute
-    {
-        internal string DisplayName { get; private set; }
-
-        internal DisplayNameAttribute(string displayName)
-        {
-            DisplayName = displayName;
-        }
-    }
-
-    [AttributeUsage(AttributeTargets.Property)]
-    class CategoryAttribute : Attribute
-    {
-        internal CategoryAttribute(string category) {}
-    }
-
-    [AttributeUsage(AttributeTargets.Property)]
-    sealed class BrowsableAttribute : Attribute
-    {
-        public BrowsableAttribute(bool browsable) {}
-    }
-
-    [AttributeUsage(AttributeTargets.Property)]
-    sealed class PasswordPropertyTextAttribute : Attribute
-    {
-        public PasswordPropertyTextAttribute(bool password) {}
-    }
-
-#pragma warning disable CA1717
-    enum RefreshProperties {
-        All
-    }
-#pragma warning restore CA1717
-
-    [AttributeUsage(AttributeTargets.Property)]
-    sealed class RefreshPropertiesAttribute : Attribute
-    {
-        public RefreshPropertiesAttribute(RefreshProperties refreshProperties) {}
-    }
-#endif
-
-#pragma warning restore CA1801 // Review unused parameters
-    #endregion
 }

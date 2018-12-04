@@ -1,7 +1,8 @@
 ﻿#region License
+
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -19,22 +20,13 @@
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+
 #endregion
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Data;
-using System.Diagnostics;
-using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using JetBrains.Annotations;
-using Npgsql.Logging;
-using Npgsql.NameTranslation;
-using Npgsql.PostgresTypes;
 using Npgsql.TypeHandlers;
 using NpgsqlTypes;
 
@@ -44,7 +36,15 @@ namespace Npgsql.TypeMapping
     {
         internal Dictionary<string, NpgsqlTypeMapping> Mappings { get; set; }
 
-        internal static readonly INpgsqlNameTranslator DefaultNameTranslator = new NpgsqlSnakeCaseNameTranslator();
+        public INpgsqlNameTranslator DefaultNameTranslator { get; }
+
+        protected TypeMapperBase([NotNull] INpgsqlNameTranslator defaultNameTranslator)
+        {
+            if (defaultNameTranslator == null)
+                throw new ArgumentNullException(nameof(defaultNameTranslator));
+
+            DefaultNameTranslator = defaultNameTranslator;
+        }
 
         #region Mapping management
 
@@ -67,10 +67,8 @@ namespace Npgsql.TypeMapping
         #region Enum mapping
 
         public INpgsqlTypeMapper MapEnum<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null)
-            where TEnum : struct
+            where TEnum : struct, Enum
         {
-            if (!typeof(TEnum).GetTypeInfo().IsEnum)
-                throw new ArgumentException("An enum type must be provided");
             if (pgName != null && pgName.Trim() == "")
                 throw new ArgumentException("pgName can't be empty", nameof(pgName));
 
@@ -87,10 +85,9 @@ namespace Npgsql.TypeMapping
             }.Build());
         }
 
-        public bool UnmapEnum<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null) where TEnum : struct
+        public bool UnmapEnum<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null)
+            where TEnum : struct, Enum
         {
-            if (!typeof(TEnum).GetTypeInfo().IsEnum)
-                throw new ArgumentException("An enum type must be provided");
             if (pgName != null && pgName.Trim() == "")
                 throw new ArgumentException("pgName can't be empty", nameof(pgName));
 
@@ -121,12 +118,12 @@ namespace Npgsql.TypeMapping
             {
                 PgTypeName = pgName,
                 ClrTypes = new[] { typeof(T) },
-                TypeHandlerFactory = new CompositeTypeHandlerFactory<T>(nameTranslator)
+                TypeHandlerFactory = new MappedCompositeTypeHandlerFactory<T>(nameTranslator)
             }.Build());
         }
 
         public bool UnmapComposite<T>(string pgName = null, INpgsqlNameTranslator nameTranslator = null)
-            where T: new()
+            where T : new()
         {
             if (pgName != null && pgName.Trim() == "")
                 throw new ArgumentException("pgName can't be empty", nameof(pgName));
@@ -143,13 +140,11 @@ namespace Npgsql.TypeMapping
 
         #region Misc
 
+        // TODO: why does ReSharper think `GetCustomAttribute<T>` is non-nullable?
+        // ReSharper disable once ConstantConditionalAccessQualifier ConstantNullCoalescingCondition
         static string GetPgName<T>(INpgsqlNameTranslator nameTranslator)
-        {
-            var attr = typeof(T).GetTypeInfo().GetCustomAttribute<PgNameAttribute>();
-            return attr == null
-                ? nameTranslator.TranslateTypeName(typeof(T).Name)
-                : attr.PgName;
-        }
+            => typeof(T).GetCustomAttribute<PgNameAttribute>()?.PgName
+               ?? nameTranslator.TranslateTypeName(typeof(T).Name);
 
         #endregion Misc
     }

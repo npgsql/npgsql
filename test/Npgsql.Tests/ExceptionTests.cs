@@ -1,7 +1,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -26,10 +26,7 @@ using System.Data;
 using System.IO;
 using System.Net.Sockets;
 using NUnit.Framework;
-
-#if !NETCOREAPP1_1
 using System.Runtime.Serialization.Formatters.Binary;
-#endif
 
 namespace Npgsql.Tests
 {
@@ -41,7 +38,7 @@ namespace Npgsql.Tests
             using (var conn = OpenConnection())
             {
                 // Make sure messages are in English
-                conn.ExecuteNonQuery(@"SET lc_messages='en_US.UTF8'");
+                conn.ExecuteNonQuery(@"SET lc_messages='en_US.UTF-8'");
                 conn.ExecuteNonQuery(@"
                      CREATE OR REPLACE FUNCTION pg_temp.emit_exception() RETURNS VOID AS
                         'BEGIN RAISE EXCEPTION ''testexception'' USING ERRCODE = ''12345''; END;'
@@ -68,6 +65,10 @@ namespace Npgsql.Tests
                 Assert.That(data[nameof(PostgresException.Severity)], Is.EqualTo("ERROR"));
                 Assert.That(data[nameof(PostgresException.SqlState)], Is.EqualTo("12345"));
                 Assert.That(data.Contains(nameof(PostgresException.Position)), Is.False);
+
+                var exString = ex.ToString();
+                Assert.That(exString, Contains.Substring(nameof(PostgresException.Severity) + ": ERROR"));
+                Assert.That(exString, Contains.Substring(nameof(PostgresException.SqlState) + ": 12345"));
 
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1), "Connection in bad state after an exception");
             }
@@ -180,7 +181,7 @@ namespace Npgsql.Tests
             Assert.False(new PostgresException { SqlState = "0" }.IsTransient);
         }
 
-#if NET451
+#if NET452
         [Test]
         [Ignore("DbException doesn't support serialization in .NET Core 2.0 (PlatformNotSupportedException)")]
         public void Serialization()

@@ -35,7 +35,7 @@ namespace Npgsql
         /// See the command tag in the CommandComplete message,
         /// http://www.postgresql.org/docs/current/static/protocol-message-formats.html
         /// </remarks>
-        public uint Rows { get; internal set; }
+        public ulong Rows { get; internal set; }
 
         /// <summary>
         /// For an INSERT, the object ID of the inserted row if <see cref="Rows"/> is 1 and
@@ -54,7 +54,7 @@ namespace Npgsql
         [CanBeNull]
         internal RowDescriptionMessage Description
         {
-            get { return PreparedStatement == null ? _description : PreparedStatement.Description; }
+            get => PreparedStatement == null ? _description : PreparedStatement.Description;
             set
             {
                 if (PreparedStatement == null)
@@ -74,12 +74,9 @@ namespace Npgsql
         [CanBeNull]
         internal PreparedStatement PreparedStatement
         {
-            get
-            {
-                if (_preparedStatement != null && _preparedStatement.State == PreparedState.Unprepared)
-                    _preparedStatement = null;
-                return _preparedStatement;
-            }
+            get => _preparedStatement != null && _preparedStatement.State == PreparedState.Unprepared
+                ? _preparedStatement = null
+                : _preparedStatement;
             set => _preparedStatement = value;
         }
 

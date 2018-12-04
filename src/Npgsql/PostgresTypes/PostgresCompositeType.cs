@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -23,6 +23,7 @@
 
 using System;
 using System.Collections.Generic;
+using JetBrains.Annotations;
 using Npgsql.TypeHandlers;
 
 namespace Npgsql.PostgresTypes
@@ -36,28 +37,42 @@ namespace Npgsql.PostgresTypes
     public class PostgresCompositeType : PostgresType
     {
         /// <summary>
-        /// Holds the name and OID for all fields.
-        /// Populated on the first activation of the composite.
+        /// Holds the name and types for all fields.
         /// </summary>
-        internal List<Field> Fields { get; }
+        public IReadOnlyList<Field> Fields => MutableFields;
+
+        internal List<Field> MutableFields { get; } = new List<Field>();
 
         /// <summary>
         /// Constructs a representation of a PostgreSQL array data type.
         /// </summary>
 #pragma warning disable CA2222 // Do not decrease inherited member visibility
-        internal PostgresCompositeType(string ns, string name, uint oid, List<Field> fields)
+        internal PostgresCompositeType(string ns, string name, uint oid)
+            : base(ns, name, oid) {}
 #pragma warning restore CA2222 // Do not decrease inherited member visibility
-            : base(ns, name, oid)
-        {
-            Fields = fields;
-        }
 
-        internal struct Field
+        /// <summary>
+        /// Represents a field in a PostgreSQL composite data type.
+        /// </summary>
+        public class Field
         {
-            internal string PgName;
-            internal uint TypeOID;
+            internal Field(string name, PostgresType type)
+            {
+                Name = name;
+                Type = type;
+            }
 
-            public override string ToString() => $"{PgName} => {TypeOID}";
+            /// <summary>
+            /// The name of the composite field.
+            /// </summary>
+            public string Name { get; }
+            /// <summary>
+            /// The type of the composite field.
+            /// </summary>
+            public PostgresType Type { get; }
+
+            /// <inheritdoc />
+            public override string ToString() => $"{Name} => {Type}";
         }
     }
 }

@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -35,6 +35,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     [TypeMapping("xid", NpgsqlDbType.Xid)]
     [TypeMapping("cid", NpgsqlDbType.Cid)]
     [TypeMapping("regtype", NpgsqlDbType.Regtype)]
+    [TypeMapping("regconfig", NpgsqlDbType.Regconfig)]
     class UInt32Handler : NpgsqlSimpleTypeHandler<uint>
     {
         public override uint Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)

@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -31,7 +31,7 @@ using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers.DateTimeHandlers
 {
-    [TypeMapping("timetz", NpgsqlDbType.TimeTz)]
+    [TypeMapping("time with time zone", NpgsqlDbType.TimeTz)]
     class TimeTzHandlerFactory : NpgsqlTypeHandlerFactory<DateTimeOffset>
     {
         // Check for the legacy floating point timestamps feature
@@ -46,7 +46,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     {
         /// <summary>
         /// A deprecated compile-time option of PostgreSQL switches to a floating-point representation of some date/time
-        /// fields. Some PostgreSQL-like databases (e.g. CrateDB) use floating-point representation by default and do not 
+        /// fields. Some PostgreSQL-like databases (e.g. CrateDB) use floating-point representation by default and do not
         /// provide the option of switching to integer format.
         /// </summary>
         readonly bool _integerFormat;
@@ -65,7 +65,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             // Adjust from 1 microsecond to 100ns. Time zone (in seconds) is inverted.
             var ticks = _integerFormat ? buf.ReadInt64() * 10 : (long)(buf.ReadDouble() * TimeSpan.TicksPerSecond);
             var offset = new TimeSpan(0, 0, -buf.ReadInt32());
-            return new DateTimeOffset(ticks, offset);
+            return new DateTimeOffset(ticks + TimeSpan.TicksPerDay, offset);
         }
 
         DateTime INpgsqlSimpleTypeHandler<DateTime>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)

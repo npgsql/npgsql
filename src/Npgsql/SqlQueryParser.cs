@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -24,7 +24,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
 using System.Text;
 
 namespace Npgsql
@@ -41,7 +40,7 @@ namespace Npgsql
         /// <summary>
         /// Receives a raw SQL query as passed in by the user, and performs some processing necessary
         /// before sending to the backend.
-        /// This includes doing parameter placebolder processing (@p => $1), and splitting the query
+        /// This includes doing parameter placeholder processing (@p => $1), and splitting the query
         /// up by semicolons if needed (SELECT 1; SELECT 2)
         /// </summary>
         /// <param name="sql">Raw user-provided query.</param>
@@ -273,7 +272,7 @@ namespace Npgsql
                     goto NoneContinue;
 
                 }
-                if (ch != ' ' && ch != '\t' && ch != '\n' & ch != '\r' && ch != '\f') {
+                if (ch != ' ' && ch != '\t' && ch != '\n' && ch != '\r' && ch != '\f') {
                     lastChar = '\0';
                     goto NoneContinue;
                 }

@@ -7,9 +7,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
-#if !NETSTANDARD1_3
 using System.Runtime.Serialization;
-#endif
 
 namespace Npgsql
 {
@@ -22,9 +20,7 @@ namespace Npgsql
     /// Purely Npgsql-related issues which aren't related to the server will be raised
     /// via the standard CLR exceptions (e.g. ArgumentException).
     /// </remarks>
-#if !NETSTANDARD1_3
     [Serializable]
-#endif
     public class NpgsqlException : DbException
     {
         /// <summary>
@@ -55,14 +51,14 @@ namespace Npgsql
             InnerException is IOException || InnerException is SocketException;
 
         #region Serialization
-#if !NETSTANDARD1_3
+        
         /// <summary>
         /// Initializes a new instance of the <see cref="NpgsqlException"/> class with serialized data.
         /// </summary>
         /// <param name="info">The SerializationInfo that holds the serialized object data about the exception being thrown.</param>
         /// <param name="context">The StreamingContext that contains contextual information about the source or destination.</param>
         protected internal NpgsqlException(SerializationInfo info, StreamingContext context) : base(info, context) {}
-#endif
+
         #endregion
     }
 }

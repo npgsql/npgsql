@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -49,7 +49,7 @@ namespace Npgsql.TypeHandling
         #region Read
 
         /// <summary>
-        /// Reads a value of type <typeparamref name="T"/> with the given length from the provided buffer,
+        /// Reads a value of type <typeparamref name="TAny"/> with the given length from the provided buffer,
         /// using either sync or async I/O.
         /// </summary>
         /// <param name="buf">The buffer from which to read.</param>
@@ -57,10 +57,10 @@ namespace Npgsql.TypeHandling
         /// <param name="async">If I/O is required to read the full length of the value, whether it should be performed synchronously or asynchronously.</param>
         /// <param name="fieldDescription">Additional PostgreSQL information about the type, such as the length in varchar(30).</param>
         /// <returns>The fully-read value.</returns>
-        protected internal abstract ValueTask<T> Read<T>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null);
+        protected internal abstract ValueTask<TAny> Read<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null);
 
         /// <summary>
-        /// Reads a value of type <typeparamref name="T"/> with the given length from the provided buffer,
+        /// Reads a value of type <typeparamref name="TAny"/> with the given length from the provided buffer,
         /// with the assumption that it is entirely present in the provided memory buffer and no I/O will be
         /// required. This can save the overhead of async functions and improves performance.
         /// </summary>
@@ -68,7 +68,7 @@ namespace Npgsql.TypeHandling
         /// <param name="len">The byte length of the value. The buffer might not contain the full length, requiring I/O to be performed.</param>
         /// <param name="fieldDescription">Additional PostgreSQL information about the type, such as the length in varchar(30).</param>
         /// <returns>The fully-read value.</returns>
-        internal abstract T Read<T>(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null);
+        internal abstract TAny Read<TAny>(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null);
 
         /// <summary>
         /// Reads a column as the type handler's default read type, assuming that it is already entirely
@@ -103,13 +103,13 @@ namespace Npgsql.TypeHandling
         /// If the length is -1 (null), this method will return the default value.
         /// </summary>
         [ItemCanBeNull]
-        internal async ValueTask<T> ReadWithLength<T>(NpgsqlReadBuffer buf, bool async, FieldDescription fieldDescription = null)
+        internal async ValueTask<TAny> ReadWithLength<TAny>(NpgsqlReadBuffer buf, bool async, FieldDescription fieldDescription = null)
         {
             await buf.Ensure(4, async);
             var len = buf.ReadInt32();
             if (len == -1)
-                return default(T);
-            return await Read<T>(buf, len, async, fieldDescription);
+                return default(TAny);
+            return await Read<TAny>(buf, len, async, fieldDescription);
         }
 
         #endregion
@@ -119,7 +119,7 @@ namespace Npgsql.TypeHandling
         /// <summary>
         /// Called to validate and get the length of a value of a generic <see cref="NpgsqlParameter{T}"/>.
         /// </summary>
-        public abstract int ValidateAndGetLength<TAny>([CanBeNull] TAny value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter);
+        protected internal abstract int ValidateAndGetLength<TAny>([CanBeNull] TAny value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter);
 
         /// <summary>
         /// Called to write the value of a generic <see cref="NpgsqlParameter{T}"/>.
@@ -168,12 +168,12 @@ namespace Npgsql.TypeHandling
         /// <summary>
         /// Creates a type handler for arrays of this handler's type.
         /// </summary>
-        internal abstract ArrayHandler CreateArrayHandler(PostgresType arrayBackendType);
+        public abstract ArrayHandler CreateArrayHandler(PostgresType arrayBackendType);
 
         /// <summary>
         /// Creates a type handler for ranges of this handler's type.
         /// </summary>
-        internal abstract NpgsqlTypeHandler CreateRangeHandler(PostgresType rangeBackendType);
+        public abstract RangeHandler CreateRangeHandler(PostgresType rangeBackendType);
 
         /// <summary>
         /// Used to create an exception when the provided type can be converted and written, but an

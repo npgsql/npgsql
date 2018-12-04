@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -44,7 +44,7 @@ namespace Npgsql.TypeHandlers
         Type EnumType { get; }
     }
 
-    class EnumHandler<TEnum> : NpgsqlSimpleTypeHandler<TEnum>, IEnumHandler where TEnum : struct
+    class EnumHandler<TEnum> : NpgsqlSimpleTypeHandler<TEnum>, IEnumHandler where TEnum : struct, Enum
     {
         readonly Dictionary<TEnum, string> _enumToLabel;
         readonly Dictionary<string, TEnum> _labelToEnum;
@@ -94,7 +94,21 @@ namespace Npgsql.TypeHandlers
         #endregion
     }
 
-    class EnumTypeHandlerFactory<TEnum> : NpgsqlTypeHandlerFactory<TEnum> where TEnum : struct
+
+    /// <summary>
+    /// Interface implemented by all enum handler factories.
+    /// Used to expose the name translator for those reflecting enum mappings (e.g. EF Core).
+    /// </summary>
+    public interface IEnumTypeHandlerFactory
+    {
+        /// <summary>
+        /// The name translator used for this enum.
+        /// </summary>
+        INpgsqlNameTranslator NameTranslator { get; }
+    }
+
+    class EnumTypeHandlerFactory<TEnum> : NpgsqlTypeHandlerFactory<TEnum>, IEnumTypeHandlerFactory
+        where TEnum : struct, Enum
     {
         readonly Dictionary<TEnum, string> _enumToLabel = new Dictionary<TEnum, string>();
         readonly Dictionary<string, TEnum> _labelToEnum = new Dictionary<string, TEnum>();
@@ -103,6 +117,8 @@ namespace Npgsql.TypeHandlers
         {
             foreach (var field in typeof(TEnum).GetFields(BindingFlags.Static | BindingFlags.Public))
             {
+                NameTranslator = nameTranslator;
+
                 var attribute = (PgNameAttribute)field.GetCustomAttributes(typeof(PgNameAttribute), false).FirstOrDefault();
                 var enumName = attribute == null
                     ? nameTranslator.TranslateMemberName(field.Name)
@@ -115,5 +131,7 @@ namespace Npgsql.TypeHandlers
 
         protected override NpgsqlTypeHandler<TEnum> Create(NpgsqlConnection conn)
             => new EnumHandler<TEnum>(_enumToLabel, _labelToEnum);
+
+        public INpgsqlNameTranslator NameTranslator { get; }
     }
 }

@@ -1,0 +1,75 @@
+﻿#region License
+// The PostgreSQL License
+//
+// Copyright (C) 2018 The Npgsql Development Team
+//
+// Permission to use, copy, modify, and distribute this software and its
+// documentation for any purpose, without fee, and without a written
+// agreement is hereby granted, provided that the above copyright notice
+// and this paragraph and the following two paragraphs appear in all copies.
+//
+// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
+// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
+// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
+// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
+// THE POSSIBILITY OF SUCH DAMAGE.
+//
+// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
+// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
+// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
+// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
+// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+#endregion
+
+using System;
+using System.Data;
+using Npgsql.LegacyPostgis;
+using Npgsql.TypeMapping;
+using NpgsqlTypes;
+
+// ReSharper disable once CheckNamespace
+namespace Npgsql
+{
+    /// <summary>
+    /// Extension adding the legacy PostGIS types to an Npgsql type mapper.
+    /// </summary>
+    public static class NpgsqlLegacyPostgisExtensions
+    {
+        /// <summary>
+        /// Sets up the legacy PostGIS types to an Npgsql type mapper.
+        /// </summary>
+        /// <param name="mapper">The type mapper to set up (global or connection-specific)</param>
+        public static INpgsqlTypeMapper UseLegacyPostgis(this INpgsqlTypeMapper mapper)
+        {
+            var typeHandlerFactory = new LegacyPostgisHandlerFactory();
+
+            return mapper
+                .AddMapping(new NpgsqlTypeMappingBuilder
+                {
+                    PgTypeName = "geometry",
+                    NpgsqlDbType = NpgsqlDbType.Geometry,
+                    ClrTypes = new[]
+                    {
+                        typeof(PostgisGeometry),
+                        typeof(PostgisPoint),
+                        typeof(PostgisMultiPoint),
+                        typeof(PostgisLineString),
+                        typeof(PostgisMultiLineString),
+                        typeof(PostgisPolygon),
+                        typeof(PostgisMultiPolygon),
+                        typeof(PostgisGeometryCollection),
+                    },
+                    TypeHandlerFactory = typeHandlerFactory
+                }.Build())
+                .AddMapping(new NpgsqlTypeMappingBuilder
+                {
+                    PgTypeName = "geography",
+                    NpgsqlDbType = NpgsqlDbType.Geography,
+                    DbTypes = new DbType[0],
+                    ClrTypes = new Type[0],
+                    InferredDbType = DbType.Object,
+                    TypeHandlerFactory = typeHandlerFactory
+                }.Build());
+        }
+    }
+}

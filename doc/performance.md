@@ -34,6 +34,10 @@ In addition, you will need to pass `Use Perf Counters=true` on your connection s
 
 Performance counters are currently only available on Windows with .NET Framework (.NET Core doesn't include performance counters yet).
 
+## Disable enlisting to TransactionScope
+
+By default, Npgsql will enlist to ambient transactions. This occurs when a connection is opened while inside a `TransactionScope`, and can provide a powerful programming model for working with transactions. However, this involves checking whether an ambient transaction is in progress each time a (pooled) connection is open, an operation that takes more time than you'd think. Scenarios where connections are very short-lived and open/close happens very frequently can benefit from removing this check - simply include `Enlist=false` in the connection string. Note that you can still enlist manually by calling `NpgsqlConnection.Enlist()`.
+
 ## Pooled Connection Reset
 
 When a pooled connection is closed, Npgsql will arrange for its state to be reset the next time it's used. This prevents leakage of state from one usage cycle of a physical connection to another one. For example, you may change certain PostgreSQL parameters (e.g. `statement_timeout`), and it's undesirable for this change to persist when the connection is closed.
@@ -60,9 +64,9 @@ You can also control the socket's receive buffer size (not to be confused with N
 
 ## Avoiding boxing when writing parameter values
 
-See [this page](parameters.html).
+See [this section](basic-usage.md#strongly-typed-parameters).
 
 ## Unix Domain Socket
 
-If you're on Linux and are connecting to a PostgreSQL server on the same machine, you can boost performance a little by connecting via Unix domain socket rather than via a regular TCP/IP socket. To do this, simply specify the directory of your PostgreSQL sockets in the `Host` connection string parameter - if this parameter starts with a slash, it will be taken to mean a filesystem path.
+If you're on Linux or macOS and are connecting to a PostgreSQL server on the same machine, you can boost performance a little by connecting via Unix domain socket rather than via a regular TCP/IP socket. To do this, simply specify the directory of your PostgreSQL sockets in the `Host` connection string parameter - if this parameter starts with a slash, it will be taken to mean a filesystem path.
 

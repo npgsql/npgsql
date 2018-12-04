@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeHandlers;
 using Npgsql.TypeHandlers.NumericHandlers;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
@@ -77,7 +78,7 @@ namespace Npgsql.Tests
         [Test]
         public void RemoveGlobalMapping()
         {
-            NpgsqlConnection.GlobalTypeMapper.RemoveMapping("int4");
+            NpgsqlConnection.GlobalTypeMapper.RemoveMapping("integer");
             using (var conn = OpenLocalConnection())
                 Assert.That(() => conn.ExecuteScalar("SELECT 8"), Throws.TypeOf<NotSupportedException>());
         }
@@ -87,7 +88,7 @@ namespace Npgsql.Tests
         {
             using (var conn = OpenLocalConnection())
             {
-                conn.TypeMapper.RemoveMapping("int4");
+                conn.TypeMapper.RemoveMapping("integer");
                 Assert.That(() => conn.ExecuteScalar("SELECT 8"), Throws.TypeOf<NotSupportedException>());
             }
             // Make sure reopening (same physical connection) reverts the mapping
@@ -155,6 +156,31 @@ CHECK
             Assert.That(() => new NpgsqlTypeMappingBuilder{ PgTypeName = "foo" }.Build(), Throws.ArgumentException);
         }
 
+        [Test]
+        public void StringToCitext()
+        {
+            using (var conn = OpenLocalConnection())
+            {
+                TestUtil.EnsureExtension(conn, "citext");
+
+                conn.TypeMapper.RemoveMapping("text");
+                conn.TypeMapper.AddMapping(new NpgsqlTypeMappingBuilder
+                {
+                    PgTypeName = "citext",
+                    NpgsqlDbType = NpgsqlDbType.Citext,
+                    DbTypes = new[] { DbType.String },
+                    ClrTypes = new[] { typeof(string) },
+                    TypeHandlerFactory = new TextHandlerFactory()
+                }.Build());
+
+                using (var cmd = new NpgsqlCommand("SELECT @p = 'hello'::citext", conn))
+                {
+                    cmd.Parameters.AddWithValue("p", "HeLLo");
+                    Assert.That(cmd.ExecuteScalar(), Is.True);
+                }
+            }
+        }
+
         #region Support
 
         MyInt32HandlerFactory MapMyIntGlobally()
@@ -162,7 +188,7 @@ CHECK
             var myFactory = new MyInt32HandlerFactory();
             NpgsqlConnection.GlobalTypeMapper.AddMapping(new NpgsqlTypeMappingBuilder
             {
-                PgTypeName = "int4",
+                PgTypeName = "integer",
                 NpgsqlDbType = NpgsqlDbType.Integer,
                 DbTypes = new[] { DbType.Int32 },
                 ClrTypes = new[] { typeof(int) },
@@ -176,7 +202,7 @@ CHECK
             var myFactory = new MyInt32HandlerFactory();
             conn.TypeMapper.AddMapping(new NpgsqlTypeMappingBuilder
             {
-                PgTypeName = "int4",
+                PgTypeName = "integer",
                 NpgsqlDbType = NpgsqlDbType.Integer,
                 DbTypes = new[] { DbType.Int32 },
                 ClrTypes = new[] { typeof(int) },

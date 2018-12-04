@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -34,7 +34,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-numeric.html
     /// </remarks>
-    [TypeMapping("float8", NpgsqlDbType.Double, DbType.Double, typeof(double))]
+    [TypeMapping("double precision", NpgsqlDbType.Double, DbType.Double, typeof(double))]
     class DoubleHandler : NpgsqlSimpleTypeHandler<double>
     {
         public override double Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)

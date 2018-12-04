@@ -1,7 +1,8 @@
 ﻿#region License
+
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -19,6 +20,7 @@
 // AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
 // ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
+
 #endregion
 
 using System;
@@ -26,9 +28,8 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
+using Npgsql.NameTranslation;
 using Npgsql.TypeHandling;
 using NpgsqlTypes;
 
@@ -56,10 +57,8 @@ namespace Npgsql.TypeMapping
             Instance = instance;
         }
 
-        internal GlobalTypeMapper()
-        {
-            Mappings = new Dictionary<string, NpgsqlTypeMapping>();
-        }
+        internal GlobalTypeMapper() : base(new NpgsqlSnakeCaseNameTranslator())
+            => Mappings = new Dictionary<string, NpgsqlTypeMapping>();
 
         #region Mapping management
 
@@ -69,7 +68,7 @@ namespace Npgsql.TypeMapping
             try
             {
                 base.AddMapping(mapping);
-                _changeCounter++;
+                RecordChange();
 
                 if (mapping.NpgsqlDbType.HasValue)
                 {
@@ -101,7 +100,7 @@ namespace Npgsql.TypeMapping
             try
             {
                 var result = base.RemoveMapping(pgTypeName);
-                _changeCounter++;
+                RecordChange();
                 return result;
             }
             finally
@@ -117,13 +116,15 @@ namespace Npgsql.TypeMapping
             {
                 Mappings.Clear();
                 SetupGlobalTypeMapper();
-                _changeCounter++;
+                RecordChange();
             }
             finally
             {
                 Lock.ExitWriteLock();
             }
         }
+
+        internal void RecordChange() => Interlocked.Increment(ref _changeCounter);
 
         #endregion Mapping management
 
@@ -147,26 +148,7 @@ namespace Npgsql.TypeMapping
         internal DbType ToDbType(Type type)
             => _typeToDbType.TryGetValue(type, out var dbType) ? dbType : DbType.Object;
 
-        internal NpgsqlDbType ToNpgsqlDbType(object value)
-        {
-            if (value is DateTime)
-            {
-                return ((DateTime)value).Kind == DateTimeKind.Utc
-                    ? NpgsqlDbType.TimestampTz
-                    : NpgsqlDbType.Timestamp;
-            }
-
-            if (value is NpgsqlDateTime)
-            {
-                return ((NpgsqlDateTime)value).Kind == DateTimeKind.Utc
-                    ? NpgsqlDbType.TimestampTz
-                    : NpgsqlDbType.Timestamp;
-            }
-
-            return ToNpgsqlDbType(value.GetType());
-        }
-
-        NpgsqlDbType ToNpgsqlDbType(Type type)
+        internal NpgsqlDbType ToNpgsqlDbType(Type type)
         {
             if (_typeToNpgsqlDbType.TryGetValue(type, out var npgsqlDbType))
                 return npgsqlDbType;
@@ -183,9 +165,6 @@ namespace Npgsql.TypeMapping
             var ilist = typeInfo.ImplementedInterfaces.FirstOrDefault(x => x.GetTypeInfo().IsGenericType && x.GetGenericTypeDefinition() == typeof(IList<>));
             if (ilist != null)
                 return NpgsqlDbType.Array | ToNpgsqlDbType(ilist.GetGenericArguments()[0]);
-
-            if (typeInfo.IsEnum)
-                return NpgsqlDbType.Enum;
 
             if (typeInfo.IsGenericType && type.GetGenericTypeDefinition() == typeof(NpgsqlRange<>))
                 return NpgsqlDbType.Range | ToNpgsqlDbType(type.GetGenericArguments()[0]);

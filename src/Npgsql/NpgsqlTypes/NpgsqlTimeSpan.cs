@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -55,10 +55,8 @@ namespace NpgsqlTypes
     /// <seealso cref="JustifyDays"/>
     /// <seealso cref="JustifyMonths"/>
     /// <seealso cref="Canonicalize()"/>
-#if !NETSTANDARD1_3
     [Serializable]
-#endif
-    public struct NpgsqlTimeSpan : IComparable, IComparer, IEquatable<NpgsqlTimeSpan>, IComparable<NpgsqlTimeSpan>,
+    public readonly struct NpgsqlTimeSpan : IComparable, IComparer, IEquatable<NpgsqlTimeSpan>, IComparable<NpgsqlTimeSpan>,
                                    IComparer<NpgsqlTimeSpan>
     {
         #region Constants
@@ -132,9 +130,9 @@ namespace NpgsqlTypes
 
         #endregion
 
-        private readonly int _months;
-        private readonly int _days;
-        private readonly long _ticks;
+        readonly int _months;
+        readonly int _days;
+        readonly long _ticks;
 
         #region Constructors
 

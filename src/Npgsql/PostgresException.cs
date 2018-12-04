@@ -1,7 +1,7 @@
 #region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -24,14 +24,12 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Data.Common;
 using System.Linq;
 using System.Reflection;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
-#if !NETSTANDARD1_3
 using System.Runtime.Serialization;
-#endif
+using System.Text;
 
 #pragma warning disable CA1032
 
@@ -50,13 +48,11 @@ namespace Npgsql
     /// See http://www.postgresql.org/docs/current/static/errcodes-appendix.html,
     /// http://www.postgresql.org/docs/current/static/protocol-error-fields.html
     /// </remarks>
-#if !NETSTANDARD1_3
     [Serializable]
-#endif
     public sealed class PostgresException : NpgsqlException
     {
         [CanBeNull]
-        Dictionary<string, object> _data;
+        Dictionary<object, object> _data;
 
         #region Message Fields
 
@@ -72,6 +68,7 @@ namespace Npgsql
         /// </summary>
         /// <remarks>
         /// Always present.
+        /// Constants are defined in <seealso cref="PostgresErrorCodes"/>.
         /// See http://www.postgresql.org/docs/current/static/errcodes-appendix.html
         /// </remarks>
         [PublicAPI]
@@ -82,6 +79,7 @@ namespace Npgsql
         /// </summary>
         /// <remarks>
         /// Always present.
+        /// Constants are defined in <seealso cref="PostgresErrorCodes"/>.
         /// See http://www.postgresql.org/docs/current/static/errcodes-appendix.html
         /// </remarks>
         [PublicAPI, Obsolete("Use SqlState instead")]
@@ -245,24 +243,24 @@ namespace Npgsql
             {
                 switch (SqlState)
                 {
-                case "53000":   //insufficient_resources
-                case "53100":   //disk_full
-                case "53200":   //out_of_memory
-                case "53300":   //too_many_connections
-                case "53400":   //configuration_limit_exceeded
-                case "57P03":   //cannot_connect_now
-                case "58000":   //system_error
-                case "58030":   //io_error
-                case "40001":   //serialization_error
-                case "55P03":   //lock_not_available
-                case "55006":   //object_in_use
-                case "55000":   //object_not_in_prerequisite_state
-                case "08000":   //connection_exception
-                case "08003":   //connection_does_not_exist
-                case "08006":   //connection_failure
-                case "08001":   //sqlclient_unable_to_establish_sqlconnection
-                case "08004":   //sqlserver_rejected_establishment_of_sqlconnection
-                case "08007":   //transaction_resolution_unknown
+                case PostgresErrorCodes.InsufficientResources:
+                case PostgresErrorCodes.DiskFull:
+                case PostgresErrorCodes.OutOfMemory:
+                case PostgresErrorCodes.TooManyConnections:
+                case PostgresErrorCodes.ConfigurationLimitExceeded:
+                case PostgresErrorCodes.CannotConnectNow:
+                case PostgresErrorCodes.SystemError:
+                case PostgresErrorCodes.IoError:
+                case PostgresErrorCodes.SerializationFailure:
+                case PostgresErrorCodes.LockNotAvailable:
+                case PostgresErrorCodes.ObjectInUse:
+                case PostgresErrorCodes.ObjectNotInPrerequisiteState:
+                case PostgresErrorCodes.ConnectionException:
+                case PostgresErrorCodes.ConnectionDoesNotExist:
+                case PostgresErrorCodes.ConnectionFailure:
+                case PostgresErrorCodes.SqlClientUnableToEstablishSqlConnection:
+                case PostgresErrorCodes.SqlServerRejectedEstablishmentOfSqlConnection:
+                case PostgresErrorCodes.TransactionResolutionUnknown:
                     return true;
                 default:
                     return false;
@@ -275,6 +273,42 @@ namespace Npgsql
         /// </summary>
         public NpgsqlStatement Statement { get; internal set; }
 
+        /// <inheritdoc />
+        public override string ToString()
+        {
+            var builder = new StringBuilder(base.ToString());
+            builder.AppendLine().Append("  Exception data:");
+
+            void AppendPropertyLine(string propertyName, object propertyValue)
+            {
+                if (propertyValue == null || propertyValue is int intPropertyValue && intPropertyValue == 0)
+                {
+                    return;
+                }
+
+                builder.AppendLine().Append("    ").Append(propertyName).Append(": ").Append(propertyValue);
+            }
+
+            AppendPropertyLine(nameof(Severity), Severity);
+            AppendPropertyLine(nameof(SqlState), SqlState);
+            AppendPropertyLine(nameof(MessageText), MessageText);
+            AppendPropertyLine(nameof(Detail), Detail);
+            AppendPropertyLine(nameof(Hint), Hint);
+            AppendPropertyLine(nameof(Position), Position);
+            AppendPropertyLine(nameof(InternalPosition), InternalPosition);
+            AppendPropertyLine(nameof(InternalQuery), InternalQuery);
+            AppendPropertyLine(nameof(Where), Where);
+            AppendPropertyLine(nameof(SchemaName), SchemaName);
+            AppendPropertyLine(nameof(TableName), TableName);
+            AppendPropertyLine(nameof(ColumnName), ColumnName);
+            AppendPropertyLine(nameof(DataTypeName), DataTypeName);
+            AppendPropertyLine(nameof(ConstraintName), ConstraintName);
+            AppendPropertyLine(nameof(File), File);
+            AppendPropertyLine(nameof(Line), Line);
+            AppendPropertyLine(nameof(Routine), Routine);
+            return builder.ToString();
+        }
+
         /// <summary>
         /// Gets a collection of key/value pairs that provide additional PostgreSQL fields about the exception.
         /// </summary>
@@ -282,6 +316,8 @@ namespace Npgsql
         {
             get
             {
+                // Remarks: return Dictionary with object keys although all our keys are string keys
+                // because System.Windows.Threading.Dispatcher relies on that
                 return _data ?? (_data = (
                     from p in typeof(PostgresException).GetProperties()
                     let k = p.Name
@@ -291,13 +327,13 @@ namespace Npgsql
                     where v != null
                     where k != nameof(Position) && k != nameof(InternalPosition) || (int)v != 0
                     select new { Key = k, Value = v }
-                    ).ToDictionary(kv => kv.Key, kv => kv.Value)
+                    ).ToDictionary(kv => (object)kv.Key, kv => kv.Value)
                 );
             }
         }
 
         #region Serialization
-#if !NETSTANDARD1_3
+
         PostgresException(SerializationInfo info, StreamingContext context) : base(info, context)
         {
             Severity         = (string)info.GetValue("Severity",         typeof(string));
@@ -345,7 +381,7 @@ namespace Npgsql
             info.AddValue("Line", Line);
             info.AddValue("Routine", Routine);
         }
-#endif
+      
         #endregion
     }
 }

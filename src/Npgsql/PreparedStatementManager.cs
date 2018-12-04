@@ -1,13 +1,8 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.Logging;
-using NpgsqlTypes;
 
 namespace Npgsql
 {
@@ -152,7 +147,7 @@ namespace Npgsql
             if (++pStatement.Usages < UsagesBeforePrepare)
             {
                 // Statement still hasn't passed the usage threshold, no automatic preparation.
-                // Return null for unprepared exection.
+                // Return null for unprepared execution.
                 pStatement.LastUsed = DateTime.UtcNow;
                 return null;
             }

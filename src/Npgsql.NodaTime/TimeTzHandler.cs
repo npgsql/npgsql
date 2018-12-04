@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -30,18 +30,18 @@ using Npgsql.TypeHandling;
 
 namespace Npgsql.NodaTime
 {
-    public class TimeTzHandlerFactory : NpgsqlTypeHandlerFactory<OffsetDateTime>
+    public class TimeTzHandlerFactory : NpgsqlTypeHandlerFactory<OffsetTime>
     {
         // Check for the legacy floating point timestamps feature
-        protected override NpgsqlTypeHandler<OffsetDateTime> Create(NpgsqlConnection conn)
+        protected override NpgsqlTypeHandler<OffsetTime> Create(NpgsqlConnection conn)
             => new TimeTzHandler(conn.HasIntegerDateTimes);
     }
 
-    class TimeTzHandler : NpgsqlSimpleTypeHandler<OffsetDateTime>
+    class TimeTzHandler : NpgsqlSimpleTypeHandler<OffsetTime>
     {
         /// <summary>
         /// A deprecated compile-time option of PostgreSQL switches to a floating-point representation of some date/time
-        /// fields. Some PostgreSQL-like databases (e.g. CrateDB) use floating-point representation by default and do not 
+        /// fields. Some PostgreSQL-like databases (e.g. CrateDB) use floating-point representation by default and do not
         /// provide the option of switching to integer format.
         /// </summary>
         readonly bool _integerFormat;
@@ -51,24 +51,16 @@ namespace Npgsql.NodaTime
             _integerFormat = integerFormat;
         }
 
-        public override OffsetDateTime Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
-        {
-            // Adjust from 1 microsecond to 100ns. Time zone (in seconds) is inverted.
-            var dateTime = _integerFormat ?
-                new LocalDate() + LocalTime.FromTicksSinceMidnight(buf.ReadInt64() * 10) :
-                new LocalDate() + LocalTime.FromTicksSinceMidnight((long)(buf.ReadDouble() * NodaConstants.TicksPerSecond));
-            var offset = Offset.FromSeconds(-buf.ReadInt32());
-            return new OffsetDateTime(dateTime, offset);
-        }
+        // Adjust from 1 microsecond to 100ns. Time zone (in seconds) is inverted.
+        public override OffsetTime Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+            => new OffsetTime(_integerFormat
+                ? LocalTime.FromTicksSinceMidnight(buf.ReadInt64() * 10)
+                : LocalTime.FromTicksSinceMidnight((long)(buf.ReadDouble() * NodaConstants.TicksPerSecond)),
+                Offset.FromSeconds(-buf.ReadInt32()));
 
-        public override int ValidateAndGetLength(OffsetDateTime value, NpgsqlParameter parameter)
-        {
-            if (value.Date != default(LocalDate))
-                throw new InvalidCastException("Date component must be empty for timetz");
-            return 12;
-        }
+        public override int ValidateAndGetLength(OffsetTime value, NpgsqlParameter parameter) => 12;
 
-        public override void Write(OffsetDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public override void Write(OffsetTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
             if (_integerFormat)
                 buf.WriteInt64(value.TickOfDay / 10);

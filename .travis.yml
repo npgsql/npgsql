@@ -2,7 +2,7 @@ language: csharp
 dist: trusty
 sudo: false
 mono: none
-dotnet: 2.1.3
+dotnet: 2.1.400
 
 services:
   - postgresql
@@ -10,18 +10,20 @@ addons:
   postgresql: "9.6"
 
 env:
-  - NPGSQL_TEST_DB: '"Host=localhost;Database=npgsql_tests;Username=npgsql_tests;Password=npgsql_tests"'
+  global:
+    - NPGSQL_TEST_DB: '"Host=localhost;Port=5433;Database=travis;Username=travis;Password=travis"'
+    - PGPORT: 5433
 
 before_script:
-  - psql -U postgres -c "CREATE USER npgsql_tests PASSWORD 'npgsql_tests' SUPERUSER"
-  - psql -U postgres -c "CREATE DATABASE npgsql_tests OWNER npgsql_tests"
-  - psql -U postgres -c "CREATE EXTENSION postgis" npgsql_tests
-  - dotnet restore -v Minimal
+  - psql -c "ALTER USER travis WITH PASSWORD 'travis'"  # For PG 10 hack
+  - psql -c "CREATE EXTENSION citext" travis
+  - psql -c "CREATE EXTENSION postgis" travis
+  - dotnet restore -v Minimal Npgsql.sln
 script:
-  - dotnet build "test/Npgsql.Tests" -c Debug -f netcoreapp2.0
-  - dotnet build "test/Npgsql.PluginTests" -c Debug -f netcoreapp2.0
-  - dotnet test "test/Npgsql.Tests/Npgsql.Tests.csproj" -c Debug -f netcoreapp2.0
-  - dotnet test "test/Npgsql.PluginTests/Npgsql.PluginTests.csproj" -c Debug -f netcoreapp2.0
+  - dotnet build "test/Npgsql.Tests" -c Debug -f netcoreapp2.1
+  - dotnet build "test/Npgsql.PluginTests" -c Debug -f netcoreapp2.1
+  - dotnet test "test/Npgsql.Tests/Npgsql.Tests.csproj" -c Debug -f netcoreapp2.1
+  - dotnet test "test/Npgsql.PluginTests/Npgsql.PluginTests.csproj" -c Debug -f netcoreapp2.1
 
 cache:
   directories:
@@ -29,8 +31,10 @@ cache:
 
 # The following is necessary because of https://github.com/travis-ci/travis-ci/issues/6972
 addons:
-  postgresql: 9.6
   apt:
     packages:
-    - postgresql-9.6-postgis-2.3
-
+    - postgresql-10
+    - postgresql-client-10
+    - postgresql-10-postgis-2.4
+    - postgresql-10-postgis-2.4-scripts
+  postgresql: 10

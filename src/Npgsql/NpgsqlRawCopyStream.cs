@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -30,6 +30,7 @@ using System.Text;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
 using Npgsql.Logging;
+using static Npgsql.Statics;
 
 #pragma warning disable 1591
 
@@ -173,8 +174,8 @@ namespace Npgsql
                     _leftToReadInDataMsg = ((CopyDataMessage)msg).Length;
                     break;
                 case BackendMessageCode.CopyDone:
-                    _connector.ReadExpecting<CommandCompleteMessage>();
-                    _connector.ReadExpecting<ReadyForQueryMessage>();
+                    Expect<CommandCompleteMessage>(_connector.ReadMessage());
+                    Expect<ReadyForQueryMessage>(_connector.ReadMessage());
                     _isConsumed = true;
                     return 0;
                 default:
@@ -228,7 +229,8 @@ namespace Npgsql
                 }
                 catch (PostgresException e)
                 {
-                    if (e.SqlState == "57014") { return; }
+                    if (e.SqlState == PostgresErrorCodes.QueryCanceled)
+                        return;
                     throw;
                 }
             }
@@ -253,8 +255,8 @@ namespace Npgsql
                     Flush();
                     _writeBuf.EndCopyMode();
                     _connector.SendMessage(CopyDoneMessage.Instance);
-                    _connector.ReadExpecting<CommandCompleteMessage>();
-                    _connector.ReadExpecting<ReadyForQueryMessage>();
+                    Expect<CommandCompleteMessage>(_connector.ReadMessage());
+                    Expect<ReadyForQueryMessage>(_connector.ReadMessage());
                 }
                 else
                 {

@@ -1,6 +1,6 @@
 # Json.NET Type Plugin
 
-Since 3.3, Npgsql supports *type plugins*, which are external nuget packages that modify how Npgsql maps PostgreSQL values to CLR types. One of these is the Json.NET plugin, which allows Npgsql to automatically make use of [Newtonsoft Json.NET](http://www.newtonsoft.com/json) when reading and writing JSON data.
+Since 4.0, Npgsql supports *type plugins*, which are external nuget packages that modify how Npgsql maps PostgreSQL values to CLR types. One of these is the Json.NET plugin, which allows Npgsql to automatically make use of [Newtonsoft Json.NET](http://www.newtonsoft.com/json) when reading and writing JSON data.
 
 [PostgreSQL natively supports two JSON types](https://www.postgresql.org/docs/current/static/datatype-json.html): `jsonb` and `json`. Out of the box, Npgsql allows reading and writing these types as strings and provides no further processing to avoid taking a dependency on an external JSON library, forcing Npgsql users to serialize and deserialize JSON values themselves. The Json.NET plugin removes this burden from users by perform serialization/deserialization within Npgsql itself.
 
@@ -89,7 +89,7 @@ using (var reader = cmd.ExecuteReader())
 And for extra credit, you can specify JSON by default for array types just like for regular CLR types:
 
 ```c#
-NpgsqlConnection.GlobalTypeMapper.UseJsonNet(new[] { typeof(int[] });
+NpgsqlConnection.GlobalTypeMapper.UseJsonNet(new[] { typeof(int[]) });
 ```
 
 This overwrites the default array mapping (which sends [PostgreSQL arrays](https://www.postgresql.org/docs/current/static/arrays.html)), making Npgsql send int arrays as JSON by default.

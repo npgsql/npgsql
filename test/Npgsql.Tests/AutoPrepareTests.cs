@@ -316,8 +316,6 @@ namespace Npgsql.Tests
             }
         }
 
-#if !NETCOREAPP1_1
-
         [Test, Description("Tests parameter derivation a parameterized query (CommandType.Text) that is already auto-prepared.")]
         public void DeriveParametersForAutoPreparedStatement()
         {
@@ -353,8 +351,6 @@ namespace Npgsql.Tests
                 conn.UnprepareAll();
             }
         }
-
-#endif
 
         // Exclude some internal Npgsql queries which include pg_type as well as the count statement itself
         const string CountPreparedStatements = @"

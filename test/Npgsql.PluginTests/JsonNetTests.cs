@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -160,6 +160,58 @@ namespace Npgsql.PluginTests
                 }
             }
         }
+
+        class DateWrapper
+        {
+            public System.DateTime Date;
+            public override bool Equals(object obj) => (obj as DateWrapper)?.Date == Date;
+            public override int GetHashCode() => Date.GetHashCode();
+        }
+
+        void RoundtripCustomSerializerSettings(bool asJsonb)
+        {
+            var expected = new DateWrapper() { Date = new System.DateTime(2018, 04, 20) };
+
+            var settings = new JsonSerializerSettings()
+            {
+                DateFormatString = @"T\he d\t\h o\f MMMM, yyyy"
+            };
+
+            // If we serialize to JSONB, Postgres will not store the Json.NET formatting, and will add a space after ':'
+            var expectedString = asJsonb ? "{\"Date\": \"The 20th of April, 2018\"}"
+                                         : "{\"Date\":\"The 20th of April, 2018\"}";
+
+            using (var conn = OpenConnection())
+            {
+                if (asJsonb)
+                {
+                    conn.TypeMapper.UseJsonNet(jsonbClrTypes : new[] { typeof(DateWrapper) }, settings : settings);
+                }
+                else
+                {
+                    conn.TypeMapper.UseJsonNet(jsonClrTypes : new[] { typeof(DateWrapper) }, settings : settings);
+                }
+
+                using (var cmd = new NpgsqlCommand($@"SELECT @p::{_pgTypeName}, @p::text", conn))
+                {
+                    cmd.Parameters.AddWithValue("p", expected);
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        reader.Read();
+                        var actual = reader.GetFieldValue<DateWrapper>(0);
+                        var actualString = reader.GetFieldValue<string>(1);
+                        Assert.That(actual, Is.EqualTo(expected));
+                        Assert.That(actualString, Is.EqualTo(expectedString));
+                    }
+                }
+            }
+        }
+
+        [Test]
+        public void RoundtripJsonbCustomSerializerSettings() => RoundtripCustomSerializerSettings(asJsonb : true);
+
+        [Test]
+        public void RoundtripJsonCustomSerializerSettings() => RoundtripCustomSerializerSettings(asJsonb : false);
 
         protected override NpgsqlConnection OpenConnection(string connectionString = null)
         {

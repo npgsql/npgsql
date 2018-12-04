@@ -1,7 +1,7 @@
 ﻿#region License
 // The PostgreSQL License
 //
-// Copyright (C) 2017 The Npgsql Development Team
+// Copyright (C) 2018 The Npgsql Development Team
 //
 // Permission to use, copy, modify, and distribute this software and its
 // documentation for any purpose, without fee, and without a written
@@ -40,19 +40,13 @@ namespace Npgsql
         internal int Position;
         internal List<int> Lengths;
 
-        internal NpgsqlLengthCache()
-        {
-            Lengths = new List<int>();
-        }
+        internal NpgsqlLengthCache() => Lengths = new List<int>();
 
-        internal NpgsqlLengthCache(int capacity)
-        {
-            Lengths = new List<int>(capacity);
-        }
+        internal NpgsqlLengthCache(int capacity) => Lengths = new List<int>(capacity);
 
         /// <summary>
         /// Stores a length value in the cache, to be fetched later via <see cref="Get"/>.
-        /// Called at the <see cref="NpgsqlTypeHandler.ValidateAndGetLength"/> phase.
+        /// Called at the <see cref="NpgsqlTypeHandler.ValidateAndGetLength{TAny}"/> phase.
         /// </summary>
         /// <returns>The length parameter.</returns>
         public int Set(int len)
