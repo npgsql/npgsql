@@ -33,56 +33,6 @@ namespace Npgsql
         internal override ValueTask<IBackendMessage> ReadMessage(bool async)
             => Connector.ReadMessage(async);
 
-        protected override Task<bool> NextResult(bool async, bool isConsuming=false)
-        {
-            return Command.Parameters.HasOutputParameters && StatementIndex == -1
-                ? NextResultWithOutputParams()
-                : base.NextResult(async, isConsuming);
-
-            async Task<bool> NextResultWithOutputParams()
-            {
-                var hasResultSet = await base.NextResult(async, isConsuming);
-
-                if (!hasResultSet || !HasRows)
-                    return hasResultSet;
-
-                // The first row in a stored procedure command that has output parameters needs to be traversed twice -
-                // once for populating the output parameters and once for the actual result set traversal. So in this
-                // case we can't be sequential.
-                Debug.Assert(Command.Parameters.Any(p => p.IsOutputDirection));
-                Debug.Assert(StatementIndex == 0);
-                Debug.Assert(RowDescription != null);
-                Debug.Assert(State == ReaderState.BeforeResult);
-
-                // Temporarily set our state to InResult to allow us to read the values
-                State = ReaderState.InResult;
-
-                var pending = new Queue<NpgsqlParameter>();
-                var taken = new List<int>();
-                foreach (var p in Command.Parameters.Where(p => p.IsOutputDirection))
-                {
-                    if (RowDescription.TryGetFieldIndex(p.TrimmedName, out var idx))
-                    {
-                        // TODO: Provider-specific check?
-                        p.Value = GetValue(idx);
-                        taken.Add(idx);
-                    }
-                    else
-                        pending.Enqueue(p);
-                }
-                for (var i = 0; pending.Count != 0 && i != RowDescription.NumFields; ++i)
-                {
-                    // TODO: Need to get the provider-specific value based on the out param's type
-                    if (!taken.Contains(i))
-                        pending.Dequeue().Value = GetValue(i);
-                }
-
-                State = ReaderState.BeforeResult;  // Set the state back
-
-                return hasResultSet;
-            }
-        }
-
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal override Task ConsumeRow(bool async)
         {

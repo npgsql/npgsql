@@ -1137,8 +1137,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 using (cancellationToken.Register(cmd => ((NpgsqlCommand)cmd).Cancel(), this))
                 {
                     ValidateParameters();
-                    if ((behavior & CommandBehavior.SequentialAccess) != 0 && Parameters.HasOutputParameters)
-                        throw new NotSupportedException("Output parameters aren't supported with SequentialAccess");
 
                     if (IsExplicitlyPrepared)
                     {
