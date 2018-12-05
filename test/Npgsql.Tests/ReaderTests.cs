@@ -386,7 +386,7 @@ namespace Npgsql.Tests
         [TestCase("bit(3)")]
         [TestCase("bit varying")]
         [TestCase("bit varying(3)")]
-        public void GetDataTypeName(string typeName, string normalizedName=null)
+        public void GetDataTypeName(string typeName, string normalizedName = null)
         {
             if (normalizedName == null)
                 normalizedName = typeName;
