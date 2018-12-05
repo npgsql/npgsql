@@ -549,8 +549,6 @@ namespace Npgsql.Tests
         [Test]
         public void ExecuteReaderGettingEmptyResultSetWithOutputParameter()
         {
-            if (IsSequential)
-                Assert.Pass("Not supported in sequential mode");
             using (var conn = OpenConnection())
             {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
