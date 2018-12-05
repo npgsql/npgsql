@@ -9,7 +9,6 @@ using BenchmarkDotNet.Attributes;
 namespace Npgsql.Benchmarks
 {
     [SuppressMessage("ReSharper", "AssignNullToNotNullAttribute")]
-    [Config("columns=OperationPerSecond")]
     public class Prepare
     {
         NpgsqlConnection _conn, _autoPreparingConn;
@@ -56,7 +55,7 @@ INSERT INTO table{i} (id, data) VALUES (1, {i});
         [GlobalCleanup]
         public void GlobalCleanup()
         {
-            _conn.Dispose();            
+            _conn.Dispose();
         }
 
         public Prepare()
