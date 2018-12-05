@@ -11,7 +11,6 @@ using NpgsqlTypes;
 
 namespace Npgsql.Benchmarks
 {
-    [Config("columns=OperationPerSecond")]
     public class CopyImport
     {
         NpgsqlConnection _conn;

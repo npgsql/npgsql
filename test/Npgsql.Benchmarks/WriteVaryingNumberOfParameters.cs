@@ -10,7 +10,6 @@ using NpgsqlTypes;
 
 namespace Npgsql.Benchmarks.Types
 {
-    [Config("columns=OperationPerSecond"), MemoryDiagnoser]
     public class WriteVaryingNumberOfParameters
     {
         NpgsqlConnection _conn;
