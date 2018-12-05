@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <VersionPrefix>1.0.0</VersionPrefix>
+    <VersionPrefix>4.0.4</VersionPrefix>
     <Description>PostGIS plugin for Npgsql, allowing raw byte access to PostGIS ypes.</Description>
     <Authors>Shay Rojansky</Authors>
     <Copyright>Copyright 2018 © The Npgsql Development Team</Copyright>
