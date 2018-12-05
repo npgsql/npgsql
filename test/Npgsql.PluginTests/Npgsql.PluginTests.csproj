@@ -18,11 +18,11 @@
     <ProjectReference Include="../../src/Npgsql.GeoJSON/Npgsql.GeoJSON.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="NodaTime" Version="2.4.0" />
-    <PackageReference Include="NUnit" Version="3.10.1" />
-    <PackageReference Include="NLog" Version="4.5.4" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.7.2" />
-    <PackageReference Include="NUnit3TestAdapter" Version="3.10.0" />
+    <PackageReference Include="NodaTime" Version="2.4.2" />
+    <PackageReference Include="NUnit" Version="3.11.0" />
+    <PackageReference Include="NLog" Version="4.5.11" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.9.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="3.11.2" />
   </ItemGroup>
 
 </Project>

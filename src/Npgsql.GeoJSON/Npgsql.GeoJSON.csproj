@@ -24,7 +24,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="GeoJSON.Net" Version="1.1.64" />
+    <PackageReference Include="GeoJSON.Net" Version="1.1.70" />
   </ItemGroup>
 
   <ItemGroup>
