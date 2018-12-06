@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <VersionPrefix>4.0.4</VersionPrefix>
+    <VersionPrefix>4.0.5</VersionPrefix>
     <Description>NetTopologySuite plugin for Npgsql, allowing mapping of PostGIS geometry types to NetTopologySuite types.</Description>
     <Authors>Yoh Deadfall, Shay Rojansky</Authors>
     <Copyright>Copyright 2018 © The Npgsql Development Team</Copyright>
