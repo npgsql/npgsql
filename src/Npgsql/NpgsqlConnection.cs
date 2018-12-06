@@ -237,9 +237,10 @@ namespace Npgsql
             var mapper = Connector.TypeMapper;
             if (mapper.ChangeCounter != TypeMapping.GlobalTypeMapper.Instance.ChangeCounter)
             {
-                // We always do this synchronously which isn't amazing but not very important
+                // We always do this synchronously which isn't amazing but not very important, because
+                // it's supposed to be a pretty rare event and the whole point is to keep this method
+                // non-async
                 Connector.LoadDatabaseInfo(NpgsqlTimeout.Infinite, false).GetAwaiter().GetResult();
-                mapper.Reset();
             }
 
             Debug.Assert(Connector.Connection != null, "Open done but connector not set on Connection");
@@ -307,10 +308,7 @@ namespace Npgsql
                         // or global mappings may have changed. Bring this up to date if needed.
                         mapper = Connector.TypeMapper;
                         if (mapper.ChangeCounter != TypeMapping.GlobalTypeMapper.Instance.ChangeCounter)
-                        {
                             await Connector.LoadDatabaseInfo(NpgsqlTimeout.Infinite, async);
-                            mapper.Reset();
-                        }
                     }
 
                     // We may have gotten an already enlisted pending connector above, no need to enlist in that case

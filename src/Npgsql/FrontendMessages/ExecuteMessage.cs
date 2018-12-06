@@ -66,10 +66,8 @@ namespace Npgsql.FrontendMessages
             sb.Append("[Execute");
             if (Portal != "" && MaxRows != 0)
             {
-                if (Portal != "")
-                    sb.Append("Portal=").Append(Portal);
-                if (MaxRows != 0)
-                    sb.Append("MaxRows=").Append(MaxRows);
+                sb.Append("Portal=").Append(Portal);
+                sb.Append("MaxRows=").Append(MaxRows);
             }
             sb.Append(']');
             return sb.ToString();

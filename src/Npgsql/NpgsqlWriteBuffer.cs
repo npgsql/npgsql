@@ -196,18 +196,10 @@ namespace Npgsql
         #region Write Simple
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void WriteSByte(sbyte value)
-        {
-            Debug.Assert(sizeof(sbyte) <= WriteSpaceLeft);
-            Buffer[WritePosition++] = (byte)value;
-        }
+        public void WriteSByte(sbyte value) => Write(value);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void WriteByte(byte value)
-        {
-            Debug.Assert(sizeof(byte) <= WriteSpaceLeft);
-            Buffer[WritePosition++] = value;
-        }
+        public void WriteByte(byte value) => Write(value);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void WriteInt16(int value)
@@ -280,10 +272,16 @@ namespace Npgsql
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void Write<T>(T value)
         {
-            Debug.Assert(Unsafe.SizeOf<T>() <= WriteSpaceLeft);
+            if (Unsafe.SizeOf<T>() > WriteSpaceLeft)
+                ThrowNotSpaceLeft();
+
             Unsafe.WriteUnaligned(ref Buffer[WritePosition], value);
             WritePosition += Unsafe.SizeOf<T>();
         }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        static void ThrowNotSpaceLeft()
+            => throw new InvalidOperationException("There is not enough space left in the buffer.");
 
         public Task WriteString(string s, int byteLen, bool async)
             => WriteString(s, s.Length, byteLen, async);

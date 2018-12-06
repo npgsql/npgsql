@@ -44,6 +44,11 @@ namespace Npgsql.NodaTime
 
     class TimestampHandler : NpgsqlSimpleTypeHandler<Instant>, INpgsqlSimpleTypeHandler<LocalDateTime>
     {
+        static readonly Instant Instant0 = Instant.FromUtc(1, 1, 1, 0, 0, 0);
+        static readonly Instant Instant2000 = Instant.FromUtc(2000, 1, 1, 0, 0, 0);
+        static readonly Duration Plus292Years = Duration.FromDays(292 * 365);
+        static readonly Duration Minus292Years = -Plus292Years;
+
         /// <summary>
         /// A deprecated compile-time option of PostgreSQL switches to a floating-point representation of some date/time
         /// fields. Npgsql (currently) does not support this mode.
@@ -110,15 +115,11 @@ namespace Npgsql.NodaTime
             }
         }
 
-        static readonly Instant Instant2000 = Instant.FromUtc(2000, 1, 1, 0, 0, 0);
-
         // value is the number of microseconds from 2000-01-01T00:00:00.
         // Unfortunately NodaTime doesn't have Duration.FromMicroseconds(), so we decompose into milliseconds
         // and nanoseconds
         internal static Instant Decode(long value)
             => Instant2000 + Duration.FromMilliseconds(value / 1000) + Duration.FromNanoseconds(value % 1000 * 1000);
-
-        static readonly Instant Instant0 = Instant.FromUtc(1, 1, 1, 0, 0, 0);
 
         // This is legacy support for PostgreSQL's old floating-point timestamp encoding - finally removed in PG 10 and not used for a long
         // time. Unfortunately CrateDB seems to use this for some reason.
@@ -208,7 +209,18 @@ namespace Npgsql.NodaTime
 
         // We need to write the number of microseconds from 2000-01-01T00:00:00.
         internal static void WriteInteger(Instant instant, NpgsqlWriteBuffer buf)
-            => buf.WriteInt64((long)(instant - Instant2000).TotalNanoseconds / 1000);
+        {
+            var since2000 = instant - Instant2000;
+
+            // The nanoseconds may overflow, so fallback to BigInteger where necessary.
+            var microseconds =
+                since2000 >= Minus292Years &&
+                since2000 <= Plus292Years
+                    ? since2000.ToInt64Nanoseconds() / 1000
+                    : (long)(since2000.ToBigIntegerNanoseconds() / 1000);
+
+            buf.WriteInt64(microseconds);
+        }
 
         // This is legacy support for PostgreSQL's old floating-point timestamp encoding - finally removed in PG 10 and not used for a long
         // time. Unfortunately CrateDB seems to use this for some reason.

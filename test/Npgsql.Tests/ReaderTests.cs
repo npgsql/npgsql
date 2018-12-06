@@ -370,7 +370,7 @@ namespace Npgsql.Tests
         [TestCase("character varying")]
         [TestCase("character varying(10)[]")]
         [TestCase("character(10)")]
-        [TestCase("character")]
+        [TestCase("character", "character(1)")]
         [TestCase("numeric(1000, 2)")]
         [TestCase("numeric(1000)")]
         [TestCase("numeric")]
@@ -382,18 +382,20 @@ namespace Npgsql.Tests
         [TestCase("time(2) with time zone")]
         [TestCase("interval")]
         [TestCase("interval(2)")]
-        [TestCase("bit")]
+        [TestCase("bit", "bit(1)")]
         [TestCase("bit(3)")]
         [TestCase("bit varying")]
         [TestCase("bit varying(3)")]
-        public void GetDataTypeName(string typeName)
+        public void GetDataTypeName(string typeName, string normalizedName = null)
         {
+            if (normalizedName == null)
+                normalizedName = typeName;
             using (var conn = OpenConnection())
             using (var cmd = new NpgsqlCommand($"SELECT NULL::{typeName} AS some_column", conn))
             using (var reader = cmd.ExecuteReader(Behavior))
             {
                 reader.Read();
-                Assert.That(reader.GetDataTypeName(0), Is.EqualTo(typeName));
+                Assert.That(reader.GetDataTypeName(0), Is.EqualTo(normalizedName));
             }
         }
 
@@ -547,8 +549,6 @@ namespace Npgsql.Tests
         [Test]
         public void ExecuteReaderGettingEmptyResultSetWithOutputParameter()
         {
-            if (IsSequential)
-                Assert.Pass("Not supported in sequential mode");
             using (var conn = OpenConnection())
             {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");

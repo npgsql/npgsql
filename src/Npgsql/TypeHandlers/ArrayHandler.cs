@@ -41,10 +41,12 @@ namespace Npgsql.TypeHandlers
             public static readonly bool Value = typeof(TArray).IsArray && typeof(TArray).GetElementType() == typeof(TElement);
         }
 
-        protected internal override ArrayHandler CreateArrayHandler(PostgresType arrayBackendType)
+        /// <inheritdoc />
+        public override ArrayHandler CreateArrayHandler(PostgresType arrayBackendType)
             => throw new NotSupportedException();
 
-        internal override NpgsqlTypeHandler CreateRangeHandler(PostgresType rangeBackendType)
+        /// <inheritdoc />
+        public override RangeHandler CreateRangeHandler(PostgresType rangeBackendType)
             => throw new NotSupportedException();
     }
     
