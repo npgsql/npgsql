@@ -528,8 +528,9 @@ namespace Npgsql.NetTopologySuite
             }
             if ((sequence.Ordinates & Ordinates.M) != 0)
             {
+                // Fixed in Npgsql, see https://github.com/NetTopologySuite/NetTopologySuite.IO.PostGis/pull/4
                 if (!double.IsNaN(sequence.GetOrdinate(0, Ordinate.M)))
-                    result |= Ordinates.Z;
+                    result |= Ordinates.M;
             }
             return result;
         }
@@ -550,12 +551,11 @@ namespace Npgsql.NetTopologySuite
         /// <inheritdoc cref="IGeometryIOSettings.HandleOrdinates"/>
         public Ordinates HandleOrdinates
         {
-            get { return _outputOrdinates; }
-            set
-            {
-                value |= Ordinates.XY;
-                _outputOrdinates = value & AllowedOrdinates;
-            }
+            get => _outputOrdinates;
+            // Fixed in Npgsql, see https://github.com/NetTopologySuite/NetTopologySuite.IO.PostGis/pull/5
+            set => _outputOrdinates = value == Ordinates.None
+                ? Ordinates.None
+                : (value | Ordinates.XY) & AllowedOrdinates;
         }
         #endregion
 
