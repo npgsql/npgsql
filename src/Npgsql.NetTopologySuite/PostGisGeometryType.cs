@@ -1,8 +1,7 @@
 namespace Npgsql.NetTopologySuite
 {
-    /// <summary>
-    /// PostGIS Geometry types as defined in the OGC WKB Spec
-    /// </summary>
+    // This is copied from NetTopologySuite.IO.PostGis, fixing some bugs until the fixes are merged upstream
+    // https://github.com/NetTopologySuite/NetTopologySuite.IO.PostGis/blob/master/NetTopologySuite.IO.PostGis/PostGisGeometryType.cs
     internal enum PostGisGeometryType
     {
 
