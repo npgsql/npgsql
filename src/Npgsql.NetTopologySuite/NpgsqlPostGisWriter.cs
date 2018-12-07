@@ -9,6 +9,7 @@ using NetTopologySuite.Utilities;
 namespace Npgsql.NetTopologySuite
 {
     // This is copied from NetTopologySuite.IO.PostGis, fixing some bugs until the fixes are merged upstream
+    // https://github.com/NetTopologySuite/NetTopologySuite.IO.PostGis/blob/master/NetTopologySuite.IO.PostGis/PostGisWriter.cs
     class NpgsqlPostGisWriter : IBinaryGeometryWriter
     {
         /// <summary>
