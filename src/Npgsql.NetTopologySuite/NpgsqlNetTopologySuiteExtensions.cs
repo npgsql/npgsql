@@ -78,7 +78,7 @@ namespace Npgsql
 
             var typeHandlerFactory = new NetTopologySuiteHandlerFactory(
                 new PostGisReader(coordinateSequenceFactory, precisionModel, handleOrdinates),
-                new PostGisWriter() { HandleOrdinates = handleOrdinates });
+                new NpgsqlPostGisWriter());  // NOTE: We used our own patched-up version of PostGisWriter for now
 
             return mapper
                 .AddMapping(new NpgsqlTypeMappingBuilder
