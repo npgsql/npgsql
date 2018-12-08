@@ -508,8 +508,8 @@ namespace Npgsql.NetTopologySuite
                 return CheckOrdinates(((ILineString)geometry).CoordinateSequence);
             if (geometry is IPolygon)
                 return CheckOrdinates((((IPolygon)geometry).ExteriorRing).CoordinateSequence);
-            if (geometry is IGeometryCollection)
-                return CheckOrdinates(geometry.GetGeometryN(0));
+            if (geometry is IGeometryCollection collection)
+                return collection.Count == 0 ? Ordinates.None : CheckOrdinates(collection.GetGeometryN(0));
 
             Assert.ShouldNeverReachHere();
             return Ordinates.None;
