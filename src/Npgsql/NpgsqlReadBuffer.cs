@@ -61,6 +61,13 @@ namespace Npgsql
 
         internal Encoding TextEncoding { get; }
 
+        /// <summary>
+        /// Same as <see cref="TextEncoding"/>, except that it does not throw an exception if an invalid char is
+        /// encountered (exception fallback), but rather replaces it with a question mark character (replacement
+        /// fallback).
+        /// </summary>
+        internal Encoding RelaxedTextEncoding { get; }
+
         internal int ReadPosition { get; set; }
         internal int ReadBytesLeft => FilledBytes - ReadPosition;
 
@@ -80,7 +87,12 @@ namespace Npgsql
 
         #region Constructors
 
-        internal NpgsqlReadBuffer([CanBeNull] NpgsqlConnector connector, Stream stream, int size, Encoding textEncoding)
+        internal NpgsqlReadBuffer(
+            [CanBeNull] NpgsqlConnector connector,
+            Stream stream,
+            int size,
+            Encoding textEncoding,
+            Encoding relaxedTextEncoding)
         {
             if (size < MinimumSize)
             {
@@ -92,6 +104,7 @@ namespace Npgsql
             Size = size;
             Buffer = new byte[Size];
             TextEncoding = textEncoding;
+            RelaxedTextEncoding = relaxedTextEncoding;
         }
 
         #endregion
@@ -183,7 +196,7 @@ namespace Npgsql
         internal NpgsqlReadBuffer AllocateOversize(int count)
         {
             Debug.Assert(count > Size);
-            var tempBuf = new NpgsqlReadBuffer(Connector, Underlying, count, TextEncoding);
+            var tempBuf = new NpgsqlReadBuffer(Connector, Underlying, count, TextEncoding, RelaxedTextEncoding);
             CopyTo(tempBuf);
             Clear();
             return tempBuf;
@@ -418,10 +431,17 @@ namespace Npgsql
 
         /// <summary>
         /// Seeks the first null terminator (\0) and returns the string up to it. The buffer must already
+        /// contain the entire string and its terminator. If any character could not be decoded, a question
+        /// mark character is returned instead of throwing an exception.
+        /// </summary>
+        public string ReadNullTerminatedStringRelaxed() => ReadNullTerminatedString(RelaxedTextEncoding);
+
+        /// <summary>
+        /// Seeks the first null terminator (\0) and returns the string up to it. The buffer must already
         /// contain the entire string and its terminator.
         /// </summary>
         /// <param name="encoding">Decodes the messages with this encoding.</param>
-        internal string ReadNullTerminatedString(Encoding encoding)
+        string ReadNullTerminatedString(Encoding encoding)
         {
             int i;
             for (i = ReadPosition; Buffer[i] != 0; i++)

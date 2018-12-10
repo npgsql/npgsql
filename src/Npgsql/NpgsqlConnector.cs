@@ -77,6 +77,13 @@ namespace Npgsql
         internal Encoding TextEncoding { get; private set; }
 
         /// <summary>
+        /// Same as <see cref="TextEncoding"/>, except that it does not throw an exception if an invalid char is
+        /// encountered (exception fallback), but rather replaces it with a question mark character (replacement
+        /// fallback).
+        /// </summary>
+        internal Encoding RelaxedTextEncoding { get; private set; }
+
+        /// <summary>
         /// Buffer used for reading data.
         /// </summary>
         internal NpgsqlReadBuffer ReadBuffer { get; private set; }
@@ -554,10 +561,18 @@ namespace Npgsql
                 _baseStream = new NetworkStream(_socket, true);
                 _stream = _baseStream;
 
-                TextEncoding = Settings.Encoding == "UTF8"
-                    ? PGUtil.UTF8Encoding
-                    : Encoding.GetEncoding(Settings.Encoding, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback);
-                ReadBuffer = new NpgsqlReadBuffer(this, _stream, Settings.ReadBufferSize, TextEncoding);
+                if (Settings.Encoding == "UTF8")
+                {
+                    TextEncoding = PGUtil.UTF8Encoding;
+                    RelaxedTextEncoding = PGUtil.RelaxedUTF8Encoding;
+                }
+                else
+                {
+                    TextEncoding = Encoding.GetEncoding(Settings.Encoding, EncoderFallback.ExceptionFallback, DecoderFallback.ExceptionFallback);
+                    RelaxedTextEncoding = Encoding.GetEncoding(Settings.Encoding, EncoderFallback.ReplacementFallback, DecoderFallback.ReplacementFallback);
+                }
+
+                ReadBuffer = new NpgsqlReadBuffer(this, _stream, Settings.ReadBufferSize, TextEncoding, RelaxedTextEncoding);
                 WriteBuffer = new NpgsqlWriteBuffer(this, _stream, Settings.WriteBufferSize, TextEncoding);
                 ParseMessage = new ParseMessage(TextEncoding);
                 QueryMessage = new QueryMessage(TextEncoding);
