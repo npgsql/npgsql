@@ -93,6 +93,13 @@ namespace Npgsql.NodaTime
                     return TimestampHandler.Decode(value).InZone(_dateTimeZoneProvider[buf.Connection.Timezone]);
                 }
             }
+            catch (DateTimeZoneNotFoundException) when (string.Equals(buf.Connection.Timezone, "localtime", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new NpgsqlSafeReadException(
+                    new DateTimeZoneNotFoundException(
+                        "The special PostgreSQL timezone 'localtime' is not supported when reading values of type 'timestamp with time zone'. " +
+                        "Please specify a real timezone in 'postgresql.conf' on the server, or set the 'PGTZ' environment variable on the client."));
+            }
             catch (DateTimeZoneNotFoundException e)
             {
                 throw new NpgsqlSafeReadException(e);
