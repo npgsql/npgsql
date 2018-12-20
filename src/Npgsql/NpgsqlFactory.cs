@@ -25,6 +25,7 @@ using System;
 using System.Data.Common;
 using System.Reflection;
 using JetBrains.Annotations;
+using Npgsql.Logging;
 
 namespace Npgsql
 {
@@ -34,6 +35,8 @@ namespace Npgsql
     [Serializable]
     public sealed class NpgsqlFactory : DbProviderFactory, IServiceProvider
     {
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+
         /// <summary>
         /// Gets an instance of the <see cref="NpgsqlFactory"/>.
         /// This can be used to retrieve strongly typed data objects.
@@ -87,33 +90,32 @@ namespace Npgsql
 
             // In legacy Entity Framework, this is the entry point for obtaining Npgsql's
             // implementation of DbProviderServices. We use reflection for all types to
-            // avoid any dependencies on EF stuff in this project.
+            // avoid any dependencies on EF stuff in this project. EF6 (and of course EF Core) do not use this method.
 
-            if (serviceType.FullName == "System.Data.Common.DbProviderServices")
-            {
-                // User has requested a legacy EF DbProviderServices implementation. Check our cache first.
-                if (_legacyEntityFrameworkServices != null)
-                    return _legacyEntityFrameworkServices;
+            if (serviceType.FullName != "System.Data.Common.DbProviderServices")
+                return null;
 
-                // First time, attempt to find the EntityFramework5.Npgsql assembly and load the type via reflection
-                var assemblyName = typeof(NpgsqlFactory).GetTypeInfo().Assembly.GetName();
-                assemblyName.Name = "EntityFramework5.Npgsql";
-                Assembly npgsqlEfAssembly;
-                try {
-                    npgsqlEfAssembly = Assembly.Load(new AssemblyName(assemblyName.FullName));
-                } catch (Exception e) {
-                    throw new Exception("Could not load EntityFramework5.Npgsql assembly, is it installed?", e);
-                }
+            // User has requested a legacy EF DbProviderServices implementation. Check our cache first.
+            if (_legacyEntityFrameworkServices != null)
+                return _legacyEntityFrameworkServices;
 
-                Type npgsqlServicesType;
-                if ((npgsqlServicesType = npgsqlEfAssembly.GetType("Npgsql.NpgsqlServices")) == null ||
-                    npgsqlServicesType.GetProperty("Instance") == null)
-                    throw new Exception("EntityFramework5.Npgsql assembly does not seem to contain the correct type!");
-
-                return _legacyEntityFrameworkServices = npgsqlServicesType.GetProperty("Instance", BindingFlags.Public | BindingFlags.Static).GetMethod.Invoke(null, new object[0]);
+            // First time, attempt to find the EntityFramework5.Npgsql assembly and load the type via reflection
+            var assemblyName = typeof(NpgsqlFactory).GetTypeInfo().Assembly.GetName();
+            assemblyName.Name = "EntityFramework5.Npgsql";
+            Assembly npgsqlEfAssembly;
+            try {
+                npgsqlEfAssembly = Assembly.Load(new AssemblyName(assemblyName.FullName));
+            } catch (Exception e) {
+                Log.Debug("A service request was made for System.Data.Common.DbProviderServices, but the EntityFramework5.Npgsql assemby could not be loaded.", e);
+                return null;
             }
 
-            return null;
+            Type npgsqlServicesType;
+            if ((npgsqlServicesType = npgsqlEfAssembly.GetType("Npgsql.NpgsqlServices")) == null ||
+                npgsqlServicesType.GetProperty("Instance") == null)
+                throw new Exception("EntityFramework5.Npgsql assembly does not seem to contain the correct type!");
+
+            return _legacyEntityFrameworkServices = npgsqlServicesType.GetProperty("Instance", BindingFlags.Public | BindingFlags.Static).GetMethod.Invoke(null, new object[0]);
         }
 
         [CanBeNull]
