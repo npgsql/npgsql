@@ -284,6 +284,11 @@ namespace Npgsql
         {
             get { return settings.CommandTimeout; }
         }
+        
+        internal Int32 DefaultInternalCommandTimeout
+        {
+            get { return settings.InternalCommandTimeout; }
+        }
 
         internal Boolean Enlist
         {

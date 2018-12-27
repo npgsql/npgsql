@@ -226,6 +226,7 @@ namespace Npgsql
             valueDescriptions.Add(Keywords.MaxPoolSize, new ValueDescription((Int32)20));
             valueDescriptions.Add(Keywords.SyncNotification, new ValueDescription(typeof(bool)));
             valueDescriptions.Add(Keywords.CommandTimeout, new ValueDescription((Int32)20));
+            valueDescriptions.Add(Keywords.InternalCommandTimeout, new ValueDescription((Int32)20));
             valueDescriptions.Add(Keywords.Enlist, new ValueDescription(typeof(bool)));
             valueDescriptions.Add(Keywords.PreloadReader, new ValueDescription(typeof(bool)));
             valueDescriptions.Add(Keywords.UseExtendedTypes, new ValueDescription(typeof(bool)));
@@ -763,6 +764,24 @@ namespace Npgsql
             set { SetValue(GetKeyName(Keywords.CommandTimeout), Keywords.CommandTimeout, value); }
         }
 
+        private int _internal_command_timeout;
+        /// <summary>
+        /// Gets the time to wait while trying to execute an internal command
+        /// like a Commit before terminating the attempt and generating an error.
+        /// </summary>
+        /// <value>The time (in seconds) to wait for an internal command to complete. The default value is 20 seconds.</value>
+        [NpgsqlConnectionStringCategory("DataCategory_Initialization")]
+        [NpgsqlConnectionStringKeyword(Keywords.InternalCommandTimeout)]
+        [NpgsqlConnectionStringDisplayName("ConnectionProperty_Display_InternalCommandTimeout")]
+        [NpgsqlConnectionStringDescription("ConnectionProperty_Description_InternalCommandTimeout")]
+        [RefreshProperties(RefreshProperties.All)]
+        [DefaultValue(20)]
+        public int InternalCommandTimeout
+        {
+            get { return _internal_command_timeout; }
+            set { SetValue(GetKeyName(Keywords.InternalCommandTimeout), Keywords.InternalCommandTimeout, value); }
+        }
+        
         private bool _enlist;
         [NpgsqlConnectionStringCategory("DataCategory_Pooling")]
         [NpgsqlConnectionStringKeyword(Keywords.Enlist)]
@@ -965,6 +984,8 @@ namespace Npgsql
                     return Keywords.SyncNotification;
                 case "COMMANDTIMEOUT":
                     return Keywords.CommandTimeout;
+                case "INTERNALCOMMANDTIMEOUT":
+                    return Keywords.InternalCommandTimeout;
                 case "ENLIST":
                     return Keywords.Enlist;
                 case "PRELOADREADER":
@@ -1033,6 +1054,8 @@ namespace Npgsql
                     return "SYNCNOTIFICATION";
                 case Keywords.CommandTimeout:
                     return "COMMANDTIMEOUT";
+                case Keywords.InternalCommandTimeout:
+                    return "INTERNALCOMMANDTIMEOUT";
                 case Keywords.Enlist:
                     return "ENLIST";
                 case Keywords.PreloadReader:
@@ -1193,6 +1216,8 @@ namespace Npgsql
                         return this._sync_notification = ToBoolean(value);
                     case Keywords.CommandTimeout:
                         return this._command_timeout = Convert.ToInt32(value);
+                    case Keywords.InternalCommandTimeout:
+                        return this._internal_command_timeout = ToInt32(value, 0, 2147483, keyword);
                     case Keywords.Enlist:
                         return this._enlist = ToBoolean(value);
                     case Keywords.PreloadReader:
@@ -1224,43 +1249,53 @@ namespace Npgsql
             }
             catch (InvalidCastException exception)
             {
-                string exception_template = string.Empty;
-
-                switch (keyword)
-                {
-                    case Keywords.Port:
-                    case Keywords.Timeout:
-                    case Keywords.ConnectionLifeTime:
-                    case Keywords.MinPoolSize:
-                    case Keywords.MaxPoolSize:
-                    case Keywords.CommandTimeout:
-                        exception_template = resman.GetString("Exception_InvalidIntegerKeyVal");
-                        break;
-                    case Keywords.SSL:
-                    case Keywords.Pooling:
-                    case Keywords.SyncNotification:
-                        exception_template = resman.GetString("Exception_InvalidBooleanKeyVal");
-                        break;
-#pragma warning disable 618
-                    case Keywords.Protocol:
-#pragma warning restore 618
-                        exception_template = resman.GetString("Exception_InvalidProtocolVersionKeyVal");
-                        break;
-                }
-
-                if (!string.IsNullOrEmpty(exception_template))
-                {
-                    string key_name = GetKeyName(keyword);
-
-                    throw new ArgumentException(string.Format(exception_template, key_name), key_name, exception);
-                }
-
+                CatchSetValueException(keyword, exception);
+                throw;
+            }
+            catch (FormatException exception)
+            {
+                CatchSetValueException(keyword, exception);
                 throw;
             }
 
             return null;
         }
 
+        private static void CatchSetValueException(Keywords keyword, Exception exception)
+        {
+            string exception_template = string.Empty;
+
+            switch (keyword)
+            {
+                case Keywords.Port:
+                case Keywords.Timeout:
+                case Keywords.ConnectionLifeTime:
+                case Keywords.MinPoolSize:
+                case Keywords.MaxPoolSize:
+                case Keywords.CommandTimeout:
+                case Keywords.InternalCommandTimeout:
+                    exception_template = resman.GetString("Exception_InvalidIntegerKeyVal");
+                    break;
+                case Keywords.SSL:
+                case Keywords.Pooling:
+                case Keywords.SyncNotification:
+                    exception_template = resman.GetString("Exception_InvalidBooleanKeyVal");
+                    break;
+#pragma warning disable 618
+                case Keywords.Protocol:
+#pragma warning restore 618
+                    exception_template = resman.GetString("Exception_InvalidProtocolVersionKeyVal");
+                    break;
+            }
+
+            if (!string.IsNullOrEmpty(exception_template))
+            {
+                string key_name = GetKeyName(keyword);
+
+                throw new ArgumentException(string.Format(exception_template, key_name), key_name, exception);
+            }
+        }
+        
         /// <summary>
         /// The function will access private member only, not base[key].
         /// </summary>
@@ -1310,6 +1345,8 @@ namespace Npgsql
                     return this._sync_notification;
                 case Keywords.CommandTimeout:
                     return this._command_timeout;
+                case Keywords.InternalCommandTimeout:
+                    return this._internal_command_timeout;
                 case Keywords.Enlist:
                     return this._enlist;
                 case Keywords.PreloadReader:
@@ -1391,7 +1428,7 @@ namespace Npgsql
     {
         Host,
         Port,
-        [Obsolete("Protocol versio 3 is always used regardless of this setting.")]
+        [Obsolete("Protocol version 3 is always used regardless of this setting.")]
         Protocol,
         Database,
         UserName,
@@ -1411,6 +1448,8 @@ namespace Npgsql
         SyncNotification,
         // These are for the command
         CommandTimeout,
+        // These are for the internal command like a Commit
+        InternalCommandTimeout,
         // These are for the resource manager
         Enlist,
         PreloadReader,
