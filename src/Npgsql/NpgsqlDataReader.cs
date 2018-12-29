@@ -483,6 +483,7 @@ namespace Npgsql
                         ProcessMessage(row);
                         PopulateOutputParameters();
                         Connector.ReadBuffer.ReadPosition = pos;
+                        State = ReaderState.BetweenResults;
                     }
                 }
                 else

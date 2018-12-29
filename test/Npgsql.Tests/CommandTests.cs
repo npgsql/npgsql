@@ -459,7 +459,9 @@ namespace Npgsql.Tests
 
                     using (var reader = cmd.ExecuteReader(CommandBehavior.SingleRow))
                     {
+                        Assert.That(() => reader.GetInt32(0), Throws.Exception.TypeOf<InvalidOperationException>());
                         Assert.That(reader.Read(), Is.True);
+                        Assert.That(reader.GetInt32(0), Is.EqualTo(1));
                         Assert.That(reader.Read(), Is.False);
                     }
                 }

@@ -344,6 +344,27 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test]
+        public void Bug2274()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT 1", conn))
+            {
+                cmd.Parameters.Add(new NpgsqlParameter
+                {
+                    ParameterName = "p",
+                    Direction = ParameterDirection.Output
+                });
+                using (var reader = cmd.ExecuteReader(CommandBehavior.SingleRow))
+                {
+                    Assert.That(() => reader.GetInt32(0), Throws.Exception.TypeOf<InvalidOperationException>());
+                    Assert.That(reader.Read(), Is.True);
+                    Assert.That(reader.GetInt32(0), Is.EqualTo(1));
+                    Assert.That(reader.Read(), Is.False);
+                }
+            }
+        }
+
         #region Bug1285
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1285")]
