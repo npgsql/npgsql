@@ -26,10 +26,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using NpgsqlTypes;
 using Npgsql.BackendMessages;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
+using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers.FullTextSearchHandlers
 {

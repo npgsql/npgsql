@@ -1,7 +1,7 @@
-﻿using Npgsql.BackendMessages;
-using System;
+﻿using System;
 using System.Reflection;
 using System.Threading.Tasks;
+using Npgsql.BackendMessages;
 
 // ReSharper disable StaticMemberInGenericType
 namespace Npgsql.TypeHandling

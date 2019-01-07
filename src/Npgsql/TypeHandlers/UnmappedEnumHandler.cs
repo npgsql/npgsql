@@ -26,12 +26,10 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
-using System.Text;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.TypeHandling;
-using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers

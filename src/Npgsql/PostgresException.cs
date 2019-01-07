@@ -26,10 +26,10 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using JetBrains.Annotations;
-using Npgsql.BackendMessages;
 using System.Runtime.Serialization;
 using System.Text;
+using JetBrains.Annotations;
+using Npgsql.BackendMessages;
 
 #pragma warning disable CA1032
 

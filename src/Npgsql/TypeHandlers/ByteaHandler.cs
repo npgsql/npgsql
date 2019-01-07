@@ -22,13 +22,13 @@
 #endregion
 
 using System;
-using System.Threading.Tasks;
-using Npgsql.BackendMessages;
-using NpgsqlTypes;
 using System.Data;
+using System.Threading.Tasks;
 using JetBrains.Annotations;
+using Npgsql.BackendMessages;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
+using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers
 {

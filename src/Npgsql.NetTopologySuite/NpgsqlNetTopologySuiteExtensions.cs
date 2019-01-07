@@ -22,6 +22,7 @@
 #endregion
 
 using System;
+using System.Data;
 using GeoAPI;
 using GeoAPI.Geometries;
 using NetTopologySuite.Geometries;
@@ -29,7 +30,6 @@ using NetTopologySuite.IO;
 using Npgsql.NetTopologySuite;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
-using System.Data;
 
 namespace Npgsql
 {

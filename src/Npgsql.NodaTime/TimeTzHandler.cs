@@ -21,7 +21,6 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using System;
 using NodaTime;
 using Npgsql.BackendMessages;
 using Npgsql.TypeHandling;

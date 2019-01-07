@@ -21,13 +21,11 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using System;
-using Npgsql.BackendMessages;
-using NpgsqlTypes;
 using System.Data;
-using Npgsql.PostgresTypes;
+using Npgsql.BackendMessages;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
+using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers
 {

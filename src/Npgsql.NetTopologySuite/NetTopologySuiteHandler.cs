@@ -21,15 +21,14 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
+using System;
+using System.IO;
+using System.Threading.Tasks;
 using GeoAPI.Geometries;
 using GeoAPI.IO;
 using NetTopologySuite.Geometries;
 using Npgsql.BackendMessages;
 using Npgsql.TypeHandling;
-using System;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 

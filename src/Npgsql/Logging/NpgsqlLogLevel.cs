@@ -22,6 +22,7 @@
 #endregion
 
 #pragma warning disable 1591
+
 namespace Npgsql.Logging
 {
     public enum NpgsqlLogLevel

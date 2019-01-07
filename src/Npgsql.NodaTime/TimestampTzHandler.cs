@@ -23,7 +23,6 @@
 
 using System;
 using NodaTime;
-using NodaTime.TimeZones;
 using Npgsql.BackendMessages;
 using Npgsql.TypeHandling;
 

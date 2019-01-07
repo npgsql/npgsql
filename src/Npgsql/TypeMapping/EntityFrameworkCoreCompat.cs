@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Npgsql.TypeMapping;
 
 // This file contains some pretty awful hacks to make current version of the EF Core provider

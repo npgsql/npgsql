@@ -25,7 +25,6 @@ using System;
 using System.Data;
 using System.Data.Common;
 using System.Globalization;
-using System.Reflection;
 using System.Text;
 using JetBrains.Annotations;
 using Npgsql.PostgresTypes;

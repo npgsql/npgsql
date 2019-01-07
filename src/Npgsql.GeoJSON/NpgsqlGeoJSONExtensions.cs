@@ -21,13 +21,13 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
+using System;
+using System.Data;
 using GeoJSON.Net;
 using GeoJSON.Net.Geometry;
 using Npgsql.GeoJSON;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
-using System;
-using System.Data;
 
 namespace Npgsql
 {

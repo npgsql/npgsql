@@ -22,10 +22,8 @@
 #endregion
 
 using System;
-using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
-using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;

@@ -22,7 +22,6 @@
 #endregion
 
 using System.Collections.Generic;
-using Npgsql.TypeHandlers;
 
 namespace Npgsql.PostgresTypes
 {

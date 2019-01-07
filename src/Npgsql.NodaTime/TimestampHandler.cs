@@ -23,7 +23,6 @@
 
 using System;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 using NodaTime;
 using Npgsql.BackendMessages;
 using Npgsql.TypeHandling;

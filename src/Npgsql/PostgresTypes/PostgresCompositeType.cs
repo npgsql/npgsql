@@ -21,10 +21,7 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using System;
 using System.Collections.Generic;
-using JetBrains.Annotations;
-using Npgsql.TypeHandlers;
 
 namespace Npgsql.PostgresTypes
 {

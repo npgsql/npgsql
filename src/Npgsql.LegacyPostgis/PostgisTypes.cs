@@ -4,14 +4,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
-using Npgsql;
 
 #pragma warning disable CA1710
 
 // ReSharper disable once CheckNamespace
 namespace Npgsql.LegacyPostgis
 {
-    #pragma  warning disable 1591
+#pragma warning disable 1591
     /// <summary>
     /// Represents the identifier of the Well Known Binary representation of a geographical feature specified by the OGC.
     /// http://portal.opengeospatial.org/files/?artifact_id=13227 Chapter 6.3.2.7
