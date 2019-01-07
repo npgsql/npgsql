@@ -416,7 +416,7 @@ namespace NpgsqlTypes
             if (!upperInclusive && !upperExclusive)
                 throw new FormatException("Malformed range literal. Missing right parenthesis or bracket.");
 
-            int separator = value.IndexOf(BoundSeparator);
+            var separator = value.IndexOf(BoundSeparator);
 
             if (separator == -1)
                 throw new FormatException("Malformed range literal. Missing comma after lower bound.");
