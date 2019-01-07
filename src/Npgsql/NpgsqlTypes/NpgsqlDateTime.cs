@@ -26,6 +26,7 @@ using System.Collections;
 using System.Collections.Generic;
 using JetBrains.Annotations;
 using Npgsql;
+
 #pragma warning disable 1591
 
 // ReSharper disable once CheckNamespace

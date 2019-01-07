@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
-using System.Linq;
 using System.Reflection;
 using JetBrains.Annotations;
-using Npgsql.BackendMessages;
 using Npgsql.Logging;
 
 namespace Npgsql

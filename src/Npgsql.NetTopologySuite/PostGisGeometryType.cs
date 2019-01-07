@@ -4,7 +4,6 @@ namespace Npgsql.NetTopologySuite
     // https://github.com/NetTopologySuite/NetTopologySuite.IO.PostGis/blob/master/NetTopologySuite.IO.PostGis/PostGisGeometryType.cs
     internal enum PostGisGeometryType
     {
-
         /// <summary>
         /// The OGIS geometry type number for points.
         /// </summary>
@@ -39,6 +38,5 @@ namespace Npgsql.NetTopologySuite
         /// The OGIS geometry type number for feature collections.
         /// </summary>
         GeometryCollection = 7,
-
     }
 }

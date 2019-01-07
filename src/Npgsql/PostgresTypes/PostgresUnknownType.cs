@@ -21,8 +21,6 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using System;
-
 namespace Npgsql.PostgresTypes
 {
     /// <summary>

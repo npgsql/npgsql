@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Npgsql.NameTranslation
+﻿namespace Npgsql.NameTranslation
 {
     /// <summary>
     /// A name translator which preserves CLR names (e.g. SomeClass) when mapping names to the database.

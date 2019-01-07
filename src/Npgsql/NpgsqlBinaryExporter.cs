@@ -24,12 +24,9 @@
 using System;
 using System.Diagnostics;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
-using Npgsql.FrontendMessages;
 using Npgsql.Logging;
-using Npgsql.TypeHandlers;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;

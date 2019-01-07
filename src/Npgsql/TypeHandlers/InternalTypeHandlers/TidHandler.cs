@@ -21,9 +21,7 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using System;
 using System.Diagnostics;
-using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;

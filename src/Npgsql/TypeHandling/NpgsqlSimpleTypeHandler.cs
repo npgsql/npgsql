@@ -21,7 +21,6 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using Npgsql.BackendMessages;
 using System;
 using System.Collections.Concurrent;
 using System.Data.Common;
@@ -30,6 +29,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading.Tasks;
+using Npgsql.BackendMessages;
 
 namespace Npgsql.TypeHandling
 {

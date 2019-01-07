@@ -21,11 +21,7 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using Npgsql;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace NpgsqlTypes
 {

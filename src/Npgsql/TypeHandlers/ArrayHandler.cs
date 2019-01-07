@@ -21,14 +21,14 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using Npgsql.BackendMessages;
-using Npgsql.PostgresTypes;
-using Npgsql.TypeHandling;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 

@@ -21,12 +21,12 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
+using System;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandlers.NumericHandlers;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
-using System;
 
 namespace Npgsql.TypeHandlers.InternalTypeHandlers
 {

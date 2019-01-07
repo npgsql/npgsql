@@ -21,17 +21,17 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using Npgsql.BackendMessages;
-using Npgsql.PostgresTypes;
-using Npgsql.TypeHandling;
-using Npgsql.TypeMapping;
-using NpgsqlTypes;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
 using System.Threading.Tasks;
+using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
+using Npgsql.TypeMapping;
+using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers
 {

@@ -21,7 +21,6 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using JetBrains.Annotations;
 using System;
 using System.Diagnostics;
 using System.IO;
@@ -29,6 +28,7 @@ using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
+using JetBrains.Annotations;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 

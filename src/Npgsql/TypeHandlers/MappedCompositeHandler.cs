@@ -1,14 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
-using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
-using Npgsql.TypeMapping;
 
 namespace Npgsql.TypeHandlers
 {

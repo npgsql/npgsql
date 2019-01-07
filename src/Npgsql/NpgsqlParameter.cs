@@ -21,17 +21,17 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using JetBrains.Annotations;
-using Npgsql.PostgresTypes;
-using Npgsql.TypeHandling;
-using Npgsql.TypeMapping;
-using NpgsqlTypes;
 using System;
 using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using JetBrains.Annotations;
+using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
+using Npgsql.TypeMapping;
+using NpgsqlTypes;
 
 namespace Npgsql
 {

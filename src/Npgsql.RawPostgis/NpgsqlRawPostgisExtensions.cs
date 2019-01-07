@@ -21,7 +21,6 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using System.Data;
 using Npgsql.LegacyPostgis;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;

@@ -1,16 +1,11 @@
 ﻿using System;
-using System.CodeDom;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Data;
-using System.Data.Common;
 using System.Diagnostics;
 using System.Linq;
-using Npgsql.BackendMessages;
-using Npgsql.PostgresTypes;
-using Npgsql.TypeHandlers;
 using System.Transactions;
+using Npgsql.BackendMessages;
+using Npgsql.TypeHandlers;
 
 namespace Npgsql.Schema
 {

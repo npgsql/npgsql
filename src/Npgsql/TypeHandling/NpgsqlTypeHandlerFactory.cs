@@ -22,7 +22,6 @@
 #endregion
 
 using System;
-using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeMapping;
 

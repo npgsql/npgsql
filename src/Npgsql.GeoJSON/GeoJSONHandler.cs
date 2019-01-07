@@ -21,15 +21,15 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
+using System;
+using System.Collections.Concurrent;
+using System.Collections.ObjectModel;
+using System.Threading.Tasks;
 using GeoJSON.Net;
 using GeoJSON.Net.CoordinateReferenceSystem;
 using GeoJSON.Net.Geometry;
 using Npgsql.BackendMessages;
 using Npgsql.TypeHandling;
-using System;
-using System.Collections.Concurrent;
-using System.Collections.ObjectModel;
-using System.Threading.Tasks;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 

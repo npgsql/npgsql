@@ -21,15 +21,15 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using Npgsql.BackendMessages;
-using NpgsqlTypes;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using Npgsql.BackendMessages;
 using Npgsql.TypeHandling;
+using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers
 {
