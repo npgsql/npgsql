@@ -60,7 +60,7 @@ namespace Npgsql.TypeMapping
         /// </param>
         internal TypeMappingAttribute(string pgName, NpgsqlDbType? npgsqlDbType, [CanBeNull] DbType[] dbTypes, [CanBeNull] Type[] clrTypes, DbType? inferredDbType)
         {
-            if (String.IsNullOrWhiteSpace(pgName))
+            if (string.IsNullOrWhiteSpace(pgName))
                 throw new ArgumentException("pgName can't be empty", nameof(pgName));
 
             PgName = pgName;
@@ -141,12 +141,12 @@ namespace Npgsql.TypeMapping
             if (DbTypes.Length > 0)
             {
                 sb.Append(" DbTypes=");
-                sb.Append(String.Join(",", DbTypes.Select(t => t.ToString())));
+                sb.Append(string.Join(",", DbTypes.Select(t => t.ToString())));
             }
             if (ClrTypes.Length > 0)
             {
                 sb.Append(" ClrTypes=");
-                sb.Append(String.Join(",", ClrTypes.Select(t => t.Name)));
+                sb.Append(string.Join(",", ClrTypes.Select(t => t.Name)));
             }
             sb.AppendFormat("]");
             return sb.ToString();
