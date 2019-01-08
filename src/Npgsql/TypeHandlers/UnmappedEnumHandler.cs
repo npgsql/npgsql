@@ -107,8 +107,19 @@ namespace Npgsql.TypeHandlers
         {
             if (value == null || value is DBNull)
                 return WriteWithLengthInternal<DBNull>(null, buf, lengthCache, parameter, async);
+
+            if (buf.WriteSpaceLeft < 4)
+                return WriteWithLengthLong();
+
             buf.WriteInt32(ValidateAndGetLength(value, ref lengthCache, parameter));
             return Write(value, buf, lengthCache, parameter, async);
+
+            async Task WriteWithLengthLong()
+            {
+                await buf.Flush(async);
+                buf.WriteInt32(ValidateAndGetLength(value, ref lengthCache, parameter));
+                await Write(value, buf, lengthCache, parameter, async);
+            }
         }
 
         internal Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
