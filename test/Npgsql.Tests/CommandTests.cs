@@ -22,22 +22,15 @@
 #endregion
 
 using System;
-using System.Collections;
-using System.Diagnostics;
-using System.Linq;
-using System.Threading.Tasks;
-using Npgsql;
-using NUnit.Framework;
 using System.Data;
 using System.IO;
-using System.Net;
+using System.Linq;
 using System.Net.Sockets;
-using NpgsqlTypes;
-using System.Resources;
-using System.Threading;
-using System.Reflection;
 using System.Text;
-using NUnit.Framework.Constraints;
+using System.Threading;
+using System.Threading.Tasks;
+using NpgsqlTypes;
+using NUnit.Framework;
 
 namespace Npgsql.Tests
 {

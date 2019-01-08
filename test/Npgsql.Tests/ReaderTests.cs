@@ -24,17 +24,14 @@
 using System;
 using System.Data;
 using System.IO;
-using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using NUnit.Framework;
-using NUnit.Framework.Constraints;
-using Npgsql;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
+using NUnit.Framework;
 
 namespace Npgsql.Tests
 {

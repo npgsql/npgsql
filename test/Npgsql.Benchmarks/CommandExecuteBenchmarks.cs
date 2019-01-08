@@ -3,6 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
+
 // ReSharper disable UnusedMember.Global
 
 namespace Npgsql.Benchmarks

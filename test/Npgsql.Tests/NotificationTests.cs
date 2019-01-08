@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Data;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using Npgsql.Logging;
 using NUnit.Framework;
 
 namespace Npgsql.Tests

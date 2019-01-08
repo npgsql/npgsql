@@ -23,12 +23,8 @@
 
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Data;
-using System.Linq;
-using System.Text;
-using Npgsql;
 using NpgsqlTypes;
 using NUnit.Framework;
 

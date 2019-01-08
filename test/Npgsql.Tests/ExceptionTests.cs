@@ -25,8 +25,8 @@ using System;
 using System.Data;
 using System.IO;
 using System.Net.Sockets;
-using NUnit.Framework;
 using System.Runtime.Serialization.Formatters.Binary;
+using NUnit.Framework;
 
 namespace Npgsql.Tests
 {

@@ -22,13 +22,10 @@
 #endregion
 
 using System;
-using System.Data;
 using System.Globalization;
 using System.Net;
-using System.Threading;
 using NpgsqlTypes;
 using NUnit.Framework;
-using Npgsql;
 
 namespace Npgsql.Tests
 {

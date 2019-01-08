@@ -24,11 +24,9 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using JetBrains.Annotations;
 using NUnit.Framework;
 using NUnit.Framework.Interfaces;
 
@@ -130,8 +128,7 @@ namespace Npgsql.Tests
             using (cmd)
                 return cmd.ExecuteNonQuery();
         }
-
-        [CanBeNull]
+        
         public static object ExecuteScalar(this NpgsqlConnection conn, string sql, NpgsqlTransaction tx = null)
         {
             var cmd = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
@@ -145,8 +142,7 @@ namespace Npgsql.Tests
             using (cmd)
                 return await cmd.ExecuteNonQueryAsync();
         }
-
-        [CanBeNull]
+        
         public static async Task<object> ExecuteScalarAsync(this NpgsqlConnection conn, string sql, NpgsqlTransaction tx = null)
         {
             var cmd = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
@@ -201,7 +197,7 @@ namespace Npgsql.Tests
 
         public MonoIgnore(string ignoreText = null) { _ignoreText = ignoreText; }
 
-        public void BeforeTest([NotNull] ITest test)
+        public void BeforeTest(ITest test)
         {
             if (Type.GetType("Mono.Runtime") != null)
             {
@@ -212,7 +208,7 @@ namespace Npgsql.Tests
             }
         }
 
-        public void AfterTest([NotNull] ITest test) { }
+        public void AfterTest(ITest test) { }
         public ActionTargets Targets => ActionTargets.Test;
     }
 
@@ -226,7 +222,7 @@ namespace Npgsql.Tests
 
         public LinuxIgnore(string ignoreText = null) { _ignoreText = ignoreText; }
 
-        public void BeforeTest([NotNull] ITest test)
+        public void BeforeTest(ITest test)
         {
             var osEnvVar = Environment.GetEnvironmentVariable("OS");
             if (osEnvVar == null || osEnvVar != "Windows_NT")
@@ -238,7 +234,7 @@ namespace Npgsql.Tests
             }
         }
 
-        public void AfterTest([NotNull] ITest test) { }
+        public void AfterTest(ITest test) { }
         public ActionTargets Targets => ActionTargets.Test;
     }
 
@@ -252,7 +248,7 @@ namespace Npgsql.Tests
 
         public WindowsIgnore(string ignoreText = null) { _ignoreText = ignoreText; }
 
-        public void BeforeTest([NotNull] ITest test)
+        public void BeforeTest(ITest test)
         {
             var osEnvVar = Environment.GetEnvironmentVariable("OS");
             if (osEnvVar == "Windows_NT")
@@ -264,7 +260,7 @@ namespace Npgsql.Tests
             }
         }
 
-        public void AfterTest([NotNull] ITest test) { }
+        public void AfterTest(ITest test) { }
         public ActionTargets Targets => ActionTargets.Test;
     }
 

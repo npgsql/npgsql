@@ -24,11 +24,9 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Data;
 using System.Text;
 using System.Threading;
 using System.Transactions;
-using JetBrains.Annotations;
 using NUnit.Framework;
 
 // TransactionScope exists in netstandard20, but distributed transactions do not
@@ -62,7 +60,7 @@ namespace Npgsql.Tests
             AssertNumberOfRows(2);
         }
 
-                [Test]
+        [Test]
         public void TwoConnectionsRollback()
         {
             using (new TransactionScope())
@@ -570,8 +568,7 @@ Start formatting event queue, going to sleep a bit for late events
         #endregion Utilities
 
         #region Setup
-
-        [CanBeNull]
+        
         NpgsqlConnection _controlConn;
 
         [OneTimeSetUp]

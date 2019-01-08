@@ -1,11 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Linq;
 using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Columns;
-using BenchmarkDotNet.Configs;
 using NpgsqlTypes;
 
 namespace Npgsql.Benchmarks.Types
@@ -14,8 +8,7 @@ namespace Npgsql.Benchmarks.Types
     {
         NpgsqlConnection _conn;
         NpgsqlCommand _cmd;
-
-        //[Params(0, 1, 10, 100)]
+        
         [Params(10)]
         public int NumParams { get; set; }
 

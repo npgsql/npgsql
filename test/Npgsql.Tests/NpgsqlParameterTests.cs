@@ -27,12 +27,7 @@
 using System;
 using System.Data;
 using System.Data.Common;
-using System.IO;
-using System.Threading;
-using System.Xml;
-using Npgsql;
 using NpgsqlTypes;
-
 using NUnit.Framework;
 
 namespace Npgsql.Tests

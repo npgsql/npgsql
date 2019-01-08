@@ -25,15 +25,8 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
-using System.Linq;
-using System.Net;
-using System.Net.NetworkInformation;
-using System.Text;
-using System.Threading;
-using Npgsql;
 using NpgsqlTypes;
 using NUnit.Framework;
-using NUnit.Framework.Constraints;
 
 namespace Npgsql.Tests.Types
 {

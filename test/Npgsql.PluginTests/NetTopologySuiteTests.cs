@@ -21,17 +21,16 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
+using System;
+using System.Collections;
+using System.Diagnostics;
+using System.Text.RegularExpressions;
 using GeoAPI;
 using GeoAPI.Geometries;
 using NetTopologySuite.Geometries;
 using NetTopologySuite.Geometries.Implementation;
 using Npgsql.Tests;
 using NUnit.Framework;
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Text.RegularExpressions;
 
 namespace Npgsql.PluginTests
 {
