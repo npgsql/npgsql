@@ -21,16 +21,12 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
-using NUnit.Framework;
 using System;
 using System.Collections.Generic;
-using System.Data;
-using System.Linq;
-using System.Text;
-using Npgsql;
 using Npgsql.NameTranslation;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
+using NUnit.Framework;
 
 namespace Npgsql.Tests.Types
 {

@@ -1,16 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using BenchmarkDotNet.Attributes;
+﻿using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Columns;
 using BenchmarkDotNet.Configs;
 
+// ReSharper disable AssignNullToNotNullAttribute.Global
+
 namespace Npgsql.Benchmarks
 {
-    [SuppressMessage("ReSharper", "AssignNullToNotNullAttribute")]
     [Config(typeof(Config))]
     public class Commit
     {

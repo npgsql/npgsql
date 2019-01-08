@@ -23,11 +23,9 @@
 
 using System;
 using System.Data;
-using System.Net.Mime;
+using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 using NUnit.Framework;
-using Npgsql.PostgresTypes;
-using NUnit.Framework.Constraints;
 
 namespace Npgsql.Tests
 {

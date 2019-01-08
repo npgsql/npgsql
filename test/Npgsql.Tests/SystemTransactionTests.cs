@@ -22,15 +22,9 @@
 #endregion
 
 using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Data;
-using System.Text;
-using System.Threading;
 using System.Transactions;
-using JetBrains.Annotations;
 using NUnit.Framework;
-using NUnit.Framework.Internal.Commands;
 
 // This test suite contains ambient transaction tests, except those involving distributed transactions which are only
 // supported on .NET Framework / Windows. Distributed transaction tests are in DistributedTransactionTests.
@@ -381,7 +375,6 @@ namespace Npgsql.Tests
 
         #region Setup
 
-        [CanBeNull]
         NpgsqlConnection _controlConn;
 
         [OneTimeSetUp]

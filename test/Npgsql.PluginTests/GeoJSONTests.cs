@@ -21,6 +21,9 @@
 // TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 #endregion
 
+using System;
+using System.Diagnostics;
+using System.Text.RegularExpressions;
 using GeoJSON.Net;
 using GeoJSON.Net.Converters;
 using GeoJSON.Net.CoordinateReferenceSystem;
@@ -29,9 +32,6 @@ using Newtonsoft.Json;
 using Npgsql.GeoJSON;
 using Npgsql.Tests;
 using NUnit.Framework;
-using System;
-using System.Diagnostics;
-using System.Text.RegularExpressions;
 
 namespace Npgsql.PluginTests
 {

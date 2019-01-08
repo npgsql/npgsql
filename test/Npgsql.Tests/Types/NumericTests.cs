@@ -1,6 +1,6 @@
-﻿using NpgsqlTypes;
+﻿using System.Data;
+using NpgsqlTypes;
 using NUnit.Framework;
-using System.Data;
 
 namespace Npgsql.Tests.Types
 {

@@ -23,9 +23,7 @@
 
 using System;
 using System.Diagnostics;
-using System.Linq;
 using System.Text.RegularExpressions;
-using Npgsql.LegacyPostgis;
 using Npgsql.Tests;
 using NpgsqlTypes;
 using NUnit.Framework;

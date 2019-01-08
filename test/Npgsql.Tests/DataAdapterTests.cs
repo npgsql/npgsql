@@ -23,10 +23,7 @@
 
 using System;
 using System.Data;
-using Npgsql;
-
 using NpgsqlTypes;
-
 using NUnit.Framework;
 
 namespace Npgsql.Tests

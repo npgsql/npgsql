@@ -22,11 +22,7 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using Npgsql;
 using NUnit.Framework;
 
 namespace Npgsql.Tests

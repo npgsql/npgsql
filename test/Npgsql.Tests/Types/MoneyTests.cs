@@ -1,7 +1,7 @@
-﻿using NpgsqlTypes;
-using NUnit.Framework;
-using System;
+﻿using System;
 using System.Data;
+using NpgsqlTypes;
+using NUnit.Framework;
 
 namespace Npgsql.Tests.Types
 {
