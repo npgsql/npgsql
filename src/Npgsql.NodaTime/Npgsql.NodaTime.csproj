@@ -4,7 +4,7 @@
     <VersionPrefix>4.0.5</VersionPrefix>
     <Description>NodaTime plugin for Npgsql, allowing mapping of PostgreSQL date/time types to NodaTime types.</Description>
     <Authors>Shay Rojansky</Authors>
-    <Copyright>Copyright 2018 © The Npgsql Development Team</Copyright>
+    <Copyright>Copyright 2019 © The Npgsql Development Team</Copyright>
     <Company>Npgsql</Company>
     <PackageTags>npgsql postgresql postgres nodatime date time ado ado.net database sql</PackageTags>
     <TargetFrameworks>net45;netstandard2.0</TargetFrameworks>
