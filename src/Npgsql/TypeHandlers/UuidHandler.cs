@@ -1,9 +1,10 @@
 ﻿using System;
-using Npgsql.BackendMessages;
-using NpgsqlTypes;
 using System.Data;
+using System.Runtime.CompilerServices;
+using Npgsql.BackendMessages;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
+using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers
 {
@@ -13,31 +14,37 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("uuid", NpgsqlDbType.Uuid, DbType.Guid, typeof(Guid))]
     class UuidHandler : NpgsqlSimpleTypeHandler<Guid>
     {
-        public override Guid Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override unsafe Guid Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
-            var a = buf.ReadInt32();
-            var b = buf.ReadInt16();
-            var c = buf.ReadInt16();
-            var d = new byte[8];
-            buf.ReadBytes(d, 0, 8);
-            return new Guid(a, b, c, d);
-        }
+            var raw = new GuidRaw();
 
-        #region Write
+            raw.A = buf.ReadInt32();
+            raw.B = buf.ReadInt16();
+            raw.C = buf.ReadInt16();
+            buf.ReadBytes(new Span<byte>(raw.D, 8));
+
+            return Unsafe.As<GuidRaw, Guid>(ref raw);
+        }
 
         public override int ValidateAndGetLength(Guid value, NpgsqlParameter parameter)
             => 16;
 
-        public override void Write(Guid value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public override unsafe void Write(Guid value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
-            // TODO: Allocation... investigate alternatives?
-            var bytes = value.ToByteArray();
-            buf.WriteInt32(BitConverter.ToInt32(bytes, 0));
-            buf.WriteInt16(BitConverter.ToInt16(bytes, 4));
-            buf.WriteInt16(BitConverter.ToInt16(bytes, 6));
-            buf.WriteBytes(bytes, 8, 8);
+            var raw = Unsafe.As<Guid, GuidRaw>(ref value);
+            
+            buf.WriteInt32(raw.A);
+            buf.WriteInt16(raw.B);
+            buf.WriteInt16(raw.C);
+            buf.WriteBytes(new ReadOnlySpan<byte>(raw.D, 8));
         }
 
-        #endregion
+        unsafe struct GuidRaw
+        {
+            public int A;
+            public short B;
+            public short C;
+            public fixed byte D[8];
+        }
     }
 }
