@@ -1,9 +1,13 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Data;
+using System.Linq;
 using System.Text;
 using System.Threading;
-using System.Transactions;
+using System.Threading.Tasks;
+using NpgsqlTypes;
 using NUnit.Framework;
+using System.Transactions;
 
 namespace Npgsql.Tests
 {
@@ -397,6 +401,29 @@ namespace Npgsql.Tests
         {
             Left,
             Right
+        }
+
+        [Test]
+        public void Bug2296()
+        {
+            using (var conn = OpenConnection())
+            {
+                try
+                {
+                    conn.ExecuteNonQuery("CREATE DOMAIN pg_temp.\"boolean\" AS bool");
+                    conn.ExecuteNonQuery("CREATE TEMP TABLE data (mybool \"boolean\")");
+                    conn.ExecuteNonQuery("INSERT INTO data (mybool) VALUES (TRUE)");
+
+                    conn.ReloadTypes();
+
+                    conn.ExecuteScalar("SELECT mybool FROM data");
+                }
+                finally
+                {
+                    conn.ExecuteNonQuery("DROP TABLE IF EXISTS data; DROP TYPE IF EXISTS \"boolean\"");
+                    conn.ReloadTypes();
+                }
+            }
         }
 
         #region Bug1285
