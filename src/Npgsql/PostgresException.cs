@@ -52,7 +52,7 @@ namespace Npgsql
     public sealed class PostgresException : NpgsqlException
     {
         [CanBeNull]
-        Dictionary<object, object> _data;
+        Hashtable _data;
 
         #region Message Fields
 
@@ -280,7 +280,7 @@ namespace Npgsql
             {
                 // Remarks: return Dictionary with object keys although all our keys are string keys
                 // because System.Windows.Threading.Dispatcher relies on that
-                return _data ?? (_data = (
+                return _data ?? (_data = new Hashtable((
                     from p in typeof(PostgresException).GetProperties()
                     let k = p.Name
                     where p.Name != nameof(Data)
@@ -289,7 +289,7 @@ namespace Npgsql
                     where v != null
                     where k != nameof(Position) && k != nameof(InternalPosition) || (int)v != 0
                     select new { Key = k, Value = v }
-                    ).ToDictionary(kv => (object)kv.Key, kv => kv.Value)
+                    ).ToDictionary(kv => (object)kv.Key, kv => kv.Value))
                 );
             }
         }
