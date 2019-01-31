@@ -12,6 +12,6 @@ namespace Npgsql.Replication.Slots.Management
         /// Create a replication slot.
         /// </summary>
         /// <param name="slotToCreate">Information about the slot to be created.</param>
-        void CreateSlot(TSlotType slotToCreate);
+        void Create(TSlotType slotToCreate);
     }
 }
