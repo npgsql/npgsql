@@ -14,7 +14,7 @@ namespace Npgsql.Replication.Slots.Management
 /// </summary>
 /// <param name="slotName">The name of the slot to delete.></param>
 /// <param name="slotType">The <see cref="ReplicationSlotType"/> on which to filter.</param>
-        public void DeleteSlot(string slotName, ReplicationSlotType slotType)
+        public void Delete(string slotName, ReplicationSlotType slotType)
         {
             throw new NotImplementedException();
         }
@@ -36,7 +36,7 @@ namespace Npgsql.Replication.Slots.Management
         /// <param name="slotName">The name of the slot for wich to retrieve information.</param>
         /// <param name="slotType">The <see cref="ReplicationSlotType"/> on which to filter.</param>
         /// <returns></returns>
-        public ReplicationSlotInfo GetSlotByName(string slotName, ReplicationSlotType slotType)
+        public ReplicationSlotInfo GetByName(string slotName, ReplicationSlotType slotType)
         {
             throw new NotImplementedException();
         }
@@ -56,7 +56,7 @@ namespace Npgsql.Replication.Slots.Management
         /// </summary>
         /// <param name="slotToCreate">Information pertaining to the replication slot to create.</param>
         ///<exception cref="ArgumentNullException">Thrown when the <paramref name="slotToCreate"/> is <c>Null</c></exception>
-        public void CreateSlot(ReplicationSlotInfo slotToCreate)
+        public void Create(ReplicationSlotInfo slotToCreate)
         {
             throw new NotImplementedException();
         }

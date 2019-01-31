@@ -42,7 +42,7 @@ namespace Npgsql.Replication.Slots.Builders
         /// Ensure the <see cref="ReplicationSlotInfo"/> built by this <see cref="ReplicationSlotInfoBuilder"/> indicates the built replication slot uses physical replication.
         /// </summary>
         /// <returns>A <see cref="PhysicalReplicationSlotInfoBuilder"/> for further configuration.</returns>
-        public PhysicalReplicationSlotInfoBuilder UsesPhysicalReplication()
+        public PhysicalReplicationSlotInfoBuilder EnsurePhysical()
         {
             throw new NotImplementedException();
         }
@@ -51,7 +51,7 @@ namespace Npgsql.Replication.Slots.Builders
         /// Ensure the <see cref="ReplicationSlotInfo"/> built by this <see cref="ReplicationSlotInfoBuilder"/> indicates the built replication slot uses logical replication.
         /// </summary>
         /// <returns>A <see cref="LogicalReplicationSlotInfoBuilder"/> for further configuration.</returns>
-        public LogicalReplicationSlotInfoBuilder UsesLogicalReplication()
+        public LogicalReplicationSlotInfoBuilder EnsureLogical()
         {
             throw new NotImplementedException();
         }
