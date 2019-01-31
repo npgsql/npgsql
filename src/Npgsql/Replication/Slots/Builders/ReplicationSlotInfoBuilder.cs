@@ -24,7 +24,7 @@ namespace Npgsql.Replication.Slots.Builders
         /// Ensure the <see cref="ReplicationSlotInfo"/> built by this <see cref="ReplicationSlotInfoBuilder"/> indicates the built replication slot is available until it is deleted.
         /// </summary>
         /// <returns>A <see cref="ReplicationSlotInfoBuilder"/> for further configuration.</returns>
-        public ReplicationSlotInfoBuilder SlotIsPermanent()
+        public ReplicationSlotInfoBuilder IsPermanent()
         {
             throw new NotImplementedException();
         }
@@ -33,7 +33,7 @@ namespace Npgsql.Replication.Slots.Builders
         /// Ensure the <see cref="ReplicationSlotInfo"/> built by this <see cref="ReplicationSlotInfoBuilder"/> indicates the built replication slot is available for the current session only.
         /// </summary>
         /// <returns>A <see cref="ReplicationSlotInfoBuilder"/> for further configuration.</returns>
-        public ReplicationSlotInfoBuilder SlotIsTemporary()
+        public ReplicationSlotInfoBuilder IsTemporary()
         {
             throw new NotImplementedException();
         }
