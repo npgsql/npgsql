@@ -14,6 +14,20 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("uuid", NpgsqlDbType.Uuid, DbType.Guid, typeof(Guid))]
     class UuidHandler : NpgsqlSimpleTypeHandler<Guid>
     {
+        // The following table shows .NET GUID vs Postgres UUID (RFC 4122) layouts.
+        //
+        // Note that the first fields are converted from/to native endianness (handled by the Read*
+        // and Write* methods), while the last field is always read/written in big-endian format.
+        //
+        // We're passing BitConverter.IsLittleEndian to prevent reversing endianness on little-endian systems.
+        //
+        // | Bits | Bytes | Name  | Endianness (GUID) | Endianness (RFC 4122) |
+        // | ---- | ----- | ----- | ----------------- | --------------------- |
+        // | 32   | 4     | Data1 | Native            | Big                   |
+        // | 16   | 2     | Data2 | Native            | Big                   |
+        // | 16   | 2     | Data3 | Native            | Big                   |
+        // | 64   | 8     | Data4 | Big               | Big                   |
+
         public override Guid Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
             var raw = new GuidRaw
