@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Data;
-using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using Npgsql.BackendMessages;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
@@ -14,37 +14,41 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("uuid", NpgsqlDbType.Uuid, DbType.Guid, typeof(Guid))]
     class UuidHandler : NpgsqlSimpleTypeHandler<Guid>
     {
-        public override unsafe Guid Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override Guid Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
-            var raw = new GuidRaw();
+            var raw = new GuidRaw
+            {
+                Data1 = buf.ReadInt32(),
+                Data2 = buf.ReadInt16(),
+                Data3 = buf.ReadInt16(),
+                Data4 = buf.ReadInt64(BitConverter.IsLittleEndian)
+            };
 
-            raw.A = buf.ReadInt32();
-            raw.B = buf.ReadInt16();
-            raw.C = buf.ReadInt16();
-            buf.ReadBytes(new Span<byte>(raw.D, 8));
-
-            return Unsafe.As<GuidRaw, Guid>(ref raw);
+            return raw.Value;
         }
 
         public override int ValidateAndGetLength(Guid value, NpgsqlParameter parameter)
             => 16;
 
-        public override unsafe void Write(Guid value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public override void Write(Guid value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
-            var raw = Unsafe.As<Guid, GuidRaw>(ref value);
+            var raw = new GuidRaw(value);
             
-            buf.WriteInt32(raw.A);
-            buf.WriteInt16(raw.B);
-            buf.WriteInt16(raw.C);
-            buf.WriteBytes(new ReadOnlySpan<byte>(raw.D, 8));
+            buf.WriteInt32(raw.Data1);
+            buf.WriteInt16(raw.Data2);
+            buf.WriteInt16(raw.Data3);
+            buf.WriteInt64(raw.Data4, BitConverter.IsLittleEndian);
         }
 
-        unsafe struct GuidRaw
+        [StructLayout(LayoutKind.Explicit)]
+        struct GuidRaw
         {
-            public int A;
-            public short B;
-            public short C;
-            public fixed byte D[8];
+            [FieldOffset(00)] public Guid Value;
+            [FieldOffset(00)] public int Data1;
+            [FieldOffset(04)] public short Data2;
+            [FieldOffset(06)] public short Data3;
+            [FieldOffset(08)] public long Data4;
+            public GuidRaw(Guid value) : this() => Value = value;
         }
     }
 }
