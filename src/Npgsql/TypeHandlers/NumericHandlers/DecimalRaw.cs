@@ -35,6 +35,8 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         // Do not change the order in which these fields are declared. It
         // should be same as in the System.Decimal struct.
         [FieldOffset(0)]
+        decimal _value;
+        [FieldOffset(0)]
         int _flags;
         [FieldOffset(4)]
         uint _high;
@@ -54,8 +56,11 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         public uint High => _high;
         public uint Mid => _mid;
         public uint Low => _low;
+        public decimal Value => _value;
 
-        public DecimalRaw(long value)
+        public DecimalRaw(decimal value) : this() => _value = value;
+
+        public DecimalRaw(long value) : this()
         {
             if (value >= 0)
                 _flags = 0;
