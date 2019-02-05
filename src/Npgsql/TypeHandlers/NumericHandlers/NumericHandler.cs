@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Data;
-using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.TypeHandling;
@@ -91,7 +90,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
                 throw new NpgsqlSafeReadException(e);
             }
 
-            return Unsafe.As<DecimalRaw, decimal>(ref result);
+            return result.Value;
         }
 
         byte INpgsqlSimpleTypeHandler<byte>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
@@ -119,7 +118,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         public override int ValidateAndGetLength(decimal value, NpgsqlParameter parameter)
         {
             var groupCount = 0;
-            var raw = Unsafe.As<decimal, DecimalRaw>(ref value);
+            var raw = new DecimalRaw(value);
             if (raw.Low != 0 || raw.Mid != 0 || raw.High != 0)
             {
                 uint remainder = default;
@@ -164,13 +163,13 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         public int ValidateAndGetLength(byte value, NpgsqlParameter parameter)
             => ValidateAndGetLength((decimal)value, parameter);
 
-        public override unsafe void Write(decimal value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public override void Write(decimal value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
-            var groupCount = 0;
-            var groups = stackalloc short[MaxGroupCount];
             var weight = 0;
+            var groupCount = 0;
+            Span<short> groups = stackalloc short[MaxGroupCount];
 
-            var raw = Unsafe.As<decimal, DecimalRaw>(ref value);
+            var raw = new DecimalRaw(value);
             if (raw.Low != 0 || raw.Mid != 0 || raw.High != 0)
             {
                 var scale = raw.Scale;
