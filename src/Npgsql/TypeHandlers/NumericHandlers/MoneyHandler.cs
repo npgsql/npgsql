@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Data;
-using System.Runtime.CompilerServices;
 using Npgsql.BackendMessages;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
@@ -18,8 +17,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
 
         public override decimal Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
-            var result = new DecimalRaw(buf.ReadInt64()) { Scale = MoneyScale };
-            return Unsafe.As<DecimalRaw, decimal>(ref result);
+            return new DecimalRaw(buf.ReadInt64()) { Scale = MoneyScale }.Value;
         }
 
         public override int ValidateAndGetLength(decimal value, NpgsqlParameter parameter)
@@ -29,14 +27,15 @@ namespace Npgsql.TypeHandlers.NumericHandlers
 
         public override void Write(decimal value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
-            var raw = Unsafe.As<decimal, DecimalRaw>(ref value);
+            var raw = new DecimalRaw(value);
+
             var scaleDifference = MoneyScale - raw.Scale;
             if (scaleDifference > 0)
                 DecimalRaw.Multiply(ref raw, DecimalRaw.Powers10[scaleDifference]);
             else
             {
                 value = Math.Round(value, MoneyScale, MidpointRounding.AwayFromZero);
-                raw = Unsafe.As<decimal, DecimalRaw>(ref value);
+                raw = new DecimalRaw(value);
             }
 
             var result = (long)raw.Mid << 32 | (long)raw.Low;
