@@ -1,38 +1,14 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
-    <VersionPrefix>4.1.0</VersionPrefix>
-    <Description>NodaTime plugin for Npgsql, allowing mapping of PostgreSQL date/time types to NodaTime types.</Description>
     <Authors>Shay Rojansky</Authors>
-    <Copyright>Copyright 2019 © The Npgsql Development Team</Copyright>
-    <Company>Npgsql</Company>
+    <Description>NodaTime plugin for Npgsql, allowing mapping of PostgreSQL date/time types to NodaTime types.</Description>
     <PackageTags>npgsql postgresql postgres nodatime date time ado ado.net database sql</PackageTags>
-    <TargetFrameworks>net452;netstandard2.0</TargetFrameworks>
-    <TargetFrameworks Condition="'$(OS)' != 'Windows_NT' OR '$(CoreOnly)' == 'True'">netstandard2.0</TargetFrameworks>
-    <AssemblyOriginatorKeyFile>../../Npgsql.snk</AssemblyOriginatorKeyFile>
-    <SignAssembly>true</SignAssembly>
-    <PublicSign Condition=" '$(OS)' != 'Windows_NT' ">true</PublicSign>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <PackageProjectUrl>http://www.npgsql.org</PackageProjectUrl>
-    <PackageIconUrl>http://www.npgsql.org/img/postgresql.gif</PackageIconUrl>
-    <PackageLicenseExpression>PostgreSQL</PackageLicenseExpression>
-    <RepositoryType>git</RepositoryType>
-    <RepositoryUrl>git://github.com/npgsql/npgsql</RepositoryUrl>
-    <Deterministic>true</Deterministic>
-    <!-- This is somehow important for Microsoft.CodeQuality.Analyzers -->
-    <Features>IOperation</Features>
+    <VersionPrefix>4.1.0</VersionPrefix>
   </PropertyGroup>
-
   <ItemGroup>
     <PackageReference Include="NodaTime" Version="2.4.4" />
-<!-- Causes issues in Appveyor and Travis
-    <PackageReference Include="Microsoft.CodeQuality.Analyzers" Version="2.6.0-beta2" PrivateAssets="All" />
--->
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\Npgsql\Npgsql.csproj" />
   </ItemGroup>
-
 </Project>

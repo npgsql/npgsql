@@ -1,0 +1,36 @@
+﻿<Project>
+  <!-- Package configuration -->
+  <PropertyGroup>
+    <Copyright>Copyright 2019 © The Npgsql Development Team</Copyright>
+    <Company>Npgsql</Company>
+    
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>git://github.com/npgsql/npgsql</RepositoryUrl>
+    
+    <PackageLicenseExpression>PostgreSQL</PackageLicenseExpression>
+    <PackageProjectUrl>http://www.npgsql.org</PackageProjectUrl>
+    <PackageIconUrl>http://www.npgsql.org/img/postgresql.gif</PackageIconUrl>
+  </PropertyGroup>
+
+  <!-- Language configuration -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Deterministic>true</Deterministic>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    
+    <!-- This is somehow important for Microsoft.CodeQuality.Analyzers -->
+    <Features>IOperation</Features>
+  </PropertyGroup>
+
+  <!-- Debug configuration -->
+  <PropertyGroup>
+    <DebugType>portable</DebugType>
+  </PropertyGroup>
+
+  <!-- Siging configuration -->
+  <PropertyGroup>
+    <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)Npgsql.snk</AssemblyOriginatorKeyFile>
+    <SignAssembly>true</SignAssembly>
+    <PublicSign Condition="'$(OS)' != 'Windows_NT'">true</PublicSign>
+  </PropertyGroup>
+</Project>

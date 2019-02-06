@@ -1,0 +1,9 @@
+﻿<Project>
+  <Import Project="../Directory.Build.props" />
+
+  <!-- Build configuration -->
+  <PropertyGroup>
+    <TargetFrameworks>net452;netcoreapp2.2</TargetFrameworks>
+    <TargetFrameworks Condition="'$(OS)' != 'Windows_NT' OR '$(CoreOnly)' == 'True'">netcoreapp2.2</TargetFrameworks>
+  </PropertyGroup>
+</Project>
