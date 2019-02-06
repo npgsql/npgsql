@@ -1,5 +1,15 @@
 ﻿<Project>
+  <Import Project="../Directory.Build.props" />
+
+  <!-- Build configuration -->
+  <PropertyGroup>
+    <TargetFrameworks>net452;netstandard2.0</TargetFrameworks>
+    <TargetFrameworks Condition="'$(OS)' != 'Windows_NT' OR '$(CoreOnly)' == 'True'">netstandard2.0</TargetFrameworks>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <!-- Debug configuration -->
   <ItemGroup>
-    <PackageReference Include="SourceLink.Create.CommandLine" Version="2.8.1" PrivateAssets="All" /> 
+    <PackageReference Include="SourceLink.Create.CommandLine" Version="2.8.1" PrivateAssets="All" />
   </ItemGroup>
 </Project>
