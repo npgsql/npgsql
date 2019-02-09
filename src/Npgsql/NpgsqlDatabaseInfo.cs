@@ -145,26 +145,26 @@ namespace Npgsql
 
                 switch (type)
                 {
-                    case PostgresBaseType baseType:
-                        baseTypes.Add(baseType);
-                        continue;
-                    case PostgresArrayType arrayType:
-                        arrayTypes.Add(arrayType);
-                        continue;
-                    case PostgresRangeType rangeType:
-                        rangeTypes.Add(rangeType);
-                        continue;
-                    case PostgresEnumType enumType:
-                        enumTypes.Add(enumType);
-                        continue;
-                    case PostgresCompositeType compositeType:
-                        compositeTypes.Add(compositeType);
-                        continue;
-                    case PostgresDomainType domainType:
-                        domainTypes.Add(domainType);
-                        continue;
-                    default:
-                        throw new ArgumentOutOfRangeException();
+                case PostgresBaseType baseType:
+                    baseTypes.Add(baseType);
+                    continue;
+                case PostgresArrayType arrayType:
+                    arrayTypes.Add(arrayType);
+                    continue;
+                case PostgresRangeType rangeType:
+                    rangeTypes.Add(rangeType);
+                    continue;
+                case PostgresEnumType enumType:
+                    enumTypes.Add(enumType);
+                    continue;
+                case PostgresCompositeType compositeType:
+                    compositeTypes.Add(compositeType);
+                    continue;
+                case PostgresDomainType domainType:
+                    domainTypes.Add(domainType);
+                    continue;
+                default:
+                    throw new ArgumentOutOfRangeException();
                 }
             }
 
