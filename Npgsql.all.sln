@@ -40,6 +40,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Npgsql.NetTopologySuite", "
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Npgsql.GeoJSON", "src\Npgsql.GeoJSON\Npgsql.GeoJSON.csproj", "{04052CCF-CABC-4B37-B89D-F95721D95407}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Npgsql.CrateDb.Tests", "test\Npgsql.CrateDb.Tests\Npgsql.CrateDb.Tests.csproj", "{77204361-C707-4E23-803E-4A6F863C45B2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -144,6 +146,14 @@ Global
 		{04052CCF-CABC-4B37-B89D-F95721D95407}.Release|Any CPU.Build.0 = Release|Any CPU
 		{04052CCF-CABC-4B37-B89D-F95721D95407}.Release|x86.ActiveCfg = Release|Any CPU
 		{04052CCF-CABC-4B37-B89D-F95721D95407}.Release|x86.Build.0 = Release|Any CPU
+		{77204361-C707-4E23-803E-4A6F863C45B2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{77204361-C707-4E23-803E-4A6F863C45B2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{77204361-C707-4E23-803E-4A6F863C45B2}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{77204361-C707-4E23-803E-4A6F863C45B2}.Debug|x86.Build.0 = Debug|Any CPU
+		{77204361-C707-4E23-803E-4A6F863C45B2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{77204361-C707-4E23-803E-4A6F863C45B2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{77204361-C707-4E23-803E-4A6F863C45B2}.Release|x86.ActiveCfg = Release|Any CPU
+		{77204361-C707-4E23-803E-4A6F863C45B2}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -161,6 +171,7 @@ Global
 		{B7E92398-DD4E-410E-923C-E256992F6687} = {8537E50E-CF7F-49CB-B4EF-3E2A1B11F050}
 		{20D889AA-82DC-4AA0-B508-7CE68B83BB27} = {8537E50E-CF7F-49CB-B4EF-3E2A1B11F050}
 		{04052CCF-CABC-4B37-B89D-F95721D95407} = {8537E50E-CF7F-49CB-B4EF-3E2A1B11F050}
+		{77204361-C707-4E23-803E-4A6F863C45B2} = {ED612DB1-AB32-4603-95E7-891BACA71C39}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {C90AEECD-DB4C-4BE6-B506-16A449852FB8}
