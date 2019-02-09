@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Npgsql.PostgresTypes;
+using Npgsql.TypeMapping;
 
 namespace Npgsql
 {
@@ -19,6 +20,7 @@ namespace Npgsql
 
         static readonly List<INpgsqlDatabaseInfoFactory> Factories = new List<INpgsqlDatabaseInfoFactory>
         {
+            new CrateDbDatabaseInfoFactory(),
             new PostgresMinimalDatabaseInfoFactory(),
             new PostgresDatabaseInfoFactory()
         };
@@ -143,26 +145,26 @@ namespace Npgsql
 
                 switch (type)
                 {
-                case PostgresBaseType baseType:
-                    baseTypes.Add(baseType);
-                    continue;
-                case PostgresArrayType arrayType:
-                    arrayTypes.Add(arrayType);
-                    continue;
-                case PostgresRangeType rangeType:
-                    rangeTypes.Add(rangeType);
-                    continue;
-                case PostgresEnumType enumType:
-                    enumTypes.Add(enumType);
-                    continue;
-                case PostgresCompositeType compositeType:
-                    compositeTypes.Add(compositeType);
-                    continue;
-                case PostgresDomainType domainType:
-                    domainTypes.Add(domainType);
-                    continue;
-                default:
-                    throw new ArgumentOutOfRangeException();
+                    case PostgresBaseType baseType:
+                        baseTypes.Add(baseType);
+                        continue;
+                    case PostgresArrayType arrayType:
+                        arrayTypes.Add(arrayType);
+                        continue;
+                    case PostgresRangeType rangeType:
+                        rangeTypes.Add(rangeType);
+                        continue;
+                    case PostgresEnumType enumType:
+                        enumTypes.Add(enumType);
+                        continue;
+                    case PostgresCompositeType compositeType:
+                        compositeTypes.Add(compositeType);
+                        continue;
+                    case PostgresDomainType domainType:
+                        domainTypes.Add(domainType);
+                        continue;
+                    default:
+                        throw new ArgumentOutOfRangeException();
                 }
             }
 
@@ -179,6 +181,12 @@ namespace Npgsql
         /// </summary>
         /// <returns></returns>
         protected abstract IEnumerable<PostgresType> GetTypes();
+
+        /// <summary>
+        /// Adapts the type mappings for this database.
+        /// </summary>
+        /// <param name="mappings">The mappings that are about the be bound.</param>
+        protected internal virtual void AdaptTypeMappings(IDictionary<string, NpgsqlTypeMapping> mappings) { }
 
         #endregion Types
 
@@ -238,6 +246,7 @@ namespace Npgsql
         internal static void ResetFactories()
         {
             Factories.Clear();
+            Factories.Add(new CrateDbDatabaseInfoFactory());
             Factories.Add(new PostgresMinimalDatabaseInfoFactory());
             Factories.Add(new PostgresDatabaseInfoFactory());
         }

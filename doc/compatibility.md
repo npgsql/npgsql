@@ -7,6 +7,11 @@ This page centralizes Npgsql's compatibility status with PostgreSQL and other co
 We aim to be compatible with all [currently supported PostgreSQL versions](http://www.postgresql.org/support/versioning/), which means 5 years back.
 Earlier versions may still work but we don't perform continuous testing on them or commit to resolving issues on them.
 
+## [CrateDb](https://crate.io)
+
+We aim to be compatible with all [currently supported CrateDb versions](https://crate.io/docs/crate/reference/en/latest/appendices/release-notes/#versions).
+Earlier versions may still work but we don't perform continuous testing on them or commit to resolving issues on them.
+
 ## ADO.NET
 
 Npgsql is an ADO.NET-compatible provider, so it has the same APIs as other .NET database drivers and should behave the same.

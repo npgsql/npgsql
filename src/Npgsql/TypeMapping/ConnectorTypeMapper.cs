@@ -219,6 +219,9 @@ namespace Npgsql.TypeMapping
 
         void BindTypes()
         {
+            // Prepare the registered type mappings for the DBMS currently in use.
+            DatabaseInfo?.AdaptTypeMappings(Mappings);
+
             foreach (var mapping in Mappings.Values)
                 BindType(mapping, _connector, false);
 
@@ -420,7 +423,7 @@ namespace Npgsql.TypeMapping
 
             // It might be an unmapped enum/composite type, or some other unmapped type
             return (null, postgresType);
-
+            
             bool TryGetMapping(PostgresType pgType, out NpgsqlTypeMapping mapping)
                 => Mappings.TryGetValue(pgType.Name, out mapping) ||
                    Mappings.TryGetValue(pgType.FullName, out mapping) ||
