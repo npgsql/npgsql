@@ -15,16 +15,10 @@
   <!-- Language configuration -->
   <PropertyGroup>
     <LangVersion>latest</LangVersion>
-    <Deterministic>true</Deterministic>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     
     <!-- This is somehow important for Microsoft.CodeQuality.Analyzers -->
     <Features>IOperation</Features>
-  </PropertyGroup>
-
-  <!-- Debug configuration -->
-  <PropertyGroup>
-    <DebugType>portable</DebugType>
   </PropertyGroup>
 
   <!-- Siging configuration -->
