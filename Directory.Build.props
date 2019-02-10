@@ -16,9 +16,6 @@
   <PropertyGroup>
     <LangVersion>latest</LangVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    
-    <!-- This is somehow important for Microsoft.CodeQuality.Analyzers -->
-    <Features>IOperation</Features>
   </PropertyGroup>
 
   <!-- Siging configuration -->
