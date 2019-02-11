@@ -789,7 +789,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void Null([Values(CommandBehavior.Default, CommandBehavior.SequentialAccess)] CommandBehavior behavior)
+        public void Null()
         {
             using (var conn = OpenConnection())
             using (var cmd = new NpgsqlCommand("SELECT @p1, @p2::TEXT", conn))
@@ -797,7 +797,7 @@ namespace Npgsql.Tests
                 cmd.Parameters.Add(new NpgsqlParameter("p1", DbType.String) { Value = DBNull.Value });
                 cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p2", Value = DBNull.Value });
 
-                using (var reader = cmd.ExecuteReader(behavior))
+                using (var reader = cmd.ExecuteReader(Behavior))
                 {
                     reader.Read();
 
@@ -1317,12 +1317,12 @@ LANGUAGE plpgsql VOLATILE";
         }
 
         [Test]
-        public void GetCharsWhenNull([Values(CommandBehavior.Default, CommandBehavior.SequentialAccess)] CommandBehavior behavior)
+        public void GetCharsWhenNull()
         {
             var buf = new char[8];
             using (var conn = OpenConnection())
             using (var cmd = new NpgsqlCommand("SELECT NULL::TEXT", conn))
-            using (var reader = cmd.ExecuteReader(behavior))
+            using (var reader = cmd.ExecuteReader(Behavior))
             {
                 reader.Read();
                 Assert.That(reader.IsDBNull(0), Is.True);
