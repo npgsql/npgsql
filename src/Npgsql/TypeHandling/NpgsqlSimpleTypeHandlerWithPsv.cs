@@ -42,7 +42,7 @@ namespace Npgsql.TypeHandling
 
         /// <summary>
         /// Reads a column as the type handler's provider-specific type, assuming that it is already entirely
-        /// in memory (i.e. no I/O is necessary). Called by <see cref="NpgsqlDefaultDataReader"/>, which
+        /// in memory (i.e. no I/O is necessary). Called by <see cref="NpgsqlDataReader"/> in non-sequential mode, which
         /// buffers entire rows in memory.
         /// </summary>
         internal override object ReadPsvAsObject(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
