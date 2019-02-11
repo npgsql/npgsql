@@ -28,8 +28,7 @@ namespace Npgsql
     [Serializable]
     public sealed class PostgresException : NpgsqlException
     {
-        [CanBeNull]
-        Dictionary<object, object> _data;
+        bool _isDataInitialized;
 
         #region Message Fields
 
@@ -293,19 +292,25 @@ namespace Npgsql
         {
             get
             {
-                // Remarks: return Dictionary with object keys although all our keys are string keys
-                // because System.Windows.Threading.Dispatcher relies on that
-                return _data ?? (_data = (
-                    from p in typeof(PostgresException).GetProperties()
-                    let k = p.Name
-                    where p.Name != nameof(Data)
-                    where p.GetCustomAttribute<PublicAPIAttribute>() != null
-                    let v = p.GetValue(this)
-                    where v != null
-                    where k != nameof(Position) && k != nameof(InternalPosition) || (int)v != 0
-                    select new { Key = k, Value = v }
-                    ).ToDictionary(kv => (object)kv.Key, kv => kv.Value)
-                );
+                if (!_isDataInitialized)
+                {
+                    foreach (var kv in
+                        from p in typeof(PostgresException).GetProperties()
+                        let k = p.Name
+                        where p.Name != nameof(Data)
+                        where p.GetCustomAttribute<PublicAPIAttribute>() != null
+                        let v = p.GetValue(this)
+                        where v != null
+                        where k != nameof(Position) && k != nameof(InternalPosition) || (int)v != 0
+                        select new { Key = k, Value = v })
+                    {
+                        base.Data[kv.Key] = kv.Value;
+                    }
+
+                    _isDataInitialized = true;
+                }
+
+                return base.Data;
             }
         }
 
