@@ -253,37 +253,34 @@ namespace Npgsql
         /// <inheritdoc />
         public override string ToString()
         {
-            var builder = new StringBuilder(base.ToString());
-            builder.AppendLine().Append("  Exception data:");
+            var builder = new StringBuilder(base.ToString())
+                .AppendLine().Append("  Exception data:");
 
-            void AppendPropertyLine(string propertyName, object propertyValue)
-            {
-                if (propertyValue == null || propertyValue is int intPropertyValue && intPropertyValue == 0)
-                {
-                    return;
-                }
+            AppendLine(nameof(Severity), Severity);
+            AppendLine(nameof(SqlState), SqlState);
+            AppendLine(nameof(MessageText), MessageText);
+            AppendLine(nameof(Detail), Detail);
+            AppendLine(nameof(Hint), Hint);
+            AppendLine(nameof(Position), Position);
+            AppendLine(nameof(InternalPosition), InternalPosition);
+            AppendLine(nameof(InternalQuery), InternalQuery);
+            AppendLine(nameof(Where), Where);
+            AppendLine(nameof(SchemaName), SchemaName);
+            AppendLine(nameof(TableName), TableName);
+            AppendLine(nameof(ColumnName), ColumnName);
+            AppendLine(nameof(DataTypeName), DataTypeName);
+            AppendLine(nameof(ConstraintName), ConstraintName);
+            AppendLine(nameof(File), File);
+            AppendLine(nameof(Line), Line);
+            AppendLine(nameof(Routine), Routine);
 
-                builder.AppendLine().Append("    ").Append(propertyName).Append(": ").Append(propertyValue);
-            }
-
-            AppendPropertyLine(nameof(Severity), Severity);
-            AppendPropertyLine(nameof(SqlState), SqlState);
-            AppendPropertyLine(nameof(MessageText), MessageText);
-            AppendPropertyLine(nameof(Detail), Detail);
-            AppendPropertyLine(nameof(Hint), Hint);
-            AppendPropertyLine(nameof(Position), Position);
-            AppendPropertyLine(nameof(InternalPosition), InternalPosition);
-            AppendPropertyLine(nameof(InternalQuery), InternalQuery);
-            AppendPropertyLine(nameof(Where), Where);
-            AppendPropertyLine(nameof(SchemaName), SchemaName);
-            AppendPropertyLine(nameof(TableName), TableName);
-            AppendPropertyLine(nameof(ColumnName), ColumnName);
-            AppendPropertyLine(nameof(DataTypeName), DataTypeName);
-            AppendPropertyLine(nameof(ConstraintName), ConstraintName);
-            AppendPropertyLine(nameof(File), File);
-            AppendPropertyLine(nameof(Line), Line);
-            AppendPropertyLine(nameof(Routine), Routine);
             return builder.ToString();
+
+            void AppendLine<T>(string propertyName, T propertyValue)
+            {
+                if (!EqualityComparer<T>.Default.Equals(propertyValue, default))
+                    builder.AppendLine().Append("    ").Append(propertyName).Append(": ").Append(propertyValue);
+            }
         }
 
         /// <summary>
