@@ -205,6 +205,58 @@ namespace Npgsql
             Routine = msg.Routine;
         }
 
+        PostgresException(SerializationInfo info, StreamingContext context)
+            : base(info, context)
+        {
+            Severity = GetValue<string>(nameof(Severity));
+            SqlState = GetValue<string>(nameof(SqlState));
+            MessageText = GetValue<string>(nameof(MessageText));
+            Detail = GetValue<string>(nameof(Detail));
+            Hint = GetValue<string>(nameof(Hint));
+            Position = GetValue<int>(nameof(Position));
+            InternalPosition = GetValue<int>(nameof(InternalPosition));
+            InternalQuery = GetValue<string>(nameof(InternalQuery));
+            Where = GetValue<string>(nameof(Where));
+            SchemaName = GetValue<string>(nameof(SchemaName));
+            TableName = GetValue<string>(nameof(TableName));
+            ColumnName = GetValue<string>(nameof(ColumnName));
+            DataTypeName = GetValue<string>(nameof(DataTypeName));
+            ConstraintName = GetValue<string>(nameof(ConstraintName));
+            File = GetValue<string>(nameof(File));
+            Line = GetValue<string>(nameof(Line));
+            Routine = GetValue<string>(nameof(Routine));
+
+            T GetValue<T>(string propertyName) =>
+                (T)info.GetValue(propertyName, typeof(T));
+        }
+
+        /// <summary>
+        /// Populates a <see cref="SerializationInfo"/> with the data needed to serialize the target object.
+        /// </summary>
+        /// <param name="info">The <see cref="SerializationInfo"/> to populate with data.</param>
+        /// <param name="context">The destination (see <see cref="StreamingContext"/>) for this serialization.</param>
+        public override void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            base.GetObjectData(info, context);
+            info.AddValue(nameof(Severity), Severity);
+            info.AddValue(nameof(SqlState), SqlState);
+            info.AddValue(nameof(MessageText), MessageText);
+            info.AddValue(nameof(Detail), Detail);
+            info.AddValue(nameof(Hint), Hint);
+            info.AddValue(nameof(Position), Position);
+            info.AddValue(nameof(InternalPosition), InternalPosition);
+            info.AddValue(nameof(InternalQuery), InternalQuery);
+            info.AddValue(nameof(Where), Where);
+            info.AddValue(nameof(SchemaName), SchemaName);
+            info.AddValue(nameof(TableName), TableName);
+            info.AddValue(nameof(ColumnName), ColumnName);
+            info.AddValue(nameof(DataTypeName), DataTypeName);
+            info.AddValue(nameof(ConstraintName), ConstraintName);
+            info.AddValue(nameof(File), File);
+            info.AddValue(nameof(Line), Line);
+            info.AddValue(nameof(Routine), Routine);
+        }
+
         /// <summary>
         /// Gets a the PostgreSQL error message and code.
         /// </summary>
@@ -311,57 +363,5 @@ namespace Npgsql
                 return data;
             }
         }
-
-        #region Serialization
-
-        PostgresException(SerializationInfo info, StreamingContext context) : base(info, context)
-        {
-            Severity         = (string)info.GetValue("Severity",         typeof(string));
-            SqlState         = (string)info.GetValue("SqlState",         typeof(string));
-            MessageText      = (string)info.GetValue("MessageText",      typeof(string));
-            Detail           = (string)info.GetValue("Detail",           typeof(string));
-            Hint             = (string)info.GetValue("Hint",             typeof(string));
-            Position         = (int)   info.GetValue("Position",         typeof(int));
-            InternalPosition = (int)   info.GetValue("InternalPosition", typeof(int));
-            InternalQuery    = (string)info.GetValue("InternalQuery",    typeof(string));
-            Where            = (string)info.GetValue("Where",            typeof(string));
-            SchemaName       = (string)info.GetValue("SchemaName",       typeof(string));
-            TableName        = (string)info.GetValue("TableName",        typeof(string));
-            ColumnName       = (string)info.GetValue("ColumnName",       typeof(string));
-            DataTypeName     = (string)info.GetValue("DataTypeName",     typeof(string));
-            ConstraintName   = (string)info.GetValue("ConstraintName",   typeof(string));
-            File             = (string)info.GetValue("File",             typeof(string));
-            Line             = (string)info.GetValue("Line",             typeof(string));
-            Routine          = (string)info.GetValue("Routine",          typeof(string));
-        }
-
-        /// <summary>
-        /// Populates a <see cref="SerializationInfo"/> with the data needed to serialize the target object.
-        /// </summary>
-        /// <param name="info">The <see cref="SerializationInfo"/> to populate with data.</param>
-        /// <param name="context">The destination (see <see cref="StreamingContext"/>) for this serialization.</param>
-        public override void GetObjectData(SerializationInfo info, StreamingContext context)
-        {
-            base.GetObjectData(info, context);
-            info.AddValue("Severity", Severity);
-            info.AddValue("SqlState", SqlState);
-            info.AddValue("MessageText", MessageText);
-            info.AddValue("Detail", Detail);
-            info.AddValue("Hint", Hint);
-            info.AddValue("Position", Position);
-            info.AddValue("InternalPosition", InternalPosition);
-            info.AddValue("InternalQuery", InternalQuery);
-            info.AddValue("Where", Where);
-            info.AddValue("SchemaName", SchemaName);
-            info.AddValue("TableName", TableName);
-            info.AddValue("ColumnName", ColumnName);
-            info.AddValue("DataTypeName", DataTypeName);
-            info.AddValue("ConstraintName", ConstraintName);
-            info.AddValue("File", File);
-            info.AddValue("Line", Line);
-            info.AddValue("Routine", Routine);
-        }
-      
-        #endregion
     }
 }
