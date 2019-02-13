@@ -31,6 +31,192 @@ namespace Npgsql
         [CanBeNull]
         bool _dataInitialized;
 
+        /// <summary>
+        /// Creates a new instance.
+        /// </summary>
+        public PostgresException() {}
+
+        internal PostgresException(NpgsqlReadBuffer buf)
+        {
+            var msg = new ErrorOrNoticeMessage(buf);
+            Severity = msg.Severity;
+            SqlState = msg.Code;
+            MessageText = msg.Message;
+            Detail = msg.Detail;
+            Hint = msg.Hint;
+            Position = msg.Position;
+            InternalPosition = msg.InternalPosition;
+            InternalQuery = msg.InternalQuery;
+            Where = msg.Where;
+            SchemaName = msg.SchemaName;
+            TableName = msg.TableName;
+            ColumnName = msg.ColumnName;
+            DataTypeName = msg.DataTypeName;
+            ConstraintName = msg.ConstraintName;
+            File = msg.File;
+            Line = msg.Line;
+            Routine = msg.Routine;
+        }
+
+        PostgresException(SerializationInfo info, StreamingContext context)
+            : base(info, context)
+        {
+            Severity = GetValue<string>(nameof(Severity));
+            SqlState = GetValue<string>(nameof(SqlState));
+            MessageText = GetValue<string>(nameof(MessageText));
+            Detail = GetValue<string>(nameof(Detail));
+            Hint = GetValue<string>(nameof(Hint));
+            Position = GetValue<int>(nameof(Position));
+            InternalPosition = GetValue<int>(nameof(InternalPosition));
+            InternalQuery = GetValue<string>(nameof(InternalQuery));
+            Where = GetValue<string>(nameof(Where));
+            SchemaName = GetValue<string>(nameof(SchemaName));
+            TableName = GetValue<string>(nameof(TableName));
+            ColumnName = GetValue<string>(nameof(ColumnName));
+            DataTypeName = GetValue<string>(nameof(DataTypeName));
+            ConstraintName = GetValue<string>(nameof(ConstraintName));
+            File = GetValue<string>(nameof(File));
+            Line = GetValue<string>(nameof(Line));
+            Routine = GetValue<string>(nameof(Routine));
+
+            T GetValue<T>(string propertyName) =>
+                (T)info.GetValue(propertyName, typeof(T));
+        }
+
+        /// <summary>
+        /// Populates a <see cref="SerializationInfo"/> with the data needed to serialize the target object.
+        /// </summary>
+        /// <param name="info">The <see cref="SerializationInfo"/> to populate with data.</param>
+        /// <param name="context">The destination (see <see cref="StreamingContext"/>) for this serialization.</param>
+        public override void GetObjectData(SerializationInfo info, StreamingContext context)
+        {
+            base.GetObjectData(info, context);
+            info.AddValue(nameof(Severity), Severity);
+            info.AddValue(nameof(SqlState), SqlState);
+            info.AddValue(nameof(MessageText), MessageText);
+            info.AddValue(nameof(Detail), Detail);
+            info.AddValue(nameof(Hint), Hint);
+            info.AddValue(nameof(Position), Position);
+            info.AddValue(nameof(InternalPosition), InternalPosition);
+            info.AddValue(nameof(InternalQuery), InternalQuery);
+            info.AddValue(nameof(Where), Where);
+            info.AddValue(nameof(SchemaName), SchemaName);
+            info.AddValue(nameof(TableName), TableName);
+            info.AddValue(nameof(ColumnName), ColumnName);
+            info.AddValue(nameof(DataTypeName), DataTypeName);
+            info.AddValue(nameof(ConstraintName), ConstraintName);
+            info.AddValue(nameof(File), File);
+            info.AddValue(nameof(Line), Line);
+            info.AddValue(nameof(Routine), Routine);
+        }
+
+        /// <inheritdoc />
+        public override string ToString()
+        {
+            var builder = new StringBuilder(base.ToString())
+                .AppendLine().Append("  Exception data:");
+
+            AppendLine(nameof(Severity), Severity);
+            AppendLine(nameof(SqlState), SqlState);
+            AppendLine(nameof(MessageText), MessageText);
+            AppendLine(nameof(Detail), Detail);
+            AppendLine(nameof(Hint), Hint);
+            AppendLine(nameof(Position), Position);
+            AppendLine(nameof(InternalPosition), InternalPosition);
+            AppendLine(nameof(InternalQuery), InternalQuery);
+            AppendLine(nameof(Where), Where);
+            AppendLine(nameof(SchemaName), SchemaName);
+            AppendLine(nameof(TableName), TableName);
+            AppendLine(nameof(ColumnName), ColumnName);
+            AppendLine(nameof(DataTypeName), DataTypeName);
+            AppendLine(nameof(ConstraintName), ConstraintName);
+            AppendLine(nameof(File), File);
+            AppendLine(nameof(Line), Line);
+            AppendLine(nameof(Routine), Routine);
+
+            return builder.ToString();
+
+            void AppendLine<T>(string propertyName, T propertyValue)
+            {
+                if (!EqualityComparer<T>.Default.Equals(propertyValue, default))
+                    builder.AppendLine().Append("    ").Append(propertyName).Append(": ").Append(propertyValue);
+            }
+        }
+
+        /// <summary>
+        /// Gets a the PostgreSQL error message and code.
+        /// </summary>
+        public override string Message => SqlState + ": " + MessageText;
+
+        /// <summary>
+        /// Specifies whether the exception is considered transient, that is, whether retrying to operation could
+        /// succeed (e.g. a network error). Check <see cref="SqlState"/>.
+        /// </summary>
+        public override bool IsTransient
+        {
+            get
+            {
+                switch (SqlState)
+                {
+                case PostgresErrorCodes.InsufficientResources:
+                case PostgresErrorCodes.DiskFull:
+                case PostgresErrorCodes.OutOfMemory:
+                case PostgresErrorCodes.TooManyConnections:
+                case PostgresErrorCodes.ConfigurationLimitExceeded:
+                case PostgresErrorCodes.CannotConnectNow:
+                case PostgresErrorCodes.SystemError:
+                case PostgresErrorCodes.IoError:
+                case PostgresErrorCodes.SerializationFailure:
+                case PostgresErrorCodes.LockNotAvailable:
+                case PostgresErrorCodes.ObjectInUse:
+                case PostgresErrorCodes.ObjectNotInPrerequisiteState:
+                case PostgresErrorCodes.ConnectionException:
+                case PostgresErrorCodes.ConnectionDoesNotExist:
+                case PostgresErrorCodes.ConnectionFailure:
+                case PostgresErrorCodes.SqlClientUnableToEstablishSqlConnection:
+                case PostgresErrorCodes.SqlServerRejectedEstablishmentOfSqlConnection:
+                case PostgresErrorCodes.TransactionResolutionUnknown:
+                    return true;
+                default:
+                    return false;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Returns the statement which triggered this exception.
+        /// </summary>
+        public NpgsqlStatement Statement { get; internal set; }
+
+        /// <summary>
+        /// Gets a collection of key/value pairs that provide additional PostgreSQL fields about the exception.
+        /// </summary>
+        public override IDictionary Data
+        {
+            get
+            {
+                if (_dataInitialized)
+                    return base.Data;
+
+                var data = base.Data;
+                foreach (var pair in
+                    from p in typeof(PostgresException).GetProperties()
+                    let k = p.Name
+                    where p.Name != nameof(Data)
+                    where p.GetCustomAttribute<PublicAPIAttribute>() != null
+                    let v = p.GetValue(this)
+                    where v != null
+                    where k != nameof(Position) && k != nameof(InternalPosition) || (int)v != 0
+                    select new KeyValuePair<string, object>(k, v))
+                {
+                    data.Add(pair.Key, pair.Value);
+                }
+
+                _dataInitialized = true;
+                return data;
+            }
+        }
+
         #region Message Fields
 
         /// <summary>
@@ -177,191 +363,5 @@ namespace Npgsql
         public string Routine { get; set; }
 
         #endregion
-
-        /// <summary>
-        /// Creates a new instance.
-        /// </summary>
-        public PostgresException() {}
-
-        internal PostgresException(NpgsqlReadBuffer buf)
-        {
-            var msg = new ErrorOrNoticeMessage(buf);
-            Severity = msg.Severity;
-            SqlState = msg.Code;
-            MessageText = msg.Message;
-            Detail = msg.Detail;
-            Hint = msg.Hint;
-            Position = msg.Position;
-            InternalPosition = msg.InternalPosition;
-            InternalQuery = msg.InternalQuery;
-            Where = msg.Where;
-            SchemaName = msg.SchemaName;
-            TableName = msg.TableName;
-            ColumnName = msg.ColumnName;
-            DataTypeName = msg.DataTypeName;
-            ConstraintName = msg.ConstraintName;
-            File = msg.File;
-            Line = msg.Line;
-            Routine = msg.Routine;
-        }
-
-        PostgresException(SerializationInfo info, StreamingContext context)
-            : base(info, context)
-        {
-            Severity = GetValue<string>(nameof(Severity));
-            SqlState = GetValue<string>(nameof(SqlState));
-            MessageText = GetValue<string>(nameof(MessageText));
-            Detail = GetValue<string>(nameof(Detail));
-            Hint = GetValue<string>(nameof(Hint));
-            Position = GetValue<int>(nameof(Position));
-            InternalPosition = GetValue<int>(nameof(InternalPosition));
-            InternalQuery = GetValue<string>(nameof(InternalQuery));
-            Where = GetValue<string>(nameof(Where));
-            SchemaName = GetValue<string>(nameof(SchemaName));
-            TableName = GetValue<string>(nameof(TableName));
-            ColumnName = GetValue<string>(nameof(ColumnName));
-            DataTypeName = GetValue<string>(nameof(DataTypeName));
-            ConstraintName = GetValue<string>(nameof(ConstraintName));
-            File = GetValue<string>(nameof(File));
-            Line = GetValue<string>(nameof(Line));
-            Routine = GetValue<string>(nameof(Routine));
-
-            T GetValue<T>(string propertyName) =>
-                (T)info.GetValue(propertyName, typeof(T));
-        }
-
-        /// <summary>
-        /// Populates a <see cref="SerializationInfo"/> with the data needed to serialize the target object.
-        /// </summary>
-        /// <param name="info">The <see cref="SerializationInfo"/> to populate with data.</param>
-        /// <param name="context">The destination (see <see cref="StreamingContext"/>) for this serialization.</param>
-        public override void GetObjectData(SerializationInfo info, StreamingContext context)
-        {
-            base.GetObjectData(info, context);
-            info.AddValue(nameof(Severity), Severity);
-            info.AddValue(nameof(SqlState), SqlState);
-            info.AddValue(nameof(MessageText), MessageText);
-            info.AddValue(nameof(Detail), Detail);
-            info.AddValue(nameof(Hint), Hint);
-            info.AddValue(nameof(Position), Position);
-            info.AddValue(nameof(InternalPosition), InternalPosition);
-            info.AddValue(nameof(InternalQuery), InternalQuery);
-            info.AddValue(nameof(Where), Where);
-            info.AddValue(nameof(SchemaName), SchemaName);
-            info.AddValue(nameof(TableName), TableName);
-            info.AddValue(nameof(ColumnName), ColumnName);
-            info.AddValue(nameof(DataTypeName), DataTypeName);
-            info.AddValue(nameof(ConstraintName), ConstraintName);
-            info.AddValue(nameof(File), File);
-            info.AddValue(nameof(Line), Line);
-            info.AddValue(nameof(Routine), Routine);
-        }
-
-        /// <summary>
-        /// Gets a the PostgreSQL error message and code.
-        /// </summary>
-        public override string Message => SqlState + ": " + MessageText;
-
-        /// <summary>
-        /// Specifies whether the exception is considered transient, that is, whether retrying to operation could
-        /// succeed (e.g. a network error). Check <see cref="SqlState"/>.
-        /// </summary>
-        public override bool IsTransient
-        {
-            get
-            {
-                switch (SqlState)
-                {
-                case PostgresErrorCodes.InsufficientResources:
-                case PostgresErrorCodes.DiskFull:
-                case PostgresErrorCodes.OutOfMemory:
-                case PostgresErrorCodes.TooManyConnections:
-                case PostgresErrorCodes.ConfigurationLimitExceeded:
-                case PostgresErrorCodes.CannotConnectNow:
-                case PostgresErrorCodes.SystemError:
-                case PostgresErrorCodes.IoError:
-                case PostgresErrorCodes.SerializationFailure:
-                case PostgresErrorCodes.LockNotAvailable:
-                case PostgresErrorCodes.ObjectInUse:
-                case PostgresErrorCodes.ObjectNotInPrerequisiteState:
-                case PostgresErrorCodes.ConnectionException:
-                case PostgresErrorCodes.ConnectionDoesNotExist:
-                case PostgresErrorCodes.ConnectionFailure:
-                case PostgresErrorCodes.SqlClientUnableToEstablishSqlConnection:
-                case PostgresErrorCodes.SqlServerRejectedEstablishmentOfSqlConnection:
-                case PostgresErrorCodes.TransactionResolutionUnknown:
-                    return true;
-                default:
-                    return false;
-                }
-            }
-        }
-
-        /// <summary>
-        /// Returns the statement which triggered this exception.
-        /// </summary>
-        public NpgsqlStatement Statement { get; internal set; }
-
-        /// <inheritdoc />
-        public override string ToString()
-        {
-            var builder = new StringBuilder(base.ToString())
-                .AppendLine().Append("  Exception data:");
-
-            AppendLine(nameof(Severity), Severity);
-            AppendLine(nameof(SqlState), SqlState);
-            AppendLine(nameof(MessageText), MessageText);
-            AppendLine(nameof(Detail), Detail);
-            AppendLine(nameof(Hint), Hint);
-            AppendLine(nameof(Position), Position);
-            AppendLine(nameof(InternalPosition), InternalPosition);
-            AppendLine(nameof(InternalQuery), InternalQuery);
-            AppendLine(nameof(Where), Where);
-            AppendLine(nameof(SchemaName), SchemaName);
-            AppendLine(nameof(TableName), TableName);
-            AppendLine(nameof(ColumnName), ColumnName);
-            AppendLine(nameof(DataTypeName), DataTypeName);
-            AppendLine(nameof(ConstraintName), ConstraintName);
-            AppendLine(nameof(File), File);
-            AppendLine(nameof(Line), Line);
-            AppendLine(nameof(Routine), Routine);
-
-            return builder.ToString();
-
-            void AppendLine<T>(string propertyName, T propertyValue)
-            {
-                if (!EqualityComparer<T>.Default.Equals(propertyValue, default))
-                    builder.AppendLine().Append("    ").Append(propertyName).Append(": ").Append(propertyValue);
-            }
-        }
-
-        /// <summary>
-        /// Gets a collection of key/value pairs that provide additional PostgreSQL fields about the exception.
-        /// </summary>
-        public override IDictionary Data
-        {
-            get
-            {
-                if (_dataInitialized)
-                    return base.Data;
-
-                var data = base.Data;
-                foreach (var pair in
-                    from p in typeof(PostgresException).GetProperties()
-                    let k = p.Name
-                    where p.Name != nameof(Data)
-                    where p.GetCustomAttribute<PublicAPIAttribute>() != null
-                    let v = p.GetValue(this)
-                    where v != null
-                    where k != nameof(Position) && k != nameof(InternalPosition) || (int)v != 0
-                    select new KeyValuePair<string, object>(k, v))
-                {
-                    data.Add(pair.Key, pair.Value);
-                }
-
-                _dataInitialized = true;
-                return data;
-            }
-        }
     }
 }
