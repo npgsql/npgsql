@@ -99,7 +99,6 @@ namespace Npgsql.Benchmarks
             public ReadArrayConfig()
             {
                 Add(StatisticColumn.OperationsPerSecond);
-                Add(MemoryDiagnoser.Default);
             }
         }
     }

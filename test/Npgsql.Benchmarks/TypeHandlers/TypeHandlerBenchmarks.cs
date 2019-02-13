@@ -17,7 +17,6 @@ namespace Npgsql.Benchmarks.TypeHandlers
             public Config()
             {
                 Add(StatisticColumn.OperationsPerSecond);
-                Add(MemoryDiagnoser.Default);
             }
         }
 
