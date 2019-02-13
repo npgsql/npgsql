@@ -2,7 +2,6 @@
 
 namespace Npgsql.Benchmarks
 {
-    [MemoryDiagnoser]
     public class ReadRows
     {
         [Params(1, 10, 100, 1000)]
