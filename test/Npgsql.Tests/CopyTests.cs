@@ -641,6 +641,38 @@ namespace Npgsql.Tests
             }
         }
 
+        // TODO: TextImportWithParameters
+        // TODO: BinaryExportWithParameters
+        // TODO: BinaryExportWithParameters
+        // TODO: etc...
+
+        [Test]
+        public void TextExportWithParameters()
+        {
+            using (var conn = OpenConnection())
+            {
+                var chars = new char[30];
+                var parameters = new NpgsqlParameterCollection();
+                parameters.Add(new NpgsqlParameter("max", 5));
+                var reader = conn.BeginTextExport("COPY (select generate_series(1, :max)) TO STDOUT", parameters);
+                StateAssertions(conn);
+                Assert.That(reader.Read(chars, 0, chars.Length), Is.EqualTo(2));
+                Assert.That(new string(chars, 0, 2), Is.EqualTo("1\n"));
+                Assert.That(reader.Read(chars, 0, chars.Length), Is.EqualTo(2));
+                Assert.That(new string(chars, 0, 2), Is.EqualTo("2\n"));
+                Assert.That(reader.Read(chars, 0, chars.Length), Is.EqualTo(2));
+                Assert.That(new string(chars, 0, 2), Is.EqualTo("3\n"));
+                Assert.That(reader.Read(chars, 0, chars.Length), Is.EqualTo(2));
+                Assert.That(new string(chars, 0, 2), Is.EqualTo("4\n"));
+                Assert.That(reader.Read(chars, 0, chars.Length), Is.EqualTo(2));
+                Assert.That(new string(chars, 0, 2), Is.EqualTo("5\n"));
+                Assert.That(reader.Read(chars, 0, chars.Length), Is.EqualTo(0));
+                Assert.That(reader.Read(chars, 0, chars.Length), Is.EqualTo(0));
+                reader.Dispose();
+                Assert.That(() => reader.Read(chars, 0, chars.Length), Throws.Exception.TypeOf<ObjectDisposedException>());
+            }
+        }
+
         [Test]
         public void DisposeInMiddleOfTextExport()
         {

@@ -919,12 +919,14 @@ namespace Npgsql
         /// in <paramref name="copyToCommand"/>.
         /// </summary>
         /// <param name="copyToCommand">A COPY TO STDOUT SQL command</param>
+        /// <param name="parameters">TODO</param>
         /// <returns>
         /// A TextReader that can be used to read textual data.</returns>
         /// <remarks>
         /// See http://www.postgresql.org/docs/current/static/sql-copy.html.
         /// </remarks>
-        public TextReader BeginTextExport(string copyToCommand)
+        // TODO: Better API for this...
+        public TextReader BeginTextExport(string copyToCommand, NpgsqlParameterCollection parameters = null)
         {
             if (copyToCommand == null)
                 throw new ArgumentNullException(nameof(copyToCommand));
@@ -936,7 +938,7 @@ namespace Npgsql
             connector.StartUserAction(ConnectorState.Copy);
             try
             {
-                var reader = new NpgsqlCopyTextReader(new NpgsqlRawCopyStream(connector, copyToCommand));
+                var reader = new NpgsqlCopyTextReader(new NpgsqlRawCopyStream(connector, copyToCommand, parameters));
                 connector.CurrentCopyOperation = reader;
                 return reader;
             }

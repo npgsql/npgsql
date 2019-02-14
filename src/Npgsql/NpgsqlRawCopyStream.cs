@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
 using Npgsql.Logging;
@@ -51,12 +53,84 @@ namespace Npgsql
 
         #region Constructor
 
-        internal NpgsqlRawCopyStream(NpgsqlConnector connector, string copyCommand)
+        private async Task SendQueryAsync(NpgsqlConnector connector, NpgsqlStatement statement, bool async)
+        {
+            await connector.ParseMessage
+                .Populate(statement.SQL, statement.StatementName, statement.InputParameters, connector.TypeMapper)
+                .Write(_writeBuf, async);
+            var bind = connector.BindMessage;
+            bind.Populate(statement.InputParameters, "", statement.StatementName);
+            await connector.BindMessage.Write(_writeBuf, async);
+            await connector.DescribeMessage
+                .Populate(StatementOrPortal.Portal)
+                .Write(_writeBuf, async);
+            await ExecuteMessage.DefaultExecute.Write(_writeBuf, async);
+            await SyncMessage.Instance.Write(_writeBuf, async);
+            await _writeBuf.Flush(async);
+        }
+
+        private NpgsqlStatement ParseRawQuery(string copyCommand, NpgsqlParameterCollection parameters)
+        {
+            var statements = new List<NpgsqlStatement>();
+            _connector.SqlParser.ParseRawQuery(copyCommand, _connector.UseConformantStrings, parameters, statements, deriveParameters: false);
+
+            if (statements.Count < 0)
+            {
+                throw new ArgumentException("TODO - better message");
+            }
+
+            var copyStatement = statements[0];
+            // TODO: Should we do this?
+            //copyStatement.StatementType = StatementType.Copy;
+            return copyStatement;
+        }
+
+        void ValidateParameters(NpgsqlParameterCollection parameters)
+        {
+            for (var i = 0; i < parameters.Count; i++)
+            {
+                var p = parameters[i];
+                if (!p.IsInputDirection)
+                    continue;
+                p.Bind(_connector.TypeMapper);
+                p.LengthCache?.Clear();
+                p.ValidateAndGetLength();
+            }
+        }
+
+        internal NpgsqlRawCopyStream(NpgsqlConnector connector, string copyCommand, NpgsqlParameterCollection parameters = null)
         {
             _connector = connector;
             _readBuf = connector.ReadBuffer;
             _writeBuf = connector.WriteBuffer;
-            _connector.SendQuery(copyCommand);
+
+            // TODO: Better API for managing the command + parameters.
+            if (parameters == null)
+            {
+                parameters = new NpgsqlParameterCollection();
+            }
+
+            ValidateParameters(parameters);
+            // TODO...
+            var copyStatement = ParseRawQuery(copyCommand, parameters);
+
+            // TODO: Could this be setup to be Async?
+            var sendTask = SendQueryAsync(connector, copyStatement, async: false);
+
+            // TODO: Copied from NpgsqlCommand.ExecuteDbDataReader
+            // The following is a hack. It raises an exception if one was thrown in the first phases
+            // of the send (i.e. in parts of the send that executed synchronously). Exceptions may
+            // still happen later and aren't properly handled. See #1323.
+            if (sendTask.IsFaulted)
+                sendTask.GetAwaiter().GetResult();
+
+            Expect<ParseCompleteMessage>(_connector.ReadMessage());
+            Expect<BindCompleteMessage>(_connector.ReadMessage());
+
+            // TODO: I believe this is because we sent the DescribeMessage... it's OK because it indicates we don't
+            // have row information... makes sense when we're executing a COPY vs a normal DataReader.
+            Expect<NoDataMessage>(_connector.ReadMessage());
+
             var msg = _connector.ReadMessage();
             switch (msg.Code)
             {
@@ -148,6 +222,7 @@ namespace Npgsql
                     _leftToReadInDataMsg = ((CopyDataMessage)msg).Length;
                     break;
                 case BackendMessageCode.CopyDone:
+                    // TODO: Anything we have to finish up here?
                     Expect<CommandCompleteMessage>(_connector.ReadMessage());
                     Expect<ReadyForQueryMessage>(_connector.ReadMessage());
                     _isConsumed = true;
