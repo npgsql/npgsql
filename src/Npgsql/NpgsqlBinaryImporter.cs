@@ -51,38 +51,30 @@ namespace Npgsql
             _buf = connector.WriteBuffer;
             _column = -1;
 
-            try
-            {
-                _connector.SendQuery(copyFromCommand);
+            _connector.SendQuery(copyFromCommand);
 
-                CopyInResponseMessage copyInResponse;
-                var msg = _connector.ReadMessage();
-                switch (msg.Code)
-                {
-                case BackendMessageCode.CopyInResponse:
-                    copyInResponse = (CopyInResponseMessage)msg;
-                    if (!copyInResponse.IsBinary)
-                        throw new ArgumentException("copyFromCommand triggered a text transfer, only binary is allowed", nameof(copyFromCommand));
-                    break;
-                case BackendMessageCode.CompletedResponse:
-                    throw new InvalidOperationException(
-                        "This API only supports import/export from the client, i.e. COPY commands containing TO/FROM STDIN. " +
-                        "To import/export with files on your PostgreSQL machine, simply execute the command with ExecuteNonQuery. " +
-                        "Note that your data has been successfully imported/exported.");
-                default:
-                    throw _connector.UnexpectedMessageReceived(msg.Code);
-                }
-
-                NumColumns = copyInResponse.NumColumns;
-                _params = new NpgsqlParameter[NumColumns];
-                _buf.StartCopyMode();
-                WriteHeader();
-            }
-            catch
+            CopyInResponseMessage copyInResponse;
+            var msg = _connector.ReadMessage();
+            switch (msg.Code)
             {
-                _connector.Break();
-                throw;
+            case BackendMessageCode.CopyInResponse:
+                copyInResponse = (CopyInResponseMessage)msg;
+                if (!copyInResponse.IsBinary)
+                    throw new ArgumentException("copyFromCommand triggered a text transfer, only binary is allowed", nameof(copyFromCommand));
+                break;
+            case BackendMessageCode.CompletedResponse:
+                throw new InvalidOperationException(
+                    "This API only supports import/export from the client, i.e. COPY commands containing TO/FROM STDIN. " +
+                    "To import/export with files on your PostgreSQL machine, simply execute the command with ExecuteNonQuery. " +
+                    "Note that your data has been successfully imported/exported.");
+            default:
+                throw _connector.UnexpectedMessageReceived(msg.Code);
             }
+
+            NumColumns = copyInResponse.NumColumns;
+            _params = new NpgsqlParameter[NumColumns];
+            _buf.StartCopyMode();
+            WriteHeader();
         }
 
         void WriteHeader()

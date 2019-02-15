@@ -314,6 +314,21 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
+        public void WrongTableDefinitionBinaryImport()
+        {
+            using (var conn = OpenConnection())
+            {
+                Assert.Throws<PostgresException>(() => conn.BeginBinaryImport("COPY table_is_not_exist (blob) FROM STDIN BINARY"));
+
+                // connection is not broken
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+                
+                // connection really alive
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+            }
+        }
+
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/661")]
         [Ignore("Unreliable")]
         public void UnexpectedExceptionBinaryImport()
