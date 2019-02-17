@@ -57,18 +57,21 @@ namespace Npgsql
             var msg = _connector.ReadMessage();
             switch (msg.Code)
             {
-            case BackendMessageCode.CopyInResponse:
-                copyInResponse = (CopyInResponseMessage)msg;
-                if (!copyInResponse.IsBinary)
-                    throw new ArgumentException("copyFromCommand triggered a text transfer, only binary is allowed", nameof(copyFromCommand));
-                break;
-            case BackendMessageCode.CompletedResponse:
-                throw new InvalidOperationException(
-                    "This API only supports import/export from the client, i.e. COPY commands containing TO/FROM STDIN. " +
-                    "To import/export with files on your PostgreSQL machine, simply execute the command with ExecuteNonQuery. " +
-                    "Note that your data has been successfully imported/exported.");
-            default:
-                throw _connector.UnexpectedMessageReceived(msg.Code);
+                case BackendMessageCode.CopyInResponse:
+                    copyInResponse = (CopyInResponseMessage)msg;
+                    if (!copyInResponse.IsBinary)
+                    {
+                        _connector.Break();
+                        throw new ArgumentException("copyFromCommand triggered a text transfer, only binary is allowed", nameof(copyFromCommand));
+                    }
+                    break;
+                case BackendMessageCode.CompletedResponse:
+                    throw new InvalidOperationException(
+                        "This API only supports import/export from the client, i.e. COPY commands containing TO/FROM STDIN. " +
+                        "To import/export with files on your PostgreSQL machine, simply execute the command with ExecuteNonQuery. " +
+                        "Note that your data has been successfully imported/exported.");
+                default:
+                    throw _connector.UnexpectedMessageReceived(msg.Code);
             }
 
             NumColumns = copyInResponse.NumColumns;
@@ -318,16 +321,16 @@ namespace Npgsql
         {
             switch (_state)
             {
-            case ImporterState.Disposed:
-                return;
-            case ImporterState.Ready:
-                Cancel();
-                break;
-            case ImporterState.Cancelled:
-            case ImporterState.Committed:
-                break;
-            default:
-                throw new Exception("Invalid state: " + _state);
+                case ImporterState.Disposed:
+                    return;
+                case ImporterState.Ready:
+                    Cancel();
+                    break;
+                case ImporterState.Cancelled:
+                case ImporterState.Committed:
+                    break;
+                default:
+                    throw new Exception("Invalid state: " + _state);
             }
 
             var connector = _connector;
@@ -355,16 +358,16 @@ namespace Npgsql
         {
             switch (_state)
             {
-            case ImporterState.Ready:
-                return;
-            case ImporterState.Disposed:
-                throw new ObjectDisposedException(GetType().FullName, "The COPY operation has already ended.");
-            case ImporterState.Cancelled:
-                throw new InvalidOperationException("The COPY operation has already been cancelled.");
-            case ImporterState.Committed:
-                throw new InvalidOperationException("The COPY operation has already been committed.");
-            default:
-                throw new Exception("Invalid state: " + _state);
+                case ImporterState.Ready:
+                    return;
+                case ImporterState.Disposed:
+                    throw new ObjectDisposedException(GetType().FullName, "The COPY operation has already ended.");
+                case ImporterState.Cancelled:
+                    throw new InvalidOperationException("The COPY operation has already been cancelled.");
+                case ImporterState.Committed:
+                    throw new InvalidOperationException("The COPY operation has already been committed.");
+                default:
+                    throw new Exception("Invalid state: " + _state);
             }
         }
 

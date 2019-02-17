@@ -319,13 +319,22 @@ namespace Npgsql.Tests
         {
             using (var conn = OpenConnection())
             {
+                // Connection should be kept alive after PostgresException was triggered
                 Assert.Throws<PostgresException>(() => conn.BeginBinaryImport("COPY table_is_not_exist (blob) FROM STDIN BINARY"));
-
-                // connection is not broken
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
-                
-                // connection really alive
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
+        public void ArgumentExceptionBinaryImport()
+        {
+            using (var conn = OpenConnection())
+            {
+                // ArgumentException closes the connection
+                conn.ExecuteNonQuery("create temp table temp_table(blob bytea)");
+                Assert.Throws<ArgumentException>(() => conn.BeginBinaryImport("COPY temp_table (blob) FROM STDIN"));
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
             }
         }
 
