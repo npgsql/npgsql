@@ -321,16 +321,16 @@ namespace Npgsql
         {
             switch (_state)
             {
-                case ImporterState.Disposed:
-                    return;
-                case ImporterState.Ready:
-                    Cancel();
-                    break;
-                case ImporterState.Cancelled:
-                case ImporterState.Committed:
-                    break;
-                default:
-                    throw new Exception("Invalid state: " + _state);
+            case ImporterState.Disposed:
+                return;
+            case ImporterState.Ready:
+                Cancel();
+                break;
+            case ImporterState.Cancelled:
+            case ImporterState.Committed:
+                break;
+            default:
+                throw new Exception("Invalid state: " + _state);
             }
 
             var connector = _connector;
@@ -358,16 +358,16 @@ namespace Npgsql
         {
             switch (_state)
             {
-                case ImporterState.Ready:
-                    return;
-                case ImporterState.Disposed:
-                    throw new ObjectDisposedException(GetType().FullName, "The COPY operation has already ended.");
-                case ImporterState.Cancelled:
-                    throw new InvalidOperationException("The COPY operation has already been cancelled.");
-                case ImporterState.Committed:
-                    throw new InvalidOperationException("The COPY operation has already been committed.");
-                default:
-                    throw new Exception("Invalid state: " + _state);
+            case ImporterState.Ready:
+                return;
+            case ImporterState.Disposed:
+                throw new ObjectDisposedException(GetType().FullName, "The COPY operation has already ended.");
+            case ImporterState.Cancelled:
+                throw new InvalidOperationException("The COPY operation has already been cancelled.");
+            case ImporterState.Committed:
+                throw new InvalidOperationException("The COPY operation has already been committed.");
+            default:
+                throw new Exception("Invalid state: " + _state);
             }
         }
 
