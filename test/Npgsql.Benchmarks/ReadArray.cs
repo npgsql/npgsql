@@ -96,11 +96,7 @@ namespace Npgsql.Benchmarks
 
         class ReadArrayConfig : ManualConfig
         {
-            public ReadArrayConfig()
-            {
-                Add(StatisticColumn.OperationsPerSecond);
-                Add(MemoryDiagnoser.Default);
-            }
+            public ReadArrayConfig() => Add(StatisticColumn.OperationsPerSecond);
         }
     }
 }

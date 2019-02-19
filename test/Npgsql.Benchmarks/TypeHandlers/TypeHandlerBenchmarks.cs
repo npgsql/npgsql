@@ -14,11 +14,7 @@ namespace Npgsql.Benchmarks.TypeHandlers
     {
         protected class Config : ManualConfig
         {
-            public Config()
-            {
-                Add(StatisticColumn.OperationsPerSecond);
-                Add(MemoryDiagnoser.Default);
-            }
+            public Config() => Add(StatisticColumn.OperationsPerSecond);
         }
 
         class EndlessStream : Stream
