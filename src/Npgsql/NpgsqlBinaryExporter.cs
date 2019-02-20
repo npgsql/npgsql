@@ -280,19 +280,31 @@ namespace Npgsql
         {
             if (_isDisposed) { return; }
 
-            if (!_isConsumed)
+            try
             {
-                // Finish the current CopyData message
-                _buf.Skip(_leftToReadInDataMsg);
-                // Read to the end
-                _connector.SkipUntil(BackendMessageCode.CopyDone);
-                Expect<CommandCompleteMessage>(_connector.ReadMessage());
-                Expect<ReadyForQueryMessage>(_connector.ReadMessage());
+                if (!_isConsumed)
+                {
+                    // Finish the current CopyData message
+                    _buf.Skip(_leftToReadInDataMsg);
+                    try
+                    {
+                        // Read to the end
+                        _connector.SkipUntil(BackendMessageCode.CopyDone);
+                        Expect<CommandCompleteMessage>(_connector.ReadMessage());
+                        Expect<ReadyForQueryMessage>(_connector.ReadMessage());
+                    }
+                    catch (PostgresException e) when (e.SqlState == PostgresErrorCodes.QueryCanceled)
+                    {
+                        Log.Error($"Caught exception when disposing the {nameof(NpgsqlBinaryExporter)} indicating that it was cancelled.", e, _connector.Id);
+                    }
+                }
             }
-
-            var connector = _connector;
-            Cleanup();
-            connector.EndUserAction();
+            finally
+            {
+                var connector = _connector;
+                Cleanup();
+                connector.EndUserAction();
+            }
         }
 
         void Cleanup()

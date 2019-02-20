@@ -240,7 +240,15 @@ namespace Npgsql
                         {
                             _readBuf.Skip(_leftToReadInDataMsg);
                         }
-                        _connector.SkipUntil(BackendMessageCode.ReadyForQuery);
+
+                        try
+                        {
+                            _connector.SkipUntil(BackendMessageCode.ReadyForQuery);
+                        }
+                        catch (PostgresException e) when (e.SqlState == PostgresErrorCodes.QueryCanceled)
+                        {
+                            Log.Error($"Caught exception when disposing the {nameof(NpgsqlRawCopyStream)} indicating that it was cancelled.", e, _connector.Id);
+                        }
                     }
                 }
             }

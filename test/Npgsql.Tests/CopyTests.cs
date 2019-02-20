@@ -120,6 +120,21 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        public void CancelRawBinaryExportWhenNotConsumedAndThenDispose()
+        {
+            using (var conn = OpenConnection())
+            {
+                // This must be large enough to cause Postgres to queue up CopyData messages.
+                var stream = conn.BeginRawBinaryCopy("COPY (select md5(random()::text) as id from generate_series(1, 100000)) TO STDOUT BINARY");
+                var buffer = new byte[32];
+                stream.Read(buffer, 0, buffer.Length);
+                stream.Cancel();
+                Assert.DoesNotThrow(() => stream.Dispose());
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1), "The connection is still OK");
+            }
+        }
+
+        [Test]
         public void ImportLargeValueRaw()
         {
             using (var conn = OpenConnection())
@@ -561,6 +576,21 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test]
+        public void CancelBinaryExportWhenNotConsumedAndThenDispose()
+        {
+            using (var conn = OpenConnection())
+            {
+                // This must be large enough to cause Postgres to queue up CopyData messages.
+                var exporter = conn.BeginBinaryExport("COPY (select md5(random()::text) as id from generate_series(1, 100000)) TO STDOUT BINARY");
+                exporter.StartRow();
+                exporter.Read<string>();
+                exporter.Cancel();
+                Assert.DoesNotThrow(() => exporter.Dispose());
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1), "The connection is still OK");
+            }
+        }
+
         #endregion
 
         #region Text
@@ -652,6 +682,21 @@ namespace Npgsql.Tests
                 reader.Dispose();
                 // Make sure the connection is stil OK
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+            }
+        }
+
+        [Test]
+        public void CancelTextExportWhenNotConsumedAndThenDispose()
+        {
+            using (var conn = OpenConnection())
+            {
+                // This must be large enough to cause Postgres to queue up CopyData messages.
+                var reader = (NpgsqlCopyTextReader)conn.BeginTextExport("COPY (select md5(random()::text) as id from generate_series(1, 100000)) TO STDOUT");
+                var buffer = new char[32];
+                reader.Read(buffer, 0, buffer.Length);
+                reader.Cancel();
+                Assert.DoesNotThrow(() => reader.Dispose());
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1), "The connection is still OK");
             }
         }
 
