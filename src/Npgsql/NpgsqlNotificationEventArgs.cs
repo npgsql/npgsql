@@ -18,18 +18,30 @@ namespace Npgsql
         /// <summary>
         /// The channel on which the notification was sent.
         /// </summary>
+        public string Channel { get; }
+
+        /// <summary>
+        /// An optional payload string that was sent with this notification.
+        /// </summary>
+        public string Payload { get; }
+
+        /// <summary>
+        /// The channel on which the notification was sent.
+        /// </summary>
+        [Obsolete("Use Channel instead")]
         public string Condition { get; }
 
         /// <summary>
         /// An optional payload string that was sent with this notification.
         /// </summary>
+        [Obsolete("Use Payload instead")]
         public string AdditionalInformation { get; }
 
         internal NpgsqlNotificationEventArgs(NpgsqlReadBuffer buf)
         {
             PID = buf.ReadInt32();
-            Condition = buf.ReadNullTerminatedString();
-            AdditionalInformation = buf.ReadNullTerminatedString();
+            Channel = buf.ReadNullTerminatedString();
+            Payload = buf.ReadNullTerminatedString();
         }
     }
 }
