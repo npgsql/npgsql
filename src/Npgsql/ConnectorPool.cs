@@ -311,7 +311,7 @@ namespace Npgsql
 
                     // At this point the waiting count is non-zero, so new release calls are blocking on the waiting
                     // queue. This avoids a race condition where we wait while another connector is put back in the
-                    // idle list - we know the idle list and empty and will stay empty.
+                    // idle list - we know the idle list is empty and will stay empty.
 
                     try
                     {
