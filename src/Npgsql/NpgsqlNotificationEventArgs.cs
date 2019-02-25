@@ -26,7 +26,9 @@ using System;
 namespace Npgsql
 {
     /// <summary>
-    /// EventArgs class to send Notification parameters.
+    /// Provides information on a PostgreSQL notification. Notifications are sent when your connection has registered for
+    /// notifications on a specific channel via the LISTEN command. NOTIFY can be used to generate such notifications,
+    /// allowing for an inter-connection communication channel.
     /// </summary>
     public sealed class NpgsqlNotificationEventArgs : EventArgs
     {
@@ -37,12 +39,12 @@ namespace Npgsql
         public int PID { get; }
 
         /// <summary>
-        /// Condition that triggered that notification.
+        /// The channel on which the notification was sent.
         /// </summary>
         public string Condition { get; }
 
         /// <summary>
-        /// Additional information.
+        /// An optional payload string that was sent with this notification.
         /// </summary>
         public string AdditionalInformation { get; }
 
