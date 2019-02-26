@@ -35,7 +35,7 @@ namespace Npgsql
         /// An optional payload string that was sent with this notification.
         /// </summary>
         [Obsolete("Use Payload instead")]
-        public string AdditionalInformation { get; }
+        public string AdditionalInformation => Payload;
 
         internal NpgsqlNotificationEventArgs(NpgsqlReadBuffer buf)
         {
