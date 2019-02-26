@@ -29,7 +29,7 @@ namespace Npgsql
         /// The channel on which the notification was sent.
         /// </summary>
         [Obsolete("Use Channel instead")]
-        public string Condition { get; }
+        public string Condition => Channel;
 
         /// <summary>
         /// An optional payload string that was sent with this notification.
