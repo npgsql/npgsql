@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers.Binary;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -188,7 +189,7 @@ namespace Npgsql
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteInt16(short value, bool littleEndian)
-            => Write(littleEndian == BitConverter.IsLittleEndian ? value : PGUtil.ReverseEndianness(value));
+            => Write(littleEndian == BitConverter.IsLittleEndian ? value : BinaryPrimitives.ReverseEndianness(value));
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteUInt16(ushort value)
@@ -196,7 +197,7 @@ namespace Npgsql
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteUInt16(ushort value, bool littleEndian)
-            => Write(littleEndian == BitConverter.IsLittleEndian ? value : PGUtil.ReverseEndianness(value));
+            => Write(littleEndian == BitConverter.IsLittleEndian ? value : BinaryPrimitives.ReverseEndianness(value));
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteInt32(int value)
@@ -204,7 +205,7 @@ namespace Npgsql
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteInt32(int value, bool littleEndian)
-            => Write(littleEndian == BitConverter.IsLittleEndian ? value : PGUtil.ReverseEndianness(value));
+            => Write(littleEndian == BitConverter.IsLittleEndian ? value : BinaryPrimitives.ReverseEndianness(value));
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteUInt32(uint value)
@@ -212,7 +213,7 @@ namespace Npgsql
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteUInt32(uint value, bool littleEndian)
-            => Write(littleEndian == BitConverter.IsLittleEndian ? value : PGUtil.ReverseEndianness(value));
+            => Write(littleEndian == BitConverter.IsLittleEndian ? value : BinaryPrimitives.ReverseEndianness(value));
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteInt64(long value)
@@ -220,7 +221,7 @@ namespace Npgsql
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteInt64(long value, bool littleEndian)
-            => Write(littleEndian == BitConverter.IsLittleEndian ? value : PGUtil.ReverseEndianness(value));
+            => Write(littleEndian == BitConverter.IsLittleEndian ? value : BinaryPrimitives.ReverseEndianness(value));
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteUInt64(ulong value)
@@ -228,7 +229,7 @@ namespace Npgsql
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteUInt64(ulong value, bool littleEndian)
-            => Write(littleEndian == BitConverter.IsLittleEndian ? value : PGUtil.ReverseEndianness(value));
+            => Write(littleEndian == BitConverter.IsLittleEndian ? value : BinaryPrimitives.ReverseEndianness(value));
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteSingle(float value)

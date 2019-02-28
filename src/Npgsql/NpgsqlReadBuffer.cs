@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers.Binary;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Sockets;
@@ -231,7 +232,7 @@ namespace Npgsql
         {
             var result = Read<short>();
             return littleEndian == BitConverter.IsLittleEndian
-                ? result : PGUtil.ReverseEndianness(result);
+                ? result : BinaryPrimitives.ReverseEndianness(result);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -243,7 +244,7 @@ namespace Npgsql
         {
             var result = Read<ushort>();
             return littleEndian == BitConverter.IsLittleEndian
-                ? result : PGUtil.ReverseEndianness(result);
+                ? result : BinaryPrimitives.ReverseEndianness(result);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -255,7 +256,7 @@ namespace Npgsql
         {
             var result = Read<int>();
             return littleEndian == BitConverter.IsLittleEndian
-                ? result : PGUtil.ReverseEndianness(result);
+                ? result : BinaryPrimitives.ReverseEndianness(result);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -267,7 +268,7 @@ namespace Npgsql
         {
             var result = Read<uint>();
             return littleEndian == BitConverter.IsLittleEndian
-                ? result : PGUtil.ReverseEndianness(result);
+                ? result : BinaryPrimitives.ReverseEndianness(result);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -279,7 +280,7 @@ namespace Npgsql
         {
             var result = Read<long>();
             return littleEndian == BitConverter.IsLittleEndian
-                ? result : PGUtil.ReverseEndianness(result);
+                ? result : BinaryPrimitives.ReverseEndianness(result);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -291,7 +292,7 @@ namespace Npgsql
         {
             var result = Read<ulong>();
             return littleEndian == BitConverter.IsLittleEndian
-                ? result : PGUtil.ReverseEndianness(result);
+                ? result : BinaryPrimitives.ReverseEndianness(result);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
