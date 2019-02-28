@@ -1,8 +1,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
 using System.Runtime.Serialization;
 using System.Text;
 using JetBrains.Annotations;
@@ -195,25 +193,36 @@ namespace Npgsql
         {
             get
             {
-                if (_dataInitialized)
-                    return base.Data;
-
                 var data = base.Data;
-                foreach (var pair in
-                    from p in typeof(PostgresException).GetProperties()
-                    let k = p.Name
-                    where p.Name != nameof(Data)
-                    where p.GetCustomAttribute<PublicAPIAttribute>() != null
-                    let v = p.GetValue(this)
-                    where v != null
-                    where k != nameof(Position) && k != nameof(InternalPosition) || (int)v != 0
-                    select new KeyValuePair<string, object>(k, v))
-                {
-                    data.Add(pair.Key, pair.Value);
-                }
+                if (_dataInitialized)
+                    return data;
+                
+                AddData(nameof(Severity), Severity);
+                AddData(nameof(SqlState), SqlState);
+                AddData(nameof(MessageText), MessageText);
+                AddData(nameof(Detail), Detail);
+                AddData(nameof(Hint), Hint);
+                AddData(nameof(Position), Position);
+                AddData(nameof(InternalPosition), InternalPosition);
+                AddData(nameof(InternalQuery), InternalQuery);
+                AddData(nameof(Where), Where);
+                AddData(nameof(SchemaName), SchemaName);
+                AddData(nameof(TableName), TableName);
+                AddData(nameof(ColumnName), ColumnName);
+                AddData(nameof(DataTypeName), DataTypeName);
+                AddData(nameof(ConstraintName), ConstraintName);
+                AddData(nameof(File), File);
+                AddData(nameof(Line), Line);
+                AddData(nameof(Routine), Routine);
 
                 _dataInitialized = true;
                 return data;
+
+                void AddData<T>(string key, T value)
+                {
+                    if (!EqualityComparer<T>.Default.Equals(value, default))
+                        data.Add(key, value);
+                }
             }
         }
 
