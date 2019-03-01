@@ -2,6 +2,7 @@ using System;
 using System.Data;
 using System.IO;
 using System.Net.Sockets;
+using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
 using NUnit.Framework;
 
@@ -154,32 +155,92 @@ namespace Npgsql.Tests
         [Test]
         public void PostgresExceptionTransience()
         {
-            Assert.True(new PostgresException { SqlState = "53300" }.IsTransient);
-            Assert.False(new PostgresException { SqlState = "0" }.IsTransient);
+            Assert.True(CreateWithSqlState("53300").IsTransient);
+            Assert.False(CreateWithSqlState("0").IsTransient);
+
+            PostgresException CreateWithSqlState(string sqlState)
+            {
+                var info = CreateSerializationInfo();
+
+                info.AddValue(nameof(PostgresException.Severity), null);
+                info.AddValue(nameof(PostgresException.SqlState), sqlState);
+                info.AddValue(nameof(PostgresException.MessageText), null);
+                info.AddValue(nameof(PostgresException.Detail), null);
+                info.AddValue(nameof(PostgresException.Hint), null);
+                info.AddValue(nameof(PostgresException.Position), 0);
+                info.AddValue(nameof(PostgresException.InternalPosition), 0);
+                info.AddValue(nameof(PostgresException.InternalQuery), null);
+                info.AddValue(nameof(PostgresException.Where), null);
+                info.AddValue(nameof(PostgresException.SchemaName), null);
+                info.AddValue(nameof(PostgresException.TableName), null);
+                info.AddValue(nameof(PostgresException.ColumnName), null);
+                info.AddValue(nameof(PostgresException.DataTypeName), null);
+                info.AddValue(nameof(PostgresException.ConstraintName), null);
+                info.AddValue(nameof(PostgresException.File), null);
+                info.AddValue(nameof(PostgresException.Line), null);
+                info.AddValue(nameof(PostgresException.Routine), null);
+
+                return new PostgresException(info, default);
+            }
         }
 
-#if NET452
         [Test]
-        [Ignore("DbException doesn't support serialization in .NET Core 2.0 (PlatformNotSupportedException)")]
         public void Serialization()
         {
-            var e = new PostgresException
-            {
-                Severity = "High",
-                TableName = "foo",
-                Position = 18
-            };
+            var info = CreateSerializationInfo();
 
+            info.AddValue(nameof(PostgresException.Severity), "high");
+            info.AddValue(nameof(PostgresException.SqlState), "53300");
+            info.AddValue(nameof(PostgresException.MessageText), "message");
+            info.AddValue(nameof(PostgresException.Detail), "detail");
+            info.AddValue(nameof(PostgresException.Hint), "hint");
+            info.AddValue(nameof(PostgresException.Position), 18);
+            info.AddValue(nameof(PostgresException.InternalPosition), 42);
+            info.AddValue(nameof(PostgresException.InternalQuery), "query");
+            info.AddValue(nameof(PostgresException.Where), "where");
+            info.AddValue(nameof(PostgresException.SchemaName), "schema");
+            info.AddValue(nameof(PostgresException.TableName), "table");
+            info.AddValue(nameof(PostgresException.ColumnName), "column");
+            info.AddValue(nameof(PostgresException.DataTypeName), "type");
+            info.AddValue(nameof(PostgresException.ConstraintName), "constraint");
+            info.AddValue(nameof(PostgresException.File), "file");
+            info.AddValue(nameof(PostgresException.Line), "line");
+            info.AddValue(nameof(PostgresException.Routine), "routine");
+
+            var actual = new PostgresException(info, default);
             var formatter = new BinaryFormatter();
             var stream = new MemoryStream();
-            formatter.Serialize(stream, e);
-            stream.Seek(0, SeekOrigin.Begin);
-            var e2 = (PostgresException)formatter.Deserialize(stream);
 
-            Assert.That(e2.Severity, Is.EqualTo(e.Severity));
-            Assert.That(e2.TableName, Is.EqualTo(e.TableName));
-            Assert.That(e2.Position, Is.EqualTo(e.Position));
+            formatter.Serialize(stream, actual);
+            stream.Seek(0, SeekOrigin.Begin);
+
+            var expected = (PostgresException)formatter.Deserialize(stream);
+
+            Assert.That(expected.Severity, Is.EqualTo(actual.Severity));
+            Assert.That(expected.SqlState, Is.EqualTo(actual.SqlState));
+            Assert.That(expected.MessageText, Is.EqualTo(actual.MessageText));
+            Assert.That(expected.Detail, Is.EqualTo(actual.Detail));
+            Assert.That(expected.Hint, Is.EqualTo(actual.Hint));
+            Assert.That(expected.Position, Is.EqualTo(actual.Position));
+            Assert.That(expected.InternalPosition, Is.EqualTo(actual.InternalPosition));
+            Assert.That(expected.InternalQuery, Is.EqualTo(actual.InternalQuery));
+            Assert.That(expected.Where, Is.EqualTo(actual.Where));
+            Assert.That(expected.SchemaName, Is.EqualTo(actual.SchemaName));
+            Assert.That(expected.TableName, Is.EqualTo(actual.TableName));
+            Assert.That(expected.ColumnName, Is.EqualTo(actual.ColumnName));
+            Assert.That(expected.DataTypeName, Is.EqualTo(actual.DataTypeName));
+            Assert.That(expected.ConstraintName, Is.EqualTo(actual.ConstraintName));
+            Assert.That(expected.File, Is.EqualTo(actual.File));
+            Assert.That(expected.Line, Is.EqualTo(actual.Line));
+            Assert.That(expected.Routine, Is.EqualTo(actual.Routine));
         }
-#endif
+
+        SerializationInfo CreateSerializationInfo()
+        {
+            var info = new SerializationInfo(typeof(PostgresException), new FormatterConverter());
+            new Exception().GetObjectData(info, default);
+
+            return info;
+        }
     }
 }
