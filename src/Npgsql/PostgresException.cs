@@ -29,11 +29,6 @@ namespace Npgsql
         [CanBeNull]
         bool _dataInitialized;
 
-        /// <summary>
-        /// Creates a new instance.
-        /// </summary>
-        public PostgresException() {}
-
         internal PostgresException(NpgsqlReadBuffer buf)
         {
             var msg = new ErrorOrNoticeMessage(buf);
@@ -56,7 +51,7 @@ namespace Npgsql
             Routine = msg.Routine;
         }
 
-        PostgresException(SerializationInfo info, StreamingContext context)
+        internal PostgresException(SerializationInfo info, StreamingContext context)
             : base(info, context)
         {
             Severity = GetValue<string>(nameof(Severity));
@@ -233,7 +228,7 @@ namespace Npgsql
         /// Always present.
         /// </summary>
         [PublicAPI]
-        public string Severity { get; set; }
+        public string Severity { get; }
 
         /// <summary>
         /// The SQLSTATE code for the error.
@@ -244,7 +239,7 @@ namespace Npgsql
         /// See http://www.postgresql.org/docs/current/static/errcodes-appendix.html
         /// </remarks>
         [PublicAPI]
-        public string SqlState { get; set; }
+        public string SqlState { get; }
 
         /// <summary>
         /// The SQLSTATE code for the error.
@@ -264,14 +259,14 @@ namespace Npgsql
         /// Always present.
         /// </remarks>
         [PublicAPI]
-        public string MessageText { get; set; }
+        public string MessageText { get; }
 
         /// <summary>
         /// An optional secondary error message carrying more detail about the problem.
         /// May run to multiple lines.
         /// </summary>
         [PublicAPI]
-        public string Detail { get; set; }
+        public string Detail { get; }
 
         /// <summary>
         /// An optional suggestion what to do about the problem.
@@ -279,7 +274,7 @@ namespace Npgsql
         /// May run to multiple lines.
         /// </summary>
         [PublicAPI]
-        public string Hint { get; set; }
+        public string Hint { get; }
 
         /// <summary>
         /// The field value is a decimal ASCII integer, indicating an error cursor position as an index into the original query string.
@@ -287,7 +282,7 @@ namespace Npgsql
         /// 0 means not provided.
         /// </summary>
         [PublicAPI]
-        public int Position { get; set; }
+        public int Position { get; }
 
         /// <summary>
         /// This is defined the same as the <see cref="Position"/> field, but it is used when the cursor position refers to an internally generated command rather than the one submitted by the client.
@@ -295,14 +290,14 @@ namespace Npgsql
         /// 0 means not provided.
         /// </summary>
         [PublicAPI]
-        public int InternalPosition { get; set; }
+        public int InternalPosition { get; }
 
         /// <summary>
         /// The text of a failed internally-generated command.
         /// This could be, for example, a SQL query issued by a PL/pgSQL function.
         /// </summary>
         [PublicAPI]
-        public string InternalQuery { get; set; }
+        public string InternalQuery { get; }
 
         /// <summary>
         /// An indication of the context in which the error occurred.
@@ -310,14 +305,14 @@ namespace Npgsql
         /// The trace is one entry per line, most recent first.
         /// </summary>
         [PublicAPI]
-        public string Where { get; set; }
+        public string Where { get; }
 
         /// <summary>
         /// If the error was associated with a specific database object, the name of the schema containing that object, if any.
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
         [PublicAPI]
-        public string SchemaName { get; set; }
+        public string SchemaName { get; }
 
         /// <summary>
         /// Table name: if the error was associated with a specific table, the name of the table.
@@ -325,7 +320,7 @@ namespace Npgsql
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
         [PublicAPI]
-        public string TableName { get; set; }
+        public string TableName { get; }
 
         /// <summary>
         /// If the error was associated with a specific table column, the name of the column.
@@ -333,7 +328,7 @@ namespace Npgsql
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
         [PublicAPI]
-        public string ColumnName { get; set; }
+        public string ColumnName { get; }
 
         /// <summary>
         /// If the error was associated with a specific data type, the name of the data type.
@@ -341,7 +336,7 @@ namespace Npgsql
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
         [PublicAPI]
-        public string DataTypeName { get; set; }
+        public string DataTypeName { get; }
 
         /// <summary>
         /// If the error was associated with a specific constraint, the name of the constraint.
@@ -350,26 +345,26 @@ namespace Npgsql
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
         [PublicAPI]
-        public string ConstraintName { get; set; }
+        public string ConstraintName { get; }
 
         /// <summary>
         /// The file name of the source-code location where the error was reported.
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
         [PublicAPI]
-        public string File { get; set; }
+        public string File { get; }
 
         /// <summary>
         /// The line number of the source-code location where the error was reported.
         /// </summary>
         [PublicAPI]
-        public string Line { get; set; }
+        public string Line { get; }
 
         /// <summary>
         /// The name of the source-code routine reporting the error.
         /// </summary>
         [PublicAPI]
-        public string Routine { get; set; }
+        public string Routine { get; }
 
         #endregion
     }
