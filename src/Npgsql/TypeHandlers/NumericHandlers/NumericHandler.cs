@@ -1,34 +1,10 @@
-﻿#region License
-// The PostgreSQL License
-//
-// Copyright (C) 2018 The Npgsql Development Team
-//
-// Permission to use, copy, modify, and distribute this software and its
-// documentation for any purpose, without fee, and without a written
-// agreement is hereby granted, provided that the above copyright notice
-// and this paragraph and the following two paragraphs appear in all copies.
-//
-// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
-// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
-// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
-// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
-// THE POSSIBILITY OF SUCH DAMAGE.
-//
-// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
-// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
-// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-#endregion
-
+﻿using System;
+using System.Data;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
-using System;
-using System.Data;
-using System.Runtime.CompilerServices;
 
 namespace Npgsql.TypeHandlers.NumericHandlers
 {
@@ -114,7 +90,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
                 throw new NpgsqlSafeReadException(e);
             }
 
-            return Unsafe.As<DecimalRaw, decimal>(ref result);
+            return result.Value;
         }
 
         byte INpgsqlSimpleTypeHandler<byte>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
@@ -142,7 +118,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         public override int ValidateAndGetLength(decimal value, NpgsqlParameter parameter)
         {
             var groupCount = 0;
-            var raw = Unsafe.As<decimal, DecimalRaw>(ref value);
+            var raw = new DecimalRaw(value);
             if (raw.Low != 0 || raw.Mid != 0 || raw.High != 0)
             {
                 uint remainder = default;
@@ -187,13 +163,13 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         public int ValidateAndGetLength(byte value, NpgsqlParameter parameter)
             => ValidateAndGetLength((decimal)value, parameter);
 
-        public override unsafe void Write(decimal value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public override void Write(decimal value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
-            var groupCount = 0;
-            var groups = stackalloc short[MaxGroupCount];
             var weight = 0;
+            var groupCount = 0;
+            Span<short> groups = stackalloc short[MaxGroupCount];
 
-            var raw = Unsafe.As<decimal, DecimalRaw>(ref value);
+            var raw = new DecimalRaw(value);
             if (raw.Low != 0 || raw.Mid != 0 || raw.High != 0)
             {
                 var scale = raw.Scale;

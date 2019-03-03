@@ -1,32 +1,10 @@
-﻿#region License
-// The PostgreSQL License
-//
-// Copyright (C) 2018 The Npgsql Development Team
-//
-// Permission to use, copy, modify, and distribute this software and its
-// documentation for any purpose, without fee, and without a written
-// agreement is hereby granted, provided that the above copyright notice
-// and this paragraph and the following two paragraphs appear in all copies.
-//
-// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
-// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
-// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
-// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
-// THE POSSIBILITY OF SUCH DAMAGE.
-//
-// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
-// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
-// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-#endregion
-
-using System;
-using Npgsql.BackendMessages;
-using NpgsqlTypes;
+﻿using System;
 using System.Data;
+using System.Runtime.InteropServices;
+using Npgsql.BackendMessages;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
+using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers
 {
@@ -36,31 +14,55 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("uuid", NpgsqlDbType.Uuid, DbType.Guid, typeof(Guid))]
     class UuidHandler : NpgsqlSimpleTypeHandler<Guid>
     {
+        // The following table shows .NET GUID vs Postgres UUID (RFC 4122) layouts.
+        //
+        // Note that the first fields are converted from/to native endianness (handled by the Read*
+        // and Write* methods), while the last field is always read/written in big-endian format.
+        //
+        // We're passing BitConverter.IsLittleEndian to prevent reversing endianness on little-endian systems.
+        //
+        // | Bits | Bytes | Name  | Endianness (GUID) | Endianness (RFC 4122) |
+        // | ---- | ----- | ----- | ----------------- | --------------------- |
+        // | 32   | 4     | Data1 | Native            | Big                   |
+        // | 16   | 2     | Data2 | Native            | Big                   |
+        // | 16   | 2     | Data3 | Native            | Big                   |
+        // | 64   | 8     | Data4 | Big               | Big                   |
+
         public override Guid Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
-            var a = buf.ReadInt32();
-            var b = buf.ReadInt16();
-            var c = buf.ReadInt16();
-            var d = new byte[8];
-            buf.ReadBytes(d, 0, 8);
-            return new Guid(a, b, c, d);
-        }
+            var raw = new GuidRaw
+            {
+                Data1 = buf.ReadInt32(),
+                Data2 = buf.ReadInt16(),
+                Data3 = buf.ReadInt16(),
+                Data4 = buf.ReadInt64(BitConverter.IsLittleEndian)
+            };
 
-        #region Write
+            return raw.Value;
+        }
 
         public override int ValidateAndGetLength(Guid value, NpgsqlParameter parameter)
             => 16;
 
         public override void Write(Guid value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
-            // TODO: Allocation... investigate alternatives?
-            var bytes = value.ToByteArray();
-            buf.WriteInt32(BitConverter.ToInt32(bytes, 0));
-            buf.WriteInt16(BitConverter.ToInt16(bytes, 4));
-            buf.WriteInt16(BitConverter.ToInt16(bytes, 6));
-            buf.WriteBytes(bytes, 8, 8);
+            var raw = new GuidRaw(value);
+            
+            buf.WriteInt32(raw.Data1);
+            buf.WriteInt16(raw.Data2);
+            buf.WriteInt16(raw.Data3);
+            buf.WriteInt64(raw.Data4, BitConverter.IsLittleEndian);
         }
 
-        #endregion
+        [StructLayout(LayoutKind.Explicit)]
+        struct GuidRaw
+        {
+            [FieldOffset(00)] public Guid Value;
+            [FieldOffset(00)] public int Data1;
+            [FieldOffset(04)] public short Data2;
+            [FieldOffset(06)] public short Data3;
+            [FieldOffset(08)] public long Data4;
+            public GuidRaw(Guid value) : this() => Value = value;
+        }
     }
 }

@@ -151,6 +151,12 @@ namespace Npgsql.PluginTests
 
                 yield return new TestCaseData(
                     Ordinates.None,
+                    GeometryCollection.Empty,
+                    "st_geomfromtext('GEOMETRYCOLLECTION EMPTY')"
+                );
+
+                yield return new TestCaseData(
+                    Ordinates.None,
                     new GeometryCollection(new IGeometry[]
                     {
                         new Point(new Coordinate(1d, 1d)),

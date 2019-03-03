@@ -357,12 +357,15 @@ namespace Npgsql
             return result;
         }
 
-        public void ReadBytes(byte[] output, int outputOffset, int len)
+        public void ReadBytes(Span<byte> output)
         {
-            Debug.Assert(len <= ReadBytesLeft);
-            System.Buffer.BlockCopy(Buffer, ReadPosition, output, outputOffset, len);
-            ReadPosition += len;
+            Debug.Assert(output.Length <= ReadBytesLeft);
+            new Span<byte>(Buffer, ReadPosition, output.Length).CopyTo(output);
+            ReadPosition += output.Length;
         }
+
+        public void ReadBytes(byte[] output, int outputOffset, int len)
+            => ReadBytes(new Span<byte>(output, outputOffset, len));
 
         #endregion
 

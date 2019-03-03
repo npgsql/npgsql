@@ -268,7 +268,7 @@ namespace Npgsql.TypeMapping
                 BindType(dynamicCompositeFactory.Create(compType, _connector.Connection), compType);
         }
 
-        void BindType(NpgsqlTypeMapping mapping, NpgsqlConnector connector, bool throwOnError)
+        void BindType(NpgsqlTypeMapping mapping, NpgsqlConnector connector, bool externalCall)
         {
             // Binding can occur at two different times:
             // 1. When a user adds a mapping for a specific connection (and exception should bubble up to them)
@@ -283,7 +283,7 @@ namespace Npgsql.TypeMapping
             if (!found)
             {
                 var msg = $"A PostgreSQL type with the name {mapping.PgTypeName} was not found in the database";
-                if (throwOnError)
+                if (externalCall)
                     throw new ArgumentException(msg);
                 Log.Debug(msg);
                 return;
@@ -291,7 +291,7 @@ namespace Npgsql.TypeMapping
             else if (pgType == null)
             {
                 var msg = $"More than one PostgreSQL type was found with the name {mapping.PgTypeName}, please specify a full name including schema";
-                if (throwOnError)
+                if (externalCall)
                     throw new ArgumentException(msg);
                 Log.Debug(msg);
                 return;
@@ -299,7 +299,7 @@ namespace Npgsql.TypeMapping
             else if (pgType is PostgresDomainType)
             {
                 var msg = "Cannot add a mapping to a PostgreSQL domain type";
-                if (throwOnError)
+                if (externalCall)
                     throw new NotSupportedException(msg);
                 Log.Debug(msg);
                 return;
@@ -307,6 +307,17 @@ namespace Npgsql.TypeMapping
 
             var handler = mapping.TypeHandlerFactory.Create(pgType, connector.Connection);
             BindType(handler, pgType, mapping.NpgsqlDbType, mapping.DbTypes, mapping.ClrTypes);
+
+            if (!externalCall)
+                return;
+
+            foreach (var domain in DatabaseInfo.DomainTypes)
+                if (domain.BaseType.OID == pgType.OID)
+                {
+                    _byOID[domain.OID] = handler;
+                    if (domain.Array != null)
+                        BindType(handler.CreateArrayHandler(domain.Array), domain.Array);
+                }
         }
 
         void BindType(NpgsqlTypeHandler handler, PostgresType pgType, NpgsqlDbType? npgsqlDbType = null, DbType[] dbTypes = null, Type[] clrTypes = null)

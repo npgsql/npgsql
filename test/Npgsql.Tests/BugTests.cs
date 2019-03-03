@@ -344,6 +344,65 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test]
+        public void Bug2274()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT 1", conn))
+            {
+                cmd.Parameters.Add(new NpgsqlParameter
+                {
+                    ParameterName = "p",
+                    Direction = ParameterDirection.Output
+                });
+                using (var reader = cmd.ExecuteReader(CommandBehavior.SingleRow))
+                {
+                    Assert.That(() => reader.GetInt32(0), Throws.Exception.TypeOf<InvalidOperationException>());
+                    Assert.That(reader.Read(), Is.True);
+                    Assert.That(reader.GetInt32(0), Is.EqualTo(1));
+                    Assert.That(reader.Read(), Is.False);
+                }
+            }
+        }
+
+        [Test]
+        public void Bug2278()
+        {
+            using (var conn = OpenConnection())
+            {
+                try
+                {
+                    conn.ExecuteNonQuery("CREATE TYPE enum_type AS ENUM ('left', 'right')");
+                    conn.ExecuteNonQuery("CREATE DOMAIN enum_domain AS enum_type NOT NULL");
+                    conn.ExecuteNonQuery("CREATE TYPE composite_type AS (value enum_domain)");
+                    conn.ExecuteNonQuery("CREATE TEMP TABLE data (value composite_type)");
+                    conn.ExecuteNonQuery("INSERT INTO data (value) VALUES (ROW('left'))");
+
+                    conn.ReloadTypes();
+                    conn.TypeMapper.MapComposite<Bug2278CompositeType>("composite_type");
+                    conn.TypeMapper.MapEnum<Bug2278EnumType>("enum_type");
+
+                    conn.ExecuteScalar("SELECT * FROM data AS d");
+                }
+                finally
+                {
+                    conn.ExecuteNonQuery("DROP TABLE IF EXISTS data; DROP TYPE IF EXISTS composite_type; DROP DOMAIN IF EXISTS enum_domain; DROP TYPE IF EXISTS enum_type");
+                    conn.ReloadTypes();
+                }
+            }
+        }
+
+        class Bug2278CompositeType
+        {
+            public Bug2278EnumType Value { get; set; }
+        }
+
+        enum Bug2278EnumType
+        {
+            Left,
+            Right
+        }
+
         #region Bug1285
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1285")]

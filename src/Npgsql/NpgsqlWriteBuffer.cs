@@ -370,14 +370,15 @@ namespace Npgsql
             WritePosition += TextEncoding.GetBytes(chars, offset, charCount, Buffer, WritePosition);
         }
 
-        public void WriteBytes(byte[] buf) => WriteBytes(buf, 0, buf.Length);
+        public void WriteBytes(ReadOnlySpan<byte> buf)
+        {
+            Debug.Assert(buf.Length <= WriteSpaceLeft);
+            buf.CopyTo(new Span<byte>(Buffer, WritePosition, Buffer.Length - WritePosition));
+            WritePosition += buf.Length;
+        }
 
         public void WriteBytes(byte[] buf, int offset, int count)
-        {
-            Debug.Assert(count <= WriteSpaceLeft);
-            System.Buffer.BlockCopy(buf, offset, Buffer, WritePosition, count);
-            WritePosition += count;
-        }
+            => WriteBytes(new ReadOnlySpan<byte>(buf, offset, count));
 
         public Task WriteBytesRaw(byte[] bytes, bool async)
         {

@@ -95,12 +95,22 @@ namespace Npgsql.TypeHandlers
             if (value == null || value is DBNull)
                 return base.WriteObjectWithLength(value, buf, lengthCache, parameter, async);
 
+            var convertedValue = value is string asString
+                ? asString
+                : (string)parameter.ConvertedValue;
+
+            if (buf.WriteSpaceLeft < 4)
+                return WriteWithLengthLong();
+
             buf.WriteInt32(ValidateObjectAndGetLength(value, ref lengthCache, parameter));
-            return base.Write(
-                value is string asString
-                    ? asString
-                    : (string)parameter.ConvertedValue,
-                buf, lengthCache, parameter, async);
+            return base.Write(convertedValue, buf, lengthCache, parameter, async);
+
+            async Task WriteWithLengthLong()
+            {
+                await buf.Flush(async);
+                buf.WriteInt32(ValidateObjectAndGetLength(value, ref lengthCache, parameter));
+                await base.Write(convertedValue, buf, lengthCache, parameter, async);
+            }
         }
 
         #endregion Write
