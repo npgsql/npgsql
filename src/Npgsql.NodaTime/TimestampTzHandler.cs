@@ -11,7 +11,12 @@ namespace Npgsql.NodaTime
     {
         // Check for the legacy floating point timestamps feature
         protected override NpgsqlTypeHandler<Instant> Create(NpgsqlConnection conn)
-            => new TimestampTzHandler(conn);
+        {
+            if (!conn.HasIntegerDateTimes)
+                throw new NotSupportedException($"The deprecated floating-point date/time format is not supported by {nameof(Npgsql)}.");
+
+            return new TimestampTzHandler();
+        }
     }
 
     class TimestampTzHandler : NpgsqlSimpleTypeHandler<Instant>, INpgsqlSimpleTypeHandler<ZonedDateTime>,
@@ -19,55 +24,27 @@ namespace Npgsql.NodaTime
     {
         readonly IDateTimeZoneProvider _dateTimeZoneProvider;
 
-        /// <summary>
-        /// A deprecated compile-time option of PostgreSQL switches to a floating-point representation of some date/time
-        /// fields. Npgsql (currently) does not support this mode.
-        /// </summary>
-        readonly bool _integerFormat;
-
-        public TimestampTzHandler(NpgsqlConnection conn)
-        {
-            _integerFormat = conn.HasIntegerDateTimes;
-            _dateTimeZoneProvider = DateTimeZoneProviders.Tzdb;
-        }
+        public TimestampTzHandler()
+            => _dateTimeZoneProvider = DateTimeZoneProviders.Tzdb;
 
         #region Read
 
         public override Instant Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
         {
-            if (_integerFormat) {
-                var value = buf.ReadInt64();
-                if (value == long.MaxValue || value == long.MinValue)
-                    throw new NpgsqlSafeReadException(new NotSupportedException("Infinity values not supported for timestamp with time zone"));
-                return TimestampHandler.Decode(value);
-            }
-            else
-            {
-                var value = buf.ReadDouble();
-                if (double.IsPositiveInfinity(value) || double.IsNegativeInfinity(value))
-                    throw new NpgsqlSafeReadException(new NotSupportedException("Infinity values not supported for timestamp with time zone"));
-                return TimestampHandler.Decode(value);
-            }
+            var value = buf.ReadInt64();
+            if (value == long.MaxValue || value == long.MinValue)
+                throw new NpgsqlSafeReadException(new NotSupportedException("Infinity values not supported for timestamp with time zone"));
+            return TimestampHandler.Decode(value);
         }
 
         ZonedDateTime INpgsqlSimpleTypeHandler<ZonedDateTime>.Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription)
         {
             try
             {
-                if (_integerFormat)
-                {
-                    var value = buf.ReadInt64();
-                    if (value == long.MaxValue || value == long.MinValue)
-                        throw new NpgsqlSafeReadException(new NotSupportedException("Infinity values not supported for timestamp with time zone"));
-                    return TimestampHandler.Decode(value).InZone(_dateTimeZoneProvider[buf.Connection.Timezone]);
-                }
-                else
-                {
-                    var value = buf.ReadDouble();
-                    if (double.IsPositiveInfinity(value) || double.IsNegativeInfinity(value))
-                        throw new NpgsqlSafeReadException(new NotSupportedException("Infinity values not supported for timestamp with time zone"));
-                    return TimestampHandler.Decode(value).InZone(_dateTimeZoneProvider[buf.Connection.Timezone]);
-                }
+                var value = buf.ReadInt64();
+                if (value == long.MaxValue || value == long.MinValue)
+                    throw new NpgsqlSafeReadException(new NotSupportedException("Infinity values not supported for timestamp with time zone"));
+                return TimestampHandler.Decode(value).InZone(_dateTimeZoneProvider[buf.Connection.Timezone]);
             }
             catch (TimeZoneNotFoundException) when (string.Equals(buf.Connection.Timezone, "localtime", StringComparison.OrdinalIgnoreCase))
             {
@@ -99,12 +76,7 @@ namespace Npgsql.NodaTime
             => 8;
 
         public override void Write(Instant value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
-        {
-            if (_integerFormat)
-                TimestampHandler.WriteInteger(value, buf);
-            else
-                TimestampHandler.WriteDouble(value, buf);
-        }
+            => TimestampHandler.WriteInteger(value, buf);
 
         void INpgsqlSimpleTypeHandler<ZonedDateTime>.Write(ZonedDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
             => Write(value.ToInstant(), buf, parameter);
