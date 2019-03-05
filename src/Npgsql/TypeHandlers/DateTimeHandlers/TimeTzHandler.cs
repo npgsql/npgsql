@@ -12,12 +12,9 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     {
         // Check for the legacy floating point timestamps feature
         protected override NpgsqlTypeHandler<DateTimeOffset> Create(NpgsqlConnection conn)
-        {
-            if (!conn.HasIntegerDateTimes)
-                throw new NotSupportedException($"The deprecated floating-point date/time format is not supported by {nameof(Npgsql)}.");
-
-            return new TimeTzHandler();
-        }
+            => conn.HasIntegerDateTimes
+                ? new TimeTzHandler()
+                : throw new NotSupportedException($"The deprecated floating-point date/time format is not supported by {nameof(Npgsql)}.");
     }
 
     /// <remarks>
