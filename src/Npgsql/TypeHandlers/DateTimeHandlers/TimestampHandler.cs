@@ -12,7 +12,9 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     {
         // Check for the legacy floating point timestamps feature
         protected override NpgsqlTypeHandler<DateTime> Create(NpgsqlConnection conn)
-            => new TimestampHandler(conn.HasIntegerDateTimes, conn.Connector.ConvertInfinityDateTime);
+            => conn.HasIntegerDateTimes
+                ? new TimestampHandler(conn.Connector.ConvertInfinityDateTime)
+                : throw new NotSupportedException($"The deprecated floating-point date/time format is not supported by {nameof(Npgsql)}.");
     }
 
     /// <remarks>
@@ -23,24 +25,13 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         internal const uint TypeOID = 1114;
 
         /// <summary>
-        /// A deprecated compile-time option of PostgreSQL switches to a floating-point representation of some date/time
-        /// fields. Some PostgreSQL-like databases (e.g. CrateDB) use floating-point representation by default and do not
-        /// provide the option of switching to integer format.
-        /// </summary>
-        readonly bool _integerFormat;
-
-        /// <summary>
         /// Whether to convert positive and negative infinity values to DateTime.{Max,Min}Value when
         /// a DateTime is requested
         /// </summary>
         protected readonly bool ConvertInfinityDateTime;
 
-        internal TimestampHandler(bool integerFormat, bool convertInfinityDateTime)
-        {
-            // Check for the legacy floating point timestamps feature, defaulting to integer timestamps
-            _integerFormat = integerFormat;
-            ConvertInfinityDateTime = convertInfinityDateTime;
-        }
+        internal TimestampHandler(bool convertInfinityDateTime)
+            => ConvertInfinityDateTime = convertInfinityDateTime;
 
         #region Read
 
@@ -67,72 +58,38 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         protected override NpgsqlDateTime ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => ReadTimeStamp(buf, len, fieldDescription);
 
-#pragma warning disable CA1801 // Review unused parameters
         protected NpgsqlDateTime ReadTimeStamp(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
-            => _integerFormat
-                ? ReadInteger(buf)
-                : ReadDouble(buf);
-#pragma warning restore CA1801 // Review unused parameters
-
-        NpgsqlDateTime ReadInteger(NpgsqlReadBuffer buf)
         {
             var value = buf.ReadInt64();
             if (value == long.MaxValue)
                 return NpgsqlDateTime.Infinity;
             if (value == long.MinValue)
                 return NpgsqlDateTime.NegativeInfinity;
-            if (value >= 0) {
+            if (value >= 0)
+            {
                 var date = (int)(value / 86400000000L);
                 var time = value % 86400000000L;
 
                 date += 730119; // 730119 = days since era (0001-01-01) for 2000-01-01
-                time *= 10; // To 100ns
-
-                return new NpgsqlDateTime(new NpgsqlDate(date), new TimeSpan(time));
-            } else {
-                value = -value;
-                var date = (int)(value / 86400000000L);
-                var time = value % 86400000000L;
-                if (time != 0) {
-                    ++date;
-                    time = 86400000000L - time;
-                }
-                date = 730119 - date; // 730119 = days since era (0001-01-01) for 2000-01-01
                 time *= 10; // To 100ns
 
                 return new NpgsqlDateTime(new NpgsqlDate(date), new TimeSpan(time));
             }
-        }
-
-        NpgsqlDateTime ReadDouble(NpgsqlReadBuffer buf)
-        {
-            var value = buf.ReadDouble();
-            if (double.IsPositiveInfinity(value))
-                return NpgsqlDateTime.Infinity;
-            if (double.IsNegativeInfinity(value))
-                return NpgsqlDateTime.NegativeInfinity;
-            if (value >= 0d) {
-                var date = (int)(value / 86400d);
-                var time = value % 86400d;
-
-                date += 730119; // 730119 = days since era (0001-01-01) for 2000-01-01
-                time *= TimeSpan.TicksPerSecond; // seconds to Ticks
-
-                return new NpgsqlDateTime(new NpgsqlDate(date), new TimeSpan((long)time));
-            } else {
+            else
+            {
                 value = -value;
-                var date = (int)(value / 86400d);
-                var time = value % 86400d;
-                if (time != 0d)
+                var date = (int)(value / 86400000000L);
+                var time = value % 86400000000L;
+                if (time != 0)
                 {
                     ++date;
-                    time = 86400d - time;
+                    time = 86400000000L - time;
                 }
 
                 date = 730119 - date; // 730119 = days since era (0001-01-01) for 2000-01-01
-                time *= TimeSpan.TicksPerSecond; // seconds to Ticks
+                time *= 10; // To 100ns
 
-                return new NpgsqlDateTime(new NpgsqlDate(date), new TimeSpan((long)time));
+                return new NpgsqlDateTime(new NpgsqlDate(date), new TimeSpan(time));
             }
         }
 
@@ -147,14 +104,6 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             => 8;
 
         public override void Write(NpgsqlDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
-        {
-            if (_integerFormat)
-                WriteInteger(value, buf);
-            else
-                WriteDouble(value, buf);
-        }
-
-        void WriteInteger(NpgsqlDateTime value, NpgsqlWriteBuffer buf)
         {
             if (value.IsInfinity)
             {
@@ -182,55 +131,23 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             }
         }
 
-        void WriteDouble(NpgsqlDateTime value, NpgsqlWriteBuffer buf)
-        {
-            if (value.IsInfinity)
-            {
-                buf.WriteDouble(double.PositiveInfinity);
-                return;
-            }
-
-            if (value.IsNegativeInfinity)
-            {
-                buf.WriteDouble(double.NegativeInfinity);
-                return;
-            }
-
-            var dSecsTime = value.Time.TotalSeconds;
-
-            if (value >= new NpgsqlDateTime(2000, 1, 1, 0, 0, 0))
-            {
-                var dSecsDate = (value.Date.DaysSinceEra - 730119d) * 86400d;
-                buf.WriteDouble(dSecsDate + dSecsTime);
-            }
-            else
-            {
-                var dSecsDate = (730119d - value.Date.DaysSinceEra) * 86400d;
-                buf.WriteDouble(-(dSecsDate - dSecsTime));
-            }
-        }
-
         public override void Write(DateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
         {
             if (ConvertInfinityDateTime)
             {
                 if (value == DateTime.MaxValue)
                 {
-                    if (_integerFormat)
-                        buf.WriteInt64(long.MaxValue);
-                    else
-                        buf.WriteDouble(double.PositiveInfinity);
+                    buf.WriteInt64(long.MaxValue);
                     return;
                 }
+
                 if (value == DateTime.MinValue)
                 {
-                    if (_integerFormat)
-                        buf.WriteInt64(long.MinValue);
-                    else
-                        buf.WriteDouble(double.NegativeInfinity);
+                    buf.WriteInt64(long.MinValue);
                     return;
                 }
             }
+
             Write(new NpgsqlDateTime(value), buf, parameter);
         }
 

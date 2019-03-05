@@ -12,7 +12,9 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     {
         // Check for the legacy floating point timestamps feature
         protected override NpgsqlTypeHandler<DateTime> Create(NpgsqlConnection conn)
-            => new TimestampTzHandler(conn.HasIntegerDateTimes, conn.Connector.ConvertInfinityDateTime);
+            => conn.HasIntegerDateTimes
+                ? new TimestampTzHandler(conn.Connector.ConvertInfinityDateTime)
+                : throw new NotSupportedException($"The deprecated floating-point date/time format is not supported by {nameof(Npgsql)}.");
     }
 
     /// <remarks>
@@ -20,8 +22,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// </remarks>
     class TimestampTzHandler : TimestampHandler, INpgsqlSimpleTypeHandler<DateTimeOffset>
     {
-        public TimestampTzHandler(bool integerFormat, bool convertInfinityDateTime)
-            : base(integerFormat, convertInfinityDateTime) {}
+        public TimestampTzHandler(bool convertInfinityDateTime) : base(convertInfinityDateTime) {}
 
         #region Read
 
@@ -38,7 +39,9 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                 if (ts.IsInfinity)
                     return DateTime.MaxValue;
                 return DateTime.MinValue;
-            } catch (Exception e) {
+            }
+            catch (Exception e)
+            {
                 throw new NpgsqlSafeReadException(e);
             }
         }
@@ -62,7 +65,9 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                 if (ts.IsInfinity)
                     return DateTimeOffset.MaxValue;
                 return DateTimeOffset.MinValue;
-            } catch (Exception e) {
+            }
+            catch (Exception e)
+            {
                 throw new NpgsqlSafeReadException(e);
             }
         }
@@ -87,6 +92,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             default:
                 throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {value.Kind} of enum {nameof(DateTimeKind)}. Please file a bug.");
             }
+
             base.Write(value, buf, parameter);
         }
 
@@ -103,6 +109,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             default:
                 throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {value.Kind} of enum {nameof(DateTimeKind)}. Please file a bug.");
             }
+
             base.Write(value, buf, parameter);
         }
 
