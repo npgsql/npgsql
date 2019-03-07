@@ -103,9 +103,7 @@ namespace Npgsql
         protected override IEnumerable<PostgresType> GetTypes()
         {
             IEnumerable<PostgresType> baseTypes = CrateDbBaseTypes.Select(p => new CrateDbBaseType(p.Key, p.Value)).ToList();
-            IEnumerable<PostgresType> arrayTypes = CrateDbArrayTypes.Select(p => new CrateDbArrayType(p.Key, p.Value, baseTypes.FirstOrDefault(t => string.Equals(t.InternalName, p.Key.Substring(1)))));
-
-            return baseTypes.Concat(arrayTypes);
+            return baseTypes.Concat(CrateDbArrayTypes.Select(p => new CrateDbArrayType(p.Key, p.Value, baseTypes.FirstOrDefault(t => string.Equals(t.InternalName, p.Key.Substring(1))))));
         }
 
         /// <summary>
