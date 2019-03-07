@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
+using Npgsql.CrateDbTypes;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandlers;
 using Npgsql.TypeHandlers.DateTimeHandlers;
@@ -199,39 +200,6 @@ namespace Npgsql
         {
             var internalName = PgTypeNameToInternalName.ContainsKey(pgTypeName) ? PgTypeNameToInternalName[pgTypeName] : pgTypeName;
             return CrateDbBaseTypes.ContainsKey(internalName) || CrateDbArrayTypes.ContainsKey(internalName);
-        }
-    }
-
-    /// <summary>
-    /// Represents a base type supported by CrateDB.
-    /// </summary>
-    public class CrateDbBaseType : PostgresBaseType
-    {
-        /// <summary>
-        /// Creates an instance of the CrateDbBaseType class.
-        /// </summary>
-        /// <param name="name"></param>
-        /// <param name="oid"></param>
-        public CrateDbBaseType(string name, uint oid)
-            : base("pg_catalog", name, oid)
-        {
-        }
-    }
-
-    /// <summary>
-    /// Represents a array type supported by CrateDB.
-    /// </summary>
-    public class CrateDbArrayType : PostgresArrayType
-    {
-        /// <summary>
-        /// Creates an instance of the CrateDbArrayType class.
-        /// </summary>
-        /// <param name="name"></param>
-        /// <param name="oid"></param>
-        /// <param name="elementType"></param>
-        public CrateDbArrayType(string name, uint oid, PostgresType elementType)
-            : base("pg_catalog", name, oid, elementType)
-        {
         }
     }
 }
