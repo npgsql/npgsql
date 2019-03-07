@@ -4,6 +4,7 @@ using System.Data;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandlers;
 using Npgsql.TypeHandlers.DateTimeHandlers;
@@ -21,7 +22,8 @@ namespace Npgsql
         /// <param name="timeout"></param>
         /// <param name="async"></param>
         /// <returns></returns>
-        public Task<NpgsqlDatabaseInfo> Load(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
+        [NotNull]
+        public Task<NpgsqlDatabaseInfo> Load([NotNull] NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
               => Task.FromResult(
                     conn.PostgresParameters.ContainsKey("crate_version")
                           ? (NpgsqlDatabaseInfo)new CrateDbDatabaseInfo(conn)
