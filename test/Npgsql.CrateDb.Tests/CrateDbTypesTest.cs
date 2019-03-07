@@ -161,7 +161,7 @@ namespace Npgsql.CrateDb.Tests
                 var r = cmd.ExecuteScalar();
                 Assert.That(r, Is.InstanceOf(typeof(string)));
 
-                var gs = Newtonsoft.Json.JsonConvert.DeserializeObject<GeoShape>(r.ToString());
+                var gs = JsonConvert.DeserializeObject<GeoShape>(r.ToString());
                 Assert.That(gs.type, Is.EqualTo("Polygon"));
                 Assert.That(gs.coordinates, Is.EqualTo(new double[][][] {
                     new double[][]
@@ -333,7 +333,7 @@ namespace Npgsql.CrateDb.Tests
 
                 Assert.That(r, Is.InstanceOf(typeof(string)));
 
-                var obj = Newtonsoft.Json.JsonConvert.DeserializeObject<TestObject>((string)r);
+                var obj = JsonConvert.DeserializeObject<TestObject>((string)r);
                 Assert.That(obj, Is.EqualTo(new TestObject { inner = "Zoon" }));
             }
         }
@@ -372,7 +372,7 @@ namespace Npgsql.CrateDb.Tests
 
                 Assert.That(r, Is.InstanceOf(typeof(string)));
 
-                var objArr = Newtonsoft.Json.JsonConvert.DeserializeObject<TestObject[]>((string)r);
+                var objArr = JsonConvert.DeserializeObject<TestObject[]>((string)r);
                 Assert.That(objArr, Is.EquivalentTo(new TestObject[]
                 {
                     new TestObject { inner = "Zoon1" },
@@ -390,7 +390,7 @@ namespace Npgsql.CrateDb.Tests
                 var r = cmd.ExecuteScalar();
                 Assert.That(r, Is.InstanceOf(typeof(string[])));
 
-                var gs = ((string[])r).Select(s => Newtonsoft.Json.JsonConvert.DeserializeObject<GeoShape>(s)).ToArray();
+                var gs = ((string[])r).Select(s => JsonConvert.DeserializeObject<GeoShape>(s)).ToArray();
 
                 Assert.That(gs.Length, Is.EqualTo(2));
                 Assert.That(gs[0].type, Is.EqualTo("Polygon"));
