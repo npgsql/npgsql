@@ -316,7 +316,7 @@ namespace NpgsqlTypes
 
         /// <inheritdoc />
         public override int GetHashCode()
-            => unchecked((397 * (int)Flags) ^ (397 * LowerBound?.GetHashCode() ?? 0) ^ (397 * UpperBound?.GetHashCode() ?? 0));
+            => unchecked((397 * (int)Flags) ^ (397 * (LowerBound?.GetHashCode() ?? 0)) ^ (397 * (UpperBound?.GetHashCode() ?? 0)));
 
         /// <inheritdoc />
         public override string ToString()
