@@ -137,7 +137,7 @@
         <Component Id="System.Memory" Guid="3cf4b30c-ccf9-4c65-b2ba-cf00684e35cb">
           <File Id="System.Memory"
                 Name="System.Memory.dll"
-                Source="..\npgsql\bin\$(var.Configuration)\net452\System.Memory.dll"
+                Source="..\npgsql\bin\$(var.Configuration)\net451\System.Memory.dll"
                 KeyPath="yes"
                 Assembly=".net" />
         </Component>
