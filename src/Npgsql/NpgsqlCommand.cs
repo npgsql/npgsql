@@ -928,7 +928,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 if (pStatement?.State != PreparedState.ToBePrepared)
                     continue;
 
-                var statementToClose = pStatement?.StatementBeingReplaced;
+                var statementToClose = pStatement.StatementBeingReplaced;
                 if (statementToClose != null)
                 {
                     // We have a prepared statement that replaces an existing statement - close the latter first.
