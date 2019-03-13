@@ -915,7 +915,7 @@ namespace Npgsql
             connector.StartUserAction(ConnectorState.Copy);
             try
             {
-                var writer = new NpgsqlCopyTextWriter(new NpgsqlRawCopyStream(connector, copyFromCommand));
+                var writer = new NpgsqlCopyTextWriter(connector, new NpgsqlRawCopyStream(connector, copyFromCommand));
                 connector.CurrentCopyOperation = writer;
                 return writer;
             }
@@ -949,7 +949,7 @@ namespace Npgsql
             connector.StartUserAction(ConnectorState.Copy);
             try
             {
-                var reader = new NpgsqlCopyTextReader(new NpgsqlRawCopyStream(connector, copyToCommand));
+                var reader = new NpgsqlCopyTextReader(connector, new NpgsqlRawCopyStream(connector, copyToCommand));
                 connector.CurrentCopyOperation = reader;
                 return reader;
             }

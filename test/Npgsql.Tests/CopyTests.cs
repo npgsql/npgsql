@@ -160,6 +160,39 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
+        public void WrongTableDefinitionRawBinaryCopy()
+        {
+            using (var conn = OpenConnection())
+            {
+                Assert.Throws<PostgresException>(() => conn.BeginRawBinaryCopy("COPY table_is_not_exist (blob) TO STDOUT BINARY"));
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+
+                Assert.Throws<PostgresException>(() => conn.BeginRawBinaryCopy("COPY table_is_not_exist (blob) FROM STDIN BINARY"));
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
+        public void WrongFormatRawBinaryCopy()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("create temp table temp_table(blob bytea)");
+                Assert.Throws<ArgumentException>(() => conn.BeginRawBinaryCopy("COPY temp_table (blob) TO STDOUT"));
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+            }
+
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("create temp table temp_table(blob bytea)");
+                Assert.Throws<ArgumentException>(() => conn.BeginRawBinaryCopy("COPY temp_table (blob) FROM STDIN"));
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+            }
+        }
+
         #endregion
 
         #region Binary
@@ -311,6 +344,52 @@ namespace Npgsql.Tests
                     writer.StartRow();
                     writer.Write(data);
                 }
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
+        public void WrongTableDefinitionBinaryImport()
+        {
+            using (var conn = OpenConnection())
+            {
+                // Connection should be kept alive after PostgresException was triggered
+                Assert.Throws<PostgresException>(() => conn.BeginBinaryImport("COPY table_is_not_exist (blob) FROM STDIN BINARY"));
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
+        public void WrongFormatBinaryImport()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("create temp table temp_table(blob bytea)");
+                Assert.Throws<ArgumentException>(() => conn.BeginBinaryImport("COPY temp_table (blob) FROM STDIN"));
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
+        public void WrongTableDefinitionBinaryExport()
+        {
+            using (var conn = OpenConnection())
+            {
+                // Connection should be kept alive after PostgresException was triggered
+                Assert.Throws<PostgresException>(() => conn.BeginBinaryExport("COPY table_is_not_exist (blob) TO STDOUT BINARY"));
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
+        public void WrongFormatBinaryExport()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("create temp table temp_table(blob bytea)");
+                Assert.Throws<ArgumentException>(() => conn.BeginBinaryExport("COPY temp_table (blob) TO STDOUT"));
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
             }
         }
 
@@ -652,6 +731,50 @@ namespace Npgsql.Tests
                 reader.Dispose();
                 // Make sure the connection is stil OK
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
+        public void WrongTableDefinitionTextImport()
+        {
+            using (var conn = OpenConnection())
+            {
+                Assert.Throws<PostgresException>(() => conn.BeginTextImport("COPY table_is_not_exist (blob) FROM STDIN"));
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
+        public void WrongFormatTextImport()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("create temp table temp_table(blob bytea)");
+                Assert.Throws<Exception>(() => conn.BeginTextImport("COPY temp_table (blob) FROM STDIN BINARY"));
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
+        public void WrongTableDefinitionTextExport()
+        {
+            using (var conn = OpenConnection())
+            {
+                Assert.Throws<PostgresException>(() => conn.BeginTextExport("COPY table_is_not_exist (blob) TO STDOUT"));
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
+        public void WrongFormatTextExport()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("create temp table temp_table(blob bytea)");
+                Assert.Throws<Exception>(() => conn.BeginTextExport("COPY temp_table (blob) TO STDOUT BINARY"));
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
             }
         }
 

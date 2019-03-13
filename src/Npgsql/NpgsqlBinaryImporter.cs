@@ -51,18 +51,19 @@ namespace Npgsql
             _buf = connector.WriteBuffer;
             _column = -1;
 
-            try
-            {
-                _connector.SendQuery(copyFromCommand);
+            _connector.SendQuery(copyFromCommand);
 
-                CopyInResponseMessage copyInResponse;
-                var msg = _connector.ReadMessage();
-                switch (msg.Code)
-                {
+            CopyInResponseMessage copyInResponse;
+            var msg = _connector.ReadMessage();
+            switch (msg.Code)
+            {
                 case BackendMessageCode.CopyInResponse:
                     copyInResponse = (CopyInResponseMessage)msg;
                     if (!copyInResponse.IsBinary)
+                    {
+                        _connector.Break();
                         throw new ArgumentException("copyFromCommand triggered a text transfer, only binary is allowed", nameof(copyFromCommand));
+                    }
                     break;
                 case BackendMessageCode.CompletedResponse:
                     throw new InvalidOperationException(
@@ -71,18 +72,12 @@ namespace Npgsql
                         "Note that your data has been successfully imported/exported.");
                 default:
                     throw _connector.UnexpectedMessageReceived(msg.Code);
-                }
+            }
 
-                NumColumns = copyInResponse.NumColumns;
-                _params = new NpgsqlParameter[NumColumns];
-                _buf.StartCopyMode();
-                WriteHeader();
-            }
-            catch
-            {
-                _connector.Break();
-                throw;
-            }
+            NumColumns = copyInResponse.NumColumns;
+            _params = new NpgsqlParameter[NumColumns];
+            _buf.StartCopyMode();
+            WriteHeader();
         }
 
         void WriteHeader()

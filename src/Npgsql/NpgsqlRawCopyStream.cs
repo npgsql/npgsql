@@ -304,10 +304,13 @@ namespace Npgsql
     /// </remarks>
     public sealed class NpgsqlCopyTextWriter : StreamWriter, ICancelable
     {
-        internal NpgsqlCopyTextWriter(NpgsqlRawCopyStream underlying) : base(underlying)
+        internal NpgsqlCopyTextWriter(NpgsqlConnector connector, NpgsqlRawCopyStream underlying) : base(underlying)
         {
             if (underlying.IsBinary)
+            {
+                connector.Break();
                 throw new Exception("Can't use a binary copy stream for text writing");
+            }
         }
 
         /// <summary>
@@ -327,10 +330,13 @@ namespace Npgsql
     /// </remarks>
     public sealed class NpgsqlCopyTextReader : StreamReader, ICancelable
     {
-        internal NpgsqlCopyTextReader(NpgsqlRawCopyStream underlying) : base(underlying)
+        internal NpgsqlCopyTextReader(NpgsqlConnector connector, NpgsqlRawCopyStream underlying) : base(underlying)
         {
             if (underlying.IsBinary)
+            {
+                connector.Break();
                 throw new Exception("Can't use a binary copy stream for text reading");
+            }
         }
 
         /// <summary>
