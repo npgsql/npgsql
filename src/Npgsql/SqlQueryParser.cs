@@ -37,6 +37,7 @@ namespace Npgsql
             _statementIndex = -1;
             MoveToNextStatement();
 
+            var sqlSpan = sql.AsSpan();
             var currCharOfs = 0;
             var end = sql.Length;
             var ch = '\0';
@@ -110,7 +111,7 @@ namespace Npgsql
                 ch = sql[currCharOfs];
                 if (IsParamNameChar(ch)) {
                     if (currCharOfs - 1 > currTokenBeg) {
-                        _rewrittenSql.Append(sql.Substring(currTokenBeg, currCharOfs - 1 - currTokenBeg));
+                        _rewrittenSql.Append(Substring(sqlSpan, currTokenBeg, currCharOfs - 1 - currTokenBeg));
                     }
                     currTokenBeg = currCharOfs++ - 1;
                     goto Param;
@@ -127,7 +128,7 @@ namespace Npgsql
                 lastChar = ch;
                 if (currCharOfs >= end || !IsParamNameChar(ch = sql[currCharOfs]))
                 {
-                    var paramName = sql.Substring(currTokenBeg + 1, currCharOfs - (currTokenBeg + 1));
+                    var paramName = Substring(sqlSpan, currTokenBeg + 1, currCharOfs - (currTokenBeg + 1)).ToString();
 
                     if (!_paramIndexMap.TryGetValue(paramName, out var index))
                     {
@@ -143,7 +144,7 @@ namespace Npgsql
                             {
                                 // Parameter placeholder does not match a parameter on this command.
                                 // Leave the text as it was in the SQL, it may not be a an actual placeholder
-                                _rewrittenSql.Append(sql.Substring(currTokenBeg, currCharOfs - currTokenBeg));
+                                _rewrittenSql.Append(Substring(sqlSpan, currTokenBeg, currCharOfs - currTokenBeg));
                                 currTokenBeg = currCharOfs;
                                 if (currCharOfs >= end)
                                     goto Finish;
@@ -300,7 +301,7 @@ namespace Npgsql
             goto Finish;
 
         DollarQuoted: {
-                var tag = sql.Substring(dollarTagStart - 1, dollarTagEnd - dollarTagStart + 2);
+                var tag = Substring(sqlSpan, dollarTagStart - 1, dollarTagEnd - dollarTagStart + 2).ToString();
                 var pos = sql.IndexOf(tag, dollarTagEnd + 1); // Not linear time complexity, but that's probably not a problem, since PostgreSQL backend's isn't either
                 if (pos == -1) {
                     currCharOfs = end;
@@ -376,7 +377,7 @@ namespace Npgsql
             goto Finish;
 
         SemiColon:
-            _rewrittenSql.Append(sql.Substring(currTokenBeg, currCharOfs - currTokenBeg - 1));
+            _rewrittenSql.Append(Substring(sqlSpan, currTokenBeg, currCharOfs - currTokenBeg - 1));
             _statement.SQL = _rewrittenSql.ToString();
             while (currCharOfs < end) {
                 ch = sql[currCharOfs];
@@ -396,7 +397,7 @@ namespace Npgsql
             return;
 
         Finish:
-            _rewrittenSql.Append(sql.Substring(currTokenBeg, end - currTokenBeg));
+            _rewrittenSql.Append(Substring(sqlSpan, currTokenBeg, end - currTokenBeg));
             _statement.SQL = _rewrittenSql.ToString();
             if (statements.Count > _statementIndex + 1)
                statements.RemoveRange(_statementIndex + 1, statements.Count - (_statementIndex + 1));
@@ -433,5 +434,21 @@ namespace Npgsql
 
         static bool IsParamNameChar(char ch)
             => char.IsLetterOrDigit(ch) || ch == '_' || ch == '.';  // why dot??
+
+        static
+#if (NETSTANDARD1_0 || NETSTANDARD1_1 || NETSTANDARD1_2 || NETSTANDARD1_3 ||NETSTANDARD1_4 || NETSTANDARD1_5 || NETSTANDARD1_6 || NETSTANDARD2_0)
+        string
+#else
+        ReadOnlySpan<char>
+#endif
+        Substring(ReadOnlySpan<char> sqlSpan, int start, int length)
+        {
+            return sqlSpan.Slice(start, length)
+
+#if (NETSTANDARD1_0 || NETSTANDARD1_1 || NETSTANDARD1_2 || NETSTANDARD1_3 ||NETSTANDARD1_4 || NETSTANDARD1_5 || NETSTANDARD1_6 || NETSTANDARD2_0)
+                    .ToString()
+#endif
+                ;
+        }
     }
 }
