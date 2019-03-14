@@ -233,10 +233,16 @@ namespace Npgsql
             while (currCharOfs < end)
             {
                 ch = sql[currCharOfs++];
-                if (ch == '\r' || ch == '\n')
-                    goto MaybeConcatenatedEscaped2;
-                if (ch != ' ' && ch != '\t' && ch != '\f')
+                switch (ch)
                 {
+                case '\r':
+                case '\n':
+                    goto MaybeConcatenatedEscaped2;
+                case ' ':
+                case '\t':
+                case '\f':
+                    continue;
+                default:
                     lastChar = '\0';
                     goto NoneContinue;
                 }
@@ -261,10 +267,13 @@ namespace Npgsql
                     lastChar = '\0';
                     goto NoneContinue;
                 }
-                }
-
-                if (ch != ' ' && ch != '\t' && ch != '\n' && ch != '\r' && ch != '\f')
-                {
+                case ' ':
+                case '\t':
+                case '\n':
+                case '\r':
+                case '\f':
+                    continue;
+                default:
                     lastChar = '\0';
                     goto NoneContinue;
                 }
