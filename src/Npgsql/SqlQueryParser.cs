@@ -115,7 +115,7 @@ namespace Npgsql
                 if (IsParamNameChar(ch))
                 {
                     if (currCharOfs - 1 > currTokenBeg)
-                        _rewrittenSql.Append(Substring(sql, currTokenBeg, currCharOfs - 1 - currTokenBeg));
+                        _rewrittenSql.Append(sql.Slice(currTokenBeg, currCharOfs - 1 - currTokenBeg));
                     currTokenBeg = currCharOfs++ - 1;
                     goto Param;
                 }
@@ -131,7 +131,7 @@ namespace Npgsql
                 lastChar = ch;
                 if (currCharOfs >= end || !IsParamNameChar(ch = sql[currCharOfs]))
                 {
-                    var paramName = Substring(sql, currTokenBeg + 1, currCharOfs - (currTokenBeg + 1)).ToString();
+                    var paramName = sql.Slice(currTokenBeg + 1, currCharOfs - (currTokenBeg + 1)).ToString();
 
                     if (!_paramIndexMap.TryGetValue(paramName, out var index))
                     {
@@ -147,7 +147,7 @@ namespace Npgsql
                             {
                                 // Parameter placeholder does not match a parameter on this command.
                                 // Leave the text as it was in the SQL, it may not be a an actual placeholder
-                                _rewrittenSql.Append(Substring(sql, currTokenBeg, currCharOfs - currTokenBeg));
+                                _rewrittenSql.Append(sql.Slice(currTokenBeg, currCharOfs - currTokenBeg));
                                 currTokenBeg = currCharOfs;
                                 if (currCharOfs >= end)
                                     goto Finish;
@@ -328,13 +328,14 @@ namespace Npgsql
             goto Finish;
 
         DollarQuoted:
-            var tag = Substring(sql, dollarTagStart - 1, dollarTagEnd - dollarTagStart + 2);
-            var pos = IndexOf(sql, tag, dollarTagEnd + 1);
+            var tag = sql.Slice(dollarTagStart - 1, dollarTagEnd - dollarTagStart + 2);
+            var pos = sql.Slice(dollarTagEnd + 1).IndexOf(tag);
             if (pos == -1)
             {
                 currCharOfs = end;
                 goto Finish;
             }
+            pos += dollarTagEnd + 1; // If the substring is found adjust the position to be relative to the entire span
             currCharOfs = pos + dollarTagEnd - dollarTagStart + 2;
             ch = '\0';
             goto None;
@@ -408,7 +409,7 @@ namespace Npgsql
             goto Finish;
 
         SemiColon:
-            _rewrittenSql.Append(Substring(sql, currTokenBeg, currCharOfs - currTokenBeg - 1));
+            _rewrittenSql.Append(sql.Slice(currTokenBeg, currCharOfs - currTokenBeg - 1));
             _statement.SQL = _rewrittenSql.ToString();
             while (currCharOfs < end)
             {
@@ -430,7 +431,7 @@ namespace Npgsql
             return;
 
         Finish:
-            _rewrittenSql.Append(Substring(sql, currTokenBeg, end - currTokenBeg));
+            _rewrittenSql.Append(sql.Slice(currTokenBeg, end - currTokenBeg));
             _statement.SQL = _rewrittenSql.ToString();
             if (statements.Count > _statementIndex + 1)
                statements.RemoveRange(_statementIndex + 1, statements.Count - (_statementIndex + 1));
@@ -467,28 +468,5 @@ namespace Npgsql
 
         static bool IsParamNameChar(char ch)
             => char.IsLetterOrDigit(ch) || ch == '_' || ch == '.';  // why dot??
-
-        static int IndexOf(ReadOnlySpan<char> span, ReadOnlySpan<char> subSpan, int startPosition)
-        {
-            var result = span.Slice(startPosition).IndexOf(subSpan);
-            if (result != -1)
-                result += startPosition; // If the substring is found adjust the result to be relative to the entire span
-            return result;
-        }
-
-#if (NETSTANDARD1_0 || NETSTANDARD1_1 || NETSTANDARD1_2 || NETSTANDARD1_3 ||NETSTANDARD1_4 || NETSTANDARD1_5 || NETSTANDARD1_6 || NETSTANDARD2_0 || NET452)
-
-        static string Substring(ReadOnlySpan<char> span, int start, int length)
-            => span.Slice(start, length).ToString();
-
-        static int IndexOf(ReadOnlySpan<char> span, string substring, int startPosition)
-            => IndexOf(span, substring.AsSpan(), startPosition);
-
-#else
-
-        static ReadOnlySpan<char> Substring(ReadOnlySpan<char> span, int start, int length)
-            => span.Slice(start, length);
-
-#endif
     }
 }
