@@ -61,48 +61,48 @@ namespace Npgsql
             {
                 switch (ch)
                 {
-                    case '/':
-                        goto BlockCommentBegin;
-                    case '-':
-                        goto LineCommentBegin;
-                    case '\'':
-                        if (standardConformantStrings)
-                            goto Quoted;
-                        else
-                            goto Escaped;
-                    case '$':
-                        if (!IsIdentifier(lastChar))
-                            goto DollarQuotedStart;
-                        else
-                            break;
-                    case '"':
-                        goto DoubleQuoted;
-                    case ':':
-                        if (lastChar != ':')
-                            goto ParamStart;
-                        else
-                            break;
-                    case '@':
-                        if (lastChar != '@')
-                            goto ParamStart;
-                        else
-                            break;
-                    case ';':
-                        if (parenthesisLevel == 0)
-                            goto SemiColon;
+                case '/':
+                    goto BlockCommentBegin;
+                case '-':
+                    goto LineCommentBegin;
+                case '\'':
+                    if (standardConformantStrings)
+                        goto Quoted;
+                    else
+                        goto Escaped;
+                case '$':
+                    if (!IsIdentifier(lastChar))
+                        goto DollarQuotedStart;
+                    else
                         break;
-                    case '(':
-                        parenthesisLevel++;
+                case '"':
+                    goto DoubleQuoted;
+                case ':':
+                    if (lastChar != ':')
+                        goto ParamStart;
+                    else
                         break;
-                    case ')':
-                        parenthesisLevel--;
+                case '@':
+                    if (lastChar != '@')
+                        goto ParamStart;
+                    else
                         break;
-                    case 'e':
-                    case 'E':
-                        if (!IsLetter(lastChar))
-                            goto EscapedStart;
-                        else
-                            break;
+                case ';':
+                    if (parenthesisLevel == 0)
+                        goto SemiColon;
+                    break;
+                case '(':
+                    parenthesisLevel++;
+                    break;
+                case ')':
+                    parenthesisLevel--;
+                    break;
+                case 'e':
+                case 'E':
+                    if (!IsLetter(lastChar))
+                        goto EscapedStart;
+                    else
+                        break;
                 }
 
                 if (currCharOfs >= end)
@@ -226,17 +226,17 @@ namespace Npgsql
                 ch = sql[currCharOfs++];
                 switch (ch)
                 {
-                    case '\'':
-                        goto MaybeConcatenatedEscaped;
-                    case '\\':
+                case '\'':
+                    goto MaybeConcatenatedEscaped;
+                case '\\':
+                {
+                    if (currCharOfs >= end)
                     {
-                        if (currCharOfs >= end)
-                        {
-                            goto Finish;
-                        }
-                        currCharOfs++;
-                        break;
+                        goto Finish;
                     }
+                    currCharOfs++;
+                    break;
+                }
                 }
             }
             goto Finish;
@@ -263,22 +263,22 @@ namespace Npgsql
                 ch = sql[currCharOfs++];
                 switch (ch)
                 {
-                    case '\'':
-                        goto Escaped;
-                    case '-':
+                case '\'':
+                    goto Escaped;
+                case '-':
+                {
+                    if (currCharOfs >= end)
                     {
-                        if (currCharOfs >= end)
-                        {
-                            goto Finish;
-                        }
-                        ch = sql[currCharOfs++];
-                        if (ch == '-')
-                        {
-                            goto MaybeConcatenatedEscapeAfterComment;
-                        }
-                        lastChar = '\0';
-                        goto NoneContinue;
+                        goto Finish;
                     }
+                    ch = sql[currCharOfs++];
+                    if (ch == '-')
+                    {
+                        goto MaybeConcatenatedEscapeAfterComment;
+                    }
+                    lastChar = '\0';
+                    goto NoneContinue;
+                }
                 }
 
                 if (ch != ' ' && ch != '\t' && ch != '\n' && ch != '\r' && ch != '\f')
@@ -406,10 +406,10 @@ namespace Npgsql
                 ch = sql[currCharOfs++];
                 switch (ch)
                 {
-                    case '*':
-                        goto BlockCommentEnd;
-                    case '/':
-                        goto BlockCommentBegin;
+                case '*':
+                    goto BlockCommentEnd;
+                case '/':
+                    goto BlockCommentBegin;
                 }
             }
             goto Finish;
