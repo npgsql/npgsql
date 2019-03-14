@@ -328,19 +328,16 @@ namespace Npgsql
             goto Finish;
 
         DollarQuoted:
-        {
-                var tag = Substring(sql, dollarTagStart - 1, dollarTagEnd - dollarTagStart + 2);
-
-                var pos = IndexOf(sql, tag, dollarTagEnd + 1);
-                if (pos == -1)
-                {
-                    currCharOfs = end;
-                    goto Finish;
-                }
-                currCharOfs = pos + dollarTagEnd - dollarTagStart + 2;
-                ch = '\0';
-                goto None;
-        }
+            var tag = Substring(sql, dollarTagStart - 1, dollarTagEnd - dollarTagStart + 2);
+            var pos = IndexOf(sql, tag, dollarTagEnd + 1);
+            if (pos == -1)
+            {
+                currCharOfs = end;
+                goto Finish;
+            }
+            currCharOfs = pos + dollarTagEnd - dollarTagStart + 2;
+            ch = '\0';
+            goto None;
 
         LineCommentBegin:
             if (currCharOfs < end)
