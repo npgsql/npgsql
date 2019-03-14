@@ -51,9 +51,7 @@ namespace Npgsql
 
         None:
             if (currCharOfs >= end)
-            {
                 goto Finish;
-            }
             var lastChar = ch;
             ch = sql[currCharOfs++];
         NoneContinue:
@@ -106,9 +104,7 @@ namespace Npgsql
                 }
 
                 if (currCharOfs >= end)
-                {
                     goto Finish;
-                }
             }
 
         ParamStart:
@@ -119,9 +115,7 @@ namespace Npgsql
                 if (IsParamNameChar(ch))
                 {
                     if (currCharOfs - 1 > currTokenBeg)
-                    {
                         _rewrittenSql.Append(Substring(sql, currTokenBeg, currCharOfs - 1 - currTokenBeg));
-                    }
                     currTokenBeg = currCharOfs++ - 1;
                     goto Param;
                 }
@@ -174,9 +168,7 @@ namespace Npgsql
                     currTokenBeg = currCharOfs;
 
                     if (currCharOfs >= end)
-                    {
                         goto Finish;
-                    }
 
                     currCharOfs++;
                     goto NoneContinue;
@@ -213,9 +205,7 @@ namespace Npgsql
                 lastChar = ch;
                 ch = sql[currCharOfs++];
                 if (ch == '\'')
-                {
                     goto Escaped;
-                }
                 goto NoneContinue;
             }
             goto Finish;
@@ -231,9 +221,7 @@ namespace Npgsql
                 case '\\':
                 {
                     if (currCharOfs >= end)
-                    {
                         goto Finish;
-                    }
                     currCharOfs++;
                     break;
                 }
@@ -246,9 +234,7 @@ namespace Npgsql
             {
                 ch = sql[currCharOfs++];
                 if (ch == '\r' || ch == '\n')
-                {
                     goto MaybeConcatenatedEscaped2;
-                }
                 if (ch != ' ' && ch != '\t' && ch != '\f')
                 {
                     lastChar = '\0';
@@ -268,14 +254,10 @@ namespace Npgsql
                 case '-':
                 {
                     if (currCharOfs >= end)
-                    {
                         goto Finish;
-                    }
                     ch = sql[currCharOfs++];
                     if (ch == '-')
-                    {
                         goto MaybeConcatenatedEscapeAfterComment;
-                    }
                     lastChar = '\0';
                     goto NoneContinue;
                 }
@@ -294,9 +276,7 @@ namespace Npgsql
             {
                 ch = sql[currCharOfs++];
                 if (ch == '\r' || ch == '\n')
-                {
                     goto MaybeConcatenatedEscaped2;
-                }
             }
             goto Finish;
 
@@ -334,9 +314,7 @@ namespace Npgsql
                     goto DollarQuoted;
                 }
                 if (!IsDollarTagIdentifier(ch))
-                {
                     goto NoneContinue;
-                }
             }
             goto Finish;
 
@@ -360,9 +338,7 @@ namespace Npgsql
             {
                 ch = sql[currCharOfs++];
                 if (ch == '-')
-                {
                     goto LineComment;
-                }
                 lastChar = '\0';
                 goto NoneContinue;
             }
@@ -373,9 +349,7 @@ namespace Npgsql
             {
                 ch = sql[currCharOfs++];
                 if (ch == '\r' || ch == '\n')
-                {
                     goto None;
-                }
             }
             goto Finish;
 
@@ -391,9 +365,7 @@ namespace Npgsql
                 if (ch != '/')
                 {
                     if (blockCommentLevel > 0)
-                    {
                         goto BlockComment;
-                    }
                     lastChar = '\0';
                     goto NoneContinue;
                 }
@@ -421,15 +393,11 @@ namespace Npgsql
                 if (ch == '/')
                 {
                     if (--blockCommentLevel > 0)
-                    {
                         goto BlockComment;
-                    }
                     goto None;
                 }
                 if (ch != '*')
-                {
                     goto BlockComment;
-                }
             }
             goto Finish;
 
@@ -497,13 +465,8 @@ namespace Npgsql
         static int IndexOf(ReadOnlySpan<char> span, ReadOnlySpan<char> subSpan, int startPosition)
         {
             var result = span.Slice(startPosition).IndexOf(subSpan);
-
             if (result != -1)
-            {
-                // If the substring is found adjust the result to be relative to the entire span
-                result += startPosition;
-            }
-
+                result += startPosition; // If the substring is found adjust the result to be relative to the entire span
             return result;
         }
 
