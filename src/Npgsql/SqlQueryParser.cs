@@ -26,7 +26,10 @@ namespace Npgsql
         /// or an empty <see cref="NpgsqlParameterCollection"/> if deriveParameters is set to true.</param>
         /// <param name="statements">An empty list to be populated with the statements parsed by this method</param>
         /// <param name="deriveParameters">A bool indicating whether parameters contains a list of preconfigured parameters or an empty list to be filled with derived parameters.</param>
-        internal void ParseRawQuery(ReadOnlySpan<char> sql, bool standardConformantStrings, NpgsqlParameterCollection parameters, List<NpgsqlStatement> statements, bool deriveParameters = false)
+        internal void ParseRawQuery(string sql, bool standardConformantStrings, NpgsqlParameterCollection parameters, List<NpgsqlStatement> statements, bool deriveParameters = false)
+            => ParseRawQuery(sql.AsSpan(), standardConformantStrings, parameters, statements, deriveParameters);
+
+        void ParseRawQuery(ReadOnlySpan<char> sql, bool standardConformantStrings, NpgsqlParameterCollection parameters, List<NpgsqlStatement> statements, bool deriveParameters)
         {
             Debug.Assert(sql != null);
             Debug.Assert(statements != null);

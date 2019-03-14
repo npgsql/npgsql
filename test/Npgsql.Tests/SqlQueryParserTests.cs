@@ -39,7 +39,7 @@ namespace Npgsql.Tests
         public void Untouched(string sql)
         {
             _params.AddWithValue(":param", "foo");
-            _parser.ParseRawQuery(sql.AsSpan(), true, _params, _queries);
+            _parser.ParseRawQuery(sql, true, _params, _queries);
             Assert.That(_queries.Single().SQL, Is.EqualTo(sql));
             Assert.That(_queries.Single().InputParameters, Is.Empty);
         }
@@ -52,7 +52,7 @@ namespace Npgsql.Tests
         public void ParamGetsBound(string sql)
         {
             _params.AddWithValue(":param", "foo");
-            _parser.ParseRawQuery(sql.AsSpan(), true, _params, _queries);
+            _parser.ParseRawQuery(sql, true, _params, _queries);
             Assert.That(_queries.Single().InputParameters.Single(), Is.SameAs(_params.Single()));
         }
 
