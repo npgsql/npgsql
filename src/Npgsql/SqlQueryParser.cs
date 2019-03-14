@@ -435,20 +435,16 @@ namespace Npgsql
         static bool IsParamNameChar(char ch)
             => char.IsLetterOrDigit(ch) || ch == '_' || ch == '.';  // why dot??
 
-        static
 #if (NETSTANDARD1_0 || NETSTANDARD1_1 || NETSTANDARD1_2 || NETSTANDARD1_3 ||NETSTANDARD1_4 || NETSTANDARD1_5 || NETSTANDARD1_6 || NETSTANDARD2_0 || NET452)
-        string
-#else
-        ReadOnlySpan<char>
-#endif
-        Substring(ReadOnlySpan<char> sqlSpan, int start, int length)
-        {
-            return sqlSpan.Slice(start, length)
 
-#if (NETSTANDARD1_0 || NETSTANDARD1_1 || NETSTANDARD1_2 || NETSTANDARD1_3 ||NETSTANDARD1_4 || NETSTANDARD1_5 || NETSTANDARD1_6 || NETSTANDARD2_0 || NET452)
-                    .ToString()
+        static string Substring(ReadOnlySpan<char> sqlSpan, int start, int length)
+            => sqlSpan.Slice(start, length).ToString();
+
+#else
+
+        static ReadOnlySpan<char> Substring(ReadOnlySpan<char> sqlSpan, int start, int length)
+            => sqlSpan.Slice(start, length);
+
 #endif
-                ;
-        }
     }
 }
