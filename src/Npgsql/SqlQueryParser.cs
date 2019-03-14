@@ -26,7 +26,7 @@ namespace Npgsql
         /// or an empty <see cref="NpgsqlParameterCollection"/> if deriveParameters is set to true.</param>
         /// <param name="statements">An empty list to be populated with the statements parsed by this method</param>
         /// <param name="deriveParameters">A bool indicating whether parameters contains a list of preconfigured parameters or an empty list to be filled with derived parameters.</param>
-        internal void ParseRawQuery(string sql, bool standardConformantStrings, NpgsqlParameterCollection parameters, List<NpgsqlStatement> statements, bool deriveParameters = false)
+        internal void ParseRawQuery(ReadOnlySpan<char> sql, bool standardConformantStrings, NpgsqlParameterCollection parameters, List<NpgsqlStatement> statements, bool deriveParameters = false)
         {
             Debug.Assert(sql != null);
             Debug.Assert(statements != null);
@@ -37,7 +37,6 @@ namespace Npgsql
             _statementIndex = -1;
             MoveToNextStatement();
 
-            var sqlSpan = sql.AsSpan();
             var currCharOfs = 0;
             var end = sql.Length;
             var ch = '\0';
@@ -118,7 +117,7 @@ namespace Npgsql
                 {
                     if (currCharOfs - 1 > currTokenBeg)
                     {
-                        _rewrittenSql.Append(Substring(sqlSpan, currTokenBeg, currCharOfs - 1 - currTokenBeg));
+                        _rewrittenSql.Append(Substring(sql, currTokenBeg, currCharOfs - 1 - currTokenBeg));
                     }
                     currTokenBeg = currCharOfs++ - 1;
                     goto Param;
@@ -135,7 +134,7 @@ namespace Npgsql
                 lastChar = ch;
                 if (currCharOfs >= end || !IsParamNameChar(ch = sql[currCharOfs]))
                 {
-                    var paramName = Substring(sqlSpan, currTokenBeg + 1, currCharOfs - (currTokenBeg + 1)).ToString();
+                    var paramName = Substring(sql, currTokenBeg + 1, currCharOfs - (currTokenBeg + 1)).ToString();
 
                     if (!_paramIndexMap.TryGetValue(paramName, out var index))
                     {
@@ -151,7 +150,7 @@ namespace Npgsql
                             {
                                 // Parameter placeholder does not match a parameter on this command.
                                 // Leave the text as it was in the SQL, it may not be a an actual placeholder
-                                _rewrittenSql.Append(Substring(sqlSpan, currTokenBeg, currCharOfs - currTokenBeg));
+                                _rewrittenSql.Append(Substring(sql, currTokenBeg, currCharOfs - currTokenBeg));
                                 currTokenBeg = currCharOfs;
                                 if (currCharOfs >= end)
                                     goto Finish;
@@ -340,8 +339,9 @@ namespace Npgsql
 
         DollarQuoted:
         {
-                var tag = Substring(sqlSpan, dollarTagStart - 1, dollarTagEnd - dollarTagStart + 2).ToString();
-                var pos = sql.IndexOf(tag, dollarTagEnd + 1); // Not linear time complexity, but that's probably not a problem, since PostgreSQL backend's isn't either
+                var tag = Substring(sql, dollarTagStart - 1, dollarTagEnd - dollarTagStart + 2);
+
+                var pos = IndexOf(sql, tag, dollarTagEnd + 1);
                 if (pos == -1)
                 {
                     currCharOfs = end;
@@ -431,7 +431,7 @@ namespace Npgsql
             goto Finish;
 
         SemiColon:
-            _rewrittenSql.Append(Substring(sqlSpan, currTokenBeg, currCharOfs - currTokenBeg - 1));
+            _rewrittenSql.Append(Substring(sql, currTokenBeg, currCharOfs - currTokenBeg - 1));
             _statement.SQL = _rewrittenSql.ToString();
             while (currCharOfs < end)
             {
@@ -453,7 +453,7 @@ namespace Npgsql
             return;
 
         Finish:
-            _rewrittenSql.Append(Substring(sqlSpan, currTokenBeg, end - currTokenBeg));
+            _rewrittenSql.Append(Substring(sql, currTokenBeg, end - currTokenBeg));
             _statement.SQL = _rewrittenSql.ToString();
             if (statements.Count > _statementIndex + 1)
                statements.RemoveRange(_statementIndex + 1, statements.Count - (_statementIndex + 1));
@@ -491,15 +491,31 @@ namespace Npgsql
         static bool IsParamNameChar(char ch)
             => char.IsLetterOrDigit(ch) || ch == '_' || ch == '.';  // why dot??
 
+        static int IndexOf(ReadOnlySpan<char> span, ReadOnlySpan<char> subSpan, int startPosition)
+        {
+            var result = span.Slice(startPosition).IndexOf(subSpan);
+
+            if (result != -1)
+            {
+                // If the substring is found adjust the result to be relative to the entire span
+                result += startPosition;
+            }
+
+            return result;
+        }
+
 #if (NETSTANDARD1_0 || NETSTANDARD1_1 || NETSTANDARD1_2 || NETSTANDARD1_3 ||NETSTANDARD1_4 || NETSTANDARD1_5 || NETSTANDARD1_6 || NETSTANDARD2_0 || NET452)
 
-        static string Substring(ReadOnlySpan<char> sqlSpan, int start, int length)
-            => sqlSpan.Slice(start, length).ToString();
+        static string Substring(ReadOnlySpan<char> span, int start, int length)
+            => span.Slice(start, length).ToString();
+
+        static int IndexOf(ReadOnlySpan<char> span, string substring, int startPosition)
+            => IndexOf(span, substring.AsSpan(), startPosition);
 
 #else
 
-        static ReadOnlySpan<char> Substring(ReadOnlySpan<char> sqlSpan, int start, int length)
-            => sqlSpan.Slice(start, length);
+        static ReadOnlySpan<char> Substring(ReadOnlySpan<char> span, int start, int length)
+            => span.Slice(start, length);
 
 #endif
     }
