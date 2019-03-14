@@ -222,17 +222,19 @@ namespace Npgsql
             while (currCharOfs < end)
             {
                 ch = sql[currCharOfs++];
-                if (ch == '\'')
+                switch (ch)
                 {
-                    goto MaybeConcatenatedEscaped;
-                }
-                if (ch == '\\')
-                {
-                    if (currCharOfs >= end)
+                    case '\'':
+                        goto MaybeConcatenatedEscaped;
+                    case '\\':
                     {
-                        goto Finish;
+                        if (currCharOfs >= end)
+                        {
+                            goto Finish;
+                        }
+                        currCharOfs++;
+                        break;
                     }
-                    currCharOfs++;
                 }
             }
             goto Finish;
@@ -257,25 +259,26 @@ namespace Npgsql
             while (currCharOfs < end)
             {
                 ch = sql[currCharOfs++];
-                if (ch == '\'')
+                switch (ch)
                 {
-                    goto Escaped;
+                    case '\'':
+                        goto Escaped;
+                    case '-':
+                    {
+                        if (currCharOfs >= end)
+                        {
+                            goto Finish;
+                        }
+                        ch = sql[currCharOfs++];
+                        if (ch == '-')
+                        {
+                            goto MaybeConcatenatedEscapeAfterComment;
+                        }
+                        lastChar = '\0';
+                        goto NoneContinue;
+                    }
                 }
-                if (ch == '-')
-                {
-                    if (currCharOfs >= end)
-                    {
-                        goto Finish;
-                    }
-                    ch = sql[currCharOfs++];
-                    if (ch == '-')
-                    {
-                        goto MaybeConcatenatedEscapeAfterComment;
-                    }
-                    lastChar = '\0';
-                    goto NoneContinue;
 
-                }
                 if (ch != ' ' && ch != '\t' && ch != '\n' && ch != '\r' && ch != '\f')
                 {
                     lastChar = '\0';
@@ -398,13 +401,12 @@ namespace Npgsql
             while (currCharOfs < end)
             {
                 ch = sql[currCharOfs++];
-                if (ch == '*')
+                switch (ch)
                 {
-                    goto BlockCommentEnd;
-                }
-                if (ch == '/')
-                {
-                    goto BlockCommentBegin;
+                    case '*':
+                        goto BlockCommentEnd;
+                    case '/':
+                        goto BlockCommentBegin;
                 }
             }
             goto Finish;
