@@ -85,13 +85,8 @@ namespace Npgsql.TypeHandlers
         internal override object ReadAsObject(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
             => Read(buf, len, false, fieldDescription).Result;
 
-#pragma warning disable CS1998 // Needless async (for netstandard1.3)
         public override async ValueTask<object> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
-#pragma warning restore CS1998 // Needless async (for netstandard1.3)
         {
-#if NETSTANDARD1_3
-            throw new NotSupportedException("Not support in .NET Standard 1.3");
-#else
             if (_members == null)
                 ResolveFields();
             Debug.Assert(_members != null);
@@ -117,7 +112,6 @@ namespace Npgsql.TypeHandlers
                 result[member.PgName] = await member.Handler.ReadAsObject(buf, fieldLen, async);
             }
             return result;
-#endif
         }
 
         #endregion
