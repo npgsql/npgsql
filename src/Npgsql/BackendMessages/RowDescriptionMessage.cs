@@ -31,6 +31,17 @@ namespace Npgsql.BackendMessages
             _nameIndex = new Dictionary<string, int>();
         }
 
+        RowDescriptionMessage(RowDescriptionMessage source)
+        {
+            Fields = new List<FieldDescription>(source.Fields.Count);
+            foreach (var f in source.Fields)
+                Fields.Add(f.Clone());
+            _nameIndex = new Dictionary<string, int>(source._nameIndex);
+            if (source._insensitiveIndex != null)
+                _insensitiveIndex = new Dictionary<string, int>(source._insensitiveIndex);
+            _isInsensitiveIndexInitialized = source._isInsensitiveIndexInitialized;
+        }
+
         internal RowDescriptionMessage Load(NpgsqlReadBuffer buf, ConnectorTypeMapper typeMapper)
         {
             Fields.Clear();
@@ -45,8 +56,15 @@ namespace Npgsql.BackendMessages
             var numFields = buf.ReadInt16();
             for (var i = 0; i != numFields; ++i)
             {
-                // TODO: Recycle
-                var field = new FieldDescription();
+                FieldDescription field;
+                if (i >= Fields.Count)
+                {
+                    field = new FieldDescription();
+                    Fields.Add(field);
+                }
+                else
+                    field = Fields[i];
+
                 field.Populate(
                     typeMapper,
                     buf.ReadNullTerminatedString(), // Name
@@ -58,7 +76,6 @@ namespace Npgsql.BackendMessages
                     (FormatCode)buf.ReadInt16() // FormatCode
                 );
 
-                Fields.Add(field);
                 if (!_nameIndex.ContainsKey(field.Name))
                     _nameIndex.Add(field.Name, i);
             }
@@ -104,6 +121,8 @@ namespace Npgsql.BackendMessages
 
         public BackendMessageCode Code => BackendMessageCode.RowDescription;
 
+        internal RowDescriptionMessage Clone() => new RowDescriptionMessage(this);
+
         /// <summary>
         /// Comparer that's case-insensitive and Kana width-insensitive
         /// </summary>
@@ -130,6 +149,21 @@ namespace Npgsql.BackendMessages
     /// </summary>
     public sealed class FieldDescription
     {
+        internal FieldDescription() {}
+
+        internal FieldDescription(FieldDescription source)
+        {
+            _typeMapper = source._typeMapper;
+            Name = source.Name;
+            TableOID = source.TableOID;
+            ColumnAttributeNumber = source.ColumnAttributeNumber;
+            TypeOID = source.TypeOID;
+            TypeSize = source.TypeSize;
+            TypeModifier = source.TypeModifier;
+            FormatCode = source.FormatCode;
+            Handler = source.Handler;
+        }
+
         internal void Populate(
             ConnectorTypeMapper typeMapper, string name, uint tableOID, short columnAttributeNumber,
             uint oid, short typeSize, int typeModifier, FormatCode formatCode
@@ -220,6 +254,8 @@ namespace Npgsql.BackendMessages
 
         internal bool IsBinaryFormat => FormatCode == FormatCode.Binary;
         internal bool IsTextFormat => FormatCode == FormatCode.Text;
+
+        internal FieldDescription Clone() => new FieldDescription(this);
 
         /// <summary>
         /// Returns a string that represents the current object.

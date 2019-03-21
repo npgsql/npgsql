@@ -628,7 +628,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         switch (msg.Code)
                         {
                         case BackendMessageCode.RowDescription:
-                            var description = (RowDescriptionMessage)msg;
+                            // Clone the RowDescription for use with the prepared statement (the one we have is reused
+                            // by the connection)
+                            var description = ((RowDescriptionMessage)msg).Clone();
                             FixupRowDescription(description, isFirst);
                             statement.Description = description;
                             break;

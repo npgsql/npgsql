@@ -235,6 +235,7 @@ namespace Npgsql
         readonly ReadyForQueryMessage        _readyForQueryMessage        = new ReadyForQueryMessage();
         readonly ParameterDescriptionMessage _parameterDescriptionMessage = new ParameterDescriptionMessage();
         readonly DataRowMessage              _dataRowMessage              = new DataRowMessage();
+        readonly RowDescriptionMessage       _rowDescriptionMessage       = new RowDescriptionMessage();
 
         // Since COPY is rarely used, allocate these lazily
         CopyInResponseMessage _copyInResponseMessage;
@@ -1005,9 +1006,7 @@ namespace Npgsql
             switch (code)
             {
                 case BackendMessageCode.RowDescription:
-                    // TODO: Recycle
-                    var rowDescriptionMessage = new RowDescriptionMessage();
-                    return rowDescriptionMessage.Load(buf, TypeMapper);
+                    return _rowDescriptionMessage.Load(buf, TypeMapper);
                 case BackendMessageCode.DataRow:
                     return _dataRowMessage.Load(len);
                 case BackendMessageCode.CompletedResponse:
