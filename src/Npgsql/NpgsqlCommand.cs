@@ -124,7 +124,10 @@ namespace Npgsql
             get => _commandText;
             set
             {
-                _commandText = value;
+                _commandText = State == CommandState.Idle
+                    ? value
+                    : throw new InvalidOperationException("An open data reader exists for this command.");
+
                 ResetExplicitPreparation();
                 // TODO: Technically should do this also if the parameter list (or type) changes
             }
@@ -194,7 +197,10 @@ namespace Npgsql
                 if (_transaction != null && _connection != null && _connection.Connector != null && _connection.Connector.InTransaction)
                     throw new InvalidOperationException("The Connection property can't be changed with an uncommited transaction.");
 
-                _connection = value;
+                _connection = State == CommandState.Idle
+                    ? value
+                    : throw new InvalidOperationException("An open data reader exists for this command.");
+
                 Transaction = null;
             }
         }
@@ -1008,7 +1014,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// <returns>A task representing the asynchronous operation, with the number of rows affected if known; -1 otherwise.</returns>
         public override Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled<int>(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
                 return ExecuteNonQuery(true, cancellationToken);
         }
@@ -1046,7 +1053,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         [ItemCanBeNull]
         public override Task<object> ExecuteScalarAsync(CancellationToken cancellationToken)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled<object>(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
                 return ExecuteScalar(true, cancellationToken).AsTask();
         }
@@ -1095,7 +1103,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// <returns></returns>
         protected override Task<DbDataReader> ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled<DbDataReader>(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
                 return ExecuteDbDataReader(behavior, true, cancellationToken).AsTask();
         }
@@ -1268,8 +1277,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         {
             if (State == CommandState.Disposed)
                 return;
-            Transaction = null;
-            Connection = null;
+            _transaction = null;
+            _connection = null;
             State = CommandState.Disposed;
             base.Dispose(disposing);
         }
