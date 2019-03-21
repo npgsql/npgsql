@@ -46,6 +46,11 @@ namespace Npgsql
         internal string OriginalConnectionString => _connectionString;
 
         /// <summary>
+        /// The command factory
+        /// </summary>
+        readonly Func<NpgsqlCommand> _commandFactory;
+
+        /// <summary>
         /// The connector object connected to the backend.
         /// </summary>
         [CanBeNull]
@@ -118,8 +123,20 @@ namespace Npgsql
         /// Initializes a new instance of <see cref="NpgsqlConnection"/> with the given connection string.
         /// </summary>
         /// <param name="connectionString">The connection used to open the PostgreSQL database.</param>
-        public NpgsqlConnection(string connectionString) : this()
-            => ConnectionString = connectionString;
+        public NpgsqlConnection(string connectionString) : this(connectionString, null)
+        {
+        }
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="NpgsqlConnection"/> with the given connection string and command factory.
+        /// </summary>
+        /// <param name="connectionString">The connection used to open the PostgreSQL database.</param>
+        /// <param name="commandFactory">The command factory.</param>
+        public NpgsqlConnection(string connectionString, Func<NpgsqlCommand> commandFactory) : this()
+        {
+            ConnectionString = connectionString;
+            _commandFactory = commandFactory ?? (() => new NpgsqlCommand("", this));
+        }
 
         /// <summary>
         /// Opens a database connection with the property settings specified by the
@@ -482,7 +499,7 @@ namespace Npgsql
         public new NpgsqlCommand CreateCommand()
         {
             CheckDisposed();
-            return new NpgsqlCommand("", this);
+            return _commandFactory();
         }
 
         #endregion Commands
