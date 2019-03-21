@@ -1157,6 +1157,18 @@ namespace Npgsql.Tests
                 Thread.Sleep(Timeout.Infinite);
         }
 
+        [Test]
+        public void ChangeParameter()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("SET application_name = 'some_test_value'");
+                Assert.That(conn.PostgresParameters["application_name"], Is.EqualTo("some_test_value"));
+                conn.ExecuteNonQuery("SET application_name = 'some_test_value2'");
+                Assert.That(conn.PostgresParameters["application_name"], Is.EqualTo("some_test_value2"));
+            }
+        }
+
         #region pgpass
 
         [Test]
