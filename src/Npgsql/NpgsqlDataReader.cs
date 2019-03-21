@@ -161,6 +161,7 @@ namespace Npgsql
         /// </remarks>
         public override bool Read()
         {
+            CheckClosed();
             var fastRead = TryFastRead();
             return fastRead.HasValue
                 ? fastRead.Value
@@ -174,7 +175,10 @@ namespace Npgsql
         /// <returns>A task representing the asynchronous operation.</returns>
         public override Task<bool> ReadAsync(CancellationToken cancellationToken)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            CheckClosed();
+
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled<bool>(cancellationToken);
 
             var fastRead = TryFastRead();
             if (fastRead.HasValue)
@@ -316,6 +320,8 @@ namespace Npgsql
         /// <returns>A task representing the asynchronous operation.</returns>
         public override Task<bool> NextResultAsync(CancellationToken cancellationToken)
         {
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled<bool>(cancellationToken);
             try
             {
                 using (NoSynchronizationContextScope.Enter())
@@ -336,6 +342,8 @@ namespace Npgsql
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         async Task<bool> NextResult(bool async, bool isConsuming=false)
         {
+            CheckClosed();
+
             IBackendMessage msg;
             Debug.Assert(!_isSchemaOnly);
 
@@ -731,7 +739,14 @@ namespace Npgsql
         /// <summary>
         /// Gets the number of columns in the current row.
         /// </summary>
-        public override int FieldCount => RowDescription?.NumFields ?? 0;
+        public override int FieldCount
+        {
+            get
+            {
+                CheckClosed();
+                return RowDescription?.NumFields ?? 0;
+            }
+        }
 
         #region Cleanup / Dispose
 
@@ -1012,8 +1027,8 @@ namespace Npgsql
             CheckRowAndOrdinal(ordinal);
             if (dataOffset < 0 || dataOffset > int.MaxValue)
                 throw new ArgumentOutOfRangeException(nameof(dataOffset), dataOffset, $"dataOffset must be between {0} and {int.MaxValue}");
-            if (buffer != null && (bufferOffset < 0 || bufferOffset >= buffer.Length))
-                throw new IndexOutOfRangeException($"bufferOffset must be between {0} and {(buffer.Length - 1)}");
+            if (buffer != null && (bufferOffset < 0 || bufferOffset >= buffer.Length + 1))
+                throw new IndexOutOfRangeException($"bufferOffset must be between {0} and {(buffer.Length)}");
             if (buffer != null && (length < 0 || length > buffer.Length - bufferOffset))
                 throw new IndexOutOfRangeException($"length must be between {0} and {buffer.Length - bufferOffset}");
 
@@ -1119,8 +1134,8 @@ namespace Npgsql
             CheckRowAndOrdinal(ordinal);
             if (dataOffset < 0 || dataOffset > int.MaxValue)
                 throw new ArgumentOutOfRangeException(nameof(dataOffset), dataOffset, $"dataOffset must be between {0} and {int.MaxValue}");
-            if (buffer != null && (bufferOffset < 0 || bufferOffset >= buffer.Length))
-                throw new IndexOutOfRangeException($"bufferOffset must be between {0} and {(buffer.Length - 1)}");
+            if (buffer != null && (bufferOffset < 0 || bufferOffset >= buffer.Length + 1))
+                throw new IndexOutOfRangeException($"bufferOffset must be between {0} and {(buffer.Length)}");
             if (buffer != null && (length < 0 || length > buffer.Length - bufferOffset))
                 throw new IndexOutOfRangeException($"length must be between {0} and {buffer.Length - bufferOffset}");
 
@@ -1940,6 +1955,13 @@ namespace Npgsql
             Debug.Assert(_isSequential);
             if (PosInColumn != 0)
                 throw new InvalidOperationException("Attempt to read a position in the column which has already been read");
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        void CheckClosed()
+        {
+            if (State == ReaderState.Closed)
+                throw new InvalidOperationException("The reader is closed");
         }
 
         #endregion

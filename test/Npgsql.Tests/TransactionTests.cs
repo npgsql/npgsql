@@ -206,7 +206,7 @@ namespace Npgsql.Tests
             using (var conn = OpenConnection())
             {
                 conn.BeginTransaction();
-                Assert.That(() => conn.BeginTransaction(), Throws.TypeOf<NotSupportedException>());
+                Assert.That(() => conn.BeginTransaction(), Throws.TypeOf<InvalidOperationException>());
             }
         }
 
