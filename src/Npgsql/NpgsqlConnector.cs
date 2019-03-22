@@ -150,7 +150,7 @@ namespace Npgsql
         /// <summary>
         /// Holds all run-time parameters in raw, binary format for efficient handling without allocations.
         /// </summary>
-        readonly List<(byte[] Name, byte[] Value)> _rawParameters = new List<(byte[] Name, byte[] Value)>();
+        readonly List<(byte[], byte[])> _rawParameters = new List<(byte[] Name, byte[] Value)>();
 
         /// <summary>
         /// The timeout for reading messages that are part of the user's command
@@ -1980,28 +1980,27 @@ namespace Npgsql
 
         void ReadParameterStatus(ReadOnlySpan<byte> incomingName, ReadOnlySpan<byte> incomingValue)
         {
-            (byte[], byte[]) entry = default;
-            foreach (var e in _rawParameters)
-            {
-                if (incomingName.SequenceEqual(new ReadOnlySpan<byte>(e.Name)))
+            byte[] rawName;
+            byte[] rawValue;
+
+            foreach (var (currentName, currentValue) in _rawParameters)
+                if (incomingName.SequenceEqual(currentName))
                 {
-                    entry = (e.Name, e.Value);
-                    break;
+                    if (incomingValue.SequenceEqual(currentValue))
+                        return;
+
+                    rawName = currentName;
+                    rawValue = incomingValue.ToArray();
+                    goto ProcessParameter;
                 }
-            }
 
-            if (entry == default((byte[], byte[])))
-            {
-                entry = (incomingName.ToArray(), incomingValue.ToArray());
-                _rawParameters.Add(entry);
-            }
-            else if (!incomingValue.SequenceEqual(new ReadOnlySpan<byte>(entry.Item2)))
-                entry.Item2 = incomingValue.ToArray();
-            else
-                return;
+            rawName = incomingName.ToArray();
+            rawValue = incomingValue.ToArray();
+            _rawParameters.Add((rawName, rawValue));
 
-            var name = TextEncoding.GetString(entry.Item1);
-            var value = TextEncoding.GetString(entry.Item2);
+        ProcessParameter:
+            var name = TextEncoding.GetString(rawName);
+            var value = TextEncoding.GetString(rawValue);
 
             PostgresParameters[name] = value;
 

@@ -426,9 +426,7 @@ namespace Npgsql
         {
             int i;
             for (i = ReadPosition; Buffer[i] != 0; i++)
-            {
                 Debug.Assert(i <= ReadPosition + ReadBytesLeft);
-            }
             Debug.Assert(i >= ReadPosition);
             var result = encoding.GetString(Buffer, ReadPosition, i - ReadPosition);
             ReadPosition = i + 1;
@@ -439,9 +437,7 @@ namespace Npgsql
         {
             int i;
             for (i = ReadPosition; Buffer[i] != 0; i++)
-            {
                 Debug.Assert(i <= ReadPosition + ReadBytesLeft);
-            }
             Debug.Assert(i >= ReadPosition);
 
             var result = new ReadOnlySpan<byte>(Buffer, ReadPosition, i - ReadPosition);
