@@ -129,7 +129,7 @@ namespace Npgsql.TypeHandling
             if (value == null || typeof(TAny) == typeof(DBNull))
             {
                 buf.WriteInt32(-1);
-                return PGUtil.CompletedTask;
+                return Task.CompletedTask;
             }
 
             return WriteWithLength(value, buf, lengthCache, parameter, async);

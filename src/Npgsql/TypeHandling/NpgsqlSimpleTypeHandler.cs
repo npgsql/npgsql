@@ -159,7 +159,7 @@ namespace Npgsql.TypeHandling
                 if (buf.WriteSpaceLeft < 4)
                     return WriteWithLengthLong();
                 buf.WriteInt32(-1);
-                return PGUtil.CompletedTask;
+                return Task.CompletedTask;
             }
 
             Debug.Assert(this is INpgsqlSimpleTypeHandler<TAny>);
@@ -170,7 +170,7 @@ namespace Npgsql.TypeHandling
                 return WriteWithLengthLong();
             buf.WriteInt32(elementLen);
             typedHandler.Write(value, buf, parameter);
-            return PGUtil.CompletedTask;
+            return Task.CompletedTask;
 
             async Task WriteWithLengthLong()
             {

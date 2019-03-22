@@ -45,7 +45,7 @@ namespace Npgsql
             {
                 CheckDisposed();
                 return cancellationToken.IsCancellationRequested
-                    ? PGUtil.CancelledTask : PGUtil.CompletedTask;
+                    ? Task.FromCanceled(cancellationToken) : Task.CompletedTask;
             }
 
             public override int Read(byte[] buffer, int offset, int count)
@@ -76,7 +76,7 @@ namespace Npgsql
                 if (buffer.Length - offset < count)
                     throw new ArgumentException("Offset and length were out of bounds for the array or count is greater than the number of elements from index to the end of the source collection.");
                 if (cancellationToken.IsCancellationRequested)
-                    return PGUtil.CancelledTask;
+                    return Task.FromCanceled(cancellationToken);
 
                 while (count > 0)
                 {
@@ -90,7 +90,7 @@ namespace Npgsql
                     count -= slice;
                 }
 
-                return PGUtil.CompletedTask;
+                return Task.CompletedTask;
             }
 
             async Task WriteLong(byte[] buffer, int offset, int count, CancellationToken cancellationToken, bool async)

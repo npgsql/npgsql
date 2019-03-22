@@ -31,7 +31,7 @@ namespace Npgsql
 #pragma warning disable CA1010
     public sealed class NpgsqlDataReader : DbDataReader
 #pragma warning restore CA1010
-#if !NET452
+#if !NET461
         , IDbColumnSchemaGenerator
 #endif
     {
@@ -1648,7 +1648,7 @@ namespace Npgsql
             => new DbColumnSchemaGenerator(_connection, RowDescription, _behavior.HasFlag(CommandBehavior.KeyInfo))
                 .GetColumnSchema();
 
-#if !NET452
+#if !NET461
         ReadOnlyCollection<DbColumn> IDbColumnSchemaGenerator.GetColumnSchema()
             => new ReadOnlyCollection<DbColumn>(GetColumnSchema().Cast<DbColumn>().ToList());
 #endif
@@ -1739,7 +1739,7 @@ namespace Npgsql
             if (_isSequential)
                 return SeekToColumnSequential(column, async);
             SeekToColumnNonSequential(column);
-            return PGUtil.CompletedTask;
+            return Task.CompletedTask;
         }
 
         void SeekToColumnNonSequential(int column)
@@ -1822,7 +1822,7 @@ namespace Npgsql
 
             Buffer.ReadPosition = _columns[_column].Offset + posInColumn;
             PosInColumn = posInColumn;
-            return PGUtil.CompletedTask;
+            return Task.CompletedTask;
 
             async Task SeekInColumnSequential(int posInColumn2, bool async2)
             {
@@ -1855,7 +1855,7 @@ namespace Npgsql
             else
             {
                 ConsumeRowNonSequential();
-                return PGUtil.CompletedTask;
+                return Task.CompletedTask;
             }
 
             async Task ConsumeRowSequential(bool async2)

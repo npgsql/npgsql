@@ -30,6 +30,8 @@
     <UseApplicationTrust>false</UseApplicationTrust>
     <BootstrapperEnabled>true</BootstrapperEnabled>
     <TargetFrameworkProfile />
+    <!-- https://stackoverflow.com/questions/45938814/the-version-of-microsoft-net-sdk-used-by-this-project-is-insufficient-to-support -->
+    <DependsOnNETStandard>false</DependsOnNETStandard>
   </PropertyGroup>
   <PropertyGroup>
     <SignAssembly>true</SignAssembly>
@@ -49,7 +51,7 @@
     <RootNamespace>Npgsql.VSIX</RootNamespace>
     <AssemblyName>Npgsql.VSIX</AssemblyName>
     <TargetVsixContainerName>Npgsql.vsix</TargetVsixContainerName>
-    <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.6.1</TargetFrameworkVersion>
     <GeneratePkgDefFile>true</GeneratePkgDefFile>
     <IncludeAssemblyInVSIXContainer>true</IncludeAssemblyInVSIXContainer>
     <IncludeDebugSymbolsInVSIXContainer>true</IncludeDebugSymbolsInVSIXContainer>
@@ -217,19 +219,19 @@
     </Reference>
     <!-- Note the extra project reference to Npgsql which makes msbuild compile it, but which has Private=true -->
     <Reference Include="Npgsql">
-      <HintPath>..\Npgsql\bin\$(Configuration)\net452\Npgsql.dll</HintPath>
+      <HintPath>..\Npgsql\bin\$(Configuration)\net461\Npgsql.dll</HintPath>
     </Reference>
     <Reference Include="System.Runtime.CompilerServices.Unsafe">
-      <HintPath>..\Npgsql\bin\$(Configuration)\net452\System.Runtime.CompilerServices.Unsafe.dll</HintPath>
+      <HintPath>..\Npgsql\bin\$(Configuration)\net461\System.Runtime.CompilerServices.Unsafe.dll</HintPath>
     </Reference>
     <Reference Include="System.Threading.Tasks.Extensions">
-      <HintPath>..\Npgsql\bin\$(Configuration)\net452\System.Threading.Tasks.Extensions.dll</HintPath>
+      <HintPath>..\Npgsql\bin\$(Configuration)\net461\System.Threading.Tasks.Extensions.dll</HintPath>
     </Reference>
     <Reference Include="System.ValueTuple">
-      <HintPath>..\Npgsql\bin\$(Configuration)\net452\System.ValueTuple.dll</HintPath>
+      <HintPath>..\Npgsql\bin\$(Configuration)\net461\System.ValueTuple.dll</HintPath>
     </Reference>
     <Reference Include="System.Memory">
-      <HintPath>..\Npgsql\bin\$(Configuration)\net452\System.Memory.dll</HintPath>
+      <HintPath>..\Npgsql\bin\$(Configuration)\net461\System.Memory.dll</HintPath>
     </Reference>
     <Reference Include="stdole, Version=7.0.3300.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
       <EmbedInteropTypes>False</EmbedInteropTypes>

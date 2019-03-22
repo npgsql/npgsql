@@ -7,7 +7,7 @@ using System.Transactions;
 using NUnit.Framework;
 
 // TransactionScope exists in netstandard20, but distributed transactions do not
-#if NET452
+#if NET461
 
 namespace Npgsql.Tests
 {
@@ -545,7 +545,7 @@ Start formatting event queue, going to sleep a bit for late events
         #endregion Utilities
 
         #region Setup
-        
+
         NpgsqlConnection _controlConn;
 
         [OneTimeSetUp]

@@ -221,7 +221,7 @@ namespace Npgsql
             Debug.Assert(Connector.Connection != null, "Open done but connector not set on Connection");
             Log.Debug("Connection opened", Connector.Id);
             OnStateChange(new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open));
-            return PGUtil.CompletedTask;
+            return Task.CompletedTask;
 
             async Task OpenLong()
             {

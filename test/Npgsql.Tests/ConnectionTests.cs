@@ -1045,7 +1045,7 @@ namespace Npgsql.Tests
             }
         }
 
-#if NET452
+#if NET461
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/392")]
         public void NonUTF8Encoding()
         {
