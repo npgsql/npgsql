@@ -55,7 +55,7 @@ namespace Npgsql
                 return FlushAndWrite(buf, async);
             Debug.Assert(Length <= buf.WriteSpaceLeft, $"Message of type {GetType().Name} has length {Length} which is bigger than the buffer ({buf.WriteSpaceLeft})");
             WriteFully(buf);
-            return PGUtil.CompletedTask;
+            return Task.CompletedTask;
         }
 
         async Task FlushAndWrite(NpgsqlWriteBuffer buf, bool async)

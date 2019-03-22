@@ -26,7 +26,7 @@ namespace Npgsql.TypeHandlers
         public override RangeHandler CreateRangeHandler(PostgresType rangeBackendType)
             => throw new NotSupportedException();
     }
-    
+
     /// <summary>
     /// Base class for all type handlers which handle PostgreSQL arrays.
     /// </summary>
@@ -246,7 +246,7 @@ namespace Npgsql.TypeHandlers
             if (value == null || typeof(TAny) == typeof(DBNull))
             {
                 buf.WriteInt32(-1);
-                return PGUtil.CompletedTask;
+                return Task.CompletedTask;
             }
 
             return WriteWithLength();

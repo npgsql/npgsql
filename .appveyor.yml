@@ -27,8 +27,8 @@ before_build:
   - appveyor-retry dotnet restore -v Minimal Npgsql.sln
   - appveyor-retry nuget restore src\VSIX\packages.config -SolutionDirectory . -Verbosity quiet -NonInteractive
 build_script:
-  - dotnet build "test\Npgsql.Tests" -c Debug -f net452
-  - dotnet build "test\Npgsql.PluginTests" -c Debug -f net452
+  - dotnet build "test\Npgsql.Tests" -c Debug -f net461
+  - dotnet build "test\Npgsql.PluginTests" -c Debug -f net461
   - msbuild src\VSIX\VSIX.csproj /p:Configuration=Release /v:Minimal
   - msbuild src\MSI\MSI.wixproj /p:Configuration=Release /v:Minimal
 after_build:
@@ -40,8 +40,8 @@ after_build:
   - dotnet pack src\Npgsql.NetTopologySuite\Npgsql.NetTopologySuite.csproj -c Release
 test:
   assemblies:
-    - test\Npgsql.Tests\bin\Debug\net452\Npgsql.Tests.dll
-    - test\Npgsql.PluginTests\bin\Debug\net452\Npgsql.PluginTests.dll
+    - test\Npgsql.Tests\bin\Debug\net461\Npgsql.Tests.dll
+    - test\Npgsql.PluginTests\bin\Debug\net461\Npgsql.PluginTests.dll
 artifacts:
   - path: 'src\**\*.nupkg'
     name: Nuget

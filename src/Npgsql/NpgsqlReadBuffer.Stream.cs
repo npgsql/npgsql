@@ -131,7 +131,7 @@ namespace Npgsql
                 if (buffer.Length - offset < count)
                     throw new ArgumentException("Offset and length were out of bounds for the array or count is greater than the number of elements from index to the end of the source collection.");
                 if (cancellationToken.IsCancellationRequested)
-                    return new ValueTask<int>(PGUtil.CancelledTask);
+                    return new ValueTask<int>(Task.FromCanceled<int>(cancellationToken));
 
                 count = Math.Min(count, _len - _read);
 

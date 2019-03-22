@@ -269,7 +269,7 @@ namespace Npgsql
             if (byteLen <= WriteSpaceLeft)
             {
                 WriteString(s, charLen);
-                return PGUtil.CompletedTask;
+                return Task.CompletedTask;
             }
             return WriteStringLong();
 
@@ -303,7 +303,7 @@ namespace Npgsql
             if (byteLen <= WriteSpaceLeft)
             {
                 WriteChars(chars, offset, charLen);
-                return PGUtil.CompletedTask;
+                return Task.CompletedTask;
             }
             return WriteCharsLong();
 
@@ -361,7 +361,7 @@ namespace Npgsql
             if (bytes.Length <= WriteSpaceLeft)
             {
                 WriteBytes(bytes);
-                return PGUtil.CompletedTask;
+                return Task.CompletedTask;
             }
             return WriteBytesLong();
 

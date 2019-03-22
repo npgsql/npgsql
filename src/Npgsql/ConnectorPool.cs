@@ -247,28 +247,7 @@ namespace Npgsql
                         // waiter if there is one.
                         if (_waiting.TryDequeue(out var waitingOpenAttempt))
                         {
-                            var tcs = waitingOpenAttempt.TaskCompletionSource;
-
-                            // We have a pending open attempt. "Complete" it, handing off the connector.
-                            if (waitingOpenAttempt.IsAsync)
-                            {
-                                // If the waiting open attempt is asynchronous (i.e. OpenAsync()), we can't simply
-                                // call SetResult on its TaskCompletionSource, since it would execute the open's
-                                // continuation in our thread (the closing thread). Instead we schedule the completion
-                                // to run in the thread pool via Task.Run().
-
-                                // TODO: When we drop support for .NET Framework 4.5, switch to RunContinuationsAsynchronously
-#pragma warning disable 4014
-                                Task.Run(() =>
-                                {
-                                    if (!tcs.TrySetResult(null))
-                                    {
-                                        // TODO: Release more??
-                                    }
-                                });
-#pragma warning restore 4014
-                            }
-                            else if (!tcs.TrySetResult(null)) // Open attempt is sync
+                            if (!waitingOpenAttempt.TaskCompletionSource.TrySetResult(null))
                             {
                                 // TODO: Release more??
                             }
@@ -316,7 +295,7 @@ namespace Npgsql
                     try
                     {
                         // Enqueue an open attempt into the waiting queue so that the next release attempt will unblock us.
-                        var tcs = new TaskCompletionSource<NpgsqlConnector>();
+                        var tcs = new TaskCompletionSource<NpgsqlConnector>(TaskCreationOptions.RunContinuationsAsynchronously);
                         _waiting.Enqueue((tcs, async));
 
                         try
@@ -450,32 +429,7 @@ namespace Npgsql
                     var tcs = waitingOpenAttempt.TaskCompletionSource;
 
                     // We have a pending open attempt. "Complete" it, handing off the connector.
-                    if (waitingOpenAttempt.IsAsync)
-                    {
-                        // If the waiting open attempt is asynchronous (i.e. OpenAsync()), we can't simply
-                        // call SetResult on its TaskCompletionSource, since it would execute the open's
-                        // continuation in our thread (the closing thread). Instead we schedule the completion
-                        // to run in the thread pool via Task.Run().
-
-                        // We copy tcs2 and especially connector2 to avoid allocations caused by the closure, see
-                        // http://stackoverflow.com/questions/41507166/closure-heap-allocation-happening-at-start-of-method
-                        var tcs2 = tcs;
-                        var connector2 = connector;
-
-                        // TODO: When we drop support for .NET Framework 4.5, switch to RunContinuationsAsynchronously
-                        Task.Run(() =>
-                        {
-                            if (!tcs2.TrySetResult(connector2))
-                            {
-                                // If the open attempt timed out, the Task's state will be set to Canceled and our
-                                // TrySetResult fails.
-                                // "Recursively" call Release() again, this will dequeue another open attempt and retry.
-                                Debug.Assert(tcs2.Task.IsCanceled);
-                                Release(connector2);
-                            }
-                        });
-                    }
-                    else if (!tcs.TrySetResult(connector))  // Open attempt is sync
+                    if (!tcs.TrySetResult(connector))
                     {
                         // If the open attempt timed out, the Task's state will be set to Canceled and our
                         // TrySetResult fails. Try again.

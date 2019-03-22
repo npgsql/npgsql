@@ -104,7 +104,7 @@ namespace Npgsql
 
         internal Task Ensure(int count, bool async, bool dontBreakOnTimeouts)
         {
-            return count <= ReadBytesLeft ? PGUtil.CompletedTask : EnsureLong();
+            return count <= ReadBytesLeft ? Task.CompletedTask : EnsureLong();
 
             async Task EnsureLong()
             {

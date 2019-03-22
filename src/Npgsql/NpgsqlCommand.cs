@@ -591,7 +591,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             // all statements. Nothing to do here, move along.
             return needToPrepare
                 ? PrepareLong()
-                : PGUtil.CompletedTask;
+                : Task.CompletedTask;
 
             async Task PrepareLong()
             {

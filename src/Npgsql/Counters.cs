@@ -61,7 +61,7 @@ namespace Npgsql
                 var enabled = false;
                 var expensiveEnabled = false;
 
-#if NET452
+#if NET461
                 try
                 {
                     if (usePerfCounters)
@@ -108,7 +108,7 @@ namespace Npgsql
     /// </summary>
     sealed class Counter : IDisposable
     {
-#if NET452
+#if NET461
         internal const string DiagnosticsCounterCategory = ".NET Data Provider for PostgreSQL (Npgsql)";
 
         [CanBeNull]
@@ -122,7 +122,7 @@ namespace Npgsql
             if (!enabled)
                 return;
 
-#if NET452
+#if NET461
             DiagnosticsCounter = new PerformanceCounter
             {
                 CategoryName = DiagnosticsCounterCategory,
@@ -141,28 +141,28 @@ namespace Npgsql
 
         internal void Increment()
         {
-#if NET452
+#if NET461
             DiagnosticsCounter?.Increment();
 #endif
         }
 
         internal void Decrement()
         {
-#if NET452
+#if NET461
             DiagnosticsCounter?.Decrement();
 #endif
         }
 
         public void Dispose()
         {
-#if NET452
+#if NET461
             var diagnosticsCounter = DiagnosticsCounter;
             DiagnosticsCounter = null;
             diagnosticsCounter?.RemoveInstance();
 #endif
         }
 
-#if NET452
+#if NET461
         void OnProcessExit(object sender, EventArgs e) => Dispose();
         void OnDomainUnload(object sender, EventArgs e) => Dispose();
         void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)

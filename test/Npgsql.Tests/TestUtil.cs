@@ -105,7 +105,7 @@ namespace Npgsql.Tests
             using (cmd)
                 return cmd.ExecuteNonQuery();
         }
-        
+
         public static object ExecuteScalar(this NpgsqlConnection conn, string sql, NpgsqlTransaction tx = null)
         {
             var cmd = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
@@ -119,7 +119,7 @@ namespace Npgsql.Tests
             using (cmd)
                 return await cmd.ExecuteNonQueryAsync();
         }
-        
+
         public static async Task<object> ExecuteScalarAsync(this NpgsqlConnection conn, string sql, NpgsqlTransaction tx = null)
         {
             var cmd = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
@@ -247,10 +247,11 @@ namespace Npgsql.Tests
         NotPrepared
     }
 
-#if !NET452
+#if !NET461
     // When using netcoreapp, we use NUnit's portable library which doesn't include TimeoutAttribute
     // (probably because it can't enforce it). So we define it here to allow us to compile, once there's
     // proper support for netcoreapp this should be removed.
+    // https://github.com/nunit/nunit/issues/1638
     [AttributeUsage(AttributeTargets.Assembly | AttributeTargets.Class | AttributeTargets.Method, Inherited = false)]
     class TimeoutAttribute : Attribute
     {
