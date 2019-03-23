@@ -67,6 +67,10 @@ Additional known issues:
 * Entity Framework with database-computed identity values don't work with Redshift, since it doesn't support sequences
 (see issue [#544](https://github.com/npgsql/npgsql/issues/544)).
 
+## DigitalOcean Managed Database
+
+DigitalOcean's Managed Database services requires you to connect to PostgreSQL over SSL.  Unfortunately when you enable it in your connection string, you will get the same error regarding `ssl_renegotiation_limit` as Amazon Redshift.  The Redshift compatibility mode setting resolves the issue on DigitalOcean.
+
 ## pgbouncer
 
 Npgsql works well with PgBouncer, but there are some quirks to be aware of.
