@@ -14,7 +14,7 @@ using NpgsqlTypes;
 using System.Dynamic;
 #endif
 
-namespace Npgsql.TypeHandlers
+namespace Npgsql.TypeHandlers.CompositeHandlers
 {
     /// <summary>
     /// Type handler for PostgreSQL composite types, mapping them to C# dynamic.
@@ -282,22 +282,5 @@ namespace Npgsql.TypeHandlers
         }
 
         #endregion
-    }
-
-#pragma warning disable CA1040    // Avoid empty interfaces
-    interface IDynamicCompositeTypeHandlerFactory { }
-#pragma warning restore CA1040    // Avoid empty interfaces
-
-    class UnmappedCompositeTypeHandlerFactory : NpgsqlTypeHandlerFactory<object>
-    {
-        readonly INpgsqlNameTranslator _nameTranslator;
-
-        internal UnmappedCompositeTypeHandlerFactory(INpgsqlNameTranslator nameTranslator)
-        {
-            _nameTranslator = nameTranslator;
-        }
-
-        protected override NpgsqlTypeHandler<object> Create(NpgsqlConnection conn)
-            => new UnmappedCompositeHandler(_nameTranslator, conn.Connector.TypeMapper);
     }
 }

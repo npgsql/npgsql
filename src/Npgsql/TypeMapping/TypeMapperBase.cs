@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using JetBrains.Annotations;
 using Npgsql.TypeHandlers;
+using Npgsql.TypeHandlers.CompositeHandlers;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeMapping

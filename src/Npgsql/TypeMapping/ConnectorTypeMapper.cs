@@ -8,6 +8,7 @@ using JetBrains.Annotations;
 using Npgsql.Logging;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandlers;
+using Npgsql.TypeHandlers.CompositeHandlers;
 using Npgsql.TypeHandling;
 using NpgsqlTypes;
 
