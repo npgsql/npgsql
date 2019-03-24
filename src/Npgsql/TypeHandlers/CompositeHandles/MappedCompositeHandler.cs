@@ -1,19 +1,11 @@
-﻿using System;
+using System;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 
-namespace Npgsql.TypeHandlers
+namespace Npgsql.TypeHandlers.CompositeHandlers
 {
-    interface IMappedCompositeHandler
-    {
-        /// <summary>
-        /// The CLR type mapped to the PostgreSQL composite type.
-        /// </summary>
-        Type CompositeType { get; }
-    }
-
     class MappedCompositeHandler<T> : NpgsqlTypeHandler<T>, IMappedCompositeHandler where T : new()
     {
         readonly INpgsqlNameTranslator _nameTranslator;
@@ -38,34 +30,5 @@ namespace Npgsql.TypeHandlers
 
         public override Task Write(T value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
            => _wrappedHandler.Write(value, buf, lengthCache, parameter, async);
-    }
-
-    /// <summary>
-    /// Interface implemented by all mapped composite handler factories.
-    /// Used to expose the name translator for those reflecting enum mappings (e.g. EF Core).
-    /// </summary>
-    public interface IMappedCompositeTypeHandlerFactory
-    {
-        /// <summary>
-        /// The name translator used for this enum.
-        /// </summary>
-        INpgsqlNameTranslator NameTranslator { get; }
-    }
-
-    class MappedCompositeTypeHandlerFactory<T> : NpgsqlTypeHandlerFactory<T>, IMappedCompositeTypeHandlerFactory
-        where T : new()
-    {
-        public INpgsqlNameTranslator NameTranslator { get; }
-
-        internal MappedCompositeTypeHandlerFactory(INpgsqlNameTranslator nameTranslator)
-        {
-            NameTranslator = nameTranslator;
-        }
-
-        internal override NpgsqlTypeHandler Create(PostgresType pgType, NpgsqlConnection conn)
-            => new MappedCompositeHandler<T>(NameTranslator, pgType, conn);
-
-        protected override NpgsqlTypeHandler<T> Create(NpgsqlConnection conn)
-            => throw new InvalidOperationException($"Expect {nameof(PostgresType)}");
     }
 }
