@@ -148,6 +148,11 @@ namespace Npgsql
         internal readonly Dictionary<string, string> PostgresParameters;
 
         /// <summary>
+        /// Holds all run-time parameters in raw, binary format for efficient handling without allocations.
+        /// </summary>
+        readonly List<(byte[], byte[])> _rawParameters = new List<(byte[] Name, byte[] Value)>();
+
+        /// <summary>
         /// The timeout for reading messages that are part of the user's command
         /// (i.e. which aren't internal prepended commands).
         /// </summary>
@@ -1050,7 +1055,7 @@ namespace Npgsql
                 case BackendMessageCode.CloseComplete:
                     return CloseCompletedMessage.Instance;
                 case BackendMessageCode.ParameterStatus:
-                    HandleParameterStatus(buf.ReadNullTerminatedString(), buf.ReadNullTerminatedString());
+                    ReadParameterStatus(buf.GetNullTerminatedBytes(), buf.GetNullTerminatedBytes());
                     return null;
                 case BackendMessageCode.NoticeResponse:
                     var notice = new PostgresNotice(buf);
@@ -1973,8 +1978,30 @@ namespace Npgsql
 
         #region Misc
 
-        void HandleParameterStatus(string name, string value)
+        void ReadParameterStatus(ReadOnlySpan<byte> incomingName, ReadOnlySpan<byte> incomingValue)
         {
+            byte[] rawName;
+            byte[] rawValue;
+
+            foreach (var (currentName, currentValue) in _rawParameters)
+                if (incomingName.SequenceEqual(currentName))
+                {
+                    if (incomingValue.SequenceEqual(currentValue))
+                        return;
+
+                    rawName = currentName;
+                    rawValue = incomingValue.ToArray();
+                    goto ProcessParameter;
+                }
+
+            rawName = incomingName.ToArray();
+            rawValue = incomingValue.ToArray();
+            _rawParameters.Add((rawName, rawValue));
+
+        ProcessParameter:
+            var name = TextEncoding.GetString(rawName);
+            var value = TextEncoding.GetString(rawValue);
+
             PostgresParameters[name] = value;
 
             switch (name)
