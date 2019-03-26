@@ -4,6 +4,8 @@
     <Description>NetTopologySuite plugin for Npgsql, allowing mapping of PostGIS geometry types to NetTopologySuite types.</Description>
     <PackageTags>npgsql postgresql postgres postgis nts ado ado.net database sql</PackageTags>
     <VersionPrefix>1.0.2</VersionPrefix>
+    <TargetFrameworks>net461;netstandard2.0</TargetFrameworks>
+    <TargetFrameworks Condition="'$(OS)' != 'Windows_NT' OR '$(CoreOnly)' == 'True'">netstandard2.0</TargetFrameworks>
     <NoWarn>NU5104</NoWarn>
   </PropertyGroup>
   <ItemGroup>

@@ -1,4 +1,4 @@
-image: Visual Studio 2017
+image: Visual Studio 2019 Preview
 version: 4.1.0-{build}
 environment:
   global:
@@ -17,8 +17,8 @@ clone_depth: 10
 install:
   - powershell .build\setup_appveyor.ps1
   # The following can be used to install a custom version of .NET Core
-  # - ps: Invoke-WebRequest -Uri "https://raw.githubusercontent.com/dotnet/cli/master/scripts/obtain/dotnet-install.ps1" -OutFile "install-dotnet.ps1"
-  # - ps: .\install-dotnet.ps1 -Version 2.1.300 -InstallDir "dotnetcli"
+  - ps: Invoke-WebRequest -Uri "https://raw.githubusercontent.com/dotnet/cli/master/scripts/obtain/dotnet-install.ps1" -OutFile "install-dotnet.ps1"
+  - ps: .\install-dotnet.ps1 -Version 3.0.100-preview3-010431 -InstallDir "dotnetcli"
 services:
   - postgresql101
 before_build:
@@ -27,10 +27,11 @@ before_build:
   - appveyor-retry dotnet restore -v Minimal Npgsql.sln
   - appveyor-retry nuget restore src\VSIX\packages.config -SolutionDirectory . -Verbosity quiet -NonInteractive
 build_script:
-  - dotnet build "test\Npgsql.Tests" -c Debug -f net461
-  - dotnet build "test\Npgsql.PluginTests" -c Debug -f net461
+  - dotnet build "test\Npgsql.Tests" -c Debug
+  - dotnet build "test\Npgsql.PluginTests" -c Debug
   - msbuild src\VSIX\VSIX.csproj /p:Configuration=Release /v:Minimal
-  - msbuild src\MSI\MSI.wixproj /p:Configuration=Release /v:Minimal
+# WIX hasn't been released yet for VS 2019
+#  - msbuild src\MSI\MSI.wixproj /p:Configuration=Release /v:Minimal
 after_build:
   - dotnet pack src\Npgsql\Npgsql.csproj -c Release
   - dotnet pack src\Npgsql.Json.NET\Npgsql.Json.NET.csproj -c Release
@@ -42,6 +43,8 @@ test:
   assemblies:
     - test\Npgsql.Tests\bin\Debug\net461\Npgsql.Tests.dll
     - test\Npgsql.PluginTests\bin\Debug\net461\Npgsql.PluginTests.dll
+    - test\Npgsql.Tests\bin\Debug\netcoreapp3.0\Npgsql.Tests.dll
+    - test\Npgsql.PluginTests\bin\Debug\netcoreapp3.0\Npgsql.PluginTests.dll
 artifacts:
   - path: 'src\**\*.nupkg'
     name: Nuget
