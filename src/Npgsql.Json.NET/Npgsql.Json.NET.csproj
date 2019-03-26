@@ -3,6 +3,8 @@
     <Authors>Shay Rojansky</Authors>
     <Description>Json.NET plugin for Npgsql, allowing transparent serialization/deserialization of JSON objects directly to and from the database.</Description>
     <PackageTags>npgsql postgresql json postgres ado ado.net database sql</PackageTags>
+    <TargetFrameworks>net461;netstandard2.0</TargetFrameworks>
+    <TargetFrameworks Condition="'$(OS)' != 'Windows_NT' OR '$(CoreOnly)' == 'True'">netstandard2.0</TargetFrameworks>
     <VersionPrefix>1.0.0</VersionPrefix>
   </PropertyGroup>
   <ItemGroup>

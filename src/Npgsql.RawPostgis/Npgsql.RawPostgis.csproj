@@ -4,6 +4,8 @@
     <Description>PostGIS plugin for Npgsql, allowing raw byte access to PostGIS ypes.</Description>
     <PackageTags>npgsql postgresql postgres postgis spatial geometry geography ado ado.net database sql</PackageTags>
     <VersionPrefix>1.0.0</VersionPrefix>
+    <TargetFrameworks>net461;netstandard2.0</TargetFrameworks>
+    <TargetFrameworks Condition="'$(OS)' != 'Windows_NT' OR '$(CoreOnly)' == 'True'">netstandard2.0</TargetFrameworks>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Npgsql\Npgsql.csproj" />

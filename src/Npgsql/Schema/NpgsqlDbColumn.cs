@@ -3,7 +3,7 @@ using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 
-#if NETSTANDARD2_0
+#if !NET461
 using System.Data.Common;
 #endif
 
