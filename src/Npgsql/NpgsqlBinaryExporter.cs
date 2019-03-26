@@ -48,7 +48,8 @@ namespace Npgsql
             _columnLen = int.MinValue;   // Mark that the (first) column length hasn't been read yet
             _column = -1;
 
-            _connector.SendQuery(copyToCommand);
+            _connector.WriteQuery(copyToCommand);
+            _connector.Flush();
 
             CopyOutResponseMessage copyOutResponse;
             var msg = _connector.ReadMessage();

@@ -2,7 +2,6 @@
 using System.Diagnostics;
 using System.IO;
 using Npgsql.BackendMessages;
-using Npgsql.FrontendMessages;
 using Npgsql.Logging;
 using static Npgsql.Util.Statics;
 
@@ -56,7 +55,10 @@ namespace Npgsql
             _connector = connector;
             _readBuf = connector.ReadBuffer;
             _writeBuf = connector.WriteBuffer;
-            _connector.SendQuery(copyCommand);
+
+            _connector.WriteQuery(copyCommand);
+            _connector.Flush();
+
             var msg = _connector.ReadMessage();
             switch (msg.Code)
             {
@@ -193,7 +195,8 @@ namespace Npgsql
                 _isDisposed = true;
                 _writeBuf.EndCopyMode();
                 _writeBuf.Clear();
-                _connector.SendMessage(new CopyFailMessage());
+                _connector.WriteCopyFail();
+                _connector.Flush();
                 try
                 {
                     var msg = _connector.ReadMessage();
@@ -228,7 +231,8 @@ namespace Npgsql
                 {
                     Flush();
                     _writeBuf.EndCopyMode();
-                    _connector.SendMessage(CopyDoneMessage.Instance);
+                    _connector.WriteCopyDone();
+                    _connector.Flush();
                     Expect<CommandCompleteMessage>(_connector.ReadMessage());
                     Expect<ReadyForQueryMessage>(_connector.ReadMessage());
                 }

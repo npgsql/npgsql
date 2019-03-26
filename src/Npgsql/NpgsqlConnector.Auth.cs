@@ -4,11 +4,11 @@ using System.IO;
 using System.Net;
 using System.Net.Security;
 using System.Security.Cryptography;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
-using Npgsql.FrontendMessages;
 using Npgsql.Util;
 using static Npgsql.Util.Statics;
 
@@ -58,10 +58,11 @@ namespace Npgsql
             if (passwd == null)
                 throw new NpgsqlException("No password has been provided but the backend requires one (in cleartext)");
 
-            await PasswordMessage
-                .CreateClearText(passwd)
-                .Write(WriteBuffer, async);
-            await WriteBuffer.Flush(async);
+            var encoded = new byte[Encoding.UTF8.GetByteCount(passwd) + 1];
+            Encoding.UTF8.GetBytes(passwd, 0, passwd.Length, encoded, 0);
+
+            await WritePassword(encoded, async);
+            await Flush(async);
             Expect<AuthenticationRequestMessage>(await ReadMessage(async));
         }
 
@@ -76,12 +77,14 @@ namespace Npgsql
             var passwd = GetPassword() ??
                          throw new NpgsqlException($"No password has been provided but the backend requires one (in SASL/{mechanism})");
 
+            const string ClientKey = "Client Key";
+            const string ServerKey = "Server Key";
+
             // Assumption: the write buffer is big enough to contain all our outgoing messages
             var clientNonce = GetNonce();
 
-            await new SASLInitialResponseMessage(mechanism, PGUtil.UTF8Encoding.GetBytes("n,,n=*,r=" + clientNonce))
-                .Write(WriteBuffer, async);
-            await WriteBuffer.Flush(async);
+            await WriteSASLInitialResponse(mechanism, PGUtil.UTF8Encoding.GetBytes("n,,n=*,r=" + clientNonce), async);
+            await Flush(async);
 
             var saslContinueMsg = Expect<AuthenticationSASLContinueMessage>(await ReadMessage(async));
             if (saslContinueMsg.AuthRequestType != AuthenticationRequestType.AuthenticationSASLContinue)
@@ -90,23 +93,43 @@ namespace Npgsql
             if (!firstServerMsg.Nonce.StartsWith(clientNonce))
                 throw new InvalidOperationException("[SCRAM] Malformed SCRAMServerFirst message: server nonce doesn't start with client nonce");
 
-            var scramFinalClientMsg = new SCRAMClientFinalMessage(passwd, firstServerMsg.Nonce, firstServerMsg.Salt, firstServerMsg.Iteration, clientNonce);
-            await scramFinalClientMsg.Write(WriteBuffer, async);
-            await WriteBuffer.Flush(async);
+            var saltBytes = Convert.FromBase64String(firstServerMsg.Salt);
+            var saltedPassword = Hi(passwd.Normalize(NormalizationForm.FormKC), saltBytes, firstServerMsg.Iteration);
+
+            var clientKey = HMAC(saltedPassword, ClientKey);
+            var storedKey = SHA256.Create().ComputeHash(clientKey);
+
+            var clientFirstMessageBare = "n=*,r=" + clientNonce;
+            var serverFirstMessage = $"r={firstServerMsg.Nonce},s={firstServerMsg.Salt},i={firstServerMsg.Iteration}";
+            var clientFinalMessageWithoutProof = "c=biws,r=" + firstServerMsg.Nonce;
+
+            var authMessage = $"{clientFirstMessageBare},{serverFirstMessage},{clientFinalMessageWithoutProof}";
+
+            var clientSignature = HMAC(storedKey, authMessage);
+            var clientProofBytes = XOR(clientKey, clientSignature);
+            var clientProof = Convert.ToBase64String(clientProofBytes);
+
+            var serverKey = HMAC(saltedPassword, ServerKey);
+            var serverSignature = HMAC(serverKey, authMessage);
+
+            var messageStr = $"{clientFinalMessageWithoutProof},p={clientProof}";
+
+            await WriteSASLResponse(Encoding.UTF8.GetBytes(messageStr), async);
+            await Flush(async);
 
             var saslFinalServerMsg = Expect<AuthenticationSASLFinalMessage>(await ReadMessage(async));
             if (saslFinalServerMsg.AuthRequestType != AuthenticationRequestType.AuthenticationSASLFinal)
                 throw new NpgsqlException("[SASL] AuthenticationSASLFinal message expected");
             var scramFinalServerMsg = new AuthenticationSCRAMServerFinalMessage(saslFinalServerMsg.Payload);
 
-            if (scramFinalServerMsg.ServerSignature != Convert.ToBase64String(scramFinalClientMsg.ServerSignature))
+            if (scramFinalServerMsg.ServerSignature != Convert.ToBase64String(serverSignature))
                 throw new NpgsqlException("[SCRAM] Unable to verify server signature");
 
             var okMsg = Expect<AuthenticationRequestMessage>(await ReadMessage(async));
             if (okMsg.AuthRequestType != AuthenticationRequestType.AuthenticationOk)
                 throw new NpgsqlException("[SASL] Expected AuthenticationOK message");
 
-            string GetNonce()
+            static string GetNonce()
             {
                 var nonceLength = 18;
                 var rncProvider = RandomNumberGenerator.Create();
@@ -114,6 +137,39 @@ namespace Npgsql
                 rncProvider.GetBytes(nonceBytes);
                 return Convert.ToBase64String(nonceBytes);
             }
+
+            static byte[] Hi(string str, byte[] salt, int count)
+            {
+                using (var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(str)))
+                {
+                    var salt1 = new byte[salt.Length + 4];
+                    byte[] hi, u1;
+
+                    Buffer.BlockCopy(salt, 0, salt1, 0, salt.Length);
+                    salt1[salt1.Length - 1] = (byte)1;
+
+                    hi = u1 = hmac.ComputeHash(salt1);
+
+                    for (var i = 1; i < count; i++)
+                    {
+                        var u2 = hmac.ComputeHash(u1);
+                        XOR(hi, u2);
+                        u1 = u2;
+                    }
+
+                    return hi;
+                }
+            }
+
+            static byte[] XOR(byte[] buffer1, byte[] buffer2)
+            {
+                for (var i = 0; i < buffer1.Length; i++)
+                    buffer1[i] ^= buffer2[i];
+                return buffer1;
+            }
+
+            static byte[] HMAC(byte[] data, string key)
+                => new HMACSHA256(data).ComputeHash(Encoding.UTF8.GetBytes(key));
         }
 
         async Task AuthenticateMD5(string username, byte[] salt, bool async)
@@ -122,10 +178,42 @@ namespace Npgsql
             if (passwd == null)
                 throw new NpgsqlException("No password has been provided but the backend requires one (in MD5)");
 
-            await PasswordMessage
-                .CreateMD5(passwd, username, salt)
-                .Write(WriteBuffer, async);
-            await WriteBuffer.Flush(async);
+            var md5 = MD5.Create();
+
+            // First phase
+            var passwordBytes = PGUtil.UTF8Encoding.GetBytes(passwd);
+            var usernameBytes = PGUtil.UTF8Encoding.GetBytes(username);
+            var cryptBuf = new byte[passwordBytes.Length + usernameBytes.Length];
+            passwordBytes.CopyTo(cryptBuf, 0);
+            usernameBytes.CopyTo(cryptBuf, passwordBytes.Length);
+
+            var sb = new StringBuilder();
+            var hashResult = md5.ComputeHash(cryptBuf);
+            foreach (var b in hashResult)
+                sb.Append(b.ToString("x2"));
+
+            var prehash = sb.ToString();
+
+            var prehashbytes = PGUtil.UTF8Encoding.GetBytes(prehash);
+            cryptBuf = new byte[prehashbytes.Length + 4];
+
+            Array.Copy(salt, 0, cryptBuf, prehashbytes.Length, 4);
+
+            // 2.
+            prehashbytes.CopyTo(cryptBuf, 0);
+
+            sb = new StringBuilder("md5");
+            hashResult = md5.ComputeHash(cryptBuf);
+            foreach (var b in hashResult)
+                sb.Append(b.ToString("x2"));
+
+            var resultString = sb.ToString();
+            var result = new byte[Encoding.UTF8.GetByteCount(resultString) + 1];
+            Encoding.UTF8.GetBytes(resultString, 0, resultString.Length, result, 0);
+            result[result.Length - 1] = 0;
+
+            await WritePassword(result, async);
+            await Flush(async);
             Expect<AuthenticationRequestMessage>(await ReadMessage(async));
         }
 
@@ -175,7 +263,6 @@ namespace Npgsql
         class GSSPasswordMessageStream : Stream
         {
             readonly NpgsqlConnector _connector;
-            readonly PasswordMessage _msg;
             int _leftToWrite;
             int _leftToRead, _readPos;
             byte[] _readBuf;
@@ -183,7 +270,6 @@ namespace Npgsql
             internal GSSPasswordMessageStream(NpgsqlConnector connector)
             {
                 _connector = connector;
-                _msg = new PasswordMessage();
             }
 
             public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
@@ -214,9 +300,8 @@ namespace Npgsql
 
                 if (count > _leftToWrite)
                     throw new NpgsqlException($"NegotiateStream trying to write {count} bytes but according to frame header we only have {_leftToWrite} left!");
-                await _msg.Populate(buffer, offset, count)
-                    .Write(_connector.WriteBuffer, false);
-                await _connector.WriteBuffer.Flush(async);
+                await _connector.WritePassword(buffer, offset, count, async);
+                await _connector.Flush(async);
                 _leftToWrite -= count;
             }
 

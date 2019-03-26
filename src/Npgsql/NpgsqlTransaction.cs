@@ -5,7 +5,6 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
-using Npgsql.FrontendMessages;
 using Npgsql.Logging;
 
 namespace Npgsql
@@ -84,18 +83,18 @@ namespace Npgsql
             switch (isolationLevel) {
                 case IsolationLevel.RepeatableRead:
                 case IsolationLevel.Snapshot:
-                    _connector.PrependInternalMessage(PregeneratedMessage.BeginTransRepeatableRead);
+                    _connector.PrependInternalMessage(PregeneratedMessages.BeginTransRepeatableRead, 2);
                     break;
                 case IsolationLevel.Serializable:
-                    _connector.PrependInternalMessage(PregeneratedMessage.BeginTransSerializable);
+                    _connector.PrependInternalMessage(PregeneratedMessages.BeginTransSerializable, 2);
                     break;
                 case IsolationLevel.ReadUncommitted:
                     // PG doesn't really support ReadUncommitted, it's the same as ReadCommitted. But we still
                     // send as if.
-                    _connector.PrependInternalMessage(PregeneratedMessage.BeginTransReadUncommitted);
+                    _connector.PrependInternalMessage(PregeneratedMessages.BeginTransReadUncommitted, 2);
                     break;
                 case IsolationLevel.ReadCommitted:
-                    _connector.PrependInternalMessage(PregeneratedMessage.BeginTransReadCommitted);
+                    _connector.PrependInternalMessage(PregeneratedMessages.BeginTransReadCommitted, 2);
                     break;
                 case IsolationLevel.Unspecified:
                     isolationLevel = DefaultIsolationLevel;
@@ -126,7 +125,7 @@ namespace Npgsql
             using (_connector.StartUserAction())
             {
                 Log.Debug("Committing transaction", _connector.Id);
-                await _connector.ExecuteInternalCommand(PregeneratedMessage.CommitTransaction, async);
+                await _connector.ExecuteInternalCommand(PregeneratedMessages.CommitTransaction, async);
                 Clear();
             }
         }
