@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
+using Npgsql.Util;
 
 namespace Npgsql.FrontendMessages
 {

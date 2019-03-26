@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using JetBrains.Annotations;
 using Npgsql;
+using Npgsql.Util;
 
 #pragma warning disable 1591
 

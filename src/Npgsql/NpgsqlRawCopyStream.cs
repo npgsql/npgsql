@@ -4,7 +4,7 @@ using System.IO;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
 using Npgsql.Logging;
-using static Npgsql.Statics;
+using static Npgsql.Util.Statics;
 
 #pragma warning disable 1591
 

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using Npgsql.Util;
 using NUnit.Framework;
 
 namespace Npgsql.Tests

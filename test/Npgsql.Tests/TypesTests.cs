@@ -1,6 +1,7 @@
 using System;
 using System.Globalization;
 using System.Net;
+using Npgsql.Util;
 using NpgsqlTypes;
 using NUnit.Framework;
 

@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using Npgsql.Util;
 
 namespace Npgsql.FrontendMessages
 {

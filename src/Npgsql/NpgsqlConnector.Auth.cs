@@ -9,7 +9,8 @@ using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
-using static Npgsql.Statics;
+using Npgsql.Util;
+using static Npgsql.Util.Statics;
 
 namespace Npgsql
 {

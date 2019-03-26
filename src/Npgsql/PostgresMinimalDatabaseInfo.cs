@@ -3,6 +3,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using Npgsql.PostgresTypes;
+using Npgsql.Util;
 using NpgsqlTypes;
 
 namespace Npgsql

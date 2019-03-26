@@ -17,6 +17,7 @@ using Npgsql.NameTranslation;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 using System.Transactions;
+using Npgsql.Util;
 using IsolationLevel = System.Data.IsolationLevel;
 
 namespace Npgsql

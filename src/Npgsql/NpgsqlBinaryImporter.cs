@@ -4,7 +4,7 @@ using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
 using Npgsql.Logging;
 using NpgsqlTypes;
-using static Npgsql.Statics;
+using static Npgsql.Util.Statics;
 
 namespace Npgsql
 {

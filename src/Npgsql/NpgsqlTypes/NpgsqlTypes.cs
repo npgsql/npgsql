@@ -9,6 +9,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using JetBrains.Annotations;
 using Npgsql;
+using Npgsql.Util;
 
 #pragma warning disable 1591
 

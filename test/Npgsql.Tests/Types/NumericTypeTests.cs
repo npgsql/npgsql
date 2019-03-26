@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
+using Npgsql.Util;
 using NpgsqlTypes;
 using NUnit.Framework;
 

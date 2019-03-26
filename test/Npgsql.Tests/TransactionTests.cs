@@ -2,6 +2,7 @@
 using System.Data;
 using System.Data.Common;
 using System.Threading.Tasks;
+using Npgsql.Util;
 using NUnit.Framework;
 
 namespace Npgsql.Tests
