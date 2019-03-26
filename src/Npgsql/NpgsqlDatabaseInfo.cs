@@ -203,7 +203,7 @@ namespace Npgsql
             if (!versionString.Contains("."))
                 versionString += ".0";
             return new Version(versionString);
-        }        
+        }
 
         #endregion Misc
 
