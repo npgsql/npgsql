@@ -1,7 +1,6 @@
 ﻿using System;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
-using Npgsql.FrontendMessages;
 using Npgsql.Logging;
 using NpgsqlTypes;
 using static Npgsql.Util.Statics;
@@ -51,7 +50,8 @@ namespace Npgsql
             _buf = connector.WriteBuffer;
             _column = -1;
 
-            _connector.SendQuery(copyFromCommand);
+            _connector.WriteQuery(copyFromCommand);
+            _connector.Flush();
 
             CopyInResponseMessage copyInResponse;
             var msg = _connector.ReadMessage();
@@ -271,8 +271,8 @@ namespace Npgsql
                 WriteTrailer();
                 _buf.Flush();
                 _buf.EndCopyMode();
-
-                _connector.SendMessage(CopyDoneMessage.Instance);
+                _connector.WriteCopyDone();
+                _connector.Flush();
                 var cmdComplete = Expect<CommandCompleteMessage>(_connector.ReadMessage());
                 Expect<ReadyForQueryMessage>(_connector.ReadMessage());
                 _state = ImporterState.Committed;
@@ -298,7 +298,8 @@ namespace Npgsql
             _state = ImporterState.Cancelled;
             _buf.Clear();
             _buf.EndCopyMode();
-            _connector.SendMessage(new CopyFailMessage());
+            _connector.WriteCopyFail();
+            _connector.Flush();
             try
             {
                 var msg = _connector.ReadMessage();
