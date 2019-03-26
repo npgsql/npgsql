@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Npgsql.PostgresTypes;
+using Npgsql.Util;
 
 namespace Npgsql
 {
@@ -52,35 +53,35 @@ namespace Npgsql
         /// <summary>
         /// Whether the backend supports range types.
         /// </summary>
-        public virtual bool SupportsRangeTypes => VersionGreaterOrEqual(Version, 9, 2, 0);
+        public virtual bool SupportsRangeTypes => Version.IsGreaterOrEqual(9, 2, 0);
         /// <summary>
         /// Whether the backend supports enum types.
         /// </summary>
-        public virtual bool SupportsEnumTypes => VersionGreaterOrEqual(Version, 8, 3, 0);
+        public virtual bool SupportsEnumTypes => Version.IsGreaterOrEqual(8, 3, 0);
         /// <summary>
         /// Whether the backend supports the CLOSE ALL statement.
         /// </summary>
-        public virtual bool SupportsCloseAll => VersionGreaterOrEqual(Version, 8, 3, 0);
+        public virtual bool SupportsCloseAll => Version.IsGreaterOrEqual(8, 3, 0);
         /// <summary>
         /// Whether the backend supports advisory locks.
         /// </summary>
-        public virtual bool SupportsAdvisoryLocks => VersionGreaterOrEqual(Version, 8, 2, 0);
+        public virtual bool SupportsAdvisoryLocks => Version.IsGreaterOrEqual(8, 2, 0);
         /// <summary>
         /// Whether the backend supports the DISCARD SEQUENCES statement.
         /// </summary>
-        public virtual bool SupportsDiscardSequences => VersionGreaterOrEqual(Version, 9, 4, 0);
+        public virtual bool SupportsDiscardSequences => Version.IsGreaterOrEqual(9, 4, 0);
         /// <summary>
         /// Whether the backend supports the UNLISTEN statement.
         /// </summary>
-        public virtual bool SupportsUnlisten => VersionGreaterOrEqual(Version, 6, 4, 0);  // overridden by PostgresDatabase
+        public virtual bool SupportsUnlisten => Version.IsGreaterOrEqual(6, 4, 0);  // overridden by PostgresDatabase
         /// <summary>
         /// Whether the backend supports the DISCARD TEMP statement.
         /// </summary>
-        public virtual bool SupportsDiscardTemp => VersionGreaterOrEqual(Version, 8, 3, 0);
+        public virtual bool SupportsDiscardTemp => Version.IsGreaterOrEqual(8, 3, 0);
         /// <summary>
         /// Whether the backend supports the DISCARD statement.
         /// </summary>
-        public virtual bool SupportsDiscard => VersionGreaterOrEqual(Version, 8, 3, 0);
+        public virtual bool SupportsDiscard => Version.IsGreaterOrEqual(8, 3, 0);
 
         /// <summary>
         /// Reports whether the backend uses the newer integer timestamp representation.
@@ -202,45 +203,7 @@ namespace Npgsql
             if (!versionString.Contains("."))
                 versionString += ".0";
             return new Version(versionString);
-        }
-
-        /// <summary>
-        /// Allocation free helper function to find if version is greater than expected
-        /// </summary>
-        private static bool VersionGreaterOrEqual(Version version, int major, int minor, int build)
-        {
-            if (version.Major != major)
-            {
-                if (version.Major > major)
-                {
-                    return true;
-                }
-
-                return false;
-            }
-
-            if (version.Minor != minor)
-            {
-                if (version.Minor > minor)
-                {
-                    return true;
-                }
-
-                return false;
-            }
-
-            if (version.Build != build)
-            {
-                if (version.Build > build)
-                {
-                    return true;
-                }
-
-                return false;
-            }
-
-            return true;
-        }
+        }        
 
         #endregion Misc
 
