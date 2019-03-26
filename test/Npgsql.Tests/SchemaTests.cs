@@ -190,7 +190,7 @@ namespace Npgsql.Tests
 
         enum TestEnum { A, B };
 
-        class TestComposite { int A { get; set; } }
+        class TestComposite { public int A { get; set; } }
 
         [Test]
         public void Restrictions()
@@ -236,7 +236,7 @@ namespace Npgsql.Tests
                 {
                     const string parameterName = "@p_int";
                     command.CommandText = "SELECT * FROM data WHERE int=" +
-                                            String.Format(parameterMarkerFormat, parameterName);
+                                            string.Format(parameterMarkerFormat, parameterName);
                     command.Parameters.Add(new NpgsqlParameter(parameterName, 4));
                     using (var reader = command.ExecuteReader())
                     {

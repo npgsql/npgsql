@@ -10,12 +10,10 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
         public INpgsqlNameTranslator NameTranslator { get; }
 
         internal MappedCompositeTypeHandlerFactory(INpgsqlNameTranslator nameTranslator)
-        {
-            NameTranslator = nameTranslator;
-        }
+            => NameTranslator = nameTranslator;
 
         internal override NpgsqlTypeHandler Create(PostgresType pgType, NpgsqlConnection conn)
-            => new MappedCompositeHandler<T>(NameTranslator, pgType, conn);
+            => MappedCompositeHandler<T>.Create((PostgresCompositeType)pgType, conn.Connector.TypeMapper, NameTranslator);
 
         protected override NpgsqlTypeHandler<T> Create(NpgsqlConnection conn)
             => throw new InvalidOperationException($"Expect {nameof(PostgresType)}");

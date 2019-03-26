@@ -1325,7 +1325,7 @@ namespace Npgsql
             try
             {
                 return NullableHandler<T>.Exists
-                    ? NullableHandler<T>.Read(Buffer, ColumnLen, fieldDescription)
+                    ? NullableHandler<T>.Read(fieldDescription.Handler, Buffer, ColumnLen, fieldDescription)
                     : typeof(T) == typeof(object)
                         ? (T)fieldDescription.Handler.ReadAsObject(Buffer, ColumnLen, fieldDescription)
                         : fieldDescription.Handler.Read<T>(Buffer, ColumnLen, fieldDescription);
@@ -1367,8 +1367,8 @@ namespace Npgsql
             {
                 return NullableHandler<T>.Exists
                     ? ColumnLen <= Buffer.ReadBytesLeft
-                        ? NullableHandler<T>.Read(Buffer, ColumnLen, fieldDescription)
-                        : await NullableHandler<T>.ReadAsync(Buffer, ColumnLen, async, fieldDescription)
+                        ? NullableHandler<T>.Read(fieldDescription.Handler, Buffer, ColumnLen, fieldDescription)
+                        : await NullableHandler<T>.ReadAsync(fieldDescription.Handler, Buffer, ColumnLen, async, fieldDescription)
                     : typeof(T) == typeof(object)
                         ? ColumnLen <= Buffer.ReadBytesLeft
                             ? (T)fieldDescription.Handler.ReadAsObject(Buffer, ColumnLen, fieldDescription)
