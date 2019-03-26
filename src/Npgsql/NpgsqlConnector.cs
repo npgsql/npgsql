@@ -18,7 +18,8 @@ using Npgsql.BackendMessages;
 using Npgsql.FrontendMessages;
 using Npgsql.Logging;
 using Npgsql.TypeMapping;
-using static Npgsql.Statics;
+using Npgsql.Util;
+using static Npgsql.Util.Statics;
 
 namespace Npgsql
 {

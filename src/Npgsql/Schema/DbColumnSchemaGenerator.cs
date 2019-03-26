@@ -6,6 +6,7 @@ using System.Linq;
 using System.Transactions;
 using Npgsql.BackendMessages;
 using Npgsql.TypeHandlers;
+using Npgsql.Util;
 
 namespace Npgsql.Schema
 {

@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Transactions;
 using JetBrains.Annotations;
 using Npgsql.Logging;
+using Npgsql.Util;
 
 namespace Npgsql
 {

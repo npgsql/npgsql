@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.Logging;
 using Npgsql.PostgresTypes;
+using Npgsql.Util;
 
 // ReSharper disable StringLiteralTypo
 // ReSharper disable CommentTypo

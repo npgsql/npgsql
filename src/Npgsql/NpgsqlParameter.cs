@@ -8,6 +8,7 @@ using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
+using Npgsql.Util;
 using NpgsqlTypes;
 
 namespace Npgsql

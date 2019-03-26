@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Npgsql
+namespace Npgsql.Util
 {
     static class Statics
     {

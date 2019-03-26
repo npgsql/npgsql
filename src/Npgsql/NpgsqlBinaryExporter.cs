@@ -7,7 +7,7 @@ using Npgsql.Logging;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
-using static Npgsql.Statics;
+using static Npgsql.Util.Statics;
 
 namespace Npgsql
 {

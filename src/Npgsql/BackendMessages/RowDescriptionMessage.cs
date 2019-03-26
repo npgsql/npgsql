@@ -7,6 +7,7 @@ using Npgsql.PostgresTypes;
 using Npgsql.TypeHandlers;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
+using Npgsql.Util;
 
 namespace Npgsql.BackendMessages
 {

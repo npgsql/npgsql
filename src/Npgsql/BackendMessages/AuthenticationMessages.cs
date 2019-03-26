@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using Npgsql.Logging;
+using Npgsql.Util;
 
 namespace Npgsql.BackendMessages
 {

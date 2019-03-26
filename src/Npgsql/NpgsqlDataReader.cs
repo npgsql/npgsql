@@ -18,8 +18,9 @@ using Npgsql.PostgresTypes;
 using Npgsql.Schema;
 using Npgsql.TypeHandlers;
 using Npgsql.TypeHandling;
+using Npgsql.Util;
 using NpgsqlTypes;
-using static Npgsql.Statics;
+using static Npgsql.Util.Statics;
 
 #pragma warning disable CA2222 // Do not decrease inherited member visibility
 

@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Npgsql.PostgresTypes;
+using Npgsql.Util;
 
 namespace Npgsql
 {

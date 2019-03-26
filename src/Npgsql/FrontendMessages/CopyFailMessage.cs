@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using JetBrains.Annotations;
+using Npgsql.Util;
 
 namespace Npgsql.FrontendMessages
 {
