@@ -37,7 +37,18 @@ namespace Npgsql
         /// <summary>
         /// Cached DataSource value to reduce allocations on NpgsqlConnection.DataSource.get
         /// </summary>
-        internal string DataSourceCached { get; set; }
+        private string _dataSourceCached;
+
+        internal string DataSourceCached
+        {
+            get
+            {
+                if (_dataSourceCached == null)
+                    _dataSourceCached = $"tcp://{_host}:{_port}";
+
+                return _dataSourceCached;
+            }
+        }
 
         #endregion
 
@@ -270,7 +281,7 @@ namespace Npgsql
             {
                 _host = value;
                 SetValue(nameof(Host), value);
-                DataSourceCached = $"tcp://{_host}:{_port}";
+                _dataSourceCached = null;
             }
         }
         string _host;
@@ -293,7 +304,7 @@ namespace Npgsql
 
                 _port = value;
                 SetValue(nameof(Port), value);
-                DataSourceCached = $"tcp://{_host}:{_port}";
+                _dataSourceCached = null;
             }
         }
         int _port;
