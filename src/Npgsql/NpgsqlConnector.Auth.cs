@@ -97,7 +97,9 @@ namespace Npgsql
             var saltedPassword = Hi(passwd.Normalize(NormalizationForm.FormKC), saltBytes, firstServerMsg.Iteration);
 
             var clientKey = HMAC(saltedPassword, ClientKey);
-            var storedKey = SHA256.Create().ComputeHash(clientKey);
+            byte[] storedKey;
+            using (var sha256 = SHA256.Create())
+                storedKey = sha256.ComputeHash(clientKey);
 
             var clientFirstMessageBare = "n=*,r=" + clientNonce;
             var serverFirstMessage = $"r={firstServerMsg.Nonce},s={firstServerMsg.Salt},i={firstServerMsg.Iteration}";
@@ -131,11 +133,12 @@ namespace Npgsql
 
             static string GetNonce()
             {
-                var nonceLength = 18;
-                var rncProvider = RandomNumberGenerator.Create();
-                var nonceBytes = new byte[nonceLength];
-                rncProvider.GetBytes(nonceBytes);
-                return Convert.ToBase64String(nonceBytes);
+                using (var rncProvider = RandomNumberGenerator.Create())
+                {
+                    var nonceBytes = new byte[18];
+                    rncProvider.GetBytes(nonceBytes);
+                    return Convert.ToBase64String(nonceBytes);
+                }
             }
 
             static byte[] Hi(string str, byte[] salt, int count)
@@ -169,7 +172,10 @@ namespace Npgsql
             }
 
             static byte[] HMAC(byte[] data, string key)
-                => new HMACSHA256(data).ComputeHash(Encoding.UTF8.GetBytes(key));
+            {
+                using (var hmacsha256 = new HMACSHA256(data))
+                    return hmacsha256.ComputeHash(Encoding.UTF8.GetBytes(key));
+            }
         }
 
         async Task AuthenticateMD5(string username, byte[] salt, bool async)
@@ -178,39 +184,41 @@ namespace Npgsql
             if (passwd == null)
                 throw new NpgsqlException("No password has been provided but the backend requires one (in MD5)");
 
-            var md5 = MD5.Create();
+            byte[] result;
+            using (var md5 = MD5.Create())
+            {
+                // First phase
+                var passwordBytes = PGUtil.UTF8Encoding.GetBytes(passwd);
+                var usernameBytes = PGUtil.UTF8Encoding.GetBytes(username);
+                var cryptBuf = new byte[passwordBytes.Length + usernameBytes.Length];
+                passwordBytes.CopyTo(cryptBuf, 0);
+                usernameBytes.CopyTo(cryptBuf, passwordBytes.Length);
 
-            // First phase
-            var passwordBytes = PGUtil.UTF8Encoding.GetBytes(passwd);
-            var usernameBytes = PGUtil.UTF8Encoding.GetBytes(username);
-            var cryptBuf = new byte[passwordBytes.Length + usernameBytes.Length];
-            passwordBytes.CopyTo(cryptBuf, 0);
-            usernameBytes.CopyTo(cryptBuf, passwordBytes.Length);
+                var sb = new StringBuilder();
+                var hashResult = md5.ComputeHash(cryptBuf);
+                foreach (var b in hashResult)
+                    sb.Append(b.ToString("x2"));
 
-            var sb = new StringBuilder();
-            var hashResult = md5.ComputeHash(cryptBuf);
-            foreach (var b in hashResult)
-                sb.Append(b.ToString("x2"));
+                var prehash = sb.ToString();
 
-            var prehash = sb.ToString();
+                var prehashbytes = PGUtil.UTF8Encoding.GetBytes(prehash);
+                cryptBuf = new byte[prehashbytes.Length + 4];
 
-            var prehashbytes = PGUtil.UTF8Encoding.GetBytes(prehash);
-            cryptBuf = new byte[prehashbytes.Length + 4];
+                Array.Copy(salt, 0, cryptBuf, prehashbytes.Length, 4);
 
-            Array.Copy(salt, 0, cryptBuf, prehashbytes.Length, 4);
+                // 2.
+                prehashbytes.CopyTo(cryptBuf, 0);
 
-            // 2.
-            prehashbytes.CopyTo(cryptBuf, 0);
+                sb = new StringBuilder("md5");
+                hashResult = md5.ComputeHash(cryptBuf);
+                foreach (var b in hashResult)
+                    sb.Append(b.ToString("x2"));
 
-            sb = new StringBuilder("md5");
-            hashResult = md5.ComputeHash(cryptBuf);
-            foreach (var b in hashResult)
-                sb.Append(b.ToString("x2"));
-
-            var resultString = sb.ToString();
-            var result = new byte[Encoding.UTF8.GetByteCount(resultString) + 1];
-            Encoding.UTF8.GetBytes(resultString, 0, resultString.Length, result, 0);
-            result[result.Length - 1] = 0;
+                var resultString = sb.ToString();
+                result = new byte[Encoding.UTF8.GetByteCount(resultString) + 1];
+                Encoding.UTF8.GetBytes(resultString, 0, resultString.Length, result, 0);
+                result[result.Length - 1] = 0;
+            }
 
             await WritePassword(result, async);
             await Flush(async);
