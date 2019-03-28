@@ -17,8 +17,7 @@ namespace Npgsql.Tests
         [Test, Description("Reproduce #2257")]
         public void Issue2257()
         {
-            const string connectionString = "Server=localhost;Username=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;Command Timeout=3";
-            using (var conn = OpenConnection(connectionString))
+            using (var conn = OpenConnection(new NpgsqlConnectionStringBuilder(ConnectionString) { CommandTimeout = 3 }))
             {
                 const int rowCount = 1000000;
                 using (var cmd = conn.CreateCommand())

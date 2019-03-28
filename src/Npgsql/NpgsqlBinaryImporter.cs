@@ -340,12 +340,15 @@ namespace Npgsql
 
         void Cleanup()
         {
-            Log.Debug("COPY operation ended", _connector?.Id ?? -1);
+            var connector = _connector;
+            Log.Debug("COPY operation ended", connector?.Id ?? -1);
 
-            if (_connector != null)
-                _connector.CurrentCopyOperation = null;
+            if (connector != null)
+            {
+                connector.CurrentCopyOperation = null;
+                _connector = null;
+            }
 
-            _connector = null;
             _buf = null;
             _state = ImporterState.Disposed;
         }
