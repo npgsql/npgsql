@@ -323,8 +323,15 @@ namespace Npgsql
 
         void Cleanup()
         {
-            Log.Debug("COPY operation ended", _connector.Id);
-            _connector = null;
+            var connector = _connector;
+            Log.Debug("COPY operation ended", connector?.Id ?? -1);
+
+            if (connector != null)
+            {
+                connector.CurrentCopyOperation = null;
+                _connector = null;
+            }
+
             _typeMapper = null;
             _buf = null;
             _isDisposed = true;
