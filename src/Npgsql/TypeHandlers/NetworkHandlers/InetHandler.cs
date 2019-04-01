@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.TypeHandling;
@@ -61,6 +62,20 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
         #endregion Read
 
         #region Write
+
+        protected internal override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+            => value == null || value is DBNull
+                ? -1
+                : value is IPAddress ip
+                    ? ValidateAndGetLength(ip, parameter)
+                    : throw new InvalidCastException($"Can't write CLR type {value.GetType().Name} to database type {PgDisplayName}");
+
+        protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+            => value == null || value is DBNull // For null just go through the default WriteWithLengthInternal
+                ? WriteWithLengthInternal<DBNull>(null, buf, lengthCache, parameter, async)
+                : value is IPAddress ip
+                    ? WriteWithLengthInternal(ip, buf, lengthCache, parameter, async)
+                    : throw new InvalidCastException($"Can't write CLR type {value.GetType().Name} to database type {PgDisplayName}");
 
         public override int ValidateAndGetLength(IPAddress value, NpgsqlParameter parameter)
             => GetLength(value);
