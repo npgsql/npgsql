@@ -134,18 +134,13 @@ namespace Npgsql
         /// Commits the database transaction.
         /// </summary>
         [PublicAPI]
-        public Task CommitAsync(CancellationToken cancellationToken)
+        public Task CommitAsync(CancellationToken cancellationToken = default)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
                 return Commit(true);
         }
-
-        /// <summary>
-        /// Commits the database transaction.
-        /// </summary>
-        [PublicAPI]
-        public Task CommitAsync() => CommitAsync(CancellationToken.None);
 
         #endregion
 
@@ -169,27 +164,19 @@ namespace Npgsql
         /// Rolls back a transaction from a pending state.
         /// </summary>
         [PublicAPI]
-        public Task RollbackAsync(CancellationToken cancellationToken)
+        public Task RollbackAsync(CancellationToken cancellationToken = default)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
                 return Rollback(true);
         }
-
-        /// <summary>
-        /// Rolls back a transaction from a pending state.
-        /// </summary>
-        [PublicAPI]
-        public Task RollbackAsync() => RollbackAsync(CancellationToken.None);
 
         #endregion
 
         #region Savepoints
 
-        /// <summary>
-        /// Creates a transaction save point.
-        /// </summary>
-        public void Save(string name)
+        async Task Save(string name, bool async)
         {
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
@@ -204,14 +191,28 @@ namespace Npgsql
             using (_connector.StartUserAction())
             {
                 Log.Debug($"Creating savepoint {name}", _connector.Id);
-                _connector.ExecuteInternalCommand($"SAVEPOINT {name}");
+                await _connector.ExecuteInternalCommand($"SAVEPOINT {name}", async);
             }
         }
 
         /// <summary>
-        /// Rolls back a transaction from a pending savepoint state.
+        /// Creates a transaction save point.
         /// </summary>
-        public void Rollback(string name)
+        public void Save(string name) => Save(name, false).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Creates a transaction save point.
+        /// </summary>
+        [PublicAPI]
+        public Task SaveAsync(string name, CancellationToken cancellationToken = default)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled(cancellationToken);
+            using (NoSynchronizationContextScope.Enter())
+                return Save(name, true);
+        }
+
+        async Task Rollback(string name, bool async)
         {
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
@@ -226,14 +227,28 @@ namespace Npgsql
             using (_connector.StartUserAction())
             {
                 Log.Debug($"Rolling back savepoint {name}", _connector.Id);
-                _connector.ExecuteInternalCommand($"ROLLBACK TO SAVEPOINT {name}");
+                await _connector.ExecuteInternalCommand($"ROLLBACK TO SAVEPOINT {name}", async);
             }
         }
 
         /// <summary>
         /// Rolls back a transaction from a pending savepoint state.
         /// </summary>
-        public void Release(string name)
+        public void Rollback(string name) => Rollback(name, false).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Rolls back a transaction from a pending savepoint state.
+        /// </summary>
+        [PublicAPI]
+        public Task RollbackAsync(string name, CancellationToken cancellationToken = default)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled(cancellationToken);
+            using (NoSynchronizationContextScope.Enter())
+                return Rollback(name, true);
+        }
+
+        async Task Release(string name, bool async)
         {
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
@@ -248,8 +263,25 @@ namespace Npgsql
             using (_connector.StartUserAction())
             {
                 Log.Debug($"Releasing savepoint {name}", _connector.Id);
-                _connector.ExecuteInternalCommand($"RELEASE SAVEPOINT {name}");
+                await _connector.ExecuteInternalCommand($"RELEASE SAVEPOINT {name}", async);
             }
+        }
+
+        /// <summary>
+        /// Releases a transaction from a pending savepoint state.
+        /// </summary>
+        public void Release(string name) => Release(name, false).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Releases a transaction from a pending savepoint state.
+        /// </summary>
+        [PublicAPI]
+        public Task ReleaseAsync(string name, CancellationToken cancellationToken = default)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled(cancellationToken);
+            using (NoSynchronizationContextScope.Enter())
+                return Release(name, true);
         }
 
         #endregion

@@ -339,6 +339,32 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        public async Task SavepointAsync()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
+                const string name = "theSavePoint";
+
+                using (var tx = conn.BeginTransaction())
+                {
+                    await tx.SaveAsync(name);
+
+                    conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('savepointtest')", tx: tx);
+                    Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data", tx: tx), Is.EqualTo(1));
+                    await tx.RollbackAsync(name);
+                    Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data", tx: tx), Is.EqualTo(0));
+                    conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('savepointtest')", tx: tx);
+                    await tx.ReleaseAsync(name);
+                    Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data", tx: tx), Is.EqualTo(1));
+
+                    tx.Commit();
+                }
+                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(1));
+            }
+        }
+
+        [Test]
         public void SavepointWithSemicolon()
         {
             using (var conn = OpenConnection())
