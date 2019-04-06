@@ -379,7 +379,7 @@ namespace Npgsql
         /// <summary>
         /// Gets the string identifying the database server (host and port)
         /// </summary>
-        public override string DataSource => $"tcp://{Host}:{Port}";
+        public override string DataSource => Settings.DataSourceCached;
 
         /// <summary>
         /// Whether to use Windows integrated security to log in.

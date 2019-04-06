@@ -34,6 +34,22 @@ namespace Npgsql
         /// </summary>
         static readonly Dictionary<PropertyInfo, object> PropertyDefaults;
 
+        /// <summary>
+        /// Cached DataSource value to reduce allocations on NpgsqlConnection.DataSource.get
+        /// </summary>
+        private string _dataSourceCached;
+
+        internal string DataSourceCached
+        {
+            get
+            {
+                if (_dataSourceCached == null)
+                    _dataSourceCached = $"tcp://{_host}:{_port}";
+
+                return _dataSourceCached;
+            }
+        }
+
         #endregion
 
         #region Constructors
@@ -265,6 +281,7 @@ namespace Npgsql
             {
                 _host = value;
                 SetValue(nameof(Host), value);
+                _dataSourceCached = null;
             }
         }
         string _host;
@@ -287,6 +304,7 @@ namespace Npgsql
 
                 _port = value;
                 SetValue(nameof(Port), value);
+                _dataSourceCached = null;
             }
         }
         int _port;

@@ -456,6 +456,18 @@ namespace Npgsql.Tests
         {
             using (var conn = new NpgsqlConnection(ConnectionString))
                 Assert.That(conn.DataSource, Is.EqualTo($"tcp://{conn.Host}:{conn.Port}"));
+
+            var bld = new NpgsqlConnectionStringBuilder(ConnectionString);
+            bld.Host = "Otherhost";
+
+            using (var conn = new NpgsqlConnection(bld.ToString()))
+                Assert.That(conn.DataSource, Is.EqualTo($"tcp://{conn.Host}:{conn.Port}"));
+
+            bld = new NpgsqlConnectionStringBuilder(ConnectionString);
+            bld.Port = 5435;
+
+            using (var conn = new NpgsqlConnection(bld.ToString()))
+                Assert.That(conn.DataSource, Is.EqualTo($"tcp://{conn.Host}:{conn.Port}"));
         }
 
         [Test]
