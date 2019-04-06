@@ -15,7 +15,11 @@ namespace Npgsql.Benchmarks.TypeHandlers
     {
         protected class Config : ManualConfig
         {
-            public Config() => Add(StatisticColumn.OperationsPerSecond);
+            public Config()
+            {
+                Add(StatisticColumn.OperationsPerSecond);
+                Add(MemoryDiagnoser.Default);
+            }
         }
 
         class EndlessStream : Stream
@@ -33,13 +37,13 @@ namespace Npgsql.Benchmarks.TypeHandlers
         }
 
         readonly EndlessStream _stream;
-        readonly NpgsqlTypeHandler<T> _handler;
+        readonly NpgsqlTypeHandler _handler;
         readonly NpgsqlReadBuffer _readBuffer;
         readonly NpgsqlWriteBuffer _writeBuffer;
         T _value;
         int _elementSize;
 
-        protected TypeHandlerBenchmarks(NpgsqlTypeHandler<T> handler)
+        protected TypeHandlerBenchmarks(NpgsqlTypeHandler handler)
         {
             _stream = new EndlessStream();
             _handler = handler ?? throw new ArgumentNullException(nameof(handler));
@@ -60,9 +64,11 @@ namespace Npgsql.Benchmarks.TypeHandlers
                 NpgsqlLengthCache cache = null;
 
                 _value = value;
-                _elementSize = _handler.ValidateAndGetLength<T>(value, ref cache, null);
-                _handler.WriteWithLengthInternal(_value, _writeBuffer, null, null, false);
+                _elementSize = _handler.ValidateAndGetLength(value, ref cache, null);
 
+                cache.Rewind();
+
+                _handler.WriteWithLengthInternal(_value, _writeBuffer, cache, null, false);
                 Buffer.BlockCopy(_writeBuffer.Buffer, 0, _readBuffer.Buffer, 0, _elementSize);
 
                 _readBuffer.FilledBytes = _elementSize;
@@ -73,7 +79,7 @@ namespace Npgsql.Benchmarks.TypeHandlers
         [Benchmark]
         public T Read()
         {
-            _readBuffer.ReadPosition = 0;
+            _readBuffer.ReadPosition = sizeof(int);
             return _handler.Read<T>(_readBuffer, _elementSize);
         }
 
