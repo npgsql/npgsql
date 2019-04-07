@@ -1023,19 +1023,27 @@ namespace Npgsql.Tests
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 ApplicationName = nameof(NoTypeLoading),
-                ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
-                Pooling = false
+                ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading
             }.ToString();
 
-            using (var conn = OpenConnection(connString))
+            try
             {
-                // Arrays should not be supported in this mode
-                Assert.That(() => conn.ExecuteScalar("SELECT '{1,2,3}'::INTEGER[]"), Throws.Exception.TypeOf<NotSupportedException>());
-                // Test that some basic types do work
-                Assert.That(conn.ExecuteScalar("SELECT 8"), Is.EqualTo(8));
-                Assert.That(conn.ExecuteScalar("SELECT 'foo'"), Is.EqualTo("foo"));
-                Assert.That(conn.ExecuteScalar("SELECT TRUE"), Is.EqualTo(true));
-                Assert.That(conn.ExecuteScalar("SELECT INET '192.168.1.1'"), Is.EqualTo(IPAddress.Parse("192.168.1.1")));
+                using (var conn = OpenConnection(connString))
+                {
+                    // Arrays should not be supported in this mode
+                    Assert.That(() => conn.ExecuteScalar("SELECT '{1,2,3}'::INTEGER[]"),
+                        Throws.Exception.TypeOf<NotSupportedException>());
+                    // Test that some basic types do work
+                    Assert.That(conn.ExecuteScalar("SELECT 8"), Is.EqualTo(8));
+                    Assert.That(conn.ExecuteScalar("SELECT 'foo'"), Is.EqualTo("foo"));
+                    Assert.That(conn.ExecuteScalar("SELECT TRUE"), Is.EqualTo(true));
+                    Assert.That(conn.ExecuteScalar("SELECT INET '192.168.1.1'"),
+                        Is.EqualTo(IPAddress.Parse("192.168.1.1")));
+                }
+            }
+            finally
+            {
+                NpgsqlConnection.ClearPool(new NpgsqlConnection(connString));
             }
         }
 
