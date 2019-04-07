@@ -214,7 +214,7 @@ namespace Npgsql.TypeMapping
                 typeof(IPAddress).GetNestedType("ReadOnlyIPAddress", BindingFlags.NonPublic) is Type readOnlyIpType)
             {
                 _typeToNpgsqlDbType[readOnlyIpType] = _typeToNpgsqlDbType[typeof(IPAddress)];
-                var augmentedClrType = new Type[inetMapping.ClrTypes.Length];
+                var augmentedClrType = new Type[inetMapping.ClrTypes.Length + 1];
                 Array.Copy(inetMapping.ClrTypes, augmentedClrType, inetMapping.ClrTypes.Length);
                 augmentedClrType[augmentedClrType.Length - 1] = readOnlyIpType;
                 Mappings["inet"] = new NpgsqlTypeMappingBuilder
