@@ -695,7 +695,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             case CommandType.Text:
                 Debug.Assert(_connection?.Connector != null);
                 var connector = _connection.Connector;
-                connector.SqlParser.ParseRawQuery(CommandText, connector.UseConformantStrings, _parameters, _statements, deriveParameters);
+                connector.SqlParser.ParseRawQuery(CommandText, _parameters, _statements, deriveParameters);
                 if (_statements.Count > 1 && _parameters.HasOutputParameters)
                     throw new NotSupportedException("Commands with multiple queries cannot have out parameters");
                 break;

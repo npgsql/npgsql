@@ -176,7 +176,7 @@ namespace Npgsql
 
         // This is used by NpgsqlCommand, but we place it on the connector because only one instance is needed
         // at any one time (per connection).
-        internal SqlQueryParser SqlParser { get; } = new SqlQueryParser();
+        internal SqlQueryParser SqlParser { get; }
 
         /// <summary>
         /// A lock that's taken while a user action is in progress, e.g. a command being executed.
@@ -276,7 +276,7 @@ namespace Npgsql
             Settings = settings;
             ConnectionString = connectionString;
             PostgresParameters = new Dictionary<string, string>();
-
+            SqlParser = new SqlQueryParser(UseConformantStrings);
             CancelLock = new object();
 
             _isKeepAliveEnabled = Settings.KeepAlive > 0;
