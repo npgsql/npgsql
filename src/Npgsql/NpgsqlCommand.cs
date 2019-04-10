@@ -1274,15 +1274,17 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         void LogCommand()
         {
             var sb = new StringBuilder();
-            sb.Append("Executing statement(s):");
+            sb.AppendLine("Executing statement(s):");
             foreach (var s in _statements)
-                sb.AppendLine().Append("\t").Append(s.SQL);
-
-            if (NpgsqlLogManager.IsParameterLoggingEnabled && Parameters.Any())
             {
-                sb.AppendLine().AppendLine("Parameters:");
-                for (var i = 0; i < Parameters.Count; i++)
-                    sb.Append("\t$").Append(i + 1).Append(": ").Append(Convert.ToString(Parameters[i].Value, CultureInfo.InvariantCulture));
+                sb.Append("\t").AppendLine(s.SQL);
+                var p = s.InputParameters;
+                if (NpgsqlLogManager.IsParameterLoggingEnabled && p.Count > 0)
+                {
+                    sb.Append('\t').Append("Parameters:");
+                    for (var i = 0; i < p.Count; i++)
+                        sb.Append("\t$").Append(i + 1).Append(": ").Append(Convert.ToString(p[i].Value, CultureInfo.InvariantCulture));
+                }
             }
 
             Log.Debug(sb.ToString(), Connection.Connector.Id);
