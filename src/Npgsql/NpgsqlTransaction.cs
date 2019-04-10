@@ -20,25 +20,31 @@ namespace Npgsql
         /// Specifies the <see cref="NpgsqlConnection"/> object associated with the transaction.
         /// </summary>
         /// <value>The <see cref="NpgsqlConnection"/> object associated with the transaction.</value>
-        public new NpgsqlConnection Connection { get; internal set; }
+        public new NpgsqlConnection? Connection
+        {
+            get
+            {
+                CheckReady();
+                return _connector.Connection;
+            }
+        }
 
         // Note that with ambient transactions, it's possible for a transaction to be pending after its connection
         // is already closed. So we capture the connector and perform everything directly on it.
-        NpgsqlConnector _connector;
-
-        /// <summary>
-        /// Specifies the completion state of the transaction.
-        /// </summary>
-        /// <value>The completion state of the transaction.</value>
-        public bool IsCompleted => _connector == null;
+        readonly NpgsqlConnector _connector;
 
         /// <summary>
         /// Specifies the <see cref="NpgsqlConnection"/> object associated with the transaction.
         /// </summary>
         /// <value>The <see cref="NpgsqlConnection"/> object associated with the transaction.</value>
-        protected override DbConnection DbConnection => Connection;
+        protected override DbConnection? DbConnection => Connection;
 
-        bool _isDisposed;
+        /// <summary>
+        /// If true, the transaction has been committed/rolled back, but not disposed.
+        /// </summary>
+        internal bool IsCompleted => _connector.TransactionStatus == TransactionStatus.Idle;
+
+        internal bool IsDisposed;
 
         /// <summary>
         /// Specifies the <see cref="System.Data.IsolationLevel">IsolationLevel</see> for this transaction.
@@ -53,7 +59,7 @@ namespace Npgsql
                 return _isolationLevel;
             }
         }
-        readonly IsolationLevel _isolationLevel;
+        IsolationLevel _isolationLevel;
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
@@ -61,47 +67,46 @@ namespace Npgsql
 
         #endregion
 
-        #region Constructors
+        #region Initialization
 
-        internal NpgsqlTransaction(NpgsqlConnection conn, IsolationLevel isolationLevel = DefaultIsolationLevel)
+        internal NpgsqlTransaction(NpgsqlConnector connector)
+            => _connector = connector;
+
+        internal void Init(IsolationLevel isolationLevel = DefaultIsolationLevel)
         {
-            Debug.Assert(conn != null);
             Debug.Assert(isolationLevel != IsolationLevel.Chaos);
-
-            Connection = conn;
-            _connector = Connection.CheckReadyAndGetConnector();
 
             if (!_connector.DatabaseInfo.SupportsTransactions)
                 return;
 
             Log.Debug($"Beginning transaction with isolation level {isolationLevel}", _connector.Id);
-            _connector.Transaction = this;
-            _connector.TransactionStatus = TransactionStatus.Pending;
-
-            switch (isolationLevel) {
-                case IsolationLevel.RepeatableRead:
-                case IsolationLevel.Snapshot:
-                    _connector.PrependInternalMessage(PregeneratedMessages.BeginTransRepeatableRead, 2);
-                    break;
-                case IsolationLevel.Serializable:
-                    _connector.PrependInternalMessage(PregeneratedMessages.BeginTransSerializable, 2);
-                    break;
-                case IsolationLevel.ReadUncommitted:
-                    // PG doesn't really support ReadUncommitted, it's the same as ReadCommitted. But we still
-                    // send as if.
-                    _connector.PrependInternalMessage(PregeneratedMessages.BeginTransReadUncommitted, 2);
-                    break;
-                case IsolationLevel.ReadCommitted:
-                    _connector.PrependInternalMessage(PregeneratedMessages.BeginTransReadCommitted, 2);
-                    break;
-                case IsolationLevel.Unspecified:
-                    isolationLevel = DefaultIsolationLevel;
-                    goto case DefaultIsolationLevel;
-                default:
-                    throw new NotSupportedException("Isolation level not supported: " + isolationLevel);
+            switch (isolationLevel)
+            {
+            case IsolationLevel.RepeatableRead:
+            case IsolationLevel.Snapshot:
+                _connector.PrependInternalMessage(PregeneratedMessages.BeginTransRepeatableRead, 2);
+                break;
+            case IsolationLevel.Serializable:
+                _connector.PrependInternalMessage(PregeneratedMessages.BeginTransSerializable, 2);
+                break;
+            case IsolationLevel.ReadUncommitted:
+                // PG doesn't really support ReadUncommitted, it's the same as ReadCommitted. But we still
+                // send as if.
+                _connector.PrependInternalMessage(PregeneratedMessages.BeginTransReadUncommitted, 2);
+                break;
+            case IsolationLevel.ReadCommitted:
+                _connector.PrependInternalMessage(PregeneratedMessages.BeginTransReadCommitted, 2);
+                break;
+            case IsolationLevel.Unspecified:
+                isolationLevel = DefaultIsolationLevel;
+                goto case DefaultIsolationLevel;
+            default:
+                throw new NotSupportedException("Isolation level not supported: " + isolationLevel);
             }
 
+            _connector.TransactionStatus = TransactionStatus.Pending;
             _isolationLevel = isolationLevel;
+            IsDisposed = false;
         }
 
         #endregion
@@ -124,7 +129,6 @@ namespace Npgsql
             {
                 Log.Debug("Committing transaction", _connector.Id);
                 await _connector.ExecuteInternalCommand(PregeneratedMessages.CommitTransaction, async);
-                Clear();
             }
         }
 
@@ -155,7 +159,6 @@ namespace Npgsql
             if (!_connector.DatabaseInfo.SupportsTransactions)
                 return;
             await _connector.Rollback(async);
-            Clear();
         }
 
         /// <summary>
@@ -291,7 +294,8 @@ namespace Npgsql
         /// </summary>
         protected override void Dispose(bool disposing)
         {
-            if (_isDisposed) { return; }
+            if (IsDisposed)
+                return;
 
             if (disposing && !IsCompleted)
             {
@@ -299,19 +303,14 @@ namespace Npgsql
                 Rollback();
             }
 
-            Clear();
-
-            base.Dispose(disposing);
-            _isDisposed = true;
+            IsDisposed = true;
         }
 
-#pragma warning disable CS8625
-        internal void Clear()
-        {
-            _connector = null;
-            Connection = null;
-        }
-#pragma warning enable CS8625
+        /// <summary>
+        /// Disposes the transaction, without rolling back. Used only in special circumstances, e.g. when
+        /// the connection is broken.
+        /// </summary>
+        internal void DisposeImmediately() => IsDisposed = true;
 
         #endregion
 
@@ -319,20 +318,10 @@ namespace Npgsql
 
         void CheckReady()
         {
-            CheckDisposed();
-            CheckCompleted();
-        }
-
-        void CheckCompleted()
-        {
+            if (IsDisposed)
+                throw new ObjectDisposedException(typeof(NpgsqlTransaction).Name);
             if (IsCompleted)
                 throw new InvalidOperationException("This NpgsqlTransaction has completed; it is no longer usable.");
-        }
-
-        void CheckDisposed()
-        {
-            if (_isDisposed)
-                throw new ObjectDisposedException(typeof(NpgsqlTransaction).Name);
         }
 
         #endregion
