@@ -25,7 +25,6 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
     {
         // ReSharper disable InconsistentNaming
         const byte IPv4 = 2;
-
         const byte IPv6 = 3;
         // ReSharper restore InconsistentNaming
 
@@ -48,9 +47,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             var numBytes = buf.ReadByte();
             var bytes = new byte[numBytes];
             for (var i = 0; i < numBytes; i++)
-            {
                 bytes[i] = buf.ReadByte();
-            }
 
             return (new IPAddress(bytes), mask);
         }
