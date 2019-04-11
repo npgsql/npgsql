@@ -229,8 +229,11 @@ namespace Npgsql
                     var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
                     Transaction? transaction = null;
 
-                    if (_pool == null) // Un-pooled connection
+                    if (_pool == null) // Un-pooled connection (or user forgot to set connection string)
                     {
+                        if (string.IsNullOrEmpty(_connectionString))
+                            throw new InvalidOperationException("The ConnectionString property has not been initialized.");
+
                         if (!Settings.PersistSecurityInfo)
                             _userFacingConnectionString = Settings.ToStringWithoutPassword();
 
