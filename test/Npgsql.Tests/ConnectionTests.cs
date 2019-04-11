@@ -631,9 +631,9 @@ namespace Npgsql.Tests
                 {
                     connection.Open();
                     command.Connection = connection;
-                    command.Transaction = connection.BeginTransaction();
+                    var tx = connection.BeginTransaction();
                     command.ExecuteScalar();
-                    command.Transaction.Commit();
+                    tx.Commit();
                 }
             }
         }
