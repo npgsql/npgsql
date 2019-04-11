@@ -487,7 +487,7 @@ namespace Npgsql.Tests
             var conn = new NpgsqlConnection();
             Assert.That(conn.ConnectionTimeout, Is.EqualTo(NpgsqlConnectionStringBuilder.DefaultTimeout));
             Assert.That(conn.ConnectionString, Is.SameAs(string.Empty));
-            Assert.That(() => conn.Open(), Throws.Exception.TypeOf<ArgumentException>());
+            Assert.That(() => conn.Open(), Throws.Exception.TypeOf<InvalidOperationException>());
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/703")]
