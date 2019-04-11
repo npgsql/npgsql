@@ -76,16 +76,12 @@ namespace Npgsql
             { "character varying", "varchar" }
         };
 
-        readonly NpgsqlConnection conn;
-
         /// <summary>
         /// Creates an instance of the CrateDbDatabaseInfo class.
         /// </summary>
         /// <param name="conn"></param>
         public CrateDbDatabaseInfo(NpgsqlConnection conn)
         {
-            this.conn = conn;
-
             if (Version.TryParse(conn.PostgresParameters["crate_version"], out var v))
             {
                 Version = v;
