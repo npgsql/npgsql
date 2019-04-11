@@ -149,7 +149,7 @@ namespace Npgsql.FrontendMessages
         internal override int Length =>
             1 + 4 +
             PGUtil.UTF8Encoding.GetByteCount(_mechanism) + 1 +
-            4 + _initialResponse?.Length ?? 0;
+            4 + (_initialResponse?.Length ?? 0);
 
         internal override void WriteFully(NpgsqlWriteBuffer buf)
         {

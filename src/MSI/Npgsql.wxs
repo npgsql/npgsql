@@ -43,6 +43,7 @@
       <ComponentRef Id="System.Threading.Tasks.Extensions" />
       <ComponentRef Id="System.ValueTuple" />
       <ComponentRef Id="System.Runtime.CompilerServices.Unsafe" />
+      <ComponentRef Id="System.Memory" />
       <ComponentRef Id="MachineConfig_x86" />
       <ComponentRef Id="MachineConfig_x64" />
 
@@ -130,6 +131,13 @@
           <File Id="System.Runtime.CompilerServices.Unsafe"
                 Name="System.Runtime.CompilerServices.Unsafe.dll"
                 Source="..\npgsql\bin\$(var.Configuration)\net451\System.Runtime.CompilerServices.Unsafe.dll"
+                KeyPath="yes"
+                Assembly=".net" />
+        </Component>
+        <Component Id="System.Memory" Guid="3cf4b30c-ccf9-4c65-b2ba-cf00684e35cb">
+          <File Id="System.Memory"
+                Name="System.Memory.dll"
+                Source="..\npgsql\bin\$(var.Configuration)\net451\System.Memory.dll"
                 KeyPath="yes"
                 Assembly=".net" />
         </Component>

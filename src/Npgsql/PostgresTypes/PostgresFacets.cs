@@ -31,8 +31,8 @@ namespace Npgsql.PostgresTypes
         public override int GetHashCode()
         {
             var hashcode = Size?.GetHashCode() ?? 0;
-            hashcode = (hashcode * 397) ^ Precision?.GetHashCode() ?? 0;
-            hashcode = (hashcode * 397) ^ Scale?.GetHashCode() ?? 0;
+            hashcode = (hashcode * 397) ^ (Precision?.GetHashCode() ?? 0);
+            hashcode = (hashcode * 397) ^ (Scale?.GetHashCode() ?? 0);
             return hashcode;
         }
 
