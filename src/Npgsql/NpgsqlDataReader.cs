@@ -1038,7 +1038,7 @@ namespace Npgsql
 
             // Attempt to read beyond the end of the column
             if (dataOffset2 + length > ColumnLen)
-                length = ColumnLen - dataOffset2;
+                length = Math.Max(ColumnLen - dataOffset2, 0);
 
             var left = length;
             while (left > 0)
@@ -1167,11 +1167,8 @@ namespace Npgsql
                 decoder.Reset();
                 PosInColumn += bytesSkipped;
                 _charPos += charsSkipped;
-                if (charsSkipped < charsToSkip)
-                {
-                    // TODO: What is the actual required behavior here?
-                    throw new IndexOutOfRangeException();
-                }
+                if (charsSkipped < charsToSkip) // data offset is beyond the column's end
+                    return 0;
             }
 
             // We're now positioned at the start of the segment of characters we need to read.
