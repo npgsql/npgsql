@@ -40,7 +40,6 @@ namespace Npgsql
         [CanBeNull]
         NpgsqlConnector _connectorPreparedOn;
 
-        NpgsqlTransaction _transaction;
         string _commandText;
         int? _timeout;
         readonly NpgsqlParameterCollection _parameters;
@@ -184,19 +183,7 @@ namespace Npgsql
             set
             {
                 if (_connection == value)
-                {
                     return;
-                }
-
-                //if (this._transaction != null && this._transaction.Connection == null)
-                //  this._transaction = null;
-
-                // All this checking needs revising. It should be simpler.
-                // This this.Connector != null check was added to remove the NullReferenceException in case
-                // of the previous connection has been closed which makes Connector null and so the last check would fail.
-                // See bug 1000581 for more details.
-                if (_transaction != null && _connection != null && _connection.Connector != null && _connection.Connector.InTransaction)
-                    throw new InvalidOperationException("The Connection property can't be changed with an uncommited transaction.");
 
                 _connection = State == CommandState.Idle
                     ? value
@@ -1193,27 +1180,15 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         protected override DbTransaction DbTransaction
         {
             get => Transaction;
-            set => Transaction = (NpgsqlTransaction) value;
+            set => Transaction = (NpgsqlTransaction)value;
         }
 
         /// <summary>
-        /// Gets or sets the <see cref="NpgsqlTransaction">NpgsqlTransaction</see>
-        /// within which the <see cref="NpgsqlCommand">NpgsqlCommand</see> executes.
+        /// This property is ignored by Npgsql. PostgreSQL only supports a single transaction at a given time on
+        /// a given connection, and all commands implicitly run inside the current transaction started via
+        /// <see cref="NpgsqlConnection.BeginTransaction()"/>
         /// </summary>
-        /// <value>The <see cref="NpgsqlTransaction">NpgsqlTransaction</see>.
-        /// The default value is a null reference.</value>
-        public new NpgsqlTransaction Transaction
-        {
-            get
-            {
-                if (_transaction != null && _transaction.Connection == null)
-                {
-                    _transaction = null;
-                }
-                return _transaction;
-            }
-            set => _transaction = value;
-        }
+        public new NpgsqlTransaction Transaction { get; set; }
 
         #endregion Transactions
 
@@ -1246,7 +1221,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         {
             if (State == CommandState.Disposed)
                 return;
-            _transaction = null;
+            Transaction = null;
             _connection = null;
             State = CommandState.Disposed;
             base.Dispose(disposing);
