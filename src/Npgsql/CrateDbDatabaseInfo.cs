@@ -5,7 +5,6 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
-using Npgsql.CrateDbTypes;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandlers;
 using Npgsql.TypeHandlers.DateTimeHandlers;
@@ -102,8 +101,8 @@ namespace Npgsql
         /// <returns></returns>
         protected override IEnumerable<PostgresType> GetTypes()
         {
-            IEnumerable<PostgresType> baseTypes = CrateDbBaseTypes.Select(p => new CrateDbBaseType(p.Key, p.Value)).ToList();
-            return baseTypes.Concat(CrateDbArrayTypes.Select(p => new CrateDbArrayType(p.Key, p.Value, baseTypes.FirstOrDefault(t => string.Equals(t.InternalName, p.Key.Substring(1))))));
+            IEnumerable<PostgresType> baseTypes = CrateDbBaseTypes.Select(p => new PostgresBaseType("pg_catalog", p.Key, p.Value)).ToList();
+            return baseTypes.Concat(CrateDbArrayTypes.Select(p => new PostgresArrayType("pg_catalog", p.Key, p.Value, baseTypes.FirstOrDefault(t => string.Equals(t.InternalName, p.Key.Substring(1))))));
         }
 
         /// <summary>
