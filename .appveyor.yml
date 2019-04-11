@@ -29,6 +29,7 @@ before_build:
 build_script:
   - dotnet build "test\Npgsql.Tests" -c Debug
   - dotnet build "test\Npgsql.PluginTests" -c Debug
+  - dotnet build "test\Npgsql.Specification.Tests" -c Debug
   - dotnet build "src\Npgsql" -c Release
   - msbuild src\VSIX\VSIX.csproj /p:Configuration=Release /v:Minimal
 # WIX hasn't been released yet for VS 2019
@@ -44,8 +45,10 @@ test:
   assemblies:
     - test\Npgsql.Tests\bin\Debug\net461\Npgsql.Tests.dll
     - test\Npgsql.PluginTests\bin\Debug\net461\Npgsql.PluginTests.dll
+    - test\Npgsql.Specification.Tests\bin\Debug\net461\Npgsql.Specification.Tests.dll
     - test\Npgsql.Tests\bin\Debug\netcoreapp3.0\Npgsql.Tests.dll
     - test\Npgsql.PluginTests\bin\Debug\netcoreapp3.0\Npgsql.PluginTests.dll
+    - test\Npgsql.Specification.Tests\bin\Debug\netcoreapp3.0\Npgsql.Specification.Tests.dll
 artifacts:
   - path: 'src\**\*.nupkg'
     name: Nuget
