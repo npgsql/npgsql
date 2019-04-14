@@ -111,31 +111,28 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
                 var attr = clrMember.GetCustomAttribute<PgNameAttribute>();
                 var name = attr?.PgName ?? nameTranslator.TranslateMemberName(clrMember.Name);
 
-                int pgFieldIndex;
-                PostgresCompositeType.Field? pgField = null;
-
-                for (pgFieldIndex = pgFields.Count - 1; pgFieldIndex >= 0; --pgFieldIndex)
+                for (var pgFieldIndex = pgFields.Count - 1; pgFieldIndex >= 0; --pgFieldIndex)
                 {
-                    pgField = pgFields[pgFieldIndex];
-                    if (pgField.Name == name) break;
+                    var pgField = pgFields[pgFieldIndex];
+                    if (pgField.Name != name)
+                        continue;
+
+                    if (clrHandlers[pgFieldIndex] != null)
+                        throw new AmbiguousMatchException($"Multiple class members are mapped to the '{pgField.Name}' field.");
+
+                    if (!typeMapper.TryGetByOID(pgField.Type.OID, out var handler))
+                        throw new Exception($"PostgreSQL composite type {pgType.DisplayName} has field {pgField.Type.DisplayName} with an unknown type (OID = {pgField.Type.OID}).");
+
+                    clrHandlerCount++;
+                    clrHandlers[pgFieldIndex] = (CompositeMemberHandler<T>)Activator.CreateInstance(
+                        clrHandlerType.MakeGenericType(clrType, clrMemberType),
+                        BindingFlags.Instance | BindingFlags.Public,
+                        binder: null,
+                        args: new object[] { clrMember, pgField.Type, handler },
+                        culture: null);
+
+                    break;
                 }
-
-                if (pgField == null)
-                    continue;
-
-                if (clrHandlers[pgFieldIndex] != null)
-                    throw new AmbiguousMatchException($"Multiple class members are mapped to the '{pgField.Name}' field.");
-
-                if (!typeMapper.TryGetByOID(pgField.Type.OID, out var handler))
-                    throw new Exception($"PostgreSQL composite type {pgType.DisplayName} has field {pgField.Type.DisplayName} with an unknown type (OID = {pgField.Type.OID}).");
-
-                clrHandlerCount++;
-                clrHandlers[pgFieldIndex] = (CompositeMemberHandler<T>)Activator.CreateInstance(
-                    clrHandlerType.MakeGenericType(clrType, clrMemberType),
-                    BindingFlags.Instance | BindingFlags.Public,
-                    binder: null,
-                    args: new object[] { clrMember, pgField.Type, handler },
-                    culture: null);
             }
 
             if (clrHandlerCount == pgFields.Count)
