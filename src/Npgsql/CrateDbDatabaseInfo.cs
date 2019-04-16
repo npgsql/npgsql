@@ -36,6 +36,11 @@ namespace Npgsql
     /// </summary>
     public class CrateDbDatabaseInfo : NpgsqlDatabaseInfo
     {
+        /// <summary>
+        /// The version of the CrateDB database we're connected to, as reported in the "crate_version" parameter.
+        /// </summary>
+        public Version CrateDbVersion { get; protected set; }
+
         static readonly IDictionary<string, uint> CrateDbBaseTypes = new Dictionary<string, uint>
         {
             { "bool", 16 },
@@ -82,9 +87,10 @@ namespace Npgsql
         /// <param name="conn"></param>
         public CrateDbDatabaseInfo(NpgsqlConnection conn)
         {
+            Version = ParseServerVersion(conn.PostgresParameters["server_version"]);
             if (Version.TryParse(conn.PostgresParameters["crate_version"], out var v))
             {
-                Version = v;
+                CrateDbVersion = v;
             }
 
             HasIntegerDateTimes = conn.PostgresParameters.TryGetValue("integer_datetimes", out var intDateTimes) &&
