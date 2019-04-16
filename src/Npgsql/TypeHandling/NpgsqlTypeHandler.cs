@@ -156,7 +156,7 @@ namespace Npgsql.TypeHandling
         /// <summary>
         /// Creates a type handler for ranges of this handler's type.
         /// </summary>
-        public abstract RangeHandler CreateRangeHandler(PostgresRangeType rangeBackendType);
+        public abstract NpgsqlTypeHandler CreateRangeHandler(PostgresType rangeBackendType);
 
         /// <summary>
         /// Used to create an exception when the provided type can be converted and written, but an

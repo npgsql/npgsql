@@ -284,7 +284,7 @@ namespace Npgsql.TypeHandling
             => new ArrayHandler<TDefault>(arrayBackendType, this);
 
         /// <inheritdoc />
-        public override RangeHandler CreateRangeHandler(PostgresRangeType rangeBackendType)
+        public override NpgsqlTypeHandler CreateRangeHandler(PostgresType rangeBackendType)
             => new RangeHandler<TDefault>(rangeBackendType, this);
 
         #endregion Misc
