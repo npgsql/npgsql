@@ -9,6 +9,18 @@ using NpgsqlTypes;
 namespace Npgsql.TypeHandlers
 {
     /// <summary>
+    /// An interface implementing by <see cref="RangeHandler{TElement}"/>, exposing the handler's supported range
+    /// CLR types.
+    /// </summary>
+    public interface IRangeHandler
+    {
+        /// <summary>
+        /// Exposes the range CLR types supported by this handler.
+        /// </summary>
+        Type[] SupportedRangeClrTypes { get; }
+    }
+
+    /// <summary>
     /// A type handler for PostgreSQL range types.
     /// </summary>
     /// <remarks>
@@ -19,7 +31,7 @@ namespace Npgsql.TypeHandlers
     /// Use it at your own risk.
     /// </remarks>
     /// <typeparam name="TElement">the range subtype</typeparam>
-    public class RangeHandler<TElement> : NpgsqlTypeHandler<NpgsqlRange<TElement>>
+    public class RangeHandler<TElement> : NpgsqlTypeHandler<NpgsqlRange<TElement>>, IRangeHandler
     {
         /// <summary>
         /// The type handler for the element that this range type holds
@@ -27,8 +39,19 @@ namespace Npgsql.TypeHandlers
         readonly NpgsqlTypeHandler _elementHandler;
 
         /// <inheritdoc />
+        public Type[] SupportedRangeClrTypes { get; }
+
+        /// <inheritdoc />
         public RangeHandler(PostgresType rangePostgresType, NpgsqlTypeHandler elementHandler)
-            : base(rangePostgresType) => _elementHandler = elementHandler;
+            : this(rangePostgresType, elementHandler, new[] { typeof(NpgsqlRange<TElement>)}) {}
+
+        /// <inheritdoc />
+        protected RangeHandler(PostgresType rangePostgresType, NpgsqlTypeHandler elementHandler, Type[] supportedElementClrTypes)
+            : base(rangePostgresType)
+        {
+            _elementHandler = elementHandler;
+            SupportedRangeClrTypes = supportedElementClrTypes;
+        }
 
         /// <inheritdoc />
         public override ArrayHandler CreateArrayHandler(PostgresArrayType arrayBackendType)
@@ -38,7 +61,7 @@ namespace Npgsql.TypeHandlers
         internal override Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null) => typeof(NpgsqlRange<TElement>);
 
         /// <inheritdoc />
-        public override NpgsqlTypeHandler CreateRangeHandler(PostgresType rangeBackendType)
+        public override IRangeHandler CreateRangeHandler(PostgresType rangeBackendType)
             => throw new NotSupportedException();
 
         #region Read
@@ -48,41 +71,27 @@ namespace Npgsql.TypeHandlers
             => Read<TAny>(buf, len, false, fieldDescription).Result;
 
         /// <inheritdoc />
-        protected internal override ValueTask<TAny> Read<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
-        {
-            if (this is INpgsqlTypeHandler<TAny> typedHandler)
-                return typedHandler.Read(buf, len, async, fieldDescription);
+        public override ValueTask<NpgsqlRange<TElement>> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
+            => DoRead<TElement>(buf, len, async, fieldDescription);
 
-            throw new InvalidCastException(fieldDescription == null
-                ? $"Can't cast database type to {typeof(TAny).Name}"
-                : $"Can't cast database type {fieldDescription.Handler.PgDisplayName} to {typeof(TAny).Name}"
-            );
-        }
-
-        internal override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
-            => await Read(buf, len, async, fieldDescription);
-
-        internal override object ReadAsObject(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-            => Read(buf, len, false, fieldDescription).Result;
-
-        /// <inheritdoc />
-        public override async ValueTask<NpgsqlRange<TElement>> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
+        private protected async ValueTask<NpgsqlRange<TAny>> DoRead<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
         {
             await buf.Ensure(1, async);
 
             var flags = (RangeFlags)buf.ReadByte();
             if ((flags & RangeFlags.Empty) != 0)
-                return NpgsqlRange<TElement>.Empty;
+                return NpgsqlRange<TAny>.Empty;
 
-            var lowerBound = flags.HasFlag(RangeFlags.LowerBoundInfinite)
-                ? default
-                : await _elementHandler.ReadWithLength<TElement>(buf, async);
+            var lowerBound = default(TAny);
+            var upperBound = default(TAny);
 
-            var upperBound = flags.HasFlag(RangeFlags.UpperBoundInfinite)
-                ? default
-                : await _elementHandler.ReadWithLength<TElement>(buf, async);
+            if ((flags & RangeFlags.LowerBoundInfinite) == 0)
+                lowerBound = await _elementHandler.ReadWithLength<TAny>(buf, async);
 
-            return new NpgsqlRange<TElement>(lowerBound, upperBound, flags);
+            if ((flags & RangeFlags.UpperBoundInfinite) == 0)
+                upperBound = await _elementHandler.ReadWithLength<TAny>(buf, async);
+
+            return new NpgsqlRange<TAny>(lowerBound, upperBound, flags);
         }
 
         #endregion
@@ -91,6 +100,9 @@ namespace Npgsql.TypeHandlers
 
         /// <inheritdoc />
         public override int ValidateAndGetLength(NpgsqlRange<TElement> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+            => ValidateAndGetLength(value, ref lengthCache, parameter);
+
+        private protected int ValidateAndGetLength<TAny>(NpgsqlRange<TAny> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
             var totalLen = 1;
             var lengthCachePos = lengthCache?.Position ?? 0;
@@ -159,7 +171,10 @@ namespace Npgsql.TypeHandlers
         }
 
         /// <inheritdoc />
-        public override async Task Write(NpgsqlRange<TElement> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        public override Task Write(NpgsqlRange<TElement> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+            => Write(value, buf, lengthCache, parameter, async);
+
+        private protected async Task Write<TAny>(NpgsqlRange<TAny> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             if (buf.WriteSpaceLeft < 1)
                 await buf.Flush(async);
@@ -177,5 +192,32 @@ namespace Npgsql.TypeHandlers
         }
 
         #endregion
+    }
+
+    /// <summary>
+    /// Type handler for PostgreSQL range types
+    /// </summary>
+    /// <remarks>
+    /// Introduced in PostgreSQL 9.2.
+    /// http://www.postgresql.org/docs/current/static/rangetypes.html
+    /// </remarks>
+    /// <typeparam name="TElement1">the main range subtype</typeparam>
+    /// <typeparam name="TElement2">an alternative range subtype</typeparam>
+    public class RangeHandler<TElement1, TElement2> : RangeHandler<TElement1>, INpgsqlTypeHandler<NpgsqlRange<TElement2>>
+    {
+        /// <inheritdoc />
+        public RangeHandler(PostgresType rangePostgresType, NpgsqlTypeHandler elementHandler)
+            : base(rangePostgresType, elementHandler, new[] { typeof(NpgsqlRange<TElement1>), typeof(NpgsqlRange<TElement2>) }) {}
+
+        ValueTask<NpgsqlRange<TElement2>> INpgsqlTypeHandler<NpgsqlRange<TElement2>>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
+            => DoRead<TElement2>(buf, len, async, fieldDescription);
+
+        /// <inheritdoc />
+        public int ValidateAndGetLength(NpgsqlRange<TElement2> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+            => ValidateAndGetLength<TElement2>(value, ref lengthCache, parameter);
+
+        /// <inheritdoc />
+        public Task Write(NpgsqlRange<TElement2> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+            => Write<TElement2>(value, buf, lengthCache, parameter, async);
     }
 }

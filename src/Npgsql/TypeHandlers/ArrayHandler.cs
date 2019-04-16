@@ -48,7 +48,7 @@ namespace Npgsql.TypeHandlers
             => throw new NotSupportedException();
 
         /// <inheritdoc />
-        public override NpgsqlTypeHandler CreateRangeHandler(PostgresType rangeBackendType)
+        public override IRangeHandler CreateRangeHandler(PostgresType rangeBackendType)
             => throw new NotSupportedException();
 
         #region Read
