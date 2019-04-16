@@ -9,26 +9,6 @@ using NpgsqlTypes;
 namespace Npgsql.TypeHandlers
 {
     /// <summary>
-    /// Base class for all type handlers which handle PostgreSQL ranges.
-    /// </summary>
-    /// <remarks>
-    /// See http://www.postgresql.org/docs/current/static/rangetypes.html
-    ///
-    /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
-    /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
-    /// Use it at your own risk.
-    /// </remarks>
-    public abstract class RangeHandler : NpgsqlTypeHandler
-    {
-        /// <inheritdoc />
-        protected RangeHandler(PostgresType rangePostgresType) : base(rangePostgresType) {}
-
-        /// <inheritdoc />
-        public override RangeHandler CreateRangeHandler(PostgresRangeType rangeBackendType)
-            => throw new NotSupportedException();
-    }
-
-    /// <summary>
     /// A type handler for PostgreSQL range types.
     /// </summary>
     /// <remarks>
@@ -39,7 +19,7 @@ namespace Npgsql.TypeHandlers
     /// Use it at your own risk.
     /// </remarks>
     /// <typeparam name="TElement">the range subtype</typeparam>
-    public class RangeHandler<TElement> : RangeHandler, INpgsqlTypeHandler<NpgsqlRange<TElement>>
+    public class RangeHandler<TElement> : NpgsqlTypeHandler<NpgsqlRange<TElement>>
     {
         /// <summary>
         /// The type handler for the element that this range type holds
@@ -56,6 +36,10 @@ namespace Npgsql.TypeHandlers
 
         internal override Type GetFieldType(FieldDescription? fieldDescription = null) => typeof(NpgsqlRange<TElement>);
         internal override Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null) => typeof(NpgsqlRange<TElement>);
+
+        /// <inheritdoc />
+        public override NpgsqlTypeHandler CreateRangeHandler(PostgresType rangeBackendType)
+            => throw new NotSupportedException();
 
         #region Read
 
@@ -82,7 +66,7 @@ namespace Npgsql.TypeHandlers
             => Read(buf, len, false, fieldDescription).Result;
 
         /// <inheritdoc />
-        public async ValueTask<NpgsqlRange<TElement>> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
+        public override async ValueTask<NpgsqlRange<TElement>> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
             await buf.Ensure(1, async);
 
@@ -106,17 +90,7 @@ namespace Npgsql.TypeHandlers
         #region Write
 
         /// <inheritdoc />
-        protected internal override int ValidateAndGetLength<TAny>(TAny value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
-            => this is INpgsqlTypeHandler<TAny> typedHandler
-                ? typedHandler.ValidateAndGetLength(value, ref lengthCache, parameter)
-                : throw new InvalidCastException($"Can't write CLR type {typeof(TAny)} to database type {PgDisplayName}");
-
-        /// <inheritdoc />
-        protected internal override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
-            => ValidateAndGetLength((NpgsqlRange<TElement>)value, ref lengthCache, parameter);
-
-        /// <inheritdoc />
-        public int ValidateAndGetLength(NpgsqlRange<TElement> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+        public override int ValidateAndGetLength(NpgsqlRange<TElement> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
             var totalLen = 1;
             var lengthCachePos = lengthCache?.Position ?? 0;
@@ -184,16 +158,8 @@ namespace Npgsql.TypeHandlers
             }
         }
 
-        // The default WriteObjectWithLength casts the type handler to INpgsqlTypeHandler<T>, but that's not sufficient for
-        // us (need to handle many types of T, e.g. int[], int[,]...)
         /// <inheritdoc />
-        protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
-            => value is DBNull
-                ? WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async)
-                : WriteWithLengthInternal((NpgsqlRange<TElement>)value, buf, lengthCache, parameter, async);
-
-        /// <inheritdoc />
-        public async Task Write(NpgsqlRange<TElement> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        public override async Task Write(NpgsqlRange<TElement> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             if (buf.WriteSpaceLeft < 1)
                 await buf.Flush(async);
