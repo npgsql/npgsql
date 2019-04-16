@@ -46,6 +46,10 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         public TimestampTzHandler(PostgresType postgresType, bool convertInfinityDateTime)
             : base(postgresType, convertInfinityDateTime) {}
 
+        /// <inheritdoc />
+        public override IRangeHandler CreateRangeHandler(PostgresType rangeBackendType)
+            => new RangeHandler<DateTime, DateTimeOffset>(rangeBackendType, this);
+
         #region Read
 
         /// <inheritdoc />

@@ -197,6 +197,25 @@ namespace Npgsql.Tests.Types
             Assert.AreNotEqual(b.GetHashCode(), c.GetHashCode());
         }
 
+        [Test]
+        public async Task TimestampTzRangeWithDateTimeOffset()
+        {
+            // The default CLR mapping for timestamptz is DateTime, but it also supports DateTimeOffset.
+            // The range should also support both, defaulting to the first.
+            using var conn = await OpenConnectionAsync();
+            using var cmd = new NpgsqlCommand("SELECT @p", conn);
+
+            var dto1 = new DateTimeOffset(2010, 1, 3, 10, 0, 0, TimeSpan.Zero);
+            var dto2 = new DateTimeOffset(2010, 1, 4, 10, 0, 0, TimeSpan.Zero);
+            var range = new NpgsqlRange<DateTimeOffset>(dto1, dto2);
+            cmd.Parameters.AddWithValue("p", range);
+            using var reader = await cmd.ExecuteReaderAsync();
+
+            await reader.ReadAsync();
+            var actual = reader.GetFieldValue<NpgsqlRange<DateTimeOffset>>(0);
+            Assert.That(actual, Is.EqualTo(range));
+        }
+
         [OneTimeSetUp]
         public async Task OneTimeSetUp()
         {
