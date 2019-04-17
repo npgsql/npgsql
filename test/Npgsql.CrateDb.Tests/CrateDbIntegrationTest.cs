@@ -24,7 +24,7 @@ namespace Npgsql.CrateDb.Tests
                     ip_field ip,
                     geo_point_field geo_point,
                     geo_shape_field geo_shape
-                    ) clustered by (id) into 1 shards with (number_of_replicas=0)";
+                    ) clustered by (id) into 1 shards with (number_of_replicas=0, column_policy = 'dynamic')";
 
                 cmd.ExecuteNonQuery();
             }
@@ -98,7 +98,7 @@ namespace Npgsql.CrateDb.Tests
                     timestamp_array array(timestamp),
                     obj_array array(object),
                     geo_shape_array array(geo_shape)
-                    ) clustered by (id) into 1 shards with (number_of_replicas=0)";
+                    ) clustered by (id) into 1 shards with (number_of_replicas=0, column_policy = 'dynamic')";
 
                 cmd.ExecuteNonQuery();
             }
