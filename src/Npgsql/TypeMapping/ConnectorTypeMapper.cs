@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.Logging;
 using Npgsql.PostgresTypes;
@@ -13,6 +14,10 @@ using NpgsqlTypes;
 
 namespace Npgsql.TypeMapping
 {
+    class ConnectorTypeMapperFactory : IConnectorTypeMapperFactory
+    {
+        public Task<ConnectorTypeMapper> Load(NpgsqlConnection conn, NpgsqlConnector connector) => Task.FromResult(new ConnectorTypeMapper(connector));
+    }
     class ConnectorTypeMapper : TypeMapperBase
     {
         /// <summary>
@@ -173,7 +178,7 @@ namespace Npgsql.TypeMapping
                 throw new InvalidOperationException("Connection must be open and idle to perform registration");
         }
 
-        void ResetMappings()
+        protected internal void ResetMappings()
         {
             var globalMapper = GlobalTypeMapper.Instance;
             globalMapper.Lock.EnterReadLock();
@@ -188,7 +193,7 @@ namespace Npgsql.TypeMapping
             ChangeCounter = GlobalTypeMapper.Instance.ChangeCounter;
         }
 
-        void ClearBindings()
+        protected internal void ClearBindings()
         {
             _byOID.Clear();
             _byNpgsqlDbType.Clear();
@@ -217,11 +222,8 @@ namespace Npgsql.TypeMapping
             BindTypes();
         }
 
-        void BindTypes()
+        protected internal void BindTypes()
         {
-            // Prepare the registered type mappings for the DBMS currently in use.
-            DatabaseInfo?.AdaptTypeMappings(Mappings);
-
             foreach (var mapping in Mappings.Values)
                 BindType(mapping, _connector, false);
 

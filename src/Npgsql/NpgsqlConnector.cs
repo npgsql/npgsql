@@ -30,6 +30,12 @@ namespace Npgsql
     {
         #region Fields and Properties
 
+        static readonly List<IConnectorTypeMapperFactory> Factories = new List<IConnectorTypeMapperFactory>
+        {
+            new CrateDbConnectorTypeMapperFactory(),
+            new ConnectorTypeMapperFactory()
+        };
+
         /// <summary>
         /// The physical connection socket to the backend.
         /// </summary>
@@ -439,11 +445,25 @@ namespace Npgsql
             }
         }
 
+        internal async Task<ConnectorTypeMapper> LoadTypeMapper()
+        {
+            foreach (var factory in Factories)
+            {
+                var typeMapper = await factory.Load(Connection, this);
+                if (typeMapper != null)
+                {
+                    return typeMapper;
+                }
+            }
+            // Should never be here
+            throw new NpgsqlException("No ConnectorTypeMapper could be found for this connection");
+        }
+
         internal async Task LoadDatabaseInfo(NpgsqlTimeout timeout, bool async)
         {
             // The type loading below will need to send queries to the database, and that depends on a type mapper
             // being set up (even if its empty)
-            TypeMapper = new ConnectorTypeMapper(this);
+            TypeMapper = await LoadTypeMapper();
 
             if (!NpgsqlDatabaseInfo.Cache.TryGetValue(ConnectionString, out var database))
                 NpgsqlDatabaseInfo.Cache[ConnectionString] = database = await NpgsqlDatabaseInfo.Load(Connection, timeout, async);

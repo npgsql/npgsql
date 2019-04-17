@@ -1,15 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
-using Npgsql.TypeHandlers;
-using Npgsql.TypeHandlers.DateTimeHandlers;
-using Npgsql.TypeMapping;
-using NpgsqlTypes;
 
 namespace Npgsql
 {
@@ -24,11 +18,15 @@ namespace Npgsql
         /// <returns></returns>
         [NotNull]
         public Task<NpgsqlDatabaseInfo> Load([NotNull] NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
-              => Task.FromResult(
-                    conn.PostgresParameters.ContainsKey("crate_version")
-                          ? (NpgsqlDatabaseInfo)new CrateDbDatabaseInfo(conn)
-                          : null
-                 );
+        {
+            if (conn.PostgresParameters.ContainsKey("crate_version"))
+            {
+                var db = new CrateDbDatabaseInfo();
+                db.LoadCrateDbInfo(conn);
+                return Task.FromResult((NpgsqlDatabaseInfo)db);
+            }
+            return Task.FromResult<NpgsqlDatabaseInfo>(null);
+        }
     }
 
     /// <summary>
@@ -82,17 +80,20 @@ namespace Npgsql
         };
 
         /// <summary>
-        /// Creates an instance of the CrateDbDatabaseInfo class.
+        /// Loads database information from the PostgreSQL database specified by <paramref name="conn"/>.
         /// </summary>
-        /// <param name="conn"></param>
-        public CrateDbDatabaseInfo(NpgsqlConnection conn)
+        /// <param name="conn">The database connection.</param>
+        /// <returns>
+        /// A task representing the asynchronous operation.
+        /// </returns>
+        [NotNull]
+        internal void LoadCrateDbInfo([NotNull] NpgsqlConnection conn)
         {
             Version = ParseServerVersion(conn.PostgresParameters["server_version"]);
             if (Version.TryParse(conn.PostgresParameters["crate_version"], out var v))
             {
                 CrateDbVersion = v;
             }
-
             HasIntegerDateTimes = conn.PostgresParameters.TryGetValue("integer_datetimes", out var intDateTimes) &&
                 intDateTimes == "on";
         }
@@ -105,30 +106,6 @@ namespace Npgsql
         {
             IEnumerable<PostgresType> baseTypes = CrateDbBaseTypes.Select(p => new PostgresBaseType("pg_catalog", p.Key, p.Value)).ToList();
             return baseTypes.Concat(CrateDbArrayTypes.Select(p => new PostgresArrayType("pg_catalog", p.Key, p.Value, baseTypes.FirstOrDefault(t => string.Equals(t.InternalName, p.Key.Substring(1))))));
-        }
-
-        /// <summary>
-        /// Adapts a dictionary of type mappings to CrateDB.
-        /// </summary>
-        /// <param name="mappings"></param>
-        protected internal override void AdaptTypeMappings(IDictionary<string, NpgsqlTypeMapping> mappings)
-        {
-            // Remove unsupported mappings to reduce the number 
-            // of ArgumentExceptions thrown and log entries created.
-            var unsupportedTypes = mappings.Where(m => !IsPgTypeSupportedByCrateDb(m.Value.PgTypeName)).ToList();
-            foreach (var t in unsupportedTypes)
-            {
-                mappings.Remove(t.Key);
-            }
-
-            // Add mappings specific to CrateDB.
-            foreach (var t in CrateDbSpecificTypeMappings())
-            {
-                if (mappings.ContainsKey(t.PgTypeName))
-                    mappings[t.PgTypeName] = t;
-                else
-                    mappings.Add(t.PgTypeName, t);
-            }
         }
 
         /// <summary>
@@ -168,32 +145,6 @@ namespace Npgsql
         /// CrateDB used floating point timestamps until version &lt;=3.0 and switched to integer datetimes with version &gt;= 3.1.
         /// </summary>
         public override bool HasIntegerDateTimes { get; protected set; } = true;
-
-        static IEnumerable<NpgsqlTypeMapping> CrateDbSpecificTypeMappings()
-        {
-            // Map CrateDB varchar type to the Npgsql TextHandler.
-            yield return new NpgsqlTypeMappingBuilder
-            {
-                PgTypeName = "character varying",
-                NpgsqlDbType = NpgsqlDbType.Varchar,
-                DbTypes = new[] { DbType.String, DbType.StringFixedLength, DbType.AnsiString, DbType.AnsiStringFixedLength },
-                ClrTypes = new[] { typeof(string), typeof(char[]), typeof(char) },
-                InferredDbType = DbType.String,
-                TypeHandlerFactory = new TextHandlerFactory()
-            }
-            .Build();
-
-            // Map CrateDB timestampz type to the CrateDbTimestampHandler.
-            yield return new NpgsqlTypeMappingBuilder
-            {
-                PgTypeName = "timestamp with time zone",
-                NpgsqlDbType = NpgsqlDbType.TimestampTz,
-                DbTypes = new[] { DbType.DateTime },
-                ClrTypes = new[] { typeof(DateTime) },
-                TypeHandlerFactory = new TimestampHandlerFactory()
-            }
-            .Build();
-        }
 
         static bool IsPgTypeSupportedByCrateDb(string pgTypeName)
         {
