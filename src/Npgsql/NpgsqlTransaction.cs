@@ -135,8 +135,7 @@ namespace Npgsql
         /// <summary>
         /// Commits the database transaction.
         /// </summary>
-        [PublicAPI]
-
+        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
 #if !NET461 && !NETSTANDARD2_0
         public override Task CommitAsync(CancellationToken cancellationToken = default)
 #else
@@ -169,7 +168,7 @@ namespace Npgsql
         /// <summary>
         /// Rolls back a transaction from a pending state.
         /// </summary>
-        [PublicAPI]
+        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
 #if !NET461 && !NETSTANDARD2_0
         public override Task RollbackAsync(CancellationToken cancellationToken = default)
 #else
@@ -208,12 +207,14 @@ namespace Npgsql
         /// <summary>
         /// Creates a transaction save point.
         /// </summary>
+        /// <param name="name">The name of the savepoint.</param>
         public void Save(string name) => Save(name, false).GetAwaiter().GetResult();
 
         /// <summary>
         /// Creates a transaction save point.
         /// </summary>
-        [PublicAPI]
+        /// <param name="name">The name of the savepoint.</param>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
         public Task SaveAsync(string name, CancellationToken cancellationToken = default)
         {
             if (cancellationToken.IsCancellationRequested)
@@ -244,12 +245,14 @@ namespace Npgsql
         /// <summary>
         /// Rolls back a transaction from a pending savepoint state.
         /// </summary>
+        /// <param name="name">The name of the savepoint.</param>
         public void Rollback(string name) => Rollback(name, false).GetAwaiter().GetResult();
 
         /// <summary>
         /// Rolls back a transaction from a pending savepoint state.
         /// </summary>
-        [PublicAPI]
+        /// <param name="name">The name of the savepoint.</param>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
         public Task RollbackAsync(string name, CancellationToken cancellationToken = default)
         {
             if (cancellationToken.IsCancellationRequested)
@@ -280,12 +283,14 @@ namespace Npgsql
         /// <summary>
         /// Releases a transaction from a pending savepoint state.
         /// </summary>
+        /// <param name="name">The name of the savepoint.</param>
         public void Release(string name) => Release(name, false).GetAwaiter().GetResult();
 
         /// <summary>
         /// Releases a transaction from a pending savepoint state.
         /// </summary>
-        [PublicAPI]
+        /// <param name="name">The name of the savepoint.</param>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
         public Task ReleaseAsync(string name, CancellationToken cancellationToken = default)
         {
             if (cancellationToken.IsCancellationRequested)

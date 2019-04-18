@@ -167,7 +167,7 @@ namespace Npgsql
         /// <summary>
         /// This is the asynchronous version of <see cref="Read()"/> The cancellation token is currently ignored.
         /// </summary>
-        /// <param name="cancellationToken">Ignored for now.</param>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
         public override Task<bool> ReadAsync(CancellationToken cancellationToken)
         {
@@ -313,7 +313,7 @@ namespace Npgsql
         /// This is the asynchronous version of NextResult.
         /// The <paramref name="cancellationToken"/> parameter is currently ignored.
         /// </summary>
-        /// <param name="cancellationToken">Currently ignored.</param>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
         public override Task<bool> NextResultAsync(CancellationToken cancellationToken)
         {
@@ -1072,9 +1072,12 @@ namespace Npgsql
         /// Retrieves data as a <see cref="Stream"/>.
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
         /// <returns>The returned object.</returns>
-        public Task<Stream> GetStreamAsync(int ordinal)
+        public Task<Stream> GetStreamAsync(int ordinal, CancellationToken cancellationToken = default)
         {
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled<Stream>(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
                 return GetStream(ordinal, true).AsTask();
         }
@@ -1240,9 +1243,12 @@ namespace Npgsql
         /// Retrieves data as a <see cref="TextReader"/>.
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
         /// <returns>The returned object.</returns>
-        public Task<TextReader> GetTextReaderAsync(int ordinal)
+        public Task<TextReader> GetTextReaderAsync(int ordinal, CancellationToken cancellationToken = default)
         {
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled<TextReader>(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
                 return GetTextReader(ordinal, true).AsTask();
         }
@@ -1269,14 +1275,12 @@ namespace Npgsql
         /// </summary>
         /// <typeparam name="T">The type of the value to be returned.</typeparam>
         /// <param name="ordinal">The type of the value to be returned.</param>
-        /// <param name="cancellationToken">
-        /// The cancellation instruction, which propagates a notification that operations should be canceled.
-        /// This does not guarantee the cancellation.
-        /// </param>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <returns></returns>
         public override Task<T> GetFieldValueAsync<T>(int ordinal, CancellationToken cancellationToken)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled<T>(cancellationToken);
 
             // In non-sequential, we know that the column is already buffered - no I/O will take place
             if (!_isSequential)
@@ -1517,16 +1521,16 @@ namespace Npgsql
         /// The <paramref name="cancellationToken"/> parameter is currently ignored.
         /// </summary>
         /// <param name="ordinal">The zero-based column to be retrieved.</param>
-        /// <param name="cancellationToken">Currently ignored.</param>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <returns><b>true</b> if the specified column value is equivalent to <see cref="DBNull"/> otherwise <b>false</b>.</returns>
         public override async Task<bool> IsDBNullAsync(int ordinal, CancellationToken cancellationToken)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+            CheckRowAndGetField(ordinal);
+
             if (!_isSequential)
                 return IsDBNull(ordinal);
 
-            CheckRowAndGetField(ordinal);
-
-            cancellationToken.ThrowIfCancellationRequested();
             using (NoSynchronizationContextScope.Enter())
             {
                 await SeekToColumn(ordinal, true);

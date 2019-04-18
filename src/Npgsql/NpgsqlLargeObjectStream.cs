@@ -53,11 +53,12 @@ namespace Npgsql
         /// <param name="buffer">The buffer where read data should be stored.</param>
         /// <param name="offset">The offset in the buffer where the first byte should be read.</param>
         /// <param name="count">The maximum number of bytes that should be read.</param>
-        /// <param name="cancellationToken">Cancellation token</param>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
         /// <returns>How many bytes actually read, or 0 if end of file was already reached.</returns>
-        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken = default)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled<int>(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
                 return Read(buffer, offset, count, true);
         }
@@ -106,10 +107,11 @@ namespace Npgsql
         /// <param name="buffer">The buffer to write data from.</param>
         /// <param name="offset">The offset in the buffer at which to begin copying bytes.</param>
         /// <param name="count">The number of bytes to write.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken = default)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
                 return Write(buffer, offset, count, true);
         }
@@ -181,20 +183,18 @@ namespace Npgsql
         /// <summary>
         /// Gets the length of the large object. This internally seeks to the end of the stream to retrieve the length, and then back again.
         /// </summary>
-#pragma warning disable CA1721 
         public override long Length => GetLength(false).GetAwaiter().GetResult();
-#pragma warning restore CA1721
 
         /// <summary>
         /// Gets the length of the large object. This internally seeks to the end of the stream to retrieve the length, and then back again.
         /// </summary>
-        public Task<long> GetLengthAsync()
+        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        public Task<long> GetLengthAsync(CancellationToken cancellationToken = default)
         {
             using (NoSynchronizationContextScope.Enter())
                 return GetLength(true);
         }
 
-#pragma warning disable CA1721 
         async Task<long> GetLength(bool async)
         {
             CheckDisposed();
@@ -204,7 +204,6 @@ namespace Npgsql
                 await Seek(old, SeekOrigin.Begin, async);
             return retval;
         }
-#pragma warning restore CA1721
 
         /// <summary>
         /// Seeks in the stream to the specified position. This requires a round-trip to the backend.
@@ -220,11 +219,11 @@ namespace Npgsql
         /// </summary>
         /// <param name="offset">A byte offset relative to the <i>origin</i> parameter.</param>
         /// <param name="origin">A value of type SeekOrigin indicating the reference point used to obtain the new position.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns></returns>
-        public Task<long> SeekAsync(long offset, SeekOrigin origin, CancellationToken cancellationToken)
+        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        public Task<long> SeekAsync(long offset, SeekOrigin origin, CancellationToken cancellationToken = default)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled<long>(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
                 return Seek(offset, origin, true);
         }
