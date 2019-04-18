@@ -550,19 +550,15 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// Creates a server-side prepared statement on the PostgreSQL server.
         /// This will make repeated future executions of this command much faster.
         /// </summary>
-        public Task PrepareAsync() => PrepareAsync(CancellationToken.None);
-
-        /// <summary>
-        /// Creates a server-side prepared statement on the PostgreSQL server.
-        /// This will make repeated future executions of this command much faster.
-        /// </summary>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
 #if !NET461 && !NETSTANDARD2_0
-        public override Task PrepareAsync(CancellationToken cancellationToken)
+        public override Task PrepareAsync(CancellationToken cancellationToken = default)
 #else
-        public Task PrepareAsync(CancellationToken cancellationToken)
+        public Task PrepareAsync(CancellationToken cancellationToken = default)
 #endif
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
                 return Prepare(true);
         }
@@ -1062,7 +1058,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// Executes the command text against the connection.
         /// </summary>
         /// <param name="behavior">An instance of <see cref="CommandBehavior"/>.</param>
-        /// <param name="cancellationToken">A task representing the operation.</param>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <returns></returns>
         protected override Task<DbDataReader> ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
         {

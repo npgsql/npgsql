@@ -124,7 +124,7 @@ namespace Npgsql
         /// <remarks>
         /// Do not invoke other methods and properties of the <see cref="NpgsqlConnection"/> object until the returned Task is complete.
         /// </remarks>
-        /// <param name="cancellationToken">The cancellation instruction.</param>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
         public override Task OpenAsync(CancellationToken cancellationToken)
         {
@@ -1162,24 +1162,18 @@ namespace Npgsql
         /// Waits asynchronously until an asynchronous PostgreSQL messages (e.g. a notification)
         /// arrives, and exits immediately. The asynchronous message is delivered via the normal events
         /// (<see cref="Notification"/>, <see cref="Notice"/>).
-        /// CancellationToken can not cancel wait operation if underlying NetworkStream does not support it
-        /// (see https://stackoverflow.com/questions/12421989/networkstream-readasync-with-a-cancellation-token-never-cancels ).
         /// </summary>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
         [PublicAPI]
-        public Task WaitAsync(CancellationToken cancellationToken)
+        public Task WaitAsync(CancellationToken cancellationToken = default)
         {
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled(cancellationToken);
+
             var connector = CheckConnectionOpen();
             Log.Debug("Starting to wait asynchronously...", connector.Id);
-
             return connector.WaitAsync(cancellationToken);
         }
-
-        /// <summary>
-        /// Waits asynchronously until an asynchronous PostgreSQL messages (e.g. a notification)
-        /// arrives, and exits immediately. The asynchronous message is delivered via the normal events
-        /// (<see cref="Notification"/>, <see cref="Notice"/>).
-        /// </summary>
-        public Task WaitAsync() => WaitAsync(CancellationToken.None);
 
         #endregion
 
