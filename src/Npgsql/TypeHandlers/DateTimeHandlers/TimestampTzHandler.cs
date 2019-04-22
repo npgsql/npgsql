@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Data;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -11,9 +12,9 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     class TimestampTzHandlerFactory : NpgsqlTypeHandlerFactory<DateTime>
     {
         // Check for the legacy floating point timestamps feature
-        protected override NpgsqlTypeHandler<DateTime> Create(NpgsqlConnection conn)
+        public override NpgsqlTypeHandler<DateTime> Create(PostgresType postgresType, NpgsqlConnection conn)
             => conn.HasIntegerDateTimes
-                ? new TimestampTzHandler(conn.Connector!.ConvertInfinityDateTime)
+                ? new TimestampTzHandler(postgresType, conn.Connector!.ConvertInfinityDateTime)
                 : throw new NotSupportedException($"The deprecated floating-point date/time format is not supported by {nameof(Npgsql)}.");
     }
 
@@ -22,7 +23,8 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// </remarks>
     class TimestampTzHandler : TimestampHandler, INpgsqlSimpleTypeHandler<DateTimeOffset>
     {
-        public TimestampTzHandler(bool convertInfinityDateTime) : base(convertInfinityDateTime) {}
+        internal TimestampTzHandler(PostgresType postgresType, bool convertInfinityDateTime)
+            : base(postgresType, convertInfinityDateTime) {}
 
         #region Read
 

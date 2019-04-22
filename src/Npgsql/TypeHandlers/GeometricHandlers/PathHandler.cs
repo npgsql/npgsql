@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -16,6 +17,8 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     [TypeMapping("path", NpgsqlDbType.Path, typeof(NpgsqlPath))]
     class PathHandler : NpgsqlTypeHandler<NpgsqlPath>
     {
+        public PathHandler(PostgresType postgresType) : base(postgresType) {}
+
         #region Read
 
         public override async ValueTask<NpgsqlPath> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)

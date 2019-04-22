@@ -11,6 +11,8 @@ namespace Npgsql.TypeHandlers
 {
     public abstract class RangeHandler : NpgsqlTypeHandler
     {
+        protected RangeHandler(PostgresType rangePostgresType) : base(rangePostgresType) {}
+
         public override RangeHandler CreateRangeHandler(PostgresRangeType rangeBackendType)
             => throw new NotSupportedException();
     }
@@ -30,12 +32,12 @@ namespace Npgsql.TypeHandlers
         /// </summary>
         readonly NpgsqlTypeHandler _elementHandler;
 
-        public RangeHandler(NpgsqlTypeHandler elementHandler)
-            => _elementHandler = elementHandler;
+        public RangeHandler(PostgresType rangePostgresType, NpgsqlTypeHandler elementHandler)
+            : base(rangePostgresType) => _elementHandler = elementHandler;
 
         /// <inheritdoc />
         public override ArrayHandler CreateArrayHandler(PostgresArrayType arrayBackendType)
-            => new ArrayHandler<NpgsqlRange<TElement>>(this) { PostgresType = arrayBackendType };
+            => new ArrayHandler<NpgsqlRange<TElement>>(arrayBackendType, this);
 
         internal override Type GetFieldType(FieldDescription? fieldDescription = null) => typeof(NpgsqlRange<TElement>);
         internal override Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null) => typeof(NpgsqlRange<TElement>);

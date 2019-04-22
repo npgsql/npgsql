@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -25,6 +26,8 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
         const byte IPv4 = 2;
         const byte IPv6 = 3;
         // ReSharper restore InconsistentNaming
+
+        public InetHandler(PostgresType postgresType) : base(postgresType) {}
 
         #region Read
 

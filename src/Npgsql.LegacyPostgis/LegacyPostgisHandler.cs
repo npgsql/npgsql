@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
@@ -9,8 +10,8 @@ namespace Npgsql.LegacyPostgis
 {
     public class LegacyPostgisHandlerFactory : NpgsqlTypeHandlerFactory<PostgisGeometry>
     {
-        protected override NpgsqlTypeHandler<PostgisGeometry> Create(NpgsqlConnection conn)
-            => new LegacyPostgisHandler();
+        public override NpgsqlTypeHandler<PostgisGeometry> Create(PostgresType postgresType, NpgsqlConnection conn)
+            => new LegacyPostgisHandler(postgresType);
     }
 
     class LegacyPostgisHandler : NpgsqlTypeHandler<PostgisGeometry>,
@@ -19,6 +20,8 @@ namespace Npgsql.LegacyPostgis
         INpgsqlTypeHandler<PostgisPolygon>, INpgsqlTypeHandler<PostgisMultiPolygon>,
         INpgsqlTypeHandler<PostgisGeometryCollection>
     {
+        public LegacyPostgisHandler(PostgresType postgresType) : base(postgresType) {}
+
         #region Read
 
         public override async ValueTask<PostgisGeometry> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)

@@ -50,7 +50,7 @@ namespace Npgsql.TypeMapping
         /// <summary>
         /// A factory for a type handler that will be used to read and write values for PostgreSQL type.
         /// </summary>
-        public NpgsqlTypeHandlerFactory? TypeHandlerFactory { get; set; }
+        public INpgsqlTypeHandlerFactory? TypeHandlerFactory { get; set; }
 
         /// <summary>
         /// Builds an <see cref="NpgsqlTypeMapping"/> that can be added to an <see cref="INpgsqlTypeMapper"/>.
@@ -77,7 +77,7 @@ namespace Npgsql.TypeMapping
         internal NpgsqlTypeMapping(
             string pgTypeName,
             NpgsqlDbType? npgsqlDbType, DbType[]? dbTypes, Type[]? clrTypes, DbType? inferredDbType,
-            NpgsqlTypeHandlerFactory typeHandlerFactory)
+            INpgsqlTypeHandlerFactory typeHandlerFactory)
         {
             PgTypeName = pgTypeName;
             NpgsqlDbType = npgsqlDbType;
@@ -127,7 +127,7 @@ namespace Npgsql.TypeMapping
         /// <summary>
         /// A factory for a type handler that will be used to read and write values for PostgreSQL type.
         /// </summary>
-        public NpgsqlTypeHandlerFactory TypeHandlerFactory { get; }
+        public INpgsqlTypeHandlerFactory TypeHandlerFactory { get; }
 
         /// <summary>
         /// The default CLR type that handlers produced by this factory will read and write.

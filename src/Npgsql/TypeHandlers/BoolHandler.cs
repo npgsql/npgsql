@@ -1,5 +1,6 @@
 ﻿using System.Data;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -12,6 +13,8 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("boolean", NpgsqlDbType.Boolean, DbType.Boolean, typeof(bool))]
     class BoolHandler : NpgsqlSimpleTypeHandler<bool>
     {
+        public BoolHandler(PostgresType postgresType) : base(postgresType) {}
+
         public override bool Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             => buf.ReadByte() != 0;
 

@@ -18,9 +18,14 @@ namespace Npgsql.TypeHandling
     public abstract class NpgsqlTypeHandler
     {
         /// <summary>
-        /// The PostgreSQL type handled by this type handler. Injected by <see cref="NpgsqlTypeHandlerFactory"/>.
+        /// The PostgreSQL type handled by this type handler.
         /// </summary>
-        internal PostgresType PostgresType { get; set; }
+        internal PostgresType PostgresType { get; }
+
+        /// <summary>
+        /// Constructs a <see cref="NpgsqlTypeHandler"/>.
+        /// </summary>
+        protected NpgsqlTypeHandler(PostgresType postgresType) => PostgresType = postgresType;
 
         #region Read
 

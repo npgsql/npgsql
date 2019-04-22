@@ -1,3 +1,4 @@
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 
 #nullable disable // About to be removed
@@ -13,7 +14,7 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
             _nameTranslator = nameTranslator;
         }
 
-        protected override NpgsqlTypeHandler<object> Create(NpgsqlConnection conn)
-            => new UnmappedCompositeHandler(_nameTranslator, conn.Connector.TypeMapper);
+        public override NpgsqlTypeHandler<object> Create(PostgresType postgresType, NpgsqlConnection conn)
+            => new UnmappedCompositeHandler(postgresType, _nameTranslator, conn.Connector.TypeMapper);
     }
 }

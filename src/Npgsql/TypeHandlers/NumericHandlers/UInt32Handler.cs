@@ -1,4 +1,5 @@
 ﻿using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -15,6 +16,8 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     [TypeMapping("regconfig", NpgsqlDbType.Regconfig)]
     class UInt32Handler : NpgsqlSimpleTypeHandler<uint>
     {
+        public UInt32Handler(PostgresType postgresType) : base(postgresType) {}
+
         public override uint Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             => (uint)buf.ReadInt32();
 

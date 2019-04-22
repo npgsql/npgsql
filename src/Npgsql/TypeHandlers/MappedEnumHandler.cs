@@ -22,9 +22,9 @@ namespace Npgsql.TypeHandlers
 
         public Type EnumType => typeof(T);
 
-        internal MappedEnumHandler(INpgsqlNameTranslator nameTranslator, PostgresType pgType, NpgsqlConnection conn)
+        internal MappedEnumHandler(PostgresType pgType, INpgsqlNameTranslator nameTranslator, NpgsqlConnection conn)
+            : base(pgType)
         {
-            PostgresType = pgType;
             _nameTranslator = nameTranslator;
             _conn = conn;
             _wrappedHandler = (UnmappedEnumHandler)new UnmappedEnumTypeHandlerFactory(_nameTranslator).Create(PostgresType, _conn);
@@ -50,10 +50,7 @@ namespace Npgsql.TypeHandlers
             _nameTranslator = nameTranslator;
         }
 
-        internal override NpgsqlTypeHandler Create(PostgresType pgType, NpgsqlConnection conn)
-            => new MappedEnumHandler<T>(_nameTranslator, pgType, conn);
-
-        protected override NpgsqlTypeHandler<T> Create(NpgsqlConnection conn)
-            => throw new InvalidOperationException($"Expect {nameof(PostgresType)}");
+        public override NpgsqlTypeHandler<T> Create(PostgresType pgType, NpgsqlConnection conn)
+            => new MappedEnumHandler<T>(pgType, _nameTranslator, conn);
     }
 }

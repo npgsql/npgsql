@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using NpgsqlTypes;
 
@@ -30,7 +31,8 @@ namespace Npgsql.TypeHandlers
 
         #region Construction
 
-        internal EnumHandler(Dictionary<TEnum, string> enumToLabel, Dictionary<string, TEnum> labelToEnum)
+        internal EnumHandler(PostgresType postgresType, Dictionary<TEnum, string> enumToLabel, Dictionary<string, TEnum> labelToEnum)
+            : base(postgresType)
         {
             Debug.Assert(typeof(TEnum).GetTypeInfo().IsEnum, "EnumHandler instantiated for non-enum type");
             _enumToLabel = enumToLabel;
@@ -106,8 +108,8 @@ namespace Npgsql.TypeHandlers
             }
         }
 
-        protected override NpgsqlTypeHandler<TEnum> Create(NpgsqlConnection conn)
-            => new EnumHandler<TEnum>(_enumToLabel, _labelToEnum);
+        public override NpgsqlTypeHandler<TEnum> Create(PostgresType postgresType, NpgsqlConnection conn)
+            => new EnumHandler<TEnum>(postgresType, _enumToLabel, _labelToEnum);
 
         public INpgsqlNameTranslator NameTranslator { get; }
     }

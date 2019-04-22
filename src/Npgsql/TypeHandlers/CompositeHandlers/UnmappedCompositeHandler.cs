@@ -43,7 +43,8 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
         [CanBeNull]
         Type _resolvedType;
 
-        internal UnmappedCompositeHandler(INpgsqlNameTranslator nameTranslator, ConnectorTypeMapper typeMapper)
+        internal UnmappedCompositeHandler(PostgresType postgresType, INpgsqlNameTranslator nameTranslator, ConnectorTypeMapper typeMapper)
+            : base(postgresType)
         {
             _nameTranslator = nameTranslator;
 

@@ -6,6 +6,7 @@ using GeoJSON.Net;
 using GeoJSON.Net.CoordinateReferenceSystem;
 using GeoJSON.Net.Geometry;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
@@ -30,7 +31,7 @@ namespace Npgsql.GeoJSON
 
         static readonly ConcurrentDictionary<string, CrsMap> s_crsMaps = new ConcurrentDictionary<string, CrsMap>();
 
-        protected override NpgsqlTypeHandler<GeoJSONObject> Create(NpgsqlConnection conn)
+        public override NpgsqlTypeHandler<GeoJSONObject> Create(PostgresType postgresType, NpgsqlConnection conn)
         {
             var crsMap = (_options & (GeoJSONOptions.ShortCRS | GeoJSONOptions.LongCRS)) == GeoJSONOptions.None
                 ? default : s_crsMaps.GetOrAdd(conn.ConnectionString, _ =>
@@ -50,7 +51,7 @@ namespace Npgsql.GeoJSON
                          }
                      return builder.Build();
                  });
-            return new GeoJsonHandler(_options, crsMap);
+            return new GeoJsonHandler(postgresType, _options, crsMap);
         }
     }
 
@@ -67,7 +68,8 @@ namespace Npgsql.GeoJSON
         NamedCRS? _lastCrs;
         int _lastSrid;
 
-        internal GeoJsonHandler(GeoJSONOptions options, CrsMap crsMap)
+        internal GeoJsonHandler(PostgresType postgresType, GeoJSONOptions options, CrsMap crsMap)
+            : base(postgresType)
         {
             _options = options;
             _crsMap = crsMap;

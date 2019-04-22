@@ -1,5 +1,6 @@
 ﻿using System.Data;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -14,6 +15,8 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         INpgsqlSimpleTypeHandler<byte>, INpgsqlSimpleTypeHandler<short>, INpgsqlSimpleTypeHandler<int>,
         INpgsqlSimpleTypeHandler<float>, INpgsqlSimpleTypeHandler<double>, INpgsqlSimpleTypeHandler<decimal>
     {
+        public Int64Handler(PostgresType postgresType) : base(postgresType) {}
+
         #region Read
 
         public override long Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)

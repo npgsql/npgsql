@@ -1,4 +1,5 @@
 ﻿using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -14,6 +15,8 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     [TypeMapping("box", NpgsqlDbType.Box, typeof(NpgsqlBox))]
     class BoxHandler : NpgsqlSimpleTypeHandler<NpgsqlBox>
     {
+        public BoxHandler(PostgresType postgresType) : base(postgresType) {}
+
         public override NpgsqlBox Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             => new NpgsqlBox(
                 new NpgsqlPoint(buf.ReadDouble(), buf.ReadDouble()),

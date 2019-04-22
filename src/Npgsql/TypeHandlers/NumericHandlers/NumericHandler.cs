@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Data;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -15,6 +16,8 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         INpgsqlSimpleTypeHandler<byte>, INpgsqlSimpleTypeHandler<short>, INpgsqlSimpleTypeHandler<int>, INpgsqlSimpleTypeHandler<long>,
         INpgsqlSimpleTypeHandler<float>, INpgsqlSimpleTypeHandler<double>
     {
+        public NumericHandler(PostgresType postgresType) : base(postgresType) {}
+
         const int MaxDecimalScale = 28;
 
         const int SignPositive = 0x0000;

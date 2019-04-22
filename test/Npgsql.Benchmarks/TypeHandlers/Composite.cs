@@ -8,6 +8,8 @@ using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using Npgsql.Util;
 
+/* Disabling for now: unmapped composite support is probably going away, and there's a good chance this
+ * class can be simplified to a certain extent
 namespace Npgsql.Benchmarks.TypeHandlers
 {
     public abstract class Composite<T> : TypeHandlerBenchmarks<T>
@@ -49,6 +51,8 @@ namespace Npgsql.Benchmarks.TypeHandlers
 
         class TestDatabaseInfo : PostgresDatabaseInfo
         {
+            internal TestDatabaseInfo(NpgsqlConnection conn) : base(conn) {}
+
             static readonly PostgresBaseType[] Types =
             {
                 new PostgresBaseType("pg_catalog", "integer", 23),
@@ -61,8 +65,8 @@ namespace Npgsql.Benchmarks.TypeHandlers
 
         class TestTextHandlerFactory : NpgsqlTypeHandlerFactory<string>
         {
-            protected override NpgsqlTypeHandler<string> Create(NpgsqlConnection conn)
-                => new TextHandler(PGUtil.UTF8Encoding);
+            public override NpgsqlTypeHandler<string> Create(PostgresType postgresType, NpgsqlConnection conn)
+                => new TextHandler(postgresType, PGUtil.UTF8Encoding);
         }
     }
 
@@ -153,3 +157,4 @@ namespace Npgsql.Benchmarks.TypeHandlers
         public UnmappedStructComposite() : base(new UnmappedCompositeHandler(NameTranslator, TypeMapper) { PostgresType = CompositeType }) { }
     }
 }
+*/

@@ -1,5 +1,6 @@
 ﻿using System;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -10,9 +11,9 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     class IntervalHandlerFactory : NpgsqlTypeHandlerFactory<TimeSpan>
     {
         // Check for the legacy floating point timestamps feature
-        protected override NpgsqlTypeHandler<TimeSpan> Create(NpgsqlConnection conn)
+        public override NpgsqlTypeHandler<TimeSpan> Create(PostgresType postgresType, NpgsqlConnection conn)
             => conn.HasIntegerDateTimes
-                ? new IntervalHandler()
+                ? new IntervalHandler(postgresType)
                 : throw new NotSupportedException($"The deprecated floating-point date/time format is not supported by {nameof(Npgsql)}.");
     }
 
@@ -21,6 +22,8 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// </remarks>
     class IntervalHandler : NpgsqlSimpleTypeHandlerWithPsv<TimeSpan, NpgsqlTimeSpan>
     {
+        internal IntervalHandler(PostgresType postgresType) : base(postgresType) {}
+
         public override TimeSpan Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             => (TimeSpan)((INpgsqlSimpleTypeHandler<NpgsqlTimeSpan>)this).Read(buf, len, fieldDescription);
 

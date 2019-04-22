@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -29,6 +30,8 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
         const int MaxSingleTokenBytes = 2050;
 
         readonly Stack<NpgsqlTsQuery> _stack = new Stack<NpgsqlTsQuery>();
+
+        public TsQueryHandler(PostgresType postgresType) : base(postgresType) {}
 
         #region Read
 

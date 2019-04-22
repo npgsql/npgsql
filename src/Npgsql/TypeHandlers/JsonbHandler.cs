@@ -2,6 +2,7 @@
 using System.IO;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -13,7 +14,8 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("jsonb", NpgsqlDbType.Jsonb)]
     public class JsonbHandlerFactory : NpgsqlTypeHandlerFactory<string>
     {
-        protected override NpgsqlTypeHandler<string> Create(NpgsqlConnection conn) => new JsonbHandler(conn);
+        public override NpgsqlTypeHandler<string> Create(PostgresType postgresType, NpgsqlConnection conn)
+            => new JsonbHandler(postgresType, conn);
     }
 
     /// <summary>
@@ -28,7 +30,8 @@ namespace Npgsql.TypeHandlers
 
         internal override bool PreferTextWrite => false;
 
-        protected internal JsonbHandler(NpgsqlConnection connection) : base(connection) { }
+        protected internal JsonbHandler(PostgresType postgresType, NpgsqlConnection connection)
+            : base(postgresType, connection) {}
 
         #region Write
 

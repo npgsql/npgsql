@@ -1,4 +1,5 @@
 ﻿using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -14,6 +15,8 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     [TypeMapping("lseg", NpgsqlDbType.LSeg, typeof(NpgsqlLSeg))]
     class LineSegmentHandler : NpgsqlSimpleTypeHandler<NpgsqlLSeg>
     {
+        public LineSegmentHandler(PostgresType postgresType) : base(postgresType) {}
+
         public override NpgsqlLSeg Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             => new NpgsqlLSeg(buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble());
 

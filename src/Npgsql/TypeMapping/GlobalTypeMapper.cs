@@ -158,13 +158,13 @@ namespace Npgsql.TypeMapping
         void SetupGlobalTypeMapper()
         {
             // Look for TypeHandlerFactories with mappings in our assembly, set them up
-            foreach (var t in typeof(TypeMapperBase).GetTypeInfo().Assembly.GetTypes().Where(t => t.GetTypeInfo().IsSubclassOf(typeof(NpgsqlTypeHandlerFactory))))
+            foreach (var t in typeof(TypeMapperBase).GetTypeInfo().Assembly.GetTypes().Where(t => typeof(INpgsqlTypeHandlerFactory).IsAssignableFrom(t.GetTypeInfo())))
             {
                 var mappingAttributes = t.GetTypeInfo().GetCustomAttributes(typeof(TypeMappingAttribute), false);
                 if (!mappingAttributes.Any())
                     continue;
 
-                var factory = (NpgsqlTypeHandlerFactory)Activator.CreateInstance(t);
+                var factory = (INpgsqlTypeHandlerFactory)Activator.CreateInstance(t);
 
                 foreach (TypeMappingAttribute m in mappingAttributes)
                 {

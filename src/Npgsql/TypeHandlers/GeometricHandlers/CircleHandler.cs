@@ -1,4 +1,5 @@
 ﻿using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -14,6 +15,8 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     [TypeMapping("circle", NpgsqlDbType.Circle, typeof(NpgsqlCircle))]
     class CircleHandler : NpgsqlSimpleTypeHandler<NpgsqlCircle>
     {
+        public CircleHandler(PostgresType postgresType) : base(postgresType) {}
+
         public override NpgsqlCircle Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             => new NpgsqlCircle(buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble());
 

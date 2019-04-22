@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Net.NetworkInformation;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -17,6 +18,8 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
     [TypeMapping("macaddr", NpgsqlDbType.MacAddr, typeof(PhysicalAddress))]
     class MacaddrHandler : NpgsqlSimpleTypeHandler<PhysicalAddress>
     {
+        public MacaddrHandler(PostgresType postgresType) : base(postgresType) {}
+
         #region Read
 
         /// <inheritdoc />

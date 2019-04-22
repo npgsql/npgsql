@@ -5,6 +5,7 @@ using GeoAPI.Geometries;
 using GeoAPI.IO;
 using NetTopologySuite.Geometries;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
@@ -22,8 +23,8 @@ namespace Npgsql.NetTopologySuite
             _writer = writer;
         }
 
-        protected override NpgsqlTypeHandler<IGeometry> Create(NpgsqlConnection conn)
-            => new NetTopologySuiteHandler(_reader, _writer);
+        public override NpgsqlTypeHandler<IGeometry> Create(PostgresType postgresType, NpgsqlConnection conn)
+            => new NetTopologySuiteHandler(postgresType, _reader, _writer);
     }
 
     class NetTopologySuiteHandler : NpgsqlTypeHandler<IGeometry>, INpgsqlTypeHandler<Geometry>,
@@ -39,7 +40,8 @@ namespace Npgsql.NetTopologySuite
         readonly IBinaryGeometryWriter _writer;
         readonly LengthStream _lengthStream = new LengthStream();
 
-        internal NetTopologySuiteHandler(IBinaryGeometryReader reader, IBinaryGeometryWriter writer)
+        internal NetTopologySuiteHandler(PostgresType postgresType, IBinaryGeometryReader reader, IBinaryGeometryWriter writer)
+            : base(postgresType)
         {
             _reader = reader;
             _writer = writer;

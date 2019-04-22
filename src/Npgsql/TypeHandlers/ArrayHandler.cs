@@ -12,6 +12,8 @@ namespace Npgsql.TypeHandlers
 {
     public abstract class ArrayHandler : NpgsqlTypeHandler
     {
+        protected ArrayHandler(PostgresType arrayPostgresType) : base(arrayPostgresType) {}
+
         internal static class IsArrayOf<TArray, TElement>
         {
             public static readonly bool Value = typeof(TArray).IsArray && typeof(TArray).GetElementType() == typeof(TElement);
@@ -37,7 +39,8 @@ namespace Npgsql.TypeHandlers
         readonly int _lowerBound; // The lower bound value sent to the backend when writing arrays. Normally 1 (the PG default) but is 0 for OIDVector.
         readonly NpgsqlTypeHandler _elementHandler;
 
-        public ArrayHandler(NpgsqlTypeHandler elementHandler, int lowerBound = 1)
+        public ArrayHandler(PostgresType arrayPostgresType, NpgsqlTypeHandler elementHandler, int lowerBound = 1)
+            : base(arrayPostgresType)
         {
             _lowerBound = lowerBound;
             _elementHandler = elementHandler;
@@ -355,8 +358,8 @@ namespace Npgsql.TypeHandlers
     /// <typeparam name="TElementPsv">The .NET provider-specific type contained as an element within this array</typeparam>
     class ArrayHandlerWithPsv<TElement, TElementPsv> : ArrayHandler<TElement>
     {
-        public ArrayHandlerWithPsv(NpgsqlTypeHandler elementHandler)
-            : base(elementHandler) { }
+        public ArrayHandlerWithPsv(PostgresType arrayPostgresType, NpgsqlTypeHandler elementHandler)
+            : base(arrayPostgresType, elementHandler) { }
 
         protected internal override async ValueTask<TAny> Read<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {

@@ -23,10 +23,7 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
         public Type CompositeType => typeof(T);
 
         MappedCompositeHandler(PostgresCompositeType postgresType, CompositeMemberHandler<T>[] members)
-        {
-            PostgresType = postgresType;
-            _members = members;
-        }
+            : base(postgresType) => _members = members;
 
         public override async ValueTask<T> Read(NpgsqlReadBuffer buffer, int length, bool async, FieldDescription? fieldDescription = null)
         {

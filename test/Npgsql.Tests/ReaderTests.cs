@@ -1428,15 +1428,16 @@ LANGUAGE plpgsql VOLATILE";
     class ExplodingTypeHandlerFactory : NpgsqlTypeHandlerFactory<int>
     {
         readonly bool _safe;
-        internal ExplodingTypeHandlerFactory(bool safe) { _safe = safe; }
-        protected override NpgsqlTypeHandler<int> Create(NpgsqlConnection conn)
-            => new ExplodingTypeHandler(_safe);
+        internal ExplodingTypeHandlerFactory(bool safe) => _safe = safe;
+        public override NpgsqlTypeHandler<int> Create(PostgresType postgresType, NpgsqlConnection conn)
+            => new ExplodingTypeHandler(postgresType, _safe);
     }
 
     class ExplodingTypeHandler : NpgsqlSimpleTypeHandler<int>
     {
         readonly bool _safe;
-        internal ExplodingTypeHandler(bool safe) { _safe = safe; }
+        internal ExplodingTypeHandler(PostgresType postgresType, bool safe)
+            : base(postgresType) => _safe = safe;
 
         public override int Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {

@@ -19,11 +19,8 @@ namespace Npgsql.TypeHandlers
     {
         readonly NpgsqlConnector _connector;
 
-        internal UnknownTypeHandler(NpgsqlConnection connection) : base(connection)
-        {
-            PostgresType = UnknownBackendType.Instance;
-            _connector = connection.Connector!;
-        }
+        internal UnknownTypeHandler(NpgsqlConnection connection)
+            : base(UnknownBackendType.Instance, connection) => _connector = connection.Connector!;
 
         #region Read
 

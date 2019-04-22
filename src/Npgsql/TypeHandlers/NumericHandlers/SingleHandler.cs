@@ -1,5 +1,6 @@
 ﻿using System.Data;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -12,6 +13,8 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     [TypeMapping("real", NpgsqlDbType.Real, DbType.Single, typeof(float))]
     class SingleHandler : NpgsqlSimpleTypeHandler<float>, INpgsqlSimpleTypeHandler<double>
     {
+        public SingleHandler(PostgresType postgresType) : base(postgresType) {}
+
         #region Read
 
         public override float Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)

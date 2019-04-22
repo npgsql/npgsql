@@ -8,16 +8,13 @@ using NpgsqlTypes;
 namespace Npgsql.TypeHandlers.InternalTypeHandlers
 {
     [TypeMapping("oidvector", NpgsqlDbType.Oidvector)]
-    class OIDVectorHandlerFactory : NpgsqlTypeHandlerFactory
+    class OIDVectorHandlerFactory : INpgsqlTypeHandlerFactory
     {
-        internal override NpgsqlTypeHandler Create(PostgresType pgType, NpgsqlConnection conn)
-            => new OIDVectorHandler(conn.Connector!.TypeMapper.DatabaseInfo.ByName["oid"]
-                                    ?? throw new NpgsqlException("Two types called 'oid' defined in the database"))
-            {
-                PostgresType = pgType
-            };
+        public NpgsqlTypeHandler Create(PostgresType pgType, NpgsqlConnection conn)
+            => new OIDVectorHandler(pgType, conn.Connector!.TypeMapper.DatabaseInfo.ByName["oid"]
+                                    ?? throw new NpgsqlException("Two types called 'oid' defined in the database"));
 
-        internal override Type DefaultValueType => typeof(uint[]);
+        public Type DefaultValueType => typeof(uint[]);
     }
 
     /// <summary>
@@ -26,10 +23,10 @@ namespace Npgsql.TypeHandlers.InternalTypeHandlers
     /// </summary>
     class OIDVectorHandler : ArrayHandler<uint>
     {
-        public OIDVectorHandler(PostgresType postgresOIDType)
-            : base(new UInt32Handler { PostgresType = postgresOIDType }, 0) { }
+        public OIDVectorHandler(PostgresType oidvectorType, PostgresType oidType)
+            : base(oidvectorType, new UInt32Handler(oidType), 0) { }
 
         public override ArrayHandler CreateArrayHandler(PostgresArrayType arrayBackendType)
-            => new ArrayHandler<ArrayHandler<uint>>(this) { PostgresType = arrayBackendType };
+            => new ArrayHandler<ArrayHandler<uint>>(arrayBackendType, this);
     }
 }

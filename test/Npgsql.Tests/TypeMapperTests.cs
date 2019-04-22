@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Data;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandlers;
 using Npgsql.TypeHandlers.NumericHandlers;
 using Npgsql.TypeHandling;
@@ -140,7 +141,7 @@ CHECK
 
         class DummyTypeHandlerFactory : NpgsqlTypeHandlerFactory<int>
         {
-            protected override NpgsqlTypeHandler<int> Create(NpgsqlConnection conn)
+            public override NpgsqlTypeHandler<int> Create(PostgresType postgresType, NpgsqlConnection conn)
                 => throw new Exception();
         }
 
@@ -210,15 +211,16 @@ CHECK
         {
             internal int Reads, Writes;
 
-            protected override NpgsqlTypeHandler<int> Create(NpgsqlConnection conn)
-                => new MyInt32Handler(this);
+            public override NpgsqlTypeHandler<int> Create(PostgresType postgresType, NpgsqlConnection conn)
+                => new MyInt32Handler(postgresType, this);
         }
 
         class MyInt32Handler : Int32Handler
         {
             readonly MyInt32HandlerFactory _factory;
 
-            public MyInt32Handler(MyInt32HandlerFactory factory)
+            public MyInt32Handler(PostgresType postgresType, MyInt32HandlerFactory factory)
+                : base(postgresType)
             {
                 _factory = factory;
             }

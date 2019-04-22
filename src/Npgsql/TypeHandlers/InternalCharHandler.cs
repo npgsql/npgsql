@@ -1,4 +1,5 @@
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -15,6 +16,8 @@ namespace Npgsql.TypeHandlers
     class InternalCharHandler : NpgsqlSimpleTypeHandler<char>,
         INpgsqlSimpleTypeHandler<byte>, INpgsqlSimpleTypeHandler<short>, INpgsqlSimpleTypeHandler<int>, INpgsqlSimpleTypeHandler<long>
     {
+        public InternalCharHandler(PostgresType postgresType) : base(postgresType) {}
+
         #region Read
 
         public override char Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)

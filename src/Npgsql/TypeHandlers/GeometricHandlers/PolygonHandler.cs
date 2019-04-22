@@ -1,5 +1,6 @@
 ﻿using System.Threading.Tasks;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -15,6 +16,8 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     [TypeMapping("polygon", NpgsqlDbType.Polygon, typeof(NpgsqlPolygon))]
     class PolygonHandler : NpgsqlTypeHandler<NpgsqlPolygon>
     {
+        public PolygonHandler(PostgresType postgresType) : base(postgresType) {}
+
         #region Read
 
         public override async ValueTask<NpgsqlPolygon> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)

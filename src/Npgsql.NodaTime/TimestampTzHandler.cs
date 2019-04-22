@@ -1,6 +1,7 @@
 ﻿using System;
 using NodaTime;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
@@ -10,9 +11,9 @@ namespace Npgsql.NodaTime
     public class TimestampTzHandlerFactory : NpgsqlTypeHandlerFactory<Instant>
     {
         // Check for the legacy floating point timestamps feature
-        protected override NpgsqlTypeHandler<Instant> Create(NpgsqlConnection conn)
+        public override NpgsqlTypeHandler<Instant> Create(PostgresType postgresType, NpgsqlConnection conn)
             => conn.HasIntegerDateTimes
-                ? new TimestampTzHandler()
+                ? new TimestampTzHandler(postgresType)
                 : throw new NotSupportedException($"The deprecated floating-point date/time format is not supported by {nameof(Npgsql)}.");
     }
 
@@ -21,8 +22,8 @@ namespace Npgsql.NodaTime
     {
         readonly IDateTimeZoneProvider _dateTimeZoneProvider;
 
-        public TimestampTzHandler()
-            => _dateTimeZoneProvider = DateTimeZoneProviders.Tzdb;
+        public TimestampTzHandler(PostgresType postgresType)
+            : base(postgresType) => _dateTimeZoneProvider = DateTimeZoneProviders.Tzdb;
 
         #region Read
 

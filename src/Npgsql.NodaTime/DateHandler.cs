@@ -1,5 +1,6 @@
 ﻿using NodaTime;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
@@ -8,10 +9,10 @@ namespace Npgsql.NodaTime
 {
     public class DateHandlerFactory : NpgsqlTypeHandlerFactory<LocalDate>
     {
-        protected override NpgsqlTypeHandler<LocalDate> Create(NpgsqlConnection conn)
+        public override NpgsqlTypeHandler<LocalDate> Create(PostgresType postgresType, NpgsqlConnection conn)
         {
             var csb = new NpgsqlConnectionStringBuilder(conn.ConnectionString);
-            return new DateHandler(csb.ConvertInfinityDateTime);
+            return new DateHandler(postgresType, csb.ConvertInfinityDateTime);
         }
     }
 
@@ -23,7 +24,8 @@ namespace Npgsql.NodaTime
         /// </summary>
         readonly bool _convertInfinityDateTime;
 
-        internal DateHandler(bool convertInfinityDateTime)
+        internal DateHandler(PostgresType postgresType, bool convertInfinityDateTime)
+            : base(postgresType)
         {
             _convertInfinityDateTime = convertInfinityDateTime;
         }

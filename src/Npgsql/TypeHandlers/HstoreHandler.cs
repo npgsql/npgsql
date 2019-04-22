@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -12,8 +13,8 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("hstore", NpgsqlDbType.Hstore, new[] { typeof(Dictionary<string, string?>), typeof(IDictionary<string, string?>) })]
     class HstoreHandlerFactory : NpgsqlTypeHandlerFactory<Dictionary<string, string?>>
     {
-        protected override NpgsqlTypeHandler<Dictionary<string, string?>> Create(NpgsqlConnection conn)
-            => new HstoreHandler(conn);
+        public override NpgsqlTypeHandler<Dictionary<string, string?>> Create(PostgresType postgresType, NpgsqlConnection conn)
+            => new HstoreHandler(postgresType, conn);
     }
 
 #pragma warning disable CA1061 // Do not hide base class methods
@@ -24,8 +25,8 @@ namespace Npgsql.TypeHandlers
         /// </summary>
         readonly TextHandler _textHandler;
 
-        internal HstoreHandler(NpgsqlConnection connection)
-            => _textHandler = new TextHandler(connection);
+        internal HstoreHandler(PostgresType postgresType, NpgsqlConnection connection)
+            : base(postgresType) => _textHandler = new TextHandler(postgresType, connection);
 
         #region Write
 

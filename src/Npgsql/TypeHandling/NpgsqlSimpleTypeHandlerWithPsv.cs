@@ -23,6 +23,13 @@ namespace Npgsql.TypeHandling
     /// <typeparam name="TPsv">The provider-specific CLR type that this handler will read and write.</typeparam>
     public abstract class NpgsqlSimpleTypeHandlerWithPsv<TDefault, TPsv> : NpgsqlSimpleTypeHandler<TDefault>, INpgsqlSimpleTypeHandler<TPsv>
     {
+        /// <summary>
+        /// Constructs an <see cref="NpgsqlSimpleTypeHandlerWithPsv{TDefault,TPsv}"/>
+        /// </summary>
+        /// <param name="postgresType"></param>
+        protected NpgsqlSimpleTypeHandlerWithPsv(PostgresType postgresType)
+            : base(postgresType) {}
+
         #region Read
 
         /// <summary>
@@ -95,7 +102,7 @@ namespace Npgsql.TypeHandling
 
         /// <inheeritdoc />
         public override ArrayHandler CreateArrayHandler(PostgresArrayType arrayBackendType)
-            => new ArrayHandlerWithPsv<TDefault, TPsv>(this) { PostgresType = arrayBackendType };
+            => new ArrayHandlerWithPsv<TDefault, TPsv>(arrayBackendType, this);
 
         #endregion Misc
     }

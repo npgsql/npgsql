@@ -2,6 +2,7 @@
 using System.Data;
 using System.Runtime.InteropServices;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -27,6 +28,8 @@ namespace Npgsql.TypeHandlers
         // | 16   | 2     | Data2 | Native            | Big                   |
         // | 16   | 2     | Data3 | Native            | Big                   |
         // | 64   | 8     | Data4 | Big               | Big                   |
+
+        public UuidHandler(PostgresType postgresType) : base(postgresType) {}
 
         public override Guid Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {

@@ -7,7 +7,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using Npgsql.PostgresTypes;
 using Npgsql.Util;
+
+#nullable disable
 
 namespace Npgsql.Benchmarks.TypeHandlers
 {
@@ -49,6 +52,14 @@ namespace Npgsql.Benchmarks.TypeHandlers
             _handler = handler ?? throw new ArgumentNullException(nameof(handler));
             _readBuffer = new NpgsqlReadBuffer(null, _stream, NpgsqlReadBuffer.MinimumSize, Encoding.UTF8, PGUtil.RelaxedUTF8Encoding);
             _writeBuffer = new NpgsqlWriteBuffer(null, _stream, NpgsqlWriteBuffer.MinimumSize, Encoding.UTF8);
+        }
+
+        protected static PostgresType GetPostgresType(string pgType)
+        {
+            using (var conn = BenchmarkEnvironment.OpenConnection())
+            using (var cmd = new NpgsqlCommand($"SELECT NULL::{pgType}", conn))
+            using (var reader = cmd.ExecuteReader())
+                return reader.GetPostgresType(0);
         }
 
         public IEnumerable<T> Values() => ValuesOverride();

@@ -8,16 +8,13 @@ using NpgsqlTypes;
 namespace Npgsql.TypeHandlers.InternalTypeHandlers
 {
     [TypeMapping("int2vector", NpgsqlDbType.Int2Vector)]
-    class Int2VectorHandlerFactory : NpgsqlTypeHandlerFactory
+    class Int2VectorHandlerFactory : INpgsqlTypeHandlerFactory
     {
-        internal override NpgsqlTypeHandler Create(PostgresType pgType, NpgsqlConnection conn)
-            => new Int2VectorHandler(conn.Connector!.TypeMapper.DatabaseInfo.ByName["smallint"]
-                                     ?? throw new NpgsqlException("Two types called 'smallint' defined in the database"))
-            {
-                PostgresType = pgType
-            };
+        public NpgsqlTypeHandler Create(PostgresType pgType, NpgsqlConnection conn)
+            => new Int2VectorHandler(pgType, conn.Connector!.TypeMapper.DatabaseInfo.ByName["smallint"]
+                                             ?? throw new NpgsqlException("Two types called 'smallint' defined in the database"));
 
-        internal override Type DefaultValueType => typeof(short[]);
+        public Type DefaultValueType => typeof(short[]);
     }
 
     /// <summary>
@@ -26,10 +23,10 @@ namespace Npgsql.TypeHandlers.InternalTypeHandlers
     /// </summary>
     class Int2VectorHandler : ArrayHandler<short>
     {
-        public Int2VectorHandler(PostgresType postgresShortType)
-            : base(new Int16Handler { PostgresType = postgresShortType }, 0) { }
+        public Int2VectorHandler(PostgresType arrayPostgresType, PostgresType postgresShortType)
+            : base(arrayPostgresType, new Int16Handler(postgresShortType), 0) { }
 
         public override ArrayHandler CreateArrayHandler(PostgresArrayType arrayBackendType)
-            => new ArrayHandler<ArrayHandler<short>>(this) { PostgresType = arrayBackendType };
+            => new ArrayHandler<ArrayHandler<short>>(arrayBackendType, this);
     }
 }

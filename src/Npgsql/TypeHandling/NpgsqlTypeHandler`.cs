@@ -37,7 +37,8 @@ namespace Npgsql.TypeHandling
         /// <summary>
         /// Constructs an <see cref="NpgsqlTypeHandler{TDefault}"/>.
         /// </summary>
-        protected NpgsqlTypeHandler()
+        protected NpgsqlTypeHandler(PostgresType postgresType)
+            : base(postgresType)
             // Get code-generated delegates for non-generic ValidateAndGetLength/WriteWithLengthInternal
             =>
             (_nonGenericValidateAndGetLength, _nonGenericWriteWithLength) =
@@ -273,11 +274,11 @@ namespace Npgsql.TypeHandling
 
         /// <inheritdoc />
         public override ArrayHandler CreateArrayHandler(PostgresArrayType arrayBackendType)
-            => new ArrayHandler<TDefault>(this) { PostgresType = arrayBackendType };
+            => new ArrayHandler<TDefault>(arrayBackendType, this);
 
         /// <inheritdoc />
         public override RangeHandler CreateRangeHandler(PostgresRangeType rangeBackendType)
-            => new RangeHandler<TDefault>(this) { PostgresType = rangeBackendType };
+            => new RangeHandler<TDefault>(rangeBackendType, this);
 
         #endregion Misc
     }

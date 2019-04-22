@@ -7,6 +7,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 
 namespace Npgsql.TypeHandling
 {
@@ -33,7 +34,8 @@ namespace Npgsql.TypeHandling
         /// <summary>
         /// Constructs an <see cref="NpgsqlSimpleTypeHandler{TDefault}"/>.
         /// </summary>
-        protected NpgsqlSimpleTypeHandler()
+        protected NpgsqlSimpleTypeHandler(PostgresType postgresType)
+            : base(postgresType)
         {
             // Get code-generated delegates for non-generic ValidateAndGetLength/WriteWithLengthInternal
             (_nonGenericValidateAndGetLength, _nonGenericWriteWithLength) =

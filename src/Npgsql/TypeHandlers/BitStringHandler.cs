@@ -25,6 +25,8 @@ namespace Npgsql.TypeHandlers
     class BitStringHandler : NpgsqlTypeHandler<BitArray>,
         INpgsqlTypeHandler<BitVector32>, INpgsqlTypeHandler<bool>, INpgsqlTypeHandler<string>
     {
+        public BitStringHandler(PostgresType postgresType) : base(postgresType) {}
+
         internal override Type GetFieldType(FieldDescription? fieldDescription = null)
             => fieldDescription != null && fieldDescription.TypeModifier == 1 ? typeof(bool) : typeof(BitArray);
 
@@ -33,7 +35,7 @@ namespace Npgsql.TypeHandlers
 
         // BitString requires a special array handler which returns bool or BitArray
         public override ArrayHandler CreateArrayHandler(PostgresArrayType backendType)
-            => new BitStringArrayHandler(this) { PostgresType = backendType };
+            => new BitStringArrayHandler(backendType, this);
 
         #region Read
 
@@ -249,8 +251,8 @@ namespace Npgsql.TypeHandlers
     /// </summary>
     class BitStringArrayHandler : ArrayHandler<BitArray>
     {
-        public BitStringArrayHandler(BitStringHandler elementHandler)
-            : base(elementHandler) { }
+        public BitStringArrayHandler(PostgresType postgresType, BitStringHandler elementHandler)
+            : base(postgresType, elementHandler) {}
 
         protected internal override async ValueTask<TAny> Read<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {

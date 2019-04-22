@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using NpgsqlTypes;
 
@@ -19,8 +20,8 @@ namespace Npgsql.TypeHandlers
 
         Type? _resolvedType;
 
-        internal UnmappedEnumHandler(INpgsqlNameTranslator nameTranslator, NpgsqlConnection connection)
-            : base(connection)
+        internal UnmappedEnumHandler(PostgresType pgType, INpgsqlNameTranslator nameTranslator, NpgsqlConnection connection)
+            : base(pgType, connection)
         {
             _nameTranslator = nameTranslator;
         }
@@ -144,8 +145,8 @@ namespace Npgsql.TypeHandlers
             NameTranslator = nameTranslator;
         }
 
-        protected override NpgsqlTypeHandler<string> Create(NpgsqlConnection conn)
-            => new UnmappedEnumHandler(NameTranslator, conn);
+        public override NpgsqlTypeHandler<string> Create(PostgresType pgType, NpgsqlConnection conn)
+            => new UnmappedEnumHandler(pgType, NameTranslator, conn);
 
         public INpgsqlNameTranslator NameTranslator { get; }
     }

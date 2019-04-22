@@ -4,6 +4,7 @@ using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -28,8 +29,8 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("unknown")]
     public class TextHandlerFactory : NpgsqlTypeHandlerFactory<string>
     {
-        protected override NpgsqlTypeHandler<string> Create(NpgsqlConnection conn)
-            => new TextHandler(conn);
+        public override NpgsqlTypeHandler<string> Create(PostgresType pgType, NpgsqlConnection conn)
+            => new TextHandler(pgType, conn);
     }
 
     public class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler<char[]>, INpgsqlTypeHandler<ArraySegment<char>>,
@@ -47,11 +48,11 @@ namespace Npgsql.TypeHandlers
 
         #endregion
 
-        protected internal TextHandler(NpgsqlConnection connection)
-            : this(connection.Connector!.TextEncoding) { }
+        protected internal TextHandler(PostgresType postgresType, NpgsqlConnection connection)
+            : this(postgresType, connection.Connector!.TextEncoding) { }
 
-        protected internal TextHandler(Encoding encoding)
-            => _encoding = encoding;
+        protected internal TextHandler(PostgresType postgresType, Encoding encoding)
+            : base(postgresType) => _encoding = encoding;
 
         #region Read
 

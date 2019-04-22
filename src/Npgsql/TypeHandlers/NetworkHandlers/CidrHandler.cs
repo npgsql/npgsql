@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -13,6 +14,8 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
     [TypeMapping("cidr", NpgsqlDbType.Cidr)]
     class CidrHandler : NpgsqlSimpleTypeHandler<(IPAddress Address, int Subnet)>, INpgsqlSimpleTypeHandler<NpgsqlInet>
     {
+        public CidrHandler(PostgresType postgresType) : base(postgresType) {}
+
         public override (IPAddress Address, int Subnet) Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             => InetHandler.DoRead(buf, len, fieldDescription, true);
 

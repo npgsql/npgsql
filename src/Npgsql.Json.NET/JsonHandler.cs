@@ -2,6 +2,7 @@
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
@@ -15,15 +16,16 @@ namespace Npgsql.Json.NET
         public JsonHandlerFactory(JsonSerializerSettings? settings = null)
             => _settings = settings ?? new JsonSerializerSettings();
 
-        protected override NpgsqlTypeHandler<string> Create(NpgsqlConnection conn)
-            => new JsonHandler(conn, _settings);
+        public override NpgsqlTypeHandler<string> Create(PostgresType postgresType, NpgsqlConnection conn)
+            => new JsonHandler(postgresType, conn, _settings);
     }
 
     class JsonHandler : Npgsql.TypeHandlers.TextHandler
     {
         readonly JsonSerializerSettings _settings;
 
-        public JsonHandler(NpgsqlConnection connection, JsonSerializerSettings settings) : base(connection) => _settings = settings;
+        public JsonHandler(PostgresType postgresType, NpgsqlConnection connection, JsonSerializerSettings settings)
+            : base(postgresType, connection) => _settings = settings;
 
         protected override async ValueTask<T> Read<T>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {

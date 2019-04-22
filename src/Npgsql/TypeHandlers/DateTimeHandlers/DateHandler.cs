@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Data;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -10,8 +11,8 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     [TypeMapping("date", NpgsqlDbType.Date, DbType.Date, typeof(NpgsqlDate))]
     class DateHandlerFactory : NpgsqlTypeHandlerFactory<DateTime>
     {
-        protected override NpgsqlTypeHandler<DateTime> Create(NpgsqlConnection conn)
-            => new DateHandler(conn.Connector!.ConvertInfinityDateTime);
+        public override NpgsqlTypeHandler<DateTime> Create(PostgresType postgresType, NpgsqlConnection conn)
+            => new DateHandler(postgresType, conn.Connector!.ConvertInfinityDateTime);
     }
 
     /// <remarks>
@@ -28,7 +29,8 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         /// </summary>
         readonly bool _convertInfinityDateTime;
 
-        public DateHandler(bool convertInfinityDateTime)
+        internal DateHandler(PostgresType postgresType, bool convertInfinityDateTime)
+            : base(postgresType)
         {
             _convertInfinityDateTime = convertInfinityDateTime;
         }
