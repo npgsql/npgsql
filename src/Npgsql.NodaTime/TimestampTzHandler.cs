@@ -26,7 +26,7 @@ namespace Npgsql.NodaTime
 
         #region Read
 
-        public override Instant Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override Instant Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
             var value = buf.ReadInt64();
             if (value == long.MaxValue || value == long.MinValue)
@@ -34,7 +34,7 @@ namespace Npgsql.NodaTime
             return TimestampHandler.Decode(value);
         }
 
-        ZonedDateTime INpgsqlSimpleTypeHandler<ZonedDateTime>.Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription)
+        ZonedDateTime INpgsqlSimpleTypeHandler<ZonedDateTime>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
         {
             try
             {
@@ -56,29 +56,29 @@ namespace Npgsql.NodaTime
             }
         }
 
-        OffsetDateTime INpgsqlSimpleTypeHandler<OffsetDateTime>.Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription)
+        OffsetDateTime INpgsqlSimpleTypeHandler<OffsetDateTime>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
             => ((INpgsqlSimpleTypeHandler<ZonedDateTime>)this).Read(buf, len, fieldDescription).ToOffsetDateTime();
 
         #endregion Read
 
         #region Write
 
-        public override int ValidateAndGetLength(Instant value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(Instant value, NpgsqlParameter? parameter)
             => 8;
 
-        int INpgsqlSimpleTypeHandler<ZonedDateTime>.ValidateAndGetLength(ZonedDateTime value, NpgsqlParameter parameter)
+        int INpgsqlSimpleTypeHandler<ZonedDateTime>.ValidateAndGetLength(ZonedDateTime value, NpgsqlParameter? parameter)
             => 8;
 
-        public int ValidateAndGetLength(OffsetDateTime value, NpgsqlParameter parameter)
+        public int ValidateAndGetLength(OffsetDateTime value, NpgsqlParameter? parameter)
             => 8;
 
-        public override void Write(Instant value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public override void Write(Instant value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => TimestampHandler.WriteInteger(value, buf);
 
-        void INpgsqlSimpleTypeHandler<ZonedDateTime>.Write(ZonedDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        void INpgsqlSimpleTypeHandler<ZonedDateTime>.Write(ZonedDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => Write(value.ToInstant(), buf, parameter);
 
-        public void Write(OffsetDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public void Write(OffsetDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => Write(value.ToInstant(), buf, parameter);
 
         #endregion Write

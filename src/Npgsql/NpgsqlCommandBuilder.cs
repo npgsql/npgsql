@@ -2,7 +2,6 @@
 using System.Data;
 using System.Data.Common;
 using System.Globalization;
-using JetBrains.Annotations;
 using NpgsqlTypes;
 
 namespace Npgsql
@@ -28,7 +27,9 @@ namespace Npgsql
         /// Initializes a new instance of the <see cref="NpgsqlCommandBuilder"/> class.
         /// </summary>
         /// <param name="adapter">The adapter.</param>
+#nullable disable
         public NpgsqlCommandBuilder(NpgsqlDataAdapter adapter)
+#nullable enable
         {
             DataAdapter = adapter;
             QuotePrefix = "\"";
@@ -278,7 +279,7 @@ namespace Npgsql
         ///   <IPermission class="System.Security.Permissions.FileIOPermission, mscorlib, Version=2.0.3600.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" version="1" PathDiscovery="*AllFiles*" />
         ///   </PermissionSet>
         /// <exception cref="System.ArgumentNullException">Unquoted identifier parameter cannot be null</exception>
-        public override string QuoteIdentifier([CanBeNull] string unquotedIdentifier)
+        public override string QuoteIdentifier(string unquotedIdentifier)
             => unquotedIdentifier == null
                 ? throw new ArgumentNullException(nameof(unquotedIdentifier), "Unquoted identifier parameter cannot be null")
                 : $"{QuotePrefix}{unquotedIdentifier.Replace(QuotePrefix, QuotePrefix + QuotePrefix)}{QuoteSuffix}";

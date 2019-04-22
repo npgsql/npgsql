@@ -383,7 +383,7 @@ namespace Npgsql.Tests.Types
                     => typeof(string) == sourceType;
 
                 public override object ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, object value)
-                    => new SimpleType(value?.ToString());
+                    => new SimpleType(value.ToString());
             }
         }
 

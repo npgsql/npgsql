@@ -3,7 +3,6 @@ using System.Data;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
-using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
@@ -49,14 +48,14 @@ namespace Npgsql.TypeHandlers
         #endregion
 
         protected internal TextHandler(NpgsqlConnection connection)
-            : this(connection.Connector.TextEncoding) { }
+            : this(connection.Connector!.TextEncoding) { }
 
         protected internal TextHandler(Encoding encoding)
             => _encoding = encoding;
 
         #region Read
 
-        public override ValueTask<string> Read(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription fieldDescription = null)
+        public override ValueTask<string> Read(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription? fieldDescription = null)
         {
             return buf.ReadBytesLeft >= byteLen
                 ? new ValueTask<string>(buf.ReadString(byteLen))
@@ -96,7 +95,7 @@ namespace Npgsql.TypeHandlers
             }
         }
 
-        async ValueTask<char[]> INpgsqlTypeHandler<char[]>.Read(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription fieldDescription)
+        async ValueTask<char[]> INpgsqlTypeHandler<char[]>.Read(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription? fieldDescription)
         {
             if (byteLen <= buf.Size)
             {
@@ -124,7 +123,7 @@ namespace Npgsql.TypeHandlers
             return buf.TextEncoding.GetChars(tempBuf);
         }
 
-        async ValueTask<char> INpgsqlTypeHandler<char>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<char> INpgsqlTypeHandler<char>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
         {
             // Make sure we have enough bytes in the buffer for a single character
             var maxBytes = Math.Min(buf.TextEncoding.GetMaxByteCount(1), len);
@@ -141,13 +140,13 @@ namespace Npgsql.TypeHandlers
             return _singleCharArray[0];
         }
 
-        ValueTask<ArraySegment<char>> INpgsqlTypeHandler<ArraySegment<char>>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        ValueTask<ArraySegment<char>> INpgsqlTypeHandler<ArraySegment<char>>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
         {
             buf.Skip(len);
             throw new NpgsqlSafeReadException(new NotSupportedException("Only writing ArraySegment<char> to PostgreSQL text is supported, no reading."));
         }
 
-        ValueTask<byte[]> INpgsqlTypeHandler<byte[]>.Read(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription fieldDescription)
+        ValueTask<byte[]> INpgsqlTypeHandler<byte[]>.Read(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription? fieldDescription)
         {
             var bytes = new byte[byteLen];
             if (buf.ReadBytesLeft >= byteLen)
@@ -194,7 +193,7 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        public override unsafe int ValidateAndGetLength(string value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        public override unsafe int ValidateAndGetLength(string value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
             if (lengthCache == null)
                 lengthCache = new NpgsqlLengthCache(1);
@@ -207,7 +206,7 @@ namespace Npgsql.TypeHandlers
                 return lengthCache.Set(_encoding.GetByteCount(p, parameter.Size));
         }
 
-        public virtual int ValidateAndGetLength(char[] value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        public virtual int ValidateAndGetLength(char[] value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
             if (lengthCache == null)
                 lengthCache = new NpgsqlLengthCache(1);
@@ -221,7 +220,7 @@ namespace Npgsql.TypeHandlers
             );
         }
 
-        public virtual int ValidateAndGetLength(ArraySegment<char> value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        public virtual int ValidateAndGetLength(ArraySegment<char> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
             if (lengthCache == null)
                 lengthCache = new NpgsqlLengthCache(1);
@@ -234,45 +233,45 @@ namespace Npgsql.TypeHandlers
             return lengthCache.Set(_encoding.GetByteCount(value.Array, value.Offset, value.Count));
         }
 
-        public int ValidateAndGetLength(char value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        public int ValidateAndGetLength(char value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
             _singleCharArray[0] = value;
             return _encoding.GetByteCount(_singleCharArray);
         }
 
-        public int ValidateAndGetLength(byte[] value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        public int ValidateAndGetLength(byte[] value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => value.Length;
 
-        public override Task Write(string value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-            => WriteString(value, buf, lengthCache, parameter, async);
+        public override Task Write(string value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+            => WriteString(value, buf, lengthCache!, parameter, async);
 
-        public virtual Task Write(char[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        public virtual Task Write(char[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             var charLen = parameter == null || parameter.Size <= 0 || parameter.Size >= value.Length
                 ? value.Length
                 : parameter.Size;
-            return buf.WriteChars(value, 0, charLen, lengthCache.GetLast(), async);
+            return buf.WriteChars(value, 0, charLen, lengthCache!.GetLast(), async);
         }
 
-        public virtual Task Write(ArraySegment<char> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async) => 
-            buf.WriteChars(value.Array, value.Offset, value.Count, lengthCache.GetLast(), async);
+        public virtual Task Write(ArraySegment<char> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async) =>
+            buf.WriteChars(value.Array, value.Offset, value.Count, lengthCache!.GetLast(), async);
 
-        Task WriteString(string str, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter, bool async)
+        Task WriteString(string str, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter? parameter, bool async)
         {
             var charLen = parameter == null || parameter.Size <= 0 || parameter.Size >= str.Length
                 ? str.Length
                 : parameter.Size;
-            return buf.WriteString(str, charLen, lengthCache.GetLast(), async);
+            return buf.WriteString(str, charLen, lengthCache!.GetLast(), async);
         }
 
-        public Task Write(char value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        public Task Write(char value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             _singleCharArray[0] = value;
             var len = _encoding.GetByteCount(_singleCharArray);
             return buf.WriteChars(_singleCharArray, 0, 1, len, async);
         }
 
-        public Task Write(byte[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        public Task Write(byte[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => buf.WriteBytesRaw(value, async);
 
         #endregion

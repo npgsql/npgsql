@@ -106,7 +106,7 @@ namespace Npgsql.Tests
 
         #region Setup
 
-        NpgsqlConnectionStringBuilder Builder { get; set; }
+        NpgsqlConnectionStringBuilder Builder { get; set; } = default!;
 
         [SetUp]
         public void SetUp()

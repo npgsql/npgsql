@@ -177,9 +177,9 @@ namespace Npgsql.Tests
 
         #region Setup / Teardown / Utils
 
-        SqlQueryParser _parser;
-        List<NpgsqlStatement> _queries;
-        NpgsqlParameterCollection _params;
+        SqlQueryParser _parser = default!;
+        List<NpgsqlStatement> _queries = default!;
+        NpgsqlParameterCollection _params = default!;
 
         [SetUp]
         public void SetUp()

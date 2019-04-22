@@ -301,7 +301,7 @@ namespace Npgsql.Tests
             using (var conn = new NpgsqlConnection(ConnectionString + $";Application Name={TestUtil.GetUniqueIdentifier(nameof(TransactionOnRecycledConnection))}"))
             {
                 conn.Open();
-                var prevConnectorId = conn.Connector.Id;
+                var prevConnectorId = conn.Connector!.Id;
                 conn.Close();
                 conn.Open();
                 Assert.That(conn.Connector.Id, Is.EqualTo(prevConnectorId), "Connection pool returned a different connector, can't test");
@@ -466,9 +466,9 @@ namespace Npgsql.Tests
 
         class NoTransactionDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
         {
-            public async Task<NpgsqlDatabaseInfo> Load(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
+            public async Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
             {
-                var db = new NoTransactionDatabaseInfo();
+                var db = new NoTransactionDatabaseInfo(conn);
                 await db.LoadPostgresInfo(conn, timeout, async);
                 return db;
             }
@@ -477,6 +477,8 @@ namespace Npgsql.Tests
         class NoTransactionDatabaseInfo : PostgresDatabaseInfo
         {
             public override bool SupportsTransactions => false;
+
+            internal NoTransactionDatabaseInfo(NpgsqlConnection conn) : base(conn) {}
         }
 
         // Older tests

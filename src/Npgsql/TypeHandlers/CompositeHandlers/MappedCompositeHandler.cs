@@ -28,7 +28,7 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
             _members = members;
         }
 
-        public override async ValueTask<T> Read(NpgsqlReadBuffer buffer, int length, bool async, FieldDescription fieldDescription = null)
+        public override async ValueTask<T> Read(NpgsqlReadBuffer buffer, int length, bool async, FieldDescription? fieldDescription = null)
         {
             await buffer.Ensure(sizeof(int), async);
 
@@ -54,7 +54,7 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
             }
         }
 
-        public override async Task Write(T value, NpgsqlWriteBuffer buffer, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        public override async Task Write(T value, NpgsqlWriteBuffer buffer, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             if (buffer.WriteSpaceLeft < sizeof(int))
                 await buffer.Flush(async);
@@ -65,7 +65,7 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
                 await member.Write(value, buffer, lengthCache, async);
         }
 
-        public override int ValidateAndGetLength(T value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(T value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
             if (lengthCache == null)
                 lengthCache = new NpgsqlLengthCache(1);
@@ -110,12 +110,12 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
                     default:
                         continue;
                 }
-                
+
                 var attr = clrMember.GetCustomAttribute<PgNameAttribute>();
                 var name = attr?.PgName ?? nameTranslator.TranslateMemberName(clrMember.Name);
 
                 int pgFieldIndex;
-                PostgresCompositeType.Field pgField = null;
+                PostgresCompositeType.Field? pgField = null;
 
                 for (pgFieldIndex = pgFields.Count - 1; pgFieldIndex >= 0; --pgFieldIndex)
                 {

@@ -18,7 +18,7 @@ namespace Npgsql.NodaTime
 
     class IntervalHandler : NpgsqlSimpleTypeHandler<Period>
     {
-        public override Period Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override Period Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
             var microsecondsInDay = buf.ReadInt64();
             var days = buf.ReadInt32();
@@ -38,10 +38,10 @@ namespace Npgsql.NodaTime
             }.Build().Normalize();
         }
 
-        public override int ValidateAndGetLength(Period value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(Period value, NpgsqlParameter? parameter)
             => 16;
 
-        public override void Write(Period value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public override void Write(Period value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
             var microsecondsInDay =
                 (((value.Hours * NodaConstants.MinutesPerHour + value.Minutes) * NodaConstants.SecondsPerMinute + value.Seconds) * NodaConstants.MillisecondsPerSecond + value.Milliseconds) * 1000 +

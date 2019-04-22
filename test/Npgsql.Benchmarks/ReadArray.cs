@@ -13,9 +13,9 @@ namespace Npgsql.Benchmarks
     [Config(typeof(ReadArrayConfig))]
     public class ReadArray
     {
-        NpgsqlConnection _conn;
-        NpgsqlCommand _cmd;
-        NpgsqlDataReader _reader;
+        NpgsqlConnection _conn = default!;
+        NpgsqlCommand _cmd = default!;
+        NpgsqlDataReader _reader = default!;
 
         [GlobalSetup(Target = nameof(ReadIntArray) + "," + nameof(ReadListOfInt))]
         public void GlobalSetupForInt()

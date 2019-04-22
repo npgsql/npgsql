@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using JetBrains.Annotations;
-using Npgsql;
 using Npgsql.Util;
 
 #pragma warning disable 1591
@@ -278,8 +276,8 @@ namespace NpgsqlTypes
             }
         }
 
-        public override bool Equals([CanBeNull] object obj)
-            => obj is NpgsqlDateTime && Equals((NpgsqlDateTime)obj);
+        public override bool Equals(object obj)
+            => obj is NpgsqlDateTime time && Equals(time);
 
         public override int GetHashCode()
         {
@@ -313,7 +311,8 @@ namespace NpgsqlTypes
             }
         }
 
-        public int CompareTo([CanBeNull] object o)
+#nullable disable
+        public int CompareTo(object o)
         {
             if (o == null)
                 return 1;
@@ -324,7 +323,7 @@ namespace NpgsqlTypes
 
         public int Compare(NpgsqlDateTime x, NpgsqlDateTime y) => x.CompareTo(y);
 
-        public int Compare([CanBeNull] object x, [CanBeNull] object y)
+        public int Compare(object x, object y)
         {
             if (x == null)
                 return y == null ? 0 : -1;
@@ -334,6 +333,7 @@ namespace NpgsqlTypes
                 throw new ArgumentException();
             return ((IComparable)x).CompareTo(y);
         }
+#nullable enable
 
         #endregion
 

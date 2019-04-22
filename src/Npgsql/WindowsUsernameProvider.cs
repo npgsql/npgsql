@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.DirectoryServices;
 using System.Security.Principal;
-using JetBrains.Annotations;
 
 namespace Npgsql
 {
@@ -11,14 +10,19 @@ namespace Npgsql
     {
         class CachedUpn
         {
+            internal CachedUpn(string upn, DateTime expiryTimeUtc)
+            {
+                Upn = upn;
+                ExpiryTimeUtc = expiryTimeUtc;
+            }
+
             internal string Upn;
             internal DateTime ExpiryTimeUtc;
         }
 
         static readonly Dictionary<SecurityIdentifier, CachedUpn> CachedUpns = new Dictionary<SecurityIdentifier, CachedUpn>();
 
-        [CanBeNull]
-        internal static string GetUsername(bool includeRealm)
+        internal static string? GetUsername(bool includeRealm)
         {
             // Side note: This maintains the hack fix mentioned before for https://github.com/npgsql/Npgsql/issues/133.
             // In a nutshell, starting with .NET 4.5 WindowsIdentity inherits from ClaimsIdentity
@@ -31,7 +35,7 @@ namespace Npgsql
             if (identity.User == null)
                 return null;
             CachedUpn cachedUpn;
-            string upn = null;
+            string? upn = null;
 
             // Check to see if we already have this UPN cached
             lock (CachedUpns)
@@ -82,7 +86,7 @@ namespace Npgsql
                 if (cachedUpn == null)
                 {
                     // Save this value
-                    cachedUpn = new CachedUpn() { Upn = upn, ExpiryTimeUtc = DateTime.UtcNow.AddHours(3.0) };
+                    cachedUpn = new CachedUpn(upn, DateTime.UtcNow.AddHours(3.0));
 
                     lock (CachedUpns)
                     {

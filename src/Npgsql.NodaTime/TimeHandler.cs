@@ -19,13 +19,13 @@ namespace Npgsql.NodaTime
     class TimeHandler : NpgsqlSimpleTypeHandler<LocalTime>
     {
         // PostgreSQL time resolution == 1 microsecond == 10 ticks
-        public override LocalTime Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override LocalTime Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             => LocalTime.FromTicksSinceMidnight(buf.ReadInt64() * 10);
 
-        public override int ValidateAndGetLength(LocalTime value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(LocalTime value, NpgsqlParameter? parameter)
             => 8;
 
-        public override void Write(LocalTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public override void Write(LocalTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => buf.WriteInt64(value.TickOfDay / 10);
     }
 }

@@ -37,7 +37,7 @@ namespace Npgsql.NetTopologySuite
     {
         readonly IBinaryGeometryReader _reader;
         readonly IBinaryGeometryWriter _writer;
-        LengthStream _lengthStream;
+        readonly LengthStream _lengthStream = new LengthStream();
 
         internal NetTopologySuiteHandler(IBinaryGeometryReader reader, IBinaryGeometryWriter writer)
         {
@@ -47,52 +47,52 @@ namespace Npgsql.NetTopologySuite
 
         #region Read
 
-        public override ValueTask<IGeometry> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+        public override ValueTask<IGeometry> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
             => ReadCore<IGeometry>(buf, len);
 
-        ValueTask<Geometry> INpgsqlTypeHandler<Geometry>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        ValueTask<Geometry> INpgsqlTypeHandler<Geometry>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
             => ReadCore<Geometry>(buf, len);
 
-        ValueTask<IPoint> INpgsqlTypeHandler<IPoint>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        ValueTask<IPoint> INpgsqlTypeHandler<IPoint>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
             => ReadCore<IPoint>(buf, len);
 
-        ValueTask<Point> INpgsqlTypeHandler<Point>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        ValueTask<Point> INpgsqlTypeHandler<Point>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
             => ReadCore<Point>(buf, len);
 
-        ValueTask<ILineString> INpgsqlTypeHandler<ILineString>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        ValueTask<ILineString> INpgsqlTypeHandler<ILineString>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
             => ReadCore<ILineString>(buf, len);
 
-        ValueTask<LineString> INpgsqlTypeHandler<LineString>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        ValueTask<LineString> INpgsqlTypeHandler<LineString>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
             => ReadCore<LineString>(buf, len);
 
-        ValueTask<IPolygon> INpgsqlTypeHandler<IPolygon>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        ValueTask<IPolygon> INpgsqlTypeHandler<IPolygon>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
             => ReadCore<IPolygon>(buf, len);
 
-        ValueTask<Polygon> INpgsqlTypeHandler<Polygon>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        ValueTask<Polygon> INpgsqlTypeHandler<Polygon>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
             => ReadCore<Polygon>(buf, len);
 
-        ValueTask<IMultiPoint> INpgsqlTypeHandler<IMultiPoint>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        ValueTask<IMultiPoint> INpgsqlTypeHandler<IMultiPoint>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
             => ReadCore<IMultiPoint>(buf, len);
 
-        ValueTask<MultiPoint> INpgsqlTypeHandler<MultiPoint>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        ValueTask<MultiPoint> INpgsqlTypeHandler<MultiPoint>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
             => ReadCore<MultiPoint>(buf, len);
 
-        ValueTask<IMultiLineString> INpgsqlTypeHandler<IMultiLineString>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        ValueTask<IMultiLineString> INpgsqlTypeHandler<IMultiLineString>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
             => ReadCore<IMultiLineString>(buf, len);
 
-        ValueTask<MultiLineString> INpgsqlTypeHandler<MultiLineString>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        ValueTask<MultiLineString> INpgsqlTypeHandler<MultiLineString>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
             => ReadCore<MultiLineString>(buf, len);
 
-        ValueTask<IMultiPolygon> INpgsqlTypeHandler<IMultiPolygon>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        ValueTask<IMultiPolygon> INpgsqlTypeHandler<IMultiPolygon>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
             => ReadCore<IMultiPolygon>(buf, len);
 
-        ValueTask<MultiPolygon> INpgsqlTypeHandler<MultiPolygon>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        ValueTask<MultiPolygon> INpgsqlTypeHandler<MultiPolygon>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
             => ReadCore<MultiPolygon>(buf, len);
 
-        ValueTask<IGeometryCollection> INpgsqlTypeHandler<IGeometryCollection>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        ValueTask<IGeometryCollection> INpgsqlTypeHandler<IGeometryCollection>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
             => ReadCore<IGeometryCollection>(buf, len);
 
-        ValueTask<GeometryCollection> INpgsqlTypeHandler<GeometryCollection>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        ValueTask<GeometryCollection> INpgsqlTypeHandler<GeometryCollection>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
             => ReadCore<GeometryCollection>(buf, len);
 
         ValueTask<T> ReadCore<T>(NpgsqlReadBuffer buf, int len)
@@ -103,61 +103,57 @@ namespace Npgsql.NetTopologySuite
 
         #region ValidateAndGetLength
 
-        public override int ValidateAndGetLength(IGeometry value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(IGeometry value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLengthCore(value);
 
-        int INpgsqlTypeHandler<Geometry>.ValidateAndGetLength(Geometry value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        int INpgsqlTypeHandler<Geometry>.ValidateAndGetLength(Geometry value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLength(value, ref lengthCache, parameter);
 
-        int INpgsqlTypeHandler<IPoint>.ValidateAndGetLength(IPoint value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        int INpgsqlTypeHandler<IPoint>.ValidateAndGetLength(IPoint value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLength(value, ref lengthCache, parameter);
 
-        int INpgsqlTypeHandler<Point>.ValidateAndGetLength(Point value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        int INpgsqlTypeHandler<Point>.ValidateAndGetLength(Point value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLength(value, ref lengthCache, parameter);
 
-        int INpgsqlTypeHandler<ILineString>.ValidateAndGetLength(ILineString value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        int INpgsqlTypeHandler<ILineString>.ValidateAndGetLength(ILineString value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLength(value, ref lengthCache, parameter);
 
-        int INpgsqlTypeHandler<LineString>.ValidateAndGetLength(LineString value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        int INpgsqlTypeHandler<LineString>.ValidateAndGetLength(LineString value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLength(value, ref lengthCache, parameter);
 
-        int INpgsqlTypeHandler<IPolygon>.ValidateAndGetLength(IPolygon value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        int INpgsqlTypeHandler<IPolygon>.ValidateAndGetLength(IPolygon value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLength(value, ref lengthCache, parameter);
 
-        int INpgsqlTypeHandler<Polygon>.ValidateAndGetLength(Polygon value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        int INpgsqlTypeHandler<Polygon>.ValidateAndGetLength(Polygon value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLength(value, ref lengthCache, parameter);
 
-        int INpgsqlTypeHandler<IMultiPoint>.ValidateAndGetLength(IMultiPoint value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        int INpgsqlTypeHandler<IMultiPoint>.ValidateAndGetLength(IMultiPoint value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLength(value, ref lengthCache, parameter);
 
-        int INpgsqlTypeHandler<MultiPoint>.ValidateAndGetLength(MultiPoint value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        int INpgsqlTypeHandler<MultiPoint>.ValidateAndGetLength(MultiPoint value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLength(value, ref lengthCache, parameter);
 
-        int INpgsqlTypeHandler<IMultiLineString>.ValidateAndGetLength(IMultiLineString value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        int INpgsqlTypeHandler<IMultiLineString>.ValidateAndGetLength(IMultiLineString value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLength(value, ref lengthCache, parameter);
 
-        int INpgsqlTypeHandler<MultiLineString>.ValidateAndGetLength(MultiLineString value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        int INpgsqlTypeHandler<MultiLineString>.ValidateAndGetLength(MultiLineString value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLength(value, ref lengthCache, parameter);
 
-        int INpgsqlTypeHandler<IMultiPolygon>.ValidateAndGetLength(IMultiPolygon value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        int INpgsqlTypeHandler<IMultiPolygon>.ValidateAndGetLength(IMultiPolygon value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLength(value, ref lengthCache, parameter);
 
-        int INpgsqlTypeHandler<MultiPolygon>.ValidateAndGetLength(MultiPolygon value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        int INpgsqlTypeHandler<MultiPolygon>.ValidateAndGetLength(MultiPolygon value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLength(value, ref lengthCache, parameter);
 
-        int INpgsqlTypeHandler<IGeometryCollection>.ValidateAndGetLength(IGeometryCollection value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        int INpgsqlTypeHandler<IGeometryCollection>.ValidateAndGetLength(IGeometryCollection value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLength(value, ref lengthCache, parameter);
 
-        int INpgsqlTypeHandler<GeometryCollection>.ValidateAndGetLength(GeometryCollection value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        int INpgsqlTypeHandler<GeometryCollection>.ValidateAndGetLength(GeometryCollection value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLength(value, ref lengthCache, parameter);
 
         int ValidateAndGetLengthCore(IGeometry value)
         {
-            if (_lengthStream == null)
-                _lengthStream = new LengthStream();
-            else
-                _lengthStream.SetLength(0);
-
+            _lengthStream.SetLength(0);
             _writer.Write(value, _lengthStream);
             return (int)_lengthStream.Length;
         }
@@ -200,55 +196,55 @@ namespace Npgsql.NetTopologySuite
 
         #region Write
 
-        public override Task Write(IGeometry value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        public override Task Write(IGeometry value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => WriteCore(value, buf, lengthCache, parameter, async);
 
-        Task INpgsqlTypeHandler<Geometry>.Write(Geometry value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        Task INpgsqlTypeHandler<Geometry>.Write(Geometry value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => WriteCore(value, buf, lengthCache, parameter, async);
 
-        Task INpgsqlTypeHandler<IPoint>.Write(IPoint value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        Task INpgsqlTypeHandler<IPoint>.Write(IPoint value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => WriteCore(value, buf, lengthCache, parameter, async);
 
-        Task INpgsqlTypeHandler<Point>.Write(Point value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        Task INpgsqlTypeHandler<Point>.Write(Point value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => WriteCore(value, buf, lengthCache, parameter, async);
 
-        Task INpgsqlTypeHandler<ILineString>.Write(ILineString value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        Task INpgsqlTypeHandler<ILineString>.Write(ILineString value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => WriteCore(value, buf, lengthCache, parameter, async);
 
-        Task INpgsqlTypeHandler<LineString>.Write(LineString value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        Task INpgsqlTypeHandler<LineString>.Write(LineString value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => WriteCore(value, buf, lengthCache, parameter, async);
 
-        Task INpgsqlTypeHandler<IPolygon>.Write(IPolygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        Task INpgsqlTypeHandler<IPolygon>.Write(IPolygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => WriteCore(value, buf, lengthCache, parameter, async);
 
-        Task INpgsqlTypeHandler<Polygon>.Write(Polygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        Task INpgsqlTypeHandler<Polygon>.Write(Polygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => WriteCore(value, buf, lengthCache, parameter, async);
 
-        Task INpgsqlTypeHandler<IMultiPoint>.Write(IMultiPoint value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        Task INpgsqlTypeHandler<IMultiPoint>.Write(IMultiPoint value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => WriteCore(value, buf, lengthCache, parameter, async);
 
-        Task INpgsqlTypeHandler<MultiPoint>.Write(MultiPoint value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        Task INpgsqlTypeHandler<MultiPoint>.Write(MultiPoint value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => WriteCore(value, buf, lengthCache, parameter, async);
 
-        Task INpgsqlTypeHandler<IMultiLineString>.Write(IMultiLineString value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        Task INpgsqlTypeHandler<IMultiLineString>.Write(IMultiLineString value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => WriteCore(value, buf, lengthCache, parameter, async);
 
-        Task INpgsqlTypeHandler<MultiLineString>.Write(MultiLineString value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        Task INpgsqlTypeHandler<MultiLineString>.Write(MultiLineString value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => WriteCore(value, buf, lengthCache, parameter, async);
 
-        Task INpgsqlTypeHandler<IMultiPolygon>.Write(IMultiPolygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        Task INpgsqlTypeHandler<IMultiPolygon>.Write(IMultiPolygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => WriteCore(value, buf, lengthCache, parameter, async);
 
-        Task INpgsqlTypeHandler<MultiPolygon>.Write(MultiPolygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        Task INpgsqlTypeHandler<MultiPolygon>.Write(MultiPolygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => WriteCore(value, buf, lengthCache, parameter, async);
 
-        Task INpgsqlTypeHandler<IGeometryCollection>.Write(IGeometryCollection value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        Task INpgsqlTypeHandler<IGeometryCollection>.Write(IGeometryCollection value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => WriteCore(value, buf, lengthCache, parameter, async);
 
-        Task INpgsqlTypeHandler<GeometryCollection>.Write(GeometryCollection value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        Task INpgsqlTypeHandler<GeometryCollection>.Write(GeometryCollection value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => WriteCore(value, buf, lengthCache, parameter, async);
 
-        Task WriteCore(IGeometry value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        Task WriteCore(IGeometry value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             _writer.Write(value, buf.GetStream());
             return Task.CompletedTask;

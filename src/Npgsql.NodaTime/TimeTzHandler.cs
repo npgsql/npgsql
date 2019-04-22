@@ -19,14 +19,14 @@ namespace Npgsql.NodaTime
     class TimeTzHandler : NpgsqlSimpleTypeHandler<OffsetTime>
     {
         // Adjust from 1 microsecond to 100ns. Time zone (in seconds) is inverted.
-        public override OffsetTime Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override OffsetTime Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             => new OffsetTime(
                 LocalTime.FromTicksSinceMidnight(buf.ReadInt64() * 10),
                 Offset.FromSeconds(-buf.ReadInt32()));
 
-        public override int ValidateAndGetLength(OffsetTime value, NpgsqlParameter parameter) => 12;
+        public override int ValidateAndGetLength(OffsetTime value, NpgsqlParameter? parameter) => 12;
 
-        public override void Write(OffsetTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public override void Write(OffsetTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
             buf.WriteInt64(value.TickOfDay / 10);
             buf.WriteInt32(-(int)(value.Offset.Ticks / NodaConstants.TicksPerSecond));

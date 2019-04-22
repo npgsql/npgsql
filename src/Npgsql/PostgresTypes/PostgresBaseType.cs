@@ -1,4 +1,5 @@
-﻿namespace Npgsql.PostgresTypes
+﻿
+namespace Npgsql.PostgresTypes
 {
     /// <summary>
     /// Represents a PostgreSQL base data type, which is a simple scalar value.

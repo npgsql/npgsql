@@ -14,6 +14,8 @@ using NpgsqlTypes;
 using System.Dynamic;
 #endif
 
+#nullable disable // About to be removed
+
 namespace Npgsql.TypeHandlers.CompositeHandlers
 {
     /// <summary>

@@ -14,13 +14,13 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     [TypeMapping("line", NpgsqlDbType.Line, typeof(NpgsqlLine))]
     class LineHandler : NpgsqlSimpleTypeHandler<NpgsqlLine>
     {
-        public override NpgsqlLine Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override NpgsqlLine Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             => new NpgsqlLine(buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble());
 
-        public override int ValidateAndGetLength(NpgsqlLine value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(NpgsqlLine value, NpgsqlParameter? parameter)
             => 24;
 
-        public override void Write(NpgsqlLine value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public override void Write(NpgsqlLine value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
             buf.WriteDouble(value.A);
             buf.WriteDouble(value.B);

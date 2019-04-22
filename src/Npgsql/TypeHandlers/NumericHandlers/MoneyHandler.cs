@@ -15,17 +15,17 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     {
         const int MoneyScale = 2;
 
-        public override decimal Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override decimal Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
             return new DecimalRaw(buf.ReadInt64()) { Scale = MoneyScale }.Value;
         }
 
-        public override int ValidateAndGetLength(decimal value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(decimal value, NpgsqlParameter? parameter)
             => value < -92233720368547758.08M || value > 92233720368547758.07M
                 ? throw new OverflowException($"The supplied value ({value}) is outside the range for a PostgreSQL money value.")
                 : 8;
 
-        public override void Write(decimal value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public override void Write(decimal value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
             var raw = new DecimalRaw(value);
 

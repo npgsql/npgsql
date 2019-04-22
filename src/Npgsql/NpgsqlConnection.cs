@@ -49,8 +49,7 @@ namespace Npgsql
         /// <summary>
         /// The connector object connected to the backend.
         /// </summary>
-        [CanBeNull]
-        internal NpgsqlConnector Connector;
+        internal NpgsqlConnector? Connector;
 
         /// <summary>
         /// The parsed connection string set by the user
@@ -59,13 +58,11 @@ namespace Npgsql
 
         static readonly NpgsqlConnectionStringBuilder DefaultSettings = new NpgsqlConnectionStringBuilder();
 
-        [CanBeNull]
-        ConnectorPool _pool;
+        ConnectorPool? _pool;
 
         bool _wasBroken;
 
-        [CanBeNull]
-        internal Transaction EnlistedTransaction { get; set; }
+        internal Transaction? EnlistedTransaction { get; set; }
 
         /// <summary>
         /// The global type mapper, which contains defaults used by all new connections.
@@ -77,14 +74,7 @@ namespace Npgsql
         /// The connection-specific type mapper - all modifications affect this connection only,
         /// and are lost when it is closed.
         /// </summary>
-        public INpgsqlTypeMapper TypeMapper
-        {
-            get
-            {
-                CheckConnectionOpen();
-                return Connector.TypeMapper;
-            }
-        }
+        public INpgsqlTypeMapper TypeMapper => CheckReadyAndGetConnector().TypeMapper;
 
         ///
         /// <summary>
@@ -237,7 +227,7 @@ namespace Npgsql
                     Debug.Assert(Settings != null);
 
                     var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
-                    Transaction transaction = null;
+                    Transaction? transaction = null;
 
                     if (_pool == null) // Un-pooled connection
                     {
@@ -321,8 +311,9 @@ namespace Npgsql
         /// the database name, and other parameters needed to establish
         /// the initial connection. The default value is an empty string.
         /// </value>
-        [CanBeNull]
+#nullable disable
         public override string ConnectionString
+#nullable enable
         {
             get => _userFacingConnectionString;
             set
@@ -345,7 +336,7 @@ namespace Npgsql
         /// </summary>
         [Browsable(true)]
         [PublicAPI]
-        public string Host => Settings.Host;
+        public string? Host => Settings.Host;
 
         /// <summary>
         /// Backend server port.
@@ -373,8 +364,7 @@ namespace Npgsql
         /// </summary>
         /// <value>The name of the current database or the name of the database to be
         /// used after a connection is opened. The default value is the empty string.</value>
-        [CanBeNull]
-        public override string Database => Settings.Database ?? Settings.Username;
+        public override string? Database => Settings.Database ?? Settings.Username;
 
         /// <summary>
         /// Gets the string identifying the database server (host and port)
@@ -391,16 +381,14 @@ namespace Npgsql
         /// User name.
         /// </summary>
         [PublicAPI]
-        [CanBeNull]
-        public string UserName => Settings.Username;
+        public string? UserName => Settings.Username;
 
-        [CanBeNull]
-        internal string Password => Settings.Password;
+        internal string? Password => Settings.Password;
 
         // The following two lines are here for backwards compatibility with the EF6 provider
         // ReSharper disable UnusedMember.Global
-        internal string EntityTemplateDatabase => Settings.EntityTemplateDatabase;
-        internal string EntityAdminDatabase => Settings.EntityAdminDatabase;
+        internal string? EntityTemplateDatabase => Settings.EntityTemplateDatabase;
+        internal string? EntityAdminDatabase => Settings.EntityAdminDatabase;
         // ReSharper restore UnusedMember.Global
 
         #endregion Configuration settings
@@ -547,7 +535,9 @@ namespace Npgsql
         /// <summary>
         /// Enlist transaction.
         /// </summary>
+#nullable disable
         public override void EnlistTransaction(Transaction transaction)
+#nullable enable
         {
             if (EnlistedTransaction != null)
             {
@@ -605,13 +595,13 @@ namespace Npgsql
             if (Settings.Pooling)
             {
                 if (EnlistedTransaction == null)
-                    _pool.Release(Connector);
+                    _pool!.Release(Connector);
                 else
                 {
                     // A System.Transactions transaction is still in progress, we need to wait for it to complete.
                     // Close the connection and disconnect it from the resource manager but leave the connector
                     // in a enlisted pending list in the pool.
-                    _pool.AddPendingEnlistedConnector(Connector, EnlistedTransaction);
+                    _pool!.AddPendingEnlistedConnector(Connector, EnlistedTransaction);
                     Connector.Connection = null;
                     EnlistedTransaction = null;
                 }
@@ -726,8 +716,7 @@ namespace Npgsql
         /// <remarks>
         /// See <see href="https://msdn.microsoft.com/en-us/library/system.net.security.localcertificateselectioncallback(v=vs.110).aspx"/>
         /// </remarks>
-        [CanBeNull]
-        public ProvideClientCertificatesCallback ProvideClientCertificatesCallback { get; set; }
+        public ProvideClientCertificatesCallback? ProvideClientCertificatesCallback { get; set; }
 
         /// <summary>
         /// Verifies the remote Secure Sockets Layer (SSL) certificate used for authentication.
@@ -736,8 +725,7 @@ namespace Npgsql
         /// <remarks>
         /// See <see href="https://msdn.microsoft.com/en-us/library/system.net.security.remotecertificatevalidationcallback(v=vs.110).aspx"/>
         /// </remarks>
-        [CanBeNull]
-        public RemoteCertificateValidationCallback UserCertificateValidationCallback { get; set; }
+        public RemoteCertificateValidationCallback? UserCertificateValidationCallback { get; set; }
 
         #endregion SSL
 
@@ -882,8 +870,8 @@ namespace Npgsql
             connector.StartUserAction(ConnectorState.Copy);
             try
             {
-                var exporter = new NpgsqlBinaryExporter(Connector, copyToCommand);
-                Connector.CurrentCopyOperation = exporter;
+                var exporter = new NpgsqlBinaryExporter(connector, copyToCommand);
+                connector.CurrentCopyOperation = exporter;
                 return exporter;
             }
             catch
@@ -1031,7 +1019,7 @@ namespace Npgsql
         /// <typeparam name="TEnum">The .NET enum type to be mapped</typeparam>
         [PublicAPI]
         [Obsolete("Use NpgsqlConnection.TypeMapper.MapEnum() instead")]
-        public void MapEnum<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null)
+        public void MapEnum<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
             where TEnum : struct, Enum
             => TypeMapper.MapEnum<TEnum>(pgName, nameTranslator);
 
@@ -1059,7 +1047,7 @@ namespace Npgsql
         /// <typeparam name="TEnum">The .NET enum type to be mapped</typeparam>
         [PublicAPI]
         [Obsolete("Use NpgsqlConnection.GlobalTypeMapper.MapEnum() instead")]
-        public static void MapEnumGlobally<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null)
+        public static void MapEnumGlobally<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
             where TEnum : struct, Enum
             => GlobalTypeMapper.MapEnum<TEnum>(pgName, nameTranslator);
 
@@ -1076,7 +1064,7 @@ namespace Npgsql
         /// </param>
         [PublicAPI]
         [Obsolete("Use NpgsqlConnection.GlobalTypeMapper.UnmapEnum() instead")]
-        public static void UnmapEnumGlobally<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null)
+        public static void UnmapEnumGlobally<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
             where TEnum : struct, Enum
             => GlobalTypeMapper.UnmapEnum<TEnum>(pgName, nameTranslator);
 
@@ -1110,7 +1098,7 @@ namespace Npgsql
         /// <typeparam name="T">The .NET type to be mapped</typeparam>
         [PublicAPI]
         [Obsolete("Use NpgsqlConnection.TypeMapper.MapComposite() instead")]
-        public void MapComposite<T>(string pgName = null, INpgsqlNameTranslator nameTranslator = null) where T : new()
+        public void MapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null) where T : new()
             => TypeMapper.MapComposite<T>(pgName, nameTranslator);
 
         /// <summary>
@@ -1137,7 +1125,7 @@ namespace Npgsql
         /// <typeparam name="T">The .NET type to be mapped</typeparam>
         [PublicAPI]
         [Obsolete("Use NpgsqlConnection.GlobalTypeMapper.MapComposite() instead")]
-        public static void MapCompositeGlobally<T>(string pgName = null, INpgsqlNameTranslator nameTranslator = null) where T : new()
+        public static void MapCompositeGlobally<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null) where T : new()
             => GlobalTypeMapper.MapComposite<T>(pgName, nameTranslator);
 
         /// <summary>
@@ -1153,7 +1141,7 @@ namespace Npgsql
         /// </param>
         [PublicAPI]
         [Obsolete("Use NpgsqlConnection.GlobalTypeMapper.UnmapComposite() instead")]
-        public static void UnmapCompositeGlobally<T>(string pgName, INpgsqlNameTranslator nameTranslator = null) where T : new()
+        public static void UnmapCompositeGlobally<T>(string pgName, INpgsqlNameTranslator? nameTranslator = null) where T : new()
             => GlobalTypeMapper.UnmapComposite<T>(pgName, nameTranslator);
 
         #endregion
@@ -1283,8 +1271,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="collectionName">The collection name.</param>
         /// <returns>The collection specified.</returns>
-        public override DataTable GetSchema([CanBeNull] string collectionName)
-            => GetSchema(collectionName, null);
+        public override DataTable GetSchema(string? collectionName) => GetSchema(collectionName, null);
 
         /// <summary>
         /// Returns the schema collection specified by the collection name filtered by the restrictions.
@@ -1295,7 +1282,7 @@ namespace Npgsql
         /// in the Restrictions collection.
         /// </param>
         /// <returns>The collection specified.</returns>
-        public override DataTable GetSchema([CanBeNull] string collectionName, [CanBeNull] string[] restrictions)
+        public override DataTable GetSchema(string? collectionName, string?[]? restrictions)
             => NpgsqlSchema.GetSchema(this, collectionName, restrictions);
 
         #endregion Schema operations

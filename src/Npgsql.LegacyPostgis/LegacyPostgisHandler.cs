@@ -21,7 +21,7 @@ namespace Npgsql.LegacyPostgis
     {
         #region Read
 
-        public override async ValueTask<PostgisGeometry> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+        public override async ValueTask<PostgisGeometry> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
             await buf.Ensure(5, async);
             var le = buf.ReadByte() != 0;
@@ -158,53 +158,53 @@ namespace Npgsql.LegacyPostgis
 
         #region Read concrete types
 
-        async ValueTask<PostgisPoint> INpgsqlTypeHandler<PostgisPoint>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<PostgisPoint> INpgsqlTypeHandler<PostgisPoint>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
             => (PostgisPoint)await Read(buf, len, async, fieldDescription);
-        async ValueTask<PostgisMultiPoint> INpgsqlTypeHandler<PostgisMultiPoint>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<PostgisMultiPoint> INpgsqlTypeHandler<PostgisMultiPoint>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
             => (PostgisMultiPoint)await Read(buf, len, async, fieldDescription);
-        async ValueTask<PostgisLineString> INpgsqlTypeHandler<PostgisLineString>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<PostgisLineString> INpgsqlTypeHandler<PostgisLineString>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
             => (PostgisLineString)await Read(buf, len, async, fieldDescription);
-        async ValueTask<PostgisMultiLineString> INpgsqlTypeHandler<PostgisMultiLineString>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<PostgisMultiLineString> INpgsqlTypeHandler<PostgisMultiLineString>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
             => (PostgisMultiLineString)await Read(buf, len, async, fieldDescription);
-        async ValueTask<PostgisPolygon> INpgsqlTypeHandler<PostgisPolygon>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<PostgisPolygon> INpgsqlTypeHandler<PostgisPolygon>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
             => (PostgisPolygon)await Read(buf, len, async, fieldDescription);
-        async ValueTask<PostgisMultiPolygon> INpgsqlTypeHandler<PostgisMultiPolygon>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<PostgisMultiPolygon> INpgsqlTypeHandler<PostgisMultiPolygon>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
             => (PostgisMultiPolygon)await Read(buf, len, async, fieldDescription);
-        async ValueTask<PostgisGeometryCollection> INpgsqlTypeHandler<PostgisGeometryCollection>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<PostgisGeometryCollection> INpgsqlTypeHandler<PostgisGeometryCollection>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
             => (PostgisGeometryCollection)await Read(buf, len, async, fieldDescription);
 
         #endregion
 
         #region Write
 
-        public override int ValidateAndGetLength(PostgisGeometry value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(PostgisGeometry value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => value.GetLen(true);
 
-        public int ValidateAndGetLength(PostgisPoint value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        public int ValidateAndGetLength(PostgisPoint value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => value.GetLen(true);
 
-        public int ValidateAndGetLength(PostgisMultiPoint value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        public int ValidateAndGetLength(PostgisMultiPoint value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => value.GetLen(true);
 
-        public int ValidateAndGetLength(PostgisPolygon value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        public int ValidateAndGetLength(PostgisPolygon value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => value.GetLen(true);
 
-        public int ValidateAndGetLength(PostgisMultiPolygon value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        public int ValidateAndGetLength(PostgisMultiPolygon value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => value.GetLen(true);
 
-        public int ValidateAndGetLength(PostgisLineString value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        public int ValidateAndGetLength(PostgisLineString value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => value.GetLen(true);
 
-        public int ValidateAndGetLength(PostgisMultiLineString value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        public int ValidateAndGetLength(PostgisMultiLineString value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => value.GetLen(true);
 
-        public int ValidateAndGetLength(PostgisGeometryCollection value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        public int ValidateAndGetLength(PostgisGeometryCollection value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => value.GetLen(true);
 
-        public int ValidateAndGetLength(byte[] value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        public int ValidateAndGetLength(byte[] value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => value.Length;
 
-        public override async Task Write(PostgisGeometry value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        public override async Task Write(PostgisGeometry value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             // Common header
             if (value.SRID == 0)
@@ -348,25 +348,25 @@ namespace Npgsql.LegacyPostgis
             }
         }
 
-        public Task Write(PostgisPoint value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        public Task Write(PostgisPoint value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => Write((PostgisGeometry)value, buf, lengthCache, parameter, async);
 
-        public Task Write(PostgisMultiPoint value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        public Task Write(PostgisMultiPoint value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => Write((PostgisGeometry)value, buf, lengthCache, parameter, async);
 
-        public Task Write(PostgisPolygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        public Task Write(PostgisPolygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => Write((PostgisGeometry)value, buf, lengthCache, parameter, async);
 
-        public Task Write(PostgisMultiPolygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        public Task Write(PostgisMultiPolygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => Write((PostgisGeometry)value, buf, lengthCache, parameter, async);
 
-        public Task Write(PostgisLineString value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        public Task Write(PostgisLineString value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => Write((PostgisGeometry)value, buf, lengthCache, parameter, async);
 
-        public Task Write(PostgisMultiLineString value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        public Task Write(PostgisMultiLineString value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => Write((PostgisGeometry)value, buf, lengthCache, parameter, async);
 
-        public Task Write(PostgisGeometryCollection value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        public Task Write(PostgisGeometryCollection value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => Write((PostgisGeometry)value, buf, lengthCache, parameter, async);
 
         #endregion Write

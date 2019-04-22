@@ -64,7 +64,7 @@ namespace Npgsql.GeoJSON
     {
         readonly GeoJSONOptions _options;
         readonly CrsMap _crsMap;
-        NamedCRS _lastCrs;
+        NamedCRS? _lastCrs;
         int _lastSrid;
 
         internal GeoJsonHandler(GeoJSONOptions options, CrsMap crsMap)
@@ -113,41 +113,43 @@ namespace Npgsql.GeoJSON
         static Exception UnknownPostGisType()
             => throw new InvalidOperationException("Invalid PostGIS type");
 
-        static Exception AllOrNoneCoordiantesMustHaveZ(NpgsqlParameter parameter, string typeName)
-            => throw new ArgumentException($"The Z coordinate must be specified for all or none elements of {typeName} in the {parameter.ParameterName} parameter", parameter.ParameterName);
+        static Exception AllOrNoneCoordiantesMustHaveZ(NpgsqlParameter? parameter, string typeName)
+            => parameter is null
+                ? new ArgumentException($"The Z coordinate must be specified for all or none elements of {typeName}")
+                : new ArgumentException($"The Z coordinate must be specified for all or none elements of {typeName} in the {parameter.ParameterName} parameter", parameter.ParameterName);
 
         #endregion
 
         #region Read
 
-        public override ValueTask<GeoJSONObject> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+        public override ValueTask<GeoJSONObject> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
             => ReadGeometry(buf, async);
 
-        async ValueTask<Point> INpgsqlTypeHandler<Point>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<Point> INpgsqlTypeHandler<Point>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
             => (Point)await ReadGeometry(buf, async);
 
-        async ValueTask<LineString> INpgsqlTypeHandler<LineString>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<LineString> INpgsqlTypeHandler<LineString>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
             => (LineString)await ReadGeometry(buf, async);
 
-        async ValueTask<Polygon> INpgsqlTypeHandler<Polygon>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<Polygon> INpgsqlTypeHandler<Polygon>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
             => (Polygon)await ReadGeometry(buf, async);
 
-        async ValueTask<MultiPoint> INpgsqlTypeHandler<MultiPoint>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<MultiPoint> INpgsqlTypeHandler<MultiPoint>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
             => (MultiPoint)await ReadGeometry(buf, async);
 
-        async ValueTask<MultiLineString> INpgsqlTypeHandler<MultiLineString>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<MultiLineString> INpgsqlTypeHandler<MultiLineString>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
             => (MultiLineString)await ReadGeometry(buf, async);
 
-        async ValueTask<MultiPolygon> INpgsqlTypeHandler<MultiPolygon>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<MultiPolygon> INpgsqlTypeHandler<MultiPolygon>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
             => (MultiPolygon)await ReadGeometry(buf, async);
 
-        async ValueTask<GeometryCollection> INpgsqlTypeHandler<GeometryCollection>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<GeometryCollection> INpgsqlTypeHandler<GeometryCollection>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
             => (GeometryCollection)await ReadGeometry(buf, async);
 
-        async ValueTask<IGeoJSONObject> INpgsqlTypeHandler<IGeoJSONObject>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<IGeoJSONObject> INpgsqlTypeHandler<IGeoJSONObject>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
             => await ReadGeometry(buf, async);
 
-        async ValueTask<IGeometryObject> INpgsqlTypeHandler<IGeometryObject>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<IGeometryObject> INpgsqlTypeHandler<IGeometryObject>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
             => (IGeometryObject)await ReadGeometry(buf, async);
 
         async ValueTask<GeoJSONObject> ReadGeometry(NpgsqlReadBuffer buf, bool async)
@@ -159,14 +161,14 @@ namespace Npgsql.GeoJSON
             return geometry;
         }
 
-        async ValueTask<GeoJSONObject> ReadGeometryCore(NpgsqlReadBuffer buf, bool async, BoundingBoxBuilder boundingBox)
+        async ValueTask<GeoJSONObject> ReadGeometryCore(NpgsqlReadBuffer buf, bool async, BoundingBoxBuilder? boundingBox)
         {
             await buf.Ensure(SizeOfHeader, async);
             var littleEndian = buf.ReadByte() > 0;
             var type = (EwkbGeometryType)buf.ReadUInt32(littleEndian);
 
             GeoJSONObject geometry;
-            NamedCRS crs = null;
+            NamedCRS? crs = null;
 
             if (HasSrid(type))
             {
@@ -317,7 +319,7 @@ namespace Npgsql.GeoJSON
 
         #region Write
 
-        public override int ValidateAndGetLength(GeoJSONObject value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(GeoJSONObject value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
             switch (value.Type)
             {
@@ -347,7 +349,7 @@ namespace Npgsql.GeoJSON
             }
         }
 
-        public int ValidateAndGetLength(Point value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        public int ValidateAndGetLength(Point value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
             var length = SizeOfHeader + SizeOfPoint(HasZ(value.Coordinates));
             if (GetSrid(value.CRS) != 0)
@@ -356,7 +358,7 @@ namespace Npgsql.GeoJSON
             return length;
         }
 
-        public int ValidateAndGetLength(LineString value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        public int ValidateAndGetLength(LineString value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
             var coordinates = value.Coordinates;
             if (NotValid(coordinates, out var hasZ))
@@ -369,7 +371,7 @@ namespace Npgsql.GeoJSON
             return length;
         }
 
-        public int ValidateAndGetLength(Polygon value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        public int ValidateAndGetLength(Polygon value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
             var lines = value.Coordinates;
             var length = SizeOfHeaderWithLength + SizeOfLength * lines.Count;
@@ -408,7 +410,7 @@ namespace Npgsql.GeoJSON
             return false;
         }
 
-        public int ValidateAndGetLength(MultiPoint value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        public int ValidateAndGetLength(MultiPoint value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
             var length = SizeOfHeaderWithLength;
             if (GetSrid(value.CRS) != 0)
@@ -421,7 +423,7 @@ namespace Npgsql.GeoJSON
             return length;
         }
 
-        public int ValidateAndGetLength(MultiLineString value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        public int ValidateAndGetLength(MultiLineString value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
             var length = SizeOfHeaderWithLength;
             if (GetSrid(value.CRS) != 0)
@@ -434,7 +436,7 @@ namespace Npgsql.GeoJSON
             return length;
         }
 
-        public int ValidateAndGetLength(MultiPolygon value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        public int ValidateAndGetLength(MultiPolygon value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
             var length = SizeOfHeaderWithLength;
             if (GetSrid(value.CRS) != 0)
@@ -447,7 +449,7 @@ namespace Npgsql.GeoJSON
             return length;
         }
 
-        public int ValidateAndGetLength(GeometryCollection value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        public int ValidateAndGetLength(GeometryCollection value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
             var length = SizeOfHeaderWithLength;
             if (GetSrid(value.CRS) != 0)
@@ -460,13 +462,13 @@ namespace Npgsql.GeoJSON
             return length;
         }
 
-        int INpgsqlTypeHandler<IGeoJSONObject>.ValidateAndGetLength(IGeoJSONObject value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        int INpgsqlTypeHandler<IGeoJSONObject>.ValidateAndGetLength(IGeoJSONObject value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLength((GeoJSONObject)value, ref lengthCache, parameter);
 
-        int INpgsqlTypeHandler<IGeometryObject>.ValidateAndGetLength(IGeometryObject value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        int INpgsqlTypeHandler<IGeometryObject>.ValidateAndGetLength(IGeometryObject value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLength((GeoJSONObject)value, ref lengthCache, parameter);
 
-        public override Task Write(GeoJSONObject value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        public override Task Write(GeoJSONObject value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             switch (value.Type)
             {
@@ -496,7 +498,7 @@ namespace Npgsql.GeoJSON
             }
         }
 
-        public async Task Write(Point value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        public async Task Write(Point value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             var type = EwkbGeometryType.Point;
             var size = SizeOfHeader;
@@ -519,7 +521,7 @@ namespace Npgsql.GeoJSON
             await WritePosition(value.Coordinates, buf, async);
         }
 
-        public async Task Write(LineString value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        public async Task Write(LineString value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             var type = EwkbGeometryType.LineString;
             var size = SizeOfHeader;
@@ -546,7 +548,7 @@ namespace Npgsql.GeoJSON
                 await WritePosition(coordinates[i], buf, async);
         }
 
-        public async Task Write(Polygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        public async Task Write(Polygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             var type = EwkbGeometryType.Polygon;
             var size = SizeOfHeader;
@@ -580,7 +582,7 @@ namespace Npgsql.GeoJSON
             }
         }
 
-        public async Task Write(MultiPoint value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        public async Task Write(MultiPoint value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             var type = EwkbGeometryType.MultiPoint;
             var size = SizeOfHeader;
@@ -607,7 +609,7 @@ namespace Npgsql.GeoJSON
                 await Write(coordinates[i], buf, lengthCache, parameter, async);
         }
 
-        public async Task Write(MultiLineString value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        public async Task Write(MultiLineString value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             var type = EwkbGeometryType.MultiLineString;
             var size = SizeOfHeader;
@@ -634,7 +636,7 @@ namespace Npgsql.GeoJSON
                 await Write(coordinates[i], buf, lengthCache, parameter, async);
         }
 
-        public async Task Write(MultiPolygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        public async Task Write(MultiPolygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             var type = EwkbGeometryType.MultiPolygon;
             var size = SizeOfHeader;
@@ -660,7 +662,7 @@ namespace Npgsql.GeoJSON
                 await Write(coordinates[i], buf, lengthCache, parameter, async);
         }
 
-        public async Task Write(GeometryCollection value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        public async Task Write(GeometryCollection value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             var type = EwkbGeometryType.GeometryCollection;
             var size = SizeOfHeader;
@@ -687,10 +689,10 @@ namespace Npgsql.GeoJSON
                 await Write((GeoJSONObject)geometries[i], buf, lengthCache, parameter, async);
         }
 
-        Task INpgsqlTypeHandler<IGeoJSONObject>.Write(IGeoJSONObject value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        Task INpgsqlTypeHandler<IGeoJSONObject>.Write(IGeoJSONObject value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => Write((GeoJSONObject)value, buf, lengthCache, parameter, async);
 
-        Task INpgsqlTypeHandler<IGeometryObject>.Write(IGeometryObject value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        Task INpgsqlTypeHandler<IGeometryObject>.Write(IGeometryObject value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => Write((GeoJSONObject)value, buf, lengthCache, parameter, async);
 
         static async Task WritePosition(IPosition coordinate, NpgsqlWriteBuffer buf, bool async)
@@ -708,7 +710,7 @@ namespace Npgsql.GeoJSON
 
         #region Crs
 
-        NamedCRS GetCrs(int srid)
+        NamedCRS? GetCrs(int srid)
         {
             var crsType = CrsType;
             if (crsType == GeoJSONOptions.None)

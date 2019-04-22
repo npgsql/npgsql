@@ -313,7 +313,7 @@ namespace Npgsql.Tests
 
                 try
                 {
-                    string[] restrictions = { null, null, "data" };
+                    string?[] restrictions = { null, null, "data" };
                     var dt = conn.GetSchema("Tables", restrictions);
                     foreach (DataRow row in dt.Rows)
                     {
@@ -334,7 +334,7 @@ namespace Npgsql.Tests
 
                 try
                 {
-                    string[] restrictions = { null, null, "view" };
+                    string?[] restrictions = { null, null, "view" };
                     var dt = conn.GetSchema("Views", restrictions);
                     foreach (DataRow row in dt.Rows)
                     {

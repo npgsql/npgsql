@@ -4,6 +4,9 @@ using System.Globalization;
 using System.Text;
 using JetBrains.Annotations;
 
+// NpgsqlRange mixes generics and nullability in a way that isn't currently supported by the language
+#nullable disable
+
 // ReSharper disable once CheckNamespace
 namespace NpgsqlTypes
 {

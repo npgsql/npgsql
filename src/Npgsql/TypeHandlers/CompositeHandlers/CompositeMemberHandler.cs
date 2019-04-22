@@ -19,8 +19,8 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
 
         public abstract ValueTask Read(ByReference<TComposite> composite, NpgsqlReadBuffer buffer, bool async);
 
-        public abstract Task Write(TComposite composite, NpgsqlWriteBuffer buffer, NpgsqlLengthCache lengthCache, bool async);
+        public abstract Task Write(TComposite composite, NpgsqlWriteBuffer buffer, NpgsqlLengthCache? lengthCache, bool async);
 
-        public abstract int ValidateAndGetLength(TComposite composite, ref NpgsqlLengthCache lengthCache);
+        public abstract int ValidateAndGetLength(TComposite composite, ref NpgsqlLengthCache? lengthCache);
     }
 }

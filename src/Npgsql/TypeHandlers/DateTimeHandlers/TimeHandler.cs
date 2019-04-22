@@ -23,13 +23,13 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     class TimeHandler : NpgsqlSimpleTypeHandler<TimeSpan>
     {
         // PostgreSQL time resolution == 1 microsecond == 10 ticks
-        public override TimeSpan Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override TimeSpan Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             => new TimeSpan(buf.ReadInt64() * 10);
 
-        public override int ValidateAndGetLength(TimeSpan value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(TimeSpan value, NpgsqlParameter? parameter)
             => 8;
 
-        public override void Write(TimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public override void Write(TimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => buf.WriteInt64(value.Ticks / 10);
     }
 }

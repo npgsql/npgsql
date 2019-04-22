@@ -23,7 +23,6 @@ using NpgsqlTypes;
 using static Npgsql.Util.Statics;
 
 #pragma warning disable CA2222 // Do not decrease inherited member visibility
-
 namespace Npgsql
 {
     /// <summary>
@@ -36,25 +35,25 @@ namespace Npgsql
         , IDbColumnSchemaGenerator
 #endif
     {
-        internal NpgsqlCommand Command { get; private set; }
+        internal NpgsqlCommand Command { get; private set; } = default!;
         internal NpgsqlConnector Connector { get; }
-        NpgsqlConnection _connection;
+        NpgsqlConnection _connection = default!;
 
         /// <summary>
         /// The behavior of the command with which this reader was executed.
         /// </summary>
         CommandBehavior _behavior;
 
-        Task _sendTask;
+        Task _sendTask = default!;
 
         internal ReaderState State;
 
-        internal NpgsqlReadBuffer Buffer;
+        internal NpgsqlReadBuffer Buffer = default!;
 
         /// <summary>
         /// Holds the list of statements being executed by this reader.
         /// </summary>
-        List<NpgsqlStatement> _statements;
+        List<NpgsqlStatement> _statements = default!;
 
         /// <summary>
         /// The index of the current query resultset we're processing (within a multiquery)
@@ -98,8 +97,7 @@ namespace Npgsql
         /// <summary>
         /// The RowDescription message for the current resultset being processed
         /// </summary>
-        [CanBeNull]
-        internal RowDescriptionMessage RowDescription;
+        internal RowDescriptionMessage? RowDescription;
 
         ulong? _recordsAffected;
 
@@ -111,7 +109,7 @@ namespace Npgsql
         /// <summary>
         /// Is raised whenever Close() is called.
         /// </summary>
-        public event EventHandler ReaderClosed;
+        public event EventHandler? ReaderClosed;
 
         bool _isSchemaOnly;
         bool _isSequential;
@@ -119,14 +117,12 @@ namespace Npgsql
         /// <summary>
         /// A stream that has been opened on a column.
         /// </summary>
-        [CanBeNull]
-        NpgsqlReadBuffer.ColumnStream ColumnStream;
+        NpgsqlReadBuffer.ColumnStream? ColumnStream;
 
         /// <summary>
         /// Used for internal temporary purposes
         /// </summary>
-        [CanBeNull]
-        char[] _tempCharBuf;
+        char[]? _tempCharBuf;
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
@@ -224,9 +220,10 @@ namespace Npgsql
                 return null;
             }
 
-            var msg = Connector.ParseServerMessage(readBuf, messageCode, len, false);
+            var msg = Connector.ParseServerMessage(readBuf, messageCode, len, false)!;
+            Debug.Assert(msg.Code == BackendMessageCode.DataRow);
             ProcessMessage(msg);
-            return msg.Code == BackendMessageCode.DataRow;
+            return true;
         }
 
         async Task<bool> Read(bool async)
@@ -728,13 +725,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The name of the specified column.</returns>
-        public override string GetName(int ordinal)
-        {
-            CheckResultSet();
-            CheckColumn(ordinal);
-
-            return RowDescription[ordinal].Name;
-        }
+        public override string GetName(int ordinal) => CheckRowDescriptionAndGetField(ordinal).Name;
 
         /// <summary>
         /// Gets the number of columns in the current row.
@@ -928,7 +919,7 @@ namespace Npgsql
         {
             if (values == null)
                 throw new ArgumentNullException(nameof(values));
-            CheckRow();
+            CheckResultSet();
 
             var count = Math.Min(FieldCount, values.Length);
             for (var i = 0; i < count; i++)
@@ -1022,9 +1013,8 @@ namespace Npgsql
         /// <param name="bufferOffset">The index with the buffer to which the data will be copied.</param>
         /// <param name="length">The maximum number of characters to read.</param>
         /// <returns>The actual number of bytes read.</returns>
-        public override long GetBytes(int ordinal, long dataOffset, [CanBeNull] byte[] buffer, int bufferOffset, int length)
+        public override long GetBytes(int ordinal, long dataOffset, byte[]? buffer, int bufferOffset, int length)
         {
-            CheckRowAndOrdinal(ordinal);
             if (dataOffset < 0 || dataOffset > int.MaxValue)
                 throw new ArgumentOutOfRangeException(nameof(dataOffset), dataOffset, $"dataOffset must be between {0} and {int.MaxValue}");
             if (buffer != null && (bufferOffset < 0 || bufferOffset >= buffer.Length + 1))
@@ -1032,7 +1022,7 @@ namespace Npgsql
             if (buffer != null && (length < 0 || length > buffer.Length - bufferOffset))
                 throw new IndexOutOfRangeException($"length must be between {0} and {buffer.Length - bufferOffset}");
 
-            var fieldDescription = RowDescription[ordinal];
+            var fieldDescription = CheckRowAndGetField(ordinal);
             var handler = fieldDescription.Handler;
             if (!(handler is ByteaHandler))
                 throw new InvalidCastException("GetBytes() not supported for type " + fieldDescription.Name);
@@ -1083,9 +1073,7 @@ namespace Npgsql
 
         ValueTask<Stream> GetStream(int ordinal, bool async)
         {
-            CheckRowAndOrdinal(ordinal);
-
-            var fieldDescription = RowDescription[ordinal];
+            var fieldDescription = CheckRowAndGetField(ordinal);
             if (!(fieldDescription.Handler is ByteaHandler))
                 throw new InvalidCastException($"GetStream() not supported for type {fieldDescription.Handler.PgDisplayName}");
 
@@ -1129,9 +1117,8 @@ namespace Npgsql
         /// <param name="bufferOffset">The index with the buffer to which the data will be copied.</param>
         /// <param name="length">The maximum number of characters to read.</param>
         /// <returns>The actual number of characters read.</returns>
-        public override long GetChars(int ordinal, long dataOffset, [CanBeNull] char[] buffer, int bufferOffset, int length)
+        public override long GetChars(int ordinal, long dataOffset, char[]? buffer, int bufferOffset, int length)
         {
-            CheckRowAndOrdinal(ordinal);
             if (dataOffset < 0 || dataOffset > int.MaxValue)
                 throw new ArgumentOutOfRangeException(nameof(dataOffset), dataOffset, $"dataOffset must be between {0} and {int.MaxValue}");
             if (buffer != null && (bufferOffset < 0 || bufferOffset >= buffer.Length + 1))
@@ -1139,7 +1126,7 @@ namespace Npgsql
             if (buffer != null && (length < 0 || length > buffer.Length - bufferOffset))
                 throw new IndexOutOfRangeException($"length must be between {0} and {buffer.Length - bufferOffset}");
 
-            var fieldDescription = RowDescription[ordinal];
+            var fieldDescription = CheckRowAndGetField(ordinal);
             var handler = fieldDescription.Handler as TextHandler;
             if (handler == null)
                 throw new InvalidCastException("GetChars() not supported for type " + fieldDescription.Name);
@@ -1257,9 +1244,7 @@ namespace Npgsql
 
         async ValueTask<TextReader> GetTextReader(int ordinal, bool async)
         {
-            CheckRowAndOrdinal(ordinal);
-
-            var fieldDescription = RowDescription[ordinal];
+            var fieldDescription = CheckRowAndGetField(ordinal);
             if (!(fieldDescription.Handler is ITextReaderHandler handler))
                 throw new InvalidCastException($"GetTextReader() not supported for type {fieldDescription.Handler.PgDisplayName}");
 
@@ -1309,19 +1294,21 @@ namespace Npgsql
 
             // In non-sequential, we know that the column is already buffered - no I/O will take place
 
-            CheckRowAndOrdinal(ordinal);
+            var fieldDescription = CheckRowAndGetField(ordinal);
             SeekToColumnNonSequential(ordinal);
 
             if (ColumnLen == -1)
             {
+#pragma warning disable CS8653 // A default expression introduces a null value when 'T' is a non-nullable reference type.
+                // When T is a Nullable<T>, we support returning null
                 if (NullableHandler<T>.Exists)
                     return default;
+#pragma warning restore CS8653
                 if (typeof(T) == typeof(object))
                     return (T)(object)DBNull.Value;
                 throw new InvalidCastException("Column is null");
             }
 
-            var fieldDescription = RowDescription[ordinal];
             try
             {
                 return NullableHandler<T>.Exists
@@ -1348,21 +1335,22 @@ namespace Npgsql
 
         async ValueTask<T> GetFieldValueSequential<T>(int column, bool async)
         {
-            CheckRowAndOrdinal(column);
-
+            var fieldDescription = CheckRowAndGetField(column);
             await SeekToColumnSequential(column, async);
             CheckColumnStart();
 
             if (ColumnLen == -1)
             {
+#pragma warning disable CS8653 // A default expression introduces a null value when 'T' is a non-nullable reference type.
+                // When T is a Nullable<T>, we support returning null
                 if (NullableHandler<T>.Exists)
                     return default;
+#pragma warning restore CS8653
                 if (typeof(T) == typeof(object))
                     return (T)(object)DBNull.Value;
                 throw new InvalidCastException("Column is null");
             }
 
-            var fieldDescription = RowDescription[column];
             try
             {
                 return NullableHandler<T>.Exists
@@ -1404,7 +1392,7 @@ namespace Npgsql
         /// <returns>The value of the specified column.</returns>
         public override object GetValue(int ordinal)
         {
-            CheckRowAndOrdinal(ordinal);
+            var fieldDescription = CheckRowAndGetField(ordinal);
 
             if (_isSequential) {
                 SeekToColumnSequential(ordinal, false).GetAwaiter().GetResult();
@@ -1415,7 +1403,6 @@ namespace Npgsql
             if (ColumnLen == -1)
                 return DBNull.Value;
 
-            var fieldDescription = RowDescription[ordinal];
             object result;
             try
             {
@@ -1457,7 +1444,7 @@ namespace Npgsql
         /// <returns>The value of the specified column.</returns>
         public override object GetProviderSpecificValue(int ordinal)
         {
-            CheckRowAndOrdinal(ordinal);
+            var fieldDescription = CheckRowAndGetField(ordinal);
 
             if (_isSequential) {
                 SeekToColumnSequential(ordinal, false).GetAwaiter().GetResult();
@@ -1468,7 +1455,6 @@ namespace Npgsql
             if (ColumnLen == -1)
                 return DBNull.Value;
 
-            var fieldDescription = RowDescription[ordinal];
             try
             {
                 return _isSequential
@@ -1509,7 +1495,7 @@ namespace Npgsql
         /// <returns><b>true</b> if the specified column is equivalent to <see cref="DBNull"/>; otherwise <b>false</b>.</returns>
         public override bool IsDBNull(int ordinal)
         {
-            CheckRowAndOrdinal(ordinal);
+            CheckRowAndGetField(ordinal);
 
             if (_isSequential)
                 SeekToColumnSequential(ordinal, false).GetAwaiter().GetResult();
@@ -1531,7 +1517,7 @@ namespace Npgsql
             if (!_isSequential)
                 return IsDBNull(ordinal);
 
-            CheckRowAndOrdinal(ordinal);
+            CheckRowAndGetField(ordinal);
 
             cancellationToken.ThrowIfCancellationRequested();
             using (NoSynchronizationContextScope.Enter())
@@ -1552,10 +1538,12 @@ namespace Npgsql
         /// <returns>The zero-based column ordinal.</returns>
         public override int GetOrdinal(string name)
         {
-            CheckResultSet();
             if (string.IsNullOrEmpty(name))
                 throw new ArgumentException("name cannot be empty", nameof(name));
-
+            if (State == ReaderState.Closed)
+                throw new InvalidOperationException("The reader is closed");
+            if (RowDescription is null)
+                throw new InvalidOperationException("No resultset is currently being traversed");
             return RowDescription.GetFieldIndex(name);
         }
 
@@ -1565,13 +1553,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="ordinal">The zero-based column index.</param>
         [PublicAPI]
-        public PostgresType GetPostgresType(int ordinal)
-        {
-            CheckResultSet();
-            CheckColumn(ordinal);
-
-            return RowDescription[ordinal].PostgresType;
-        }
+        public PostgresType GetPostgresType(int ordinal) => CheckRowDescriptionAndGetField(ordinal).PostgresType;
 
         /// <summary>
         /// Gets the data type information for the specified field.
@@ -1579,13 +1561,7 @@ namespace Npgsql
         /// (see <see cref="GetFieldType"/> for that).
         /// </summary>
         /// <param name="ordinal">The zero-based column index.</param>
-        public override string GetDataTypeName(int ordinal)
-        {
-            CheckResultSet();
-            CheckColumn(ordinal);
-
-            return RowDescription[ordinal].TypeDisplayName;
-        }
+        public override string GetDataTypeName(int ordinal) => CheckRowDescriptionAndGetField(ordinal).TypeDisplayName;
 
         /// <summary>
         /// Gets the OID for the PostgreSQL type for the specified field, as it appears in the pg_type table.
@@ -1595,28 +1571,16 @@ namespace Npgsql
         /// debugging purposes.
         /// </remarks>
         /// <param name="ordinal">The zero-based column index.</param>
-        public uint GetDataTypeOID(int ordinal)
-        {
-            CheckResultSet();
-            CheckColumn(ordinal);
-
-            return RowDescription[ordinal].TypeOID;
-        }
+        public uint GetDataTypeOID(int ordinal) => CheckRowDescriptionAndGetField(ordinal).TypeOID;
 
         /// <summary>
         /// Gets the data type of the specified column.
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The data type of the specified column.</returns>
-        [NotNull]
         public override Type GetFieldType(int ordinal)
-        {
-            CheckResultSet();
-            CheckColumn(ordinal);
-
-            var type = Command.ObjectResultTypes?[ordinal];
-            return type ?? RowDescription[ordinal].FieldType;
-        }
+            => Command.ObjectResultTypes?[ordinal]
+               ?? CheckRowDescriptionAndGetField(ordinal).FieldType;
 
         /// <summary>
         /// Returns the provider-specific field type of the specified column.
@@ -1625,10 +1589,7 @@ namespace Npgsql
         /// <returns>The Type object that describes the data type of the specified column.</returns>
         public override Type GetProviderSpecificFieldType(int ordinal)
         {
-            CheckResultSet();
-            CheckColumn(ordinal);
-
-            var fieldDescription = RowDescription[ordinal];
+            var fieldDescription = CheckRowDescriptionAndGetField(ordinal);
             return fieldDescription.Handler.GetProviderSpecificFieldType(fieldDescription);
         }
 
@@ -1641,7 +1602,8 @@ namespace Npgsql
         {
             if (values == null)
                 throw new ArgumentNullException(nameof(values));
-            CheckRow();
+            if (State != ReaderState.InResult)
+                throw new InvalidOperationException("No row is available");
 
             var count = Math.Min(FieldCount, values.Length);
             for (var i = 0; i < count; i++)
@@ -1661,8 +1623,10 @@ namespace Npgsql
         /// </summary>
         /// <returns></returns>
         public ReadOnlyCollection<NpgsqlDbColumn> GetColumnSchema()
-            => new DbColumnSchemaGenerator(_connection, RowDescription, _behavior.HasFlag(CommandBehavior.KeyInfo))
-                .GetColumnSchema();
+            => RowDescription == null || RowDescription.Fields.Count == 0
+                ? new List<NpgsqlDbColumn>().AsReadOnly()
+                : new DbColumnSchemaGenerator(_connection, RowDescription, _behavior.HasFlag(CommandBehavior.KeyInfo))
+                    .GetColumnSchema();
 
 #if !NET461
         ReadOnlyCollection<DbColumn> IDbColumnSchemaGenerator.GetColumnSchema()
@@ -1673,11 +1637,13 @@ namespace Npgsql
 
         #region Schema metadata table
 
+
         /// <summary>
         /// Returns a System.Data.DataTable that describes the column metadata of the DataReader.
         /// </summary>
-        [CanBeNull]
+#nullable disable
         public override DataTable GetSchemaTable()
+#nullable enable
         {
             if (FieldCount == 0) // No resultset
                 return null;
@@ -1729,7 +1695,7 @@ namespace Npgsql
                 row["BaseSchemaName"] = column.BaseSchemaName;
                 row["BaseTableName"] = column.BaseTableName;
                 row["DataType"] = column.DataType;
-                row["AllowDBNull"] = (object)column.AllowDBNull ?? DBNull.Value;
+                row["AllowDBNull"] = (object?)column.AllowDBNull ?? DBNull.Value;
                 row["ProviderType"] = column.NpgsqlDbType ?? NpgsqlDbType.Unknown;
                 row["IsAliased"] = column.IsAliased == true;
                 row["IsExpression"] = column.IsExpression == true;
@@ -1921,32 +1887,69 @@ namespace Npgsql
         #region Checks
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal void CheckRowAndOrdinal(int ordinal)
+        RowDescriptionMessage CheckResultSet()
         {
-            CheckRow();
-            CheckColumn(ordinal);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        void CheckRow()
-        {
-            if (!IsOnRow)
-                throw new InvalidOperationException("No row is available");
-        }
-
-        // ReSharper disable once UnusedParameter.Local
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal void CheckColumn(int column)
-        {
-            if (column < 0 || column >= FieldCount)
-                throw new IndexOutOfRangeException($"Column must be between {0} and {(FieldCount - 1)}");
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        void CheckResultSet()
-        {
-            if (FieldCount == 0)
+            switch (State)
+            {
+            case ReaderState.BeforeResult:
+            case ReaderState.InResult:
+                break;
+            case ReaderState.Closed:
+                throw new InvalidOperationException("The reader is closed");
+            default:
                 throw new InvalidOperationException("No resultset is currently being traversed");
+            }
+
+            Debug.Assert(RowDescription != null);
+            return RowDescription;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        FieldDescription CheckResultSetAndGetField(int column)
+        {
+            var rowDescription = CheckResultSet();
+
+            if (column < 0 || column >= rowDescription.NumFields)
+                throw new IndexOutOfRangeException($"Column must be between {0} and {rowDescription.NumFields - 1}");
+
+            return rowDescription[column];
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        FieldDescription CheckRowAndGetField(int column)
+        {
+            switch (State)
+            {
+            case ReaderState.InResult:
+                break;
+            case ReaderState.Closed:
+                throw new InvalidOperationException("The reader is closed");
+            default:
+                throw new InvalidOperationException("No row is available");
+            }
+
+            Debug.Assert(RowDescription != null, $"Reader state is {nameof(ReaderState.InResult)} but {nameof(RowDescription)} is null");
+
+            if (column < 0 || column >= RowDescription.NumFields)
+                throw new IndexOutOfRangeException($"Column must be between {0} and {RowDescription.NumFields - 1}");
+
+            return RowDescription[column];
+        }
+
+        /// <summary>
+        /// Checks that we have a RowDescription, but not necessary an actual resultset
+        /// (for operations which work in SchemaOnly mode.
+        /// </summary>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        FieldDescription CheckRowDescriptionAndGetField(int column)
+        {
+            if (RowDescription == null)
+                throw new InvalidOperationException("No resultset is currently being traversed");
+
+            if (column < 0 || column >= RowDescription.NumFields)
+                throw new IndexOutOfRangeException($"Column must be between {0} and {RowDescription.NumFields - 1}");
+
+            return RowDescription[column];
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

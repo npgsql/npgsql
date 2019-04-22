@@ -190,7 +190,7 @@ namespace Npgsql.PluginTests
         [Test]
         public void RoundtripJsonCustomSerializerSettings() => RoundtripCustomSerializerSettings(asJsonb : false);
 
-        protected override NpgsqlConnection OpenConnection(string connectionString = null)
+        protected override NpgsqlConnection OpenConnection(string? connectionString = null)
         {
             var conn = base.OpenConnection(connectionString);
             conn.TypeMapper.UseJsonNet();

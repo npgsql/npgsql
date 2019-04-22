@@ -360,7 +360,7 @@ namespace Npgsql.Tests
         [TestCase("bit(3)")]
         [TestCase("bit varying")]
         [TestCase("bit varying(3)")]
-        public void GetDataTypeName(string typeName, string normalizedName = null)
+        public void GetDataTypeName(string typeName, string? normalizedName = null)
         {
             if (normalizedName == null)
                 normalizedName = typeName;
@@ -485,7 +485,7 @@ namespace Npgsql.Tests
                     dr.Read();
                     var values = new object[4];
                     Assert.That(dr.GetValues(values), Is.EqualTo(3));
-                    Assert.That(values, Is.EqualTo(new object[] { "hello", 1, new DateTime(2014, 1, 1), null }));
+                    Assert.That(values, Is.EqualTo(new object?[] { "hello", 1, new DateTime(2014, 1, 1), null }));
                 }
                 using (var dr = command.ExecuteReader(Behavior))
                 {
@@ -508,7 +508,7 @@ namespace Npgsql.Tests
                     dr.Read();
                     var values = new object[4];
                     Assert.That(dr.GetProviderSpecificValues(values), Is.EqualTo(3));
-                    Assert.That(values, Is.EqualTo(new object[] { "hello", 1, new NpgsqlDate(2014, 1, 1), null }));
+                    Assert.That(values, Is.EqualTo(new object?[] { "hello", 1, new NpgsqlDate(2014, 1, 1), null }));
                 }
                 using (var dr = command.ExecuteReader(Behavior))
                 {
@@ -1438,7 +1438,7 @@ LANGUAGE plpgsql VOLATILE";
         readonly bool _safe;
         internal ExplodingTypeHandler(bool safe) { _safe = safe; }
 
-        public override int Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription)
+        public override int Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
             buf.ReadInt32();
             throw _safe
@@ -1446,8 +1446,8 @@ LANGUAGE plpgsql VOLATILE";
                 : throw new Exception("Non-safe read exception as requested");
         }
 
-        public override int ValidateAndGetLength(int value, NpgsqlParameter parameter) { throw new NotSupportedException(); }
-        public override void Write(int value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter) { throw new NotSupportedException(); }
+        public override int ValidateAndGetLength(int value, NpgsqlParameter? parameter) => throw new NotSupportedException();
+        public override void Write(int value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter) => throw new NotSupportedException();
     }
 
     #endregion

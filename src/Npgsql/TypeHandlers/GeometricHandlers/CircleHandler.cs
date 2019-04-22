@@ -14,13 +14,13 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     [TypeMapping("circle", NpgsqlDbType.Circle, typeof(NpgsqlCircle))]
     class CircleHandler : NpgsqlSimpleTypeHandler<NpgsqlCircle>
     {
-        public override NpgsqlCircle Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override NpgsqlCircle Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             => new NpgsqlCircle(buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble());
 
-        public override int ValidateAndGetLength(NpgsqlCircle value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(NpgsqlCircle value, NpgsqlParameter? parameter)
             => 24;
 
-        public override void Write(NpgsqlCircle value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public override void Write(NpgsqlCircle value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
             buf.WriteDouble(value.X);
             buf.WriteDouble(value.Y);

@@ -141,7 +141,7 @@ namespace Npgsql
             string portal,
             string statement,
             bool allResultTypesAreUnknown,
-            bool[] unknownResultTypeList,
+            bool[]? unknownResultTypeList,
             bool async)
         {
             Debug.Assert(statement != null && statement.All(c => c < 128));

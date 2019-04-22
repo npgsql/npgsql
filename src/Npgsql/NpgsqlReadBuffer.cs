@@ -6,7 +6,6 @@ using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
-using JetBrains.Annotations;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
@@ -20,7 +19,7 @@ namespace Npgsql
     {
         #region Fields and Properties
 
-        public NpgsqlConnection Connection => Connector.Connection;
+        public NpgsqlConnection Connection => Connector.Connection!;
 
         internal readonly NpgsqlConnector Connector;
 
@@ -29,8 +28,7 @@ namespace Npgsql
         /// <summary>
         /// Wraps SocketAsyncEventArgs for better async I/O as long as we're not doing SSL.
         /// </summary>
-        [CanBeNull]
-        internal AwaitableSocket AwaitableSocket { get; set; }
+        internal AwaitableSocket? AwaitableSocket { get; set; }
 
         /// <summary>
         /// The total byte length of the buffer.
@@ -52,8 +50,7 @@ namespace Npgsql
         internal readonly byte[] Buffer;
         internal int FilledBytes;
 
-        [CanBeNull]
-        ColumnStream _columnStream;
+        ColumnStream? _columnStream;
 
         /// <summary>
         /// The minimum buffer size possible.
@@ -66,7 +63,7 @@ namespace Npgsql
         #region Constructors
 
         internal NpgsqlReadBuffer(
-            [CanBeNull] NpgsqlConnector connector,
+            NpgsqlConnector connector,
             Stream stream,
             int size,
             Encoding textEncoding,

@@ -24,6 +24,8 @@ namespace Npgsql.Schema
     {
         public NpgsqlDbColumn()
         {
+            PostgresType = UnknownBackendType.Instance;
+
             // Not supported in PostgreSQL
             IsExpression = false;
             IsAliased = false;
@@ -32,7 +34,7 @@ namespace Npgsql.Schema
         }
 
         #region Standard fields
-
+#nullable disable
         // ReSharper disable once InconsistentNaming
         public new bool? AllowDBNull
         {
@@ -147,7 +149,7 @@ namespace Npgsql.Schema
             get => base.DataTypeName;
             protected internal set => base.DataTypeName = value;
         }
-
+#nullable enable
         #endregion Standard fields
 
         #region Npgsql-specific fields
@@ -161,12 +163,11 @@ namespace Npgsql.Schema
         [PublicAPI]
         public short? ColumnAttributeNumber { get; internal set; }
         [PublicAPI]
-        public string DefaultValue { get; internal set; }
+        public string? DefaultValue { get; internal set; }
         [PublicAPI]
         public NpgsqlDbType? NpgsqlDbType { get; internal set; }
 
-        [CanBeNull]
-        public override object this[string propertyName]
+        public override object? this[string propertyName]
         {
             get
             {

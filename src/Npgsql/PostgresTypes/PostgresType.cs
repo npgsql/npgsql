@@ -90,15 +90,15 @@ namespace Npgsql.PostgresTypes
         /// If a PostgreSQL array type exists for this type, it will be referenced here.
         /// Otherwise null.
         /// </summary>
-        [PublicAPI, CanBeNull]
-        public PostgresArrayType Array { get; internal set; }
+        [PublicAPI]
+        public PostgresArrayType? Array { get; internal set; }
 
         /// <summary>
         /// If a PostgreSQL range type exists for this type, it will be referenced here.
         /// Otherwise null.
         /// </summary>
-        [PublicAPI, CanBeNull]
-        public PostgresRangeType Range { get; internal set; }
+        [PublicAPI]
+        public PostgresRangeType? Range { get; internal set; }
 
         #endregion
 

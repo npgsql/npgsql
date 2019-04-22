@@ -49,7 +49,7 @@ namespace Npgsql.Logging
 
         public override bool IsEnabled(NpgsqlLogLevel level) => level >= _minLevel;
 
-        public override void Log(NpgsqlLogLevel level, int connectorId, string msg, Exception exception = null)
+        public override void Log(NpgsqlLogLevel level, int connectorId, string msg, Exception? exception = null)
         {
             if (!IsEnabled(level))
                 return;

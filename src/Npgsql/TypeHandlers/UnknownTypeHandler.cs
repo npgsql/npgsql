@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
@@ -20,13 +21,13 @@ namespace Npgsql.TypeHandlers
 
         internal UnknownTypeHandler(NpgsqlConnection connection) : base(connection)
         {
-            _connector = connection.Connector;
             PostgresType = UnknownBackendType.Instance;
+            _connector = connection.Connector!;
         }
 
         #region Read
 
-        public override ValueTask<string> Read(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription fieldDescription = null)
+        public override ValueTask<string> Read(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription? fieldDescription = null)
         {
             if (fieldDescription == null)
                 throw new Exception($"Received an unknown field but {nameof(fieldDescription)} is null (i.e. COPY mode)");
@@ -52,10 +53,10 @@ namespace Npgsql.TypeHandlers
 
         // Allow writing anything that is a string or can be converted to one via the unknown type handler
 
-        protected internal override int ValidateAndGetLength<T2>(T2 value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
-            => ValidateObjectAndGetLength(value, ref lengthCache, parameter);
+        protected internal override int ValidateAndGetLength<T2>(T2 value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+            => ValidateObjectAndGetLength(value!, ref lengthCache, parameter);
 
-        protected internal override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        protected internal override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
             if (value is string asString)
                 return base.ValidateAndGetLength(asString, ref lengthCache, parameter);
@@ -67,14 +68,16 @@ namespace Npgsql.TypeHandlers
             return base.ValidateAndGetLength(converted, ref lengthCache, parameter);
         }
 
-        protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
+            Debug.Assert(parameter != null);
+
             if (value == null || value is DBNull)
-                return base.WriteObjectWithLength(value, buf, lengthCache, parameter, async);
+                return base.WriteObjectWithLength(DBNull.Value, buf, lengthCache, parameter, async);
 
             var convertedValue = value is string asString
                 ? asString
-                : (string)parameter.ConvertedValue;
+                : (string)parameter.ConvertedValue!;
 
             if (buf.WriteSpaceLeft < 4)
                 return WriteWithLengthLong();

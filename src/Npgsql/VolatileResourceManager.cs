@@ -2,7 +2,6 @@ using System;
 using System.Diagnostics;
 using System.Threading;
 using System.Transactions;
-using JetBrains.Annotations;
 using Npgsql.Logging;
 
 namespace Npgsql
@@ -16,11 +15,11 @@ namespace Npgsql
     /// </remarks>
     class VolatileResourceManager : ISinglePhaseNotification
     {
-        [CanBeNull] NpgsqlConnector _connector;
-        [CanBeNull] Transaction _transaction;
-        [CanBeNull] readonly string _txId;
-        [CanBeNull] NpgsqlTransaction _localTx;
-        [CanBeNull] string _preparedTxName;
+        NpgsqlConnector _connector;
+        Transaction _transaction;
+        readonly string _txId;
+        NpgsqlTransaction _localTx;
+        string? _preparedTxName;
         bool IsPrepared => _preparedTxName != null;
         bool _isDisposed;
 
@@ -28,9 +27,9 @@ namespace Npgsql
 
         const int MaximumRollbackAttempts = 20;
 
-        internal VolatileResourceManager(NpgsqlConnection connection, [NotNull] Transaction transaction)
+        internal VolatileResourceManager(NpgsqlConnection connection, Transaction transaction)
         {
-            _connector = connection.Connector;
+            _connector = connection.Connector!;
             _transaction = transaction;
             // _tx gets disposed by System.Transactions at some point, but we want to be able to log its local ID
             _txId = transaction.TransactionInformation.LocalIdentifier;
@@ -266,6 +265,7 @@ namespace Npgsql
 
         #region Dispose/Cleanup
 
+#pragma warning disable CS8625
         void Dispose()
         {
             if (_isDisposed)
@@ -290,7 +290,7 @@ namespace Npgsql
                 {
                     var found = PoolManager.TryGetValue(_connector.ConnectionString, out var pool);
                     Debug.Assert(found);
-                    pool.TryRemovePendingEnlistedConnector(_connector, _transaction);
+                    pool!.TryRemovePendingEnlistedConnector(_connector, _transaction);
                     pool.Release(_connector);
                 }
                 else
@@ -301,6 +301,7 @@ namespace Npgsql
             _transaction = null;
             _isDisposed = true;
         }
+#pragma warning enable CS8625
 
         void CheckDisposed()
         {

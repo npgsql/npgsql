@@ -31,20 +31,20 @@ namespace Npgsql
         /// <summary>
         /// The hostname of IP address of the database.
         /// </summary>
-        public string Host { get; protected set; }
+        public string Host { get; }
         /// <summary>
         /// The TCP port of the database.
         /// </summary>
-        public int Port { get; protected set; }
+        public int Port { get; }
         /// <summary>
         /// The database name.
         /// </summary>
-        public string Name { get; protected set; }
+        public string Name { get; }
         /// <summary>
         /// The version of the PostgreSQL database we're connected to, as reported in the "server_version" parameter.
         /// Exposed via <see cref="NpgsqlConnection.PostgreSqlVersion"/>.
         /// </summary>
-        public Version Version { get; protected set; }
+        public Version Version { get; }
 
         #endregion General database info
 
@@ -97,12 +97,19 @@ namespace Npgsql
 
         #region Types
 
-        internal IReadOnlyList<PostgresBaseType>      BaseTypes      { get; private set; }
-        internal IReadOnlyList<PostgresArrayType>     ArrayTypes     { get; private set; }
-        internal IReadOnlyList<PostgresRangeType>     RangeTypes     { get; private set; }
-        internal IReadOnlyList<PostgresEnumType>      EnumTypes      { get; private set; }
-        internal IReadOnlyList<PostgresCompositeType> CompositeTypes { get; private set; }
-        internal IReadOnlyList<PostgresDomainType>    DomainTypes    { get; private set; }
+        List<PostgresBaseType>      _baseTypes      { get; } = new List<PostgresBaseType>();
+        List<PostgresArrayType>     _arrayTypes     { get; } = new List<PostgresArrayType>();
+        List<PostgresRangeType>     _rangeTypes     { get; } = new List<PostgresRangeType>();
+        List<PostgresEnumType>      _enumTypes      { get; } = new List<PostgresEnumType>();
+        List<PostgresCompositeType> _compositeTypes { get; } = new List<PostgresCompositeType>();
+        List<PostgresDomainType>    _domainTypes    { get; } = new List<PostgresDomainType>();
+
+        internal IReadOnlyList<PostgresBaseType>      BaseTypes      => _baseTypes;
+        internal IReadOnlyList<PostgresArrayType>     ArrayTypes     => _arrayTypes;
+        internal IReadOnlyList<PostgresRangeType>     RangeTypes     => _rangeTypes;
+        internal IReadOnlyList<PostgresEnumType>      EnumTypes      => _enumTypes;
+        internal IReadOnlyList<PostgresCompositeType> CompositeTypes => _compositeTypes;
+        internal IReadOnlyList<PostgresDomainType>    DomainTypes    => _domainTypes;
 
         /// <summary>
         /// Indexes backend types by their type OID.
@@ -121,17 +128,21 @@ namespace Npgsql
         /// table will contain an entry with a null value.
         /// Only used for enums and composites.
         /// </summary>
-        internal Dictionary<string, PostgresType> ByName { get; } = new Dictionary<string, PostgresType>();
+        internal Dictionary<string, PostgresType?> ByName { get; } = new Dictionary<string, PostgresType?>();
+
+        /// <summary>
+        /// Initializes the instance of <see cref="NpgsqlDatabaseInfo"/>.
+        /// </summary>
+        protected NpgsqlDatabaseInfo(string host, int port, string databaseName, Version version)
+        {
+            Host = host;
+            Port = port;
+            Name = databaseName;
+            Version = version;
+        }
 
         internal void ProcessTypes()
         {
-            var baseTypes      = new List<PostgresBaseType>();
-            var arrayTypes     = new List<PostgresArrayType>();
-            var rangeTypes     = new List<PostgresRangeType>();
-            var enumTypes      = new List<PostgresEnumType>();
-            var compositeTypes = new List<PostgresCompositeType>();
-            var domainTypes    = new List<PostgresDomainType>();
-
             foreach (var type in GetTypes())
             {
                 ByOID[type.OID] = type;
@@ -145,34 +156,27 @@ namespace Npgsql
                 switch (type)
                 {
                 case PostgresBaseType baseType:
-                    baseTypes.Add(baseType);
+                    _baseTypes.Add(baseType);
                     continue;
                 case PostgresArrayType arrayType:
-                    arrayTypes.Add(arrayType);
+                    _arrayTypes.Add(arrayType);
                     continue;
                 case PostgresRangeType rangeType:
-                    rangeTypes.Add(rangeType);
+                    _rangeTypes.Add(rangeType);
                     continue;
                 case PostgresEnumType enumType:
-                    enumTypes.Add(enumType);
+                    _enumTypes.Add(enumType);
                     continue;
                 case PostgresCompositeType compositeType:
-                    compositeTypes.Add(compositeType);
+                    _compositeTypes.Add(compositeType);
                     continue;
                 case PostgresDomainType domainType:
-                    domainTypes.Add(domainType);
+                    _domainTypes.Add(domainType);
                     continue;
                 default:
                     throw new ArgumentOutOfRangeException();
                 }
             }
-
-            BaseTypes      = baseTypes;
-            ArrayTypes     = arrayTypes;
-            RangeTypes     = rangeTypes;
-            EnumTypes      = enumTypes;
-            CompositeTypes = compositeTypes;
-            DomainTypes    = domainTypes;
         }
 
         /// <summary>

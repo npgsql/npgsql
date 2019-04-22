@@ -22,7 +22,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
 
         #region Read
 
-        public override async ValueTask<NpgsqlTsVector> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+        public override async ValueTask<NpgsqlTsVector> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
             await buf.Ensure(4, async);
             var numLexemes = buf.ReadInt32();
@@ -34,7 +34,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
                 await buf.Ensure(Math.Min(len, MaxSingleLexemeBytes), async);
                 var posBefore = buf.ReadPosition;
 
-                List<NpgsqlTsVector.Lexeme.WordEntryPos> positions = null;
+                List<NpgsqlTsVector.Lexeme.WordEntryPos>? positions = null;
 
                 var lexemeString = buf.ReadNullTerminatedString();
                 int numPositions = buf.ReadInt16();
@@ -59,10 +59,10 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
         #region Write
 
         // TODO: Implement length cache
-        public override int ValidateAndGetLength(NpgsqlTsVector value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(NpgsqlTsVector value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => 4 + value.Sum(l => Encoding.UTF8.GetByteCount(l.Text) + 1 + 2 + l.Count * 2);
 
-        public override async Task Write(NpgsqlTsVector vector, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        public override async Task Write(NpgsqlTsVector vector, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             if (buf.WriteSpaceLeft < 4)
                 await buf.Flush(async);

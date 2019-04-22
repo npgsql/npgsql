@@ -144,7 +144,7 @@ namespace Npgsql.Tests
         [Test]
         public void Constructor2_Value_Null()
         {
-            var p = new NpgsqlParameter("address", (object)null);
+            var p = new NpgsqlParameter("address", null);
             Assert.AreEqual(DbType.Object, p.DbType, "A:DbType");
             Assert.AreEqual(ParameterDirection.Input, p.Direction, "A:Direction");
             Assert.IsFalse(p.IsNullable, "A:IsNullable");

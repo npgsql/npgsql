@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Linq;
-using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.Logging;
 using Npgsql.TypeHandling;
@@ -32,8 +31,7 @@ namespace Npgsql
         /// </summary>
         internal int NumColumns { get; }
 
-        [ItemCanBeNull]
-        readonly NpgsqlTypeHandler[] _typeHandlerCache;
+        readonly NpgsqlTypeHandler?[] _typeHandlerCache;
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         #endregion
@@ -291,6 +289,7 @@ namespace Npgsql
             connector.EndUserAction();
         }
 
+#pragma warning disable CS8625
         void Cleanup()
         {
             var connector = _connector;
@@ -306,6 +305,7 @@ namespace Npgsql
             _buf = null;
             _isDisposed = true;
         }
+#pragma warning enable CS8625
 
         #endregion
     }

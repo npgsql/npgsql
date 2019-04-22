@@ -11,7 +11,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     class DateHandlerFactory : NpgsqlTypeHandlerFactory<DateTime>
     {
         protected override NpgsqlTypeHandler<DateTime> Create(NpgsqlConnection conn)
-            => new DateHandler(conn.Connector.ConvertInfinityDateTime);
+            => new DateHandler(conn.Connector!.ConvertInfinityDateTime);
     }
 
     /// <remarks>
@@ -35,7 +35,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
 
         #region Read
 
-        public override DateTime Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override DateTime Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
             var npgsqlDate = ReadPsv(buf, len, fieldDescription);
             try {
@@ -54,7 +54,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         /// <remarks>
         /// Copied wholesale from Postgresql backend/utils/adt/datetime.c:j2date
         /// </remarks>
-        protected override NpgsqlDate ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        protected override NpgsqlDate ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
             var binDate = buf.ReadInt32();
 
@@ -73,13 +73,13 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
 
         #region Write
 
-        public override int ValidateAndGetLength(DateTime value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(DateTime value, NpgsqlParameter? parameter)
             => 4;
 
-        public override int ValidateAndGetLength(NpgsqlDate value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(NpgsqlDate value, NpgsqlParameter? parameter)
             => 4;
 
-        public override void Write(DateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public override void Write(DateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
             NpgsqlDate value2;
             if (_convertInfinityDateTime)
@@ -97,7 +97,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             Write(value2, buf, parameter);
         }
 
-        public override void Write(NpgsqlDate value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public override void Write(NpgsqlDate value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
             if (value == NpgsqlDate.NegativeInfinity)
                 buf.WriteInt32(int.MinValue);

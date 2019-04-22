@@ -2,10 +2,8 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Text;
-using JetBrains.Annotations;
 
 #pragma warning disable CA1040, CA1034
-
 namespace NpgsqlTypes
 {
     /// <summary>
@@ -15,25 +13,14 @@ namespace NpgsqlTypes
     {
         List<Lexeme> _lexemes;
 
-        internal NpgsqlTsVector(List<Lexeme> lexemes, bool noCheck)
+        internal NpgsqlTsVector(List<Lexeme> lexemes, bool noCheck=false)
         {
             if (noCheck)
+            {
                 _lexemes = lexemes;
-            else
-                Load(lexemes);
-        }
+                return;
+            }
 
-        /// <summary>
-        /// Constructs an NpgsqlTsVector from a list of lexemes. This also sorts and remove duplicates.
-        /// </summary>
-        /// <param name="lexemes"></param>
-        public NpgsqlTsVector(List<Lexeme> lexemes)
-        {
-            Load(lexemes);
-        }
-
-        void Load(List<Lexeme> lexemes)
-        {
             _lexemes = new List<Lexeme>(lexemes);
 
             if (_lexemes.Count == 0)
@@ -58,10 +45,11 @@ namespace NpgsqlTypes
                 else
                 {
                     // Just concatenate the word pos lists
-                    if (_lexemes[res]._wordEntryPositions != null)
+                    var wordEntryPositions = _lexemes[res]._wordEntryPositions;
+                    if (wordEntryPositions != null)
                     {
                         if (_lexemes[pos].Count > 0)
-                            _lexemes[res]._wordEntryPositions.AddRange(_lexemes[pos]._wordEntryPositions);
+                            wordEntryPositions.AddRange(_lexemes[pos]._wordEntryPositions);
                     }
                     else
                     {
@@ -281,8 +269,7 @@ namespace NpgsqlTypes
             /// </summary>
             public string Text { get; set; }
 
-            [CanBeNull]
-            internal List<WordEntryPos> _wordEntryPositions;
+            internal List<WordEntryPos>? _wordEntryPositions;
 
             /// <summary>
             /// Creates a lexeme with no word entry positions.
@@ -299,10 +286,10 @@ namespace NpgsqlTypes
             /// </summary>
             /// <param name="text"></param>
             /// <param name="wordEntryPositions"></param>
-            public Lexeme(string text, [CanBeNull]List<WordEntryPos> wordEntryPositions)
+            public Lexeme(string text, List<WordEntryPos>? wordEntryPositions)
                 : this(text, wordEntryPositions, false) {}
 
-            internal Lexeme(string text, [CanBeNull] List<WordEntryPos> wordEntryPositions, bool noCopy)
+            internal Lexeme(string text, List<WordEntryPos>? wordEntryPositions, bool noCopy)
             {
                 Text = text;
                 if (wordEntryPositions != null)
@@ -311,8 +298,7 @@ namespace NpgsqlTypes
                     _wordEntryPositions = null;
             }
 
-            [CanBeNull]
-            internal static List<WordEntryPos> UniquePos([CanBeNull] List<WordEntryPos> list)
+            internal static List<WordEntryPos>? UniquePos(List<WordEntryPos>? list)
             {
                 if (list == null)
                     return null;
@@ -449,11 +435,12 @@ namespace NpgsqlTypes
                 /// </summary>
                 public bool Equals(WordEntryPos o) => Value == o.Value;
 
+#nullable disable
                 /// <summary>
                 /// Determines whether the specified object is equal to the current object.
                 /// </summary>
-                public override bool Equals([CanBeNull] object o)
-                    => o is WordEntryPos && Equals((WordEntryPos)o);
+                public override bool Equals(object o) => o is WordEntryPos pos && Equals(pos);
+#nullable enable
 
                 /// <summary>
                 /// Gets a hash code for the current object.
@@ -505,11 +492,12 @@ namespace NpgsqlTypes
                     ((_wordEntryPositions == null && o._wordEntryPositions == null) ||
                     (_wordEntryPositions != null && _wordEntryPositions.Equals(o._wordEntryPositions)));
 
+#nullable disable
             /// <summary>
             /// Determines whether the specified object is equal to the current object.
             /// </summary>
-            public override bool Equals([CanBeNull] object o)
-                => o is Lexeme && Equals((Lexeme)o);
+            public override bool Equals(object o) => o is Lexeme lexeme && Equals(lexeme);
+#nullable enable
 
             /// <summary>
             /// Gets a hash code for the current object.

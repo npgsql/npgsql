@@ -223,13 +223,13 @@ CHECK
                 _factory = factory;
             }
 
-            public override int Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+            public override int Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             {
                 _factory.Reads++;
                 return base.Read(buf, len, fieldDescription);
             }
 
-            public override void Write(int value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            public override void Write(int value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             {
                 _factory.Writes++;
                 base.Write(value, buf, parameter);

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Npgsql.BackendMessages;
@@ -12,7 +13,8 @@ namespace Npgsql.Json.NET
     {
         readonly JsonSerializerSettings _settings;
 
-        public JsonbHandlerFactory(JsonSerializerSettings settings) => _settings = settings;
+        public JsonbHandlerFactory(JsonSerializerSettings? settings = null)
+            => _settings = settings ?? new JsonSerializerSettings();
 
         protected override NpgsqlTypeHandler<string> Create(NpgsqlConnection conn)
             => new JsonbHandler(conn, _settings);
@@ -24,7 +26,7 @@ namespace Npgsql.Json.NET
 
         public JsonbHandler(NpgsqlConnection connection, JsonSerializerSettings settings) : base(connection) => _settings = settings;
 
-        protected override async ValueTask<T> Read<T>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+        protected override async ValueTask<T> Read<T>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
             var s = await base.Read<string>(buf, len, async, fieldDescription);
             if (typeof(T) == typeof(string))
@@ -39,17 +41,17 @@ namespace Npgsql.Json.NET
             }
         }
 
-        protected override int ValidateAndGetLength<T2>(T2 value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        protected override int ValidateAndGetLength<T2>(T2 value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => typeof(T2) == typeof(string)
                 ? base.ValidateAndGetLength(value, ref lengthCache, parameter)
-                : ValidateObjectAndGetLength(value, ref lengthCache, parameter);
-        
-        protected override Task WriteWithLength<T2>(T2 value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+                : ValidateObjectAndGetLength(value!, ref lengthCache, parameter);
+
+        protected override Task WriteWithLength<T2>(T2 value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => typeof(T2) == typeof(string)
                 ? base.WriteWithLength(value, buf, lengthCache, parameter, async)
-                : WriteObjectWithLength(value, buf, lengthCache, parameter, async);
+                : WriteObjectWithLength(value!, buf, lengthCache, parameter, async);
 
-        protected override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        protected override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
             var s = value as string;
             if (s == null)
@@ -61,10 +63,10 @@ namespace Npgsql.Json.NET
             return base.ValidateObjectAndGetLength(s, ref lengthCache, parameter);
         }
 
-        protected override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        protected override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             if (value == null || value is DBNull)
-                return base.WriteObjectWithLength(value, buf, lengthCache, parameter, async);
+                return base.WriteObjectWithLength(DBNull.Value, buf, lengthCache, parameter, async);
 
             if (parameter?.ConvertedValue != null)
                 value = parameter.ConvertedValue;

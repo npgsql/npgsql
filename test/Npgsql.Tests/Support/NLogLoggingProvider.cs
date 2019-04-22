@@ -26,7 +26,7 @@ namespace Npgsql.Tests.Support
             return _log.IsEnabled(ToNLogLogLevel(level));
         }
 
-        public override void Log(NpgsqlLogLevel level, int connectorId, string msg, Exception exception = null)
+        public override void Log(NpgsqlLogLevel level, int connectorId, string msg, Exception? exception = null)
         {
             var ev = new LogEventInfo(ToNLogLogLevel(level), "", msg);
             if (exception != null)

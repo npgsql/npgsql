@@ -20,7 +20,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
         #region Read
 
         /// <inheritdoc />
-        public override PhysicalAddress Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override PhysicalAddress Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
             Debug.Assert(len == 6 || len == 8);
 
@@ -35,11 +35,11 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
         #region Write
 
         /// <inheritdoc />
-        public override int ValidateAndGetLength(PhysicalAddress value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(PhysicalAddress value, NpgsqlParameter? parameter)
             => value.GetAddressBytes().Length;
 
         /// <inheritdoc />
-        public override void Write(PhysicalAddress value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public override void Write(PhysicalAddress value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
             var bytes = value.GetAddressBytes();
             buf.WriteBytes(bytes, 0, bytes.Length);

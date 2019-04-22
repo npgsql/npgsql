@@ -1,7 +1,6 @@
 ﻿using System;
-using System.Diagnostics;
 using System.Reflection;
-using JetBrains.Annotations;
+using System.Diagnostics;
 using Npgsql.Logging;
 
 namespace Npgsql
@@ -111,8 +110,7 @@ namespace Npgsql
 #if NET461
         internal const string DiagnosticsCounterCategory = ".NET Data Provider for PostgreSQL (Npgsql)";
 
-        [CanBeNull]
-        internal PerformanceCounter DiagnosticsCounter { get; private set; }
+        internal PerformanceCounter? DiagnosticsCounter { get; private set; }
 #endif
         public string Name { get; }
 
@@ -177,7 +175,7 @@ namespace Npgsql
 
         static string GetInstanceName()
         {
-            string result = null;
+            string? result = null;
 
             // Code borrowed from the .NET reference sources
 
@@ -187,7 +185,7 @@ namespace Npgsql
 
             var pid = Process.GetCurrentProcess().Id;
 
-            result = string.Format((IFormatProvider)null, "{0}[{1}]", instanceName, pid);
+            result = string.Format((IFormatProvider?)null, "{0}[{1}]", instanceName, pid);
             result = result.Replace('(', '[').Replace(')', ']').Replace('#', '_').Replace('/', '_').Replace('\\', '_');
 
             if (result.Length > CounterInstanceNameMaxLength)
@@ -205,7 +203,7 @@ namespace Npgsql
                     result.Substring(result.Length - lastPartLength, lastPartLength));
 
                 Debug.Assert(result.Length == CounterInstanceNameMaxLength,
-                    string.Format((IFormatProvider)null, "wrong calculation of the instance name: expected {0}, actual: {1}", CounterInstanceNameMaxLength, result.Length));
+                    string.Format((IFormatProvider?)null, "wrong calculation of the instance name: expected {0}, actual: {1}", CounterInstanceNameMaxLength, result.Length));
             }
 
             return result;

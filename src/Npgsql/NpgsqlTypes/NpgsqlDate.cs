@@ -370,7 +370,8 @@ namespace NpgsqlTypes
             return x.CompareTo(y);
         }
 
-        public int Compare([CanBeNull] object x, [CanBeNull] object y)
+#nullable disable
+        public int Compare(object x, object y)
         {
             if (x == null)
             {
@@ -401,10 +402,7 @@ namespace NpgsqlTypes
             }
         }
 
-        public override bool Equals([CanBeNull] object obj)
-        {
-            return obj is NpgsqlDate && Equals((NpgsqlDate) obj);
-        }
+        public override bool Equals(object obj) => obj is NpgsqlDate date && Equals(date);
 
         public int CompareTo(NpgsqlDate other)
         {
@@ -425,7 +423,7 @@ namespace NpgsqlTypes
             }
         }
 
-        public int CompareTo([CanBeNull] object o)
+        public int CompareTo(object o)
         {
             if (o == null)
             {
@@ -437,6 +435,7 @@ namespace NpgsqlTypes
             }
             throw new ArgumentException();
         }
+#nullable enable
 
         public override int GetHashCode()
         {

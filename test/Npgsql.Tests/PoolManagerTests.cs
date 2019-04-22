@@ -43,7 +43,7 @@ namespace Npgsql.Tests
             using (OpenConnection()) {}
             // Now have one connection in the pool
             Assert.That(PoolManager.TryGetValue(ConnectionString, out var pool), Is.True);
-            Assert.That(pool.State.Idle, Is.EqualTo(1));
+            Assert.That(pool!.State.Idle, Is.EqualTo(1));
 
             NpgsqlConnection.ClearAllPools();
             Assert.That(pool.State.Idle, Is.Zero);
@@ -53,7 +53,7 @@ namespace Npgsql.Tests
         [Test]
         public void ClearAllWithBusy()
         {
-            ConnectorPool pool;
+            ConnectorPool? pool;
             using (OpenConnection())
             {
                 using (OpenConnection()) { }
@@ -61,7 +61,7 @@ namespace Npgsql.Tests
 
                 NpgsqlConnection.ClearAllPools();
                 Assert.That(PoolManager.TryGetValue(ConnectionString, out pool), Is.True);
-                Assert.That(pool.State.Idle, Is.Zero);
+                Assert.That(pool!.State.Idle, Is.Zero);
                 Assert.That(pool.State.Total, Is.EqualTo(1));
             }
             Assert.That(pool.State.Idle, Is.Zero);

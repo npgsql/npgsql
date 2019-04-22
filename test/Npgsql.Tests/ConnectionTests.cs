@@ -37,7 +37,7 @@ namespace Npgsql.Tests
                 conn.Open();
                 Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
-                Assert.That(conn.Connector.State, Is.EqualTo(ConnectorState.Ready));
+                Assert.That(conn.Connector!.State, Is.EqualTo(ConnectorState.Ready));
                 Assert.That(eventOpen, Is.True);
 
                 using (var cmd = new NpgsqlCommand("SELECT 1", conn))
@@ -770,7 +770,7 @@ namespace Npgsql.Tests
                 ");
 
                 var mre = new ManualResetEvent(false);
-                PostgresNotice notice = null;
+                PostgresNotice? notice = null;
                 NoticeEventHandler action = (sender, args) =>
                 {
                     notice = args.Notice;
@@ -782,7 +782,7 @@ namespace Npgsql.Tests
                     conn.ExecuteNonQuery("SELECT pg_temp.emit_notice()::TEXT"); // See docs for CreateSleepCommand
                     mre.WaitOne(5000);
                     Assert.That(notice, Is.Not.Null, "No notice was emitted");
-                    Assert.That(notice.MessageText, Is.EqualTo("testnotice"));
+                    Assert.That(notice!.MessageText, Is.EqualTo("testnotice"));
                     Assert.That(notice.Severity, Is.EqualTo("NOTICE"));
                 }
                 finally
@@ -910,7 +910,7 @@ namespace Npgsql.Tests
         {
             using (var conn1 = OpenConnection())
             using (var conn2 = OpenConnection())
-                Assert.That(conn1.Connector.DatabaseInfo, Is.SameAs(conn2.Connector.DatabaseInfo));
+                Assert.That(conn1.Connector!.DatabaseInfo, Is.SameAs(conn2.Connector!.DatabaseInfo));
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/736")]
@@ -964,14 +964,14 @@ namespace Npgsql.Tests
             int processId;
             using (var conn = OpenConnection())
             {
-                processId = conn.Connector.BackendProcessId;
+                processId = conn.Connector!.BackendProcessId;
                 conn.BeginTransaction();
                 conn.ExecuteNonQuery("SELECT 1");
                 Assert.That(conn.Connector.TransactionStatus, Is.EqualTo(TransactionStatus.InTransactionBlock));
             }
             using (var conn = OpenConnection())
             {
-                Assert.That(conn.Connector.BackendProcessId, Is.EqualTo(processId));
+                Assert.That(conn.Connector!.BackendProcessId, Is.EqualTo(processId));
                 Assert.That(conn.Connector.TransactionStatus, Is.EqualTo(TransactionStatus.Idle));
             }
         }
@@ -997,7 +997,7 @@ namespace Npgsql.Tests
         [Ignore("Flaky")]
         public void PoolByPassword()
         {
-            NpgsqlConnection goodConn = null;
+            NpgsqlConnection? goodConn = null;
             try
             {
                 var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
@@ -1123,7 +1123,7 @@ namespace Npgsql.Tests
             };
             using (var conn = OpenConnection(csb))
             {
-                Assert.That(conn.Connector.ReadBuffer.Size, Is.EqualTo(csb.ReadBufferSize));
+                Assert.That(conn.Connector!.ReadBuffer.Size, Is.EqualTo(csb.ReadBufferSize));
 
                 // Read a big row, we should now be using an oversize buffer
                 var bigString1 = new string('x', csb.ReadBufferSize + 10);
@@ -1212,12 +1212,10 @@ namespace Npgsql.Tests
             }
         }
 
-        string _pgpassEnvVarValue;
+        readonly string _pgpassEnvVarValue = Environment.GetEnvironmentVariable("PGPASSFILE");
 
         public string SetupTestData()
         {
-            _pgpassEnvVarValue = Environment.GetEnvironmentVariable("PGPASSFILE");
-
             // set up pgpass file with connection credentials
             var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
             var content = $"*:*:*:{builder.Username}:{builder.Password}";

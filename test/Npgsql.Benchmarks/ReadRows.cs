@@ -7,7 +7,7 @@ namespace Npgsql.Benchmarks
         [Params(1, 10, 100, 1000)]
         public int NumRows { get; set; }
 
-        NpgsqlCommand Command { get; set; }
+        NpgsqlCommand Command { get; set; } = default!;
 
         [GlobalSetup]
         public void Setup()

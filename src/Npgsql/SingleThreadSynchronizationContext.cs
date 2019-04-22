@@ -1,15 +1,13 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Threading;
-using JetBrains.Annotations;
 
 namespace Npgsql
 {
     sealed class SingleThreadSynchronizationContext : SynchronizationContext, IDisposable
     {
         readonly BlockingCollection<CallbackAndState> _tasks = new BlockingCollection<CallbackAndState>();
-        [CanBeNull]
-        Thread _thread;
+        Thread? _thread;
 
         const int ThreadStayAliveMs = 10000;
         readonly string _threadName;

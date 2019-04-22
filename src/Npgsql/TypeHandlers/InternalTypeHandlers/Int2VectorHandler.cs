@@ -11,12 +11,13 @@ namespace Npgsql.TypeHandlers.InternalTypeHandlers
     class Int2VectorHandlerFactory : NpgsqlTypeHandlerFactory
     {
         internal override NpgsqlTypeHandler Create(PostgresType pgType, NpgsqlConnection conn)
-            => new Int2VectorHandler(conn.Connector.TypeMapper.DatabaseInfo.ByName["smallint"])
+            => new Int2VectorHandler(conn.Connector!.TypeMapper.DatabaseInfo.ByName["smallint"]
+                                     ?? throw new NpgsqlException("Two types called 'smallint' defined in the database"))
             {
                 PostgresType = pgType
             };
 
-        internal override Type DefaultValueType => null;
+        internal override Type DefaultValueType => typeof(short[]);
     }
 
     /// <summary>
@@ -28,7 +29,7 @@ namespace Npgsql.TypeHandlers.InternalTypeHandlers
         public Int2VectorHandler(PostgresType postgresShortType)
             : base(new Int16Handler { PostgresType = postgresShortType }, 0) { }
 
-        public override ArrayHandler CreateArrayHandler(PostgresType arrayBackendType)
+        public override ArrayHandler CreateArrayHandler(PostgresArrayType arrayBackendType)
             => new ArrayHandler<ArrayHandler<short>>(this) { PostgresType = arrayBackendType };
     }
 }

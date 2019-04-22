@@ -13,8 +13,8 @@ namespace Npgsql.PluginTests
     {
         public class TestAtt
         {
-            public PostgisGeometry Geom;
-            public string SQL;
+            public PostgisGeometry Geom = default!;
+            public string SQL = default!;
         }
 
         static readonly TestAtt[] Tests =
@@ -147,7 +147,7 @@ namespace Npgsql.PluginTests
                 cmd.CommandText = "Select st_setsrid(" + a.SQL + ",3942)";
                 var p = cmd.ExecuteScalar();
                 Assert.IsTrue(p.Equals(a.Geom));
-                Assert.IsTrue((p as PostgisGeometry).SRID == 3942);
+                Assert.IsTrue(((PostgisGeometry)p).SRID == 3942);
             }
         }
 
@@ -397,7 +397,7 @@ namespace Npgsql.PluginTests
             }
         }
 
-        protected override NpgsqlConnection OpenConnection(string connectionString = null)
+        protected override NpgsqlConnection OpenConnection(string? connectionString = null)
         {
             var conn = base.OpenConnection(connectionString);
             conn.TypeMapper.UseLegacyPostgis();

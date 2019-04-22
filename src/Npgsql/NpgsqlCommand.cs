@@ -13,6 +13,7 @@ using System.Globalization;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.Logging;
+using Npgsql.TypeMapping;
 using Npgsql.Util;
 using NpgsqlTypes;
 using static Npgsql.Util.Statics;
@@ -29,18 +30,16 @@ namespace Npgsql
     {
         #region Fields
 
-        [CanBeNull]
-        NpgsqlConnection _connection;
+        NpgsqlConnection? _connection;
 
         /// <summary>
         /// If this command is (explicitly) prepared, references the connector on which the preparation happened.
         /// Used to detect when the connector was changed (i.e. connection open/close), meaning that the command
         /// is no longer prepared.
         /// </summary>
-        [CanBeNull]
-        NpgsqlConnector _connectorPreparedOn;
+        NpgsqlConnector? _connectorPreparedOn;
 
-        string _commandText;
+        string? _commandText;
         int? _timeout;
         readonly NpgsqlParameterCollection _parameters;
 
@@ -72,6 +71,8 @@ namespace Npgsql
 
         #region Constructors
 
+#nullable disable
+
         /// <summary>
         /// Initializes a new instance of the <see cref="NpgsqlCommand">NpgsqlCommand</see> class.
         /// </summary>
@@ -98,13 +99,13 @@ namespace Npgsql
         /// <param name="cmdText">The text of the query.</param>
         /// <param name="connection">A <see cref="NpgsqlConnection">NpgsqlConnection</see> that represents the connection to a PostgreSQL server.</param>
         /// <param name="transaction">The <see cref="NpgsqlTransaction">NpgsqlTransaction</see> in which the <see cref="NpgsqlCommand">NpgsqlCommand</see> executes.</param>
-        public NpgsqlCommand(string cmdText, [CanBeNull] NpgsqlConnection connection, [CanBeNull] NpgsqlTransaction transaction)
+        public NpgsqlCommand(string cmdText, NpgsqlConnection connection, NpgsqlTransaction transaction)
         {
             GC.SuppressFinalize(this);
             _statements = new List<NpgsqlStatement>(1);
             _parameters = new NpgsqlParameterCollection();
             _commandText = cmdText;
-            Connection = connection;
+            _connection = connection;
             Transaction = transaction;
             CommandType = CommandType.Text;
         }
@@ -133,6 +134,8 @@ namespace Npgsql
             }
         }
 
+#nullable enable
+
         /// <summary>
         /// Gets or sets the wait time before terminating the attempt  to execute a command and generating an error.
         /// </summary>
@@ -160,13 +163,15 @@ namespace Npgsql
         [Category("Data")]
         public override CommandType CommandType { get; set; }
 
+#nullable disable
+
         /// <summary>
         /// DB connection.
         /// </summary>
         protected override DbConnection DbConnection
         {
-            get => Connection;
-            set => Connection = (NpgsqlConnection)value;
+            get => _connection;
+            set => _connection = (NpgsqlConnection)value;
         }
 
         /// <summary>
@@ -176,7 +181,6 @@ namespace Npgsql
         /// <value>The connection to a data source. The default value is a null reference.</value>
         [DefaultValue(null)]
         [Category("Behavior")]
-        [CanBeNull]
         public new NpgsqlConnection Connection
         {
             get => _connection;
@@ -192,6 +196,8 @@ namespace Npgsql
                 Transaction = null;
             }
         }
+
+#nullable enable
 
         /// <summary>
         /// Design time visible.
@@ -228,7 +234,7 @@ namespace Npgsql
         /// Returns whether this query will execute as a prepared (compiled) query.
         /// </summary>
         public bool IsPrepared =>
-            _connectorPreparedOn == Connection?.Connector &&
+            _connectorPreparedOn == _connection?.Connector &&
             _statements.Any() && _statements.All(s => s.PreparedStatement?.IsPrepared == true);
 
         #endregion Public properties
@@ -265,7 +271,7 @@ namespace Npgsql
         /// The array size must correspond exactly to the number of result columns the query returns, or an
         /// error will be raised.
         /// </remarks>
-        public bool[] UnknownResultTypeList
+        public bool[]? UnknownResultTypeList
         {
             get => _unknownResultTypeList;
             set
@@ -276,7 +282,7 @@ namespace Npgsql
             }
         }
 
-        bool[] _unknownResultTypeList;
+        bool[]? _unknownResultTypeList;
 
         #endregion
 
@@ -288,7 +294,7 @@ namespace Npgsql
         /// Only primitive numerical types and DateTimeOffset are supported.
         /// Set the whole array or just a value to null to use default type.
         /// </summary>
-        internal Type[] ObjectResultTypes { get; set; }
+        internal Type[]? ObjectResultTypes { get; set; }
 
         #endregion
 
@@ -374,7 +380,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         internal void DeriveParameters()
         {
-            if (Statements.Any(s => s?.PreparedStatement.IsExplicit == true))
+            if (Statements.Any(s => s.PreparedStatement?.IsExplicit == true))
                 throw new NpgsqlException("Deriving parameters isn't supported for commands that are already prepared.");
 
             // Here we unprepare statements that possibly are auto-prepared
@@ -390,14 +396,14 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         void DeriveParametersForFunction()
         {
-            using (var c = new NpgsqlCommand(DeriveParametersForFunctionQuery, Connection))
+            using (var c = new NpgsqlCommand(DeriveParametersForFunctionQuery, _connection))
             {
                 c.Parameters.Add(new NpgsqlParameter("proname", NpgsqlDbType.Text));
                 c.Parameters[0].Value = CommandText;
 
-                string[] names = null;
-                uint[] types = null;
-                char[] modes = null;
+                string[]? names = null;
+                uint[]? types = null;
+                char[]? modes = null;
 
                 using (var rdr = c.ExecuteReader(CommandBehavior.SingleRow | CommandBehavior.SingleResult))
                 {
@@ -420,12 +426,13 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         throw new InvalidOperationException($"{CommandText} does not exist in pg_proc");
                 }
 
+                var typeMapper = c._connection!.Connector!.TypeMapper;
+
                 for (var i = 0; i < types.Length; i++)
                 {
                     var param = new NpgsqlParameter();
 
-                    (var npgsqlDbType, var postgresType) =
-                        c.Connection.Connector.TypeMapper.GetTypeInfoByOid(types[i]);
+                    var (npgsqlDbType, postgresType) = typeMapper.GetTypeInfoByOid(types[i]);
 
                     param.DataTypeName = postgresType.DisplayName;
                     param.PostgresType = postgresType;
@@ -474,7 +481,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 Log.Debug($"Deriving Parameters for query: {CommandText}", connector.Id);
                 ProcessRawQuery(true);
 
-                var sendTask = SendDeriveParameters(false);
+                var sendTask = SendDeriveParameters(connector, false);
 
                 foreach (var statement in _statements)
                 {
@@ -592,7 +599,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             {
                 using (connector.StartUserAction())
                 {
-                    var sendTask = SendPrepare(async);
+                    var sendTask = SendPrepare(connector, async);
 
                     // Loop over statements, skipping those that are already prepared (because they were persisted)
                     var isFirst = true;
@@ -655,7 +662,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             Log.Debug("Closing command's prepared statements", connector.Id);
             using (connector.StartUserAction())
             {
-                var sendTask = SendClose(false);
+                var sendTask = SendClose(connector, false);
                 foreach (var statement in _statements.Where(s => s.PreparedStatement?.State == PreparedState.BeingUnprepared))
                 {
                     Expect<CloseCompletedMessage>(connector.ReadMessage());
@@ -761,14 +768,14 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         #region Execute
 
-        void ValidateParameters()
+        void ValidateParameters(ConnectorTypeMapper typeMapper)
         {
             for (var i = 0; i < Parameters.Count; i++)
             {
                 var p = Parameters[i];
                 if (!p.IsInputDirection)
                     continue;
-                p.Bind(Connection.Connector.TypeMapper);
+                p.Bind(typeMapper);
                 p.LengthCache?.Clear();
                 p.ValidateAndGetLength();
             }
@@ -782,8 +789,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         void BeginSend()
         {
-            Debug.Assert(Connection?.Connector != null);
-            Connection.Connector.WriteBuffer.CurrentCommand = this;
+            Debug.Assert(_connection?.Connector != null);
+            _connection.Connector.WriteBuffer.CurrentCommand = this;
             FlushOccurred = false;
         }
 
@@ -794,10 +801,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 SynchronizationContext.SetSynchronizationContext(null);
         }
 
-        async Task SendExecute(bool async)
+        async Task SendExecute(NpgsqlConnector connector, bool async)
         {
             BeginSend();
-            var connector = Connection.Connector;
             Debug.Assert(connector != null);
 
             for (var i = 0; i < _statements.Count; i++)
@@ -811,7 +817,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 {
                     // We may have a prepared statement that replaces an existing statement - close the latter first.
                     if (pStatement?.StatementBeingReplaced != null)
-                        await connector.WriteClose(StatementOrPortal.Statement, pStatement.StatementBeingReplaced.Name, async);
+                        await connector.WriteClose(StatementOrPortal.Statement, pStatement.StatementBeingReplaced.Name!, async);
 
                     await connector.WriteParse(statement.SQL, statement.StatementName, statement.InputParameters, async);
                 }
@@ -836,10 +842,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             CleanupSend();
         }
 
-        async Task SendExecuteSchemaOnly(bool async)
+        async Task SendExecuteSchemaOnly(NpgsqlConnector connector, bool async)
         {
             BeginSend();
-            var connector = Connection.Connector;
             Debug.Assert(connector != null);
 
             var wroteSomething = false;
@@ -867,10 +872,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             CleanupSend();
         }
 
-        async Task SendDeriveParameters(bool async)
+        async Task SendDeriveParameters(NpgsqlConnector connector, bool async)
         {
             BeginSend();
-            var connector = Connection.Connector;
             Debug.Assert(connector != null);
             for (var i = 0; i < _statements.Count; i++)
             {
@@ -886,10 +890,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             CleanupSend();
         }
 
-        async Task SendPrepare(bool async)
+        async Task SendPrepare(NpgsqlConnector connector, bool async)
         {
             BeginSend();
-            var connector = Connection.Connector;
             Debug.Assert(connector != null);
             for (var i = 0; i < _statements.Count; i++)
             {
@@ -906,10 +909,10 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 // We may have a prepared statement that replaces an existing statement - close the latter first.
                 var statementToClose = pStatement.StatementBeingReplaced;
                 if (statementToClose != null)
-                    await connector.WriteClose(StatementOrPortal.Statement, statementToClose.Name, async);
+                    await connector.WriteClose(StatementOrPortal.Statement, statementToClose.Name!, async);
 
-                await connector.WriteParse(statement.SQL, pStatement.Name, statement.InputParameters, async);
-                await connector.WriteDescribe(StatementOrPortal.Statement, pStatement.Name, async);
+                await connector.WriteParse(statement.SQL, pStatement.Name!, statement.InputParameters, async);
+                await connector.WriteDescribe(StatementOrPortal.Statement, pStatement.Name!, async);
 
                 pStatement.State = PreparedState.BeingPrepared;
             }
@@ -930,10 +933,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             return async;
         }
 
-        async Task SendClose(bool async)
+        async Task SendClose(NpgsqlConnector connector, bool async)
         {
             BeginSend();
-            var connector = Connection.Connector;
             Debug.Assert(connector != null);
 
             foreach (var statement in _statements.Where(s => s.IsPrepared))
@@ -991,13 +993,14 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         #region Execute Scalar
 
+#nullable disable
+
         /// <summary>
         /// Executes the query, and returns the first column of the first row
         /// in the result set returned by the query. Extra columns or rows are ignored.
         /// </summary>
         /// <returns>The first column of the first row in the result set,
         /// or a null reference if the result set is empty.</returns>
-        [CanBeNull]
         public override object ExecuteScalar() => ExecuteScalar(false, CancellationToken.None).GetAwaiter().GetResult();
 
         /// <summary>
@@ -1006,7 +1009,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <returns>A task representing the asynchronous operation, with the first column of the
         /// first row in the result set, or a null reference if the result set is empty.</returns>
-        [ItemCanBeNull]
         public override Task<object> ExecuteScalarAsync(CancellationToken cancellationToken)
         {
             if (cancellationToken.IsCancellationRequested)
@@ -1015,9 +1017,10 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 return ExecuteScalar(true, cancellationToken).AsTask();
         }
 
+#nullable enable
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        [ItemCanBeNull]
-        async ValueTask<object> ExecuteScalar(bool async, CancellationToken cancellationToken)
+        async ValueTask<object?> ExecuteScalar(bool async, CancellationToken cancellationToken)
         {
             var behavior = CommandBehavior.SingleRow;
             if (!Parameters.HasOutputParameters)
@@ -1079,12 +1082,12 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             {
                 using (cancellationToken.Register(cmd => ((NpgsqlCommand)cmd).Cancel(), this))
                 {
-                    ValidateParameters();
+                    ValidateParameters(connector.TypeMapper);
 
                     if (IsExplicitlyPrepared)
                     {
                         Debug.Assert(_connectorPreparedOn != null);
-                        if (_connectorPreparedOn != Connection.Connector)
+                        if (_connectorPreparedOn != connector)
                         {
                             // The command was prepared, but since then the connector has changed. Detach all prepared statements.
                             foreach (var s in _statements)
@@ -1099,7 +1102,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     State = CommandState.InProgress;
 
                     if (Log.IsEnabled(NpgsqlLogLevel.Debug))
-                        LogCommand();
+                        LogCommand(connector.Id);
                     Task sendTask;
 
                     // If a cancellation is in progress, wait for it to "complete" before proceeding (#615)
@@ -1134,11 +1137,11 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         // to prevents a dependency on the thread pool (which would also trigger deadlocks).
                         // The WriteBuffer notifies this command when the first buffer flush occurs, so that the
                         // send functions can switch to the special async mode when needed.
-                        sendTask = SendExecute(async);
+                        sendTask = SendExecute(connector, async);
                     }
                     else
                     {
-                        sendTask = SendExecuteSchemaOnly(async);
+                        sendTask = SendExecuteSchemaOnly(connector, async);
                     }
 
                     // The following is a hack. It raises an exception if one was thrown in the first phases
@@ -1161,7 +1164,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             catch
             {
                 State = CommandState.Idle;
-                Connection.Connector?.EndUserAction();
+                _connection!.Connector?.EndUserAction();
 
                 // Close connection if requested even when there is an error.
                 if ((behavior & CommandBehavior.CloseConnection) == CommandBehavior.CloseConnection)
@@ -1174,6 +1177,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         #region Transactions
 
+#nullable disable
+
         /// <summary>
         /// DB transaction.
         /// </summary>
@@ -1182,13 +1187,14 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             get => Transaction;
             set => Transaction = (NpgsqlTransaction)value;
         }
-
         /// <summary>
         /// This property is ignored by Npgsql. PostgreSQL only supports a single transaction at a given time on
         /// a given connection, and all commands implicitly run inside the current transaction started via
         /// <see cref="NpgsqlConnection.BeginTransaction()"/>
         /// </summary>
         public new NpgsqlTransaction Transaction { get; set; }
+
+#nullable enable
 
         #endregion Transactions
 
@@ -1200,7 +1206,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// <remarks>As per the specs, no exception will be thrown by this method in case of failure</remarks>
         public override void Cancel()
         {
-            var connector = Connection?.Connector;
+            var connector = _connection?.Connector;
             if (connector == null)
                 return;
 
@@ -1246,7 +1252,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 rowDescription[i].FormatCode = (UnknownResultTypeList == null || !isFirst ? AllResultTypesAreUnknown : UnknownResultTypeList[i]) ? FormatCode.Text : FormatCode.Binary;
         }
 
-        void LogCommand()
+        void LogCommand(int connectorId)
         {
             var sb = new StringBuilder();
             sb.AppendLine("Executing statement(s):");
@@ -1262,7 +1268,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 }
             }
 
-            Log.Debug(sb.ToString(), Connection.Connector.Id);
+            Log.Debug(sb.ToString(), connectorId);
         }
 
         /// <summary>
@@ -1278,7 +1284,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         [PublicAPI]
         public NpgsqlCommand Clone()
         {
-            var clone = new NpgsqlCommand(CommandText, Connection, Transaction)
+            var clone = new NpgsqlCommand(CommandText, _connection, Transaction)
             {
                 CommandTimeout = CommandTimeout, CommandType = CommandType, DesignTimeVisible = DesignTimeVisible, _allResultTypesAreUnknown = _allResultTypesAreUnknown, _unknownResultTypeList = _unknownResultTypeList, ObjectResultTypes = ObjectResultTypes
             };
@@ -1291,9 +1297,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         {
             if (State == CommandState.Disposed)
                 throw new ObjectDisposedException(GetType().FullName);
-            if (Connection == null)
+            if (_connection == null)
                 throw new InvalidOperationException("Connection property has not been initialized.");
-            return Connection.CheckReadyAndGetConnector();
+            return _connection.CheckReadyAndGetConnector();
         }
 
         #endregion

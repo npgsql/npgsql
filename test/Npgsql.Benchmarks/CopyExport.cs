@@ -5,7 +5,7 @@ namespace Npgsql.Benchmarks
 {
     public class CopyExport
     {
-        NpgsqlConnection _conn;
+        NpgsqlConnection _conn = default!;
         const int Rows = 1000;
 
         [GlobalSetup]

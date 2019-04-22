@@ -14,6 +14,7 @@ namespace Npgsql
     /// <typeparam name="T">The type of the value that will be stored in the parameter.</typeparam>
     public sealed class NpgsqlParameter<T> : NpgsqlParameter
     {
+#nullable disable   // TypedValue is actually nullable, but we can't mark it as such
         /// <summary>
         /// Gets or sets the strongly-typed value of the parameter.
         /// </summary>
@@ -63,6 +64,7 @@ namespace Npgsql
         }
 
         #endregion Constructors
+#nullable enable
 
         internal override void ResolveHandler(ConnectorTypeMapper typeMapper)
         {

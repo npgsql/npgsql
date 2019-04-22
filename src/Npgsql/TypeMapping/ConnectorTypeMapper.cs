@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Reflection;
-using JetBrains.Annotations;
 using Npgsql.Logging;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandlers;
@@ -19,13 +18,15 @@ namespace Npgsql.TypeMapping
         /// <summary>
         /// The connector to which this type mapper belongs.
         /// </summary>
-        [CanBeNull]
         readonly NpgsqlConnector _connector;
 
+        NpgsqlDatabaseInfo? _databaseInfo;
+
         /// <summary>
-        /// Type information for the database of this mapper. Null for the global mapper.
+        /// Type information for the database of this mapper.
         /// </summary>
-        internal NpgsqlDatabaseInfo DatabaseInfo { get; set; }
+        internal NpgsqlDatabaseInfo DatabaseInfo
+            => _databaseInfo ?? throw new InvalidOperationException("Internal error: this type mapper hasn't yet been bound to a database info object");
 
         internal NpgsqlTypeHandler UnrecognizedTypeHandler { get; }
 
@@ -58,7 +59,7 @@ namespace Npgsql.TypeMapping
         internal ConnectorTypeMapper(NpgsqlConnector connector): base(GlobalTypeMapper.Instance.DefaultNameTranslator)
         {
             _connector = connector;
-            UnrecognizedTypeHandler = new UnknownTypeHandler(_connector.Connection);
+            UnrecognizedTypeHandler = new UnknownTypeHandler(_connector.Connection!);
             ClearBindings();
             ResetMappings();
         }
@@ -121,8 +122,7 @@ namespace Npgsql.TypeMapping
                                             $"To use it with a PostgreSQL composite you need to specify {nameof(NpgsqlParameter.DataTypeName)} or to map it, please refer to the documentation.");
         }
 
-        [CanBeNull]
-        static Type GetArrayElementType(Type type)
+        static Type? GetArrayElementType(Type type)
         {
             var typeInfo = type.GetTypeInfo();
             if (typeInfo.IsArray)
@@ -180,7 +180,9 @@ namespace Npgsql.TypeMapping
             globalMapper.Lock.EnterReadLock();
             try
             {
-                Mappings = new Dictionary<string, NpgsqlTypeMapping>(globalMapper.Mappings);
+                Mappings.Clear();
+                foreach (var kv in globalMapper.Mappings)
+                    Mappings.Add(kv.Key, kv.Value);
             }
             finally
             {
@@ -214,7 +216,7 @@ namespace Npgsql.TypeMapping
 
         internal void Bind(NpgsqlDatabaseInfo databaseInfo)
         {
-            DatabaseInfo = databaseInfo;
+            _databaseInfo = databaseInfo;
             BindTypes();
         }
 
@@ -226,7 +228,7 @@ namespace Npgsql.TypeMapping
             // Enums
             var enumFactory = new UnmappedEnumTypeHandlerFactory(DefaultNameTranslator);
             foreach (var e in DatabaseInfo.EnumTypes.Where(e => !_byOID.ContainsKey(e.OID)))
-                BindType(enumFactory.Create(e, _connector.Connection), e);
+                BindType(enumFactory.Create(e, _connector.Connection!), e);
 
             // Wire up any domains we find to their base type mappings, this is important
             // for reading domain fields of composites
@@ -241,7 +243,7 @@ namespace Npgsql.TypeMapping
             // Composites
             var dynamicCompositeFactory = new UnmappedCompositeTypeHandlerFactory(DefaultNameTranslator);
             foreach (var compType in DatabaseInfo.CompositeTypes.Where(e => !_byOID.ContainsKey(e.OID)))
-                BindType(dynamicCompositeFactory.Create(compType, _connector.Connection), compType);
+                BindType(dynamicCompositeFactory.Create(compType, _connector.Connection!), compType);
         }
 
         void BindType(NpgsqlTypeMapping mapping, NpgsqlConnector connector, bool externalCall)
@@ -253,7 +255,7 @@ namespace Npgsql.TypeMapping
 
             var pgName = mapping.PgTypeName;
 
-            PostgresType pgType;
+            PostgresType? pgType;
             if (pgName.IndexOf('.') > -1)
                 DatabaseInfo.ByFullName.TryGetValue(pgName, out pgType);  // Full type name with namespace
             else if (DatabaseInfo.ByName.TryGetValue(pgName, out pgType) && pgType is null) // No dot, partial type name
@@ -288,7 +290,7 @@ namespace Npgsql.TypeMapping
                 return;
             }
 
-            var handler = mapping.TypeHandlerFactory.Create(pgType, connector.Connection);
+            var handler = mapping.TypeHandlerFactory.Create(pgType, connector.Connection!);
             BindType(handler, pgType, mapping.NpgsqlDbType, mapping.DbTypes, mapping.ClrTypes);
 
             if (!externalCall)
@@ -303,7 +305,7 @@ namespace Npgsql.TypeMapping
                 }
         }
 
-        void BindType(NpgsqlTypeHandler handler, PostgresType pgType, NpgsqlDbType? npgsqlDbType = null, DbType[] dbTypes = null, Type[] clrTypes = null)
+        void BindType(NpgsqlTypeHandler handler, PostgresType pgType, NpgsqlDbType? npgsqlDbType = null, DbType[]? dbTypes = null, Type[]? clrTypes = null)
         {
             _byOID[pgType.OID] = handler;
             _byTypeName[pgType.FullName] = handler;
@@ -344,7 +346,7 @@ namespace Npgsql.TypeMapping
                 BindRangeType(handler, pgType.Range, npgsqlDbType, clrTypes);
         }
 
-        void BindArrayType(NpgsqlTypeHandler elementHandler, PostgresArrayType pgArrayType, NpgsqlDbType? elementNpgsqlDbType, Type[] elementClrTypes)
+        void BindArrayType(NpgsqlTypeHandler elementHandler, PostgresArrayType pgArrayType, NpgsqlDbType? elementNpgsqlDbType, Type[]? elementClrTypes)
         {
             var arrayHandler = elementHandler.CreateArrayHandler(pgArrayType);
 
@@ -370,7 +372,7 @@ namespace Npgsql.TypeMapping
             }
         }
 
-        void BindRangeType(NpgsqlTypeHandler elementHandler, PostgresRangeType pgRangeType, NpgsqlDbType? elementNpgsqlDbType, Type[] elementClrTypes)
+        void BindRangeType(NpgsqlTypeHandler elementHandler, PostgresRangeType pgRangeType, NpgsqlDbType? elementNpgsqlDbType, Type[]? elementClrTypes)
         {
             var rangeHandler = elementHandler.CreateRangeHandler(pgRangeType);
 
@@ -379,7 +381,7 @@ namespace Npgsql.TypeMapping
                 : (NpgsqlDbType?)null;
 
 
-            Type[] clrTypes = null;
+            Type[]? clrTypes = null;
             if (elementClrTypes != null)
             {
                 // Somewhat hacky. Although the element may have more than one CLR mapping,

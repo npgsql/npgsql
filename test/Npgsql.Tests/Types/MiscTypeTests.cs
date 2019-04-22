@@ -161,19 +161,28 @@ namespace Npgsql.Tests.Types
         public void Null()
         {
             using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT @p1::TEXT, @p2::TEXT, @p3::TEXT", conn))
             {
-                cmd.Parameters.AddWithValue("p1", DBNull.Value);
-                cmd.Parameters.Add(new NpgsqlParameter<string>("p2", null));
-                cmd.Parameters.Add(new NpgsqlParameter<DBNull>("p3", DBNull.Value));
-                using (var reader = cmd.ExecuteReader())
+                using (var cmd = new NpgsqlCommand("SELECT @p1::TEXT, @p2::TEXT, @p3::TEXT", conn))
                 {
-                    reader.Read();
-                    for (var i = 0; i < cmd.Parameters.Count; i++)
+                    cmd.Parameters.AddWithValue("p1", DBNull.Value);
+                    cmd.Parameters.Add(new NpgsqlParameter<string?>("p2", null));
+                    cmd.Parameters.Add(new NpgsqlParameter<DBNull>("p3", DBNull.Value));
+                    using (var reader = cmd.ExecuteReader())
                     {
-                        Assert.That(reader.IsDBNull(i));
-                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(string)));
+                        reader.Read();
+                        for (var i = 0; i < cmd.Parameters.Count; i++)
+                        {
+                            Assert.That(reader.IsDBNull(i));
+                            Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(string)));
+                        }
                     }
+                }
+
+                // Setting non-generic NpgsqlParameter.Value is not allowed, only DBNull.Value
+                using (var cmd = new NpgsqlCommand("SELECT @p::TEXT", conn))
+                {
+                    cmd.Parameters.AddWithValue("p4", NpgsqlDbType.Text, null);
+                    Assert.That(() => cmd.ExecuteReader(), Throws.Exception.TypeOf<InvalidCastException>());
                 }
             }
         }
@@ -231,13 +240,13 @@ namespace Npgsql.Tests.Types
             {
                 TestUtil.EnsureExtension(conn, "hstore", "9.1");
 
-                var expected = new Dictionary<string, string> {
+                var expected = new Dictionary<string, string?> {
                     {"a", "3"},
                     {"b", null},
                     {"cd", "hello"}
                 };
 
-                var expected2 = new Dictionary<string, string> {};
+                var expected2 = new Dictionary<string, string?>();
 
                 using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4", conn))
                 {

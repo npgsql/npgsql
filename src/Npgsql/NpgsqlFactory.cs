@@ -1,7 +1,6 @@
 using System;
 using System.Data.Common;
 using System.Reflection;
-using JetBrains.Annotations;
 using Npgsql.Logging;
 
 namespace Npgsql
@@ -25,32 +24,32 @@ namespace Npgsql
         /// <summary>
         /// Returns a strongly typed <see cref="DbCommand"/> instance.
         /// </summary>
-        [NotNull] public override DbCommand CreateCommand() => new NpgsqlCommand();
+        public override DbCommand CreateCommand() => new NpgsqlCommand();
 
         /// <summary>
         /// Returns a strongly typed <see cref="DbConnection"/> instance.
         /// </summary>
-        [NotNull] public override DbConnection CreateConnection() => new NpgsqlConnection();
+        public override DbConnection CreateConnection() => new NpgsqlConnection();
 
         /// <summary>
         /// Returns a strongly typed <see cref="DbParameter"/> instance.
         /// </summary>
-        [NotNull] public override DbParameter CreateParameter() => new NpgsqlParameter();
+        public override DbParameter CreateParameter() => new NpgsqlParameter();
 
         /// <summary>
         /// Returns a strongly typed <see cref="DbConnectionStringBuilder"/> instance.
         /// </summary>
-        [NotNull] public override DbConnectionStringBuilder CreateConnectionStringBuilder() => new NpgsqlConnectionStringBuilder();
+        public override DbConnectionStringBuilder CreateConnectionStringBuilder() => new NpgsqlConnectionStringBuilder();
 
         /// <summary>
         /// Returns a strongly typed <see cref="DbCommandBuilder"/> instance.
         /// </summary>
-        [NotNull] public override DbCommandBuilder CreateCommandBuilder() => new NpgsqlCommandBuilder();
+        public override DbCommandBuilder CreateCommandBuilder() => new NpgsqlCommandBuilder();
 
         /// <summary>
         /// Returns a strongly typed <see cref="DbDataAdapter"/> instance.
         /// </summary>
-        [NotNull] public override DbDataAdapter CreateDataAdapter() => new NpgsqlDataAdapter();
+        public override DbDataAdapter CreateDataAdapter() => new NpgsqlDataAdapter();
 
         #region IServiceProvider Members
 
@@ -59,8 +58,9 @@ namespace Npgsql
         /// </summary>
         /// <param name="serviceType">An object that specifies the type of service object to get.</param>
         /// <returns>A service object of type serviceType, or null if there is no service object of type serviceType.</returns>
-        [CanBeNull]
-        public object GetService([NotNull] Type serviceType)
+#nullable disable
+        public object GetService(Type serviceType)
+#nullable enable
         {
             if (serviceType == null)
                 throw new ArgumentNullException(nameof(serviceType));
@@ -95,8 +95,7 @@ namespace Npgsql
             return _legacyEntityFrameworkServices = npgsqlServicesType.GetProperty("Instance", BindingFlags.Public | BindingFlags.Static).GetMethod.Invoke(null, new object[0]);
         }
 
-        [CanBeNull]
-        static object _legacyEntityFrameworkServices;
+        static object? _legacyEntityFrameworkServices;
 
         #endregion
     }

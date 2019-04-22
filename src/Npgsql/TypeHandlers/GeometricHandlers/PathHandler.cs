@@ -18,7 +18,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     {
         #region Read
 
-        public override async ValueTask<NpgsqlPath> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+        public override async ValueTask<NpgsqlPath> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
             await buf.Ensure(5, async);
             bool open;
@@ -49,10 +49,10 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
 
         #region Write
 
-        public override int ValidateAndGetLength(NpgsqlPath value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(NpgsqlPath value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => 5 + value.Count * 16;
 
-        public override async Task Write(NpgsqlPath value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        public override async Task Write(NpgsqlPath value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             if (buf.WriteSpaceLeft < 5)
                 await buf.Flush(async);

@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
-using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.TypeHandling;
 using NpgsqlTypes;
@@ -18,8 +17,7 @@ namespace Npgsql.TypeHandlers
         readonly Dictionary<Enum, string> _enumToLabel = new Dictionary<Enum, string>();
         readonly Dictionary<string, Enum> _labelToEnum = new Dictionary<string, Enum>();
 
-        [CanBeNull]
-        Type _resolvedType;
+        Type? _resolvedType;
 
         internal UnmappedEnumHandler(INpgsqlNameTranslator nameTranslator, NpgsqlConnection connection)
             : base(connection)
@@ -29,7 +27,7 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        protected internal override async ValueTask<TAny> Read<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+        protected internal override async ValueTask<TAny> Read<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
             var s = await base.Read(buf, len, async, fieldDescription);
             if (typeof(TAny) == typeof(string))
@@ -45,22 +43,22 @@ namespace Npgsql.TypeHandlers
             return (TAny)(object)value;
         }
 
-        public override ValueTask<string> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+        public override ValueTask<string> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
             => base.Read(buf, len, async, fieldDescription);
 
         #endregion
 
         #region Write
 
-        protected internal override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        protected internal override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => value == null || value is DBNull
                 ? -1
                 : ValidateAndGetLength(value, ref lengthCache, parameter);
 
-        protected internal override int ValidateAndGetLength<TAny>(TAny value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
-            => ValidateAndGetLength(value, ref lengthCache, parameter);
+        protected internal override int ValidateAndGetLength<TAny>(TAny value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+            => ValidateAndGetLength(value!, ref lengthCache, parameter);
 
-        int ValidateAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        int ValidateAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
             var type = value.GetType();
             if (type == typeof(string))
@@ -75,13 +73,13 @@ namespace Npgsql.TypeHandlers
         }
 
         // TODO: This boxes the enum (again)
-        protected override Task WriteWithLength<TAny>(TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-            => WriteObjectWithLength(value, buf, lengthCache, parameter, async);
+        protected override Task WriteWithLength<TAny>(TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+            => WriteObjectWithLength(value!, buf, lengthCache, parameter, async);
 
-        protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             if (value == null || value is DBNull)
-                return WriteWithLengthInternal<DBNull>(null, buf, lengthCache, parameter, async);
+                return WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async);
 
             if (buf.WriteSpaceLeft < 4)
                 return WriteWithLengthLong();
@@ -97,7 +95,7 @@ namespace Npgsql.TypeHandlers
             }
         }
 
-        internal Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        internal Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             var type = value.GetType();
             if (type == typeof(string))

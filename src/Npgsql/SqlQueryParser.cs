@@ -12,8 +12,8 @@ namespace Npgsql
         readonly StringBuilder _rewrittenSql = new StringBuilder();
         readonly bool _standardConformantStrings;
 
-        List<NpgsqlStatement> _statements;
-        NpgsqlStatement _statement;
+        List<NpgsqlStatement> _statements = default!;
+        NpgsqlStatement _statement = default!;
         int _statementIndex;
 
         internal SqlQueryParser(bool standardConformantStrings)

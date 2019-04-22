@@ -12,6 +12,7 @@ namespace Npgsql.Tests.Types
     {
         #region Test Types
 
+#pragma warning disable CS8618
         class SomeComposite
         {
             public int X { get; set; }
@@ -29,6 +30,7 @@ namespace Npgsql.Tests.Types
             public int X { get; set; }
             public string SomeText { get; set; }
         }
+#pragma warning restore CS8618
 
         #endregion
 
@@ -582,8 +584,8 @@ CREATE TYPE address AS
 
         public class Address
         {
-            public string Street { get; set; }
-            public string PostalCode { get; set; }
+            public string Street { get; set; } = default!;
+            public string PostalCode { get; set; } = default!;
         }
 
         class TableAsCompositeType

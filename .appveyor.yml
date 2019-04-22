@@ -29,6 +29,7 @@ before_build:
 build_script:
   - dotnet build "test\Npgsql.Tests" -c Debug
   - dotnet build "test\Npgsql.PluginTests" -c Debug
+  - dotnet build "src\Npgsql" -c Release
   - msbuild src\VSIX\VSIX.csproj /p:Configuration=Release /v:Minimal
 # WIX hasn't been released yet for VS 2019
 #  - msbuild src\MSI\MSI.wixproj /p:Configuration=Release /v:Minimal

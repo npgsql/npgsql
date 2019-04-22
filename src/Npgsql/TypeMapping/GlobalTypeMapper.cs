@@ -33,8 +33,7 @@ namespace Npgsql.TypeMapping
             Instance = instance;
         }
 
-        internal GlobalTypeMapper() : base(new NpgsqlSnakeCaseNameTranslator())
-            => Mappings = new Dictionary<string, NpgsqlTypeMapping>();
+        internal GlobalTypeMapper() : base(new NpgsqlSnakeCaseNameTranslator()) {}
 
         #region Mapping management
 

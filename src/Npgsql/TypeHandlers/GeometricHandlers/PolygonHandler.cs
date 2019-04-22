@@ -17,7 +17,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     {
         #region Read
 
-        public override async ValueTask<NpgsqlPolygon> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+        public override async ValueTask<NpgsqlPolygon> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
             await buf.Ensure(4, async);
             var numPoints = buf.ReadInt32();
@@ -34,10 +34,10 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
 
         #region Write
 
-        public override int ValidateAndGetLength(NpgsqlPolygon value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(NpgsqlPolygon value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => 4 + value.Count * 16;
 
-        public override async Task Write(NpgsqlPolygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        public override async Task Write(NpgsqlPolygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             if (buf.WriteSpaceLeft < 4)
                 await buf.Flush(async);

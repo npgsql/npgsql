@@ -15,7 +15,7 @@ namespace Npgsql
     /// </summary>
     public static class NpgsqlNetTopologySuiteExtensions
     {
-        static readonly Type[] ClrTypes = new[]
+        static readonly Type[] ClrTypes =
         {
             typeof(IGeometry), typeof(Geometry),
             typeof(IPoint), typeof(Point),
@@ -39,8 +39,8 @@ namespace Npgsql
         /// <param name="geographyAsDefault">Specifies that the geography type is used for mapping by default.</param>
         public static INpgsqlTypeMapper UseNetTopologySuite(
             this INpgsqlTypeMapper mapper,
-            ICoordinateSequenceFactory coordinateSequenceFactory = null,
-            IPrecisionModel precisionModel = null,
+            ICoordinateSequenceFactory? coordinateSequenceFactory = null,
+            IPrecisionModel? precisionModel = null,
             Ordinates handleOrdinates = Ordinates.None,
             bool geographyAsDefault = false)
         {
