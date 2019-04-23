@@ -46,7 +46,7 @@ $@"SELECT
        SELECT * FROM pg_index
        WHERE pg_index.indrelid = cls.oid AND
              pg_index.indisunique AND
-             attnum = ANY (indkey)
+             ARRAY[attnum]::int2vector @> indkey
      ) AS isunique
 FROM pg_attribute AS attr
 JOIN pg_type AS typ ON attr.atttypid = typ.oid
