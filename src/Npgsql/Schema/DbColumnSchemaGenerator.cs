@@ -46,7 +46,8 @@ $@"SELECT
        SELECT * FROM pg_index
        WHERE pg_index.indrelid = cls.oid AND
              pg_index.indisunique AND
-             attnum = ANY (indkey)
+             pg_index.{(pgVersion >= new Version(11, 0) ? "indnkeyatts" : "indnatts")} = 1 AND 
+             attnum = pg_index.indkey[0]
      ) AS isunique
 FROM pg_attribute AS attr
 JOIN pg_type AS typ ON attr.atttypid = typ.oid
