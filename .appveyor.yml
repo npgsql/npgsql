@@ -18,7 +18,7 @@ install:
   - powershell .build\setup_appveyor.ps1
   # The following can be used to install a custom version of .NET Core
   - ps: Invoke-WebRequest -Uri "https://raw.githubusercontent.com/dotnet/cli/master/scripts/obtain/dotnet-install.ps1" -OutFile "install-dotnet.ps1"
-  - ps: .\install-dotnet.ps1 -Version 3.0.100-preview3-010431 -InstallDir "dotnetcli"
+  - ps: .\install-dotnet.ps1 -Version 3.0.100-preview4-011223 -InstallDir "dotnetcli"
 services:
   - postgresql101
 before_build:
