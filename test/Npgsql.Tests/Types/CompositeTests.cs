@@ -653,21 +653,21 @@ CREATE TYPE address AS
         #endregion Table as Composite
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1125")]
-        public void NullableProperty()
+        public void NullablePropertyInClassComposite()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 Pooling = false,
-                ApplicationName = nameof(NullableProperty)
+                ApplicationName = nameof(NullablePropertyInClassComposite)
             };
             using (var conn = OpenConnection(csb))
             {
                 conn.ExecuteNonQuery("CREATE TYPE pg_temp.nullable_property_type AS (foo INT)");
                 conn.ReloadTypes();
-                conn.TypeMapper.MapComposite<NullablePropertyType>();
+                conn.TypeMapper.MapComposite<ClassWithNullableProperty>("nullable_property_type");
 
-                var expected1 = new NullablePropertyType { Foo = 8 };
-                var expected2 = new NullablePropertyType { Foo = null };
+                var expected1 = new ClassWithNullableProperty { Foo = 8 };
+                var expected2 = new ClassWithNullableProperty { Foo = null };
                 using (var cmd = new NpgsqlCommand(@"SELECT @p1, @p2", conn))
                 {
                     cmd.Parameters.AddWithValue("p1", expected1);
@@ -676,14 +676,50 @@ CREATE TYPE address AS
                     using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
-                        Assert.That(reader.GetFieldValue<NullablePropertyType>(0).Foo, Is.EqualTo(8));
-                        Assert.That(reader.GetFieldValue<NullablePropertyType>(1).Foo, Is.Null);
+                        Assert.That(reader.GetFieldValue<ClassWithNullableProperty>(0).Foo, Is.EqualTo(8));
+                        Assert.That(reader.GetFieldValue<ClassWithNullableProperty>(1).Foo, Is.Null);
                     }
                 }
             }
         }
 
-        class NullablePropertyType
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1125")]
+        public void NullablePropertyInStructComposite()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Pooling = false,
+                ApplicationName = nameof(NullablePropertyInStructComposite)
+            };
+            using (var conn = OpenConnection(csb))
+            {
+                conn.ExecuteNonQuery("CREATE TYPE pg_temp.nullable_property_type AS (foo INT)");
+                conn.ReloadTypes();
+                conn.TypeMapper.MapComposite<StructWithNullableProperty>("nullable_property_type");
+
+                var expected1 = new StructWithNullableProperty { Foo = 8 };
+                var expected2 = new StructWithNullableProperty { Foo = null };
+                using (var cmd = new NpgsqlCommand(@"SELECT @p1, @p2", conn))
+                {
+                    cmd.Parameters.AddWithValue("p1", expected1);
+                    cmd.Parameters.AddWithValue("p2", expected2);
+
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        reader.Read();
+                        Assert.That(reader.GetFieldValue<StructWithNullableProperty>(0).Foo, Is.EqualTo(8));
+                        Assert.That(reader.GetFieldValue<StructWithNullableProperty>(1).Foo, Is.Null);
+                    }
+                }
+            }
+        }
+
+        class ClassWithNullableProperty
+        {
+            public int? Foo { get; set; }
+        }
+
+        struct StructWithNullableProperty
         {
             public int? Foo { get; set; }
         }
