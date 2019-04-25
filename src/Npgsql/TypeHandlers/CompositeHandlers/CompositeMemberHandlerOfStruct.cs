@@ -93,9 +93,13 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
             if (_get == null)
                 ThrowHelper.ThrowNotSupportedException_NoPropertyGetter(typeof(TComposite), MemberInfo);
 
+            var value = _get!(ref composite);
+            if (value == null)
+                return 0;
+
             return NullableHandler<TMember>.Exists
-                ? NullableHandler<TMember>.ValidateAndGetLength(_handler, _get!(ref composite), ref lengthCache, null)
-                : _handler.ValidateAndGetLength(_get!(ref composite), ref lengthCache, null);
+                ? NullableHandler<TMember>.ValidateAndGetLength(_handler, value, ref lengthCache, null)
+                : _handler.ValidateAndGetLength(value, ref lengthCache, null);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
