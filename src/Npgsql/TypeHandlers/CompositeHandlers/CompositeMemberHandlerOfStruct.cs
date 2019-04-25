@@ -55,6 +55,9 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
 
         public override async ValueTask Read(ByReference<TComposite> composite, NpgsqlReadBuffer buffer, bool async)
         {
+            if (_set == null)
+                ThrowHelper.ThrowNotSupportedException_NoPropertySetter(typeof(TComposite), MemberInfo);
+
             await buffer.Ensure(sizeof(uint) + sizeof(int), async);
 
             var oid = buffer.ReadUInt32();
@@ -73,30 +76,35 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
 
         public override async Task Write(TComposite composite, NpgsqlWriteBuffer buffer, NpgsqlLengthCache? lengthCache, bool async)
         {
-            Debug.Assert(_get != null);
+            if (_get == null)
+                ThrowHelper.ThrowNotSupportedException_NoPropertyGetter(typeof(TComposite), MemberInfo);
 
             if (buffer.WriteSpaceLeft < sizeof(int))
                 await buffer.Flush(async);
 
             buffer.WriteUInt32(PostgresType.OID);
             await (NullableHandler<TMember>.Exists
-                ? NullableHandler<TMember>.WriteAsync(_handler, _get(ref composite), buffer, lengthCache, null, async)
-                : _handler.WriteWithLengthInternal(_get(ref composite), buffer, lengthCache, null, async));
+                ? NullableHandler<TMember>.WriteAsync(_handler, _get!(ref composite), buffer, lengthCache, null, async)
+                : _handler.WriteWithLengthInternal(_get!(ref composite), buffer, lengthCache, null, async));
         }
 
         public override int ValidateAndGetLength(TComposite composite, ref NpgsqlLengthCache? lengthCache)
-            => _get == null
-                ? throw new NpgsqlException($"Can't write type '{typeof(TComposite).Name} because member {MemberInfo.Name} has no getter'")
-                : NullableHandler<TMember>.Exists
-                    ? NullableHandler<TMember>.ValidateAndGetLength(_handler, _get(ref composite), ref lengthCache, null)
-                    : _handler.ValidateAndGetLength(_get(ref composite), ref lengthCache, null);
+        {
+            if (_get == null)
+                ThrowHelper.ThrowNotSupportedException_NoPropertyGetter(typeof(TComposite), MemberInfo);
+
+            return NullableHandler<TMember>.Exists
+                ? NullableHandler<TMember>.ValidateAndGetLength(_handler, _get!(ref composite), ref lengthCache, null)
+                : _handler.ValidateAndGetLength(_get!(ref composite), ref lengthCache, null);
+        }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void Set(ByReference<TComposite> composite, TMember value)
         {
             if (_set == null)
-                throw new NpgsqlException($"Can't read type '{typeof(TComposite).Name} because member {MemberInfo.Name} has no setter'");
-            _set(ref composite.Value, value);
+                ThrowHelper.ThrowNotSupportedException_NoPropertySetter(typeof(TComposite), MemberInfo);
+
+            _set!(ref composite.Value, value);
         }
     }
 }
