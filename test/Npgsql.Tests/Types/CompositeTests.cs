@@ -810,5 +810,71 @@ CREATE TYPE address AS
                 }
             }
         }
+
+        [Test]
+        public void ThrowsOnWriteWithoutGetter()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Pooling = false,
+                ApplicationName = nameof(ThrowsOnWriteWithoutGetter)
+            };
+
+            try
+            {
+                using var connection = OpenConnection(csb);
+                connection.ExecuteNonQuery("CREATE TYPE composite_without_getter AS (value int)");
+                connection.ReloadTypes();
+                connection.TypeMapper.MapComposite<CompositeWithoutGetter>();
+
+                using var command = new NpgsqlCommand("SELECT @p", connection);
+                command.Parameters.AddWithValue("p", new CompositeWithoutGetter());
+
+                Assert.That(() => command.ExecuteScalar(), Throws.TypeOf<NotSupportedException>());
+            }
+            finally
+            {
+                using var conn = OpenConnection(csb);
+                conn.ExecuteNonQuery("DROP TYPE IF EXISTS composite_without_getter");
+            }
+        }
+
+        class CompositeWithoutGetter
+        {
+            public int Value { set { } }
+        }
+
+        [Test]
+        public void ThrowsOnReadWithoutSetter()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Pooling = false,
+                ApplicationName = nameof(ThrowsOnReadWithoutSetter)
+            };
+
+            try
+            {
+                using var connection = OpenConnection(csb);
+                connection.ExecuteNonQuery("CREATE TYPE composite_without_setter AS (value int)");
+                connection.ReloadTypes();
+                connection.TypeMapper.MapComposite<CompositeWithoutSetter>();
+
+                using var command = new NpgsqlCommand("SELECT @p", connection);
+                command.Parameters.AddWithValue("p", new CompositeWithoutSetter());
+
+                Assert.That(() => command.ExecuteScalar(), Throws.TypeOf<NotSupportedException>());
+            }
+            finally
+            {
+                using var conn = OpenConnection(csb);
+                conn.ExecuteNonQuery("DROP TYPE IF EXISTS composite_without_setter");
+            }
+        }
+
+        class CompositeWithoutSetter
+        {
+            public int Value { get; }
+        }
     }
 }
