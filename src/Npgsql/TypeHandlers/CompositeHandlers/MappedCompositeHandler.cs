@@ -14,11 +14,9 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
     class MappedCompositeHandler<T> : NpgsqlTypeHandler<T>, IMappedCompositeHandler
         where T : new()
     {
-        static readonly Func<T> Constructor = IsValueType<T>.Value
-            ? null
-            : Expression
-                .Lambda<Func<T>>(Expression.New(typeof(T)))
-                .Compile();
+        static readonly Func<T> Constructor = Expression
+            .Lambda<Func<T>>(Expression.New(typeof(T)))
+            .Compile();
 
         readonly CompositeMemberHandler<T>[] _members;
 
@@ -40,7 +38,7 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
 
             if (IsValueType<T>.Value)
             {
-                var composite = new ByReference<T>();
+                var composite = new ByReference<T> { Value = Constructor() };
                 foreach (var member in _members)
                     await member.Read(composite, buffer, async);
 
