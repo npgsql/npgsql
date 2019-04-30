@@ -253,24 +253,21 @@ namespace Npgsql.TypeMapping
 
             var pgName = mapping.PgTypeName;
 
-            PostgresType pgType = null;
+            PostgresType pgType;
             if (pgName.IndexOf('.') > -1)
                 DatabaseInfo.ByFullName.TryGetValue(pgName, out pgType);  // Full type name with namespace
-            else if (DatabaseInfo.ByName.TryGetValue(pgName, out pgType)) // No dot, partial type name
+            else if (DatabaseInfo.ByName.TryGetValue(pgName, out pgType) && pgType is null) // No dot, partial type name
             {
-                if (pgType is null)
+                // If the name was found but the value is null, that means that there are
+                // two db types with the same name (different schemas).
+                // Try to fall back to pg_catalog, otherwise fail.
+                if (!DatabaseInfo.ByFullName.TryGetValue($"pg_catalog.{pgName}", out pgType))
                 {
-                    // If the name was found but the value is null, that means that there are
-                    // two db types with the same name (different schemas).
-                    // Try to fall back to pg_catalog, otherwise fail.
-                    if (!DatabaseInfo.ByFullName.TryGetValue($"pg_catalog.{pgName}", out pgType))
-                    {
-                        var msg = $"More than one PostgreSQL type was found with the name {mapping.PgTypeName}, please specify a full name including schema";
-                        if (externalCall)
-                            throw new ArgumentException(msg);
-                        Log.Debug(msg);
-                        return;
-                    }
+                    var msg = $"More than one PostgreSQL type was found with the name {mapping.PgTypeName}, please specify a full name including schema";
+                    if (externalCall)
+                        throw new ArgumentException(msg);
+                    Log.Debug(msg);
+                    return;
                 }
             }
 
