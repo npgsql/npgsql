@@ -140,27 +140,37 @@ namespace Npgsql
         [CanBeNull]
         internal NpgsqlCommand CurrentCommand { get; set; }
 
-        internal void DirectWrite(byte[] buffer, int offset, int count)
+        #endregion
+
+        #region Direct write
+
+        internal async Task DirectWrite(byte[] buffer, int offset, int count, bool async)
         {
+            await Flush(async);
+
             if (_copyMode)
             {
-                // Flush has already written the CopyData header, need to update the length
+                // Flush has already written the CopyData header for us, but write the CopyData
+                // header to the socket with the write length before we can start writing the data directly.
                 Debug.Assert(WritePosition == 5);
 
                 WritePosition = 1;
                 WriteInt32(count + 4);
                 WritePosition = 5;
                 _copyMode = false;
-                Flush();
+                await Flush(async);
                 _copyMode = true;
-                WriteCopyDataHeader();
+                WriteCopyDataHeader();  // And ready the buffer after the direct write completes
             }
             else
                 Debug.Assert(WritePosition == 0);
 
             try
             {
-                Underlying.Write(buffer, offset, count);
+                if (async)
+                    await Underlying.WriteAsync(buffer, offset, count);
+                else
+                    Underlying.Write(buffer, offset, count);
             }
             catch (Exception e)
             {
@@ -169,7 +179,45 @@ namespace Npgsql
             }
         }
 
-        #endregion
+#if !NETSTANDARD2_0 && !NET461
+        internal async Task DirectWrite(ReadOnlyMemory<byte> memory, bool async)
+        {
+            await Flush(async);
+
+            if (_copyMode)
+            {
+                // Flush has already written the CopyData header for us, but write the CopyData
+                // header to the socket with the write length before we can start writing the data directly.
+                Debug.Assert(WritePosition == 5);
+
+                WritePosition = 1;
+                WriteInt32(memory.Length + 4);
+                WritePosition = 5;
+                _copyMode = false;
+                await Flush(async);
+                _copyMode = true;
+                WriteCopyDataHeader();  // And ready the buffer after the direct write completes
+            }
+            else
+                Debug.Assert(WritePosition == 0);
+
+
+            try
+            {
+                if (async)
+                    await Underlying.WriteAsync(memory);
+                else
+                    Underlying.Write(memory.Span);
+            }
+            catch (Exception e)
+            {
+                Connector.Break();
+                throw new NpgsqlException("Exception while writing to stream", e);
+            }
+        }
+#endif
+
+        #endregion Direct write
 
         #region Write Simple
 

@@ -173,6 +173,27 @@ namespace Npgsql.Tests.Types
             }
         }
 
+#if !NETSTANDARD2_0 && !NET461
+        [Test]
+        public void Memory()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn))
+            {
+                var bytes = new byte[] { 1, 2, 3 };
+                cmd.Parameters.AddWithValue("p1", new ReadOnlyMemory<byte>(bytes));
+                cmd.Parameters.AddWithValue("p2", new Memory<byte>(bytes));
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader[0], Is.EqualTo(bytes));
+                    Assert.That(reader[1], Is.EqualTo(bytes));
+                    Assert.That(() => reader.GetFieldValue<ReadOnlyMemory<byte>>(0), Throws.Exception.TypeOf<NotSupportedException>());
+                    Assert.That(() => reader.GetFieldValue<Memory<byte>>(0), Throws.Exception.TypeOf<NotSupportedException>());
+                }
+            }
+        }
+#endif
 
         // Older tests from here
 
