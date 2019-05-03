@@ -16,7 +16,14 @@ namespace Npgsql.TypeHandlers
         "bytea",
         NpgsqlDbType.Bytea,
         DbType.Binary,
-        new[] { typeof(byte[]), typeof(ReadOnlyMemory<byte>), typeof(Memory<byte>), typeof(ArraySegment<byte>) })]
+        new[] {
+            typeof(byte[]),
+            typeof(ArraySegment<byte>),
+#if !NETSTANDARD2_0 && !NET461
+            typeof(ReadOnlyMemory<byte>),
+            typeof(Memory<byte>)
+#endif
+        })]
     public class ByteaHandler : NpgsqlTypeHandler<byte[]>, INpgsqlTypeHandler<ArraySegment<byte>>
 #if !NETSTANDARD2_0 && !NET461
         , INpgsqlTypeHandler<ReadOnlyMemory<byte>>, INpgsqlTypeHandler<Memory<byte>>
