@@ -81,9 +81,10 @@ namespace Npgsql.TypeHandling
             => ReadAsObject(buf, len, async, fieldDescription);
 
 // The following function is used by array and range to read their elements, including their length - which means null
-// handling. Only arrays can actually get nulls here (in ranges infinite bounds are indicated via header flags).
-// We can't mix generics and nullability, hence the warning suppression - but we have an effort to support
-// nullable arrays which may take care of this.
+// handling. Only arrays of reference types can actually get nulls here (arrays of value types are read via
+// ReadNullableWithLength and in ranges infinite bounds are indicated via header flags).
+// We currently can't mix unconstrained generics and nullability, hence the warning suppression.
+// This problem can possibly be solved if https://github.com/dotnet/csharplang/issues/2194 gets resolved in the future.
         /// <summary>
         /// Reads a value from the buffer, assuming our read position is at the value's preceding length.
         /// If the length is -1 (null), this method will return the default value.
@@ -94,6 +95,19 @@ namespace Npgsql.TypeHandling
             var len = buf.ReadInt32();
             if (len == -1)
                 return default!;
+            return await Read<TAny>(buf, len, async, fieldDescription);
+        }
+
+        /// <summary>
+        /// Reads a value from the buffer, assuming our read position is at the value's preceding length.
+        /// If the length is -1 (null), this method will return null.
+        /// </summary>
+        internal async ValueTask<object?> ReadNullableWithLength<TAny>(NpgsqlReadBuffer buf, bool async, FieldDescription? fieldDescription = null)
+        {
+            await buf.Ensure(4, async);
+            var len = buf.ReadInt32();
+            if (len == -1)
+                return null;
             return await Read<TAny>(buf, len, async, fieldDescription);
         }
 

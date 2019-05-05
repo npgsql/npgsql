@@ -280,17 +280,23 @@ namespace Npgsql.TypeHandlers
         /// <inheritdoc />
         protected internal override async ValueTask<TAny> Read<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
-            if (IsArrayOf<TAny, BitArray>.Value)
+            if (RequestedType<TAny>.IsArrayOf<BitArray>.Value)
                 return (TAny)(object)await ReadArray<BitArray>(buf, async);
 
-            if (IsArrayOf<TAny, bool>.Value)
+            if (RequestedType<TAny>.IsArrayOf<bool>.Value)
+                return (TAny)(object)await ReadArray<bool>(buf, async, false);
+
+            if (RequestedType<TAny>.IsNullableArrayOf<bool>.Value)
                 return (TAny)(object)await ReadArray<bool>(buf, async);
 
-            if (typeof(TAny) == typeof(List<BitArray>))
+            if (RequestedType<TAny>.IsListOf<BitArray>.Value)
                 return (TAny)(object)await ReadList<BitArray>(buf, async);
 
-            if (typeof(TAny) == typeof(List<bool>))
+            if (RequestedType<TAny>.IsListOf<bool>.Value)
                 return (TAny)(object)await ReadList<bool>(buf, async);
+
+            if (RequestedType<TAny>.IsNullableListOf<bool>.Value)
+                return (TAny)await ReadNullableList<bool>(buf, async);
 
             return await base.Read<TAny>(buf, len, async, fieldDescription);
         }

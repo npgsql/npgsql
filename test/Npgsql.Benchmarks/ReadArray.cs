@@ -1,102 +1,228 @@
-﻿using System;
+﻿using BenchmarkDotNet.Attributes;
+using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
-using System.Net;
 using System.Runtime.CompilerServices;
-using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Columns;
-using BenchmarkDotNet.Configs;
-using BenchmarkDotNet.Diagnosers;
 
 namespace Npgsql.Benchmarks
 {
-    [Config(typeof(ReadArrayConfig))]
-    public class ReadArray
+    public abstract class ReadNullableArrayBase
     {
+        public readonly struct ConfigStruct
+        {
+            public readonly int NumArrayElements;
+            public readonly double? Ratio;
+
+            public ConfigStruct(int numElements, double? ratio)
+            {
+                NumArrayElements = numElements;
+                Ratio = ratio;
+            }
+
+            public override string ToString()
+            {
+                var writer = new StringWriter();
+                writer.Write($"{NumArrayElements}");
+                if (Ratio.HasValue)
+                {
+                    writer.Write($",{(int)Math.Truncate(100 / (1 + Ratio.Value))}%");
+                }
+                return writer.ToString();
+            }
+        }
+
         NpgsqlConnection _conn = default!;
         NpgsqlCommand _cmd = default!;
         NpgsqlDataReader _reader = default!;
 
-        [GlobalSetup(Target = nameof(ReadIntArray) + "," + nameof(ReadListOfInt))]
-        public void GlobalSetupForInt()
-            => GlobalSetupImpl(42);
+        public IEnumerable<ConfigStruct> GetConfigValuesForNullable()
+        {
+            var numArrayElementsList = new[] { 0, 1, 10, 1000, 100000 };
+            foreach (var numArrayElements in numArrayElementsList)
+            {
+                switch (numArrayElements)
+                {
+                    case 0:
+                        yield return new ConfigStruct(numArrayElements, null);
+                        break;
+                    case 1:
+                        yield return new ConfigStruct(numArrayElements, 0D);
+                        yield return new ConfigStruct(numArrayElements, double.MaxValue);
+                        break;
+                    case 10:
+                        yield return new ConfigStruct(numArrayElements, 0D);
+                        yield return new ConfigStruct(numArrayElements, 0.5D);
+                        yield return new ConfigStruct(numArrayElements, 1D);
+                        yield return new ConfigStruct(numArrayElements, 2D);
+                        yield return new ConfigStruct(numArrayElements, double.MaxValue);
+                        break;
+                    default:
+                        yield return new ConfigStruct(numArrayElements, 0D);
+                        yield return new ConfigStruct(numArrayElements, 0.125D);
+                        yield return new ConfigStruct(numArrayElements, 0.5D);
+                        yield return new ConfigStruct(numArrayElements, 1D);
+                        yield return new ConfigStruct(numArrayElements, 2D);
+                        yield return new ConfigStruct(numArrayElements, 8D);
+                        yield return new ConfigStruct(numArrayElements, double.MaxValue);
+                        break;
+                }
+            }
+        }
 
-        [GlobalSetup(Target = nameof(ReadStringArray) + "," + nameof(ReadListOfString))]
-        public void GlobalSetupForString()
-            => GlobalSetupImpl("The Answer to the Ultimate Question of Life, The Universe, and Everything.");
+        [ParamsSource(nameof(GetConfigValuesForNullable))]
+        public virtual ConfigStruct Config { get; set; }
 
-        [GlobalSetup(Target = nameof(ReadIPAddressArray)
-                              + "," + nameof(ReadNpgsqlInetArray)
-                              + "," + nameof(ReadListOfIPAddress)
-                              + "," + nameof(ReadListOfNpgsqlInet))]
-        public void GlobalSetupForInet()
-            => GlobalSetupImpl(IPAddress.Loopback);
-
-        void GlobalSetupImpl<T>(T initializationValue)
+        protected void Setup<T>(T initializationValue)
         {
             _conn = BenchmarkEnvironment.OpenConnection();
             _cmd = new NpgsqlCommand("SELECT @p1;", _conn);
-            _cmd.Parameters.AddWithValue("@p1", Enumerable.Repeat(initializationValue, NumArrayElements).ToArray());
+            _cmd.Parameters.AddWithValue("@p1", CreateArray(initializationValue));
             _reader = _cmd.ExecuteReader();
             _reader.Read();
         }
 
-        [Params(0, 10, 1000, 100000)]
-        public int NumArrayElements { get; set; }
+        protected virtual object CreateArray<T>(T initializationValue)
+        {
+            return Create(initializationValue).ToArray();
 
-        [GlobalCleanup]
-        public void Cleanup()
+            IEnumerable<T> Create(T init)
+            {
+                for (var i = 0; i < Config.NumArrayElements; i++)
+                {
+                    Debug.Assert(Config.Ratio.HasValue);
+                    if (0 == (int)Math.Truncate((i + 1) % (1 + Config.Ratio!.Value)))
+// Unconstrained generics and nullable reference types currently don't interoperate
+// if the return value might be null so we have to disable the warning here
+#pragma warning disable CS8653
+                        yield return default;
+#pragma warning restore CS8653
+                    else
+                        yield return init;
+                }
+            }
+        }
+
+        protected void Cleanup()
         {
             _reader.Dispose();
             _cmd.Dispose();
             _conn.Dispose();
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        protected T GetFieldValue<T>()
+            => _reader.GetFieldValue<T>(0);
+    }
+
+    public abstract class ReadArrayBase : ReadNullableArrayBase
+    {
+        protected override object CreateArray<T>(T initializationValue)
+            => Enumerable.Repeat(initializationValue, Config.NumArrayElements).ToArray();
+
+        public IEnumerable<ConfigStruct> GetConfigValues()
+        {
+            var numArrayElementsList = new[] { 0, 1, 10, 1000, 100000 };
+            foreach (var numArrayElements in numArrayElementsList)
+            {
+                yield return new ConfigStruct(numArrayElements, null);
+            }
+        }
+
+        [ParamsSource(nameof(GetConfigValues))]
+        public override ConfigStruct Config { get; set; }
+    }
+
+    public class ReadArray : ReadArrayBase
+    {
+        [GlobalSetup(Target = nameof(ReadIntArray))]
+        public void GlobalSetupForNullableInt()
+            => Setup(42);
+
+        [GlobalSetup(Target = nameof(ReadStringArray))]
+        public void GlobalSetupForString()
+            => Setup("The Answer to the Ultimate Question of Life, The Universe, and Everything.");
+
+        [GlobalCleanup]
+        public void GlobalCleanup()
+            => Cleanup();
+
         [Benchmark]
         public void ReadIntArray()
-            => ReadArrayImpl<int>();
+            => GetFieldValue<int[]>();
 
         [Benchmark]
         public void ReadStringArray()
-            => ReadArrayImpl<string>();
+            => GetFieldValue<string[]>();
+    }
 
-        [Benchmark]
-        // ReSharper disable once InconsistentNaming
-        public void ReadIPAddressArray()
-            => ReadArrayImpl<IPAddress>();
+    public class ReadList : ReadArrayBase
+    {
+        [GlobalSetup(Target = nameof(ReadListOfInt))]
+        public void GlobalSetupForNullableInt()
+            => Setup(42);
 
-        [Benchmark]
-        public void ReadNpgsqlInetArray() // PSV for IPAddress
-            => ReadArrayImpl<ValueTuple<IPAddress, int>>();
+        [GlobalSetup(Target = nameof(ReadListOfString))]
+        public void GlobalSetupForString()
+            => Setup("The Answer to the Ultimate Question of Life, The Universe, and Everything.");
+
+        [GlobalCleanup]
+        public void GlobalCleanup()
+            => Cleanup();
 
         [Benchmark]
         public void ReadListOfInt()
-            => ReadListImpl<int>();
+            => GetFieldValue<List<int>>();
 
         [Benchmark]
         public void ReadListOfString()
-            => ReadListImpl<string>();
+            => GetFieldValue<List<string>>();
+    }
+
+    public class ReadArrayWithNulls: ReadNullableArrayBase
+    {
+        [GlobalSetup(Target = nameof(ReadNullableIntArray))]
+        public void GlobalSetupForNullableInt()
+            => Setup<int?>(42);
+
+        [GlobalSetup(Target = nameof(ReadStringArray))]
+        public void GlobalSetupForString()
+            => Setup("The Answer to the Ultimate Question of Life, The Universe, and Everything.");
+
+        [GlobalCleanup]
+        public void GlobalCleanup()
+            => Cleanup();
 
         [Benchmark]
-        // ReSharper disable once InconsistentNaming
-        public void ReadListOfIPAddress()
-            => ReadListImpl<IPAddress>();
+        public void ReadNullableIntArray()
+            => GetFieldValue<int?[]>();
 
         [Benchmark]
-        public void ReadListOfNpgsqlInet() // PSV for IPAddress
-            => ReadListImpl<ValueTuple<IPAddress, int>>();
+        public void ReadStringArray()
+            => GetFieldValue<string[]>();
+    }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        void ReadArrayImpl<T>()
-            => _reader.GetFieldValue<T[]>(0);
+    public class ReadListWithNulls : ReadNullableArrayBase
+    {
+        [GlobalSetup(Target = nameof(ReadListOfNullableInt))]
+        public void GlobalSetupForNullableInt()
+            => Setup<int?>(42);
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        void ReadListImpl<T>()
-            => _reader.GetFieldValue<List<T>>(0);
+        [GlobalSetup(Target = nameof(ReadListOfString))]
+        public void GlobalSetupForString()
+            => Setup("The Answer to the Ultimate Question of Life, The Universe, and Everything.");
 
-        class ReadArrayConfig : ManualConfig
-        {
-            public ReadArrayConfig() => Add(StatisticColumn.OperationsPerSecond);
-        }
+        [GlobalCleanup]
+        public void GlobalCleanup()
+            => Cleanup();
+
+        [Benchmark]
+        public void ReadListOfNullableInt()
+            => GetFieldValue<List<int?>>();
+
+        [Benchmark]
+        public void ReadListOfString()
+            => GetFieldValue<List<string>>();
     }
 }

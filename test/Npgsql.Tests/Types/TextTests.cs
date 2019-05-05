@@ -195,8 +195,8 @@ namespace Npgsql.Tests.Types
                     {
                         Assert.AreEqual(expected[i], reader.GetChar(i));
                     }
-                    var arr = (char[])reader.GetValue(5);
-                    var arr2 = (char[])reader.GetValue(6);
+                    var arr = (char?[])reader.GetValue(5);
+                    var arr2 = (char?[])reader.GetValue(6);
                     Assert.AreEqual(testArr.Length, arr.Length);
                     for (var i = 0; i < arr.Length; i++)
                     {
