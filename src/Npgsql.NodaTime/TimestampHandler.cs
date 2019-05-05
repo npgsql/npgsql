@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using NodaTime;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
@@ -10,13 +11,13 @@ namespace Npgsql.NodaTime
 {
     public class TimestampHandlerFactory : NpgsqlTypeHandlerFactory<Instant>
     {
-        protected override NpgsqlTypeHandler<Instant> Create(NpgsqlConnection conn)
+        public override NpgsqlTypeHandler<Instant> Create(PostgresType postgresType, NpgsqlConnection conn)
         {
             if (!conn.HasIntegerDateTimes)
                 throw new NotSupportedException($"The deprecated floating-point date/time format is not supported by {nameof(Npgsql)}.");
 
             var csb = new NpgsqlConnectionStringBuilder(conn.ConnectionString);
-            return new TimestampHandler(csb.ConvertInfinityDateTime);
+            return new TimestampHandler(postgresType, csb.ConvertInfinityDateTime);
         }
     }
 
@@ -33,12 +34,12 @@ namespace Npgsql.NodaTime
         /// </summary>
         readonly bool _convertInfinityDateTime;
 
-        internal TimestampHandler(bool convertInfinityDateTime)
-            => _convertInfinityDateTime = convertInfinityDateTime;
+        internal TimestampHandler(PostgresType postgresType, bool convertInfinityDateTime)
+            : base(postgresType) => _convertInfinityDateTime = convertInfinityDateTime;
 
         #region Read
 
-        public override Instant Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override Instant Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
             var value = buf.ReadInt64();
             if (_convertInfinityDateTime)
@@ -52,7 +53,7 @@ namespace Npgsql.NodaTime
             return Decode(value);
         }
 
-        LocalDateTime INpgsqlSimpleTypeHandler<LocalDateTime>.Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription)
+        LocalDateTime INpgsqlSimpleTypeHandler<LocalDateTime>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
         {
             var value = buf.ReadInt64();
             if (value == long.MaxValue || value == long.MinValue)
@@ -101,13 +102,13 @@ namespace Npgsql.NodaTime
 
         #region Write
 
-        public override int ValidateAndGetLength(Instant value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(Instant value, NpgsqlParameter? parameter)
             => 8;
 
-        int INpgsqlSimpleTypeHandler<LocalDateTime>.ValidateAndGetLength(LocalDateTime value, NpgsqlParameter parameter)
+        int INpgsqlSimpleTypeHandler<LocalDateTime>.ValidateAndGetLength(LocalDateTime value, NpgsqlParameter? parameter)
             => 8;
 
-        public override void Write(Instant value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public override void Write(Instant value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
             if (_convertInfinityDateTime)
             {
@@ -127,7 +128,7 @@ namespace Npgsql.NodaTime
             WriteInteger(value, buf);
         }
 
-        void INpgsqlSimpleTypeHandler<LocalDateTime>.Write(LocalDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        void INpgsqlSimpleTypeHandler<LocalDateTime>.Write(LocalDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => WriteInteger(value.InUtc().ToInstant(), buf);
 
         // We need to write the number of microseconds from 2000-01-01T00:00:00.

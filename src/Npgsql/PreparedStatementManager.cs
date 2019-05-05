@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using JetBrains.Annotations;
 using Npgsql.Logging;
 
 namespace Npgsql
@@ -12,11 +11,10 @@ namespace Npgsql
         internal int UsagesBeforePrepare { get; }
 
         internal Dictionary<string, PreparedStatement> BySql { get; } = new Dictionary<string, PreparedStatement>();
-        readonly PreparedStatement[] _autoPrepared;
+        readonly PreparedStatement[]? _autoPrepared;
         int _numAutoPrepared;
 
-        [CanBeNull, ItemCanBeNull]
-        readonly PreparedStatement[] _candidates;
+        readonly PreparedStatement?[]? _candidates;
 
         /// <summary>
         /// Total number of current prepared statements (whether explicit or automatic).
@@ -46,12 +44,11 @@ namespace Npgsql
             }
         }
 
-        [CanBeNull]
-        internal PreparedStatement GetOrAddExplicit(NpgsqlStatement statement)
+        internal PreparedStatement? GetOrAddExplicit(NpgsqlStatement statement)
         {
             var sql = statement.SQL;
 
-            PreparedStatement statementBeingReplaced=null;
+            PreparedStatement? statementBeingReplaced = null;
             if (BySql.TryGetValue(sql, out var pStatement))
             {
                 Debug.Assert(pStatement.State != PreparedState.Unprepared);
@@ -89,10 +86,10 @@ namespace Npgsql
             return BySql[sql] = PreparedStatement.CreateExplicit(this, sql, NextPreparedStatementName(), statement.InputParameters, statementBeingReplaced);
         }
 
-        [CanBeNull]
-        internal PreparedStatement TryGetAutoPrepared(NpgsqlStatement statement)
+        internal PreparedStatement? TryGetAutoPrepared(NpgsqlStatement statement)
         {
             Debug.Assert(_candidates != null);
+            Debug.Assert(_autoPrepared != null);
 
             var sql = statement.SQL;
             if (!BySql.TryGetValue(sql, out var pStatement))

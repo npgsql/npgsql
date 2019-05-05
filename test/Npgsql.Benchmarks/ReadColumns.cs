@@ -7,8 +7,8 @@ namespace Npgsql.Benchmarks
 {
     public class ReadColumns
     {
-        NpgsqlConnection _conn;
-        NpgsqlCommand _cmd;
+        NpgsqlConnection _conn = default!;
+        NpgsqlCommand _cmd = default!;
 
         [Params(1, 10, 100, 1000)]
         public int NumColumns { get; set; } = 100;

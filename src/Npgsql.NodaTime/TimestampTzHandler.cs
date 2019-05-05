@@ -1,6 +1,7 @@
 ﻿using System;
 using NodaTime;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
@@ -10,9 +11,9 @@ namespace Npgsql.NodaTime
     public class TimestampTzHandlerFactory : NpgsqlTypeHandlerFactory<Instant>
     {
         // Check for the legacy floating point timestamps feature
-        protected override NpgsqlTypeHandler<Instant> Create(NpgsqlConnection conn)
+        public override NpgsqlTypeHandler<Instant> Create(PostgresType postgresType, NpgsqlConnection conn)
             => conn.HasIntegerDateTimes
-                ? new TimestampTzHandler()
+                ? new TimestampTzHandler(postgresType)
                 : throw new NotSupportedException($"The deprecated floating-point date/time format is not supported by {nameof(Npgsql)}.");
     }
 
@@ -21,12 +22,12 @@ namespace Npgsql.NodaTime
     {
         readonly IDateTimeZoneProvider _dateTimeZoneProvider;
 
-        public TimestampTzHandler()
-            => _dateTimeZoneProvider = DateTimeZoneProviders.Tzdb;
+        public TimestampTzHandler(PostgresType postgresType)
+            : base(postgresType) => _dateTimeZoneProvider = DateTimeZoneProviders.Tzdb;
 
         #region Read
 
-        public override Instant Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override Instant Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
             var value = buf.ReadInt64();
             if (value == long.MaxValue || value == long.MinValue)
@@ -34,7 +35,7 @@ namespace Npgsql.NodaTime
             return TimestampHandler.Decode(value);
         }
 
-        ZonedDateTime INpgsqlSimpleTypeHandler<ZonedDateTime>.Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription)
+        ZonedDateTime INpgsqlSimpleTypeHandler<ZonedDateTime>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
         {
             try
             {
@@ -56,29 +57,29 @@ namespace Npgsql.NodaTime
             }
         }
 
-        OffsetDateTime INpgsqlSimpleTypeHandler<OffsetDateTime>.Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription)
+        OffsetDateTime INpgsqlSimpleTypeHandler<OffsetDateTime>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
             => ((INpgsqlSimpleTypeHandler<ZonedDateTime>)this).Read(buf, len, fieldDescription).ToOffsetDateTime();
 
         #endregion Read
 
         #region Write
 
-        public override int ValidateAndGetLength(Instant value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(Instant value, NpgsqlParameter? parameter)
             => 8;
 
-        int INpgsqlSimpleTypeHandler<ZonedDateTime>.ValidateAndGetLength(ZonedDateTime value, NpgsqlParameter parameter)
+        int INpgsqlSimpleTypeHandler<ZonedDateTime>.ValidateAndGetLength(ZonedDateTime value, NpgsqlParameter? parameter)
             => 8;
 
-        public int ValidateAndGetLength(OffsetDateTime value, NpgsqlParameter parameter)
+        public int ValidateAndGetLength(OffsetDateTime value, NpgsqlParameter? parameter)
             => 8;
 
-        public override void Write(Instant value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public override void Write(Instant value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => TimestampHandler.WriteInteger(value, buf);
 
-        void INpgsqlSimpleTypeHandler<ZonedDateTime>.Write(ZonedDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        void INpgsqlSimpleTypeHandler<ZonedDateTime>.Write(ZonedDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => Write(value.ToInstant(), buf, parameter);
 
-        public void Write(OffsetDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public void Write(OffsetDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => Write(value.ToInstant(), buf, parameter);
 
         #endregion Write

@@ -35,8 +35,7 @@ namespace Npgsql
 
         bool InMiddleOfRow => _column != -1 && _column != NumColumns;
 
-        [ItemCanBeNull]
-        readonly NpgsqlParameter[] _params;
+        readonly NpgsqlParameter?[] _params;
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
@@ -117,7 +116,9 @@ namespace Npgsql
         /// corruption will occur. If in doubt, use <see cref="Write{T}(T, NpgsqlDbType)"/> to manually
         /// specify the type.
         /// </typeparam>
+#nullable disable  // Necessary since this method needs to accept null
         public void Write<T>(T value)
+#nullable enable
         {
             var p = _params[_column];
             if (p == null)
@@ -142,7 +143,9 @@ namespace Npgsql
         /// <paramref name="npgsqlDbType"/> must be specified as <see cref="NpgsqlDbType.Jsonb"/>.
         /// </param>
         /// <typeparam name="T">The .NET type of the column to be written.</typeparam>
+#nullable disable  // Necessary since this method needs to accept null
         public void Write<T>(T value, NpgsqlDbType npgsqlDbType)
+#nullable enable
         {
             var p = _params[_column];
             if (p == null)
@@ -169,7 +172,9 @@ namespace Npgsql
         /// the database. This parameter and be used to unambiguously specify the type.
         /// </param>
         /// <typeparam name="T">The .NET type of the column to be written.</typeparam>
+#nullable disable  // Necessary since this method needs to accept null
         public void Write<T>(T value, string dataTypeName)
+#nullable enable
         {
             var p = _params[_column];
             if (p == null)
@@ -187,7 +192,9 @@ namespace Npgsql
             Write(value, p);
         }
 
-        void Write<T>([CanBeNull] T value, NpgsqlParameter param)
+#nullable disable  // Necessary since this method needs to accept null
+        void Write<T>(T value, NpgsqlParameter param)
+#nullable enable
         {
             CheckReady();
             if (_column == -1)
@@ -339,6 +346,7 @@ namespace Npgsql
             connector.EndUserAction();
         }
 
+#pragma warning disable CS8625
         void Cleanup()
         {
             var connector = _connector;
@@ -353,6 +361,7 @@ namespace Npgsql
             _buf = null;
             _state = ImporterState.Disposed;
         }
+#pragma warning enable CS8625
 
         void WriteTrailer()
         {

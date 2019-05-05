@@ -544,7 +544,7 @@ namespace Npgsql.Tests
         }
         */
 
-        NpgsqlConnection OpenConnectionAndUnprepare(string connectionString = null)
+        NpgsqlConnection OpenConnectionAndUnprepare(string? connectionString = null)
         {
             var conn = OpenConnection(connectionString);
             conn.UnprepareAll();

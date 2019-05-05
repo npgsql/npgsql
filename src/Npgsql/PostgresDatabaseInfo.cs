@@ -4,7 +4,6 @@ using System.Data.Common;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
-using JetBrains.Annotations;
 using Npgsql.Logging;
 using Npgsql.PostgresTypes;
 using Npgsql.Util;
@@ -20,10 +19,9 @@ namespace Npgsql
     class PostgresDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
     {
         /// <inheritdoc />
-        [NotNull]
-        public async Task<NpgsqlDatabaseInfo> Load([NotNull] NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
+        public async Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
         {
-            var db = new PostgresDatabaseInfo();
+            var db = new PostgresDatabaseInfo(conn);
             await db.LoadPostgresInfo(conn, timeout, async);
             return db;
         }
@@ -37,15 +35,14 @@ namespace Npgsql
         /// <summary>
         /// The Npgsql logger instance.
         /// </summary>
-        [NotNull] static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
         /// <summary>
         /// The PostgreSQL types detected in the database.
         /// </summary>
-        [CanBeNull] List<PostgresType> _types;
+        List<PostgresType>? _types;
 
         /// <inheritdoc />
-        [NotNull]
         protected override IEnumerable<PostgresType> GetTypes() => _types ?? Enumerable.Empty<PostgresType>();
 
         /// <summary>
@@ -70,6 +67,11 @@ namespace Npgsql
         /// </remarks>
         public virtual bool HasTypeCategory => Version >= new Version(8, 4, 0);
 
+        internal PostgresDatabaseInfo(NpgsqlConnection conn)
+            : base(conn.Host!, conn.Port, conn.Database!, ParseServerVersion(conn.PostgresParameters["server_version"]))
+        {
+        }
+
         /// <summary>
         /// Loads database information from the PostgreSQL database specified by <paramref name="conn"/>.
         /// </summary>
@@ -79,21 +81,13 @@ namespace Npgsql
         /// <returns>
         /// A task representing the asynchronous operation.
         /// </returns>
-        [NotNull]
-        internal async Task LoadPostgresInfo([NotNull] NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
+        internal async Task LoadPostgresInfo(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
         {
-            var csb = new NpgsqlConnectionStringBuilder(conn.ConnectionString);
-            Host = csb.Host;
-            Port = csb.Port;
-            Name = csb.Database;
-
-            Version = ParseServerVersion(conn.PostgresParameters["server_version"]);
-
             HasIntegerDateTimes =
                 conn.PostgresParameters.TryGetValue("integer_datetimes", out var intDateTimes) &&
                 intDateTimes == "on";
 
-            IsRedshift = csb.ServerCompatibilityMode == ServerCompatibilityMode.Redshift;
+            IsRedshift = conn.Settings.ServerCompatibilityMode == ServerCompatibilityMode.Redshift;
             _types = await LoadBackendTypes(conn, timeout, async);
         }
 
@@ -115,7 +109,6 @@ namespace Npgsql
         /// For arrays and ranges, join in the element OID and type (to filter out arrays of unhandled
         /// types).
         /// </remarks>
-        [NotNull]
         static string GenerateTypesQuery(bool withRange, bool withEnum, bool withEnumSortOrder, bool loadTableComposites, bool withTypeCategory)
             => $@"
 /*** Load all supported types ***/
@@ -182,8 +175,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
         /// </returns>
         /// <exception cref="TimeoutException" />
         /// <exception cref="ArgumentOutOfRangeException">Unknown typtype for type '{internalName}' in pg_type: {typeChar}.</exception>
-        [NotNull]
-        internal async Task<List<PostgresType>> LoadBackendTypes([NotNull] NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
+        internal async Task<List<PostgresType>> LoadBackendTypes(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
         {
             var commandTimeout = 0;  // Default to infinity
             if (timeout.IsSet)
@@ -312,10 +304,10 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
         /// </summary>
         /// <param name="reader">The reader from which to read composite fields.</param>
         /// <param name="byOID">The OID of the composite type for which fields are read.</param>
-        static void LoadCompositeFields([NotNull] DbDataReader reader, [NotNull] Dictionary<uint, PostgresType> byOID)
+        static void LoadCompositeFields(DbDataReader reader, Dictionary<uint, PostgresType> byOID)
         {
             var currentOID = uint.MaxValue;
-            PostgresCompositeType currentComposite = null;
+            PostgresCompositeType? currentComposite = null;
             var skipCurrent = false;
 
             while (reader.Read())
@@ -348,6 +340,8 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
                 if (skipCurrent)
                     continue;
 
+                Debug.Assert(currentComposite != null);
+
                 var fieldName = reader.GetString(reader.GetOrdinal("attname"));
                 var fieldTypeOID = Convert.ToUInt32(reader[reader.GetOrdinal("atttypid")]);
                 if (!byOID.TryGetValue(fieldTypeOID, out var fieldType))  // See #2020
@@ -358,7 +352,6 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
                     continue;
                 }
 
-                Debug.Assert(currentComposite != null);
                 currentComposite.MutableFields.Add(new PostgresCompositeType.Field(fieldName, fieldType));
             }
         }
@@ -368,10 +361,10 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
         /// </summary>
         /// <param name="reader">The reader from which to read enum labels.</param>
         /// <param name="byOID">The OID of the enum type for which labels are read.</param>
-        static void LoadEnumLabels([NotNull] DbDataReader reader, [NotNull] Dictionary<uint, PostgresType> byOID)
+        static void LoadEnumLabels(DbDataReader reader, Dictionary<uint, PostgresType> byOID)
         {
             var currentOID = uint.MaxValue;
-            PostgresEnumType currentEnum = null;
+            PostgresEnumType? currentEnum = null;
             var skipCurrent = false;
 
             while (reader.Read())

@@ -14,6 +14,8 @@ using NpgsqlTypes;
 using System.Dynamic;
 #endif
 
+#nullable disable // About to be removed
+
 namespace Npgsql.TypeHandlers.CompositeHandlers
 {
     /// <summary>
@@ -41,7 +43,8 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
         [CanBeNull]
         Type _resolvedType;
 
-        internal UnmappedCompositeHandler(INpgsqlNameTranslator nameTranslator, ConnectorTypeMapper typeMapper)
+        internal UnmappedCompositeHandler(PostgresType postgresType, INpgsqlNameTranslator nameTranslator, ConnectorTypeMapper typeMapper)
+            : base(postgresType)
         {
             _nameTranslator = nameTranslator;
 

@@ -6,10 +6,8 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
-using JetBrains.Annotations;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
-
 namespace Npgsql
 {
     /// <summary>
@@ -27,8 +25,7 @@ namespace Npgsql
         /// <summary>
         /// Wraps SocketAsyncEventArgs for better async I/O as long as we're not doing SSL.
         /// </summary>
-        [CanBeNull]
-        internal AwaitableSocket AwaitableSocket { get; set; }
+        internal AwaitableSocket? AwaitableSocket { get; set; }
 
         /// <summary>
         /// The total byte length of the buffer.
@@ -45,8 +42,7 @@ namespace Npgsql
 
         internal int WritePosition;
 
-        [CanBeNull]
-        ParameterStream _parameterStream;
+        ParameterStream? _parameterStream;
 
         /// <summary>
         /// The minimum buffer size possible.
@@ -58,7 +54,7 @@ namespace Npgsql
 
         #region Constructors
 
-        internal NpgsqlWriteBuffer([CanBeNull] NpgsqlConnector connector, Stream stream, int size, Encoding textEncoding)
+        internal NpgsqlWriteBuffer(NpgsqlConnector connector, Stream stream, int size, Encoding textEncoding)
         {
             if (size < MinimumSize)
                 throw new ArgumentOutOfRangeException(nameof(size), size, "Buffer size must be at least " + MinimumSize);
@@ -137,8 +133,7 @@ namespace Npgsql
 
         internal void Flush() => Flush(false).GetAwaiter().GetResult();
 
-        [CanBeNull]
-        internal NpgsqlCommand CurrentCommand { get; set; }
+        internal NpgsqlCommand? CurrentCommand { get; set; }
 
         #endregion
 

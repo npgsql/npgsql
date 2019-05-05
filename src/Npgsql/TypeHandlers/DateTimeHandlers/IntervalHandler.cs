@@ -1,5 +1,6 @@
 ﻿using System;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -10,9 +11,9 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     class IntervalHandlerFactory : NpgsqlTypeHandlerFactory<TimeSpan>
     {
         // Check for the legacy floating point timestamps feature
-        protected override NpgsqlTypeHandler<TimeSpan> Create(NpgsqlConnection conn)
+        public override NpgsqlTypeHandler<TimeSpan> Create(PostgresType postgresType, NpgsqlConnection conn)
             => conn.HasIntegerDateTimes
-                ? new IntervalHandler()
+                ? new IntervalHandler(postgresType)
                 : throw new NotSupportedException($"The deprecated floating-point date/time format is not supported by {nameof(Npgsql)}.");
     }
 
@@ -21,10 +22,12 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// </remarks>
     class IntervalHandler : NpgsqlSimpleTypeHandlerWithPsv<TimeSpan, NpgsqlTimeSpan>
     {
-        public override TimeSpan Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        internal IntervalHandler(PostgresType postgresType) : base(postgresType) {}
+
+        public override TimeSpan Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             => (TimeSpan)((INpgsqlSimpleTypeHandler<NpgsqlTimeSpan>)this).Read(buf, len, fieldDescription);
 
-        protected override NpgsqlTimeSpan ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        protected override NpgsqlTimeSpan ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
             var ticks = buf.ReadInt64();
             var day = buf.ReadInt32();
@@ -32,13 +35,13 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             return new NpgsqlTimeSpan(month, day, ticks * 10);
         }
 
-        public override int ValidateAndGetLength(TimeSpan value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(TimeSpan value, NpgsqlParameter? parameter)
             => 16;
 
-        public override int ValidateAndGetLength(NpgsqlTimeSpan value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(NpgsqlTimeSpan value, NpgsqlParameter? parameter)
             => 16;
 
-        public override void Write(NpgsqlTimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public override void Write(NpgsqlTimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
             buf.WriteInt64(value.Ticks / 10); // TODO: round?
             buf.WriteInt32(value.Days);
@@ -46,7 +49,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         }
 
         // TODO: Can write directly from TimeSpan
-        public override void Write(TimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public override void Write(TimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => Write(value, buf, parameter);
     }
 }

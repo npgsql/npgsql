@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
-using JetBrains.Annotations;
 using Npgsql.Util;
 
 namespace Npgsql
@@ -33,8 +32,7 @@ namespace Npgsql
             FileName = fileName;
         }
 
-        [CanBeNull]
-        internal static PgPassFile Load([CanBeNull] string pgPassFile)
+        internal static PgPassFile? Load(string? pgPassFile)
         {
             var path = pgPassFile ?? GetSystemPgPassFilePath();
             return path == null || !File.Exists(path) ? null : new PgPassFile(path);
@@ -59,8 +57,7 @@ namespace Npgsql
         /// <param name="database">Database to query. Use null to match any.</param>
         /// <param name="username">User name to query. Use null to match any.</param>
         /// <returns>Matching <see cref="Entry"/> if match was found. Otherwise, returns null.</returns>
-        [CanBeNull]
-        internal Entry GetFirstMatchingEntry(string host = null, int? port = null, string database=null, string username=null)
+        internal Entry? GetFirstMatchingEntry(string? host = null, int? port = null, string? database = null, string? username = null)
             => Entries.FirstOrDefault(entry => entry.IsMatch(host, port, database, username));
 
         /// <summary>
@@ -71,8 +68,7 @@ namespace Npgsql
         /// See https://www.postgresql.org/docs/current/static/libpq-pgpass.html
         /// </remarks>
         /// <returns>Path to the pgpass file</returns>
-        [CanBeNull]
-        internal static string GetSystemPgPassFilePath()
+        internal static string? GetSystemPgPassFilePath()
         {
             var pgpassEnv = Environment.GetEnvironmentVariable("PGPASSFILE");
             if (pgpassEnv != null)
@@ -97,19 +93,19 @@ namespace Npgsql
             /// <summary>
             /// Hostname parsed from the .pgpass file
             /// </summary>
-            [CanBeNull] internal string Host { get; }
+            internal string? Host { get; }
             /// <summary>
             /// Port parsed from the .pgpass file
             /// </summary>
-            [CanBeNull] internal int? Port { get; }
+            internal int? Port { get; }
             /// <summary>
             /// Database parsed from the .pgpass file
             /// </summary>
-            [CanBeNull] internal string Database { get; }
+            internal string? Database { get; }
             /// <summary>
             /// User name parsed from the .pgpass file
             /// </summary>
-            [CanBeNull] internal string Username { get; }
+            internal string? Username { get; }
             /// <summary>
             /// Password parsed from the .pgpass file
             /// </summary>
@@ -175,7 +171,7 @@ namespace Npgsql
             /// <param name="database">Database to check against this entry</param>
             /// <param name="username">Username to check against this entry</param>
             /// <returns>True if the entry is a match. False otherwise.</returns>
-            internal bool IsMatch([CanBeNull]string host, [CanBeNull]int? port, [CanBeNull]string database, [CanBeNull]string username) =>
+            internal bool IsMatch(string? host, int? port, string? database, string? username) =>
                 AreValuesMatched(host, Host) && AreValuesMatched(port, Port) && AreValuesMatched(database, Database) && AreValuesMatched(username, Username);
 
             /// <summary>
@@ -184,10 +180,10 @@ namespace Npgsql
             /// <param name="query">Value being searched</param>
             /// <param name="actual">Value from the PGPASS entry</param>
             /// <returns>True if the values are a match. False otherwise.</returns>
-            bool AreValuesMatched([CanBeNull] string query, [CanBeNull] string actual)
+            bool AreValuesMatched(string? query, string? actual)
                 => query == actual || actual == null || query == null;
 
-            bool AreValuesMatched([CanBeNull] int? query, [CanBeNull] int? actual)
+            bool AreValuesMatched(int? query, int? actual)
                 => query == actual || actual == null || query == null;
         }
     }

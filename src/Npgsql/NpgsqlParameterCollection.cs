@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data.Common;
+using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 using Npgsql.Util;
 using NpgsqlTypes;
@@ -18,10 +19,8 @@ namespace Npgsql
         readonly List<NpgsqlParameter> _internalList = new List<NpgsqlParameter>(5);
 
         // Dictionary lookups for GetValue to improve performance
-        [CanBeNull]
-        Dictionary<string, int> _lookup;
-        [CanBeNull]
-        Dictionary<string, int> _lookupIgnoreCase;
+        Dictionary<string, int>? _lookup;
+        Dictionary<string, int>? _lookupIgnoreCase;
 
         /// <summary>
         /// Initializes a new instance of the NpgsqlParameterCollection class.
@@ -125,6 +124,7 @@ namespace Npgsql
         void ICollection<NpgsqlParameter>.Add(NpgsqlParameter item)
             => Add(item);
 
+#nullable disable
         /// <summary>
         /// Adds a <see cref="NpgsqlParameter">NpgsqlParameter</see> to the <see cref="NpgsqlParameterCollection">NpgsqlParameterCollection</see> given the specified parameter name and value.
         /// </summary>
@@ -189,6 +189,7 @@ namespace Npgsql
         [PublicAPI]
         public NpgsqlParameter AddWithValue(NpgsqlDbType parameterType, object value)
             => Add(new NpgsqlParameter { NpgsqlDbType = parameterType, Value = value });
+#nullable enable
 
         /// <summary>
         /// Adds a <see cref="NpgsqlParameter">NpgsqlParameter</see> to the <see cref="NpgsqlParameterCollection">NpgsqlParameterCollection</see> given the parameter name and the data type.
@@ -248,7 +249,7 @@ namespace Npgsql
         }
 
         /// <inheritdoc />
-        public override int IndexOf([CanBeNull] string parameterName)
+        public override int IndexOf(string parameterName)
         {
             if (parameterName == null)
                 return -1;
@@ -381,7 +382,7 @@ namespace Npgsql
         /// <param name="parameter">A reference to the requested parameter is returned in this out param if it is found in the list.  This value is null if the parameter is not found.</param>
         /// <returns><b>true</b> if the collection contains the parameter and param will contain the parameter; otherwise, <b>false</b>.</returns>
         [ContractAnnotation("=>true,parameter:notnull; =>false,parameter:null")]
-        public bool TryGetValue(string parameterName, [CanBeNull] out NpgsqlParameter parameter)
+        public bool TryGetValue(string parameterName, [NotNullWhenTrue] out NpgsqlParameter? parameter)
         {
             var index = IndexOf(parameterName);
 
@@ -480,7 +481,7 @@ namespace Npgsql
         }
 
         /// <inheritdoc />
-        protected override DbParameter GetParameter([CanBeNull] string parameterName)
+        protected override DbParameter GetParameter(string parameterName)
             => parameterName == null
                 ? throw new ArgumentNullException(nameof(parameterName))
                 : this[parameterName];

@@ -2,7 +2,6 @@
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using JetBrains.Annotations;
 using Npgsql.Logging;
 
 namespace Npgsql
@@ -19,8 +18,7 @@ namespace Npgsql
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
 
-        [CanBeNull]
-        internal static string GetUsername(bool includeRealm)
+        internal static string? GetUsername(bool includeRealm)
         {
             if (!_performedDetection)
             {

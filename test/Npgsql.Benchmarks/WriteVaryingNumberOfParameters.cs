@@ -6,9 +6,9 @@ namespace Npgsql.Benchmarks.Types
 {
     public class WriteVaryingNumberOfParameters
     {
-        NpgsqlConnection _conn;
-        NpgsqlCommand _cmd;
-        
+        NpgsqlConnection _conn = default!;
+        NpgsqlCommand _cmd = default!;
+
         [Params(10)]
         public int NumParams { get; set; }
 

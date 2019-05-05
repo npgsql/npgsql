@@ -2,6 +2,7 @@
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 
@@ -11,9 +12,9 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     class TimestampHandlerFactory : NpgsqlTypeHandlerFactory<DateTime>
     {
         // Check for the legacy floating point timestamps feature
-        protected override NpgsqlTypeHandler<DateTime> Create(NpgsqlConnection conn)
+        public override NpgsqlTypeHandler<DateTime> Create(PostgresType postgresType, NpgsqlConnection conn)
             => conn.HasIntegerDateTimes
-                ? new TimestampHandler(conn.Connector.ConvertInfinityDateTime)
+                ? new TimestampHandler(postgresType, conn.Connector!.ConvertInfinityDateTime)
                 : throw new NotSupportedException($"The deprecated floating-point date/time format is not supported by {nameof(Npgsql)}.");
     }
 
@@ -30,12 +31,12 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         /// </summary>
         protected readonly bool ConvertInfinityDateTime;
 
-        internal TimestampHandler(bool convertInfinityDateTime)
-            => ConvertInfinityDateTime = convertInfinityDateTime;
+        internal TimestampHandler(PostgresType postgresType, bool convertInfinityDateTime)
+            : base(postgresType) => ConvertInfinityDateTime = convertInfinityDateTime;
 
         #region Read
 
-        public override DateTime Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override DateTime Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
             // TODO: Convert directly to DateTime without passing through NpgsqlTimeStamp?
             var ts = ReadTimeStamp(buf, len, fieldDescription);
@@ -55,10 +56,10 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             }
         }
 
-        protected override NpgsqlDateTime ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        protected override NpgsqlDateTime ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             => ReadTimeStamp(buf, len, fieldDescription);
 
-        protected NpgsqlDateTime ReadTimeStamp(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        protected NpgsqlDateTime ReadTimeStamp(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
             var value = buf.ReadInt64();
             if (value == long.MaxValue)
@@ -97,13 +98,13 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
 
         #region Write
 
-        public override int ValidateAndGetLength(DateTime value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(DateTime value, NpgsqlParameter? parameter)
             => 8;
 
-        public override int ValidateAndGetLength(NpgsqlDateTime value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(NpgsqlDateTime value, NpgsqlParameter? parameter)
             => 8;
 
-        public override void Write(NpgsqlDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public override void Write(NpgsqlDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
             if (value.IsInfinity)
             {
@@ -131,7 +132,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             }
         }
 
-        public override void Write(DateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public override void Write(DateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
             if (ConvertInfinityDateTime)
             {

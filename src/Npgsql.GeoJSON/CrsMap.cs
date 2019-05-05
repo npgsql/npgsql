@@ -9,9 +9,9 @@ namespace Npgsql.GeoJSON
     {
         internal readonly int MinSrid;
         internal readonly int MaxSrid;
-        internal readonly string Authority;
+        internal readonly string? Authority;
 
-        internal CrsMapEntry(int minSrid, int maxSrid, string authority)
+        internal CrsMapEntry(int minSrid, int maxSrid, string? authority)
         {
             MinSrid = minSrid;
             MaxSrid = maxSrid;
@@ -74,15 +74,15 @@ namespace Npgsql.GeoJSON
 
     readonly partial struct CrsMap
     {
-        readonly CrsMapEntry[] _overriden;
+        readonly CrsMapEntry[]? _overriden;
 
-        internal CrsMap(CrsMapEntry[] overriden)
+        internal CrsMap(CrsMapEntry[]? overriden)
             => _overriden = overriden;
 
-        internal string GetAuthority(int srid)
+        internal string? GetAuthority(int srid)
             => GetAuthority(_overriden, srid) ?? GetAuthority(WellKnown, srid);
 
-        static string GetAuthority(CrsMapEntry[] entries, int srid)
+        static string? GetAuthority(CrsMapEntry[]? entries, int srid)
         {
             if (entries == null)
                 return null;

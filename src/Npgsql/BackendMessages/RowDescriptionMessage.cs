@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
-using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandlers;
 using Npgsql.TypeHandling;
@@ -21,8 +20,7 @@ namespace Npgsql.BackendMessages
     {
         public List<FieldDescription> Fields { get; }
         readonly Dictionary<string, int> _nameIndex;
-        [CanBeNull]
-        Dictionary<string, int> _insensitiveIndex;
+        Dictionary<string, int>? _insensitiveIndex;
         bool _isInsensitiveIndexInitialized;
 
         internal RowDescriptionMessage()
@@ -135,10 +133,10 @@ namespace Npgsql.BackendMessages
 
             // We should really have CompareOptions.IgnoreKanaType here, but see
             // https://github.com/dotnet/corefx/issues/12518#issuecomment-389658716
-            public bool Equals([NotNull] string x, [NotNull] string y)
+            public bool Equals(string x, string y)
                 => CompareInfo.Compare(x, y, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase | CompareOptions.IgnoreKanaType) == 0;
 
-            public int GetHashCode([NotNull] string o)
+            public int GetHashCode(string o)
                 => CompareInfo.GetSortKey(o, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase | CompareOptions.IgnoreKanaType).GetHashCode();
         }
     }
@@ -149,7 +147,9 @@ namespace Npgsql.BackendMessages
     /// </summary>
     public sealed class FieldDescription
     {
+#pragma warning disable CS8618  // Lazy-initialized type
         internal FieldDescription() {}
+#pragma warning restore CS8618
 
         internal FieldDescription(FieldDescription source)
         {

@@ -256,6 +256,7 @@ namespace Npgsql
             }
         }
 
+#pragma warning disable CS8625
         void Cleanup()
         {
             Log.Debug("COPY operation ended", _connector.Id);
@@ -265,6 +266,7 @@ namespace Npgsql
             _writeBuf = null;
             _isDisposed = true;
         }
+#pragma warning enable CS8625
 
         void CheckDisposed()
         {

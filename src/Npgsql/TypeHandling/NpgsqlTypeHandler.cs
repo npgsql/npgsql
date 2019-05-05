@@ -3,7 +3,6 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading.Tasks;
-using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandlers;
@@ -19,9 +18,14 @@ namespace Npgsql.TypeHandling
     public abstract class NpgsqlTypeHandler
     {
         /// <summary>
-        /// The PostgreSQL type handled by this type handler. Injected by <see cref="NpgsqlTypeHandlerFactory"/>.
+        /// The PostgreSQL type handled by this type handler.
         /// </summary>
-        internal PostgresType PostgresType { get; set; }
+        internal PostgresType PostgresType { get; }
+
+        /// <summary>
+        /// Constructs a <see cref="NpgsqlTypeHandler"/>.
+        /// </summary>
+        protected NpgsqlTypeHandler(PostgresType postgresType) => PostgresType = postgresType;
 
         #region Read
 
@@ -34,7 +38,7 @@ namespace Npgsql.TypeHandling
         /// <param name="async">If I/O is required to read the full length of the value, whether it should be performed synchronously or asynchronously.</param>
         /// <param name="fieldDescription">Additional PostgreSQL information about the type, such as the length in varchar(30).</param>
         /// <returns>The fully-read value.</returns>
-        protected internal abstract ValueTask<TAny> Read<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null);
+        protected internal abstract ValueTask<TAny> Read<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null);
 
         /// <summary>
         /// Reads a value of type <typeparamref name="TAny"/> with the given length from the provided buffer,
@@ -45,49 +49,54 @@ namespace Npgsql.TypeHandling
         /// <param name="len">The byte length of the value. The buffer might not contain the full length, requiring I/O to be performed.</param>
         /// <param name="fieldDescription">Additional PostgreSQL information about the type, such as the length in varchar(30).</param>
         /// <returns>The fully-read value.</returns>
-        internal abstract TAny Read<TAny>(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null);
+        internal abstract TAny Read<TAny>(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null);
 
         /// <summary>
         /// Reads a column as the type handler's default read type, assuming that it is already entirely
         /// in memory (i.e. no I/O is necessary). Called by <see cref="NpgsqlDataReader"/> in non-sequential mode, which
         /// buffers entire rows in memory.
         /// </summary>
-        internal abstract object ReadAsObject(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null);
+        internal abstract object ReadAsObject(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null);
 
         /// <summary>
         /// Reads a column as the type handler's default read type. If it is not already entirely in
         /// memory, sync or async I/O will be performed as specified by <paramref name="async"/>.
         /// </summary>
-        internal abstract ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null);
+        internal abstract ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null);
 
         /// <summary>
         /// Reads a column as the type handler's provider-specific type, assuming that it is already entirely
         /// in memory (i.e. no I/O is necessary). Called by <see cref="NpgsqlDataReader"/> in non-sequential mode, which
         /// buffers entire rows in memory.
         /// </summary>
-        internal virtual object ReadPsvAsObject(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        internal virtual object ReadPsvAsObject(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             => ReadAsObject(buf, len, fieldDescription);
 
         /// <summary>
         /// Reads a column as the type handler's provider-specific type. If it is not already entirely in
         /// memory, sync or async I/O will be performed as specified by <paramref name="async"/>.
         /// </summary>
-        internal virtual ValueTask<object> ReadPsvAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+        internal virtual ValueTask<object> ReadPsvAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
             => ReadAsObject(buf, len, async, fieldDescription);
 
+#pragma warning disable CS8653
+// The following function is used by array and range to read their elements, including their length - which means null
+// handling. Only arrays can actually get nulls here (in ranges infinite bounds are indicated via header flags).
+// We can't mix generics and nullability, hence the warning suppression - but we have an effort to support
+// nullable arrays which may take care of this.
         /// <summary>
         /// Reads a value from the buffer, assuming our read position is at the value's preceding length.
         /// If the length is -1 (null), this method will return the default value.
         /// </summary>
-        [ItemCanBeNull]
-        internal async ValueTask<TAny> ReadWithLength<TAny>(NpgsqlReadBuffer buf, bool async, FieldDescription fieldDescription = null)
+        internal async ValueTask<TAny> ReadWithLength<TAny>(NpgsqlReadBuffer buf, bool async, FieldDescription? fieldDescription = null)
         {
             await buf.Ensure(4, async);
             var len = buf.ReadInt32();
             if (len == -1)
-                return default(TAny);
+                return default;
             return await Read<TAny>(buf, len, async, fieldDescription);
         }
+#pragma warning restore CS8653
 
         #endregion
 
@@ -96,12 +105,12 @@ namespace Npgsql.TypeHandling
         /// <summary>
         /// Called to validate and get the length of a value of a generic <see cref="NpgsqlParameter{T}"/>.
         /// </summary>
-        protected internal abstract int ValidateAndGetLength<TAny>([CanBeNull] TAny value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter);
+        protected internal abstract int ValidateAndGetLength<TAny>(TAny value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter);
 
         /// <summary>
         /// Called to write the value of a generic <see cref="NpgsqlParameter{T}"/>.
         /// </summary>
-        internal abstract Task WriteWithLengthInternal<TAny>([CanBeNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async);
+        internal abstract Task WriteWithLengthInternal<TAny>(TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async);
 
         /// <summary>
         /// Responsible for validating that a value represents a value of the correct and which can be
@@ -118,7 +127,7 @@ namespace Npgsql.TypeHandling
         /// information relevant to the write process (e.g. <see cref="NpgsqlParameter.Size"/>).
         /// </param>
         /// <returns>The number of bytes required to write the value.</returns>
-        protected internal abstract int ValidateObjectAndGetLength([CanBeNull] object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter);
+        protected internal abstract int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter);
 
         /// <summary>
         /// Writes a value to the provided buffer, using either sync or async I/O.
@@ -131,26 +140,26 @@ namespace Npgsql.TypeHandling
         /// information relevant to the write process (e.g. <see cref="NpgsqlParameter.Size"/>).
         /// </param>
         /// <param name="async">If I/O is required to read the full length of the value, whether it should be performed synchronously or asynchronously.</param>
-        protected internal abstract Task WriteObjectWithLength([CanBeNull] object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async);
+        protected internal abstract Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async);
 
         #endregion Write
 
         #region Misc
 
-        internal abstract Type GetFieldType(FieldDescription fieldDescription = null);
-        internal abstract Type GetProviderSpecificFieldType(FieldDescription fieldDescription = null);
+        internal abstract Type GetFieldType(FieldDescription? fieldDescription = null);
+        internal abstract Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null);
 
         internal virtual bool PreferTextWrite => false;
 
         /// <summary>
         /// Creates a type handler for arrays of this handler's type.
         /// </summary>
-        public abstract ArrayHandler CreateArrayHandler(PostgresType arrayBackendType);
+        public abstract ArrayHandler CreateArrayHandler(PostgresArrayType arrayBackendType);
 
         /// <summary>
         /// Creates a type handler for ranges of this handler's type.
         /// </summary>
-        public abstract RangeHandler CreateRangeHandler(PostgresType rangeBackendType);
+        public abstract RangeHandler CreateRangeHandler(PostgresRangeType rangeBackendType);
 
         /// <summary>
         /// Used to create an exception when the provided type can be converted and written, but an
@@ -166,7 +175,7 @@ namespace Npgsql.TypeHandling
 
         #region Code generation for non-generic writing
 
-        internal delegate Task NonGenericWriteWithLength(NpgsqlTypeHandler handler, object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async);
+        internal delegate Task NonGenericWriteWithLength(NpgsqlTypeHandler handler, object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async);
 
         internal static NonGenericWriteWithLength GenerateNonGenericWriteMethod(Type handlerType, Type interfaceType)
         {
@@ -175,7 +184,7 @@ namespace Npgsql.TypeHandling
                 i.GetGenericTypeDefinition() == interfaceType
             ).Reverse().ToList();
 
-            Expression ifElseExpression = null;
+            Expression? ifElseExpression = null;
 
             // NpgsqlTypeHandler handler, object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async
             var handlerParam = Expression.Parameter(typeof(NpgsqlTypeHandler), "handler");

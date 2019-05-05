@@ -5,6 +5,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using NpgsqlTypes;
 
@@ -30,7 +31,8 @@ namespace Npgsql.TypeHandlers
 
         #region Construction
 
-        internal EnumHandler(Dictionary<TEnum, string> enumToLabel, Dictionary<string, TEnum> labelToEnum)
+        internal EnumHandler(PostgresType postgresType, Dictionary<TEnum, string> enumToLabel, Dictionary<string, TEnum> labelToEnum)
+            : base(postgresType)
         {
             Debug.Assert(typeof(TEnum).GetTypeInfo().IsEnum, "EnumHandler instantiated for non-enum type");
             _enumToLabel = enumToLabel;
@@ -41,7 +43,7 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        public override TEnum Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override TEnum Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
             var str = buf.ReadString(len);
             var success = _labelToEnum.TryGetValue(str, out var value);
@@ -56,12 +58,12 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        public override int ValidateAndGetLength(TEnum value, NpgsqlParameter parameter = null)
+        public override int ValidateAndGetLength(TEnum value, NpgsqlParameter? parameter)
             => _enumToLabel.TryGetValue(value, out var str)
                 ? Encoding.UTF8.GetByteCount(str)
                 : throw new InvalidCastException($"Can't write value {value} as enum {typeof(TEnum)}");
 
-        public override void Write(TEnum value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter = null)
+        public override void Write(TEnum value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
             if (!_enumToLabel.TryGetValue(value, out var str))
                 throw new InvalidCastException($"Can't write value {value} as enum {typeof(TEnum)}");
@@ -92,10 +94,10 @@ namespace Npgsql.TypeHandlers
 
         internal EnumTypeHandlerFactory(INpgsqlNameTranslator nameTranslator)
         {
+            NameTranslator = nameTranslator;
+
             foreach (var field in typeof(TEnum).GetFields(BindingFlags.Static | BindingFlags.Public))
             {
-                NameTranslator = nameTranslator;
-
                 var attribute = (PgNameAttribute)field.GetCustomAttributes(typeof(PgNameAttribute), false).FirstOrDefault();
                 var enumName = attribute == null
                     ? nameTranslator.TranslateMemberName(field.Name)
@@ -106,8 +108,8 @@ namespace Npgsql.TypeHandlers
             }
         }
 
-        protected override NpgsqlTypeHandler<TEnum> Create(NpgsqlConnection conn)
-            => new EnumHandler<TEnum>(_enumToLabel, _labelToEnum);
+        public override NpgsqlTypeHandler<TEnum> Create(PostgresType postgresType, NpgsqlConnection conn)
+            => new EnumHandler<TEnum>(postgresType, _enumToLabel, _labelToEnum);
 
         public INpgsqlNameTranslator NameTranslator { get; }
     }

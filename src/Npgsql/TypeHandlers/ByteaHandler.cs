@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Data;
 using System.Threading.Tasks;
-using JetBrains.Annotations;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -29,8 +29,13 @@ namespace Npgsql.TypeHandlers
         , INpgsqlTypeHandler<ReadOnlyMemory<byte>>, INpgsqlTypeHandler<Memory<byte>>
 #endif
     {
+        /// <summary>
+        /// Constructs a <see cref="ByteaHandler"/>.
+        /// </summary>
+        public ByteaHandler(PostgresType postgresType) : base(postgresType) {}
+
         /// <inheritdoc />
-        public override async ValueTask<byte[]> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+        public override async ValueTask<byte[]> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
             var bytes = new byte[len];
             var pos = 0;
@@ -46,31 +51,31 @@ namespace Npgsql.TypeHandlers
             return bytes;
         }
 
-        ValueTask<ArraySegment<byte>> INpgsqlTypeHandler<ArraySegment<byte>>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        ValueTask<ArraySegment<byte>> INpgsqlTypeHandler<ArraySegment<byte>>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
         {
             buf.Skip(len);
             throw new NpgsqlSafeReadException(new NotSupportedException("Only writing ArraySegment<byte> to PostgreSQL bytea is supported, no reading."));
         }
 
-        int ValidateAndGetLength(int bufferLen, NpgsqlParameter parameter)
+        int ValidateAndGetLength(int bufferLen, NpgsqlParameter? parameter)
             => parameter == null || parameter.Size <= 0 || parameter.Size >= bufferLen
                 ? bufferLen
                 : parameter.Size;
 
         /// <inheritdoc />
-        public override int ValidateAndGetLength(byte[] value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(byte[] value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLength(value.Length, parameter);
 
         /// <inheritdoc />
-        public int ValidateAndGetLength(ArraySegment<byte> value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        public int ValidateAndGetLength(ArraySegment<byte> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLength(value.Count, parameter);
 
         /// <inheritdoc />
-        public override Task Write(byte[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter, bool async)
+        public override Task Write(byte[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => Write(value, buf, 0, ValidateAndGetLength(value.Length, parameter), async);
 
         /// <inheritdoc />
-        public Task Write(ArraySegment<byte> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter, bool async)
+        public Task Write(ArraySegment<byte> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => Write(value.Array, buf, value.Offset, ValidateAndGetLength(value.Count, parameter), async);
 
         async Task Write(byte[] value, NpgsqlWriteBuffer buf, int offset, int count, bool async)
@@ -90,15 +95,15 @@ namespace Npgsql.TypeHandlers
 
 #if !NETSTANDARD2_0 && !NET461
         /// <inheritdoc />
-        public int ValidateAndGetLength(Memory<byte> value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        public int ValidateAndGetLength(Memory<byte> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLength(value.Length, parameter);
 
         /// <inheritdoc />
-        public int ValidateAndGetLength(ReadOnlyMemory<byte> value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        public int ValidateAndGetLength(ReadOnlyMemory<byte> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLength(value.Length, parameter);
 
         /// <inheritdoc />
-        public async Task Write(ReadOnlyMemory<byte> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter, bool async)
+        public async Task Write(ReadOnlyMemory<byte> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             if (parameter != null && parameter.Size > 0 && parameter.Size < value.Length)
                 value = value.Slice(0, parameter.Size);
@@ -116,16 +121,16 @@ namespace Npgsql.TypeHandlers
         }
 
         /// <inheritdoc />
-        public Task Write(Memory<byte> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        public Task Write(Memory<byte> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => Write((ReadOnlyMemory<byte>)value, buf, lengthCache, parameter, async);
 
-        ValueTask<ReadOnlyMemory<byte>> INpgsqlTypeHandler<ReadOnlyMemory<byte>>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        ValueTask<ReadOnlyMemory<byte>> INpgsqlTypeHandler<ReadOnlyMemory<byte>>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
         {
             buf.Skip(len);
             throw new NpgsqlSafeReadException(new NotSupportedException("Only writing ReadOnlyMemory<byte> to PostgreSQL bytea is supported, no reading."));
         }
 
-        ValueTask<Memory<byte>> INpgsqlTypeHandler<Memory<byte>>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        ValueTask<Memory<byte>> INpgsqlTypeHandler<Memory<byte>>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
         {
             buf.Skip(len);
             throw new NpgsqlSafeReadException(new NotSupportedException("Only writing Memory<byte> to PostgreSQL bytea is supported, no reading."));

@@ -37,7 +37,7 @@ namespace Npgsql.PluginTests
             }
         }
 
-        protected override NpgsqlConnection OpenConnection(string connectionString = null)
+        protected override NpgsqlConnection OpenConnection(string? connectionString = null)
         {
             var conn = base.OpenConnection(connectionString);
             conn.TypeMapper.UseRawPostgis();

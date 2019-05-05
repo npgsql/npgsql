@@ -7,7 +7,7 @@ namespace Npgsql.TypeHandling
     /// <summary>
     /// A type handler factory used to instantiate Npgsql's built-in type handlers.
     /// </summary>
-    class DefaultTypeHandlerFactory : NpgsqlTypeHandlerFactory
+    class DefaultTypeHandlerFactory : INpgsqlTypeHandlerFactory
     {
         readonly Type _handlerType;
 
@@ -27,13 +27,9 @@ namespace Npgsql.TypeHandling
             _handlerType = handlerType;
         }
 
-        internal override NpgsqlTypeHandler Create(PostgresType pgType, NpgsqlConnection conn)
-        {
-            var handler = (NpgsqlTypeHandler)Activator.CreateInstance(_handlerType);
-            handler.PostgresType = pgType;
-            return handler;
-        }
+        public NpgsqlTypeHandler Create(PostgresType pgType, NpgsqlConnection conn)
+            => (NpgsqlTypeHandler)Activator.CreateInstance(_handlerType, pgType);
 
-        internal override Type DefaultValueType { get; }
+        public Type DefaultValueType { get; }
     }
 }

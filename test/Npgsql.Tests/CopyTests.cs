@@ -892,9 +892,9 @@ namespace Npgsql.Tests
                 {
                     writer.StartRow();
                     writer.Write(DBNull.Value, NpgsqlDbType.Integer);
-                    writer.Write((string)null, NpgsqlDbType.Uuid);
+                    writer.Write((string?)null, NpgsqlDbType.Uuid);
                     writer.Write(DBNull.Value);
-                    writer.Write((string)null);
+                    writer.Write((string?)null);
                     var rowsWritten = writer.Complete();
                     Assert.That(rowsWritten, Is.EqualTo(1));
                 }
@@ -939,7 +939,7 @@ namespace Npgsql.Tests
         /// </summary>
         void StateAssertions(NpgsqlConnection conn)
         {
-            Assert.That(conn.Connector.State, Is.EqualTo(ConnectorState.Copy));
+            Assert.That(conn.Connector!.State, Is.EqualTo(ConnectorState.Copy));
             Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open | ConnectionState.Fetching));
             Assert.That(() => conn.ExecuteScalar("SELECT 1"), Throws.Exception.TypeOf<NpgsqlOperationInProgressException>());

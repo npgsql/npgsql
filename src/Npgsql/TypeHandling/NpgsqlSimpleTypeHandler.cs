@@ -7,6 +7,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 
 namespace Npgsql.TypeHandling
 {
@@ -22,7 +23,7 @@ namespace Npgsql.TypeHandling
     /// </typeparam>
     public abstract class NpgsqlSimpleTypeHandler<TDefault> : NpgsqlTypeHandler<TDefault>, INpgsqlSimpleTypeHandler<TDefault>
     {
-        delegate int NonGenericValidateAndGetLength(NpgsqlTypeHandler handler, object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter);
+        delegate int NonGenericValidateAndGetLength(NpgsqlTypeHandler handler, object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter);
 
         readonly NonGenericValidateAndGetLength _nonGenericValidateAndGetLength;
         readonly NonGenericWriteWithLength _nonGenericWriteWithLength;
@@ -33,7 +34,8 @@ namespace Npgsql.TypeHandling
         /// <summary>
         /// Constructs an <see cref="NpgsqlSimpleTypeHandler{TDefault}"/>.
         /// </summary>
-        protected NpgsqlSimpleTypeHandler()
+        protected NpgsqlSimpleTypeHandler(PostgresType postgresType)
+            : base(postgresType)
         {
             // Get code-generated delegates for non-generic ValidateAndGetLength/WriteWithLengthInternal
             (_nonGenericValidateAndGetLength, _nonGenericWriteWithLength) =
@@ -54,7 +56,7 @@ namespace Npgsql.TypeHandling
         /// <param name="len">The byte length of the value. The buffer might not contain the full length, requiring I/O to be performed.</param>
         /// <param name="fieldDescription">Additional PostgreSQL information about the type, such as the length in varchar(30).</param>
         /// <returns>The fully-read value.</returns>
-        public abstract TDefault Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null);
+        public abstract TDefault Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null);
 
         /// <summary>
         /// Reads a value of type <typeparamref name="TDefault"/> with the given length from the provided buffer,
@@ -66,7 +68,7 @@ namespace Npgsql.TypeHandling
         /// <param name="async">If I/O is required to read the full length of the value, whether it should be performed synchronously or asynchronously.</param>
         /// <param name="fieldDescription">Additional PostgreSQL information about the type, such as the length in varchar(30).</param>
         /// <returns>The fully-read value.</returns>
-        public sealed override ValueTask<TDefault> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+        public sealed override ValueTask<TDefault> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
             => Read<TDefault>(buf, len, async, fieldDescription);
 
         /// <summary>
@@ -78,7 +80,7 @@ namespace Npgsql.TypeHandling
         /// <param name="async">If I/O is required to read the full length of the value, whether it should be performed synchronously or asynchronously.</param>
         /// <param name="fieldDescription">Additional PostgreSQL information about the type, such as the length in varchar(30).</param>
         /// <returns>The fully-read value.</returns>
-        protected internal sealed override async ValueTask<TAny> Read<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+        protected internal sealed override async ValueTask<TAny> Read<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
             await buf.Ensure(len, async);
             return Read<TAny>(buf, len, fieldDescription);
@@ -95,7 +97,7 @@ namespace Npgsql.TypeHandling
         /// <param name="len">The byte length of the value. The buffer might not contain the full length, requiring I/O to be performed.</param>
         /// <param name="fieldDescription">Additional PostgreSQL information about the type, such as the length in varchar(30).</param>
         /// <returns>The fully-read value.</returns>
-        internal override TAny Read<TAny>(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        internal override TAny Read<TAny>(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
             Debug.Assert(len <= buf.ReadBytesLeft);
 
@@ -127,7 +129,7 @@ namespace Npgsql.TypeHandling
         /// information relevant to the write process (e.g. <see cref="NpgsqlParameter.Size"/>).
         /// </param>
         /// <returns>The number of bytes required to write the value.</returns>
-        public abstract int ValidateAndGetLength(TDefault value, NpgsqlParameter parameter);
+        public abstract int ValidateAndGetLength(TDefault value, NpgsqlParameter? parameter);
 
         /// <summary>
         /// Writes a value to the provided buffer, with the assumption that there is enough space in the buffer
@@ -139,12 +141,12 @@ namespace Npgsql.TypeHandling
         /// The <see cref="NpgsqlParameter"/> instance where this value resides. Can be used to access additional
         /// information relevant to the write process (e.g. <see cref="NpgsqlParameter.Size"/>).
         /// </param>
-        public abstract void Write(TDefault value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter);
+        public abstract void Write(TDefault value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter);
 
         /// <summary>
         /// This method is sealed, override <see cref="ValidateAndGetLength(TDefault,NpgsqlParameter)"/>.
         /// </summary>
-        protected internal override int ValidateAndGetLength<TAny>(TAny value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        protected internal override int ValidateAndGetLength<TAny>(TAny value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => this is INpgsqlSimpleTypeHandler<TAny> typedHandler
                 ? typedHandler.ValidateAndGetLength(value, parameter)
                 : throw new InvalidCastException($"Can't write CLR type {typeof(TAny)} to database type {PgDisplayName}");
@@ -152,7 +154,7 @@ namespace Npgsql.TypeHandling
         /// <summary>
         /// In the vast majority of cases writing a parameter to the buffer won't need to perform I/O.
         /// </summary>
-        internal sealed override Task WriteWithLengthInternal<TAny>(TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        internal sealed override Task WriteWithLengthInternal<TAny>(TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             if (value == null || typeof(TAny) == typeof(DBNull))
             {
@@ -194,13 +196,13 @@ namespace Npgsql.TypeHandling
         /// <summary>
         /// Simple type handlers override <see cref="Write(TDefault,NpgsqlWriteBuffer,NpgsqlParameter)"/> instead of this.
         /// </summary>
-        public sealed override Task Write(TDefault value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        public sealed override Task Write(TDefault value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => throw new NotSupportedException();
 
         /// <summary>
         /// Simple type handlers override <see cref="ValidateAndGetLength(TDefault,NpgsqlParameter)"/> instead of this.
         /// </summary>
-        public sealed override int ValidateAndGetLength(TDefault value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        public sealed override int ValidateAndGetLength(TDefault value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => throw new NotSupportedException();
 
         // Object overloads for non-generic NpgsqlParameter
@@ -209,7 +211,7 @@ namespace Npgsql.TypeHandling
         /// Called to validate and get the length of a value of a non-generic <see cref="NpgsqlParameter"/>.
         /// Type handlers generally don't need to override this.
         /// </summary>
-        protected internal override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        protected internal override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => value == null || value is DBNull
                 ? -1
                 : _nonGenericValidateAndGetLength(this, value, ref lengthCache, parameter);
@@ -218,9 +220,9 @@ namespace Npgsql.TypeHandling
         /// Called to write the value of a non-generic <see cref="NpgsqlParameter"/>.
         /// Type handlers generally don't need to override this.
         /// </summary>
-        protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => value == null || value is DBNull  // For null just go through the default WriteWithLengthInternal
-                ? WriteWithLengthInternal<DBNull>(null, buf, lengthCache, parameter, async)
+                ? WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async)
                 : _nonGenericWriteWithLength(this, value, buf, lengthCache, parameter, async);
 
         #endregion
@@ -242,7 +244,7 @@ namespace Npgsql.TypeHandling
                 i.GetGenericTypeDefinition() == typeof(INpgsqlSimpleTypeHandler<>)
             ).Reverse().ToList();
 
-            Expression ifElseExpression = null;
+            Expression? ifElseExpression = null;
 
             var handlerParam = Expression.Parameter(typeof(NpgsqlTypeHandler), "handler");
             var valueParam = Expression.Parameter(typeof(object), "value");

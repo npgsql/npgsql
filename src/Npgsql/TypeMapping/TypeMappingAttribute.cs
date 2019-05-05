@@ -35,7 +35,7 @@ namespace Npgsql.TypeMapping
         /// When <see cref="NpgsqlParameter.NpgsqlDbType"/> or <see cref="NpgsqlParameter.Value"/>
         /// set, <see cref="NpgsqlParameter.DbType"/> will be set to this value.
         /// </param>
-        internal TypeMappingAttribute(string pgName, NpgsqlDbType? npgsqlDbType, [CanBeNull] DbType[] dbTypes, [CanBeNull] Type[] clrTypes, DbType? inferredDbType)
+        internal TypeMappingAttribute(string pgName, NpgsqlDbType? npgsqlDbType, DbType[]? dbTypes, Type[]? clrTypes, DbType? inferredDbType)
         {
             if (string.IsNullOrWhiteSpace(pgName))
                 throw new ArgumentException("pgName can't be empty", nameof(pgName));
@@ -47,7 +47,7 @@ namespace Npgsql.TypeMapping
             InferredDbType = inferredDbType;
         }
 
-        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, DbType[] dbTypes, [CanBeNull] Type[] clrTypes, DbType inferredDbType)
+        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, DbType[] dbTypes, Type[]? clrTypes, DbType inferredDbType)
             : this(pgName, (NpgsqlDbType?)npgsqlDbType, dbTypes, clrTypes, inferredDbType)
         { }
 
@@ -74,7 +74,7 @@ namespace Npgsql.TypeMapping
             : this(pgName, npgsqlDbType, new[] { dbType }, clrTypes, dbType)
         { }
 
-        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, DbType dbType, Type clrType = null)
+        internal TypeMappingAttribute(string pgName, NpgsqlDbType npgsqlDbType, DbType dbType, Type? clrType = null)
             : this(pgName, npgsqlDbType, new[] { dbType }, clrType == null ? null : new[] { clrType }, dbType)
         { }
 

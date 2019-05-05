@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 
@@ -9,8 +10,8 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("record")]
     class RecordHandlerFactory : NpgsqlTypeHandlerFactory<object[]>
     {
-        protected override NpgsqlTypeHandler<object[]> Create(NpgsqlConnection conn)
-            => new RecordHandler(conn.Connector.TypeMapper);
+        public override NpgsqlTypeHandler<object[]> Create(PostgresType pgType, NpgsqlConnection conn)
+            => new RecordHandler(pgType, conn.Connector!.TypeMapper);
     }
 
     /// <summary>
@@ -29,14 +30,15 @@ namespace Npgsql.TypeHandlers
     {
         readonly ConnectorTypeMapper _typeMapper;
 
-        public RecordHandler(ConnectorTypeMapper typeMapper)
+        public RecordHandler(PostgresType postgresType, ConnectorTypeMapper typeMapper)
+            : base(postgresType)
         {
             _typeMapper = typeMapper;
         }
 
         #region Read
 
-        public override async ValueTask<object[]> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+        public override async ValueTask<object[]> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
             await buf.Ensure(4, async);
             var fieldCount = buf.ReadInt32();
@@ -59,10 +61,10 @@ namespace Npgsql.TypeHandlers
 
         #region Write (unsupported)
 
-        public override int ValidateAndGetLength(object[] value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(object[] value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => throw new NotSupportedException("Can't write record types");
 
-        public override Task Write(object[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        public override Task Write(object[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => throw new NotSupportedException("Can't write record types");
 
         #endregion

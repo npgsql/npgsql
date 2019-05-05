@@ -28,14 +28,11 @@ namespace Npgsql
         // TODO: Switch to private protected once mono's msbuild/csc supports C# 7.2
         internal NpgsqlDbType? _npgsqlDbType;
         internal DbType? _dbType;
-        [CanBeNull]
-        internal string _dataTypeName;
+        internal string? _dataTypeName;
         // ReSharper restore InconsistentNaming
-        [CanBeNull]
-        Type _specificType;
+        Type? _specificType;
         string _name = string.Empty;
-        [CanBeNull]
-        object _value;
+        object? _value;
 
         internal string TrimmedName { get; private set; } = string.Empty;
 
@@ -43,13 +40,11 @@ namespace Npgsql
         /// Can be used to communicate a value from the validation phase to the writing phase.
         /// To be used by type handlers only.
         /// </summary>
-        public object ConvertedValue { get; set; }
+        public object? ConvertedValue { get; set; }
 
-        [CanBeNull]
-        internal NpgsqlLengthCache LengthCache { get; set; }
+        internal NpgsqlLengthCache? LengthCache { get; set; }
 
-        [CanBeNull]
-        internal NpgsqlTypeHandler Handler { get; set; }
+        internal NpgsqlTypeHandler? Handler { get; set; }
 
         internal FormatCode FormatCode { get; private set; }
 
@@ -67,6 +62,7 @@ namespace Npgsql
             SourceVersion = DataRowVersion.Current;
         }
 
+#nullable disable
         /// <summary>
         /// Initializes a new instance of the <see cref="NpgsqlParameter">NpgsqlParameter</see>
         /// class with the parameter name and a value of the new <b>NpgsqlParameter</b>.
@@ -231,7 +227,7 @@ namespace Npgsql
             Value = value;
             DbType = parameterType;
         }
-
+#nullable enable
         #endregion
 
         #region Name
@@ -242,7 +238,7 @@ namespace Npgsql
         /// <value>The name of the <see cref="NpgsqlParameter">NpgsqlParameter</see>.
         /// The default is an empty string.</value>
         [DefaultValue("")]
-        public sealed override string ParameterName
+        public sealed override string? ParameterName
         {
             get => _name;
             set
@@ -270,8 +266,7 @@ namespace Npgsql
 
         /// <inheritdoc />
         [TypeConverter(typeof(StringConverter)), Category("Data")]
-        [CanBeNull]
-        public override object Value
+        public override object? Value
         {
             get => _value;
             set
@@ -290,8 +285,7 @@ namespace Npgsql
         /// The default value is null.</value>
         [Category("Data")]
         [TypeConverter(typeof(StringConverter))]
-        [CanBeNull]
-        public object NpgsqlValue
+        public object? NpgsqlValue
         {
             get => Value;
             set => Value = value;
@@ -370,8 +364,8 @@ namespace Npgsql
         /// <summary>
         /// Used to specify which PostgreSQL type will be sent to the database for this parameter.
         /// </summary>
-        [PublicAPI, CanBeNull]
-        public string DataTypeName
+        [PublicAPI]
+        public string? DataTypeName
         {
             get
             {
@@ -457,7 +451,7 @@ namespace Npgsql
         /// <inheritdoc />
         [DefaultValue("")]
         [Category("Data")]
-        public sealed override string SourceColumn { get; set; }
+        public sealed override string? SourceColumn { get; set; }
 
         /// <inheritdoc />
         [Category("Data"), DefaultValue(DataRowVersion.Current)]
@@ -470,8 +464,7 @@ namespace Npgsql
         /// <summary>
         /// The collection to which this parameter belongs, if any.
         /// </summary>
-        [CanBeNull]
-        public NpgsqlParameterCollection Collection { get; set; }
+        public NpgsqlParameterCollection? Collection { get; set; }
 #pragma warning restore CA2227
 
         /// <summary>
@@ -480,7 +473,7 @@ namespace Npgsql
         /// <see cref="NpgsqlCommandBuilder.DeriveParameters"/> and can be used to
         /// acquire additional information about the parameters' data type.
         /// </summary>
-        public PostgresType PostgresType { get; internal set; }
+        public PostgresType? PostgresType { get; internal set; }
 
         #endregion Other Properties
 
@@ -526,15 +519,16 @@ namespace Npgsql
                 return 0;
 
             var lengthCache = LengthCache;
-            var len = Handler.ValidateObjectAndGetLength(Value, ref lengthCache, this);
+            var len = Handler.ValidateObjectAndGetLength(_value, ref lengthCache, this);
             LengthCache = lengthCache;
             return len;
         }
 
         internal virtual Task WriteWithLength(NpgsqlWriteBuffer buf, bool async)
         {
+            Debug.Assert(_value != null);
             Debug.Assert(Handler != null);
-            return Handler.WriteObjectWithLength(Value, buf, LengthCache, this, async);
+            return Handler.WriteObjectWithLength(_value, buf, LengthCache, this, async);
         }
 
         /// <inheritdoc />

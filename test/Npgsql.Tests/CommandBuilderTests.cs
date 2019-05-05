@@ -535,7 +535,7 @@ $$ LANGUAGE SQL;
             {
                 cmd.Parameters.AddWithValue("@p", NpgsqlDbType.Integer, answer);
                 cmd.Prepare();
-                Assert.That(conn.Connector.PreparedStatementManager.NumPrepared, Is.EqualTo(1));
+                Assert.That(conn.Connector!.PreparedStatementManager.NumPrepared, Is.EqualTo(1));
 
                 var ex = Assert.Throws<NpgsqlException>(() =>
                 {
@@ -631,7 +631,7 @@ $$ LANGUAGE SQL;
                 Assert.That(cmd.Parameters[0].ParameterName, Is.EqualTo("x"));
                 Assert.That(cmd.Parameters[0].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Unknown));
                 Assert.That(cmd.Parameters[0].PostgresType, Is.InstanceOf<PostgresEnumType>());
-                Assert.That(cmd.Parameters[0].PostgresType.Name, Is.EqualTo("fruit"));
+                Assert.That(cmd.Parameters[0].PostgresType!.Name, Is.EqualTo("fruit"));
                 Assert.That(cmd.Parameters[0].DataTypeName, Does.EndWith("fruit"));
                 cmd.Parameters[0].Value = val1;
                 using (var reader = cmd.ExecuteReader(CommandBehavior.SingleResult | CommandBehavior.SingleRow))
@@ -680,8 +680,9 @@ $$ LANGUAGE SQL;
         class SomeComposite
         {
             public int X { get; set; }
+
             [PgName("some_text")]
-            public string SomeText { get; set; }
+            public string SomeText { get; set; } = "";
         }
 
         [Test]
@@ -707,7 +708,7 @@ $$ LANGUAGE SQL;
                     Assert.That(cmd.Parameters[0].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Unknown));
                     Assert.That(cmd.Parameters[0].PostgresType, Is.InstanceOf<PostgresCompositeType>());
                     Assert.That(cmd.Parameters[0].DataTypeName, Does.EndWith("deriveparameterscomposite1"));
-                    var p1Fields = ((PostgresCompositeType)cmd.Parameters[0].PostgresType).Fields;
+                    var p1Fields = ((PostgresCompositeType)cmd.Parameters[0].PostgresType!).Fields;
                     Assert.That(p1Fields[0].Name, Is.EqualTo("x"));
                     Assert.That(p1Fields[1].Name, Is.EqualTo("some_text"));
 
@@ -715,7 +716,7 @@ $$ LANGUAGE SQL;
                     Assert.That(cmd.Parameters[1].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Unknown));
                     Assert.That(cmd.Parameters[1].PostgresType, Is.InstanceOf<PostgresArrayType>());
                     Assert.That(cmd.Parameters[1].DataTypeName, Does.EndWith("deriveparameterscomposite1[]"));
-                    var p2Element = ((PostgresArrayType)cmd.Parameters[1].PostgresType).Element;
+                    var p2Element = ((PostgresArrayType)cmd.Parameters[1].PostgresType!).Element;
                     Assert.That(p2Element, Is.InstanceOf<PostgresCompositeType>());
                     Assert.That(p2Element.Name, Is.EqualTo("deriveparameterscomposite1"));
                     var p2Fields = ((PostgresCompositeType)p2Element).Fields;
@@ -757,7 +758,7 @@ $$ LANGUAGE SQL;
                     Assert.That(cmd.Parameters[0].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Unknown));
                     Assert.That(cmd.Parameters[0].PostgresType, Is.InstanceOf<PostgresCompositeType>());
                     Assert.That(cmd.Parameters[0].DataTypeName, Does.EndWith("deriveparameterscomposite2"));
-                    var p1Fields = ((PostgresCompositeType)cmd.Parameters[0].PostgresType).Fields;
+                    var p1Fields = ((PostgresCompositeType)cmd.Parameters[0].PostgresType!).Fields;
                     Assert.That(p1Fields[0].Name, Is.EqualTo("x"));
                     Assert.That(p1Fields[1].Name, Is.EqualTo("some_text"));
 
@@ -793,7 +794,7 @@ $$ LANGUAGE SQL;
                     Assert.That(cmd.Parameters[0].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Unknown));
                     Assert.That(cmd.Parameters[0].PostgresType, Is.InstanceOf<PostgresArrayType>());
                     Assert.That(cmd.Parameters[0].DataTypeName, Does.EndWith("deriveparameterscomposite3[]"));
-                    var p1Element = ((PostgresArrayType)cmd.Parameters[0].PostgresType).Element;
+                    var p1Element = ((PostgresArrayType)cmd.Parameters[0].PostgresType!).Element;
                     Assert.That(p1Element, Is.InstanceOf<PostgresCompositeType>());
                     Assert.That(p1Element.Name, Is.EqualTo("deriveparameterscomposite3"));
                     var p1Fields = ((PostgresCompositeType)p1Element).Fields;

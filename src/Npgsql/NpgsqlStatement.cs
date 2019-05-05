@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 
 namespace Npgsql
@@ -50,8 +49,7 @@ namespace Npgsql
         /// <summary>
         /// The RowDescription message for this query. If null, the query does not return rows (e.g. INSERT)
         /// </summary>
-        [CanBeNull]
-        internal RowDescriptionMessage Description
+        internal RowDescriptionMessage? Description
         {
             get => PreparedStatement == null ? _description : PreparedStatement.Description;
             set
@@ -63,15 +61,13 @@ namespace Npgsql
             }
         }
 
-        [CanBeNull]
-        RowDescriptionMessage _description;
+        RowDescriptionMessage? _description;
 
         /// <summary>
         /// If this statement has been automatically prepared, references the <see cref="PreparedStatement"/>.
         /// Null otherwise.
         /// </summary>
-        [CanBeNull]
-        internal PreparedStatement PreparedStatement
+        internal PreparedStatement? PreparedStatement
         {
             get => _preparedStatement != null && _preparedStatement.State == PreparedState.Unprepared
                 ? _preparedStatement = null
@@ -79,8 +75,7 @@ namespace Npgsql
             set => _preparedStatement = value;
         }
 
-        [CanBeNull]
-        PreparedStatement _preparedStatement;
+        PreparedStatement? _preparedStatement;
 
         /// <summary>
         /// Holds the server-side (prepared) statement name. Empty string for non-prepared statements.

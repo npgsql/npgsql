@@ -23,16 +23,18 @@ namespace Npgsql.Tests
             Assert.That(completed, Is.False);
         }
 
+#pragma warning disable CS8625
         [SetUp]
         public void SetUp()
         {
             Underlying = new MemoryStream();
             WriteBuffer = new NpgsqlWriteBuffer(null, Underlying, NpgsqlReadBuffer.DefaultSize, PGUtil.UTF8Encoding);
         }
+#pragma warning enable CS8625
 
         // ReSharper disable once InconsistentNaming
-        NpgsqlWriteBuffer WriteBuffer;
+        NpgsqlWriteBuffer WriteBuffer = default!;
         // ReSharper disable once InconsistentNaming
-        MemoryStream Underlying;
+        MemoryStream Underlying = default!;
     }
 }

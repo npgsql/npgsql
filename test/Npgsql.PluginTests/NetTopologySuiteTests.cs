@@ -40,10 +40,10 @@ namespace Npgsql.PluginTests
             }
         }
 
-        protected override NpgsqlConnection OpenConnection(string connectionString = null)
+        protected override NpgsqlConnection OpenConnection(string? connectionString = null)
             => OpenConnection(connectionString);
 
-        protected NpgsqlConnection OpenConnection(string connectionString = null, Ordinates handleOrdinates = Ordinates.None)
+        protected NpgsqlConnection OpenConnection(string? connectionString = null, Ordinates handleOrdinates = Ordinates.None)
         {
             if (handleOrdinates == Ordinates.None)
                 handleOrdinates = Ordinates.XY;

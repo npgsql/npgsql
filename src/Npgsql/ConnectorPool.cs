@@ -7,7 +7,6 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
-using JetBrains.Annotations;
 using Npgsql.Logging;
 using Npgsql.Util;
 
@@ -49,10 +48,9 @@ namespace Npgsql
         readonly int _max;
         readonly int _min;
 
-        [ItemCanBeNull]
-        readonly NpgsqlConnector[] _idle;
+        readonly NpgsqlConnector?[] _idle;
 
-        readonly ConcurrentQueue<(TaskCompletionSource<NpgsqlConnector> TaskCompletionSource, bool IsAsync)> _waiting;
+        readonly ConcurrentQueue<(TaskCompletionSource<NpgsqlConnector?> TaskCompletionSource, bool IsAsync)> _waiting;
 
         [StructLayout(LayoutKind.Explicit)]
         internal struct PoolState
@@ -86,8 +84,7 @@ namespace Npgsql
         /// </summary>
         int _clearCounter;
 
-        [CanBeNull]
-        Timer _pruningTimer;
+        Timer? _pruningTimer;
         readonly TimeSpan _pruningInterval;
 
         /// <summary>
@@ -115,11 +112,11 @@ namespace Npgsql
 
             _pruningInterval = TimeSpan.FromSeconds(Settings.ConnectionPruningInterval);
             _idle = new NpgsqlConnector[_max];
-            _waiting = new ConcurrentQueue<(TaskCompletionSource<NpgsqlConnector> TaskCompletionSource, bool IsAsync)>();
+            _waiting = new ConcurrentQueue<(TaskCompletionSource<NpgsqlConnector?> TaskCompletionSource, bool IsAsync)>();
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal bool TryAllocateFast(NpgsqlConnection conn, out NpgsqlConnector connector)
+        internal bool TryAllocateFast(NpgsqlConnection conn, [NotNullWhenTrue] out NpgsqlConnector? connector)
         {
             Counters.SoftConnectsPerSecond.Increment();
 
@@ -202,7 +199,7 @@ namespace Npgsql
             // 3. An connector makes it into the idle list (race condition with another Release().
             while (true)
             {
-                NpgsqlConnector connector;
+                NpgsqlConnector? connector;
                 var state = State.Copy();
                 var newState = state;
 
@@ -296,7 +293,7 @@ namespace Npgsql
                     try
                     {
                         // Enqueue an open attempt into the waiting queue so that the next release attempt will unblock us.
-                        var tcs = new TaskCompletionSource<NpgsqlConnector>(TaskCreationOptions.RunContinuationsAsynchronously);
+                        var tcs = new TaskCompletionSource<NpgsqlConnector?>(TaskCreationOptions.RunContinuationsAsynchronously);
                         _waiting.Enqueue((tcs, async));
 
                         try
@@ -583,8 +580,7 @@ namespace Npgsql
             }
         }
 
-        [CanBeNull]
-        internal NpgsqlConnector TryAllocateEnlistedPending(Transaction transaction)
+        internal NpgsqlConnector? TryAllocateEnlistedPending(Transaction transaction)
         {
             lock (_pendingEnlistedConnectors)
             {

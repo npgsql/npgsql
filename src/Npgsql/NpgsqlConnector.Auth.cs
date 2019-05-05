@@ -7,7 +7,6 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.Util;
 using static Npgsql.Util.Statics;
@@ -89,7 +88,7 @@ namespace Npgsql
             var saslContinueMsg = Expect<AuthenticationSASLContinueMessage>(await ReadMessage(async));
             if (saslContinueMsg.AuthRequestType != AuthenticationRequestType.AuthenticationSASLContinue)
                 throw new NpgsqlException("[SASL] AuthenticationSASLFinal message expected");
-            var firstServerMsg = new AuthenticationSCRAMServerFirstMessage(saslContinueMsg.Payload);
+            var firstServerMsg = AuthenticationSCRAMServerFirstMessage.Load(saslContinueMsg.Payload);
             if (!firstServerMsg.Nonce.StartsWith(clientNonce))
                 throw new InvalidOperationException("[SCRAM] Malformed SCRAMServerFirst message: server nonce doesn't start with client nonce");
 
@@ -122,7 +121,7 @@ namespace Npgsql
             var saslFinalServerMsg = Expect<AuthenticationSASLFinalMessage>(await ReadMessage(async));
             if (saslFinalServerMsg.AuthRequestType != AuthenticationRequestType.AuthenticationSASLFinal)
                 throw new NpgsqlException("[SASL] AuthenticationSASLFinal message expected");
-            var scramFinalServerMsg = new AuthenticationSCRAMServerFinalMessage(saslFinalServerMsg.Payload);
+            var scramFinalServerMsg = AuthenticationSCRAMServerFinalMessage.Load(saslFinalServerMsg.Payload);
 
             if (scramFinalServerMsg.ServerSignature != Convert.ToBase64String(serverSignature))
                 throw new NpgsqlException("[SCRAM] Unable to verify server signature");
@@ -273,7 +272,7 @@ namespace Npgsql
             readonly NpgsqlConnector _connector;
             int _leftToWrite;
             int _leftToRead, _readPos;
-            byte[] _readBuf;
+            byte[]? _readBuf;
 
             internal GSSPasswordMessageStream(NpgsqlConnector connector)
             {
@@ -343,7 +342,7 @@ namespace Npgsql
                 if (count > _leftToRead)
                     throw new NpgsqlException($"NegotiateStream trying to read {count} bytes but according to frame header we only have {_leftToRead} left!");
                 count = Math.Min(count, _leftToRead);
-                Array.Copy(_readBuf, _readPos, buffer, offset, count);
+                Array.Copy(_readBuf!, _readPos, buffer, offset, count);
                 _leftToRead -= count;
                 return count;
             }
@@ -367,8 +366,7 @@ namespace Npgsql
 
         class AuthenticationCompleteException : Exception { }
 
-        [CanBeNull]
-        string GetPassword()
+        string? GetPassword()
         {
             var passwd = Settings.Password;
             if (passwd != null)

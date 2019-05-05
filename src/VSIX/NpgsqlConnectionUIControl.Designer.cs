@@ -1,4 +1,6 @@
-﻿namespace Npgsql.VSIX
+﻿#nullable disable
+
+namespace Npgsql.VSIX
 {
     partial class NpgsqlConnectionUIControl
     {

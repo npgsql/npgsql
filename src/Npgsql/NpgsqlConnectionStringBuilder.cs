@@ -6,6 +6,7 @@ using System.Data.Common;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 
 namespace Npgsql
@@ -32,23 +33,14 @@ namespace Npgsql
         /// <summary>
         /// Maps each property to its [DefaultValue]
         /// </summary>
-        static readonly Dictionary<PropertyInfo, object> PropertyDefaults;
+        static readonly Dictionary<PropertyInfo, object?> PropertyDefaults;
 
         /// <summary>
         /// Cached DataSource value to reduce allocations on NpgsqlConnection.DataSource.get
         /// </summary>
-        private string _dataSourceCached;
+        string? _dataSourceCached;
 
-        internal string DataSourceCached
-        {
-            get
-            {
-                if (_dataSourceCached == null)
-                    _dataSourceCached = $"tcp://{_host}:{_port}";
-
-                return _dataSourceCached;
-            }
-        }
+        internal string DataSourceCached => _dataSourceCached ??= $"tcp://{_host}:{_port}";
 
         #endregion
 
@@ -212,7 +204,9 @@ namespace Npgsql
         /// </summary>
         /// <param name="keyword">The key to locate in the <see cref="NpgsqlConnectionStringBuilder"/>.</param>
         /// <returns><b>true</b> if the <see cref="NpgsqlConnectionStringBuilder"/> contains an entry with the specified key; otherwise <b>false</b>.</returns>
-        public override bool ContainsKey([CanBeNull] string keyword)
+#nullable disable
+        public override bool ContainsKey(string keyword)
+#nullable enable
             => keyword == null
                 ? throw new ArgumentNullException(nameof(keyword))
                 : PropertiesByKeyword.ContainsKey(keyword.ToUpperInvariant());
@@ -237,7 +231,9 @@ namespace Npgsql
         /// <param name="keyword">The key of the item to retrieve.</param>
         /// <param name="value">The value corresponding to the key.</param>
         /// <returns><b>true</b> if keyword was found within the connection string, <b>false</b> otherwise.</returns>
-        public override bool TryGetValue([NotNull] string keyword, [CanBeNull] out object value)
+#nullable disable
+        public override bool TryGetValue(string keyword, [NotNullWhenTrue] out object value)
+#nullable enable
         {
             if (keyword == null)
                 throw new ArgumentNullException(nameof(keyword));
@@ -253,7 +249,7 @@ namespace Npgsql
 
         }
 
-        void SetValue(string propertyName, [CanBeNull] object value)
+        void SetValue(string propertyName, object? value)
         {
             var canonicalKeyword = PropertyNameToCanonicalKeyword[propertyName];
             if (value == null)
@@ -273,8 +269,7 @@ namespace Npgsql
         [Description("The hostname or IP address of the PostgreSQL server to connect to.")]
         [DisplayName("Host")]
         [NpgsqlConnectionStringProperty("Server")]
-        [CanBeNull]
-        public string Host
+        public string? Host
         {
             get => _host;
             set
@@ -284,7 +279,7 @@ namespace Npgsql
                 _dataSourceCached = null;
             }
         }
-        string _host;
+        string? _host;
 
         /// <summary>
         /// The TCP/IP port of the PostgreSQL server.
@@ -316,8 +311,7 @@ namespace Npgsql
         [Description("The PostgreSQL database to connect to.")]
         [DisplayName("Database")]
         [NpgsqlConnectionStringProperty("DB")]
-        [CanBeNull]
-        public string Database
+        public string? Database
         {
             get => _database;
             set
@@ -326,7 +320,7 @@ namespace Npgsql
                 SetValue(nameof(Database), value);
             }
         }
-        string _database;
+        string? _database;
 
         /// <summary>
         /// The username to connect with. Not required if using IntegratedSecurity.
@@ -335,8 +329,7 @@ namespace Npgsql
         [Description("The username to connect with. Not required if using IntegratedSecurity.")]
         [DisplayName("Username")]
         [NpgsqlConnectionStringProperty("User Name", "UserId", "User Id", "UID")]
-        [CanBeNull]
-        public string Username
+        public string? Username
         {
             get => _username;
             set
@@ -345,7 +338,7 @@ namespace Npgsql
                 SetValue(nameof(Username), value);
             }
         }
-        string _username;
+        string? _username;
 
         /// <summary>
         /// The password to connect with. Not required if using IntegratedSecurity.
@@ -355,8 +348,7 @@ namespace Npgsql
         [PasswordPropertyText(true)]
         [DisplayName("Password")]
         [NpgsqlConnectionStringProperty("PSW", "PWD")]
-        [CanBeNull]
-        public string Password
+        public string? Password
         {
             get => _password;
             set
@@ -365,7 +357,7 @@ namespace Npgsql
                 SetValue(nameof(Password), value);
             }
         }
-        string _password;
+        string? _password;
 
         /// <summary>
         /// Path to a PostgreSQL password file (PGPASSFILE), from which the password would be taken.
@@ -374,8 +366,7 @@ namespace Npgsql
         [Description("Path to a PostgreSQL password file (PGPASSFILE), from which the password would be taken.")]
         [DisplayName("Passfile")]
         [NpgsqlConnectionStringProperty]
-        [CanBeNull]
-        public string Passfile
+        public string? Passfile
         {
             get => _passfile;
             set
@@ -385,7 +376,7 @@ namespace Npgsql
             }
         }
 
-        string _passfile;
+        string? _passfile;
 
         /// <summary>
         /// The optional application name parameter to be sent to the backend during connection initiation.
@@ -394,7 +385,7 @@ namespace Npgsql
         [Description("The optional application name parameter to be sent to the backend during connection initiation")]
         [DisplayName("Application Name")]
         [NpgsqlConnectionStringProperty]
-        public string ApplicationName
+        public string? ApplicationName
         {
             get => _applicationName;
             set
@@ -403,7 +394,7 @@ namespace Npgsql
                 SetValue(nameof(ApplicationName), value);
             }
         }
-        string _applicationName;
+        string? _applicationName;
 
         /// <summary>
         /// Whether to enlist in an ambient TransactionScope.
@@ -431,7 +422,7 @@ namespace Npgsql
         [Description("Gets or sets the schema search path.")]
         [DisplayName("Search Path")]
         [NpgsqlConnectionStringProperty]
-        public string SearchPath
+        public string? SearchPath
         {
             get => _searchPath;
             set
@@ -440,7 +431,7 @@ namespace Npgsql
                 SetValue(nameof(SearchPath), value);
             }
         }
-        string _searchPath;
+        string? _searchPath;
 
         /// <summary>
         /// Gets or sets the client_encoding parameter.
@@ -449,8 +440,7 @@ namespace Npgsql
         [Description("Gets or sets the client_encoding parameter.")]
         [DisplayName("Client Encoding")]
         [NpgsqlConnectionStringProperty]
-        [CanBeNull]
-        public string ClientEncoding
+        public string? ClientEncoding
         {
             get => _clientEncoding;
             set
@@ -459,7 +449,7 @@ namespace Npgsql
                 SetValue(nameof(ClientEncoding), value);
             }
         }
-        string _clientEncoding;
+        string? _clientEncoding;
 
         /// <summary>
         /// Gets or sets the .NET encoding that will be used to encode/decode PostgreSQL string data.
@@ -478,7 +468,7 @@ namespace Npgsql
                 SetValue(nameof(Encoding), value);
             }
         }
-        string _encoding;
+        string _encoding = "UTF8";
 
         /// <summary>
         /// Gets or sets the PostgreSQL session timezone, in Olson/IANA database format.
@@ -487,8 +477,7 @@ namespace Npgsql
         [Description("Gets or sets the PostgreSQL session timezone, in Olson/IANA database format.")]
         [DisplayName("Timezone")]
         [NpgsqlConnectionStringProperty]
-        [CanBeNull]
-        public string Timezone
+        public string? Timezone
         {
             get => _timezone;
             set
@@ -497,7 +486,7 @@ namespace Npgsql
                 SetValue(nameof(Timezone), value);
             }
         }
-        string _timezone;
+        string? _timezone;
 
         #endregion
 
@@ -597,7 +586,7 @@ namespace Npgsql
                 SetValue(nameof(KerberosServiceName), value);
             }
         }
-        string _kerberosServiceName;
+        string _kerberosServiceName = "postgres";
 
         /// <summary>
         /// The Kerberos realm to be used for authentication.
@@ -834,7 +823,7 @@ namespace Npgsql
         [Description("The database template to specify when creating a database in Entity Framework. If not specified, PostgreSQL defaults to \"template1\".")]
         [DisplayName("EF Template Database")]
         [NpgsqlConnectionStringProperty]
-        public string EntityTemplateDatabase
+        public string? EntityTemplateDatabase
         {
             get => _entityTemplateDatabase;
             set
@@ -843,7 +832,7 @@ namespace Npgsql
                 SetValue(nameof(EntityTemplateDatabase), value);
             }
         }
-        string _entityTemplateDatabase;
+        string? _entityTemplateDatabase;
 
         /// <summary>
         /// The database admin to specify when creating and dropping a database in Entity Framework. This is needed because
@@ -854,7 +843,7 @@ namespace Npgsql
         [Description("The database admin to specify when creating and dropping a database in Entity Framework. If not specified, defaults to \"template1\".")]
         [DisplayName("EF Admin Database")]
         [NpgsqlConnectionStringProperty]
-        public string EntityAdminDatabase
+        public string? EntityAdminDatabase
         {
             get => _entityAdminDatabase;
             set
@@ -863,7 +852,7 @@ namespace Npgsql
                 SetValue(nameof(EntityAdminDatabase), value);
             }
         }
-        string _entityAdminDatabase;
+        string? _entityAdminDatabase;
 
         #endregion
 
@@ -1000,7 +989,6 @@ namespace Npgsql
         [Description("Determines the size of socket receive buffer.")]
         [DisplayName("Socket Receive Buffer Size")]
         [NpgsqlConnectionStringProperty]
-        [CanBeNull]
         public int SocketReceiveBufferSize
         {
             get => _socketReceiveBufferSize;

@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
@@ -47,7 +49,7 @@ namespace Npgsql.Tests
             using (var conn = new NpgsqlConnection(ConnectionString))
             {
                 conn.Open();
-                var backendId = conn.Connector.BackendProcessId;
+                var backendId = conn.Connector!.BackendProcessId;
                 conn.Close();
                 conn.Open();
                 Assert.That(conn.Connector.BackendProcessId, Is.EqualTo(backendId));
@@ -186,7 +188,7 @@ namespace Npgsql.Tests
             {
                 conn.Open();
                 Assert.That(conn.ExecuteScalar("SHOW search_path"), Is.Not.Contains("pg_temp"));
-                var backendId = conn.Connector.BackendProcessId;
+                var backendId = conn.Connector!.BackendProcessId;
                 conn.ExecuteNonQuery("SET search_path=pg_temp");
                 conn.Close();
 
@@ -215,7 +217,7 @@ namespace Npgsql.Tests
 
                 conn1.Close();
                 conn2.Close();
-                AssertPoolState(pool, 2, 1);
+                AssertPoolState(pool!, 2, 1);
 
                 Thread.Sleep(1500);
 
@@ -287,7 +289,7 @@ namespace Npgsql.Tests
         [Test]
         public void ClearWithBusy()
         {
-            ConnectorPool pool;
+            ConnectorPool? pool;
             using (var conn = OpenConnection())
             {
                 NpgsqlConnection.ClearPool(conn);
@@ -361,8 +363,11 @@ namespace Npgsql.Tests
 
         volatile int StopFlag;
 
-        void AssertPoolState(ConnectorPool pool, int idle, int busy, int waiting=0)
+        void AssertPoolState([EnsuresNotNull] ConnectorPool? pool, int idle, int busy, int waiting=0)
         {
+            if (pool == null)
+                throw new ArgumentNullException(nameof(pool));
+
             var state = pool.State;
             Assert.That(state.Idle, Is.EqualTo(idle), $"Idle should be {idle} but is {state.Idle}");
             Assert.That(state.Busy, Is.EqualTo(busy), $"Busy should be {busy} but is {state.Busy}");

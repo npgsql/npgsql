@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Net.NetworkInformation;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -17,10 +18,12 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
     [TypeMapping("macaddr", NpgsqlDbType.MacAddr, typeof(PhysicalAddress))]
     class MacaddrHandler : NpgsqlSimpleTypeHandler<PhysicalAddress>
     {
+        public MacaddrHandler(PostgresType postgresType) : base(postgresType) {}
+
         #region Read
 
         /// <inheritdoc />
-        public override PhysicalAddress Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override PhysicalAddress Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
             Debug.Assert(len == 6 || len == 8);
 
@@ -35,11 +38,11 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
         #region Write
 
         /// <inheritdoc />
-        public override int ValidateAndGetLength(PhysicalAddress value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(PhysicalAddress value, NpgsqlParameter? parameter)
             => value.GetAddressBytes().Length;
 
         /// <inheritdoc />
-        public override void Write(PhysicalAddress value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public override void Write(PhysicalAddress value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
             var bytes = value.GetAddressBytes();
             buf.WriteBytes(bytes, 0, bytes.Length);

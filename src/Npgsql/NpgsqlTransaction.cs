@@ -20,7 +20,6 @@ namespace Npgsql
         /// Specifies the <see cref="NpgsqlConnection"/> object associated with the transaction.
         /// </summary>
         /// <value>The <see cref="NpgsqlConnection"/> object associated with the transaction.</value>
-        [CanBeNull]
         public new NpgsqlConnection Connection { get; internal set; }
 
         // Note that with ambient transactions, it's possible for a transaction to be pending after its connection
@@ -37,7 +36,6 @@ namespace Npgsql
         /// Specifies the <see cref="NpgsqlConnection"/> object associated with the transaction.
         /// </summary>
         /// <value>The <see cref="NpgsqlConnection"/> object associated with the transaction.</value>
-        [CanBeNull]
         protected override DbConnection DbConnection => Connection;
 
         bool _isDisposed;
@@ -307,11 +305,13 @@ namespace Npgsql
             _isDisposed = true;
         }
 
+#pragma warning disable CS8625
         internal void Clear()
         {
             _connector = null;
             Connection = null;
         }
+#pragma warning enable CS8625
 
         #endregion
 

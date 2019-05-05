@@ -102,23 +102,35 @@ namespace Npgsql.NetTopologySuite
             if (ordinates == Ordinates.None)
                 ordinates = CheckOrdinates(geometry);
 
-            if (geometry is IPoint)
-                Write(geometry as IPoint, ordinates, byteOrder, writer);
-            else if (geometry is ILinearRing)
-                Write(geometry as ILinearRing, ordinates, byteOrder, writer);
-            else if (geometry is ILineString)
-                Write(geometry as ILineString, ordinates, byteOrder, writer);
-            else if (geometry is IPolygon)
-                Write(geometry as IPolygon, ordinates, byteOrder, writer);
-            else if (geometry is IMultiPoint)
-                Write(geometry as IMultiPoint, ordinates, byteOrder, writer);
-            else if (geometry is IMultiLineString)
-                Write(geometry as IMultiLineString, ordinates, byteOrder, writer);
-            else if (geometry is IMultiPolygon)
-                Write(geometry as IMultiPolygon, ordinates, byteOrder, writer);
-            else if (geometry is IGeometryCollection)
-                Write(geometry as IGeometryCollection, ordinates, byteOrder, writer);
-            else throw new ArgumentException("Geometry not recognized: " + geometry);
+            switch (geometry)
+            {
+            case IPoint point:
+                Write(point, ordinates, byteOrder, writer);
+                break;
+            case ILinearRing linearRing:
+                Write(linearRing, ordinates, byteOrder, writer);
+                break;
+            case ILineString lineString:
+                Write(lineString, ordinates, byteOrder, writer);
+                break;
+            case IPolygon polygon:
+                Write(polygon, ordinates, byteOrder, writer);
+                break;
+            case IMultiPoint multiPoint:
+                Write(multiPoint, ordinates, byteOrder, writer);
+                break;
+            case IMultiLineString multiLineString:
+                Write(multiLineString, ordinates, byteOrder, writer);
+                break;
+            case IMultiPolygon multiPolygon:
+                Write(multiPolygon, ordinates, byteOrder, writer);
+                break;
+            case IGeometryCollection collection:
+                Write(collection, ordinates, byteOrder, writer);
+                break;
+            default:
+                throw new ArgumentException("Geometry not recognized: " + geometry);
+            }
         }
 
         /// <summary>
@@ -244,7 +256,7 @@ namespace Npgsql.NetTopologySuite
                 HandleSRID ? polygon.SRID : -1,
                 ordinates, byteOrder, writer);
             writer.Write(polygon.NumInteriorRings + 1);
-            Write(polygon.ExteriorRing as ILinearRing, ordinates, writer);
+            Write((ILinearRing)polygon.ExteriorRing, ordinates, writer);
             for (int i = 0; i < polygon.NumInteriorRings; i++)
                 Write((ILinearRing)polygon.InteriorRings[i], ordinates, writer);
         }
@@ -338,22 +350,16 @@ namespace Npgsql.NetTopologySuite
             if (HandleSRID & (geometry.SRID != -1))
                 result += 4;
 
-            if (geometry is IPoint)
-                result += GetByteStreamSize(geometry as IPoint, coordinateSpace);
-            else if (geometry is ILineString)
-                result += GetByteStreamSize(geometry as ILineString, coordinateSpace);
-            else if (geometry is IPolygon)
-                result += GetByteStreamSize(geometry as IPolygon, coordinateSpace);
-            else if (geometry is IMultiPoint)
-                result += GetByteStreamSize(geometry as IMultiPoint, coordinateSpace);
-            else if (geometry is IMultiLineString)
-                result += GetByteStreamSize(geometry as IMultiLineString, coordinateSpace);
-            else if (geometry is IMultiPolygon)
-                result += GetByteStreamSize(geometry as IMultiPolygon, coordinateSpace);
-            else if (geometry is IGeometryCollection)
-                result += GetByteStreamSize(geometry as IGeometryCollection, coordinateSpace);
-            else
-                throw new ArgumentException("ShouldNeverReachHere");
+            result += geometry switch {
+                IPoint point => GetByteStreamSize(point, coordinateSpace),
+                ILineString lineString => GetByteStreamSize(lineString, coordinateSpace),
+                IPolygon polygon => GetByteStreamSize(polygon, coordinateSpace),
+                IMultiPoint multiPoint => GetByteStreamSize(multiPoint, coordinateSpace),
+                IMultiLineString multiLineString => GetByteStreamSize(multiLineString, coordinateSpace),
+                IMultiPolygon multiPolygon => GetByteStreamSize(multiPolygon, coordinateSpace),
+                IGeometryCollection collection => GetByteStreamSize(collection, coordinateSpace),
+                _ => throw new ArgumentException("ShouldNeverReachHere")
+            };
 
             return result;
         }

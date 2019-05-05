@@ -12,10 +12,10 @@ namespace Npgsql.Benchmarks
 {
     public class Prepare
     {
-        NpgsqlConnection _conn, _autoPreparingConn;
+        NpgsqlConnection _conn = default!, _autoPreparingConn = default!;
         static readonly string[] Queries;
-        string _query;
-        NpgsqlCommand _preparedCmd;
+        string _query = default!;
+        NpgsqlCommand _preparedCmd = default!;
 
         /// <summary>
         /// The more tables are joined, the more complex the query is to plan, and therefore the more
