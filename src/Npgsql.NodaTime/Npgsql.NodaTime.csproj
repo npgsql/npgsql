@@ -5,7 +5,6 @@
     <PackageTags>npgsql postgresql postgres nodatime date time ado ado.net database sql</PackageTags>
     <VersionPrefix>4.1.0</VersionPrefix>
     <TargetFrameworks>net461;netstandard2.0</TargetFrameworks>
-    <TargetFrameworks Condition="'$(OS)' != 'Windows_NT' OR '$(CoreOnly)' == 'True'">netstandard2.0</TargetFrameworks>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="NodaTime" Version="2.4.4" />

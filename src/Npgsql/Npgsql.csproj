@@ -5,7 +5,6 @@
     <PackageTags>npgsql postgresql postgres ado ado.net database sql</PackageTags>
     <VersionPrefix>4.1.0</VersionPrefix>
     <TargetFrameworks>net461;netstandard2.0;netstandard2.1</TargetFrameworks>
-    <TargetFrameworks Condition="'$(OS)' != 'Windows_NT' OR '$(CoreOnly)' == 'True'">netstandard2.0;netstandard2.1</TargetFrameworks>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
