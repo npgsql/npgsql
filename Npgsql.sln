@@ -27,7 +27,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Npgsql.NetTopologySuite", "
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Npgsql.GeoJSON", "src\Npgsql.GeoJSON\Npgsql.GeoJSON.csproj", "{F7C53EBD-0075-474F-A083-419257D04080}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Npgsql.Specification.Tests", "test\Npgsql.Specification.Tests\Npgsql.Specification.Tests.csproj", "{A77E5FAF-D775-4AB4-8846-8965C2104E60}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Npgsql.Specification.Tests", "test\Npgsql.Specification.Tests\Npgsql.Specification.Tests.csproj", "{A77E5FAF-D775-4AB4-8846-8965C2104E60}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
