@@ -26,4 +26,11 @@
     <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)Npgsql.snk</AssemblyOriginatorKeyFile>
     <SignAssembly>true</SignAssembly>
   </PropertyGroup>
+
+  <!-- Reference .NET Framework reference assemblies, allows building on environments without .NET Framework installed
+       (e.g. Linux). Gets ignored on non-framework TFMs. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.0-preview.1" PrivateAssets="All" />
+  </ItemGroup>
+
 </Project>
