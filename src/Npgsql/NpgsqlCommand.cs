@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
@@ -14,6 +15,7 @@ using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.Logging;
 using Npgsql.TypeMapping;
+using Npgsql.Schema;
 using Npgsql.Util;
 using NpgsqlTypes;
 using static Npgsql.Util.Statics;
@@ -483,8 +485,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                 var sendTask = SendDeriveParameters(connector, false);
 
-                foreach (var statement in _statements)
+                for (var statementIndex = 0; statementIndex <_statements.Count; statementIndex++)
                 {
+                    var statement = _statements[statementIndex];
                     Expect<ParseCompleteMessage>(connector.ReadMessage());
                     var paramTypeOIDs = Expect<ParameterDescriptionMessage>(connector.ReadMessage()).TypeOIDs;
 
@@ -524,7 +527,11 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     switch (msg.Code)
                     {
                         case BackendMessageCode.RowDescription:
+                            statement.Description = (RowDescriptionMessage) msg;
+                            FixupRowDescription(statement.Description, statementIndex == 0);
+                            break;
                         case BackendMessageCode.NoData:
+                            statement.Description = null;
                             break;
                         default:
                             throw connector.UnexpectedMessageReceived(msg.Code);
