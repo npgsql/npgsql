@@ -22,19 +22,12 @@
 #endregion
 
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Data;
 using System.Data.Common;
 using System.Globalization;
 using System.Linq;
-using System.Reflection;
-using System.Linq;
-using JetBrains.Annotations;
-using Npgsql.BackendMessages;
-using Npgsql.PostgresTypes;
 using Npgsql.Schema;
-using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
 namespace Npgsql
