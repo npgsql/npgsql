@@ -22,11 +22,19 @@
 #endregion
 
 using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Data;
 using System.Data.Common;
 using System.Globalization;
 using System.Linq;
 using System.Reflection;
+using System.Linq;
+using JetBrains.Annotations;
+using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
+using Npgsql.Schema;
+using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
 namespace Npgsql
@@ -121,6 +129,22 @@ namespace Npgsql
         public static void DeriveParameters(NpgsqlCommand command)
         {
             command.DeriveParameters();
+        }
+        
+        ///<summary>
+        /// This method is responsible to derive the command parameter list with values obtained from function definition.
+        /// It clears the Parameters collection of command. Also, if there is any parameter type which is not supported by Npgsql, an InvalidOperationException will be thrown.
+        /// Parameters name will be parameter1, parameter2, ... for CommandType.StoredProcedure and named after the placeholder for CommandType.Text
+        /// Additionally, output column types for each executed statement within command will be inferred
+        ///</summary>
+        /// <param name="command">NpgsqlCommand whose function parameters will be obtained.</param>
+        public static ReadOnlyCollection<ReadOnlyCollection<NpgsqlDbColumn>> DeriveParametersAndOutputTypes(NpgsqlCommand command)
+        {
+            command.DeriveParameters();
+            return command.Statements
+                .Select(s => new DbColumnSchemaGenerator(command.Connection, s.Description, false).GetColumnSchema())
+                .ToList()
+                .AsReadOnly();
         }
 
         /// <summary>
