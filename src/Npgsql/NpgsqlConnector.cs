@@ -137,7 +137,7 @@ namespace Npgsql
         /// <summary>
         /// Holds all run-time parameters in raw, binary format for efficient handling without allocations.
         /// </summary>
-        readonly List<(byte[], byte[])> _rawParameters = new List<(byte[] Name, byte[] Value)>();
+        readonly List<(byte[] Name, byte[] Value)> _rawParameters = new List<(byte[], byte[])>();
 
         /// <summary>
         /// The timeout for reading messages that are part of the user's command
@@ -1952,13 +1952,13 @@ namespace Npgsql
             byte[] rawName;
             byte[] rawValue;
 
-            foreach (var (currentName, currentValue) in _rawParameters)
-                if (incomingName.SequenceEqual(currentName))
+            foreach (var current in _rawParameters)
+                if (incomingName.SequenceEqual(current.Name))
                 {
-                    if (incomingValue.SequenceEqual(currentValue))
+                    if (incomingValue.SequenceEqual(current.Value))
                         return;
 
-                    rawName = currentName;
+                    rawName = current.Name;
                     rawValue = incomingValue.ToArray();
                     goto ProcessParameter;
                 }
