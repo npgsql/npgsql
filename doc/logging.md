@@ -12,7 +12,7 @@ NpgsqlLogManager.Provider = new ???
 
 *Note: you must set the logging provider before invoking any other Npgsql method, at the very start of your program.*
 
-It's trivial to create a logging provider that passes log messages to whatever logging framework you use. You can find such an adaptor for NLog [here](http://ni).
+It's trivial to create a logging provider that passes log messages to whatever logging framework you use, you can find such an adapter for NLog below.
 
 *Note:* the logging API is a first implementation and will probably improve/change - don't treat it as a stable part of the Npgsql API. Let us know if you think there are any missing messages or features!
 
