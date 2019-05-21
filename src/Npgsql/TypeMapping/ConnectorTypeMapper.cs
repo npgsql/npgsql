@@ -276,11 +276,29 @@ namespace Npgsql.TypeMapping
             // (i.e. missing database type for some unused defined binding shouldn't fail the connection)
 
             var pgName = mapping.PgTypeName;
-            var found = pgName.IndexOf('.') == -1
-                ? DatabaseInfo.ByName.TryGetValue(pgName, out var pgType)  // No dot, partial type name
-                : DatabaseInfo.ByFullName.TryGetValue(pgName, out pgType); // Full type name with namespace
 
-            if (!found)
+            PostgresType pgType = null;
+            if (pgName.IndexOf('.') > -1)
+                DatabaseInfo.ByFullName.TryGetValue(pgName, out pgType);  // Full type name with namespace
+            else if (DatabaseInfo.ByName.TryGetValue(pgName, out pgType)) // No dot, partial type name
+            {
+                if (pgType is null)
+                {
+                    // If the name was found but the value is null, that means that there are
+                    // two db types with the same name (different schemas).
+                    // Try to fall back to pg_catalog, otherwise fail.
+                    if (!DatabaseInfo.ByFullName.TryGetValue($"pg_catalog.{pgName}", out pgType))
+                    {
+                        var msg = $"More than one PostgreSQL type was found with the name {mapping.PgTypeName}, please specify a full name including schema";
+                        if (externalCall)
+                            throw new ArgumentException(msg);
+                        Log.Debug(msg);
+                        return;
+                    }
+                }
+            }
+
+            if (pgType is null)
             {
                 var msg = $"A PostgreSQL type with the name {mapping.PgTypeName} was not found in the database";
                 if (externalCall)
@@ -288,15 +306,7 @@ namespace Npgsql.TypeMapping
                 Log.Debug(msg);
                 return;
             }
-            else if (pgType == null)
-            {
-                var msg = $"More than one PostgreSQL type was found with the name {mapping.PgTypeName}, please specify a full name including schema";
-                if (externalCall)
-                    throw new ArgumentException(msg);
-                Log.Debug(msg);
-                return;
-            }
-            else if (pgType is PostgresDomainType)
+            if (pgType is PostgresDomainType)
             {
                 var msg = "Cannot add a mapping to a PostgreSQL domain type";
                 if (externalCall)

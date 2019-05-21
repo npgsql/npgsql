@@ -6,7 +6,7 @@
     <Copyright>Copyright 2019 © The Npgsql Development Team</Copyright>
     <Company>Npgsql</Company>
     <PackageTags>npgsql postgresql postgres ado ado.net database sql</PackageTags>
-    <VersionPrefix>4.0.6</VersionPrefix>
+    <VersionPrefix>4.0.7</VersionPrefix>
     <LangVersion>latest</LangVersion>
     <TargetFrameworks>net45;net451;netstandard2.0</TargetFrameworks>
     <TargetFrameworks Condition="'$(OS)' != 'Windows_NT' OR '$(CoreOnly)' == 'True'">netstandard2.0</TargetFrameworks>
@@ -31,7 +31,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.Memory" Version="4.5.2" />
+    <PackageReference Include="System.Memory" Version="4.5.3" />
     <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="4.5.2" />
     <PackageReference Include="System.ValueTuple" Version="4.5.0" />
     <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.2" />
