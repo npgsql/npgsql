@@ -296,7 +296,7 @@ namespace Npgsql
         void ICancelable.Cancel() => Close();
 
         /// <summary>
-        /// Completes that binary import and sets the connection back to idle state
+        /// Cancels that binary import and sets the connection back to idle state
         /// </summary>
         public void Dispose() => Close();
 
