@@ -81,9 +81,7 @@ using (var outStream = conn.BeginRawBinaryCopy("COPY table2 FROM STDIN (FORMAT B
 
 ## Cancel
 
-Import operations can be cancelled at any time by calling the `Cancel()` method on the importer object. No data is committed to the database before the importer is closed or disposed.
-
-Export operations can be cancelled as well, also by calling `Cancel()`.
+Import operations can be cancelled at any time by disposing `NpgsqlBinaryImporter` without calling `Complete()` on it. Export operations can be cancelled as well, by calling `Cancel()`.
 
 ## Other
 
