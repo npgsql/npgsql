@@ -1,4 +1,3 @@
-using System;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 
@@ -13,6 +12,6 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
             => NameTranslator = nameTranslator;
 
         public override NpgsqlTypeHandler<T> Create(PostgresType pgType, NpgsqlConnection conn)
-            => MappedCompositeHandler<T>.Create((PostgresCompositeType)pgType, conn.Connector!.TypeMapper, NameTranslator);
+            => new MappedCompositeHandler<T>((PostgresCompositeType)pgType, conn.Connector!.TypeMapper, NameTranslator);
     }
 }
