@@ -49,6 +49,11 @@ namespace Npgsql
             var pools = _pools;
             var sw = new SpinWait();
 
+            if (key == "Server=localhost;User ID=;Password=;Database=npgsql_tests10")
+            {
+                Thread.Sleep(20000);
+            }
+
             // First scan the pools and do reference equality on the connection strings
             for (var i = 0; i < _nextSlot; i++)
             {

@@ -78,5 +78,34 @@ namespace Npgsql.Tests
 
         [TearDown]
         public void Teardown() => PoolManager.Reset();
+
+        [Test]
+        public void VolatileTest()
+        {
+            for (var i = 0; i < 10; i++) {
+                var DefaultConnectionString2 = $"Server=localhost;User ID=;Password=;Database=npgsql_tests{i}";
+                var Settings2 = new NpgsqlConnectionStringBuilder(DefaultConnectionString2);
+                var newPool2 = new ConnectorPool(Settings2, Settings2.ConnectionString);
+                PoolManager.GetOrAdd(DefaultConnectionString2, newPool2);
+            }
+          
+            Task[] tasks =
+            {
+                Task.Run(() => 
+                {
+                    PoolManager.TryGetValue("Server=localhost;User ID=;Password=;Database=npgsql_tests10", out var pool);
+                }),
+
+                Task.Run(() => 
+                {
+                    var nextCS = "Server=localhost;User ID=;Password=;Database=npgsql_tests11";
+                    var nextSettings = new NpgsqlConnectionStringBuilder(nextCS);
+                    var nextPool = new ConnectorPool(nextSettings, nextSettings.ConnectionString);
+                    var _pool = PoolManager.GetOrAdd(nextCS, nextPool);
+                })
+            };
+            Task.WaitAll(tasks);
+        }
+
     }
 }
