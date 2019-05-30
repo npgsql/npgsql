@@ -24,11 +24,12 @@ namespace Npgsql
         internal static bool TryGetValue(string key, [NotNullWhenTrue] out ConnectorPool? pool)
         {
             // Note that pools never get removed. _pools is strictly append-only.
+            var nextSlot = _nextSlot;
             var pools = _pools;
             var sw = new SpinWait();
 
             // First scan the pools and do reference equality on the connection strings
-            for (var i = 0; i < _nextSlot; i++)
+            for (var i = 0; i < nextSlot; i++)
             {
                 if (ReferenceEquals(pools[i].Key, key))
                 {
@@ -43,7 +44,7 @@ namespace Npgsql
             }
 
             // Next try value comparison on the strings
-            for (var i = 0; i < _nextSlot; i++)
+            for (var i = 0; i < nextSlot; i++)
             {
                 if (pools[i].Key == key)
                 {
