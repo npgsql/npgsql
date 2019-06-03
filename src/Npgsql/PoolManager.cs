@@ -24,7 +24,7 @@ namespace Npgsql
         internal static bool TryGetValue(string key, [NotNullWhenTrue] out ConnectorPool? pool)
         {
             // Note that pools never get removed. _pools is strictly append-only.
-            var nextSlot = _nextSlot;
+            var nextSlot = Interlocked.CompareExchange(ref _nextSlot, 0, 0);
             var pools = _pools;
             var sw = new SpinWait();
 
@@ -92,7 +92,8 @@ namespace Npgsql
 
         internal static void ClearAll()
         {
-            for (var i = 0; i < _nextSlot; i++)
+            var nextSlot = Interlocked.CompareExchange(ref _nextSlot, 0, 0);
+            for (var i = 0; i < nextSlot; i++)
             {
                 if (_pools[i].Key == null)
                     return;
