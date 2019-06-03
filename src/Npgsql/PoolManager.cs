@@ -18,13 +18,13 @@ namespace Npgsql
         internal const int InitialPoolsSize = 10;
 
         static readonly object _lock = new object();
-        static (string Key, ConnectorPool Pool)[] _pools = new (string, ConnectorPool)[InitialPoolsSize];
-        static int _nextSlot;
+        static volatile (string Key, ConnectorPool Pool)[] _pools = new (string, ConnectorPool)[InitialPoolsSize];
+        static volatile int _nextSlot;
 
         internal static bool TryGetValue(string key, [NotNullWhenTrue] out ConnectorPool? pool)
         {
             // Note that pools never get removed. _pools is strictly append-only.
-            var nextSlot = Interlocked.CompareExchange(ref _nextSlot, 0, 0);
+            var nextSlot = _nextSlot;
             var pools = _pools;
             var sw = new SpinWait();
 
@@ -91,13 +91,14 @@ namespace Npgsql
         }
 
         internal static void ClearAll()
-        {
-            var nextSlot = Interlocked.CompareExchange(ref _nextSlot, 0, 0);
-            for (var i = 0; i < nextSlot; i++)
+        {   lock (_lock)
             {
-                if (_pools[i].Key == null)
-                    return;
-                _pools[i].Pool?.Clear();
+                for (var i = 0; i < _nextSlot; i++)
+                {
+                    if (_pools[i].Key == null)
+                        return;
+                    _pools[i].Pool?.Clear();
+                }
             }
         }
 
