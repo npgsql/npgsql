@@ -91,7 +91,8 @@ namespace Npgsql
         }
 
         internal static void ClearAll()
-        {   lock (_lock)
+        {   
+            lock (_lock)
             {
                 for (var i = 0; i < _nextSlot; i++)
                 {
