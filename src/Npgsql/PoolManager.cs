@@ -72,7 +72,7 @@ namespace Npgsql
                 {
                     var newPools = new (string, ConnectorPool)[_pools.Length * 2];
                     Array.Copy(_pools, newPools, _pools.Length);
-                    Interlocked.Exchange(ref _pools, newPools);
+                    _pools = newPools;
                 }
 
                 _pools[_nextSlot].Key = key;
@@ -94,11 +94,12 @@ namespace Npgsql
         {
             lock (_lock)
             {
+                var pools = _pools;
                 for (var i = 0; i < _nextSlot; i++)
                 {
-                    if (_pools[i].Key == null)
+                    if (pools[i].Key == null)
                         return;
-                    _pools[i].Pool?.Clear();
+                    pools[i].Pool?.Clear();
                 }
             }
         }
