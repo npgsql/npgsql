@@ -31,14 +31,15 @@ namespace Npgsql
             // First scan the pools and do reference equality on the connection strings
             for (var i = 0; i < nextSlot; i++)
             {
-                if (ReferenceEquals(pools[i].Key, key))
+                var cp = pools[i];
+                if (ReferenceEquals(cp.Key, key))
                 {
                     // It's possible that this pool entry is currently being written: the connection string
                     // component has already been writte, but the pool component is just about to be. So we
                     // loop on the pool until it's non-null
-                    while (Volatile.Read(ref pools[i].Pool) == null)
+                    while (Volatile.Read(ref cp.Pool) == null)
                         sw.SpinOnce();
-                    pool = pools[i].Pool;
+                    pool = cp.Pool;
                     return true;
                 }
             }
@@ -46,12 +47,13 @@ namespace Npgsql
             // Next try value comparison on the strings
             for (var i = 0; i < nextSlot; i++)
             {
-                if (pools[i].Key == key)
+                var cp = pools[i];
+                if (cp.Key == key)
                 {
                     // See comment above
-                    while (Volatile.Read(ref pools[i].Pool) == null)
+                    while (Volatile.Read(ref cp.Pool) == null)
                         sw.SpinOnce();
-                    pool = pools[i].Pool;
+                    pool = cp.Pool;
                     return true;
                 }
             }
@@ -97,9 +99,10 @@ namespace Npgsql
                 var pools = _pools;
                 for (var i = 0; i < _nextSlot; i++)
                 {
-                    if (pools[i].Key == null)
+                    var cp = pools[i];
+                    if (cp.Key == null)
                         return;
-                    pools[i].Pool?.Clear();
+                    cp.Pool?.Clear();
                 }
             }
         }
