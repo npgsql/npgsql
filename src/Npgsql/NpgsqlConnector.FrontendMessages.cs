@@ -280,19 +280,21 @@ namespace Npgsql
             WriteBuffer.WriteByte(0);  // Null terminator
         }
 
-        internal void WriteCopyDone()
+        internal void WriteCopyDone() => WriteCopyDone(false).GetAwaiter().GetResult();
+
+        internal async Task WriteCopyDone(bool async)
         {
             const int len = sizeof(byte) +   // Message code
                             sizeof(int);     // Length
 
             if (WriteBuffer.WriteSpaceLeft < len)
-                Flush(false).GetAwaiter().GetResult();
+                await Flush(async);
 
             WriteBuffer.WriteByte(FrontendMessageCode.CopyDone);
             WriteBuffer.WriteInt32(len - 1);
         }
 
-        internal void WriteCopyFail()
+        internal async Task WriteCopyFail(bool async)
         {
             // Note: error message not supported for now
 
@@ -301,7 +303,7 @@ namespace Npgsql
                             sizeof(byte);   // Error message is always empty (only a null terminator)
 
             if (WriteBuffer.WriteSpaceLeft < len)
-                Flush(false).GetAwaiter().GetResult();
+                await Flush(async);
 
             WriteBuffer.WriteByte(FrontendMessageCode.CopyFail);
             WriteBuffer.WriteInt32(len - 1);

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
+using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.Logging;
@@ -94,7 +95,12 @@ namespace Npgsql
         /// <summary>
         /// Starts writing a single row, must be invoked before writing any columns.
         /// </summary>
-        public void StartRow()
+        public void StartRow() => StartRow(false).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Starts writing a single row, must be invoked before writing any columns.
+        /// </summary>
+        public async Task StartRow(bool async)
         {
             CheckReady();
 
@@ -102,7 +108,7 @@ namespace Npgsql
                 throw new InvalidOperationException("Row has already been started and must be finished");
 
             if (_buf.WriteSpaceLeft < 2)
-                _buf.Flush();
+                await _buf.Flush(async);
             _buf.WriteInt16(NumColumns);
 
             _column = 0;
@@ -117,7 +123,19 @@ namespace Npgsql
         /// corruption will occur. If in doubt, use <see cref="Write{T}(T, NpgsqlDbType)"/> to manually
         /// specify the type.
         /// </typeparam>
-        public void Write<T>([AllowNull] T value)
+        public void Write<T>([AllowNull] T value) => Write(value, false).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Writes a single column in the current row.
+        /// </summary>
+        /// <param name="value">The value to be written</param>
+        /// <param name="async"></param>
+        /// <typeparam name="T">
+        /// The type of the column to be written. This must correspond to the actual type or data
+        /// corruption will occur. If in doubt, use <see cref="Write{T}(T, NpgsqlDbType)"/> to manually
+        /// specify the type.
+        /// </typeparam>
+        public async Task Write<T>([AllowNull] T value, bool async)
         {
             var p = _params[_column];
             if (p == null)
@@ -128,7 +146,7 @@ namespace Npgsql
                     : new NpgsqlParameter<T>();
             }
 
-            Write(value, p);
+            await Write(value, p, async);
         }
 
         /// <summary>
@@ -142,7 +160,22 @@ namespace Npgsql
         /// <paramref name="npgsqlDbType"/> must be specified as <see cref="NpgsqlDbType.Jsonb"/>.
         /// </param>
         /// <typeparam name="T">The .NET type of the column to be written.</typeparam>
-        public void Write<T>([AllowNull] T value, NpgsqlDbType npgsqlDbType)
+        public void Write<T>([AllowNull] T value, NpgsqlDbType npgsqlDbType) =>
+            Write(value, npgsqlDbType, false).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Writes a single column in the current row as type <paramref name="npgsqlDbType"/>.
+        /// </summary>
+        /// <param name="value">The value to be written</param>
+        /// <param name="npgsqlDbType">
+        /// In some cases <typeparamref name="T"/> isn't enough to infer the data type to be written to
+        /// the database. This parameter and be used to unambiguously specify the type. An example is
+        /// the JSONB type, for which <typeparamref name="T"/> will be a simple string but for which
+        /// <paramref name="npgsqlDbType"/> must be specified as <see cref="NpgsqlDbType.Jsonb"/>.
+        /// </param>
+        /// <param name="async"></param>
+        /// <typeparam name="T">The .NET type of the column to be written.</typeparam>
+        public async Task Write<T>([AllowNull] T value, NpgsqlDbType npgsqlDbType, bool async)
         {
             var p = _params[_column];
             if (p == null)
@@ -157,7 +190,7 @@ namespace Npgsql
             if (npgsqlDbType != p.NpgsqlDbType)
                 throw new InvalidOperationException($"Can't change {nameof(p.NpgsqlDbType)} from {p.NpgsqlDbType} to {npgsqlDbType}");
 
-            Write(value, p);
+            await Write(value, p, async);
         }
 
         /// <summary>
@@ -169,7 +202,20 @@ namespace Npgsql
         /// the database. This parameter and be used to unambiguously specify the type.
         /// </param>
         /// <typeparam name="T">The .NET type of the column to be written.</typeparam>
-        public void Write<T>([AllowNull] T value, string dataTypeName)
+        public void Write<T>([AllowNull] T value, string dataTypeName) =>
+            Write(value, dataTypeName, false).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Writes a single column in the current row as type <paramref name="dataTypeName"/>.
+        /// </summary>
+        /// <param name="value">The value to be written</param>
+        /// <param name="dataTypeName">
+        /// In some cases <typeparamref name="T"/> isn't enough to infer the data type to be written to
+        /// the database. This parameter and be used to unambiguously specify the type.
+        /// </param>
+        /// <param name="async"></param>
+        /// <typeparam name="T">The .NET type of the column to be written.</typeparam>
+        public async Task Write<T>([AllowNull] T value, string dataTypeName, bool async)
         {
             var p = _params[_column];
             if (p == null)
@@ -184,10 +230,10 @@ namespace Npgsql
             //if (dataTypeName!= p.DataTypeName)
             //    throw new InvalidOperationException($"Can't change {nameof(p.DataTypeName)} from {p.DataTypeName} to {dataTypeName}");
 
-            Write(value, p);
+            await Write(value, p, async);
         }
 
-        void Write<T>([AllowNull] T value, NpgsqlParameter param)
+        async Task Write<T>([AllowNull] T value, NpgsqlParameter param, bool async)
         {
             CheckReady();
             if (_column == -1)
@@ -195,7 +241,7 @@ namespace Npgsql
 
             if (value == null || value is DBNull)
             {
-                WriteNull();
+                await WriteNull(async);
                 return;
             }
 
@@ -215,7 +261,7 @@ namespace Npgsql
             param.ResolveHandler(_connector.TypeMapper);
             param.ValidateAndGetLength();
             param.LengthCache?.Rewind();
-            param.WriteWithLength(_buf, false);
+            await param.WriteWithLength(_buf, async);
             param.LengthCache?.Clear();
             _column++;
         }
@@ -223,14 +269,19 @@ namespace Npgsql
         /// <summary>
         /// Writes a single null column value.
         /// </summary>
-        public void WriteNull()
+        public void WriteNull() => WriteNull(false).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Writes a single null column value.
+        /// </summary>
+        public async Task WriteNull(bool async)
         {
             CheckReady();
             if (_column == -1)
                 throw new InvalidOperationException("A row hasn't been started");
 
             if (_buf.WriteSpaceLeft < 4)
-                _buf.Flush();
+                await _buf.Flush(async);
 
             _buf.WriteInt32(-1);
             _column++;
@@ -238,15 +289,24 @@ namespace Npgsql
 
         /// <summary>
         /// Writes an entire row of columns.
-        /// Equivalent to calling <see cref="StartRow"/>, followed by multiple <see cref="Write{T}(T)"/>
+        /// Equivalent to calling <see cref="StartRow()"/>, followed by multiple <see cref="Write{T}(T)"/>
         /// on each value.
         /// </summary>
         /// <param name="values">An array of column values to be written as a single row</param>
-        public void WriteRow(params object[] values)
+        public void WriteRow(params object[] values) => WriteRow(false, values).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Writes an entire row of columns.
+        /// Equivalent to calling <see cref="StartRow(bool)"/>, followed by multiple <see cref="Write{T}(T)"/>
+        /// on each value.
+        /// </summary>
+        /// <param name="values">An array of column values to be written as a single row</param>
+        /// <param name="async"></param>
+        public async Task WriteRow(bool async, params object[] values)
         {
-            StartRow();
+            await StartRow(async);
             foreach (var value in values)
-                Write(value);
+                await Write(value, async);
         }
 
         #endregion
@@ -256,25 +316,30 @@ namespace Npgsql
         /// <summary>
         /// Completes the import operation. The writer is unusable after this operation.
         /// </summary>
-        public ulong Complete()
+        public ulong Complete() => Complete(false).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Completes the import operation. The writer is unusable after this operation.
+        /// </summary>
+        public async Task<ulong> Complete(bool async)
         {
             CheckReady();
 
             if (InMiddleOfRow)
             {
-                Cancel();
+                await Cancel(async);
                 throw new InvalidOperationException("Binary importer closed in the middle of a row, cancelling import.");
             }
 
             try
             {
-                WriteTrailer();
-                _buf.Flush();
+                await WriteTrailer(async);
+                await _buf.Flush(async);
                 _buf.EndCopyMode();
-                _connector.WriteCopyDone();
-                _connector.Flush();
-                var cmdComplete = Expect<CommandCompleteMessage>(_connector.ReadMessage(), _connector);
-                Expect<ReadyForQueryMessage>(_connector.ReadMessage(), _connector);
+                await _connector.WriteCopyDone(async);
+                await _connector.Flush(async);
+                var cmdComplete = Expect<CommandCompleteMessage>(await _connector.ReadMessage(async), _connector);
+                Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async), _connector);
                 _state = ImporterState.Committed;
                 return cmdComplete.Rows;
             }
@@ -293,16 +358,16 @@ namespace Npgsql
         /// </summary>
         public void Dispose() => Close();
 
-        void Cancel()
+        async Task Cancel(bool async)
         {
             _state = ImporterState.Cancelled;
             _buf.Clear();
             _buf.EndCopyMode();
-            _connector.WriteCopyFail();
-            _connector.Flush();
+            await _connector.WriteCopyFail(async);
+            await _connector.Flush(async);
             try
             {
-                var msg = _connector.ReadMessage();
+                var msg = await _connector.ReadMessage(async);
                 // The CopyFail should immediately trigger an exception from the read above.
                 _connector.Break();
                 throw new NpgsqlException("Expected ErrorResponse when cancelling COPY but got: " + msg.Code);
@@ -325,7 +390,7 @@ namespace Npgsql
             case ImporterState.Disposed:
                 return;
             case ImporterState.Ready:
-                Cancel();
+                Cancel(false).GetAwaiter().GetResult();
                 break;
             case ImporterState.Cancelled:
             case ImporterState.Committed:
@@ -356,10 +421,10 @@ namespace Npgsql
         }
 #pragma warning restore CS8625
 
-        void WriteTrailer()
+        async Task WriteTrailer(bool async)
         {
             if (_buf.WriteSpaceLeft < 2)
-                _buf.Flush();
+                await _buf.Flush(async);
             _buf.WriteInt16(-1);
         }
 

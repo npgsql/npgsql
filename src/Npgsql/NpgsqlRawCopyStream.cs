@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.Logging;
 using static Npgsql.Util.Statics;
@@ -186,7 +187,12 @@ namespace Npgsql
         /// <summary>
         /// Cancels and terminates an ongoing operation. Any data already written will be discarded.
         /// </summary>
-        public void Cancel()
+        public void Cancel() => Cancel(false).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Cancels and terminates an ongoing operation. Any data already written will be discarded.
+        /// </summary>
+        public async Task Cancel(bool async)
         {
             CheckDisposed();
 
@@ -195,11 +201,11 @@ namespace Npgsql
                 _isDisposed = true;
                 _writeBuf.EndCopyMode();
                 _writeBuf.Clear();
-                _connector.WriteCopyFail();
-                _connector.Flush();
+                await _connector.WriteCopyFail(async);
+                await _connector.Flush(async);
                 try
                 {
-                    var msg = _connector.ReadMessage();
+                    var msg = await _connector.ReadMessage(async);
                     // The CopyFail should immediately trigger an exception from the read above.
                     _connector.Break();
                     throw new NpgsqlException("Expected ErrorResponse when cancelling COPY but got: " + msg.Code);

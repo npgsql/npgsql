@@ -5,6 +5,7 @@ using System.Data;
 using System.IO;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
 
@@ -15,7 +16,7 @@ namespace Npgsql.Tests
         #region issue 2257
 
         [Test, Description("Reproduce #2257")]
-        public void Issue2257()
+        public async Task Issue2257([Values(true, false)] bool isAsync)
         {
             using (var conn = OpenConnection(new NpgsqlConnectionStringBuilder(ConnectionString) { CommandTimeout = 3 }))
             {
@@ -34,8 +35,8 @@ namespace Npgsql.Tests
                 {
                     for (var i = 1; i <= rowCount; ++i)
                     {
-                        writer.StartRow();
-                        writer.Write(i);
+                        await writer.StartRow(isAsync);
+                        await writer.Write(i, isAsync);
                     }
 
                     var e = Assert.Throws<NpgsqlException>(() => writer.Complete());
@@ -137,7 +138,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Cancels a binary write")]
-        public void CancelRawBinaryImport()
+        public async Task CancelRawBinaryImport([Values(true, false)] bool isAsync)
         {
             using (var conn = OpenConnection())
             {
@@ -146,7 +147,7 @@ namespace Npgsql.Tests
                 using (var s = conn.BeginRawBinaryCopy("COPY data (field_text, field_int4) FROM STDIN BINARY"))
                 {
                     s.Write(garbage, 0, garbage.Length);
-                    s.Cancel();
+                    await s.Cancel(isAsync);
                 }
 
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
@@ -232,7 +233,7 @@ namespace Npgsql.Tests
         #region Binary
 
         [Test, Description("Roundtrips some data")]
-        public void BinaryRoundtrip()
+        public async Task BinaryRoundtrip([Values(true, false)] bool isAsync)
         {
             using (var conn = OpenConnection())
             {
@@ -243,17 +244,17 @@ namespace Npgsql.Tests
                 {
                     StateAssertions(conn);
 
-                    writer.StartRow();
-                    writer.Write("Hello");
-                    writer.Write((short)8, NpgsqlDbType.Smallint);
+                    await writer.StartRow(isAsync);
+                    await writer.Write("Hello", isAsync);
+                    await writer.Write((short)8, NpgsqlDbType.Smallint, isAsync);
 
-                    writer.WriteRow("Something", (short)9);
+                    await writer.WriteRow(isAsync, "Something", (short)9);
 
-                    writer.StartRow();
-                    writer.Write(longString, "text");
-                    writer.WriteNull();
+                    await writer.StartRow(isAsync);
+                    await writer.Write(longString, "text", isAsync);
+                    await writer.WriteNull(isAsync);
 
-                    var rowsWritten = writer.Complete();
+                    var rowsWritten = await writer.Complete(isAsync);
                     Assert.That(rowsWritten, Is.EqualTo(3));
                 }
 
@@ -263,21 +264,21 @@ namespace Npgsql.Tests
                 {
                     StateAssertions(conn);
 
-                    Assert.That(reader.StartRow(), Is.EqualTo(2));
-                    Assert.That(reader.Read<string>(), Is.EqualTo("Hello"));
-                    Assert.That(reader.Read<int>(NpgsqlDbType.Smallint), Is.EqualTo(8));
+                    Assert.That(await reader.StartRow(isAsync), Is.EqualTo(2));
+                    Assert.That(await reader.Read<string>(isAsync), Is.EqualTo("Hello"));
+                    Assert.That(await reader.Read<int>(NpgsqlDbType.Smallint, isAsync), Is.EqualTo(8));
 
-                    Assert.That(reader.StartRow(), Is.EqualTo(2));
+                    Assert.That(await reader.StartRow(isAsync), Is.EqualTo(2));
                     Assert.That(reader.IsNull, Is.False);
-                    Assert.That(reader.Read<string>(), Is.EqualTo("Something"));
-                    reader.Skip();
+                    Assert.That(await reader.Read<string>(isAsync), Is.EqualTo("Something"));
+                    await reader.Skip(isAsync);
 
-                    Assert.That(reader.StartRow(), Is.EqualTo(2));
-                    Assert.That(reader.Read<string>(), Is.EqualTo(longString));
+                    Assert.That(await reader.StartRow(isAsync), Is.EqualTo(2));
+                    Assert.That(await reader.Read<string>(isAsync), Is.EqualTo(longString));
                     Assert.That(reader.IsNull, Is.True);
-                    reader.Skip();
+                    await reader.Skip(isAsync);
 
-                    Assert.That(reader.StartRow(), Is.EqualTo(-1));
+                    Assert.That(await reader.StartRow(isAsync), Is.EqualTo(-1));
                 }
 
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
@@ -285,16 +286,16 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void CancelBinaryImport()
+        public async Task CancelBinaryImport([Values(true, false)] bool isAsync)
         {
             using (var conn = OpenConnection())
             {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER)");
                 using (var writer = conn.BeginBinaryImport("COPY data (field_text, field_int4) FROM STDIN BINARY"))
                 {
-                    writer.StartRow();
-                    writer.Write("Hello");
-                    writer.Write(8);
+                    await writer.StartRow(isAsync);
+                    await writer.Write("Hello", isAsync);
+                    await writer.Write(8, isAsync);
                     // No commit should rollback
                 }
                 Assert.That(conn.ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(0));
@@ -302,7 +303,7 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/657")]
-        public void ImportBytea()
+        public async Task ImportBytea([Values(true, false)] bool isAsync)
         {
             using (var conn = OpenConnection())
             {
@@ -312,9 +313,9 @@ namespace Npgsql.Tests
 
                 using (var writer = conn.BeginBinaryImport("COPY data (field) FROM STDIN BINARY"))
                 {
-                    writer.StartRow();
-                    writer.Write(data, NpgsqlDbType.Bytea);
-                    var rowsWritten = writer.Complete();
+                    await writer.StartRow(isAsync);
+                    await writer.Write(data, NpgsqlDbType.Bytea, isAsync);
+                    var rowsWritten = await writer.Complete(isAsync);
                     Assert.That(rowsWritten, Is.EqualTo(1));
                 }
 
@@ -323,7 +324,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void ImportStringArray()
+        public async Task ImportStringArray([Values(true, false)] bool isAsync)
         {
             using (var conn = OpenConnection())
             {
@@ -332,9 +333,9 @@ namespace Npgsql.Tests
                 var data = new[] {"foo", "a", "bar"};
                 using (var writer = conn.BeginBinaryImport("COPY data (field) FROM STDIN BINARY"))
                 {
-                    writer.StartRow();
-                    writer.Write(data, NpgsqlDbType.Array | NpgsqlDbType.Text);
-                    var rowsWritten = writer.Complete();
+                    await writer.StartRow(isAsync);
+                    await writer.Write(data, NpgsqlDbType.Array | NpgsqlDbType.Text, isAsync);
+                    var rowsWritten = await writer.Complete(isAsync);
                     Assert.That(rowsWritten, Is.EqualTo(1));
                 }
 
@@ -343,7 +344,7 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/816")]
-        public void ImportStringWithBufferLength()
+        public async Task ImportStringWithBufferLength([Values(true, false)] bool isAsync)
         {
             using (var conn = OpenConnection())
             {
@@ -352,9 +353,9 @@ namespace Npgsql.Tests
                 var data = new string('a', conn.Settings.WriteBufferSize);
                 using (var writer = conn.BeginBinaryImport("COPY data (field) FROM STDIN BINARY"))
                 {
-                    writer.StartRow();
-                    writer.Write(data, NpgsqlDbType.Text);
-                    var rowsWritten = writer.Complete();
+                    await writer.StartRow(isAsync);
+                    await writer.Write(data, NpgsqlDbType.Text, isAsync);
+                    var rowsWritten = await writer.Complete(isAsync);
                     Assert.That(rowsWritten, Is.EqualTo(1));
                 }
                 Assert.That(conn.ExecuteScalar("SELECT field FROM data"), Is.EqualTo(data));
@@ -362,7 +363,7 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/662")]
-        public void ImportDirectBuffer()
+        public async Task ImportDirectBuffer([Values(true, false)] bool isAsync)
         {
             using (var conn = OpenConnection())
             {
@@ -373,10 +374,10 @@ namespace Npgsql.Tests
                     // Big value - triggers use of the direct write optimization
                     var data = new byte[conn.Settings.WriteBufferSize + 10];
 
-                    writer.StartRow();
-                    writer.Write(data);
-                    writer.StartRow();
-                    writer.Write(data);
+                    await writer.StartRow(isAsync);
+                    await writer.Write(data, isAsync);
+                    await writer.StartRow(isAsync);
+                    await writer.Write(data, isAsync);
                 }
             }
         }
@@ -429,7 +430,7 @@ namespace Npgsql.Tests
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/661")]
         [Ignore("Unreliable")]
-        public void UnexpectedExceptionBinaryImport()
+        public void UnexpectedExceptionBinaryImport([Values(true, false)] bool isAsync)
         {
             using (var conn = OpenConnection())
             {
@@ -443,10 +444,10 @@ namespace Npgsql.Tests
                     conn2.ExecuteNonQuery($"SELECT pg_terminate_backend({conn.ProcessID})");
 
                 Thread.Sleep(50);
-                Assert.That(() =>
+                Assert.That(async () =>
                 {
-                    writer.StartRow();
-                    writer.Write(data);
+                    await writer.StartRow(isAsync);
+                    await writer.Write(data, isAsync);
                     writer.Dispose();
                 }, Throws.Exception.TypeOf<IOException>());
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
@@ -455,7 +456,7 @@ namespace Npgsql.Tests
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/657")]
         [Explicit]
-        public void ImportByteaMassive()
+        public async Task ImportByteaMassive([Values(true, false)] bool isAsync)
         {
             using (var conn = OpenConnection())
             {
@@ -470,8 +471,8 @@ namespace Npgsql.Tests
                     {
                         if (i%100 == 0)
                             Console.WriteLine("Iteration " + i);
-                        writer.StartRow();
-                        writer.Write(data, NpgsqlDbType.Bytea);
+                        await writer.StartRow(isAsync);
+                        await writer.Write(data, NpgsqlDbType.Bytea, isAsync);
                     }
                 }
 
@@ -480,7 +481,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void ExportLongString()
+        public async Task ExportLongString([Values(true, false)] bool isAsync)
         {
             const int iterations = 100;
             using (var conn = OpenConnection())
@@ -498,16 +499,16 @@ namespace Npgsql.Tests
                 {
                     for (var row = 0; row < iterations; row++)
                     {
-                        Assert.That(reader.StartRow(), Is.EqualTo(5));
+                        Assert.That(await reader.StartRow(isAsync), Is.EqualTo(5));
                         for (var col = 0; col < 5; col++)
-                            Assert.That(reader.Read<string>().Length, Is.EqualTo(len));
+                            Assert.That((await reader.Read<string>(isAsync)).Length, Is.EqualTo(len));
                     }
                 }
             }
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1134")]
-        public void ReadBitString()
+        public async Task ReadBitString([Values(true, false)] bool isAsync)
         {
             using (var conn = OpenConnection())
             {
@@ -516,9 +517,9 @@ namespace Npgsql.Tests
 
                 using (var reader = conn.BeginBinaryExport("COPY data (bits, bitarray) TO STDIN BINARY"))
                 {
-                    reader.StartRow();
-                    Assert.That(reader.Read<BitArray>(), Is.EqualTo(new BitArray(new[] { true, false, true })));
-                    Assert.That(reader.Read<BitArray[]>(), Is.EqualTo(new[]
+                    await reader.StartRow(isAsync);
+                    Assert.That(await reader.Read<BitArray>(isAsync), Is.EqualTo(new BitArray(new[] { true, false, true })));
+                    Assert.That(await reader.Read<BitArray[]>(isAsync), Is.EqualTo(new[]
                     {
                         new BitArray(new[] { true, false, true }),
                         new BitArray(new[] { true, true, true })
@@ -528,7 +529,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void Array()
+        public async Task Array([Values(true, false)] bool isAsync)
         {
             var expected = new[] { 8 };
 
@@ -538,16 +539,16 @@ namespace Npgsql.Tests
 
                 using (var writer = conn.BeginBinaryImport("COPY data (arr) FROM STDIN BINARY"))
                 {
-                    writer.StartRow();
-                    writer.Write(expected);
-                    var rowsWritten = writer.Complete();
+                    await writer.StartRow(isAsync);
+                    await writer.Write(expected, isAsync);
+                    var rowsWritten = await writer.Complete(isAsync);
                     Assert.That(rowsWritten, Is.EqualTo(1));
                 }
 
                 using (var reader = conn.BeginBinaryExport("COPY data (arr) TO STDIN BINARY"))
                 {
-                    reader.StartRow();
-                    Assert.That(reader.Read<int[]>(), Is.EqualTo(expected));
+                    await reader.StartRow(isAsync);
+                    Assert.That(await reader.Read<int[]>(isAsync), Is.EqualTo(expected));
                 }
             }
         }
@@ -584,17 +585,17 @@ namespace Npgsql.Tests
         enum Mood { Sad, Ok, Happy };
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1440")]
-        public void ErrorDuringImport()
+        public async Task ErrorDuringImport([Values(true, false)] bool isAsync)
         {
             using (var conn = OpenConnection())
             {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo INT, CONSTRAINT uq UNIQUE(foo))");
                 var writer = conn.BeginBinaryImport("COPY DATA (foo) FROM STDIN BINARY");
-                writer.StartRow();
-                writer.Write(8);
-                writer.StartRow();
-                writer.Write(8);
-                Assert.That(() => writer.Complete(), Throws.Exception
+                await writer.StartRow(isAsync);
+                await writer.Write(8, isAsync);
+                await writer.StartRow(isAsync);
+                await writer.Write(8, isAsync);
+                Assert.That(() => writer.Complete(isAsync), Throws.Exception
                     .TypeOf<PostgresException>()
                     .With.Property(nameof(PostgresException.SqlState)).EqualTo("23505"));
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
@@ -602,7 +603,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void ImportCannotWriteAfterCommit()
+        public async Task ImportCannotWriteAfterCommit([Values(true, false)] bool isAsync)
         {
             using (var conn = OpenConnection())
             {
@@ -611,11 +612,11 @@ namespace Npgsql.Tests
                 {
                     using (var writer = conn.BeginBinaryImport("COPY DATA (foo) FROM STDIN BINARY"))
                     {
-                        writer.StartRow();
-                        writer.Write(8);
-                        var rowsWritten = writer.Complete();
+                        await writer.StartRow(isAsync);
+                        await writer.Write(8, isAsync);
+                        var rowsWritten = await writer.Complete(isAsync);
                         Assert.That(rowsWritten, Is.EqualTo(1));
-                        writer.StartRow();
+                        await writer.StartRow(isAsync);
                         Assert.Fail("StartRow should have thrown");
                     }
                 }
@@ -627,7 +628,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void ImportCommitInMiddleOfRow()
+        public async Task ImportCommitInMiddleOfRow([Values(true, false)] bool isAsync)
         {
             using (var conn = OpenConnection())
             {
@@ -636,12 +637,12 @@ namespace Npgsql.Tests
                 {
                     using (var writer = conn.BeginBinaryImport("COPY DATA (foo, bar) FROM STDIN BINARY"))
                     {
-                        writer.StartRow();
-                        writer.Write(8);
-                        writer.Write("hello");
-                        writer.StartRow();
-                        writer.Write(9);
-                        writer.Complete();
+                        await writer.StartRow(isAsync);
+                        await writer.Write(8, isAsync);
+                        await writer.Write("hello", isAsync);
+                        await writer.StartRow(isAsync);
+                        await writer.Write(9, isAsync);
+                        await writer.Complete(isAsync);
                         Assert.Fail("Commit should have thrown");
                     }
                 }
@@ -653,7 +654,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void ImportExceptionDoesNotCommit()
+        public async Task ImportExceptionDoesNotCommit([Values(true, false)] bool isAsync)
         {
             using (var conn = OpenConnection())
             {
@@ -662,8 +663,8 @@ namespace Npgsql.Tests
                 {
                     using (var writer = conn.BeginBinaryImport("COPY DATA (foo) FROM STDIN BINARY"))
                     {
-                        writer.StartRow();
-                        writer.Write(8);
+                        await writer.StartRow(isAsync);
+                        await writer.Write(8, isAsync);
                         throw new Exception("FOO");
                     }
                 }
@@ -882,7 +883,7 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("http://stackoverflow.com/questions/37431054/08p01-insufficient-data-left-in-message-for-nullable-datetime/37431464")]
-        public void WriteNullValues()
+        public async Task WriteNullValues([Values(true, false)] bool isAsync)
         {
             using (var conn = OpenConnection())
             {
@@ -890,12 +891,12 @@ namespace Npgsql.Tests
 
                 using (var writer = conn.BeginBinaryImport("COPY data (foo1, foo2, foo3, foo4) FROM STDIN BINARY"))
                 {
-                    writer.StartRow();
-                    writer.Write(DBNull.Value, NpgsqlDbType.Integer);
-                    writer.Write((string?)null, NpgsqlDbType.Uuid);
-                    writer.Write(DBNull.Value);
-                    writer.Write((string?)null);
-                    var rowsWritten = writer.Complete();
+                    await writer.StartRow(isAsync);
+                    await writer.Write(DBNull.Value, NpgsqlDbType.Integer, isAsync);
+                    await writer.Write((string?)null, NpgsqlDbType.Uuid, isAsync);
+                    await writer.Write(DBNull.Value, isAsync);
+                    await writer.Write((string?)null, isAsync);
+                    var rowsWritten = await writer.Complete(isAsync);
                     Assert.That(rowsWritten, Is.EqualTo(1));
                 }
                 using (var cmd = new NpgsqlCommand("SELECT foo1,foo2,foo3,foo4 FROM data", conn))
@@ -909,7 +910,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void WriteDifferentTypes()
+        public async Task WriteDifferentTypes([Values(true, false)] bool isAsync)
         {
             using (var conn = OpenConnection())
             {
@@ -917,13 +918,13 @@ namespace Npgsql.Tests
 
                 using (var writer = conn.BeginBinaryImport("COPY data (foo, bar) FROM STDIN BINARY"))
                 {
-                    writer.StartRow();
-                    writer.Write(3.0, NpgsqlDbType.Integer);
-                    writer.Write((object)new[] { 1, 2, 3 });
-                    writer.StartRow();
-                    writer.Write(3, NpgsqlDbType.Integer);
-                    writer.Write((object)new List<int> { 4, 5, 6 });
-                    var rowsWritten = writer.Complete();
+                    await writer.StartRow(isAsync);
+                    await writer.Write(3.0, NpgsqlDbType.Integer, isAsync);
+                    await writer.Write((object)new[] { 1, 2, 3 }, isAsync);
+                    await writer.StartRow(isAsync);
+                    await writer.Write(3, NpgsqlDbType.Integer, isAsync);
+                    await writer.Write((object)new List<int> { 4, 5, 6 }, isAsync);
+                    var rowsWritten = await writer.Complete(isAsync);
                     Assert.That(rowsWritten, Is.EqualTo(2));
                 }
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(2));
