@@ -657,24 +657,13 @@ namespace Npgsql
                     if (errorCode != 0)
                         throw new SocketException(errorCode);
                     if (!write.Any())
-                    {
-                        Log.Trace($"Timeout after {new TimeSpan(perEndpointTimeout * 10).TotalSeconds} seconds when connecting to {endpoint}");
-                        try { socket.Dispose(); }
-                        catch
-                        {
-                            // ignored
-                        }
-                        if (i == endpoints.Length - 1)
-                            throw new TimeoutException();
-                        continue;
-                    }
+                        throw new TimeoutException("Timeout during connection attempt");
                     socket.Blocking = true;
                     SetSocketOptions(socket);
                     _socket = socket;
                     return;
                 }
-                catch (TimeoutException) { throw; }
-                catch
+                catch (Exception e)
                 {
                     try { socket.Dispose(); }
                     catch
@@ -682,7 +671,7 @@ namespace Npgsql
                         // ignored
                     }
 
-                    Log.Trace("Failed to connect to {endpoint}");
+                    Log.Trace($"Failed to connect to {endpoint}", e);
 
                     if (i == endpoints.Length - 1)
                         throw;
@@ -722,42 +711,16 @@ namespace Npgsql
                 Log.Trace($"Attempting to connect to {endpoint}");
                 var protocolType = endpoint.AddressFamily == AddressFamily.InterNetwork ? ProtocolType.Tcp : ProtocolType.IP;
                 var socket = new Socket(endpoint.AddressFamily, SocketType.Stream, protocolType);
-                var connectTask = Task.Factory.FromAsync(socket.BeginConnect, socket.EndConnect, endpoint, null);
                 try
                 {
-                    try
-                    {
-                        await connectTask.WithCancellationAndTimeout(perIpTimeout, cancellationToken);
-                    }
-                    catch (OperationCanceledException)
-                    {
-#pragma warning disable 4014
-                        // ReSharper disable once MethodSupportsCancellation
-                        // ReSharper disable once AccessToDisposedClosure
-                        connectTask.ContinueWith(t => socket.Dispose());
-#pragma warning restore 4014
-
-                        if (timeout.HasExpired)
-                        {
-                            Log.Trace($"Timeout after {perIpTimespan.TotalSeconds} seconds when connecting to {endpoint}");
-                            if (i == endpoints.Length - 1)
-                            {
-                                throw new TimeoutException();
-                            }
-                            continue;
-                        }
-
-                        // We're here if an actual cancellation was requested (not a timeout)
-                        throw;
-                    }
+                    await socket.ConnectAsync(endpoint)
+                        .WithCancellationAndTimeout(perIpTimeout, cancellationToken);
 
                     SetSocketOptions(socket);
                     _socket = socket;
                     return;
                 }
-                catch (TimeoutException) { throw; }
-                catch (OperationCanceledException) { throw; }
-                catch
+                catch (Exception e)
                 {
                     try { socket.Dispose(); }
                     catch
@@ -765,7 +728,12 @@ namespace Npgsql
                         // ignored
                     }
 
-                    Log.Trace($"Failed to connect to {endpoint}");
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    if (e is OperationCanceledException)
+                        e = new TimeoutException("Timeout during connection attempt");
+
+                    Log.Trace($"Failed to connect to {endpoint}", e);
 
                     if (i == endpoints.Length - 1)
                     {

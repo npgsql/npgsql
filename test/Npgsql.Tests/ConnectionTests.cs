@@ -300,9 +300,8 @@ namespace Npgsql.Tests
             }.ToString();
             using (var conn = new NpgsqlConnection(connString))
             {
-                var cts = new CancellationTokenSource();
-                cts.CancelAfter(1000);
-                Assert.That(async () => await conn.OpenAsync(cts.Token), Throws.Exception.TypeOf<TaskCanceledException>());
+                var cts = new CancellationTokenSource(1000);
+                Assert.That(async () => await conn.OpenAsync(cts.Token), Throws.Exception.TypeOf<OperationCanceledException>());
                 Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
             }
         }
