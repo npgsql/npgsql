@@ -674,7 +674,7 @@ namespace Npgsql
                     Log.Trace($"Failed to connect to {endpoint}", e);
 
                     if (i == endpoints.Length - 1)
-                        throw;
+                        throw new NpgsqlException("Exception while connecting", e);
                 }
             }
         }
@@ -737,7 +737,7 @@ namespace Npgsql
 
                     if (i == endpoints.Length - 1)
                     {
-                        throw;
+                        throw new NpgsqlException("Exception while connecting", e);
                     }
                 }
             }

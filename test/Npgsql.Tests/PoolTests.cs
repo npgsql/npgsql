@@ -322,7 +322,9 @@ namespace Npgsql.Tests
             using (var conn = new NpgsqlConnection(connString))
             {
                 for (var i = 0; i < 1; i++)
-                    Assert.That(() => conn.Open(), Throws.Exception.TypeOf<SocketException>());
+                    Assert.That(() => conn.Open(), Throws.Exception
+                        .TypeOf<NpgsqlException>()
+                        .With.InnerException.TypeOf<SocketException>());
                 Assert.True(PoolManager.TryGetValue(connString, out var pool));
                 AssertPoolState(pool, 0, 0);
             }
