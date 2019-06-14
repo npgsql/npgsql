@@ -377,12 +377,12 @@ namespace Npgsql
         /// <summary>
         /// Completes the import operation. The writer is unusable after this operation.
         /// </summary>
-        public Task<ulong> CompleteAsync() => Complete(true);
-
+        public ValueTask<ulong> CompleteAsync() => Complete(true);
+        
         /// <summary>
         /// Completes the import operation. The writer is unusable after this operation.
         /// </summary>
-        async Task<ulong> Complete(bool async)
+        async ValueTask<ulong> Complete(bool async)
         {
             CheckReady();
 
