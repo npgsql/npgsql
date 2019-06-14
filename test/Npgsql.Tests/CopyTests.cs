@@ -142,7 +142,7 @@ namespace Npgsql.Tests
             using (var conn = OpenConnection())
             {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER)");
-                var garbage = new byte[] { 1, 2, 3, 4 };
+                var garbage = new byte[] {1, 2, 3, 4};
                 using (var s = conn.BeginRawBinaryCopy("COPY data (field_text, field_int4) FROM STDIN BINARY"))
                 {
                     s.Write(garbage, 0, garbage.Length);
@@ -308,7 +308,7 @@ namespace Npgsql.Tests
             {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (field BYTEA)");
 
-                var data = new byte[] { 1, 5, 8 };
+                var data = new byte[] {1, 5, 8};
 
                 using (var writer = conn.BeginBinaryImport("COPY data (field) FROM STDIN BINARY"))
                 {
@@ -329,7 +329,7 @@ namespace Npgsql.Tests
             {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (field TEXT[])");
 
-                var data = new[] { "foo", "a", "bar" };
+                var data = new[] {"foo", "a", "bar"};
                 using (var writer = conn.BeginBinaryImport("COPY data (field) FROM STDIN BINARY"))
                 {
                     writer.StartRow();
@@ -462,13 +462,13 @@ namespace Npgsql.Tests
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (field BYTEA)");
 
                 const int iterations = 10000;
-                var data = new byte[1024 * 1024];
+                var data = new byte[1024*1024];
 
                 using (var writer = conn.BeginBinaryImport("COPY data (field) FROM STDIN BINARY"))
                 {
                     for (var i = 0; i < iterations; i++)
                     {
-                        if (i % 100 == 0)
+                        if (i%100 == 0)
                             Console.WriteLine("Iteration " + i);
                         writer.StartRow();
                         writer.Write(data, NpgsqlDbType.Bytea);
@@ -696,7 +696,7 @@ namespace Npgsql.Tests
                 conn.ExecuteNonQuery("TRUNCATE data");
 
                 // Long (multi-buffer) write
-                var iterations = NpgsqlWriteBuffer.MinimumSize / line.Length + 100;
+                var iterations = NpgsqlWriteBuffer.MinimumSize/line.Length + 100;
                 writer = conn.BeginTextImport("COPY data (field_text, field_int4) FROM STDIN");
                 for (var i = 0; i < iterations; i++)
                     writer.Write(line);
@@ -840,38 +840,32 @@ namespace Npgsql.Tests
         public void CloseDuringCopy()
         {
             // TODO: Check no broken connections were returned to the pool
-            using (var conn = OpenConnection())
-            {
+            using (var conn = OpenConnection()) {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER)");
                 conn.BeginBinaryImport("COPY data (field_text, field_int4) FROM STDIN BINARY");
             }
 
-            using (var conn = OpenConnection())
-            {
+            using (var conn = OpenConnection()) {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER)");
                 conn.BeginBinaryExport("COPY data (field_text, field_int2) TO STDIN BINARY");
             }
 
-            using (var conn = OpenConnection())
-            {
+            using (var conn = OpenConnection()) {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER)");
                 conn.BeginRawBinaryCopy("COPY data (field_text, field_int4) FROM STDIN BINARY");
             }
 
-            using (var conn = OpenConnection())
-            {
+            using (var conn = OpenConnection()) {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER)");
                 conn.BeginRawBinaryCopy("COPY data (field_text, field_int4) TO STDIN BINARY");
             }
 
-            using (var conn = OpenConnection())
-            {
+            using (var conn = OpenConnection()) {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER)");
                 conn.BeginTextImport("COPY data (field_text, field_int4) FROM STDIN");
             }
 
-            using (var conn = OpenConnection())
-            {
+            using (var conn = OpenConnection()) {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER)");
                 conn.BeginTextExport("COPY data (field_text, field_int4) TO STDIN");
             }
