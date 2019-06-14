@@ -192,7 +192,9 @@ namespace Npgsql
         /// <summary>
         /// Cancels and terminates an ongoing operation. Any data already written will be discarded.
         /// </summary>
-        public async Task Cancel(bool async)
+        public Task CancelAsync() => Cancel(true);
+
+        async Task Cancel(bool async)
         {
             CheckDisposed();
 

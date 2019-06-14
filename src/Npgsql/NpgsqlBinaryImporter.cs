@@ -100,7 +100,12 @@ namespace Npgsql
         /// <summary>
         /// Starts writing a single row, must be invoked before writing any columns.
         /// </summary>
-        public async Task StartRow(bool async)
+        public Task StartRowAsync() => StartRow(true);
+
+        /// <summary>
+        /// Starts writing a single row, must be invoked before writing any columns.
+        /// </summary>
+        async Task StartRow(bool async)
         {
             CheckReady();
 
@@ -129,13 +134,24 @@ namespace Npgsql
         /// Writes a single column in the current row.
         /// </summary>
         /// <param name="value">The value to be written</param>
+        /// <typeparam name="T">
+        /// The type of the column to be written. This must correspond to the actual type or data
+        /// corruption will occur. If in doubt, use <see cref="Write{T}(T, NpgsqlDbType)"/> to manually
+        /// specify the type.
+        /// </typeparam>
+        public Task WriteAsync<T>([AllowNull] T value) => Write(value, true);
+
+        /// <summary>
+        /// Writes a single column in the current row.
+        /// </summary>
+        /// <param name="value">The value to be written</param>
         /// <param name="async"></param>
         /// <typeparam name="T">
         /// The type of the column to be written. This must correspond to the actual type or data
         /// corruption will occur. If in doubt, use <see cref="Write{T}(T, NpgsqlDbType)"/> to manually
         /// specify the type.
         /// </typeparam>
-        public async Task Write<T>([AllowNull] T value, bool async)
+        async Task Write<T>([AllowNull] T value, bool async)
         {
             var p = _params[_column];
             if (p == null)
@@ -173,9 +189,23 @@ namespace Npgsql
         /// the JSONB type, for which <typeparamref name="T"/> will be a simple string but for which
         /// <paramref name="npgsqlDbType"/> must be specified as <see cref="NpgsqlDbType.Jsonb"/>.
         /// </param>
+        /// <typeparam name="T">The .NET type of the column to be written.</typeparam>
+        public Task WriteAsync<T>([AllowNull] T value, NpgsqlDbType npgsqlDbType) =>
+            Write(value, npgsqlDbType, true);
+
+        /// <summary>
+        /// Writes a single column in the current row as type <paramref name="npgsqlDbType"/>.
+        /// </summary>
+        /// <param name="value">The value to be written</param>
+        /// <param name="npgsqlDbType">
+        /// In some cases <typeparamref name="T"/> isn't enough to infer the data type to be written to
+        /// the database. This parameter and be used to unambiguously specify the type. An example is
+        /// the JSONB type, for which <typeparamref name="T"/> will be a simple string but for which
+        /// <paramref name="npgsqlDbType"/> must be specified as <see cref="NpgsqlDbType.Jsonb"/>.
+        /// </param>
         /// <param name="async"></param>
         /// <typeparam name="T">The .NET type of the column to be written.</typeparam>
-        public async Task Write<T>([AllowNull] T value, NpgsqlDbType npgsqlDbType, bool async)
+        async Task Write<T>([AllowNull] T value, NpgsqlDbType npgsqlDbType, bool async)
         {
             var p = _params[_column];
             if (p == null)
@@ -213,9 +243,22 @@ namespace Npgsql
         /// In some cases <typeparamref name="T"/> isn't enough to infer the data type to be written to
         /// the database. This parameter and be used to unambiguously specify the type.
         /// </param>
+        /// <typeparam name="T">The .NET type of the column to be written.</typeparam>
+        public Task WriteAsync<T>([AllowNull] T value, string dataTypeName) =>
+            Write(value, dataTypeName, true);
+
+
+        /// <summary>
+        /// Writes a single column in the current row as type <paramref name="dataTypeName"/>.
+        /// </summary>
+        /// <param name="value">The value to be written</param>
+        /// <param name="dataTypeName">
+        /// In some cases <typeparamref name="T"/> isn't enough to infer the data type to be written to
+        /// the database. This parameter and be used to unambiguously specify the type.
+        /// </param>
         /// <param name="async"></param>
         /// <typeparam name="T">The .NET type of the column to be written.</typeparam>
-        public async Task Write<T>([AllowNull] T value, string dataTypeName, bool async)
+        async Task Write<T>([AllowNull] T value, string dataTypeName, bool async)
         {
             var p = _params[_column];
             if (p == null)
@@ -274,7 +317,12 @@ namespace Npgsql
         /// <summary>
         /// Writes a single null column value.
         /// </summary>
-        public async Task WriteNull(bool async)
+        public Task WriteNullAsync() => WriteNull(true);
+
+        /// <summary>
+        /// Writes a single null column value.
+        /// </summary>
+        async Task WriteNull(bool async)
         {
             CheckReady();
             if (_column == -1)
@@ -297,12 +345,20 @@ namespace Npgsql
 
         /// <summary>
         /// Writes an entire row of columns.
+        /// Equivalent to calling <see cref="StartRow()"/>, followed by multiple <see cref="Write{T}(T)"/>
+        /// on each value.
+        /// </summary>
+        /// <param name="values">An array of column values to be written as a single row</param>
+        public Task WriteRowAsync(params object[] values) => WriteRow(true, values);
+
+        /// <summary>
+        /// Writes an entire row of columns.
         /// Equivalent to calling <see cref="StartRow(bool)"/>, followed by multiple <see cref="Write{T}(T)"/>
         /// on each value.
         /// </summary>
         /// <param name="values">An array of column values to be written as a single row</param>
         /// <param name="async"></param>
-        public async Task WriteRow(bool async, params object[] values)
+        async Task WriteRow(bool async, params object[] values)
         {
             await StartRow(async);
             foreach (var value in values)
@@ -321,7 +377,12 @@ namespace Npgsql
         /// <summary>
         /// Completes the import operation. The writer is unusable after this operation.
         /// </summary>
-        public async Task<ulong> Complete(bool async)
+        public Task<ulong> CompleteAsync() => Complete(true);
+
+        /// <summary>
+        /// Completes the import operation. The writer is unusable after this operation.
+        /// </summary>
+        async Task<ulong> Complete(bool async)
         {
             CheckReady();
 
