@@ -7,6 +7,7 @@ namespace Npgsql.BackendMessages
     class ErrorOrNoticeMessage
     {
         internal string Severity { get; }
+        internal string InvariantSeverity { get; }
         internal string Code { get; }
         internal string Message { get; }
         internal string? Detail { get; }
@@ -29,7 +30,7 @@ namespace Npgsql.BackendMessages
         // ReSharper disable once FunctionComplexityOverflow
         internal static ErrorOrNoticeMessage Load(NpgsqlReadBuffer buf)
         {
-            (string? severity, string? code, string? message, string? detail, string? hint) = (null, null, null, null, null);
+            (string? severity, string? invariantSeverity, string? code, string? message, string? detail, string? hint) = (null, null, null, null, null, null);
             (int position, int internalPosition) = (0, 0);
             (string? internalQuery, string? where) = (null, null);
             (string? schemaName, string? tableName, string? columnName, string? dataTypeName, string? constraintName) =
@@ -45,6 +46,9 @@ namespace Npgsql.BackendMessages
                     goto End;
                 case ErrorFieldTypeCode.Severity:
                     severity = buf.ReadNullTerminatedStringRelaxed();
+                    break;
+                case ErrorFieldTypeCode.InvariantSeverity:
+                    invariantSeverity = buf.ReadNullTerminatedStringRelaxed();
                     break;
                 case ErrorFieldTypeCode.Code:
                     code = buf.ReadNullTerminatedStringRelaxed();
@@ -120,7 +124,7 @@ namespace Npgsql.BackendMessages
                 throw new NpgsqlException("Message not received in server error message");
 
             return new ErrorOrNoticeMessage(
-                severity, code, message,
+                severity, invariantSeverity ?? severity, code, message,
                 detail, hint, position, internalPosition, internalQuery, where,
                 schemaName, tableName, columnName, dataTypeName, constraintName,
                 file, line, routine);
@@ -128,12 +132,13 @@ namespace Npgsql.BackendMessages
         }
 
         internal ErrorOrNoticeMessage(
-            string severity, string code, string message,
+            string severity, string invariantSeverity, string code, string message,
             string? detail = null, string? hint = null, int position = 0, int internalPosition = 0, string? internalQuery = null, string? where = null,
             string? schemaName = null, string? tableName = null, string? columnName = null, string? dataTypeName = null, string? constraintName = null,
             string? file = null, string? line = null, string? routine = null)
         {
             Severity = severity;
+            InvariantSeverity = invariantSeverity;
             Code = code;
             Message = message;
             Detail = detail;
@@ -159,6 +164,7 @@ namespace Npgsql.BackendMessages
         {
             Done = 0,
             Severity = (byte)'S',
+            InvariantSeverity = (byte)'V',
             Code = (byte)'C',
             Message = (byte)'M',
             Detail = (byte)'D',

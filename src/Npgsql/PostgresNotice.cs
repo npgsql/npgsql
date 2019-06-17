@@ -24,6 +24,13 @@ namespace Npgsql
         public string Severity { get; set; }
 
         /// <summary>
+        /// Severity of the error or notice, not localized.
+        /// Always present since PostgreSQL 9.6.
+        /// </summary>
+        [PublicAPI]
+        public string InvariantSeverity { get; }
+
+        /// <summary>
         /// The SQLSTATE code for the error.
         /// </summary>
         /// <remarks>
@@ -162,9 +169,10 @@ namespace Npgsql
         /// <summary>
         /// Creates a new instance.
         /// </summary>
-        public PostgresNotice(string severity, string sqlState, string messageText)
+        public PostgresNotice(string severity, string invariantSeverity, string sqlState, string messageText)
         {
             Severity = severity;
+            InvariantSeverity = invariantSeverity;
             SqlState = sqlState;
             MessageText = messageText;
         }
@@ -172,6 +180,7 @@ namespace Npgsql
         PostgresNotice(ErrorOrNoticeMessage msg)
         {
             Severity = msg.Severity;
+            InvariantSeverity = msg.InvariantSeverity;
             SqlState = msg.Code;
             MessageText = msg.Message;
             Detail = msg.Detail;

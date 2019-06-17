@@ -39,6 +39,7 @@ namespace Npgsql.Tests
 
                 Assert.That(ex.MessageText, Is.EqualTo("testexception"));
                 Assert.That(ex.Severity, Is.EqualTo("ERROR"));
+                Assert.That(ex.InvariantSeverity, Is.EqualTo("ERROR"));
                 Assert.That(ex.SqlState, Is.EqualTo("12345"));
                 Assert.That(ex.Position, Is.EqualTo(0));
 
@@ -166,6 +167,7 @@ namespace Npgsql.Tests
                 var info = CreateSerializationInfo();
 
                 info.AddValue(nameof(PostgresException.Severity), null);
+                info.AddValue(nameof(PostgresException.InvariantSeverity), null);
                 info.AddValue(nameof(PostgresException.SqlState), sqlState);
                 info.AddValue(nameof(PostgresException.MessageText), null);
                 info.AddValue(nameof(PostgresException.Detail), null);
@@ -193,6 +195,7 @@ namespace Npgsql.Tests
             var info = CreateSerializationInfo();
 
             info.AddValue(nameof(PostgresException.Severity), "high");
+            info.AddValue(nameof(PostgresException.InvariantSeverity), "high2");
             info.AddValue(nameof(PostgresException.SqlState), "53300");
             info.AddValue(nameof(PostgresException.MessageText), "message");
             info.AddValue(nameof(PostgresException.Detail), "detail");
@@ -220,6 +223,7 @@ namespace Npgsql.Tests
             var expected = (PostgresException)formatter.Deserialize(stream);
 
             Assert.That(expected.Severity, Is.EqualTo(actual.Severity));
+            Assert.That(expected.InvariantSeverity, Is.EqualTo(actual.InvariantSeverity));
             Assert.That(expected.SqlState, Is.EqualTo(actual.SqlState));
             Assert.That(expected.MessageText, Is.EqualTo(actual.MessageText));
             Assert.That(expected.Detail, Is.EqualTo(actual.Detail));
