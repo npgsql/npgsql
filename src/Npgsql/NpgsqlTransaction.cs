@@ -136,7 +136,12 @@ namespace Npgsql
         /// Commits the database transaction.
         /// </summary>
         [PublicAPI]
+
+#if !NET461 && !NETSTANDARD2_0 && !NETSTANDARD2_1
+        public override Task CommitAsync(CancellationToken cancellationToken = default)
+#else
         public Task CommitAsync(CancellationToken cancellationToken = default)
+#endif
         {
             if (cancellationToken.IsCancellationRequested)
                 return Task.FromCanceled(cancellationToken);
@@ -165,7 +170,11 @@ namespace Npgsql
         /// Rolls back a transaction from a pending state.
         /// </summary>
         [PublicAPI]
+#if !NET461 && !NETSTANDARD2_0 && !NETSTANDARD2_1
+        public override Task RollbackAsync(CancellationToken cancellationToken = default)
+#else
         public Task RollbackAsync(CancellationToken cancellationToken = default)
+#endif
         {
             if (cancellationToken.IsCancellationRequested)
                 return Task.FromCanceled(cancellationToken);
