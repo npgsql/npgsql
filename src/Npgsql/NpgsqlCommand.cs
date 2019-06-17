@@ -556,9 +556,11 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// Creates a server-side prepared statement on the PostgreSQL server.
         /// This will make repeated future executions of this command much faster.
         /// </summary>
-#pragma warning disable CA1801 // Review unused parameters
+#if !NET461 && !NETSTANDARD2_0 && !NETSTANDARD2_1
+        public override Task PrepareAsync(CancellationToken cancellationToken)
+#else
         public Task PrepareAsync(CancellationToken cancellationToken)
-#pragma warning restore CA1801 // Review unused parameters
+#endif
         {
             cancellationToken.ThrowIfCancellationRequested();
             using (NoSynchronizationContextScope.Enter())
