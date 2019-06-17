@@ -31,6 +31,7 @@ namespace Npgsql
         PostgresException(ErrorOrNoticeMessage msg)
         {
             Severity = msg.Severity;
+            InvariantSeverity = msg.InvariantSeverity;
             SqlState = msg.Code;
             MessageText = msg.Message;
             Detail = msg.Detail;
@@ -56,6 +57,7 @@ namespace Npgsql
             : base(info, context)
         {
             Severity = GetValue<string>(nameof(Severity));
+            InvariantSeverity = GetValue<string>(nameof(InvariantSeverity));
             SqlState = GetValue<string>(nameof(SqlState));
             MessageText = GetValue<string>(nameof(MessageText));
             Detail = GetValue<string>(nameof(Detail));
@@ -73,8 +75,7 @@ namespace Npgsql
             Line = GetValue<string>(nameof(Line));
             Routine = GetValue<string>(nameof(Routine));
 
-            T GetValue<T>(string propertyName) =>
-                (T)info.GetValue(propertyName, typeof(T));
+            T GetValue<T>(string propertyName) => (T)info.GetValue(propertyName, typeof(T));
         }
 
         /// <summary>
@@ -86,6 +87,7 @@ namespace Npgsql
         {
             base.GetObjectData(info, context);
             info.AddValue(nameof(Severity), Severity);
+            info.AddValue(nameof(InvariantSeverity), InvariantSeverity);
             info.AddValue(nameof(SqlState), SqlState);
             info.AddValue(nameof(MessageText), MessageText);
             info.AddValue(nameof(Detail), Detail);
@@ -196,6 +198,7 @@ namespace Npgsql
                     return data;
 
                 AddData(nameof(Severity), Severity);
+                AddData(nameof(InvariantSeverity), InvariantSeverity);
                 AddData(nameof(SqlState), SqlState);
                 AddData(nameof(MessageText), MessageText);
                 AddData(nameof(Detail), Detail);
@@ -234,6 +237,13 @@ namespace Npgsql
         /// </summary>
         [PublicAPI]
         public string Severity { get; }
+
+        /// <summary>
+        /// Severity of the error or notice, not localized.
+        /// Always present since PostgreSQL 9.6.
+        /// </summary>
+        [PublicAPI]
+        public string? InvariantSeverity { get; }
 
         /// <summary>
         /// The SQLSTATE code for the error.
