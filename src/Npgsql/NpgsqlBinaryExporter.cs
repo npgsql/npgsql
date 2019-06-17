@@ -114,13 +114,6 @@ namespace Npgsql
         /// </returns>
         public ValueTask<int> StartRowAsync() => StartRow(true);
         
-        /// <summary>
-        /// Starts reading a single row, must be invoked before reading any columns.
-        /// </summary>
-        /// <returns>
-        /// The number of columns in the row. -1 if there are no further rows.
-        /// Note: This will currently be the same value for all rows, but this may change in the future.
-        /// </returns>
         async ValueTask<int> StartRow(bool async)
         {
             CheckDisposed();
@@ -180,16 +173,6 @@ namespace Npgsql
         /// <returns>The value of the column</returns>
         public ValueTask<T> ReadAsync<T>() => Read<T>(true);
 
-        /// <summary>
-        /// Reads the current column, returns its value and moves ahead to the next column.
-        /// If the column is null an exception is thrown.
-        /// </summary>
-        /// <typeparam name="T">
-        /// The type of the column to be read. This must correspond to the actual type or data
-        /// corruption will occur. If in doubt, use <see cref="Read{T}(NpgsqlDbType)"/> to manually
-        /// specify the type.
-        /// </typeparam>
-        /// <returns>The value of the column</returns>
         ValueTask<T> Read<T>(bool async)
         {
             CheckDisposed();
@@ -234,20 +217,6 @@ namespace Npgsql
         /// <returns>The value of the column</returns>
         public ValueTask<T> ReadAsync<T>(NpgsqlDbType type) => Read<T>(type, true);
 
-        /// <summary>
-        /// Reads the current column, returns its value according to <paramref name="type"/> and
-        /// moves ahead to the next column.
-        /// If the column is null an exception is thrown.
-        /// </summary>
-        /// <param name="type">
-        /// In some cases <typeparamref name="T"/> isn't enough to infer the data type coming in from the
-        /// database. This parameter and be used to unambiguously specify the type. An example is the JSONB
-        /// type, for which <typeparamref name="T"/> will be a simple string but for which
-        /// <paramref name="type"/> must be specified as <see cref="NpgsqlDbType.Jsonb"/>.
-        /// </param>
-        /// <param name="async"></param>
-        /// <typeparam name="T">The .NET type of the column to be read.</typeparam>
-        /// <returns>The value of the column</returns>
         ValueTask<T> Read<T>(NpgsqlDbType type, bool async)
         {
             CheckDisposed();
@@ -306,11 +275,6 @@ namespace Npgsql
         /// </summary>
         public Task SkipAsync() => Skip(true);
 
-        /// <summary>
-        /// Skips the current column without interpreting its value.
-        /// </summary>
-        /// <param name="async"></param>
-        /// <returns></returns>
         async Task Skip(bool async)
         {
             await ReadColumnLenIfNeeded(async);
