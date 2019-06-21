@@ -27,7 +27,7 @@ namespace Npgsql
                 return;
 
             case AuthenticationRequestType.AuthenticationCleartextPassword:
-                await AuthenticateCleartext(async);
+                await AuthenticateCleartext(username, async);
                 return;
 
             case AuthenticationRequestType.AuthenticationMD5Password:
@@ -51,9 +51,9 @@ namespace Npgsql
             }
         }
 
-        async Task AuthenticateCleartext(bool async)
+        async Task AuthenticateCleartext(string username, bool async)
         {
-            var passwd = GetPassword();
+            var passwd = GetPassword(username);
             if (passwd == null)
                 throw new NpgsqlException("No password has been provided but the backend requires one (in cleartext)");
 
@@ -73,7 +73,7 @@ namespace Npgsql
                                           "Mechanisms received from server: " + string.Join(", ", mechanisms));
             var mechanism = "SCRAM-SHA-256";
 
-            var passwd = GetPassword() ??
+            var passwd = GetPassword(Settings.Username) ??
                          throw new NpgsqlException($"No password has been provided but the backend requires one (in SASL/{mechanism})");
 
             const string ClientKey = "Client Key";
@@ -179,7 +179,7 @@ namespace Npgsql
 
         async Task AuthenticateMD5(string username, byte[] salt, bool async)
         {
-            var passwd = GetPassword();
+            var passwd = GetPassword(username);
             if (passwd == null)
                 throw new NpgsqlException("No password has been provided but the backend requires one (in MD5)");
 
@@ -366,13 +366,13 @@ namespace Npgsql
 
         class AuthenticationCompleteException : Exception { }
 
-        string? GetPassword()
+        string? GetPassword(string? username)
         {
             if (GetDynamicPassword != null){
                 Log.Trace("Taking password from GetDynamicPassword delegate");
                 try
                 {
-                    return GetDynamicPassword(Settings.Host, Settings.Port, Settings.Database, Settings.Username);
+                    return GetDynamicPassword(Settings.Host, Settings.Port, Settings.Database, username);
                 }
                 catch(Exception dynamicPasswordGenerationException)
                 {
