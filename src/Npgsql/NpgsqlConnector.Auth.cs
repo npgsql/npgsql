@@ -368,6 +368,18 @@ namespace Npgsql
 
         string? GetPassword()
         {
+            if (GetDynamicPassword != null){
+                Log.Trace("Taking password from GetDynamicPassword delegate");
+                try
+                {
+                    return GetDynamicPassword(Settings.Host, Settings.Port, Settings.Database, Settings.Username);
+                }
+                catch(Exception dynamicPasswordGenerationException)
+                {
+                    throw new NpgsqlException($"Obtaining password using {nameof(NpgsqlConnection)}.{nameof(GetPassword)} delegate failed", dynamicPasswordGenerationException);
+                }
+            }
+
             var passwd = Settings.Password;
             if (passwd != null)
                 return passwd;

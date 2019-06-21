@@ -183,6 +183,99 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, Description("When DynamicPassword delegate is set on Connection, it is used")]
+        public void DynamicPasswordDelegateIsUsed()
+        {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString);
+            var goodPassword = connString.Password;
+            connString.Pooling = false; //testing opening of connections, pooling will return an existing connection
+            connString.Password = null;
+
+            bool getPasswordDelegateWasCalled = false;
+
+            using (var conn = new NpgsqlConnection(connString.ToString()){ GetDynamicPassword = GetPassword})
+            {
+                conn.Open();
+                Assert.True(getPasswordDelegateWasCalled, "GetPassword delegate not used");
+            }
+
+            string? GetPassword(string? host, int? port, string? database, string? username){
+                getPasswordDelegateWasCalled = true;
+                return goodPassword;
+            }
+        }
+
+        [Test, Description("Exceptions thrown from client application are wrapped when using GetPassword Delegate")]
+        public void DynamicPasswordDelegateExceptionsAreWrapped()
+        {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString);
+            connString.Pooling = false; //testing opening of connections, pooling will return an existing connection
+            
+            using (var conn = new NpgsqlConnection(connString.ToString()){ GetDynamicPassword = GetPassword })
+            {
+                Assert.That(() => conn.Open(), Throws.Exception
+                    .TypeOf<NpgsqlException>()
+                    .With.InnerException.Message.EqualTo("inner exception from GetPassword")
+                );
+            }
+
+            string? GetPassword(string? host, int? port, string? database, string? username){
+                throw new Exception("inner exception from GetPassword");
+            }
+        }
+
+        [Test, Description("When GetPassword Delegate is specified, no other password source is used")]
+        public void DynamicPasswordReturningNullDoesNotUsePasswordFromConnectionString()
+        {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString);
+            connString.Pooling = false; //testing opening of connections, pooling will return an existing connection
+            connString.Password = "superstrongpassword";
+
+            using (var conn = new NpgsqlConnection(connString.ToString()){ GetDynamicPassword = GetPassword })
+            {
+                Assert.That(() => conn.Open(), Throws.Exception
+                    .TypeOf<NpgsqlException>()
+                    .With.Message.StartWith("No password has been provided")
+                );
+            }
+
+            string? GetPassword(string? host, int? port, string? database, string? username){
+                return null;
+            }
+        }
+
+        [Test, Description("Parameters passed to GetPassword delegate are correct")]
+        public void DynamicPasswordDelegateGetsCorrectArguments()
+        {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString);
+            var goodPassword = connString.Password;
+            connString.Pooling = false; //testing opening of connections, pooling will return an existing connection
+            connString.Password = null;
+
+            string? receivedHost = null;
+            int? receivedPort = null;
+            string? receivedDatabase = null;
+            string? receivedUsername = null;
+
+            using (var conn = new NpgsqlConnection(connString.ToString()){ GetDynamicPassword = GetPassword })
+            {
+                conn.Open();
+                Assert.AreEqual(connString.Host, receivedHost);
+                Assert.AreEqual(connString.Port, receivedPort);
+                Assert.AreEqual(connString.Database, receivedDatabase);
+                Assert.AreEqual(connString.Username, receivedUsername);
+            }
+
+            string? GetPassword(string? host, int? port, string? database, string? username){
+                receivedHost = host;
+                receivedPort = port;
+                receivedDatabase = database;
+                receivedUsername = username;
+
+                return goodPassword;
+            }
+        }
+
         [Test]
         public void BadDatabase()
         {

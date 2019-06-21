@@ -330,6 +330,18 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Gets or sets the delegate used to generate a password for new database connections.
+        /// </summary>
+        /// <remarks>
+        /// This delegate is executed when a new database connection is opened that requires a password. 
+        /// If this delegate is not null, it must return a valid password. Any password specified 
+        /// in the connection string or via a PassFile will be ignored. 
+        /// Due to connection pooling this delegate is only executed when a new physical connection
+        /// is opened, not when reusing a connection that was previously opened from the pool.
+        /// </remarks>
+        public GetPassword? GetDynamicPassword { get; set; }
+
         #endregion Connection string management
 
         #region Configuration settings
@@ -1414,6 +1426,16 @@ namespace Npgsql
     /// </summary>
     /// <param name="certificates">A <see cref="System.Security.Cryptography.X509Certificates.X509CertificateCollection">X509CertificateCollection</see> to be filled with one or more client certificates.</param>
     public delegate void ProvideClientCertificatesCallback(X509CertificateCollection certificates);
+
+    /// <summary>
+    /// Represents the method that allows the application to provide a dynamic password at connection time
+    /// </summary>
+    /// <param name="host">Hostname</param>
+    /// <param name="port">Port</param>
+    /// <param name="database">Database Name</param>
+    /// <param name="username">User</param>
+    /// <returns>A valid password for connecting to the database</returns>
+    public delegate string? GetPassword(string? host, int? port, string? database, string? username);
 
     #endregion
 }
