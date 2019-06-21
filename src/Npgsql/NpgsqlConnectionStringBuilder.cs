@@ -344,7 +344,7 @@ namespace Npgsql
         /// The password to connect with. Not required if using IntegratedSecurity.
         /// </summary>
         [Category("Connection")]
-        [Description("The password to connect with. Not required if using IntegratedSecurity.")]
+        [Description("The password to connect with. Not required if using IntegratedSecurity. Ignored if GetDynamicPassword is set on the NpgsqlConnection.")]
         [PasswordPropertyText(true)]
         [DisplayName("Password")]
         [NpgsqlConnectionStringProperty("PSW", "PWD")]
