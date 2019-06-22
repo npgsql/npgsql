@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics.CodeAnalysis;
+using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
@@ -100,7 +101,13 @@ namespace Npgsql
         /// <summary>
         /// Starts writing a single row, must be invoked before writing any columns.
         /// </summary>
-        public Task StartRowAsync() => StartRow(true);
+        public Task StartRowAsync(CancellationToken cancellationToken = default)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled(cancellationToken);
+            using (NoSynchronizationContextScope.Enter())
+                return StartRow(true);
+        }
 
         async Task StartRow(bool async)
         {
@@ -281,7 +288,13 @@ namespace Npgsql
         /// <summary>
         /// Writes a single null column value.
         /// </summary>
-        public Task WriteNullAsync() => WriteNull(true);
+        public Task WriteNullAsync(CancellationToken cancellationToken = default)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled(cancellationToken);
+            using (NoSynchronizationContextScope.Enter())
+                return WriteNull(true);
+        }
 
         async Task WriteNull(bool async)
         {
@@ -309,8 +322,15 @@ namespace Npgsql
         /// Equivalent to calling <see cref="StartRow()"/>, followed by multiple <see cref="Write{T}(T)"/>
         /// on each value.
         /// </summary>
+        /// <param name="cancellationToken"></param>
         /// <param name="values">An array of column values to be written as a single row</param>
-        public Task WriteRowAsync(params object[] values) => WriteRow(true, values);
+        public Task WriteRowAsync(CancellationToken cancellationToken = default, params object[] values)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled(cancellationToken);
+            using (NoSynchronizationContextScope.Enter())
+                return WriteRow(true, values);
+        }
 
         async Task WriteRow(bool async, params object[] values)
         {
@@ -331,7 +351,13 @@ namespace Npgsql
         /// <summary>
         /// Completes the import operation. The writer is unusable after this operation.
         /// </summary>
-        public ValueTask<ulong> CompleteAsync() => Complete(true);
+        public Task<ulong> CompleteAsync(CancellationToken cancellationToken = default)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled<ulong>(cancellationToken);
+            using (NoSynchronizationContextScope.Enter())
+                return Complete(true).AsTask();
+        }
 
         async ValueTask<ulong> Complete(bool async)
         {

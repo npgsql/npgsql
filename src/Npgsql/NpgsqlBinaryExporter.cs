@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.Logging;
@@ -112,7 +113,13 @@ namespace Npgsql
         /// The number of columns in the row. -1 if there are no further rows.
         /// Note: This will currently be the same value for all rows, but this may change in the future.
         /// </returns>
-        public ValueTask<int> StartRowAsync() => StartRow(true);
+        public Task<int> StartRowAsync(CancellationToken cancellationToken = default)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled<int>(cancellationToken);
+            using (NoSynchronizationContextScope.Enter())
+                return StartRow(true).AsTask();
+        }
         
         async ValueTask<int> StartRow(bool async)
         {
@@ -273,7 +280,13 @@ namespace Npgsql
         /// <summary>
         /// Skips the current column without interpreting its value.
         /// </summary>
-        public Task SkipAsync() => Skip(true);
+        public Task SkipAsync(CancellationToken cancellationToken = default)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled(cancellationToken);
+            using (NoSynchronizationContextScope.Enter())
+                return Skip(true);
+        }
 
         async Task Skip(bool async)
         {
