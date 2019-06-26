@@ -1228,6 +1228,9 @@ namespace Npgsql
         [PublicAPI]
         public Task WaitAsync(CancellationToken cancellationToken)
         {
+            if (cancellationToken.IsCancellationRequested)
+                return PGUtil.CancelledTask;
+
             CheckConnectionOpen();
             Debug.Assert(Connector != null);
             Log.Debug("Starting to wait asynchronously...", Connector.Id);
