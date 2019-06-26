@@ -60,7 +60,7 @@ namespace Npgsql
             [FieldOffset(2)]
             internal short Busy;
             [FieldOffset(4)]
-            internal short Waiting;
+            internal int Waiting;
             [FieldOffset(0)]
             internal long All;
 
@@ -98,6 +98,9 @@ namespace Npgsql
 
         internal ConnectorPool(NpgsqlConnectionStringBuilder settings, string connString)
         {
+            Debug.Assert(PoolSizeLimit <= short.MaxValue,
+                "PoolSizeLimit cannot be larger than short.MaxValue unless PoolState is refactored to hold larger values.");
+            
             if (settings.MaxPoolSize < settings.MinPoolSize)
                 throw new ArgumentException($"Connection can't have MaxPoolSize {settings.MaxPoolSize} under MinPoolSize {settings.MinPoolSize}");
 
@@ -277,7 +280,11 @@ namespace Npgsql
                 {
                     // Pool is exhausted. Increase the waiting count while atomically making sure the busy count
                     // doesn't decrease (otherwise we have a new idle connector).
-                    newState.Waiting++;
+                    checked
+                    {
+                        newState.Waiting++;
+                    }
+
                     CheckInvariants(newState);
                     if (Interlocked.CompareExchange(ref State.All, newState.All, state.All) != state.All)
                     {
