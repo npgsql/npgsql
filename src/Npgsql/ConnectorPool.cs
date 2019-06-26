@@ -263,7 +263,7 @@ namespace Npgsql
                     // Start the pruning timer if we're above MinPoolSize
                     if (_pruningTimer == null && newState.Total > _min)
                     {
-                        var newPruningTimer = new Timer(PruneIdleConnectors);
+                        var newPruningTimer = new Timer(s => PruneIdleConnectors(s));
                         if (Interlocked.CompareExchange(ref _pruningTimer, newPruningTimer, null) == null)
                             newPruningTimer.Change(_pruningInterval, _pruningInterval);
                         else
