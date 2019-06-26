@@ -336,11 +336,11 @@ namespace Npgsql
                                 if (timeout.IsSet)
                                 {
                                     var timeLeft = timeout.TimeLeft;
-                                    if (timeLeft <= TimeSpan.Zero || !tcs.Task.Wait(timeLeft))
+                                    if (timeLeft <= TimeSpan.Zero || !tcs.Task.Wait((int)timeLeft.TotalMilliseconds, cancellationToken))
                                         throw new NpgsqlException($"The connection pool has been exhausted, either raise MaxPoolSize (currently {_max}) or Timeout (currently {Settings.Timeout} seconds)");
                                 }
                                 else
-                                    tcs.Task.Wait();
+                                    tcs.Task.Wait(cancellationToken);
                             }
                         }
                         catch
