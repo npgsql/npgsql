@@ -73,7 +73,7 @@ namespace Npgsql
                                           "Mechanisms received from server: " + string.Join(", ", mechanisms));
             var mechanism = "SCRAM-SHA-256";
 
-            var passwd = GetPassword(Settings.Username) ??
+            var passwd = GetPassword(GetUsername()) ??
                          throw new NpgsqlException($"No password has been provided but the backend requires one (in SASL/{mechanism})");
 
             const string ClientKey = "Client Key";
@@ -366,7 +366,7 @@ namespace Npgsql
 
         class AuthenticationCompleteException : Exception { }
 
-        string? GetPassword(string? username)
+        string? GetPassword(string username)
         {
             var passwd = Settings.Password;
             if (passwd != null)
