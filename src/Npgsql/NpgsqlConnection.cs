@@ -340,7 +340,7 @@ namespace Npgsql
         /// Due to connection pooling this delegate is only executed when a new physical connection
         /// is opened, not when reusing a connection that was previously opened from the pool.
         /// </remarks>
-        public GetPassword? GetDynamicPassword { get; set; }
+        public ProvidePasswordCallback? ProvidePasswordCallback { get; set; }
 
         #endregion Connection string management
 
@@ -1435,7 +1435,7 @@ namespace Npgsql
     /// <param name="database">Database Name</param>
     /// <param name="username">User</param>
     /// <returns>A valid password for connecting to the database</returns>
-    public delegate string? GetPassword(string? host, int? port, string? database, string? username);
+    public delegate string ProvidePasswordCallback(string host, int port, string database, string username);
 
     #endregion
 }

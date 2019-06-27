@@ -368,11 +368,11 @@ namespace Npgsql
 
         string? GetPassword(string? username)
         {
-            if (GetDynamicPassword != null){
+            if (ProvidePasswordCallback != null){
                 Log.Trace("Taking password from GetDynamicPassword delegate");
                 try
                 {
-                    return GetDynamicPassword(Settings.Host, Settings.Port, Settings.Database, username);
+                    return ProvidePasswordCallback(Settings.Host, Settings.Port, Settings.Database, username);
                 }
                 catch(Exception dynamicPasswordGenerationException)
                 {
