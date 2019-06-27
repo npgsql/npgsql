@@ -84,9 +84,10 @@ namespace Npgsql
         /// </summary>
         int _clearCounter;
 
+        static readonly TimerCallback PruningTimerCallback = PruneIdleConnectors;
         Timer? _pruningTimer;
         readonly TimeSpan _pruningInterval;
-
+        
         /// <summary>
         /// Maximum number of possible connections in any pool.
         /// </summary>
@@ -263,7 +264,7 @@ namespace Npgsql
                     // Start the pruning timer if we're above MinPoolSize
                     if (_pruningTimer == null && newState.Total > _min)
                     {
-                        var newPruningTimer = new Timer(s => PruneIdleConnectors(s));
+                        var newPruningTimer = new Timer(PruningTimerCallback, this, -1, -1);
                         if (Interlocked.CompareExchange(ref _pruningTimer, newPruningTimer, null) == null)
                             newPruningTimer.Change(_pruningInterval, _pruningInterval);
                         else
@@ -312,7 +313,7 @@ namespace Npgsql
                                     // Use Task.Delay to implement the timeout, but cancel the timer if we actually
                                     // do complete successfully
                                     var delayCancellationToken = new CancellationTokenSource();
-                                    using (cancellationToken.Register(() => delayCancellationToken.Cancel()))
+                                    using (cancellationToken.Register(s => ((CancellationTokenSource)s).Cancel(), delayCancellationToken))
                                     {
                                         var timeLeft = timeout.TimeLeft;
                                         if (timeLeft <= TimeSpan.Zero ||
@@ -327,7 +328,7 @@ namespace Npgsql
                                 }
                                 else
                                 {
-                                    using (cancellationToken.Register(() => tcs.SetCanceled()))
+                                    using (cancellationToken.Register(s => ((TaskCompletionSource<NpgsqlConnector?>)s).SetCanceled(), tcs))
                                         await tcs.Task;
                                 }
                             }
@@ -335,8 +336,10 @@ namespace Npgsql
                             {
                                 if (timeout.IsSet)
                                 {
-                                    var timeLeft = timeout.TimeLeft;
-                                    if (timeLeft <= TimeSpan.Zero || !tcs.Task.Wait((int)timeLeft.TotalMilliseconds, cancellationToken))
+                                    var timeLeft = timeout.TimeLeft.TotalMilliseconds;
+                                    if (timeLeft > int.MaxValue)
+                                        throw new ArgumentOutOfRangeException(nameof(timeout), "timeout.TimeLeft.TotalMilliseconds must be smaller than int.MaxValue.");
+                                    if (timeLeft <= 0 || !tcs.Task.Wait((int)timeLeft, cancellationToken))
                                         throw new NpgsqlException($"The connection pool has been exhausted, either raise MaxPoolSize (currently {_max}) or Timeout (currently {Settings.Timeout} seconds)");
                                 }
                                 else
@@ -533,21 +536,24 @@ namespace Npgsql
             }
         }
 
-        void PruneIdleConnectors(object _)
+        static void PruneIdleConnectors(object state)
         {
+            var pool = (ConnectorPool)state;
+            var idle = pool._idle;
             var now = DateTime.UtcNow;
-            var idleLifetime = Settings.ConnectionIdleLifetime;
-
-            for (var i = 0; i < _idle.Length; i++)
+            var idleLifetime = pool.Settings.ConnectionIdleLifetime;
+                
+            
+            for (var i = 0; i < idle.Length; i++)
             {
-                if (State.Total <= _min)
+                if (pool.State.Total <= pool._min)
                     return;
 
-                var connector = _idle[i];
+                var connector = idle[i];
                 if (connector == null || (now - connector.ReleaseTimestamp).TotalSeconds < idleLifetime)
                     continue;
-                if (Interlocked.CompareExchange(ref _idle[i], null, connector) == connector)
-                    CloseConnector(connector, true);
+                if (Interlocked.CompareExchange(ref idle[i], null, connector) == connector)
+                    pool.CloseConnector(connector, true);
             }
         }
 
