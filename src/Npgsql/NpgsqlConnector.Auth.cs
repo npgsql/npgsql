@@ -368,18 +368,6 @@ namespace Npgsql
 
         string? GetPassword(string? username)
         {
-            if (ProvidePasswordCallback != null){
-                Log.Trace("Taking password from GetDynamicPassword delegate");
-                try
-                {
-                    return ProvidePasswordCallback(Settings.Host, Settings.Port, Settings.Database, username);
-                }
-                catch(Exception dynamicPasswordGenerationException)
-                {
-                    throw new NpgsqlException($"Obtaining password using {nameof(NpgsqlConnection)}.{nameof(GetPassword)} delegate failed", dynamicPasswordGenerationException);
-                }
-            }
-
             var passwd = Settings.Password;
             if (passwd != null)
                 return passwd;
@@ -392,6 +380,19 @@ namespace Npgsql
                 return matchingEntry.Password;
             }
 
+            if (ProvidePasswordCallback != null)
+            {
+                Log.Trace("Taking password from GetDynamicPassword delegate");
+                try
+                {
+                    return ProvidePasswordCallback(Host, Port, Settings.Database!, username);
+                }
+                catch (Exception dynamicPasswordGenerationException)
+                {
+                    throw new NpgsqlException($"Obtaining password using {nameof(NpgsqlConnection)}.{nameof(GetPassword)} delegate failed", dynamicPasswordGenerationException);
+                }
+            }
+            
             return null;
         }
     }

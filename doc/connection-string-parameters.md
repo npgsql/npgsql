@@ -12,7 +12,7 @@ Below are the connection string parameters which Npgsql understands.
 | Port         | The TCP port of the PostgreSQL server.                                             | 5432             |
 | Database     | The PostgreSQL database to connect to.                                             | Same as Username |
 | Username     | The username to connect with. Not required if using IntegratedSecurity.            |                  |
-| Password     | The password to connect with. Not required if using IntegratedSecurity. Ignored if the `GetDynamicPassword` delegate property is set on `NpgsqlConnection`| |
+| Password     | The password to connect with. Not required if using IntegratedSecurity.            |                  |
 | Passfile     | Path to a PostgreSQL password file (PGPASSFILE), from which the password is taken. |                  |
 
 ## Security and Encryption
