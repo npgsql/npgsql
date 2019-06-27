@@ -183,73 +183,80 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test, Description("When DynamicPassword delegate is set on Connection, it is used")]
-        public void DynamicPasswordDelegateIsUsed()
+#region ProvidePasswordCallback Tests
+
+        [Test, Description("ProvidePasswordCallback is used when password is not supplied in connection string")]
+        public void ProvidePasswordCallbackDelegateIsUsed()
         {
-            var connString = new NpgsqlConnectionStringBuilder(ConnectionString);
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Pooling = false //testing opening of connections, pooling will return an existing connection
+            };
             var goodPassword = connString.Password;
-            connString.Pooling = false; //testing opening of connections, pooling will return an existing connection
             connString.Password = null;
 
             bool getPasswordDelegateWasCalled = false;
 
-            using (var conn = new NpgsqlConnection(connString.ToString()){ GetDynamicPassword = GetPassword})
+            using (var conn = new NpgsqlConnection(connString.ToString()) { ProvidePasswordCallback = ProvidePasswordCallback })
             {
                 conn.Open();
-                Assert.True(getPasswordDelegateWasCalled, "GetPassword delegate not used");
+                Assert.True(getPasswordDelegateWasCalled, "ProvidePasswordCallback delegate not used");
             }
 
-            string? GetPassword(string? host, int? port, string? database, string? username){
+            string ProvidePasswordCallback(string host, int port, string database, string username)
+            {
                 getPasswordDelegateWasCalled = true;
                 return goodPassword;
             }
         }
 
-        [Test, Description("Exceptions thrown from client application are wrapped when using GetPassword Delegate")]
-        public void DynamicPasswordDelegateExceptionsAreWrapped()
+        [Test, Description("ProvidePasswordCallback is not used when password is supplied in connection string")]
+        public void ProvidePasswordCallbackDelegateIsNotUsed()
         {
-            var connString = new NpgsqlConnectionStringBuilder(ConnectionString);
-            connString.Pooling = false; //testing opening of connections, pooling will return an existing connection
-            
-            using (var conn = new NpgsqlConnection(connString.ToString()){ GetDynamicPassword = GetPassword })
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                Assert.That(() => conn.Open(), Throws.Exception
-                    .TypeOf<NpgsqlException>()
-                    .With.InnerException.Message.EqualTo("inner exception from GetPassword")
-                );
+                Pooling = false //testing opening of connections, pooling will return an existing connection
+            };
+
+            using (var conn = new NpgsqlConnection(connString.ToString()) { ProvidePasswordCallback = ProvidePasswordCallback })
+            {
+                Assert.DoesNotThrow(()=> conn.Open());
             }
 
-            string? GetPassword(string? host, int? port, string? database, string? username){
-                throw new Exception("inner exception from GetPassword");
+            string ProvidePasswordCallback(string host, int port, string database, string username)
+            {
+                throw new Exception("password should come from connection string, not delegate");
             }
         }
 
-        [Test, Description("When GetPassword Delegate is specified, no other password source is used")]
-        public void DynamicPasswordReturningNullDoesNotUsePasswordFromConnectionString()
+        [Test, Description("Exceptions thrown from client application are wrapped when using ProvidePasswordCallback Delegate")]
+        public void ProvidePasswordCallbackDelegateExceptionsAreWrapped()
         {
-            var connString = new NpgsqlConnectionStringBuilder(ConnectionString);
-            connString.Pooling = false; //testing opening of connections, pooling will return an existing connection
-            connString.Password = "superstrongpassword";
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Pooling = false, //testing opening of connections, pooling will return an existing connection
+                Password = null
+            };
 
-            using (var conn = new NpgsqlConnection(connString.ToString()){ GetDynamicPassword = GetPassword })
+            using (var conn = new NpgsqlConnection(connString.ToString()) { ProvidePasswordCallback = ProvidePasswordCallback })
             {
                 Assert.That(() => conn.Open(), Throws.Exception
                     .TypeOf<NpgsqlException>()
-                    .With.Message.StartWith("No password has been provided")
+                    .With.InnerException.Message.EqualTo("inner exception from ProvidePasswordCallback")
                 );
             }
 
-            string? GetPassword(string? host, int? port, string? database, string? username){
-                return null;
+            string ProvidePasswordCallback(string host, int port, string database, string username)
+            {
+                throw new Exception("inner exception from ProvidePasswordCallback");
             }
         }
 
-        [Test, Description("Parameters passed to GetPassword delegate are correct")]
-        public void DynamicPasswordDelegateGetsCorrectArguments()
+        [Test, Description("Parameters passed to ProvidePasswordCallback delegate are correct")]
+        public void ProvidePasswordCallbackDelegateGetsCorrectArguments()
         {
-            var connString = new NpgsqlConnectionStringBuilder(ConnectionString);
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) { Pooling = false };
             var goodPassword = connString.Password;
-            connString.Pooling = false; //testing opening of connections, pooling will return an existing connection
             connString.Password = null;
 
             string? receivedHost = null;
@@ -257,7 +264,7 @@ namespace Npgsql.Tests
             string? receivedDatabase = null;
             string? receivedUsername = null;
 
-            using (var conn = new NpgsqlConnection(connString.ToString()){ GetDynamicPassword = GetPassword })
+            using (var conn = new NpgsqlConnection(connString.ToString()) { ProvidePasswordCallback = ProvidePasswordCallback })
             {
                 conn.Open();
                 Assert.AreEqual(connString.Host, receivedHost);
@@ -266,7 +273,8 @@ namespace Npgsql.Tests
                 Assert.AreEqual(connString.Username, receivedUsername);
             }
 
-            string? GetPassword(string? host, int? port, string? database, string? username){
+            string ProvidePasswordCallback(string host, int port, string database, string username)
+            {
                 receivedHost = host;
                 receivedPort = port;
                 receivedDatabase = database;
@@ -275,6 +283,7 @@ namespace Npgsql.Tests
                 return goodPassword;
             }
         }
+#endregion
 
         [Test]
         public void BadDatabase()
