@@ -1430,7 +1430,7 @@ namespace Npgsql
     public delegate void ProvideClientCertificatesCallback(X509CertificateCollection certificates);
 
     /// <summary>
-    /// Represents the method that allows the application to provide a dynamic password at connection time
+    /// Represents the method that allows the application to provide a password at connection time in code rather than configuration
     /// </summary>
     /// <param name="host">Hostname</param>
     /// <param name="port">Port</param>
