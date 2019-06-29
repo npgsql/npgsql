@@ -382,14 +382,14 @@ namespace Npgsql
 
             if (ProvidePasswordCallback != null)
             {
-                Log.Trace("Taking password from GetDynamicPassword delegate");
+                Log.Trace($"Taking password from {nameof(ProvidePasswordCallback)} delegate");
                 try
                 {
                     return ProvidePasswordCallback(Host, Port, Settings.Database!, username);
                 }
                 catch (Exception dynamicPasswordGenerationException)
                 {
-                    throw new NpgsqlException($"Obtaining password using {nameof(NpgsqlConnection)}.{nameof(GetPassword)} delegate failed", dynamicPasswordGenerationException);
+                    throw new NpgsqlException($"Obtaining password using {nameof(NpgsqlConnection)}.{nameof(ProvidePasswordCallback)} delegate failed", dynamicPasswordGenerationException);
                 }
             }
             
