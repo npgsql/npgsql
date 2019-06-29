@@ -27,7 +27,7 @@ namespace Npgsql
                 return;
 
             case AuthenticationRequestType.AuthenticationCleartextPassword:
-                await AuthenticateCleartext(async);
+                await AuthenticateCleartext(username, async);
                 return;
 
             case AuthenticationRequestType.AuthenticationMD5Password:
@@ -35,7 +35,7 @@ namespace Npgsql
                 return;
 
             case AuthenticationRequestType.AuthenticationSASL:
-                await AuthenticateSASL(((AuthenticationSASLMessage)msg).Mechanisms, async);
+                await AuthenticateSASL(((AuthenticationSASLMessage)msg).Mechanisms, username, async);
                 return;
 
             case AuthenticationRequestType.AuthenticationGSS:
@@ -51,9 +51,9 @@ namespace Npgsql
             }
         }
 
-        async Task AuthenticateCleartext(bool async)
+        async Task AuthenticateCleartext(string username, bool async)
         {
-            var passwd = GetPassword();
+            var passwd = GetPassword(username);
             if (passwd == null)
                 throw new NpgsqlException("No password has been provided but the backend requires one (in cleartext)");
 
@@ -65,7 +65,7 @@ namespace Npgsql
             Expect<AuthenticationRequestMessage>(await ReadMessage(async));
         }
 
-        async Task AuthenticateSASL(List<string> mechanisms, bool async)
+        async Task AuthenticateSASL(List<string> mechanisms, string username, bool async)
         {
             // At the time of writing PostgreSQL only supports SCRAM-SHA-256
             if (!mechanisms.Contains("SCRAM-SHA-256"))
@@ -73,7 +73,7 @@ namespace Npgsql
                                           "Mechanisms received from server: " + string.Join(", ", mechanisms));
             var mechanism = "SCRAM-SHA-256";
 
-            var passwd = GetPassword() ??
+            var passwd = GetPassword(username) ??
                          throw new NpgsqlException($"No password has been provided but the backend requires one (in SASL/{mechanism})");
 
             const string ClientKey = "Client Key";
@@ -179,7 +179,7 @@ namespace Npgsql
 
         async Task AuthenticateMD5(string username, byte[] salt, bool async)
         {
-            var passwd = GetPassword();
+            var passwd = GetPassword(username);
             if (passwd == null)
                 throw new NpgsqlException("No password has been provided but the backend requires one (in MD5)");
 
@@ -366,20 +366,33 @@ namespace Npgsql
 
         class AuthenticationCompleteException : Exception { }
 
-        string? GetPassword()
+        string? GetPassword(string username)
         {
             var passwd = Settings.Password;
             if (passwd != null)
                 return passwd;
 
             // No password was provided. Attempt to pull the password from the pgpass file.
-            var matchingEntry = PgPassFile.Load(Settings.Passfile)?.GetFirstMatchingEntry(Settings.Host, Settings.Port, Settings.Database, Settings.Username);
+            var matchingEntry = PgPassFile.Load(Settings.Passfile)?.GetFirstMatchingEntry(Host, Port, Settings.Database!, username);
             if (matchingEntry != null)
             {
                 Log.Trace("Taking password from pgpass file");
                 return matchingEntry.Password;
             }
 
+            if (ProvidePasswordCallback != null)
+            {
+                Log.Trace($"Taking password from {nameof(ProvidePasswordCallback)} delegate");
+                try
+                {
+                    return ProvidePasswordCallback(Host, Port, Settings.Database!, username);
+                }
+                catch (Exception e)
+                {
+                    throw new NpgsqlException($"Obtaining password using {nameof(NpgsqlConnection)}.{nameof(ProvidePasswordCallback)} delegate failed", e);
+                }
+            }
+            
             return null;
         }
     }
