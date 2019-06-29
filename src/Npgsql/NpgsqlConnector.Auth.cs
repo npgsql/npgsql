@@ -35,7 +35,7 @@ namespace Npgsql
                 return;
 
             case AuthenticationRequestType.AuthenticationSASL:
-                await AuthenticateSASL(((AuthenticationSASLMessage)msg).Mechanisms, async);
+                await AuthenticateSASL(((AuthenticationSASLMessage)msg).Mechanisms, username, async);
                 return;
 
             case AuthenticationRequestType.AuthenticationGSS:
@@ -65,7 +65,7 @@ namespace Npgsql
             Expect<AuthenticationRequestMessage>(await ReadMessage(async));
         }
 
-        async Task AuthenticateSASL(List<string> mechanisms, bool async)
+        async Task AuthenticateSASL(List<string> mechanisms, string username, bool async)
         {
             // At the time of writing PostgreSQL only supports SCRAM-SHA-256
             if (!mechanisms.Contains("SCRAM-SHA-256"))
@@ -73,7 +73,7 @@ namespace Npgsql
                                           "Mechanisms received from server: " + string.Join(", ", mechanisms));
             var mechanism = "SCRAM-SHA-256";
 
-            var passwd = GetPassword(GetUsername()) ??
+            var passwd = GetPassword(username) ??
                          throw new NpgsqlException($"No password has been provided but the backend requires one (in SASL/{mechanism})");
 
             const string ClientKey = "Client Key";
