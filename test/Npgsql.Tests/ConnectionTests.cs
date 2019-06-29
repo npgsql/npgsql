@@ -183,7 +183,7 @@ namespace Npgsql.Tests
             }
         }
 
-#region ProvidePasswordCallback Tests
+        #region ProvidePasswordCallback Tests
 
         [Test, Description("ProvidePasswordCallback is used when password is not supplied in connection string")]
         public void ProvidePasswordCallbackDelegateIsUsed()
@@ -220,7 +220,7 @@ namespace Npgsql.Tests
 
             using (var conn = new NpgsqlConnection(connString.ToString()) { ProvidePasswordCallback = ProvidePasswordCallback })
             {
-                Assert.DoesNotThrow(()=> conn.Open());
+                Assert.DoesNotThrow(() => conn.Open());
             }
 
             string ProvidePasswordCallback(string host, int port, string database, string username)
@@ -283,7 +283,7 @@ namespace Npgsql.Tests
                 return goodPassword;
             }
         }
-#endregion
+        #endregion
 
         [Test]
         public void BadDatabase()
