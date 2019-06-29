@@ -373,7 +373,7 @@ namespace Npgsql
                 return passwd;
 
             // No password was provided. Attempt to pull the password from the pgpass file.
-            var matchingEntry = PgPassFile.Load(Settings.Passfile)?.GetFirstMatchingEntry(Settings.Host, Settings.Port, Settings.Database, Settings.Username);
+            var matchingEntry = PgPassFile.Load(Settings.Passfile)?.GetFirstMatchingEntry(Host, Port, Settings.Database!, username);
             if (matchingEntry != null)
             {
                 Log.Trace("Taking password from pgpass file");
