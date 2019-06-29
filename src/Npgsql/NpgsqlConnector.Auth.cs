@@ -387,9 +387,9 @@ namespace Npgsql
                 {
                     return ProvidePasswordCallback(Host, Port, Settings.Database!, username);
                 }
-                catch (Exception dynamicPasswordGenerationException)
+                catch (Exception e)
                 {
-                    throw new NpgsqlException($"Obtaining password using {nameof(NpgsqlConnection)}.{nameof(ProvidePasswordCallback)} delegate failed", dynamicPasswordGenerationException);
+                    throw new NpgsqlException($"Obtaining password using {nameof(NpgsqlConnection)}.{nameof(ProvidePasswordCallback)} delegate failed", e);
                 }
             }
             
