@@ -243,7 +243,7 @@ namespace Npgsql
         /// Always present since PostgreSQL 9.6.
         /// </summary>
         [PublicAPI]
-        public string? InvariantSeverity { get; }
+        public string InvariantSeverity { get; }
 
         /// <summary>
         /// The SQLSTATE code for the error.

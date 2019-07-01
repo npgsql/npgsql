@@ -28,7 +28,7 @@ namespace Npgsql
         /// Always present since PostgreSQL 9.6.
         /// </summary>
         [PublicAPI]
-        public string? InvariantSeverity { get; }
+        public string InvariantSeverity { get; }
 
         /// <summary>
         /// The SQLSTATE code for the error.
@@ -169,9 +169,10 @@ namespace Npgsql
         /// <summary>
         /// Creates a new instance.
         /// </summary>
-        public PostgresNotice(string severity, string sqlState, string messageText)
+        public PostgresNotice(string severity, string invariantSeverity, string sqlState, string messageText)
         {
             Severity = severity;
+            InvariantSeverity = invariantSeverity;
             SqlState = sqlState;
             MessageText = messageText;
         }
