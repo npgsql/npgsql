@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -87,7 +87,7 @@ namespace Npgsql
         static readonly TimerCallback PruningTimerCallback = PruneIdleConnectors;
         Timer? _pruningTimer;
         readonly TimeSpan _pruningInterval;
-        
+
         /// <summary>
         /// Maximum number of possible connections in any pool.
         /// </summary>
@@ -101,7 +101,7 @@ namespace Npgsql
         {
             Debug.Assert(PoolSizeLimit <= short.MaxValue,
                 "PoolSizeLimit cannot be larger than short.MaxValue unless PoolState is refactored to hold larger values.");
-            
+
             if (settings.MaxPoolSize < settings.MinPoolSize)
                 throw new ArgumentException($"Connection can't have MaxPoolSize {settings.MaxPoolSize} under MinPoolSize {settings.MinPoolSize}");
 
@@ -542,8 +542,7 @@ namespace Npgsql
             var idle = pool._idle;
             var now = DateTime.UtcNow;
             var idleLifetime = pool.Settings.ConnectionIdleLifetime;
-                
-            
+
             for (var i = 0; i < idle.Length; i++)
             {
                 if (pool.State.Total <= pool._min)

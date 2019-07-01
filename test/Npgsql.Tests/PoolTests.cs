@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics;
 using System.Linq;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
@@ -15,7 +14,8 @@ namespace Npgsql.Tests
         [Test]
         public void MinPoolSizeEqualsMaxPoolSize()
         {
-            using (var conn = new NpgsqlConnection(new NpgsqlConnectionStringBuilder(ConnectionString) {
+            using (var conn = new NpgsqlConnection(new NpgsqlConnectionStringBuilder(ConnectionString) 
+            {
                 MinPoolSize = 30,
                 MaxPoolSize = 30
             }.ToString()))
@@ -59,7 +59,8 @@ namespace Npgsql.Tests
         [Test, Timeout(10000)]
         public void GetConnectorFromExhaustedPool()
         {
-            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) 
+            {
                 MaxPoolSize = 1,
                 Timeout = 0
             }.ToString();
@@ -100,7 +101,8 @@ namespace Npgsql.Tests
         [Test]
         public void TimeoutGettingConnectorFromExhaustedPool()
         {
-            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) 
+            {
                 MaxPoolSize = 1,
                 Timeout = 2
             }.ToString();
@@ -138,11 +140,12 @@ namespace Npgsql.Tests
             using (var conn3 = new NpgsqlConnection(connString))
                 conn3.Open();
         }
-        
+
         [Test]
         public void OverflowExceptionWhenTooManyWaiting()
         {
-            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) 
+            {
                 ApplicationName = nameof(OverflowExceptionWhenTooManyWaiting),
                 MaxPoolSize = 1,
             }.ToString();
@@ -164,7 +167,7 @@ namespace Npgsql.Tests
                 finally
                 {
                     // Restore state for the closes work correctly.
-                    pool!.State = state; 
+                    pool!.State = state;
                 }
             }
         }
@@ -173,7 +176,8 @@ namespace Npgsql.Tests
         //[Explicit("Timing-based")]
         public async Task CancelOpenAsync()
         {
-            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) 
+            {
                 ApplicationName = nameof(CancelOpenAsync),
                 MaxPoolSize = 1,
             }.ToString();
@@ -334,7 +338,8 @@ namespace Npgsql.Tests
         [Test]
         public void ClearWithNoPool()
         {
-            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) 
+            {
                 ApplicationName = nameof(ClearWithNoPool)
             }.ToString();
             using (var conn = new NpgsqlConnection(connString))
@@ -344,7 +349,8 @@ namespace Npgsql.Tests
         [Test, Description("https://github.com/npgsql/npgsql/commit/45e33ecef21f75f51a625c7b919a50da3ed8e920#r28239653")]
         public void PhysicalOpenFailure()
         {
-            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) 
+            {
                 ApplicationName = nameof(PhysicalOpenFailure),
                 Port = 44444,
                 MaxPoolSize = 1
@@ -367,7 +373,8 @@ namespace Npgsql.Tests
         //[TestCase(10, 20, 30, false)]
         public void ExercisePool(int maxPoolSize, int numTasks, int seconds, bool async)
         {
-            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) 
+            {
                 ApplicationName = nameof(ExercisePool),
                 MaxPoolSize = maxPoolSize
             }.ToString();
