@@ -370,12 +370,12 @@ namespace Npgsql
         /// <summary>
         /// Completes the import operation. The writer is unusable after this operation.
         /// </summary>
-        public Task<ulong> CompleteAsync(CancellationToken cancellationToken = default)
+        public ValueTask<ulong> CompleteAsync(CancellationToken cancellationToken = default)
         {
             if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled<ulong>(cancellationToken);
+                return new ValueTask<ulong>(Task.FromCanceled<ulong>(cancellationToken));
             using (NoSynchronizationContextScope.Enter())
-                return Complete(true).AsTask();
+                return Complete(true);
         }
 
         async ValueTask<ulong> Complete(bool async)
