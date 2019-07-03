@@ -113,12 +113,12 @@ namespace Npgsql
         /// The number of columns in the row. -1 if there are no further rows.
         /// Note: This will currently be the same value for all rows, but this may change in the future.
         /// </returns>
-        public Task<int> StartRowAsync(CancellationToken cancellationToken = default)
+        public ValueTask<int> StartRowAsync(CancellationToken cancellationToken = default)
         {
             if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled<int>(cancellationToken);
+                return new ValueTask<int>(Task.FromCanceled<int>(cancellationToken));
             using (NoSynchronizationContextScope.Enter())
-                return StartRow(true).AsTask();
+                return StartRow(true);
         }
         
         async ValueTask<int> StartRow(bool async)
@@ -178,7 +178,13 @@ namespace Npgsql
         /// specify the type.
         /// </typeparam>
         /// <returns>The value of the column</returns>
-        public ValueTask<T> ReadAsync<T>() => Read<T>(true);
+        public ValueTask<T> ReadAsync<T>(CancellationToken cancellationToken = default)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return new ValueTask<T>(Task.FromCanceled<T>(cancellationToken));
+            using (NoSynchronizationContextScope.Enter())
+                return Read<T>(true);
+        }
 
         ValueTask<T> Read<T>(bool async)
         {
@@ -220,9 +226,16 @@ namespace Npgsql
         /// type, for which <typeparamref name="T"/> will be a simple string but for which
         /// <paramref name="type"/> must be specified as <see cref="NpgsqlDbType.Jsonb"/>.
         /// </param>
+        /// <param name="cancellationToken"></param>
         /// <typeparam name="T">The .NET type of the column to be read.</typeparam>
         /// <returns>The value of the column</returns>
-        public ValueTask<T> ReadAsync<T>(NpgsqlDbType type) => Read<T>(type, true);
+        public ValueTask<T> ReadAsync<T>(NpgsqlDbType type, CancellationToken cancellationToken = default)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return new ValueTask<T>(Task.FromCanceled<T>(cancellationToken));
+            using (NoSynchronizationContextScope.Enter())
+                return Read<T>(type, true);
+        }
 
         ValueTask<T> Read<T>(NpgsqlDbType type, bool async)
         {

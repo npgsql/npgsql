@@ -213,7 +213,11 @@ namespace Npgsql
         /// <summary>
         /// Cancels and terminates an ongoing operation. Any data already written will be discarded.
         /// </summary>
-        public Task CancelAsync() => Cancel(true);
+        public Task CancelAsync()
+        {
+            using (NoSynchronizationContextScope.Enter())
+               return Cancel(true);
+        }
 
         async Task Cancel(bool async)
         {
@@ -361,7 +365,8 @@ namespace Npgsql
         /// </summary>
         public Task CancelAsync()
         {
-            return ((NpgsqlRawCopyStream)BaseStream).CancelAsync();
+            using (NoSynchronizationContextScope.Enter())
+                return ((NpgsqlRawCopyStream)BaseStream).CancelAsync();
         }
     }
 
@@ -395,7 +400,8 @@ namespace Npgsql
         /// </summary>
         public Task CancelAsync()
         {
-            return ((NpgsqlRawCopyStream)BaseStream).CancelAsync();
+            using (NoSynchronizationContextScope.Enter())
+                return ((NpgsqlRawCopyStream)BaseStream).CancelAsync();
         }
     }
 }

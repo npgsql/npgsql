@@ -138,12 +138,19 @@ namespace Npgsql
         /// Writes a single column in the current row.
         /// </summary>
         /// <param name="value">The value to be written</param>
+        /// <param name="cancellationToken"></param>
         /// <typeparam name="T">
         /// The type of the column to be written. This must correspond to the actual type or data
         /// corruption will occur. If in doubt, use <see cref="Write{T}(T, NpgsqlDbType)"/> to manually
         /// specify the type.
         /// </typeparam>
-        public Task WriteAsync<T>([AllowNull] T value) => Write(value, true);
+        public Task WriteAsync<T>([AllowNull] T value, CancellationToken cancellationToken = default)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled(cancellationToken);
+            using (NoSynchronizationContextScope.Enter())
+                return Write(value, true);
+        }
 
         async Task Write<T>([AllowNull] T value, bool async)
         {
@@ -183,9 +190,15 @@ namespace Npgsql
         /// the JSONB type, for which <typeparamref name="T"/> will be a simple string but for which
         /// <paramref name="npgsqlDbType"/> must be specified as <see cref="NpgsqlDbType.Jsonb"/>.
         /// </param>
+        /// <param name="cancellationToken"></param>
         /// <typeparam name="T">The .NET type of the column to be written.</typeparam>
-        public Task WriteAsync<T>([AllowNull] T value, NpgsqlDbType npgsqlDbType) =>
-            Write(value, npgsqlDbType, true);
+        public Task WriteAsync<T>([AllowNull] T value, NpgsqlDbType npgsqlDbType, CancellationToken cancellationToken = default)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled(cancellationToken);
+            using (NoSynchronizationContextScope.Enter())
+                return Write(value, npgsqlDbType, true);
+        }
 
         async Task Write<T>([AllowNull] T value, NpgsqlDbType npgsqlDbType, bool async)
         {
@@ -225,9 +238,15 @@ namespace Npgsql
         /// In some cases <typeparamref name="T"/> isn't enough to infer the data type to be written to
         /// the database. This parameter and be used to unambiguously specify the type.
         /// </param>
+        /// <param name="cancellationToken"></param>
         /// <typeparam name="T">The .NET type of the column to be written.</typeparam>
-        public Task WriteAsync<T>([AllowNull] T value, string dataTypeName) =>
-            Write(value, dataTypeName, true);
+        public Task WriteAsync<T>([AllowNull] T value, string dataTypeName, CancellationToken cancellationToken = default)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled(cancellationToken);
+            using (NoSynchronizationContextScope.Enter())
+                return Write(value, dataTypeName, true);
+        }
 
         async Task Write<T>([AllowNull] T value, string dataTypeName, bool async)
         {
