@@ -19,6 +19,7 @@ using NpgsqlTypes;
 using System.Transactions;
 using Npgsql.Util;
 using IsolationLevel = System.Data.IsolationLevel;
+using System.Linq;
 
 namespace Npgsql
 {
@@ -141,7 +142,7 @@ namespace Npgsql
             }
 
             // Connection string hasn't been seen before. Parse it.
-            Settings = new NpgsqlConnectionStringBuilder(_connectionString);
+            Settings = ParseConnectionString(_connectionString);
 
             if (!_countersInitialized)
             {
@@ -180,6 +181,34 @@ namespace Npgsql
             }
 
             _pool = PoolManager.GetOrAdd(_connectionString, _pool);
+        }
+
+        NpgsqlConnectionStringBuilder ParseConnectionString(string connectionString)
+        {
+            return Uri.TryCreate(connectionString, UriKind.Absolute, out var uri)
+                ? ParseSettingsFromUri(uri)
+                : new NpgsqlConnectionStringBuilder(_connectionString);
+        }
+
+        NpgsqlConnectionStringBuilder ParseSettingsFromUri(Uri uri)
+        {
+            var builder = new NpgsqlConnectionStringBuilder();
+
+            var userInfo = uri.UserInfo?.Split(':');
+            var username = userInfo.ElementAtOrDefault(0);
+            var password = userInfo.ElementAtOrDefault(1);
+
+            var host = uri.Host;
+            var port = uri.Port;
+
+            var databaseName = uri.LocalPath?.TrimStart('/');
+
+            if (username != null) builder.Username = username;
+            if (password != null) builder.Password = password;
+            if (host != null) builder.Host = host;
+            if (port != default) builder.Port = port;
+
+            return builder;
         }
 
         Task Open(bool async, CancellationToken cancellationToken)
