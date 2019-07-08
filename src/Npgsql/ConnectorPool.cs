@@ -175,7 +175,7 @@ namespace Npgsql
 
                 // We successfully extracted an idle connector, update state
                 Counters.NumberOfActiveConnections.Increment();
-                var sw = new SpinWait();
+                var spinWait = new SpinWait();
                 while (true)
                 {
                     var state = State.Copy();
@@ -185,7 +185,7 @@ namespace Npgsql
                     CheckInvariants(newState);
                     if (Interlocked.CompareExchange(ref State.All, newState.All, state.All) == state.All)
                         return true;
-                    sw.SpinOnce();
+                    spinWait.SpinOnce();
                 }
             }
 
@@ -201,7 +201,7 @@ namespace Npgsql
             // 2. The pool is at maximum capacity and there are no idle connectors (Busy == Max),
             // so we enqueue an open attempt into the waiting queue, so that the next release will unblock it.
             // 3. An connector makes it into the idle list (race condition with another Release().
-            var sw1 = new SpinWait();
+            var outerSpinWait = new SpinWait();
             while (true)
             {
                 NpgsqlConnector? connector;
@@ -216,7 +216,7 @@ namespace Npgsql
                     if (Interlocked.CompareExchange(ref State.All, newState.All, state.All) != state.All)
                     {
                         // Our attempt to increment the busy count failed, Loop again and retry.
-                        sw1.SpinOnce();
+                        outerSpinWait.SpinOnce();
                         continue;
                     }
 
@@ -231,7 +231,7 @@ namespace Npgsql
                         // Physical open failed, decrement busy back down
                         conn.Connector = null;
 
-                        var sw2 = new SpinWait();
+                        var innerSpinWait = new SpinWait();
                         while (true)
                         {
                             state = State.Copy();
@@ -240,7 +240,7 @@ namespace Npgsql
                             if (Interlocked.CompareExchange(ref State.All, newState.All, state.All) != state.All)
                             {
                                 // Our attempt to increment the busy count failed, Loop again and retry.
-                                sw2.SpinOnce();
+                                innerSpinWait.SpinOnce();
                                 continue;
                             }
 
@@ -293,7 +293,7 @@ namespace Npgsql
                     {
                         // Our attempt to increment the waiting count failed, either because a connector became idle (busy
                         // changed) or the waiting count changed. Loop again and retry.
-                        sw1.SpinOnce();
+                        outerSpinWait.SpinOnce();
                         continue;
                     }
 
@@ -376,7 +376,7 @@ namespace Npgsql
                     finally
                     {
                         // The allocation attempt succeeded or timed out, decrement the waiting count
-                        var sw2 = new SpinWait();
+                        var innerSpinWait = new SpinWait();
                         while (true)
                         {
                             state = State.Copy();
@@ -385,7 +385,7 @@ namespace Npgsql
                             CheckInvariants(newState);
                             if (Interlocked.CompareExchange(ref State.All, newState.All, state.All) == state.All)
                                 break;
-                            sw2.SpinOnce();
+                            innerSpinWait.SpinOnce();
                         }
                     }
                 }
@@ -416,7 +416,7 @@ namespace Npgsql
 
             connector.Reset();
 
-            var sw1 = new SpinWait();
+            var outerSpinWait = new SpinWait();
 
             while (true)
             {
@@ -431,7 +431,7 @@ namespace Npgsql
                     {
                         // _waitingCount has been increased, but there's nothing in the queue yet - someone is in the
                         // process of enqueuing an open attempt. Wait and retry.
-                        sw1.SpinOnce();
+                        outerSpinWait.SpinOnce();
                         continue;
                     }
 
@@ -461,7 +461,7 @@ namespace Npgsql
                 {
                     // Our attempt to decrement the busy count failed, either because a waiting attempt has been added
                     // or busy has changed. Loop again and retry.
-                    sw1.SpinOnce();
+                    outerSpinWait.SpinOnce();
                     continue;
                 }
 
@@ -474,7 +474,7 @@ namespace Npgsql
                 // too much interlocked operations "contention" at the beginning.
                 var start = Thread.CurrentThread.ManagedThreadId % _max;
 
-                var sw2 = new SpinWait();
+                var innerSpinWait = new SpinWait();
                 while (true)
                 {
                     for (var i = start; i < _idle.Length; i++)
@@ -494,7 +494,7 @@ namespace Npgsql
                             return;
                         }
                     }
-                    sw2.SpinOnce();
+                    innerSpinWait.SpinOnce();
                 }
             }
         }
@@ -505,7 +505,7 @@ namespace Npgsql
             {
                 connector.Close();
 
-                var sw = new SpinWait();
+                var spinWait = new SpinWait();
                 while (true)
                 {
                     var state = State.Copy();
@@ -517,7 +517,7 @@ namespace Npgsql
                     CheckInvariants(newState);
                     if (Interlocked.CompareExchange(ref State.All, newState.All, state.All) == state.All)
                         break;
-                    sw.SpinOnce();
+                    spinWait.SpinOnce();
                 }
             }
             catch (Exception e)
