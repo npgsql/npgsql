@@ -403,6 +403,42 @@ namespace Npgsql.Tests
             Right
         }
 
+
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/2178")]
+        public void Bug2178()
+        {
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
+            builder.AutoPrepareMinUsages = 2;
+            builder.MaxAutoPrepare = 2;
+            using (var conn = new NpgsqlConnection(builder.ConnectionString))
+            using (var cmd = new NpgsqlCommand())
+            {
+                conn.Open();
+                cmd.Connection = conn;
+
+                cmd.CommandText = "SELECT 1";
+                cmd.ExecuteScalar();
+                cmd.ExecuteScalar();
+                Assert.That(cmd.IsPrepared);
+
+                // Now executing a faulty command multiple times
+                cmd.CommandText = "SELECT * FROM public.dummy_table_name";
+                for (var i = 0; i < 3; ++i)
+                {
+                    try
+                    {
+                        cmd.ExecuteScalar();
+                    }
+                    catch { }
+                }
+
+                cmd.CommandText = "SELECT 1";
+                cmd.ExecuteScalar();
+                Assert.That(cmd.IsPrepared);
+            }
+        }
+
         [Test]
         public void Bug2296()
         {
