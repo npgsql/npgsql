@@ -194,6 +194,11 @@ namespace Npgsql
         /// </summary>
         internal DateTime ReleaseTimestamp { get; set; } = DateTime.MaxValue;
 
+        /// <summary>
+        /// If pooled, the pool index on which this connector will be returned to the pool.
+        /// </summary>
+        internal int PoolIndex { get; set; } = int.MaxValue;
+
         internal int ClearCounter { get; set; }
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlConnector));

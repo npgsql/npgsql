@@ -98,7 +98,8 @@ namespace Npgsql
                 var pool = kv.Pool;
                 if (pool == null)
                     return sum;
-                sum += pool.State.Busy;
+                var (_, _, busy) = pool.State;
+                sum += busy;
             }
             return sum;
         }
