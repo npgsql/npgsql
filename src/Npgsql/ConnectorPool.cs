@@ -66,13 +66,8 @@ namespace Npgsql
 
             internal int Total => Idle + Busy;
 
-            internal PoolState Copy() => new PoolState { All = Volatile.Read(ref All) };
-
             public override string ToString()
-            {
-                var state = Copy();
-                return $"[{state.Total} total, {state.Idle} idle, {state.Busy} busy, {state.Waiting} waiting]";
-            }
+                =>  $"[{Total} total, {Idle} idle, {Busy} busy, {Waiting} waiting]";
         }
 
         internal PoolState State;
@@ -178,7 +173,7 @@ namespace Npgsql
                 var sw = new SpinWait();
                 while (true)
                 {
-                    var state = State.Copy();
+                    var state = VolatileCopyState();
                     var newState = state;
                     newState.Busy++;
                     newState.Idle--;
@@ -204,7 +199,7 @@ namespace Npgsql
             while (true)
             {
                 NpgsqlConnector? connector;
-                var state = State.Copy();
+                var state = VolatileCopyState();
                 var newState = state;
 
                 if (state.Total < _max)
@@ -232,7 +227,7 @@ namespace Npgsql
                         var sw = new SpinWait();
                         while (true)
                         {
-                            state = State.Copy();
+                            state = VolatileCopyState();
                             newState = state;
                             newState.Busy--;
                             if (Interlocked.CompareExchange(ref State.All, newState.All, state.All) != state.All)
@@ -376,7 +371,7 @@ namespace Npgsql
                         var sw = new SpinWait();
                         while (true)
                         {
-                            state = State.Copy();
+                            state = VolatileCopyState();
                             newState = state;
                             newState.Waiting--;
                             CheckInvariants(newState);
@@ -417,7 +412,7 @@ namespace Npgsql
 
             while (true)
             {
-                var state = State.Copy();
+                var state = VolatileCopyState();
 
                 // If there are any pending open attempts in progress hand the connector off to them directly.
                 // Note that in this case, state changes (i.e. decrementing State.Waiting) happens at the allocating
@@ -504,7 +499,7 @@ namespace Npgsql
                 var sw = new SpinWait();
                 while (true)
                 {
-                    var state = State.Copy();
+                    var state = VolatileCopyState();
                     var newState = state;
                     if (wasIdle)
                         newState.Idle--;
@@ -543,7 +538,7 @@ namespace Npgsql
 
             for (var i = 0; i < idle.Length; i++)
             {
-                if (pool.State.Total <= pool._min)
+                if (pool.VolatileCopyState().Total <= pool._min)
                     return;
 
                 var connector = idle[i];
@@ -613,6 +608,12 @@ namespace Npgsql
 
         #region Misc
 
+        PoolState VolatileCopyState()
+        {
+            ref var state = ref State;
+            return new PoolState { All = Volatile.Read(ref state.All) };
+        }
+
         [Conditional("DEBUG")]
         void CheckInvariants(PoolState state)
         {
@@ -630,7 +631,7 @@ namespace Npgsql
 
         public void Dispose() => _pruningTimer?.Dispose();
 
-        public override string ToString() => State.ToString();
+        public override string ToString() => VolatileCopyState().ToString();
 
         #endregion Misc
     }
