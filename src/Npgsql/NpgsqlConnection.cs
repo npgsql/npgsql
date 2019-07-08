@@ -608,6 +608,10 @@ namespace Npgsql
 
             Connector.CloseOngoingOperations();
 
+            // The connector has closed us during CloseOngoingOperations due to an underlying failure.
+            if (Connector == null)
+                return;
+
             if (Settings.Pooling)
             {
                 if (EnlistedTransaction == null)

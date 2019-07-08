@@ -14,7 +14,7 @@ namespace Npgsql.Tests
         [Test]
         public void MinPoolSizeEqualsMaxPoolSize()
         {
-            using (var conn = new NpgsqlConnection(new NpgsqlConnectionStringBuilder(ConnectionString) 
+            using (var conn = new NpgsqlConnection(new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 MinPoolSize = 30,
                 MaxPoolSize = 30
@@ -59,7 +59,7 @@ namespace Npgsql.Tests
         [Test, Timeout(10000)]
         public void GetConnectorFromExhaustedPool()
         {
-            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) 
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 MaxPoolSize = 1,
                 Timeout = 0
@@ -101,7 +101,7 @@ namespace Npgsql.Tests
         [Test]
         public void TimeoutGettingConnectorFromExhaustedPool()
         {
-            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) 
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 MaxPoolSize = 1,
                 Timeout = 2
@@ -141,42 +141,11 @@ namespace Npgsql.Tests
                 conn3.Open();
         }
 
-        [Test]
-        public void OverflowExceptionWhenTooManyWaiting()
-        {
-            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) 
-            {
-                ApplicationName = nameof(OverflowExceptionWhenTooManyWaiting),
-                MaxPoolSize = 1,
-            }.ToString();
-
-            using (var conn = new NpgsqlConnection(connString))
-            {
-                conn.Open();
-                Assert.True(PoolManager.TryGetValue(connString, out var pool));
-                var state = pool!.State;
-
-                try
-                {
-                    var newState = state;
-                    newState.Waiting = int.MaxValue;
-                    pool!.State = newState;
-                    var conn2 = new NpgsqlConnection(connString);
-                    Assert.Catch<OverflowException>(() => conn2.Open());
-                }
-                finally
-                {
-                    // Restore state for the closes work correctly.
-                    pool!.State = state;
-                }
-            }
-        }
-
         //[Test, Timeout(10000)]
         //[Explicit("Timing-based")]
         public async Task CancelOpenAsync()
         {
-            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) 
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 ApplicationName = nameof(CancelOpenAsync),
                 MaxPoolSize = 1,
@@ -338,7 +307,7 @@ namespace Npgsql.Tests
         [Test]
         public void ClearWithNoPool()
         {
-            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) 
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 ApplicationName = nameof(ClearWithNoPool)
             }.ToString();
@@ -349,7 +318,7 @@ namespace Npgsql.Tests
         [Test, Description("https://github.com/npgsql/npgsql/commit/45e33ecef21f75f51a625c7b919a50da3ed8e920#r28239653")]
         public void PhysicalOpenFailure()
         {
-            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) 
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 ApplicationName = nameof(PhysicalOpenFailure),
                 Port = 44444,
@@ -373,7 +342,7 @@ namespace Npgsql.Tests
         //[TestCase(10, 20, 30, false)]
         public void ExercisePool(int maxPoolSize, int numTasks, int seconds, bool async)
         {
-            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) 
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 ApplicationName = nameof(ExercisePool),
                 MaxPoolSize = maxPoolSize
@@ -409,8 +378,8 @@ namespace Npgsql.Tests
 
             var state = pool.State;
             Assert.That(state.Idle, Is.EqualTo(idle), $"Idle should be {idle} but is {state.Idle}");
-            Assert.That(state.Busy, Is.EqualTo(busy), $"Busy should be {busy} but is {state.Busy}");
-            Assert.That(state.Waiting, Is.EqualTo(waiting), $"Waiting should be {waiting} but is {state.Waiting}");
+            var stateBusy = state.Open - state.Idle;
+            Assert.That(stateBusy, Is.EqualTo(busy), $"Busy should be {busy} but is {stateBusy}");
         }
     }
 }
