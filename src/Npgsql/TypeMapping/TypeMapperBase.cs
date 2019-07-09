@@ -79,7 +79,6 @@ namespace Npgsql.TypeMapping
         #region Composite mapping
 
         public INpgsqlTypeMapper MapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
-            where T : new()
         {
             if (pgName != null && pgName.Trim() == "")
                 throw new ArgumentException("pgName can't be empty", nameof(pgName));
@@ -98,7 +97,6 @@ namespace Npgsql.TypeMapping
         }
 
         public bool UnmapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
-            where T : new()
         {
             if (pgName != null && pgName.Trim() == "")
                 throw new ArgumentException("pgName can't be empty", nameof(pgName));
