@@ -14,7 +14,7 @@ namespace Npgsql.Tests.Types
         }
 
         void Write<T>(T composite, Action<Func<NpgsqlDataReader>, T> assert, string? schema = null)
-            where T : IComposite, new()
+            where T : IComposite
         {
             using var connection = OpenAndMapComposite<T>(composite, schema, nameof(Write), out var _);
             using var command = new NpgsqlCommand("SELECT (@c).*", connection);
@@ -76,5 +76,29 @@ namespace Npgsql.Tests.Types
         [Test]
         public void Write_TypeWithoutSetter_Succeeds() =>
             Write(new TypeWithoutSetter(), (execute, expected) => execute());
+
+        [Test]
+        public void Write_TypeWithExplicitPropertyName_Succeeds() =>
+            Write(new TypeWithExplicitPropertyName { MyValue = HelloSlonik }, (execute, expected) => Assert.That(execute().GetString(0), Is.EqualTo(expected.MyValue)));
+
+        [Test]
+        public void Write_TypeWithExplicitParameterName_Succeeds() =>
+            Write(new TypeWithExplicitParameterName(HelloSlonik), (execute, expected) => Assert.That(execute().GetString(0), Is.EqualTo(expected.Value)));
+
+        [Test]
+        public void Write_TypeWithMorePropertiesThanAttributes_Succeeds() =>
+            Write(new TypeWithMorePropertiesThanAttributes(), (execute, expected) => execute());
+
+        [Test]
+        public void Write_TypeWithLessPropertiesThanAttributes_ThrowsInvalidOperationException() =>
+            Write(new TypeWithLessPropertiesThanAttributes(), (execute, expected) => Assert.Throws<InvalidOperationException>(() => execute()));
+
+        [Test]
+        public void Write_TypeWithLessParametersThanAttributes_ThrowsInvalidOperationException() =>
+            Write(new TypeWithLessParametersThanAttributes(TheAnswer), (execute, expected) => Assert.Throws<InvalidOperationException>(() => execute()));
+
+        [Test]
+        public void Write_TypeWithMoreParametersThanAttributes_ThrowsInvalidOperationException() =>
+            Write(new TypeWithMoreParametersThanAttributes(TheAnswer, HelloSlonik), (execute, expected) => Assert.Throws<InvalidOperationException>(() => execute()));
     }
 }

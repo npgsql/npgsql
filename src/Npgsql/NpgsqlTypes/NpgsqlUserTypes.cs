@@ -6,7 +6,7 @@ namespace NpgsqlTypes
     /// <summary>
     /// Indicates that this property or field correspond to a PostgreSQL field with the specified name
     /// </summary>
-    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property)]
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property | AttributeTargets.Parameter)]
     public class PgNameAttribute : Attribute
     {
         /// <summary>

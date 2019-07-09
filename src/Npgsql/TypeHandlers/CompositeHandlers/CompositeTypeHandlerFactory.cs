@@ -4,7 +4,6 @@ using Npgsql.TypeHandling;
 namespace Npgsql.TypeHandlers.CompositeHandlers
 {
     class CompositeTypeHandlerFactory<T> : NpgsqlTypeHandlerFactory<T>, ICompositeTypeHandlerFactory
-        where T : new()
     {
         public INpgsqlNameTranslator NameTranslator { get; }
 

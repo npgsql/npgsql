@@ -108,7 +108,7 @@ namespace Npgsql.TypeMapping
         [NotNull]
         INpgsqlTypeMapper MapComposite<T>(
             string? pgName = null,
-            INpgsqlNameTranslator? nameTranslator = null) where T : new();
+            INpgsqlNameTranslator? nameTranslator = null);
 
         /// <summary>
         /// Removes an existing enum mapping.
@@ -123,7 +123,7 @@ namespace Npgsql.TypeMapping
         /// </param>
         bool UnmapComposite<T>(
             string? pgName = null,
-            INpgsqlNameTranslator? nameTranslator = null) where T : new();
+            INpgsqlNameTranslator? nameTranslator = null);
 
         /// <summary>
         /// Resets all mapping changes performed on this type mapper and reverts it to its original, starting state.
