@@ -6,7 +6,7 @@ The VSIX doesn't automatically add Npgsql to your GAC, `App.config`, `machines.c
 
 ## Visual Studio Compatibility
 
-The VSIX extension has been tested and works on Visual Studio 2015 and 2017. It is probably compatible with versions all the way back to 2012, but these haven't been tested. Note that installing into pre-2015 versions will display a warning, although it should be safe to proceed.
+The VSIX extension has been tested and works on Visual Studio 2015, 2017 and 2019. It is probably compatible with versions all the way back to 2012, but these haven't been tested. Note that installing into pre-2015 versions will display a warning, although it should be safe to proceed.
 
 ## Upgrading from an older version
 
@@ -28,4 +28,4 @@ The extension supports generating a model from an existing database. To do so, i
 
 ## Development
 
-Development on the VSIX is currently possible only on Visual Studio 2017. Be sure to install the "Visual Studio extension development" workload.
+Development on the VSIX is currently possible only on Visual Studio 2017, 2019. Be sure to install the "Visual Studio extension development" workload.
