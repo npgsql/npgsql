@@ -441,7 +441,19 @@ namespace Npgsql
                         }
                     }
 
-                    Expect<ParseCompleteMessage>(await Connector.ReadMessage(async));
+                    try
+                    {
+                        Expect<ParseCompleteMessage>(await Connector.ReadMessage(async));
+                    }
+                    catch
+                    {
+                        // An exception occurred. Check if any statements we being prepared and revert our bookkeeping.
+                        pStatement?.CompleteUnprepare();
+                        throw;
+                    }
+
+                    pStatement?.CompletePrepare();
+
                     Expect<BindCompleteMessage>(await Connector.ReadMessage(async));
                     msg = await Connector.ReadMessage(async);
                     switch (msg.Code)
@@ -455,12 +467,6 @@ namespace Npgsql
                         break;
                     default:
                         throw Connector.UnexpectedMessageReceived(msg.Code);
-                    }
-
-                    if (pStatement != null)
-                    {
-                        Debug.Assert(!pStatement.IsPrepared);
-                        pStatement.CompletePrepare();
                     }
                 }
 
