@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Npgsql.NameTranslation
 {
@@ -14,11 +10,11 @@ namespace Npgsql.NameTranslation
         /// <summary>
         /// Given a CLR type name (e.g class, struct, enum), translates its name to a database type name.
         /// </summary>
-        public string TranslateTypeName(string clrName) => clrName;
+        public string TranslateTypeName(string clrName) => clrName ?? throw new ArgumentNullException(nameof(clrName));
 
         /// <summary>
         /// Given a CLR member name (property or field), translates its name to a database type name.
         /// </summary>
-        public string TranslateMemberName(string clrName) => clrName;
+        public string TranslateMemberName(string clrName) => clrName ?? throw new ArgumentNullException(nameof(clrName));
     }
 }
