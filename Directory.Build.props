@@ -3,10 +3,11 @@
   <PropertyGroup>
     <Copyright>Copyright 2019 © The Npgsql Development Team</Copyright>
     <Company>Npgsql</Company>
-    
+    <VersionPrefix>5.0.0</VersionPrefix>
+
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>git://github.com/npgsql/npgsql</RepositoryUrl>
-    
+
     <PackageLicenseExpression>PostgreSQL</PackageLicenseExpression>
     <PackageProjectUrl>http://www.npgsql.org</PackageProjectUrl>
     <PackageIconUrl>http://www.npgsql.org/img/postgresql.gif</PackageIconUrl>
