@@ -124,7 +124,7 @@ namespace Npgsql
         /// </summary>
         char[]? _tempCharBuf;
 
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlDataReader));
 
         internal NpgsqlDataReader(NpgsqlConnector connector)
         {

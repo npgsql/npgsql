@@ -44,7 +44,7 @@ namespace Npgsql
             (byte)'\n', 255, (byte)'\r', (byte)'\n', 0
         };
 
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlRawCopyStream));
 
         #endregion
 

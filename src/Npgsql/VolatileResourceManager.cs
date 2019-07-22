@@ -23,7 +23,7 @@ namespace Npgsql
         bool IsPrepared => _preparedTxName != null;
         bool _isDisposed;
 
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(VolatileResourceManager));
 
         const int MaximumRollbackAttempts = 20;
 

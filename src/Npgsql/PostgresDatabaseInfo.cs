@@ -35,7 +35,7 @@ namespace Npgsql
         /// <summary>
         /// The Npgsql logger instance.
         /// </summary>
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(PostgresDatabaseInfo));
 
         /// <summary>
         /// The PostgreSQL types detected in the database.

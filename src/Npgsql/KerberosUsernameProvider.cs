@@ -16,7 +16,7 @@ namespace Npgsql
         static string _principalWithRealm;
         static string _principalWithoutRealm;
 
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(KerberosUsernameProvider));
 
         internal static string? GetUsername(bool includeRealm)
         {
