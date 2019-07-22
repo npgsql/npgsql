@@ -75,7 +75,7 @@ namespace Npgsql.TypeMapping
         /// </summary>
         internal int ChangeCounter { get; private set; }
 
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(ConnectorTypeMapper));
 
         #region Construction
 

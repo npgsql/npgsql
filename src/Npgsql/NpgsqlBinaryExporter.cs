@@ -60,7 +60,7 @@ namespace Npgsql
 
         [ItemCanBeNull]
         readonly NpgsqlTypeHandler[] _typeHandlerCache;
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlBinaryExporter));
 
         #endregion
 

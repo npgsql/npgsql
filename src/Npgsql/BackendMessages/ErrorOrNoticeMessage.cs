@@ -48,7 +48,7 @@ namespace Npgsql.BackendMessages
         internal string Line { get; private set; }
         internal string Routine { get; private set; }
 
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(ErrorOrNoticeMessage));
 
         // ReSharper disable once FunctionComplexityOverflow
         internal ErrorOrNoticeMessage(NpgsqlReadBuffer buf)
