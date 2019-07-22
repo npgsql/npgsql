@@ -280,8 +280,8 @@ namespace Npgsql
                 _buf.EndCopyMode();
                 _connector.WriteCopyDone();
                 _connector.Flush();
-                var cmdComplete = Expect<CommandCompleteMessage>(_connector.ReadMessage());
-                Expect<ReadyForQueryMessage>(_connector.ReadMessage());
+                var cmdComplete = Expect<CommandCompleteMessage>(_connector.ReadMessage(), _connector);
+                Expect<ReadyForQueryMessage>(_connector.ReadMessage(), _connector);
                 _state = ImporterState.Committed;
                 return cmdComplete.Rows;
             }

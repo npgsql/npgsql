@@ -1898,8 +1898,8 @@ namespace Npgsql
 
             await WriteQuery(query, async);
             await Flush(async);
-            Expect<CommandCompleteMessage>(await ReadMessage(async));
-            Expect<ReadyForQueryMessage>(await ReadMessage(async));
+            Expect<CommandCompleteMessage>(await ReadMessage(async), this);
+            Expect<ReadyForQueryMessage>(await ReadMessage(async), this);
         }
 
         internal async Task ExecuteInternalCommand(byte[] data, bool async)
@@ -1910,8 +1910,8 @@ namespace Npgsql
 
             await WritePregenerated(data, async);
             await Flush(async);
-            Expect<CommandCompleteMessage>(await ReadMessage(async));
-            Expect<ReadyForQueryMessage>(await ReadMessage(async));
+            Expect<CommandCompleteMessage>(await ReadMessage(async), this);
+            Expect<ReadyForQueryMessage>(await ReadMessage(async), this);
         }
 
         #endregion
