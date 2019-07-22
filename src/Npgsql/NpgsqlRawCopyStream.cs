@@ -174,8 +174,8 @@ namespace Npgsql
                     _leftToReadInDataMsg = ((CopyDataMessage)msg).Length;
                     break;
                 case BackendMessageCode.CopyDone:
-                    Expect<CommandCompleteMessage>(_connector.ReadMessage());
-                    Expect<ReadyForQueryMessage>(_connector.ReadMessage());
+                    Expect<CommandCompleteMessage>(_connector.ReadMessage(), _connector);
+                    Expect<ReadyForQueryMessage>(_connector.ReadMessage(), _connector);
                     _isConsumed = true;
                     return 0;
                 default:
@@ -254,8 +254,8 @@ namespace Npgsql
                     Flush();
                     _writeBuf.EndCopyMode();
                     _connector.SendMessage(CopyDoneMessage.Instance);
-                    Expect<CommandCompleteMessage>(_connector.ReadMessage());
-                    Expect<ReadyForQueryMessage>(_connector.ReadMessage());
+                    Expect<CommandCompleteMessage>(_connector.ReadMessage(), _connector);
+                    Expect<ReadyForQueryMessage>(_connector.ReadMessage(), _connector);
                 }
                 else
                 {

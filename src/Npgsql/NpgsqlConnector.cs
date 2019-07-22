@@ -1985,8 +1985,8 @@ namespace Npgsql
 
             await message.Write(WriteBuffer, async);
             await WriteBuffer.Flush(async);
-            Expect<CommandCompleteMessage>(await ReadMessage(async));
-            Expect<ReadyForQueryMessage>(await ReadMessage(async));
+            Expect<CommandCompleteMessage>(await ReadMessage(async), this);
+            Expect<ReadyForQueryMessage>(await ReadMessage(async), this);
         }
 
         #endregion
