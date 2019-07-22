@@ -77,7 +77,7 @@ namespace Npgsql
 
         void ReadHeader()
         {
-            _leftToReadInDataMsg = Expect<CopyDataMessage>(_connector.ReadMessage()).Length;
+            _leftToReadInDataMsg = Expect<CopyDataMessage>(_connector.ReadMessage(), _connector).Length;
             var headerLen = NpgsqlRawCopyStream.BinarySignature.Length + 4 + 4;
             _buf.Ensure(headerLen);
             if (NpgsqlRawCopyStream.BinarySignature.Any(t => _buf.ReadByte() != t)) {
@@ -112,7 +112,7 @@ namespace Npgsql
             // message per row).
             if (_column == NumColumns)
             {
-                _leftToReadInDataMsg = Expect<CopyDataMessage>(_connector.ReadMessage()).Length;
+                _leftToReadInDataMsg = Expect<CopyDataMessage>(_connector.ReadMessage(), _connector).Length;
             }
             else if (_column != -1)
             {
@@ -124,9 +124,9 @@ namespace Npgsql
             if (numColumns == -1)
             {
                 Debug.Assert(_leftToReadInDataMsg == 0);
-                Expect<CopyDoneMessage>(_connector.ReadMessage());
-                Expect<CommandCompleteMessage>(_connector.ReadMessage());
-                Expect<ReadyForQueryMessage>(_connector.ReadMessage());
+                Expect<CopyDoneMessage>(_connector.ReadMessage(), _connector);
+                Expect<CommandCompleteMessage>(_connector.ReadMessage(), _connector);
+                Expect<ReadyForQueryMessage>(_connector.ReadMessage(), _connector);
                 _column = -1;
                 _isConsumed = true;
                 return -1;
@@ -280,8 +280,8 @@ namespace Npgsql
                 _buf.Skip(_leftToReadInDataMsg);
                 // Read to the end
                 _connector.SkipUntil(BackendMessageCode.CopyDone);
-                Expect<CommandCompleteMessage>(_connector.ReadMessage());
-                Expect<ReadyForQueryMessage>(_connector.ReadMessage());
+                Expect<CommandCompleteMessage>(_connector.ReadMessage(), _connector);
+                Expect<ReadyForQueryMessage>(_connector.ReadMessage(), _connector);
             }
 
             var connector = _connector;

@@ -19,7 +19,7 @@ namespace Npgsql
         {
             Log.Trace("Authenticating...", Id);
 
-            var msg = Expect<AuthenticationRequestMessage>(await ReadMessage(async));
+            var msg = Expect<AuthenticationRequestMessage>(await ReadMessage(async), this);
             timeout.Check();
             switch (msg.AuthRequestType)
             {
@@ -62,7 +62,7 @@ namespace Npgsql
 
             await WritePassword(encoded, async);
             await Flush(async);
-            Expect<AuthenticationRequestMessage>(await ReadMessage(async));
+            Expect<AuthenticationRequestMessage>(await ReadMessage(async), this);
         }
 
         async Task AuthenticateSASL(List<string> mechanisms, string username, bool async)
@@ -85,7 +85,7 @@ namespace Npgsql
             await WriteSASLInitialResponse(mechanism, PGUtil.UTF8Encoding.GetBytes("n,,n=*,r=" + clientNonce), async);
             await Flush(async);
 
-            var saslContinueMsg = Expect<AuthenticationSASLContinueMessage>(await ReadMessage(async));
+            var saslContinueMsg = Expect<AuthenticationSASLContinueMessage>(await ReadMessage(async), this);
             if (saslContinueMsg.AuthRequestType != AuthenticationRequestType.AuthenticationSASLContinue)
                 throw new NpgsqlException("[SASL] AuthenticationSASLFinal message expected");
             var firstServerMsg = AuthenticationSCRAMServerFirstMessage.Load(saslContinueMsg.Payload);
@@ -118,7 +118,7 @@ namespace Npgsql
             await WriteSASLResponse(Encoding.UTF8.GetBytes(messageStr), async);
             await Flush(async);
 
-            var saslFinalServerMsg = Expect<AuthenticationSASLFinalMessage>(await ReadMessage(async));
+            var saslFinalServerMsg = Expect<AuthenticationSASLFinalMessage>(await ReadMessage(async), this);
             if (saslFinalServerMsg.AuthRequestType != AuthenticationRequestType.AuthenticationSASLFinal)
                 throw new NpgsqlException("[SASL] AuthenticationSASLFinal message expected");
             var scramFinalServerMsg = AuthenticationSCRAMServerFinalMessage.Load(saslFinalServerMsg.Payload);
@@ -126,7 +126,7 @@ namespace Npgsql
             if (scramFinalServerMsg.ServerSignature != Convert.ToBase64String(serverSignature))
                 throw new NpgsqlException("[SCRAM] Unable to verify server signature");
 
-            var okMsg = Expect<AuthenticationRequestMessage>(await ReadMessage(async));
+            var okMsg = Expect<AuthenticationRequestMessage>(await ReadMessage(async), this);
             if (okMsg.AuthRequestType != AuthenticationRequestType.AuthenticationOk)
                 throw new NpgsqlException("[SASL] Expected AuthenticationOK message");
 
@@ -221,7 +221,7 @@ namespace Npgsql
 
             await WritePassword(result, async);
             await Flush(async);
-            Expect<AuthenticationRequestMessage>(await ReadMessage(async));
+            Expect<AuthenticationRequestMessage>(await ReadMessage(async), this);
         }
 
 #pragma warning disable CA1801 // Review unused parameters
@@ -322,7 +322,7 @@ namespace Npgsql
             {
                 if (_leftToRead == 0)
                 {
-                    var response = Expect<AuthenticationRequestMessage>(await _connector.ReadMessage(async));
+                    var response = Expect<AuthenticationRequestMessage>(await _connector.ReadMessage(async), _connector);
                     if (response.AuthRequestType == AuthenticationRequestType.AuthenticationOk)
                         throw new AuthenticationCompleteException();
                     var gssMsg = response as AuthenticationGSSContinueMessage;

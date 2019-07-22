@@ -11,10 +11,14 @@ namespace Npgsql.Util
     static class Statics
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static T Expect<T>(IBackendMessage msg)
-            => msg is T asT
-                ? asT
-                : throw new NpgsqlException($"Received backend message {msg.Code} while expecting {typeof(T).Name}. Please file a bug.");
+        internal static T Expect<T>(IBackendMessage msg, NpgsqlConnector connector)
+        {
+            if (msg is T asT)
+                return asT;
+
+            connector.Break();
+            throw new NpgsqlException($"Received backend message {msg.Code} while expecting {typeof(T).Name}. Please file a bug.");
+        }
     }
 
     // ReSharper disable once InconsistentNaming
