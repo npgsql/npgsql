@@ -58,14 +58,6 @@ artifacts:
     name: MSI Installer
 deploy:
   - provider: Environment
-    name: MyGet Unstable
-    on:
-      deploy_myget_unstable: true
-  - provider: Environment
-    name: MyGet Stable
-    on:
-      deploy_myget_stable: true
-  - provider: Environment
     name: Npgsql Github
     on:
       deploy_github_release: true
