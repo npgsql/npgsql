@@ -21,9 +21,10 @@ cp .build/server.key /var/lib/postgresql/11/main/
 # Start PostgreSQL
 sudo service postgresql start
 
+# Configure domain account
+sudo -u postgres psql -c "CREATE ROLE vsts SUPERUSER LOGIN"
+sudo -u postgres psql -c "CREATE DATABASE vsts OWNER vsts"
+
 # Configure test account
-sudo -u postgres psql -c "CREATE USER vsts"
-sudo -u postgres psql -c "CREATE USER npgsql_tests WITH PASSWORD 'npgsql_tests' SUPERUSER"
+sudo -u postgres psql -c "CREATE ROLE npgsql_tests SUPERUSER LOGIN PASSWORD 'npgsql_tests'"
 sudo -u postgres psql -c "CREATE DATABASE npgsql_tests OWNER npgsql_tests"
-sudo -u postgres psql -d npgsql_tests -c "CREATE EXTENSION citext"
-sudo -u postgres psql -d npgsql_tests -c "CREATE EXTENSION postgis"

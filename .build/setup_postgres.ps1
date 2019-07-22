@@ -22,9 +22,11 @@ bigsql/pg11/bin/initdb -D PGDATA -E UTF8 -U postgres
 # Start PostgreSQL
 bigsql/pg11/bin/pg_ctl -D PGDATA -l logfile start
 
+# Configure domain account
+bigsql/pg11/bin/psql -U postgres -c "CREATE ROLE vsts SUPERUSER LOGIN"
+bigsql/pg11/bin/psql -U postgres -c "CREATE DATABASE vsts OWNER vsts"
+
 # Configure test account
-bigsql/pg11/bin/psql -U postgres -c "CREATE USER vsts"
-bigsql/pg11/bin/psql -U postgres -c "CREATE USER npgsql_tests WITH PASSWORD 'npgsql_tests' SUPERUSER"
+bigsql/pg11/bin/psql -U postgres -c "CREATE ROLE npgsql_tests SUPERUSER LOGIN PASSWORD 'npgsql_tests'"
 bigsql/pg11/bin/psql -U postgres -c "CREATE DATABASE npgsql_tests OWNER npgsql_tests"
-bigsql/pg11/bin/psql -U postgres -d npgsql_tests -c "CREATE EXTENSION citext"
-bigsql/pg11/bin/psql -U postgres -d npgsql_tests -c "CREATE EXTENSION postgis"
+
