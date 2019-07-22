@@ -26,7 +26,7 @@ namespace Npgsql
         internal string NextPreparedStatementName() => "_p" + (++_preparedStatementIndex);
         ulong _preparedStatementIndex;
 
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(PreparedStatementManager));
 
         internal const int CandidateCount = 100;
 

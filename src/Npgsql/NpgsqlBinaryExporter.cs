@@ -32,7 +32,7 @@ namespace Npgsql
         internal int NumColumns { get; }
 
         readonly NpgsqlTypeHandler?[] _typeHandlerCache;
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlBinaryExporter));
 
         #endregion
 

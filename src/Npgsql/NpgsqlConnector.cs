@@ -196,7 +196,7 @@ namespace Npgsql
 
         internal int ClearCounter { get; set; }
 
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlConnector));
 
         #endregion
 

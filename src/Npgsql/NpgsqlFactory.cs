@@ -11,7 +11,7 @@ namespace Npgsql
     [Serializable]
     public sealed class NpgsqlFactory : DbProviderFactory, IServiceProvider
     {
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlFactory));
 
         /// <summary>
         /// Gets an instance of the <see cref="NpgsqlFactory"/>.

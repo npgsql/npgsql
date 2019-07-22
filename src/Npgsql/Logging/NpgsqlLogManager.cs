@@ -4,7 +4,7 @@ using System.Diagnostics;
 namespace Npgsql.Logging
 {
     /// <summary>
-    /// Manages logging for Npgsql, used to set the loggging provider.
+    /// Manages logging for Npgsql, used to set the logging provider.
     /// </summary>
     public static class NpgsqlLogManager
     {
@@ -36,36 +36,7 @@ namespace Npgsql.Logging
         static INpgsqlLoggingProvider? _provider;
         static bool _providerRetrieved;
 
-        internal static NpgsqlLogger CreateLogger(string name) => Provider.CreateLogger(name);
-
-        internal static NpgsqlLogger GetCurrentClassLogger() => CreateLogger(GetClassFullName());
-
-        // Copied from NLog
-        static string GetClassFullName()
-        {
-            string className;
-            Type? declaringType;
-            var framesToSkip = 2;
-
-            do
-            {
-                var frame = new StackFrame(framesToSkip, false);
-                var method = frame.GetMethod();
-
-                declaringType = method.DeclaringType;
-                if (declaringType == null)
-                {
-                    className = method.Name;
-                    break;
-                }
-
-                framesToSkip++;
-                className = declaringType.FullName ?? declaringType.Name;
-            }
-            while (declaringType.Module.Name.Equals("mscorlib.dll", StringComparison.OrdinalIgnoreCase));
-
-            return className;
-        }
+        internal static NpgsqlLogger CreateLogger(string name) => Provider.CreateLogger("Npgsql." + name);
 
         static NpgsqlLogManager() => Provider = new NoOpLoggingProvider();
     }

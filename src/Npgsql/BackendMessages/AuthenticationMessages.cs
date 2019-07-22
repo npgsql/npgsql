@@ -130,7 +130,7 @@ namespace Npgsql.BackendMessages
 
     class AuthenticationSCRAMServerFirstMessage
     {
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(AuthenticationSCRAMServerFirstMessage));
 
         internal string Nonce { get; }
         internal string Salt { get; }
@@ -186,7 +186,7 @@ namespace Npgsql.BackendMessages
 
     class AuthenticationSCRAMServerFinalMessage
     {
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(AuthenticationSCRAMServerFinalMessage));
 
         internal string ServerSignature { get; }
 

@@ -25,13 +25,13 @@ namespace Npgsql.BackendMessages
         internal string? Line { get; }
         internal string? Routine { get; }
 
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(ErrorOrNoticeMessage));
 
         // ReSharper disable once FunctionComplexityOverflow
         internal static ErrorOrNoticeMessage Load(NpgsqlReadBuffer buf)
         {
             (string? severity, string? invariantSeverity, string? code, string? message, string? detail, string? hint) = (null, null, null, null, null, null);
-            (int position, int internalPosition) = (0, 0);
+            var (position, internalPosition) = (0, 0);
             (string? internalQuery, string? where) = (null, null);
             (string? schemaName, string? tableName, string? columnName, string? dataTypeName, string? constraintName) =
                 (null, null, null, null, null);

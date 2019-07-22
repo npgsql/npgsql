@@ -37,7 +37,7 @@ namespace Npgsql
 
         readonly NpgsqlParameter?[] _params;
 
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlBinaryImporter));
 
         #endregion
 

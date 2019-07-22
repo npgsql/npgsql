@@ -61,7 +61,7 @@ namespace Npgsql
         }
         IsolationLevel _isolationLevel;
 
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlTransaction));
 
         const IsolationLevel DefaultIsolationLevel = IsolationLevel.ReadCommitted;
 

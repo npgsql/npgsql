@@ -87,7 +87,7 @@ namespace Npgsql
         /// </summary>
         internal const int TimeoutLimit = 1024;
 
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlConnection));
 
         static bool _countersInitialized;
 
@@ -334,10 +334,10 @@ namespace Npgsql
         /// Gets or sets the delegate used to generate a password for new database connections.
         /// </summary>
         /// <remarks>
-        /// This delegate is executed when a new database connection is opened that requires a password. 
-        /// <see cref="NpgsqlConnectionStringBuilder.Password">Password</see> and 
-        /// <see cref="NpgsqlConnectionStringBuilder.Passfile">Passfile</see> connection string 
-        /// properties have precedence over this delegate. It will not be executed if a password is 
+        /// This delegate is executed when a new database connection is opened that requires a password.
+        /// <see cref="NpgsqlConnectionStringBuilder.Password">Password</see> and
+        /// <see cref="NpgsqlConnectionStringBuilder.Passfile">Passfile</see> connection string
+        /// properties have precedence over this delegate. It will not be executed if a password is
         /// specified, or the specified or default Passfile contains a valid entry.
         /// Due to connection pooling this delegate is only executed when a new physical connection
         /// is opened, not when reusing a connection that was previously opened from the pool.
