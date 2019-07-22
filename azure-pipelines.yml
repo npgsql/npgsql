@@ -43,7 +43,7 @@ jobs:
       configuration: 'Release'
       includeSymbols: false
       outputDir: '$(Build.ArtifactStagingDirectory)'
-      packagesToPack: 'src/**/*.csproj'
+      packagesToPack: 'src/**/*.csproj;!src/VSIX/VSIX.csproj'
 
   - task: DotNetCoreCLI@2
     displayName: 'Pack symbol packages'
@@ -53,7 +53,7 @@ jobs:
       configuration: 'Release'
       includeSymbols: true
       outputDir: '$(Build.ArtifactStagingDirectory)'
-      packagesToPack: 'src/**/*.csproj'
+      packagesToPack: 'src/**/*.csproj;!src/VSIX/VSIX.csproj'
 
   - task: PublishBuildArtifacts@1
     displayName: 'Publish artifacts'
@@ -94,7 +94,7 @@ jobs:
       configuration: 'Release'
       includeSymbols: false
       outputDir: '$(Build.ArtifactStagingDirectory)'
-      packagesToPack: 'src/**/*.csproj'
+      packagesToPack: 'src/**/*.csproj;!src/VSIX/VSIX.csproj'
 
   - task: DotNetCoreCLI@2
     displayName: 'Pack symbol packages'
@@ -104,7 +104,7 @@ jobs:
       configuration: 'Release'
       includeSymbols: true
       outputDir: '$(Build.ArtifactStagingDirectory)'
-      packagesToPack: 'src/**/*.csproj'
+      packagesToPack: 'src/**/*.csproj;!src/VSIX/VSIX.csproj'
 
   - task: PublishBuildArtifacts@1
     displayName: 'Publish artifacts'
