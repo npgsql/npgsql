@@ -13,11 +13,10 @@ bigsql/pgc install postgis25-pg11
 bigsql/pg11/bin/initdb -D PGDATA -E UTF8 -U postgres
 
 # Configure PostgreSQL
-# TODO: For some reason PostgreSQL doesn't start when these are included?
-#echo "max_prepared_transactions = 10" >> PGDATA/postgresql.conf
-#echo "ssl = true"                     >> PGDATA/postgresql.conf
-#cp .build/server.crt PGDATA/
-#cp .build/server.key PGDATA/
+echo "max_prepared_transactions = 10" >> PGDATA/postgresql.conf
+echo "ssl = true"                     >> PGDATA/postgresql.conf
+cp .build/server.crt PGDATA/
+cp .build/server.key PGDATA/
 
 # Start PostgreSQL
 bigsql/pg11/bin/pg_ctl -D PGDATA -l logfile start
