@@ -12,12 +12,12 @@ if [[ $v == *"-" ]]; then
 fi
 
 sed -i 's/^version: .*/version: '$v'-{build}/' .appveyor.yml
-sed -i 's/<VersionPrefix>[^<]*<\/VersionPrefix>/<VersionPrefix>'$v'<\/VersionPrefix>/' src/Npgsql/Npgsql.csproj
+sed -i 's/<VersionPrefix>[^<]*<\/VersionPrefix>/<VersionPrefix>'$v'<\/VersionPrefix>/' src/Directory.Build.props
 sed -i 's/\(<Identity .*Version=\)"[^"]*"/\1"'$v'"/' src/VSIX/source.extension.vsixmanifest
 sed -i 's/.*ProvideBindingRedirection.*/[assembly: ProvideBindingRedirection(AssemblyName = "Npgsql", NewVersion = "'$v'.0", OldVersionLowerBound = "0.0.0.0", OldVersionUpperBound = "'$v'.0")]/' src/VSIX/Properties/AssemblyInfo.cs
 
 git add .appveyor.yml
-git add src/Npgsql/Npgsql.csproj
+git add src/Directory.Build.props
 git add src/VSIX/source.extension.vsixmanifest
 git add src/VSIX/Properties/AssemblyInfo.cs
 
