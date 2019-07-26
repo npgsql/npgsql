@@ -124,7 +124,7 @@ namespace Npgsql
                 }
 
                 // Value is too big even after a flush - bypass the buffer and write directly.
-                await _writeBuf.DirectWrite(buffer, offset, count, true);
+                await _writeBuf.DirectWrite(buffer, offset, count, async);
             } catch {
                 _connector.Break();
                 Cleanup();
