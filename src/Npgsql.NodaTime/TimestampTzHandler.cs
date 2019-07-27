@@ -1,5 +1,6 @@
 ﻿using System;
 using NodaTime;
+using NodaTime.TimeZones;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
@@ -44,12 +45,15 @@ namespace Npgsql.NodaTime
                     throw new NpgsqlSafeReadException(new NotSupportedException("Infinity values not supported for timestamp with time zone"));
                 return TimestampHandler.Decode(value).InZone(_dateTimeZoneProvider[buf.Connection.Timezone]);
             }
-            catch (TimeZoneNotFoundException) when (string.Equals(buf.Connection.Timezone, "localtime", StringComparison.OrdinalIgnoreCase))
+            catch (Exception e) when (
+                string.Equals(buf.Connection.Timezone, "localtime", StringComparison.OrdinalIgnoreCase) &&
+                (e is TimeZoneNotFoundException || e is DateTimeZoneNotFoundException))
             {
                 throw new NpgsqlSafeReadException(
                     new TimeZoneNotFoundException(
                         "The special PostgreSQL timezone 'localtime' is not supported when reading values of type 'timestamp with time zone'. " +
-                        "Please specify a real timezone in 'postgresql.conf' on the server, or set the 'PGTZ' environment variable on the client."));
+                        "Please specify a real timezone in 'postgresql.conf' on the server, or set the 'PGTZ' environment variable on the client.",
+                        e));
             }
             catch (TimeZoneNotFoundException e)
             {
