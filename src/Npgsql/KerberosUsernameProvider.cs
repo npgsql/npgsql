@@ -13,8 +13,8 @@ namespace Npgsql
     class KerberosUsernameProvider
     {
         static bool _performedDetection;
-        static string _principalWithRealm;
-        static string _principalWithoutRealm;
+        static string? _principalWithRealm;
+        static string? _principalWithoutRealm;
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(KerberosUsernameProvider));
 
@@ -52,7 +52,7 @@ namespace Npgsql
                 return;
             }
 
-            var line = "";
+            var line = default(string);
             for (var i = 0; i < 2; i++)
                 if ((line = process.StandardOutput.ReadLine()) == null)
                 {
@@ -60,7 +60,7 @@ namespace Npgsql
                     return;
                 }
 
-            var components = line.Split(':');
+            var components = line!.Split(':');
             if (components.Length != 2)
             {
                 Log.Debug("Unexpected output from klist, aborting Kerberos username detection");
@@ -79,8 +79,8 @@ namespace Npgsql
             _principalWithoutRealm = components[0];
         }
 
-        static string FindInPath(string name) => Environment.GetEnvironmentVariable("PATH")
-            .Split(Path.PathSeparator)
+        static string? FindInPath(string name) => Environment.GetEnvironmentVariable("PATH")
+            ?.Split(Path.PathSeparator)
             .Select(p => Path.Combine(p, name))
             .FirstOrDefault(File.Exists);
     }

@@ -65,7 +65,7 @@ namespace Npgsql.Json.NET
             return base.ValidateObjectAndGetLength(s, ref lengthCache, parameter);
         }
 
-        protected override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        protected override Task WriteObjectWithLength(object? value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             if (value == null || value is DBNull)
                 return base.WriteObjectWithLength(DBNull.Value, buf, lengthCache, parameter, async);

@@ -11,10 +11,10 @@ namespace Npgsql
         internal int UsagesBeforePrepare { get; }
 
         internal Dictionary<string, PreparedStatement> BySql { get; } = new Dictionary<string, PreparedStatement>();
-        readonly PreparedStatement[]? _autoPrepared;
+        readonly PreparedStatement[] _autoPrepared;
         int _numAutoPrepared;
 
-        readonly PreparedStatement?[]? _candidates;
+        readonly PreparedStatement?[] _candidates;
 
         /// <summary>
         /// Total number of current prepared statements (whether explicit or automatic).
@@ -41,6 +41,11 @@ namespace Npgsql
                     Log.Warn($"{nameof(MaxAutoPrepared)} is over 256, performance degradation may occur. Please report via an issue.", connector.Id);
                 _autoPrepared = new PreparedStatement[MaxAutoPrepared];
                 _candidates = new PreparedStatement[CandidateCount];
+            }
+            else
+            {
+                _autoPrepared = null!;
+                _candidates = null!;
             }
         }
 
@@ -88,9 +93,6 @@ namespace Npgsql
 
         internal PreparedStatement? TryGetAutoPrepared(NpgsqlStatement statement)
         {
-            Debug.Assert(_candidates != null);
-            Debug.Assert(_autoPrepared != null);
-
             var sql = statement.SQL;
             if (!BySql.TryGetValue(sql, out var pStatement))
             {
@@ -191,7 +193,6 @@ namespace Npgsql
 
         void RemoveCandidate(PreparedStatement candidate)
         {
-            Debug.Assert(_candidates != null);
             var i = 0;
             for (; i < _candidates.Length; i++)
             {

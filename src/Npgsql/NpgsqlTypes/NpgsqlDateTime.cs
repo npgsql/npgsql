@@ -276,7 +276,7 @@ namespace NpgsqlTypes
             }
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
             => obj is NpgsqlDateTime time && Equals(time);
 
         public override int GetHashCode()

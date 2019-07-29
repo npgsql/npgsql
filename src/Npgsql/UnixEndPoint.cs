@@ -75,7 +75,7 @@ namespace System.Net
 
         public override int GetHashCode () => _filename.GetHashCode();
 
-        public override bool Equals (object o)
+        public override bool Equals(object? o)
         {
             var other = o as UnixEndPoint;
             if (other == null)

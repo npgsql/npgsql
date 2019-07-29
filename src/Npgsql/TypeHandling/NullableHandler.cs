@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
@@ -14,11 +15,11 @@ namespace Npgsql.TypeHandling
 
     static class NullableHandler<T>
     {
-        public static readonly Type UnderlyingType;
-        public static readonly ReadDelegate<T> Read;
-        public static readonly ReadAsyncDelegate<T> ReadAsync;
-        public static readonly ValidateAndGetLengthDelegate<T> ValidateAndGetLength;
-        public static readonly WriteAsyncDelegate<T> WriteAsync;
+        public static readonly Type? UnderlyingType;
+        [NotNull] public static readonly ReadDelegate<T>? Read;
+        [NotNull] public static readonly ReadAsyncDelegate<T>? ReadAsync;
+        [NotNull] public static readonly ValidateAndGetLengthDelegate<T>? ValidateAndGetLength;
+        [NotNull] public static readonly WriteAsyncDelegate<T>? WriteAsync;
 
         public static bool Exists => UnderlyingType != null;
 
@@ -43,19 +44,19 @@ namespace Npgsql.TypeHandling
         internal static readonly MethodInfo ValidateMethod = new ValidateAndGetLengthDelegate<int?>(ValidateAndGetLength).Method.GetGenericMethodDefinition();
         internal static readonly MethodInfo WriteAsyncMethod = new WriteAsyncDelegate<int?>(WriteAsync).Method.GetGenericMethodDefinition();
 
-        static T? Read<T>(NpgsqlTypeHandler handler, NpgsqlReadBuffer buffer, int columnLength, FieldDescription fieldDescription)
+        static T? Read<T>(NpgsqlTypeHandler handler, NpgsqlReadBuffer buffer, int columnLength, FieldDescription? fieldDescription)
             where T : struct
             => handler.Read<T>(buffer, columnLength, fieldDescription);
 
-        static async ValueTask<T?> ReadAsync<T>(NpgsqlTypeHandler handler, NpgsqlReadBuffer buffer, int columnLength, bool async, FieldDescription fieldDescription)
+        static async ValueTask<T?> ReadAsync<T>(NpgsqlTypeHandler handler, NpgsqlReadBuffer buffer, int columnLength, bool async, FieldDescription? fieldDescription)
             where T : struct
             => await handler.Read<T>(buffer, columnLength, async, fieldDescription);
 
-        static int ValidateAndGetLength<T>(NpgsqlTypeHandler handler, T? value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter parameter)
+        static int ValidateAndGetLength<T>(NpgsqlTypeHandler handler, T? value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             where T : struct
             => value.HasValue ? handler.ValidateAndGetLength(value.Value, ref lengthCache, parameter) : 0;
 
-        static Task WriteAsync<T>(NpgsqlTypeHandler handler, T? value, NpgsqlWriteBuffer buffer, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        static Task WriteAsync<T>(NpgsqlTypeHandler handler, T? value, NpgsqlWriteBuffer buffer, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             where T : struct
             => value.HasValue
                 ? handler.WriteWithLengthInternal(value.Value, buffer, lengthCache, parameter, async)

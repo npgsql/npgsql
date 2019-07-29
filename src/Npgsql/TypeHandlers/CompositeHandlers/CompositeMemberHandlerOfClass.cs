@@ -67,7 +67,7 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
                 ? await NullableHandler<TMember>.ReadAsync(_handler, buffer, length, async)
                 : await _handler.Read<TMember>(buffer, length, async);
 
-            _set!(composite, value);
+            _set(composite, value);
         }
 
         public override ValueTask Read(ByReference<TComposite> composite, NpgsqlReadBuffer buffer, bool async)
@@ -83,9 +83,9 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
 
             buffer.WriteUInt32(PostgresType.OID);
             if (NullableHandler<TMember>.Exists)
-                await NullableHandler<TMember>.WriteAsync(_handler, _get!(composite), buffer, lengthCache, null, async);
+                await NullableHandler<TMember>.WriteAsync(_handler, _get(composite), buffer, lengthCache, null, async);
             else
-                await _handler.WriteWithLengthInternal(_get!(composite), buffer, lengthCache, null, async);
+                await _handler.WriteWithLengthInternal(_get(composite), buffer, lengthCache, null, async);
         }
 
         public override int ValidateAndGetLength(TComposite composite, ref NpgsqlLengthCache? lengthCache)
@@ -93,7 +93,7 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
             if (_get == null)
                 ThrowHelper.ThrowNotSupportedException_NoPropertyGetter(typeof(TComposite), MemberInfo);
 
-            var value = _get!(composite);
+            var value = _get(composite);
             if (value == null)
                 return 0;
 

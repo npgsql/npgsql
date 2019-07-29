@@ -432,9 +432,8 @@ namespace Npgsql
             // being set up (even if its empty)
             TypeMapper = new ConnectorTypeMapper(this);
 
-            Debug.Assert(Connection != null);
             if (!NpgsqlDatabaseInfo.Cache.TryGetValue(ConnectionString, out var database))
-                NpgsqlDatabaseInfo.Cache[ConnectionString] = database = await NpgsqlDatabaseInfo.Load(Connection, timeout, async);
+                NpgsqlDatabaseInfo.Cache[ConnectionString] = database = await NpgsqlDatabaseInfo.Load(Connection!, timeout, async);
 
             DatabaseInfo = database;
             TypeMapper.Bind(DatabaseInfo);
@@ -451,11 +450,12 @@ namespace Npgsql
                     "UTF8"
             };
 
-            Debug.Assert(Settings.Database != null);
-            startupParams["database"] = Settings.Database;
-            if (!string.IsNullOrEmpty(Settings.ApplicationName))
+            startupParams["database"] = Settings.Database!;
+
+            if (Settings.ApplicationName?.Length > 0)
                 startupParams["application_name"] = Settings.ApplicationName;
-            if (!string.IsNullOrEmpty(Settings.SearchPath))
+
+            if (Settings.SearchPath?.Length > 0)
                 startupParams["search_path"] = Settings.SearchPath;
 
             var timezone = Settings.Timezone ?? Environment.GetEnvironmentVariable("PGTZ");
@@ -468,14 +468,14 @@ namespace Npgsql
         string GetUsername()
         {
             var username = Settings.Username;
-            if (!string.IsNullOrEmpty(username))
+            if (username?.Length > 0)
                 return username;
 
 #if NET461
             if (PGUtil.IsWindows && Type.GetType("Mono.Runtime") == null)
             {
                 username = WindowsUsernameProvider.GetUsername(Settings.IncludeRealm);
-                if (!string.IsNullOrEmpty(username))
+                if (username?.Length > 0)
                     return username;
             }
 #endif
@@ -483,19 +483,19 @@ namespace Npgsql
             if (!PGUtil.IsWindows)
             {
                 username = KerberosUsernameProvider.GetUsername(Settings.IncludeRealm);
-                if (!string.IsNullOrEmpty(username))
+                if (username?.Length > 0)
                     return username;
             }
 
             username = Environment.UserName;
-            if (!string.IsNullOrEmpty(username))
+            if (username?.Length > 0)
                 return username;
 
             username = Environment.GetEnvironmentVariable("USERNAME") ?? Environment.GetEnvironmentVariable("USER");
-            if (!string.IsNullOrEmpty(username))
+            if (username?.Length > 0)
                 return username;
 
-            if (username == null)
+            if (username is null)
                 throw new NpgsqlException("No username could be found, please specify one explicitly");
 
             return username;
@@ -510,7 +510,6 @@ namespace Npgsql
                 else
                     Connect(timeout);
 
-                Debug.Assert(_socket != null);
                 _baseStream = new NetworkStream(_socket, true);
                 _stream = _baseStream;
 
@@ -1374,7 +1373,7 @@ namespace Npgsql
                 _keepAliveTimer!.Change(Timeout.Infinite, Timeout.Infinite);
                 _keepAliveTimer.Dispose();
             }
-#pragma warning enable CS8625
+#pragma warning restore CS8625
         }
 
         void GenerateResetMessage()
@@ -1482,8 +1481,7 @@ namespace Npgsql
                 {
                     // We have prepared statements, so we can't reset the connection state with DISCARD ALL
                     // Note: the send buffer has been cleared above, and we assume all this will fit in it.
-                    Debug.Assert(_resetWithoutDeallocateMessage != null);
-                    PrependInternalMessage(_resetWithoutDeallocateMessage, _resetWithoutDeallocateResponseCount);
+                    PrependInternalMessage(_resetWithoutDeallocateMessage!, _resetWithoutDeallocateResponseCount);
                 }
                 else
                 {
@@ -1626,7 +1624,7 @@ namespace Npgsql
         #region Keepalive
 
 #pragma warning disable CA1801 // Review unused parameters
-        void PerformKeepAlive(object state)
+        void PerformKeepAlive(object? state)
         {
             Debug.Assert(_isKeepAliveEnabled);
 

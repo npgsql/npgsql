@@ -11,9 +11,9 @@ namespace NpgsqlTypes
     /// </summary>
     public sealed class NpgsqlTsVector : IEnumerable<NpgsqlTsVector.Lexeme>
     {
-        List<Lexeme> _lexemes;
+        readonly List<Lexeme> _lexemes;
 
-        internal NpgsqlTsVector(List<Lexeme> lexemes, bool noCheck=false)
+        internal NpgsqlTsVector(List<Lexeme> lexemes, bool noCheck = false)
         {
             if (noCheck)
             {
@@ -48,8 +48,9 @@ namespace NpgsqlTypes
                     var wordEntryPositions = _lexemes[res]._wordEntryPositions;
                     if (wordEntryPositions != null)
                     {
-                        if (_lexemes[pos].Count > 0)
-                            wordEntryPositions.AddRange(_lexemes[pos]._wordEntryPositions);
+                        var lexeme = _lexemes[pos];
+                        if (lexeme._wordEntryPositions != null)
+                            wordEntryPositions.AddRange(lexeme._wordEntryPositions);
                     }
                     else
                     {
@@ -374,7 +375,7 @@ namespace NpgsqlTypes
             {
                 var str = '\'' + (Text ?? "").Replace(@"\", @"\\").Replace("'", "''") + '\'';
                 if (Count > 0)
-                    str += ":" + string.Join(",", _wordEntryPositions);
+                    str += ":" + string.Join(",", _wordEntryPositions!);
                 return str;
             }
 

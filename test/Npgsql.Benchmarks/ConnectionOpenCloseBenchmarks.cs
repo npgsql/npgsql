@@ -34,7 +34,7 @@ namespace Npgsql.Benchmarks
 
         NpgsqlConnection _nonPooledConnection;
         NpgsqlCommand _nonPooledCmd;
-#pragma warning enable CS8618
+#pragma warning restore CS8618
 
         // ReSharper disable once UnusedAutoPropertyAccessor.Global
         [Params(0, 1, 5, 10)]

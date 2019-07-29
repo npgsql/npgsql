@@ -39,11 +39,6 @@ namespace Npgsql
         public void SinglePhaseCommit(SinglePhaseEnlistment singlePhaseEnlistment)
         {
             CheckDisposed();
-
-            Debug.Assert(_transaction != null, "No transaction");
-            Debug.Assert(_localTx != null, "No local transaction");
-            Debug.Assert(_connector != null, "No connector");
-
             Log.Debug($"Single Phase Commit (localid={_txId})", _connector.Id);
 
             try
@@ -68,10 +63,6 @@ namespace Npgsql
         public void Prepare(PreparingEnlistment preparingEnlistment)
         {
             CheckDisposed();
-            Debug.Assert(_transaction != null, "No transaction");
-            Debug.Assert(_localTx != null, "No local transaction");
-            Debug.Assert(_connector != null, "No connector");
-
             Log.Debug($"Two-phase transaction prepare (localid={_txId})", _connector.Id);
 
             // The PostgreSQL prepared transaction name is the distributed GUID + our connection's process ID, for uniqueness
@@ -104,9 +95,6 @@ namespace Npgsql
         public void Commit(Enlistment enlistment)
         {
             CheckDisposed();
-            Debug.Assert(_transaction != null, "No transaction");
-            Debug.Assert(_connector != null, "No connector");
-
             Log.Debug($"Two-phase transaction commit (localid={_txId})", _connector.Id);
 
             try
@@ -132,8 +120,7 @@ namespace Npgsql
                     using (var conn2 = (NpgsqlConnection)((ICloneable)_connector.Connection).Clone())
                     {
                         conn2.Open();
-                        var connector = conn2.Connector;
-                        Debug.Assert(connector != null);
+                        var connector = conn2.Connector!;
                         using (connector.StartUserAction())
                             connector.ExecuteInternalCommand($"COMMIT PREPARED '{_preparedTxName}'");
                     }
@@ -153,8 +140,6 @@ namespace Npgsql
         public void Rollback(Enlistment enlistment)
         {
             CheckDisposed();
-            Debug.Assert(_transaction != null, "No transaction");
-            Debug.Assert(_connector != null, "No connector");
 
             try
             {
@@ -176,9 +161,6 @@ namespace Npgsql
 
         public void InDoubt(Enlistment enlistment)
         {
-            Debug.Assert(_transaction != null, "No transaction");
-            Debug.Assert(_connector != null, "No connector");
-
             Log.Warn($"Two-phase transaction in doubt (localid={_txId})", _connector.Id);
 
             // TODO: Is this the correct behavior?
@@ -199,9 +181,6 @@ namespace Npgsql
 
         void RollbackLocal()
         {
-            Debug.Assert(_connector != null, "No connector");
-            Debug.Assert(_localTx != null, "No local transaction");
-
             Log.Debug($"Single-phase transaction rollback (localid={_txId})", _connector.Id);
 
             var attempt = 0;
@@ -255,8 +234,7 @@ namespace Npgsql
                 using (var conn2 = (NpgsqlConnection)((ICloneable)_connector.Connection).Clone())
                 {
                     conn2.Open();
-                    var connector = conn2.Connector;
-                    Debug.Assert(connector != null);
+                    var connector = conn2.Connector!;
                     using (connector.StartUserAction())
                         connector.ExecuteInternalCommand($"ROLLBACK PREPARED '{_preparedTxName}'");
                 }
@@ -270,8 +248,6 @@ namespace Npgsql
         {
             if (_isDisposed)
                 return;
-            Debug.Assert(_transaction != null, "No transaction");
-            Debug.Assert(_connector != null, "No connector");
 
             Log.Trace($"Cleaning up resource manager (localid={_txId}", _connector.Id);
             if (_localTx != null)
@@ -297,11 +273,11 @@ namespace Npgsql
                     _connector.Close();
             }
 
-            _connector = null;
-            _transaction = null;
+            _connector = null!;
+            _transaction = null!;
             _isDisposed = true;
         }
-#pragma warning enable CS8625
+#pragma warning restore CS8625
 
         void CheckDisposed()
         {

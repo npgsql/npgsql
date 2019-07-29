@@ -115,8 +115,8 @@ INSERT INTO table{i} (id, data) VALUES (1, {i});
         }
 
         static readonly int[] TablesToJoinValues = typeof(Prepare)
-            .GetProperty(nameof(TablesToJoin))
-            .GetCustomAttribute<ParamsAttribute>()
+            .GetProperty(nameof(TablesToJoin))!
+            .GetCustomAttribute<ParamsAttribute>()!
             .Values
             .Cast<int>()
             .ToArray();

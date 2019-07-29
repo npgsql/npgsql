@@ -11,13 +11,13 @@ using System.Runtime.CompilerServices;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Transactions;
 using JetBrains.Annotations;
 using Npgsql.Logging;
 using Npgsql.NameTranslation;
 using Npgsql.TypeMapping;
-using NpgsqlTypes;
-using System.Transactions;
 using Npgsql.Util;
+using NpgsqlTypes;
 using IsolationLevel = System.Data.IsolationLevel;
 
 namespace Npgsql
@@ -224,8 +224,6 @@ namespace Npgsql
 
                 try
                 {
-                    Debug.Assert(Settings != null);
-
                     var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
                     Transaction? transaction = null;
 
@@ -535,7 +533,6 @@ namespace Npgsql
             if (level == IsolationLevel.Chaos)
                 throw new NotSupportedException("Unsupported IsolationLevel: " + level);
             var connector = CheckReadyAndGetConnector();
-            Debug.Assert(Connector != null);
 
             // Note that beginning a transaction doesn't actually send anything to the backend
             // (only prepends), so strictly speaking we don't have to start a user action.
@@ -672,7 +669,7 @@ namespace Npgsql
         ///
         /// Note that notices are very different from notifications (see the <see cref="Notification"/> event).
         /// </remarks>
-        public event NoticeEventHandler Notice;
+        public event NoticeEventHandler? Notice;
 
         /// <summary>
         /// Fires when PostgreSQL notifications are received from PostgreSQL.
@@ -683,7 +680,7 @@ namespace Npgsql
         ///
         /// Note that notifications are very different from notices (see the <see cref="Notice"/> event).
         /// </remarks>
-        public event NotificationEventHandler Notification;
+        public event NotificationEventHandler? Notification;
 
         internal void OnNotice(PostgresNotice e)
         {
@@ -718,15 +715,7 @@ namespace Npgsql
         /// <summary>
         /// Returns whether SSL is being used for the connection.
         /// </summary>
-        internal bool IsSecure
-        {
-            get
-            {
-                CheckConnectionOpen();
-                Debug.Assert(Connector != null);
-                return Connector.IsSecure;
-            }
-        }
+        internal bool IsSecure =>  CheckConnectionOpen().IsSecure;
 
         /// <summary>
         /// Selects the local Secure Sockets Layer (SSL) certificate used for authentication.
@@ -754,15 +743,7 @@ namespace Npgsql
         /// This can only be called when there is an active connection.
         /// </summary>
         [Browsable(false)]
-        public Version PostgreSqlVersion
-        {
-            get
-            {
-                CheckConnectionOpen();
-                Debug.Assert(Connector != null);
-                return Connector.DatabaseInfo.Version;
-            }
-        }
+        public Version PostgreSqlVersion => CheckConnectionOpen().DatabaseInfo.Version;
 
         /// <summary>
         /// PostgreSQL server version.
@@ -775,15 +756,7 @@ namespace Npgsql
         /// </summary>
         [Browsable(false)]
         // ReSharper disable once InconsistentNaming
-        public int ProcessID
-        {
-            get
-            {
-                CheckConnectionOpen();
-                Debug.Assert(Connector != null);
-                return Connector.BackendProcessId;
-            }
-        }
+        public int ProcessID => CheckConnectionOpen().BackendProcessId;
 
         /// <summary>
         /// Reports whether the backend uses the newer integer timestamp representation.
@@ -792,30 +765,14 @@ namespace Npgsql
         /// </summary>
         [Browsable(false)]
         [PublicAPI]
-        public bool HasIntegerDateTimes
-        {
-            get
-            {
-                CheckConnectionOpen();
-                Debug.Assert(Connector != null);
-                return Connector.DatabaseInfo.HasIntegerDateTimes;
-            }
-        }
+        public bool HasIntegerDateTimes => CheckConnectionOpen().DatabaseInfo.HasIntegerDateTimes;
 
         /// <summary>
         /// The connection's timezone as reported by PostgreSQL, in the IANA/Olson database format.
         /// </summary>
         [Browsable(false)]
         [PublicAPI]
-        public string Timezone
-        {
-            get
-            {
-                CheckConnectionOpen();
-                Debug.Assert(Connector != null);
-                return Connector.Timezone;
-            }
-        }
+        public string Timezone => CheckConnectionOpen().Timezone;
 
         /// <summary>
         /// Holds all PostgreSQL parameters received for this connection. Is updated if the values change
@@ -823,15 +780,7 @@ namespace Npgsql
         /// </summary>
         [Browsable(false)]
         [PublicAPI]
-        public IReadOnlyDictionary<string, string> PostgresParameters
-        {
-            get
-            {
-                CheckConnectionOpen();
-                Debug.Assert(Connector != null);
-                return Connector.PostgresParameters;
-            }
-        }
+        public IReadOnlyDictionary<string, string> PostgresParameters => CheckConnectionOpen().PostgresParameters;
 
         #endregion Backend version, capabilities, settings
 
@@ -1182,11 +1131,10 @@ namespace Npgsql
             if (timeout != -1 && timeout < 0)
                 throw new ArgumentException("Argument must be -1, 0 or positive", nameof(timeout));
 
-            CheckConnectionOpen();
-            Debug.Assert(Connector != null);
-            Log.Debug($"Starting to wait (timeout={timeout})...", Connector.Id);
+            var connector = CheckConnectionOpen();
+            Log.Debug($"Starting to wait (timeout={timeout})...", connector.Id);
 
-            return Connector.Wait(timeout);
+            return connector.Wait(timeout);
         }
 
         /// <summary>
@@ -1219,11 +1167,10 @@ namespace Npgsql
         [PublicAPI]
         public Task WaitAsync(CancellationToken cancellationToken)
         {
-            CheckConnectionOpen();
-            Debug.Assert(Connector != null);
-            Log.Debug("Starting to wait asynchronously...", Connector.Id);
+            var connector = CheckConnectionOpen();
+            Log.Debug("Starting to wait asynchronously...", connector.Id);
 
-            return Connector.WaitAsync(cancellationToken);
+            return connector.WaitAsync(cancellationToken);
         }
 
         /// <summary>
@@ -1238,11 +1185,10 @@ namespace Npgsql
         #region State checks
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        void CheckConnectionOpen()
+        NpgsqlConnector CheckConnectionOpen()
         {
             CheckDisposed();
-            if (Connector == null)
-                throw new InvalidOperationException("Connection is not open");
+            return Connector ?? throw new InvalidOperationException("Connection is not open");
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1353,7 +1299,6 @@ namespace Npgsql
                 throw new ArgumentOutOfRangeException(nameof(dbName), dbName, $"Invalid database name: {dbName}");
 
             CheckConnectionOpen();
-
             Close();
 
             _pool = null;

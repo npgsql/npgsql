@@ -28,7 +28,7 @@ namespace Npgsql
 
         internal static byte[] Generate(NpgsqlWriteBuffer buf, string query)
         {
-            Debug.Assert(query != null && query.All(c => c < 128));
+            Debug.Assert(query.All(c => c < 128));
 
             var queryByteLen = Encoding.ASCII.GetByteCount(query);
 

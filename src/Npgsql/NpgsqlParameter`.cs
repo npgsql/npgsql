@@ -84,8 +84,6 @@ namespace Npgsql
 
         internal override int ValidateAndGetLength()
         {
-            Debug.Assert(Handler != null);
-
             if (TypedValue == null)
                 return 0;
 
@@ -94,15 +92,12 @@ namespace Npgsql
                 return 0;
 
             var lengthCache = LengthCache;
-            var len = Handler.ValidateAndGetLength(TypedValue, ref lengthCache, this);
+            var len = Handler!.ValidateAndGetLength(TypedValue, ref lengthCache, this);
             LengthCache = lengthCache;
             return len;
         }
 
         internal override Task WriteWithLength(NpgsqlWriteBuffer buf, bool async)
-        {
-            Debug.Assert(Handler != null);
-            return Handler.WriteWithLengthInternal(TypedValue, buf, LengthCache, this, async);
-        }
+            => Handler!.WriteWithLengthInternal(TypedValue, buf, LengthCache, this, async);
     }
 }

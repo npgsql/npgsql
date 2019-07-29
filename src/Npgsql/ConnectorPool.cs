@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -120,7 +121,7 @@ namespace Npgsql
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal bool TryAllocateFast(NpgsqlConnection conn, [NotNullWhenTrue] out NpgsqlConnector? connector)
+        internal bool TryAllocateFast(NpgsqlConnection conn, [NotNullWhen(true)] out NpgsqlConnector? connector)
         {
             Counters.SoftConnectsPerSecond.Increment();
 
@@ -313,7 +314,7 @@ namespace Npgsql
                                     // Use Task.Delay to implement the timeout, but cancel the timer if we actually
                                     // do complete successfully
                                     var delayCancellationToken = new CancellationTokenSource();
-                                    using (cancellationToken.Register(s => ((CancellationTokenSource)s).Cancel(), delayCancellationToken))
+                                    using (cancellationToken.Register(s => ((CancellationTokenSource)s!).Cancel(), delayCancellationToken))
                                     {
                                         var timeLeft = timeout.TimeLeft;
                                         if (timeLeft <= TimeSpan.Zero ||
@@ -328,7 +329,7 @@ namespace Npgsql
                                 }
                                 else
                                 {
-                                    using (cancellationToken.Register(s => ((TaskCompletionSource<NpgsqlConnector?>)s).SetCanceled(), tcs))
+                                    using (cancellationToken.Register(s => ((TaskCompletionSource<NpgsqlConnector?>)s!).SetCanceled(), tcs))
                                         await tcs.Task;
                                 }
                             }
@@ -534,9 +535,9 @@ namespace Npgsql
             }
         }
 
-        static void PruneIdleConnectors(object state)
+        static void PruneIdleConnectors(object? state)
         {
-            var pool = (ConnectorPool)state;
+            var pool = (ConnectorPool)state!;
             var idle = pool._idle;
             var now = DateTime.UtcNow;
             var idleLifetime = pool.Settings.ConnectionIdleLifetime;

@@ -2,8 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
 using System.Threading.Tasks;
 using Npgsql.Util;
 // ReSharper disable VariableHidesOuterVariable
@@ -14,7 +12,7 @@ namespace Npgsql
     {
         internal Task WriteDescribe(StatementOrPortal statementOrPortal, string name, bool async)
         {
-            Debug.Assert(name != null && name.All(c => c < 128));
+            Debug.Assert(name.All(c => c < 128));
 
             var len = sizeof(byte) +       // Message code
                       sizeof(int)  +       // Length
@@ -101,7 +99,7 @@ namespace Npgsql
 
         internal async Task WriteParse(string sql, string statementName, List<NpgsqlParameter> inputParameters, bool async)
         {
-            Debug.Assert(statementName != null && statementName.All(c => c < 128));
+            Debug.Assert(statementName.All(c => c < 128));
 
             var queryByteLen = TextEncoding.GetByteCount(sql);
             if (WriteBuffer.WriteSpaceLeft < 1 + 4 + statementName.Length + 1)
@@ -131,8 +129,8 @@ namespace Npgsql
             {
                 if (WriteBuffer.WriteSpaceLeft < 4)
                     await Flush(async);
-                Debug.Assert(p.Handler != null, "Input parameter doesn't have a resolved handler when populating Parse message");
-                WriteBuffer.WriteInt32((int)p.Handler.PostgresType.OID);
+
+                WriteBuffer.WriteInt32((int)p.Handler!.PostgresType.OID);
             }
         }
 
@@ -144,8 +142,8 @@ namespace Npgsql
             bool[]? unknownResultTypeList,
             bool async)
         {
-            Debug.Assert(statement != null && statement.All(c => c < 128));
-            Debug.Assert(portal != null && portal.All(c => c < 128));
+            Debug.Assert(statement.All(c => c < 128));
+            Debug.Assert(portal.All(c => c < 128));
 
             var headerLength =
                 sizeof(byte)                    +     // Message code

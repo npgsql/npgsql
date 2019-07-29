@@ -204,10 +204,9 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
                         var internalName = reader.GetString(reader.GetOrdinal("typname"));
                         var oid = Convert.ToUInt32(reader[reader.GetOrdinal("oid")]);
 
-                        Debug.Assert(internalName != null);
                         Debug.Assert(oid != 0);
 
-                        var typeChar = reader.GetString(reader.GetOrdinal("type"))[0];
+                        var typeChar = reader.GetChar(reader.GetOrdinal("type"));
                         switch (typeChar)
                         {
                         case 'b':  // Normal base type
@@ -340,19 +339,17 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
                 if (skipCurrent)
                     continue;
 
-                Debug.Assert(currentComposite != null);
-
                 var fieldName = reader.GetString(reader.GetOrdinal("attname"));
                 var fieldTypeOID = Convert.ToUInt32(reader[reader.GetOrdinal("atttypid")]);
                 if (!byOID.TryGetValue(fieldTypeOID, out var fieldType))  // See #2020
                 {
-                    Log.Warn($"Skipping composite type {currentComposite.DisplayName} with field {fieldName} with type OID {fieldTypeOID}, which could not be resolved to a PostgreSQL type.");
+                    Log.Warn($"Skipping composite type {currentComposite!.DisplayName} with field {fieldName} with type OID {fieldTypeOID}, which could not be resolved to a PostgreSQL type.");
                     byOID.Remove(oid);
                     skipCurrent = true;
                     continue;
                 }
 
-                currentComposite.MutableFields.Add(new PostgresCompositeType.Field(fieldName, fieldType));
+                currentComposite!.MutableFields.Add(new PostgresCompositeType.Field(fieldName, fieldType));
             }
         }
 
@@ -397,8 +394,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
                 if (skipCurrent)
                     continue;
 
-                Debug.Assert(currentEnum != null);
-                currentEnum.MutableLabels.Add(reader.GetString(reader.GetOrdinal("enumlabel")));
+                currentEnum!.MutableLabels.Add(reader.GetString(reader.GetOrdinal("enumlabel")));
             }
         }
     }

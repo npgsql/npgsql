@@ -75,7 +75,7 @@ namespace Npgsql
             Line = GetValue<string>(nameof(Line));
             Routine = GetValue<string>(nameof(Routine));
 
-            T GetValue<T>(string propertyName) => (T)info.GetValue(propertyName, typeof(T));
+            T GetValue<T>(string propertyName) => (T)info.GetValue(propertyName, typeof(T))!;
         }
 
         /// <summary>
@@ -138,7 +138,7 @@ namespace Npgsql
                 if (!EqualityComparer<T>.Default.Equals(propertyValue, default))
                     builder.AppendLine().Append("    ").Append(propertyName).Append(": ").Append(propertyValue);
             }
-#pragma warning enable CS8653
+#pragma warning restore CS8653
         }
 
         /// <summary>

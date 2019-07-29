@@ -57,7 +57,7 @@ namespace Npgsql.PluginTests
         class Foo
         {
             public int Bar { get; set; }
-            public override bool Equals(object obj) => (obj as Foo)?.Bar == Bar;
+            public override bool Equals(object? obj) => (obj as Foo)?.Bar == Bar;
             public override int GetHashCode() => Bar.GetHashCode();
         }
 
@@ -141,7 +141,7 @@ namespace Npgsql.PluginTests
         class DateWrapper
         {
             public System.DateTime Date;
-            public override bool Equals(object obj) => (obj as DateWrapper)?.Date == Date;
+            public override bool Equals(object? obj) => (obj as DateWrapper)?.Date == Date;
             public override int GetHashCode() => Date.GetHashCode();
         }
 

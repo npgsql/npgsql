@@ -2,7 +2,6 @@
 using System.ComponentModel;
 using System.Globalization;
 using System.Text;
-using JetBrains.Annotations;
 
 // NpgsqlRange mixes generics and nullability in a way that isn't currently supported by the language
 #nullable disable
@@ -17,7 +16,6 @@ namespace NpgsqlTypes
     /// <remarks>
     /// See: https://www.postgresql.org/docs/current/static/rangetypes.html
     /// </remarks>
-    [PublicAPI]
     public readonly struct NpgsqlRange<T> : IEquatable<NpgsqlRange<T>>
     {
         // -----------------------------------------------------------------------------------------------
@@ -99,13 +97,11 @@ namespace NpgsqlTypes
         /// <summary>
         /// The lower bound of the range. Only valid when <see cref="LowerBoundInfinite"/> is false.
         /// </summary>
-        [CanBeNull]
         public T LowerBound { get; }
 
         /// <summary>
         /// The upper bound of the range. Only valid when <see cref="UpperBoundInfinite"/> is false.
         /// </summary>
-        [CanBeNull]
         public T UpperBound { get; }
 
         /// <summary>
@@ -182,7 +178,7 @@ namespace NpgsqlTypes
         /// <param name="lowerBound">The lower bound of the range.</param>
         /// <param name="upperBound">The upper bound of the range.</param>
         /// <param name="flags">The characteristics of the range boundaries.</param>
-        internal NpgsqlRange([CanBeNull] T lowerBound, [CanBeNull] T upperBound, RangeFlags flags) : this()
+        internal NpgsqlRange(T lowerBound, T upperBound, RangeFlags flags) : this()
         {
             // TODO: We need to check if the bounds are implicitly empty. E.g. '(1,1)' or '(0,0]'.
             // See: https://github.com/npgsql/npgsql/issues/1943.
@@ -208,7 +204,7 @@ namespace NpgsqlTypes
         /// <returns>
         /// True if the range is implicitly empty; otherwise, false.
         /// </returns>
-        static bool IsEmptyRange([CanBeNull] T lowerBound, [CanBeNull] T upperBound, RangeFlags flags)
+        static bool IsEmptyRange(T lowerBound, T upperBound, RangeFlags flags)
         {
             // ---------------------------------------------------------------------------------
             // We only want to check for those conditions that are unambiguously erroneous:
@@ -367,12 +363,10 @@ namespace NpgsqlTypes
         /// <remarks>
         /// See: https://www.postgresql.org/docs/current/static/rangetypes.html
         /// </remarks>
-        public static NpgsqlRange<T> Parse([NotNull] string value)
+        public static NpgsqlRange<T> Parse(string value)
         {
             if (value is null)
-            {
                 throw new ArgumentNullException(nameof(value));
-            }
 
             value = value.Trim();
 

@@ -185,64 +185,64 @@ namespace Npgsql.TypeHandlers
         }
 
         // Handle single-dimensional arrays and generic IList<T>
-        int ValidateAndGetLengthGeneric(ICollection<TElement> value, ref NpgsqlLengthCache? lengthCache)
+        int ValidateAndGetLengthGeneric(ICollection<TElement> value, ref NpgsqlLengthCache lengthCache)
         {
-            Debug.Assert(lengthCache != null);
-
             // Leave empty slot for the entire array length, and go ahead an populate the element slots
             var pos = lengthCache.Position;
-            lengthCache.Set(0);
-            var elemLengthCache = lengthCache;
             var len =
                 4 +              // dimensions
                 4 +              // has_nulls (unused)
                 4 +              // type OID
                 1 * 8 +          // number of dimensions (1) * (length + lower bound)
                 4 * value.Count; // sum of element lengths
+
+            lengthCache.Set(0);
+            NpgsqlLengthCache? elemLengthCache = lengthCache;
+
             foreach (var element in value)
                 if (element != null && typeof(TElement) != typeof(DBNull))
                     try
                     {
-                        len += _elementHandler.ValidateAndGetLength(element, ref lengthCache, null);
+                        len += _elementHandler.ValidateAndGetLength(element, ref elemLengthCache, null);
                     }
                     catch (Exception e)
                     {
                         throw MixedTypesOrJaggedArrayException(e);
                     }
-            lengthCache = elemLengthCache;
+
             lengthCache.Lengths[pos] = len;
             return len;
         }
 
         // Take care of multi-dimensional arrays and non-generic IList, we have no choice but to box/unbox
-        int ValidateAndGetLengthNonGeneric(ICollection value, ref NpgsqlLengthCache? lengthCache)
+        int ValidateAndGetLengthNonGeneric(ICollection value, ref NpgsqlLengthCache lengthCache)
         {
-            Debug.Assert(lengthCache != null);
-
             var asMultidimensional = value as Array;
             var dimensions = asMultidimensional?.Rank ?? 1;
 
             // Leave empty slot for the entire array length, and go ahead an populate the element slots
             var pos = lengthCache.Position;
-            lengthCache.Set(0);
-            var elemLengthCache = lengthCache;
             var len =
                 4 +              // dimensions
                 4 +              // has_nulls (unused)
                 4 +              // type OID
                 dimensions * 8 + // number of dimensions * (length + lower bound)
                 4 * value.Count; // sum of element lengths
+
+            lengthCache.Set(0);
+            NpgsqlLengthCache? elemLengthCache = lengthCache;
+
             foreach (var element in value)
                 if (element != null && element != DBNull.Value)
                     try
                     {
-                        len += _elementHandler.ValidateObjectAndGetLength(element, ref lengthCache, null);
+                        len += _elementHandler.ValidateObjectAndGetLength(element, ref elemLengthCache, null);
                     }
                     catch (Exception e)
                     {
                         throw MixedTypesOrJaggedArrayException(e);
                     }
-            lengthCache = elemLengthCache;
+
             lengthCache.Lengths[pos] = len;
             return len;
         }
@@ -282,7 +282,7 @@ namespace Npgsql.TypeHandlers
 
         // The default WriteObjectWithLength casts the type handler to INpgsqlTypeHandler<T>, but that's not sufficient for
         // us (need to handle many types of T, e.g. int[], int[,]...)
-        protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        protected internal override Task WriteObjectWithLength(object? value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => value == null || value is DBNull
                 ? WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async)
                 : WriteWithLengthInternal(value, buf, lengthCache, parameter, async);

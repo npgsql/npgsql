@@ -82,9 +82,10 @@ namespace Npgsql.Tests
 
         class EnvironmentVariableResetter : IDisposable
         {
-            readonly string _name, _value;
+            readonly string _name;
+            readonly string? _value;
 
-            internal EnvironmentVariableResetter(string name, string value)
+            internal EnvironmentVariableResetter(string name, string? value)
             {
                 _name = name;
                 _value = value;

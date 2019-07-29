@@ -146,7 +146,7 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
                         BindingFlags.Instance | BindingFlags.Public,
                         binder: null,
                         args: new object[] { clrMember, pgField.Type, handler },
-                        culture: null);
+                        culture: null)!;
 
                     break;
                 }

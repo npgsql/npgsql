@@ -70,9 +70,8 @@ namespace Npgsql
         /// </summary>
         /// <param name="serviceType">An object that specifies the type of service object to get.</param>
         /// <returns>A service object of type serviceType, or null if there is no service object of type serviceType.</returns>
-#nullable disable
-        public object GetService(Type serviceType)
-#nullable enable
+
+        public object? GetService(Type serviceType)
         {
             if (serviceType == null)
                 throw new ArgumentNullException(nameof(serviceType));
@@ -99,12 +98,14 @@ namespace Npgsql
                 return null;
             }
 
-            Type npgsqlServicesType;
+            Type? npgsqlServicesType;
             if ((npgsqlServicesType = npgsqlEfAssembly.GetType("Npgsql.NpgsqlServices")) == null ||
                 npgsqlServicesType.GetProperty("Instance") == null)
                 throw new Exception("EntityFramework5.Npgsql assembly does not seem to contain the correct type!");
 
-            return _legacyEntityFrameworkServices = npgsqlServicesType.GetProperty("Instance", BindingFlags.Public | BindingFlags.Static).GetMethod.Invoke(null, new object[0]);
+            return _legacyEntityFrameworkServices = npgsqlServicesType
+                .GetProperty("Instance", BindingFlags.Public | BindingFlags.Static)!
+                .GetMethod!.Invoke(null, new object[0]);
         }
 
         static object? _legacyEntityFrameworkServices;

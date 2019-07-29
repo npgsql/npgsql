@@ -64,8 +64,8 @@ namespace Npgsql.Benchmarks
         }
 
         static readonly int[] NumColumnsValues = typeof(ReadColumns)
-            .GetProperty(nameof(NumColumns))
-            .GetCustomAttribute<ParamsAttribute>()
+            .GetProperty(nameof(NumColumns))!
+            .GetCustomAttribute<ParamsAttribute>()!
             .Values
             .Cast<int>()
             .ToArray();

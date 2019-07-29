@@ -24,7 +24,7 @@ namespace Npgsql.Tests
                      LANGUAGE 'plpgsql';
                 ");
 
-                PostgresException? ex = null;
+                PostgresException ex = null!;
                 try
                 {
                     conn.ExecuteNonQuery("SELECT pg_temp.emit_exception()");
@@ -34,8 +34,6 @@ namespace Npgsql.Tests
                 {
                     ex = e;
                 }
-
-                Debug.Assert(ex != null);
 
                 Assert.That(ex.MessageText, Is.EqualTo("testexception"));
                 Assert.That(ex.Severity, Is.EqualTo("ERROR"));

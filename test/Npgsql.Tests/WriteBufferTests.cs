@@ -30,7 +30,7 @@ namespace Npgsql.Tests
             Underlying = new MemoryStream();
             WriteBuffer = new NpgsqlWriteBuffer(null, Underlying, NpgsqlReadBuffer.DefaultSize, PGUtil.UTF8Encoding);
         }
-#pragma warning enable CS8625
+#pragma warning restore CS8625
 
         // ReSharper disable once InconsistentNaming
         NpgsqlWriteBuffer WriteBuffer = default!;

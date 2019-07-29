@@ -220,7 +220,7 @@ namespace Npgsql.TypeHandling
         /// Called to write the value of a non-generic <see cref="NpgsqlParameter"/>.
         /// Type handlers generally don't need to override this.
         /// </summary>
-        protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        protected internal override Task WriteObjectWithLength(object? value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => value == null || value is DBNull  // For null just go through the default WriteWithLengthInternal
                 ? WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async)
                 : _nonGenericWriteWithLength(this, value, buf, lengthCache, parameter, async);

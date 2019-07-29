@@ -15,7 +15,7 @@ namespace Npgsql.TypeHandling
         {
             // Recursively look for the TypeHandler<T> superclass to extract its T as the
             // DefaultValueType
-            var baseClass = handlerType;
+            Type? baseClass = handlerType;
             while (!baseClass.GetTypeInfo().IsGenericType || baseClass.GetGenericTypeDefinition() != typeof(NpgsqlTypeHandler<>))
             {
                 baseClass = baseClass.GetTypeInfo().BaseType;
@@ -28,7 +28,7 @@ namespace Npgsql.TypeHandling
         }
 
         public NpgsqlTypeHandler Create(PostgresType pgType, NpgsqlConnection conn)
-            => (NpgsqlTypeHandler)Activator.CreateInstance(_handlerType, pgType);
+            => (NpgsqlTypeHandler)Activator.CreateInstance(_handlerType, pgType)!;
 
         public Type DefaultValueType { get; }
     }
