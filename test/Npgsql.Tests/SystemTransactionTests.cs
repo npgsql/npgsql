@@ -380,7 +380,7 @@ namespace Npgsql.Tests
             _controlConn?.Close();
             _controlConn = null;
         }
-#pragma warning enable CS8625
+#pragma warning restore CS8625
 
         #endregion
     }

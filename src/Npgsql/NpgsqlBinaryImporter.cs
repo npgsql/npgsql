@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.Logging;
@@ -116,9 +117,7 @@ namespace Npgsql
         /// corruption will occur. If in doubt, use <see cref="Write{T}(T, NpgsqlDbType)"/> to manually
         /// specify the type.
         /// </typeparam>
-#nullable disable  // Necessary since this method needs to accept null
-        public void Write<T>(T value)
-#nullable enable
+        public void Write<T>([AllowNull] T value)
         {
             var p = _params[_column];
             if (p == null)
@@ -143,9 +142,7 @@ namespace Npgsql
         /// <paramref name="npgsqlDbType"/> must be specified as <see cref="NpgsqlDbType.Jsonb"/>.
         /// </param>
         /// <typeparam name="T">The .NET type of the column to be written.</typeparam>
-#nullable disable  // Necessary since this method needs to accept null
-        public void Write<T>(T value, NpgsqlDbType npgsqlDbType)
-#nullable enable
+        public void Write<T>([AllowNull] T value, NpgsqlDbType npgsqlDbType)
         {
             var p = _params[_column];
             if (p == null)
@@ -172,9 +169,7 @@ namespace Npgsql
         /// the database. This parameter and be used to unambiguously specify the type.
         /// </param>
         /// <typeparam name="T">The .NET type of the column to be written.</typeparam>
-#nullable disable  // Necessary since this method needs to accept null
-        public void Write<T>(T value, string dataTypeName)
-#nullable enable
+        public void Write<T>([AllowNull] T value, string dataTypeName)
         {
             var p = _params[_column];
             if (p == null)
@@ -192,9 +187,7 @@ namespace Npgsql
             Write(value, p);
         }
 
-#nullable disable  // Necessary since this method needs to accept null
-        void Write<T>(T value, NpgsqlParameter param)
-#nullable enable
+        void Write<T>([AllowNull] T value, NpgsqlParameter param)
         {
             CheckReady();
             if (_column == -1)
@@ -361,7 +354,7 @@ namespace Npgsql
             _buf = null;
             _state = ImporterState.Disposed;
         }
-#pragma warning enable CS8625
+#pragma warning restore CS8625
 
         void WriteTrailer()
         {

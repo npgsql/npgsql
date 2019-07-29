@@ -102,9 +102,10 @@ namespace Npgsql.TypeHandlers
                 var enumName = attribute == null
                     ? nameTranslator.TranslateMemberName(field.Name)
                     : attribute.PgName;
-                var enumValue = (Enum)field.GetValue(null);
-                _enumToLabel[(TEnum)(object)enumValue] = enumName;
-                _labelToEnum[enumName] = (TEnum)(object)enumValue;
+                var enumValue = (TEnum)field.GetValue(null)!;
+
+                _enumToLabel[enumValue] = enumName;
+                _labelToEnum[enumName] = enumValue;
             }
         }
 

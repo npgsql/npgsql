@@ -77,7 +77,7 @@ namespace Npgsql.TypeHandlers
         protected override Task WriteWithLength<TAny>(TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => WriteObjectWithLength(value!, buf, lengthCache, parameter, async);
 
-        protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        protected internal override Task WriteObjectWithLength(object? value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             if (value == null || value is DBNull)
                 return WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async);
@@ -91,8 +91,8 @@ namespace Npgsql.TypeHandlers
             async Task WriteWithLengthLong()
             {
                 await buf.Flush(async);
-                buf.WriteInt32(ValidateAndGetLength(value, ref lengthCache, parameter));
-                await Write(value, buf, lengthCache, parameter, async);
+                buf.WriteInt32(ValidateAndGetLength(value!, ref lengthCache, parameter));
+                await Write(value!, buf, lengthCache, parameter, async);
             }
         }
 
@@ -124,10 +124,9 @@ namespace Npgsql.TypeHandlers
             foreach (var field in type.GetFields(BindingFlags.Static | BindingFlags.Public))
             {
                 var attribute = (PgNameAttribute)field.GetCustomAttributes(typeof(PgNameAttribute), false).FirstOrDefault();
-                var enumName = attribute == null
-                    ? _nameTranslator.TranslateMemberName(field.Name)
-                    : attribute.PgName;
-                var enumValue = (Enum)field.GetValue(null);
+                var enumName = attribute?.PgName ?? _nameTranslator.TranslateMemberName(field.Name);
+                var enumValue = (Enum)field.GetValue(null)!;
+
                 _enumToLabel[enumValue] = enumName;
                 _labelToEnum[enumName] = enumValue;
             }

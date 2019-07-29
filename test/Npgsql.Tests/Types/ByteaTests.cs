@@ -251,7 +251,7 @@ namespace Npgsql.Tests.Types
 
                     cmd.Parameters[0].Size = 17000;
                     returned = (byte[]) cmd.ExecuteScalar();
-                    Assert.That(returned.SequenceEqual(new ArraySegment<byte>(segment.Array, segment.Offset, 17000)));
+                    Assert.That(returned.SequenceEqual(new ArraySegment<byte>(segment.Array!, segment.Offset, 17000)));
 
                     // Small value, should be written normally through the NpgsqlBuffer
                     segment = new ArraySegment<byte>(arr, 6, 10);
@@ -261,7 +261,7 @@ namespace Npgsql.Tests.Types
 
                     cmd.Parameters[0].Size = 2;
                     returned = (byte[]) cmd.ExecuteScalar();
-                    Assert.That(returned.SequenceEqual(new ArraySegment<byte>(segment.Array, segment.Offset, 2)));
+                    Assert.That(returned.SequenceEqual(new ArraySegment<byte>(segment.Array!, segment.Offset, 2)));
                 }
 
                 using (var cmd = new NpgsqlCommand("select :bytearr", conn))

@@ -28,12 +28,12 @@ namespace Npgsql
         /// Row updated event.
         /// </summary>
         [PublicAPI]
-        public event NpgsqlRowUpdatedEventHandler RowUpdated;
+        public event NpgsqlRowUpdatedEventHandler? RowUpdated;
 
         /// <summary>
         /// Row updating event.
         /// </summary>
-        public event NpgsqlRowUpdatingEventHandler RowUpdating;
+        public event NpgsqlRowUpdatingEventHandler? RowUpdating;
 
         /// <summary>
         /// Default constructor.

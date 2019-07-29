@@ -591,8 +591,6 @@ namespace Npgsql
 
         internal void ProcessMessage(IBackendMessage msg)
         {
-            Debug.Assert(msg != null);
-
             switch (msg.Code)
             {
             case BackendMessageCode.DataRow:
@@ -632,8 +630,6 @@ namespace Npgsql
 
         void ProcessDataRowMessage(DataRowMessage msg)
         {
-            Debug.Assert(RowDescription != null);
-
             Connector.State = ConnectorState.Fetching;
 
             // The connector's buffer can actually change between DataRows:
@@ -651,7 +647,7 @@ namespace Npgsql
 
             // We assume that the row's number of columns is identical to the description's
             _numColumns = Buffer.ReadInt16();
-            Debug.Assert(_numColumns == RowDescription.NumFields,
+            Debug.Assert(_numColumns == RowDescription!.NumFields,
                 $"Row's number of columns ({_numColumns}) differs from the row description's ({RowDescription.NumFields})");
 
             if (!_isSequential)
@@ -774,7 +770,12 @@ namespace Npgsql
         /// <summary>
         /// Closes the <see cref="NpgsqlDataReader"/> reader, allowing a new command to be executed.
         /// </summary>
-        public Task CloseAsync() => Close(false, true);
+#if !NET461 && !NETSTANDARD2_0
+        public override Task CloseAsync()
+#else
+        public Task CloseAsync()
+#endif
+            => Close(false, true);
 
         internal async Task Close(bool connectionClosing, bool async)
         {
@@ -1322,7 +1323,7 @@ namespace Npgsql
             }
             catch (NpgsqlSafeReadException e)
             {
-                throw e.InnerException;
+                throw e.OriginalException;
             }
             catch
             {
@@ -1370,7 +1371,7 @@ namespace Npgsql
             }
             catch (NpgsqlSafeReadException e)
             {
-                throw e.InnerException;
+                throw e.OriginalException;
             }
             catch
             {
@@ -1415,7 +1416,7 @@ namespace Npgsql
             }
             catch (NpgsqlSafeReadException e)
             {
-                throw e.InnerException;
+                throw e.OriginalException;
             }
             catch
             {
@@ -1429,12 +1430,12 @@ namespace Npgsql
             }
 
             // Used for Entity Framework <= 6 compability
-            if (Command.ObjectResultTypes?[ordinal] != null)
+            var objectResultType = Command.ObjectResultTypes?[ordinal];
+            if (objectResultType != null)
             {
-                var type = Command.ObjectResultTypes[ordinal];
-                result = type == typeof(DateTimeOffset)
+                result = objectResultType == typeof(DateTimeOffset)
                     ? new DateTimeOffset((DateTime)result)
-                    : Convert.ChangeType(result, type);
+                    : Convert.ChangeType(result, objectResultType)!;
             }
 
             return result;
@@ -1449,10 +1450,12 @@ namespace Npgsql
         {
             var fieldDescription = CheckRowAndGetField(ordinal);
 
-            if (_isSequential) {
+            if (_isSequential)
+            {
                 SeekToColumnSequential(ordinal, false).GetAwaiter().GetResult();
                 CheckColumnStart();
-            } else
+            }
+            else
                 SeekToColumnNonSequential(ordinal);
 
             if (ColumnLen == -1)
@@ -1466,7 +1469,7 @@ namespace Npgsql
             }
             catch (NpgsqlSafeReadException e)
             {
-                throw e.InnerException;
+                throw e.OriginalException;
             }
             catch
             {
@@ -1903,8 +1906,7 @@ namespace Npgsql
                 throw new InvalidOperationException("No resultset is currently being traversed");
             }
 
-            Debug.Assert(RowDescription != null);
-            return RowDescription;
+            return RowDescription!;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1931,10 +1933,8 @@ namespace Npgsql
                 throw new InvalidOperationException("No row is available");
             }
 
-            Debug.Assert(RowDescription != null, $"Reader state is {nameof(ReaderState.InResult)} but {nameof(RowDescription)} is null");
-
-            if (column < 0 || column >= RowDescription.NumFields)
-                throw new IndexOutOfRangeException($"Column must be between {0} and {RowDescription.NumFields - 1}");
+            if (column < 0 || column >= RowDescription!.NumFields)
+                throw new IndexOutOfRangeException($"Column must be between {0} and {RowDescription!.NumFields - 1}");
 
             return RowDescription[column];
         }

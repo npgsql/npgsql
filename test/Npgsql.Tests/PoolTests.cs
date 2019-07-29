@@ -1,7 +1,7 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net.Sockets;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
@@ -402,7 +402,7 @@ namespace Npgsql.Tests
 
         volatile int StopFlag;
 
-        void AssertPoolState([EnsuresNotNull] ConnectorPool? pool, int idle, int busy, int waiting=0)
+        void AssertPoolState(ConnectorPool? pool, int idle, int busy, int waiting=0)
         {
             if (pool == null)
                 throw new ArgumentNullException(nameof(pool));

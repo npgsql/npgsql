@@ -2,7 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data.Common;
-using System.Runtime.CompilerServices;
+using System.Diagnostics.CodeAnalysis;
 using JetBrains.Annotations;
 using Npgsql.Util;
 using NpgsqlTypes;
@@ -364,8 +364,7 @@ namespace Npgsql
         /// <param name="parameterName">The name of the <see cref="NpgsqlParameter">NpgsqlParameter</see> object to find.</param>
         /// <param name="parameter">A reference to the requested parameter is returned in this out param if it is found in the list.  This value is null if the parameter is not found.</param>
         /// <returns><b>true</b> if the collection contains the parameter and param will contain the parameter; otherwise, <b>false</b>.</returns>
-        [ContractAnnotation("=>true,parameter:notnull; =>false,parameter:null")]
-        public bool TryGetValue(string parameterName, [NotNullWhenTrue] out NpgsqlParameter? parameter)
+        public bool TryGetValue(string parameterName, [NotNullWhen(true)] out NpgsqlParameter? parameter)
         {
             if (parameterName is null)
                 throw new ArgumentNullException(nameof(parameterName));
@@ -450,7 +449,7 @@ namespace Npgsql
             if (values is null)
                 throw new ArgumentNullException(nameof(values));
 
-            foreach (object parameter in values)
+            foreach (object? parameter in values)
                 Add(Cast(parameter) ?? throw new ArgumentException("Collection contains a null value.", nameof(values)));
         }
 
@@ -568,11 +567,11 @@ namespace Npgsql
             }
         }
 
-        static NpgsqlParameter Cast(object value)
+        static NpgsqlParameter Cast(object? value)
         {
             try
             {
-                return (NpgsqlParameter)value;
+                return (NpgsqlParameter)value!;
             }
             catch (Exception)
             {

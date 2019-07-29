@@ -556,7 +556,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// Creates a server-side prepared statement on the PostgreSQL server.
         /// This will make repeated future executions of this command much faster.
         /// </summary>
-#if !NET461 && !NETSTANDARD2_0 && !NETSTANDARD2_1
+#if !NET461 && !NETSTANDARD2_0
         public override Task PrepareAsync(CancellationToken cancellationToken)
 #else
         public Task PrepareAsync(CancellationToken cancellationToken)
@@ -605,48 +605,46 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                     // Loop over statements, skipping those that are already prepared (because they were persisted)
                     var isFirst = true;
-                    foreach (var statement in _statements.Where(s =>
-                        s.PreparedStatement?.State == PreparedState.BeingPrepared))
-                    {
-                        var pStatement = statement.PreparedStatement;
-                        Debug.Assert(pStatement != null);
-                        Debug.Assert(pStatement.Description == null);
-                        if (pStatement.StatementBeingReplaced != null)
+                    foreach (var statement in _statements)
+                        if (statement.PreparedStatement?.State == PreparedState.BeingPrepared)
                         {
-                            Expect<CloseCompletedMessage>(await connector.ReadMessage(async), connector);
-                            pStatement.StatementBeingReplaced.CompleteUnprepare();
-                            pStatement.StatementBeingReplaced = null;
+                            var pStatement = statement.PreparedStatement;
+                            if (pStatement.StatementBeingReplaced != null)
+                            {
+                                Expect<CloseCompletedMessage>(await connector.ReadMessage(async), connector);
+                                pStatement.StatementBeingReplaced.CompleteUnprepare();
+                                pStatement.StatementBeingReplaced = null;
+                            }
+
+                            Expect<ParseCompleteMessage>(await connector.ReadMessage(async), connector);
+                            Expect<ParameterDescriptionMessage>(await connector.ReadMessage(async), connector);
+                            var msg = await connector.ReadMessage(async);
+                            switch (msg.Code)
+                            {
+                            case BackendMessageCode.RowDescription:
+                                // Clone the RowDescription for use with the prepared statement (the one we have is reused
+                                // by the connection)
+                                var description = ((RowDescriptionMessage)msg).Clone();
+                                FixupRowDescription(description, isFirst);
+                                statement.Description = description;
+                                break;
+                            case BackendMessageCode.NoData:
+                                statement.Description = null;
+                                break;
+                            default:
+                                throw connector.UnexpectedMessageReceived(msg.Code);
+                            }
+                            pStatement.CompletePrepare();
+                            isFirst = false;
                         }
 
-                        Expect<ParseCompleteMessage>(await connector.ReadMessage(async), connector);
-                        Expect<ParameterDescriptionMessage>(await connector.ReadMessage(async), connector);
-                        var msg = await connector.ReadMessage(async);
-                        switch (msg.Code)
-                        {
-                        case BackendMessageCode.RowDescription:
-                            // Clone the RowDescription for use with the prepared statement (the one we have is reused
-                            // by the connection)
-                            var description = ((RowDescriptionMessage)msg).Clone();
-                            FixupRowDescription(description, isFirst);
-                            statement.Description = description;
-                            break;
-                        case BackendMessageCode.NoData:
-                            statement.Description = null;
-                            break;
-                        default:
-                            throw connector.UnexpectedMessageReceived(msg.Code);
-                        }
-                        pStatement.CompletePrepare();
-                        isFirst = false;
+                        Expect<ReadyForQueryMessage>(await connector.ReadMessage(async), connector);
+
+                        if (async)
+                            await sendTask;
+                        else
+                            sendTask.GetAwaiter().GetResult();
                     }
-
-                    Expect<ReadyForQueryMessage>(await connector.ReadMessage(async), connector);
-
-                    if (async)
-                        await sendTask;
-                    else
-                        sendTask.GetAwaiter().GetResult();
-                }
             }
         }
 
@@ -665,13 +663,13 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             using (connector.StartUserAction())
             {
                 var sendTask = SendClose(connector, false);
-                foreach (var statement in _statements.Where(s => s.PreparedStatement?.State == PreparedState.BeingUnprepared))
-                {
-                    Expect<CloseCompletedMessage>(connector.ReadMessage(), connector);
-                    Debug.Assert(statement.PreparedStatement != null);
-                    statement.PreparedStatement.CompleteUnprepare();
-                    statement.PreparedStatement = null;
-                }
+                foreach (var statement in _statements)
+                    if (statement.PreparedStatement?.State == PreparedState.BeingUnprepared)
+                    {
+                        Expect<CloseCompletedMessage>(connector.ReadMessage(), connector);
+                        statement.PreparedStatement.CompleteUnprepare();
+                        statement.PreparedStatement = null;
+                    }
                 Expect<ReadyForQueryMessage>(connector.ReadMessage(), connector);
                 sendTask.GetAwaiter().GetResult();
             }
@@ -689,9 +687,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             NpgsqlStatement statement;
             switch (CommandType) {
             case CommandType.Text:
-                Debug.Assert(_connection?.Connector != null);
-                var connector = _connection.Connector;
-                connector.SqlParser.ParseRawQuery(CommandText, _parameters, _statements, deriveParameters);
+                _connection!.Connector!.SqlParser.ParseRawQuery(CommandText, _parameters, _statements, deriveParameters);
                 if (_statements.Count > 1 && _parameters.HasOutputParameters)
                     throw new NotSupportedException("Commands with multiple queries cannot have out parameters");
                 break;
@@ -791,8 +787,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         void BeginSend()
         {
-            Debug.Assert(_connection?.Connector != null);
-            _connection.Connector.WriteBuffer.CurrentCommand = this;
+            _connection!.Connector!.WriteBuffer.CurrentCommand = this;
             FlushOccurred = false;
         }
 
@@ -806,7 +801,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         async Task SendExecute(NpgsqlConnector connector, bool async)
         {
             BeginSend();
-            Debug.Assert(connector != null);
 
             for (var i = 0; i < _statements.Count; i++)
             {
@@ -841,16 +835,15 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
             await connector.WriteSync(async);
             await connector.Flush(async);
+
             CleanupSend();
         }
 
         async Task SendExecuteSchemaOnly(NpgsqlConnector connector, bool async)
         {
             BeginSend();
-            Debug.Assert(connector != null);
 
             var wroteSomething = false;
-
             for (var i = 0; i < _statements.Count; i++)
             {
                 async = ForceAsyncIfNecessary(async, i);
@@ -871,13 +864,14 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 await connector.WriteSync(async);
                 await connector.Flush(async);
             }
+
             CleanupSend();
         }
 
         async Task SendDeriveParameters(NpgsqlConnector connector, bool async)
         {
             BeginSend();
-            Debug.Assert(connector != null);
+
             for (var i = 0; i < _statements.Count; i++)
             {
                 async = ForceAsyncIfNecessary(async, i);
@@ -887,15 +881,17 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 await connector.WriteParse(statement.SQL, string.Empty, EmptyParameters, async);
                 await connector.WriteDescribe(StatementOrPortal.Statement, string.Empty, async);
             }
+
             await connector.WriteSync(async);
             await connector.Flush(async);
+
             CleanupSend();
         }
 
         async Task SendPrepare(NpgsqlConnector connector, bool async)
         {
             BeginSend();
-            Debug.Assert(connector != null);
+
             for (var i = 0; i < _statements.Count; i++)
             {
                 async = ForceAsyncIfNecessary(async, i);
@@ -918,8 +914,10 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                 pStatement.State = PreparedState.BeingPrepared;
             }
+
             await connector.WriteSync(async);
             await connector.Flush(async);
+
             CleanupSend();
         }
 
@@ -932,13 +930,13 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 async = true;
                 SynchronizationContext.SetSynchronizationContext(SingleThreadSynchronizationContext);
             }
+
             return async;
         }
 
         async Task SendClose(NpgsqlConnector connector, bool async)
         {
             BeginSend();
-            Debug.Assert(connector != null);
 
             foreach (var statement in _statements.Where(s => s.IsPrepared))
             {
@@ -949,11 +947,12 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 }
 
                 await connector.WriteClose(StatementOrPortal.Statement, statement.StatementName, async);
-                Debug.Assert(statement.PreparedStatement != null);
-                statement.PreparedStatement.State = PreparedState.BeingUnprepared;
+                statement.PreparedStatement!.State = PreparedState.BeingUnprepared;
             }
+
             await connector.WriteSync(async);
             await connector.Flush(async);
+
             CleanupSend();
         }
 
@@ -1082,7 +1081,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             connector.StartUserAction(this);
             try
             {
-                using (cancellationToken.Register(cmd => ((NpgsqlCommand)cmd).Cancel(), this))
+                using (cancellationToken.Register(cmd => ((NpgsqlCommand)cmd!).Cancel(), this))
                 {
                     ValidateParameters(connector.TypeMapper);
 

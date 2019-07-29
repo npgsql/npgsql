@@ -21,7 +21,6 @@ namespace Npgsql.BackendMessages
         public List<FieldDescription> Fields { get; }
         readonly Dictionary<string, int> _nameIndex;
         Dictionary<string, int>? _insensitiveIndex;
-        bool _isInsensitiveIndexInitialized;
 
         internal RowDescriptionMessage()
         {
@@ -35,21 +34,15 @@ namespace Npgsql.BackendMessages
             foreach (var f in source.Fields)
                 Fields.Add(f.Clone());
             _nameIndex = new Dictionary<string, int>(source._nameIndex);
-            if (source._insensitiveIndex != null)
+            if (source._insensitiveIndex?.Count > 0)
                 _insensitiveIndex = new Dictionary<string, int>(source._insensitiveIndex);
-            _isInsensitiveIndexInitialized = source._isInsensitiveIndexInitialized;
         }
 
         internal RowDescriptionMessage Load(NpgsqlReadBuffer buf, ConnectorTypeMapper typeMapper)
         {
             Fields.Clear();
             _nameIndex.Clear();
-            if (_isInsensitiveIndexInitialized)
-            {
-                Debug.Assert(_insensitiveIndex != null);
-                _insensitiveIndex.Clear();
-                _isInsensitiveIndexInitialized = false;
-            }
+            _insensitiveIndex?.Clear();
 
             var numFields = buf.ReadInt16();
             for (var i = 0; i != numFields; ++i)
@@ -101,7 +94,7 @@ namespace Npgsql.BackendMessages
             if (_nameIndex.TryGetValue(name, out fieldIndex))
                 return true;
 
-            if (!_isInsensitiveIndexInitialized)
+            if (_insensitiveIndex is null || _insensitiveIndex.Count == 0)
             {
                 if (_insensitiveIndex == null)
                     _insensitiveIndex = new Dictionary<string, int>(InsensitiveComparer.Instance);
@@ -109,11 +102,8 @@ namespace Npgsql.BackendMessages
                 foreach (var kv in _nameIndex)
                     if (!_insensitiveIndex.ContainsKey(kv.Key))
                         _insensitiveIndex[kv.Key] = kv.Value;
-
-                _isInsensitiveIndexInitialized = true;
             }
 
-            Debug.Assert(_insensitiveIndex != null);
             return _insensitiveIndex.TryGetValue(name, out fieldIndex);
         }
 

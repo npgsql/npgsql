@@ -85,7 +85,7 @@ namespace Npgsql.TypeHandlers
 
             return new NpgsqlRange<TElement>(lowerBound, upperBound, flags);
         }
-#pragma warning enable CS8653
+#pragma warning restore CS8653
 
         #endregion
 
@@ -161,7 +161,7 @@ namespace Npgsql.TypeHandlers
 
         // The default WriteObjectWithLength casts the type handler to INpgsqlTypeHandler<T>, but that's not sufficient for
         // us (need to handle many types of T, e.g. int[], int[,]...)
-        protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        protected internal override Task WriteObjectWithLength(object? value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => value == null || value is DBNull
                 ? WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async)
                 : WriteWithLengthInternal((NpgsqlRange<TElement>)value, buf, lengthCache, parameter, async);

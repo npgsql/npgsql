@@ -35,9 +35,6 @@ namespace Npgsql
 
         void ParseRawQuery(ReadOnlySpan<char> sql, NpgsqlParameterCollection parameters, List<NpgsqlStatement> statements, bool deriveParameters)
         {
-            Debug.Assert(sql != null);
-            Debug.Assert(statements != null);
-            Debug.Assert(parameters != null);
             Debug.Assert(deriveParameters == false || parameters.Count == 0);
 
             _statements = statements;

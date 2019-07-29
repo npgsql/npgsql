@@ -74,11 +74,9 @@ namespace Npgsql
             if (pgpassEnv != null)
                 return pgpassEnv;
 
-            // ReSharper disable AssignNullToNotNullAttribute
             return PGUtil.IsWindows
-                ? Path.Combine(Environment.GetEnvironmentVariable("APPDATA"), "postgresql", "pgpass.conf")
-                : Path.Combine(Environment.GetEnvironmentVariable("HOME"), ".pgpass");
-            // ReSharper restore AssignNullToNotNullAttribute
+                ? Environment.GetEnvironmentVariable("APPDATA") is string appData ? Path.Combine(appData, "postgresql", "pgpass.conf") : null
+                : Environment.GetEnvironmentVariable("HOME") is string home ? Path.Combine(home, "postgresql", "pgpass.conf") : null;
         }
 
         /// <summary>

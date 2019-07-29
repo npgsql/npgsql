@@ -505,31 +505,24 @@ namespace Npgsql
         internal void Bind(ConnectorTypeMapper typeMapper)
         {
             ResolveHandler(typeMapper);
-            Debug.Assert(Handler != null);
-            FormatCode = Handler.PreferTextWrite ? FormatCode.Text : FormatCode.Binary;
+            FormatCode = Handler!.PreferTextWrite ? FormatCode.Text : FormatCode.Binary;
         }
 
         internal virtual int ValidateAndGetLength()
         {
-            Debug.Assert(Handler != null);
-
             if (_value == null)
                 throw new InvalidCastException($"Parameter {ParameterName} must be set");
             if (_value is DBNull)
                 return 0;
 
             var lengthCache = LengthCache;
-            var len = Handler.ValidateObjectAndGetLength(_value, ref lengthCache, this);
+            var len = Handler!.ValidateObjectAndGetLength(_value, ref lengthCache, this);
             LengthCache = lengthCache;
             return len;
         }
 
         internal virtual Task WriteWithLength(NpgsqlWriteBuffer buf, bool async)
-        {
-            Debug.Assert(_value != null);
-            Debug.Assert(Handler != null);
-            return Handler.WriteObjectWithLength(_value, buf, LengthCache, this, async);
-        }
+            => Handler!.WriteObjectWithLength(_value!, buf, LengthCache, this, async);
 
         /// <inheritdoc />
         public override void ResetDbType()

@@ -132,7 +132,7 @@ namespace Npgsql.TypeMapping
             {
                 if (type == typeof(byte[]))
                     return NpgsqlDbType.Bytea;
-                return NpgsqlDbType.Array | ToNpgsqlDbType(type.GetElementType());
+                return NpgsqlDbType.Array | ToNpgsqlDbType(type.GetElementType()!);
             }
 
             var typeInfo = type.GetTypeInfo();
@@ -164,7 +164,7 @@ namespace Npgsql.TypeMapping
                 if (!mappingAttributes.Any())
                     continue;
 
-                var factory = (INpgsqlTypeHandlerFactory)Activator.CreateInstance(t);
+                var factory = (INpgsqlTypeHandlerFactory)Activator.CreateInstance(t)!;
 
                 foreach (TypeMappingAttribute m in mappingAttributes)
                 {

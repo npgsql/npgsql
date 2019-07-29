@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Data;
+using System.Diagnostics.CodeAnalysis;
 using Npgsql.TypeHandling;
 using NpgsqlTypes;
 
@@ -18,6 +19,7 @@ namespace Npgsql.TypeMapping
         /// (schema.typename) - the latter can be used if you have two types with the same
         /// name in different schemas.
         /// </remarks>
+        [DisallowNull]
         public string? PgTypeName { get; set; }
 
         /// <summary>
@@ -50,6 +52,7 @@ namespace Npgsql.TypeMapping
         /// <summary>
         /// A factory for a type handler that will be used to read and write values for PostgreSQL type.
         /// </summary>
+        [DisallowNull]
         public INpgsqlTypeHandlerFactory? TypeHandlerFactory { get; set; }
 
         /// <summary>
@@ -59,10 +62,12 @@ namespace Npgsql.TypeMapping
         public NpgsqlTypeMapping Build()
         {
             if (string.IsNullOrWhiteSpace(PgTypeName))
-                throw new ArgumentException($"{PgTypeName} must contain the name of a PostgreSQL data type");
-            if (TypeHandlerFactory == null)
+                throw new ArgumentException($"{PgTypeName} must contain the name of a PostgreSQL data type", nameof(PgTypeName));
+
+            if (TypeHandlerFactory is null)
                 throw new ArgumentException($"{TypeHandlerFactory} must refer to a type handler factory");
-            return new NpgsqlTypeMapping(PgTypeName, NpgsqlDbType, DbTypes, ClrTypes, InferredDbType, TypeHandlerFactory);
+
+            return new NpgsqlTypeMapping(PgTypeName!, NpgsqlDbType, DbTypes, ClrTypes, InferredDbType, TypeHandlerFactory);
         }
     }
 

@@ -2,8 +2,10 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using Npgsql.Logging;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandlers;
@@ -76,7 +78,7 @@ namespace Npgsql.TypeMapping
         internal NpgsqlTypeHandler GetByOID(uint oid)
             => TryGetByOID(oid, out var result) ? result : UnrecognizedTypeHandler;
 
-        internal bool TryGetByOID(uint oid, out NpgsqlTypeHandler handler)
+        internal bool TryGetByOID(uint oid, [NotNullWhen(true)] out NpgsqlTypeHandler? handler)
             => _byOID.TryGetValue(oid, out handler);
 
         internal NpgsqlTypeHandler GetByNpgsqlDbType(NpgsqlDbType npgsqlDbType)
@@ -415,13 +417,13 @@ namespace Npgsql.TypeMapping
 
             // It might be an unmapped enum/composite type, or some other unmapped type
             return (null, postgresType);
-
-            bool TryGetMapping(PostgresType pgType, out NpgsqlTypeMapping mapping)
-                => Mappings.TryGetValue(pgType.Name, out mapping) ||
-                   Mappings.TryGetValue(pgType.FullName, out mapping) ||
-                   pgType is PostgresDomainType domain && (
-                       Mappings.TryGetValue(domain.BaseType.Name, out mapping) ||
-                       Mappings.TryGetValue(domain.BaseType.FullName, out mapping));
         }
+
+        bool TryGetMapping(PostgresType pgType, [MaybeNullWhen(false)] out NpgsqlTypeMapping? mapping)
+            => Mappings.TryGetValue(pgType.Name, out mapping) ||
+               Mappings.TryGetValue(pgType.FullName, out mapping) ||
+               pgType is PostgresDomainType domain && (
+                   Mappings.TryGetValue(domain.BaseType.Name, out mapping) ||
+                   Mappings.TryGetValue(domain.BaseType.FullName, out mapping));
     }
 }

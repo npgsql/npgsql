@@ -94,13 +94,12 @@ namespace Npgsql
 
         internal bool DoParametersMatch(List<NpgsqlParameter> parameters)
         {
-            Debug.Assert(HandlerParamTypes != null);
-            if (HandlerParamTypes.Length != parameters.Count)
+            if (HandlerParamTypes!.Length != parameters.Count)
                 return false;
+
             for (var i = 0; i < HandlerParamTypes.Length; i++)
             {
-                var handler = parameters[i].Handler;
-                Debug.Assert(handler != null, "Parameter handler type not set when creating prepared statement");
+                var handler = parameters[i].Handler!;
                 if (HandlerParamTypes[i] != handler.GetType())
                     return false;
             }

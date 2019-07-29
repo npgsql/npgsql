@@ -1296,24 +1296,16 @@ namespace Npgsql.Tests
         public void UsePgPassFile()
         {
             var file = SetupTestData();
+            using var resetter = TestUtil.SetEnvironmentVariable("PGPASSFILE", file);
 
-            try
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
-                {
-                    Pooling = false,
-                    IntegratedSecurity = false,
-                    Password = null
-                };
-                using (OpenConnection(builder)) {}
-            }
-            finally
-            {
-                RestorePriorConfiguration(file, _pgpassEnvVarValue);
-            }
+                Pooling = false,
+                IntegratedSecurity = false,
+                Password = null
+            };
+            using (OpenConnection(builder)) { }
         }
-
-        readonly string _pgpassEnvVarValue = Environment.GetEnvironmentVariable("PGPASSFILE");
 
         public string SetupTestData()
         {
@@ -1322,7 +1314,6 @@ namespace Npgsql.Tests
             var content = $"*:*:*:{builder.Username}:{builder.Password}";
             var pgpassFile = Path.GetTempFileName();
             File.WriteAllText(pgpassFile, content);
-            Environment.SetEnvironmentVariable("PGPASSFILE", pgpassFile);
             return pgpassFile;
         }
 
@@ -1330,7 +1321,6 @@ namespace Npgsql.Tests
         {
             if (File.Exists(fileName))
                 File.Delete(fileName);
-            Environment.SetEnvironmentVariable("PGPASSFILE", _pgpassEnvVarValue);
         }
 
         #endregion

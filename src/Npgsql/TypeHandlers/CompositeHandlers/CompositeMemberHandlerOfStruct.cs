@@ -84,8 +84,8 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
 
             buffer.WriteUInt32(PostgresType.OID);
             await (NullableHandler<TMember>.Exists
-                ? NullableHandler<TMember>.WriteAsync(_handler, _get!(ref composite), buffer, lengthCache, null, async)
-                : _handler.WriteWithLengthInternal(_get!(ref composite), buffer, lengthCache, null, async));
+                ? NullableHandler<TMember>.WriteAsync(_handler, _get(ref composite), buffer, lengthCache, null, async)
+                : _handler.WriteWithLengthInternal(_get(ref composite), buffer, lengthCache, null, async));
         }
 
         public override int ValidateAndGetLength(TComposite composite, ref NpgsqlLengthCache? lengthCache)
@@ -93,7 +93,7 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
             if (_get == null)
                 ThrowHelper.ThrowNotSupportedException_NoPropertyGetter(typeof(TComposite), MemberInfo);
 
-            var value = _get!(ref composite);
+            var value = _get(ref composite);
             if (value == null)
                 return 0;
 
@@ -105,9 +105,6 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void Set(ByReference<TComposite> composite, TMember value)
         {
-            if (_set == null)
-                ThrowHelper.ThrowNotSupportedException_NoPropertySetter(typeof(TComposite), MemberInfo);
-
             _set!(ref composite.Value, value);
         }
     }

@@ -140,7 +140,7 @@ namespace Npgsql.TypeHandling
         /// information relevant to the write process (e.g. <see cref="NpgsqlParameter.Size"/>).
         /// </param>
         /// <param name="async">If I/O is required to read the full length of the value, whether it should be performed synchronously or asynchronously.</param>
-        protected internal abstract Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async);
+        protected internal abstract Task WriteObjectWithLength(object? value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async);
 
         #endregion Write
 

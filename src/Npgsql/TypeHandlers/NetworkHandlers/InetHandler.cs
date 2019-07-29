@@ -77,7 +77,7 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
                 _ => throw new InvalidCastException($"Can't write CLR type {value.GetType().Name} to database type {PgDisplayName}")
             };
 
-        protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        protected internal override Task WriteObjectWithLength(object? value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => value switch {
                 null => WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async),
                 DBNull _ => WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async),

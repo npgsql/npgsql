@@ -15,8 +15,10 @@ namespace Npgsql
     {
         public static DataTable GetSchema(NpgsqlConnection conn, string? collectionName, string?[]? restrictions)
         {
-            if (string.IsNullOrEmpty(collectionName))
-                throw new ArgumentException("Collection name cannot be null or empty", nameof(collectionName));
+            if (collectionName is null)
+                throw new ArgumentNullException(nameof(collectionName));
+            if (collectionName.Length == 0)
+                throw new ArgumentException("Collection name cannot be empty.", nameof(collectionName));
 
             switch (collectionName.ToUpperInvariant())
             {
@@ -55,7 +57,7 @@ namespace Npgsql
             case "CONSTRAINTCOLUMNS":
                 return GetConstraintColumns(conn, restrictions);
             default:
-                throw new ArgumentOutOfRangeException(nameof(collectionName), collectionName, "Invalid collection name");
+                throw new ArgumentOutOfRangeException(nameof(collectionName), collectionName, "Invalid collection name.");
             }
         }
 

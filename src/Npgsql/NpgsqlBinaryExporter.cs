@@ -305,7 +305,7 @@ namespace Npgsql
             _buf = null;
             _isDisposed = true;
         }
-#pragma warning enable CS8625
+#pragma warning restore CS8625
 
         #endregion
     }
