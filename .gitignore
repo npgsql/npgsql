@@ -19,3 +19,7 @@ artifacts/
 *.ide/
 .vs/
 TestResult.xml
+# Docker
+.build/docker/*/*.sh
+.build/docker/*/*.crt
+.build/docker/*/*.key

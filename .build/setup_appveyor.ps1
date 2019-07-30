@@ -8,7 +8,7 @@ Add-Content 'C:\Program Files\PostgreSQL\11\data\postgresql.conf' "`nmax_prepare
 
 Write-Host Enabling PostgreSQL SSL...
 Add-Content 'C:\Program Files\PostgreSQL\11\data\postgresql.conf' "`nssl = true"
-Copy-Item .build\server.* "C:\Program Files\PostgreSQL\11\data"
+Copy-Item .build\docker\server.* "C:\Program Files\PostgreSQL\11\data"
 
 Write-Host Enabling PostGIS...
 If (!(Test-Path $env:POSTGIS_EXE)) {
