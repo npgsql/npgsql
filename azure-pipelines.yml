@@ -16,18 +16,17 @@ variables:
 resources:
   containers:
   - container: postgres_11
-    image: austindrenski/npgsql-postgres:11
-    options: "--name postgres"
+    image: npgsql/postgres:11
     ports:
     - 5432:5432
+
   - container: postgres_10
-    image: austindrenski/npgsql-postgres:10
-    options: "--name postgres"
+    image: npgsql/postgres:10
     ports:
     - 5432:5432
+
   - container: postgres_9_6
-    image: austindrenski/npgsql-postgres:10
-    options: "--name postgres"
+    image: npgsql/postgres:9.6
     ports:
     - 5432:5432
 
@@ -42,13 +41,12 @@ jobs:
     matrix:
       postgres_11:
         postgres_service: postgres_11
-        pg_version: 11
+
       postgres_10:
         postgres_service: postgres_10
-        pg_version: 10
+
       postgres_9_6:
         postgres_service: postgres_9_6
-        pg_version: 9.6
 
   services:
     postgres: $[variables['postgres_service']]

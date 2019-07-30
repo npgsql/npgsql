@@ -23,12 +23,12 @@ Certificate:
                     30:81:7e:65:4a:6d:71:a5:9b
                 Exponent: 65537 (0x10001)
         X509v3 extensions:
-            X509v3 Subject Key Identifier: 
+            X509v3 Subject Key Identifier:
                 17:4C:64:08:33:71:2A:34:33:CA:15:3E:F3:B8:98:1A:E7:8E:64:F4
-            X509v3 Authority Key Identifier: 
+            X509v3 Authority Key Identifier:
                 keyid:17:4C:64:08:33:71:2A:34:33:CA:15:3E:F3:B8:98:1A:E7:8E:64:F4
 
-            X509v3 Basic Constraints: 
+            X509v3 Basic Constraints:
                 CA:TRUE
     Signature Algorithm: sha1WithRSAEncryption
          81:f4:69:3e:b1:c0:9f:4b:82:10:8d:3e:7c:98:70:2a:f3:24:
