@@ -4,6 +4,7 @@
   <!-- Build configuration -->
   <PropertyGroup>
     <TargetFrameworks>net461;netcoreapp3.0</TargetFrameworks>
+    <!-- Testing on Mono throws an NRE from System.Runtime.Remoting -->
     <TargetFrameworks Condition="'$(OS)' != 'Windows_NT' OR '$(CoreOnly)' == 'True'">netcoreapp3.0</TargetFrameworks>
   </PropertyGroup>
 </Project>

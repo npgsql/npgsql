@@ -10,7 +10,9 @@ bigsql/pgc list --extensions pg11
 bigsql/pgc install postgis25-pg11
 
 # Initialize PostgreSQL
-bigsql/pg11/bin/initdb -D PGDATA -E UTF8 -U postgres
+$Env:PGPASSWORD="postgres"
+New-Item pwfile -Value $Env:PGPASSWORD
+bigsql/pg11/bin/initdb -D PGDATA -E UTF8 -A md5 -U postgres --pwfile=pwfile
 
 # Configure PostgreSQL
 cp .build/docker/server.crt PGDATA/

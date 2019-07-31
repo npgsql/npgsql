@@ -82,6 +82,7 @@ jobs:
       includeSymbols: false
       outputDir: '$(Build.StagingDirectory)/ci'
       packagesToPack: 'src/**/*.csproj;!src/VSIX/VSIX.csproj'
+      verbosityPack: 'Normal'
 
   - task: DotNetCoreCLI@2
     displayName: 'Pack symbol packages (CI versions)'
@@ -92,6 +93,7 @@ jobs:
       includeSymbols: true
       outputDir: '$(Build.StagingDirectory)/ci'
       packagesToPack: 'src/**/*.csproj;!src/VSIX/VSIX.csproj'
+      verbosityPack: 'Normal'
 
   - task: PublishBuildArtifacts@1
     displayName: 'Publish artifacts'
@@ -153,6 +155,7 @@ jobs:
       includeSymbols: true
       outputDir: '$(Build.StagingDirectory)/ci'
       packagesToPack: 'src/**/*.csproj;!src/VSIX/VSIX.csproj'
+      verbosityPack: 'Normal'
 
   - task: DotNetCoreCLI@2
     displayName: 'Pack symbol packages (Release versions)'
@@ -162,6 +165,26 @@ jobs:
       includeSymbols: true
       outputDir: '$(Build.StagingDirectory)/release'
       packagesToPack: 'src/**/*.csproj;!src/VSIX/VSIX.csproj'
+      verbosityPack: 'Normal'
+
+  - task: DotNetCoreCLI@2
+    displayName: 'Build MSI and VSIX artifacts (CI versions)'
+    inputs:
+      buildProperties: 'Version=$(Build.BuildNumber)+sha.$(truncated_sha1)'
+      command: 'custom'
+      configuration: 'Release'
+      custom: 'msbuild'
+      outputDir: '$(Build.StagingDirectory)/ci'
+      projects: '**/src/MSI/MSI.wixproj;**/src/VSIX/VSIX.csproj'
+
+  - task: DotNetCoreCLI@2
+    displayName: 'Build MSI and VSIX artifacts (Release versions)'
+    inputs:
+      command: 'custom'
+      configuration: 'Release'
+      custom: 'msbuild'
+      outputDir: '$(Build.StagingDirectory)/release'
+      projects: '**/src/MSI/MSI.wixproj;**/src/VSIX/VSIX.csproj'
 
   - task: PublishBuildArtifacts@1
     displayName: 'Publish artifacts'
