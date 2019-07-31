@@ -25,7 +25,6 @@ COPY ./initdb-npgsql.sql /docker-entrypoint-initdb.d/initdb-npgsql.sql
 
 VOLUME ["/var/run/postgresql"]
 ENV POSTGRES_PASSWORD "postgres"
-ENV POSTGRES_INITDB_ARGS "--auth-host=md5 --auth-local=peer"
 
 CMD [ \
     "postgres", \
