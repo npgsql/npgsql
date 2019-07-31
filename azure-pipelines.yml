@@ -11,7 +11,8 @@ variables:
   DOTNET_CLI_TELEMETRY_OPTOUT: 1
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
   DOTNET_SDK_VERSION: '3.0.100-preview6-012264'
-  NPGSQL_RELEASE_NOTES: 'doc/release-notes/5.0.md'
+  RELEASE_NOTES_FILE: 'doc/release-notes/5.0.md'
+  GITHUB_SERVICE_CONNECTION: 'npgsql-releases'
 
 resources:
   containers:
@@ -193,15 +194,15 @@ jobs:
     condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/v'), contains(variables['Build.SourceBranch'], '-preview'))
     inputs:
       assets: '$(Build.StagingDirectory)/release/*'
-      gitHubConnection: 'npgsql-releases'
+      gitHubConnection: '$(GITHUB_SERVICE_CONNECTION)'
       isPreRelease: true
-      releaseNotesFile: '$(NPGSQL_RELEASE_NOTES)'
+      releaseNotesFile: '$(RELEASE_NOTES_FILE)'
 
   - task: GitHubRelease@0
     displayName: 'Publish GitHub Release'
     condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags/v'), not(contains(variables['Build.SourceBranch'], '-preview')))
     inputs:
       assets: '$(Build.StagingDirectory)/release/*'
-      gitHubConnection: 'npgsql-releases'
+      gitHubConnection: '$(GITHUB_SERVICE_CONNECTION)'
       isPreRelease: false
-      releaseNotesFile: '$(NPGSQL_RELEASE_NOTES)'
+      releaseNotesFile: '$(RELEASE_NOTES_FILE)'
