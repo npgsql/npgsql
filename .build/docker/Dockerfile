@@ -21,6 +21,15 @@ RUN chown root:postgres $PGDATA/../server.key
 RUN chmod 0640 $PGDATA/../server.key
 
 RUN mkdir -p /docker-entrypoint-initdb.d
-COPY ./initdb-npgsql.sh /docker-entrypoint-initdb.d/initdb-npgsql.sh
+COPY ./initdb-npgsql.sql /docker-entrypoint-initdb.d/initdb-npgsql.sql
 
-CMD ["postgres", "-c", "max_prepared_transactions=10", "-c", "ssl=true", "-c", "ssl_cert_file=../server.crt", "-c", "ssl_key_file=../server.key"]
+ENV POSTGRES_PASSWORD "postgres"
+ENV POSTGRES_INITDB_ARGS "--auth-host=md5 --auth-local=peer"
+
+CMD [ \
+    "postgres", \
+    "-c", "max_prepared_transactions=10", \
+    "-c", "ssl=true", \
+    "-c", "ssl_cert_file=../server.crt", \
+    "-c", "ssl_key_file=../server.key" \
+]
