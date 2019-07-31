@@ -8,7 +8,10 @@ ENV POSTGIS_VERSION 2.5.2+dfsg-1~exp1.pgdg90+1
 
 RUN apt-get update && \
     apt-get upgrade -y && \
-    apt-get install -y --no-install-recommends postgresql-$PG_MAJOR-postgis-$POSTGIS_MAJOR=$POSTGIS_VERSION && \
+    apt-get install -y --no-install-recommends \
+        postgresql-$PG_MAJOR-postgis-$POSTGIS_MAJOR=$POSTGIS_VERSION \
+        postgresql-$PG_MAJOR-postgis-$POSTGIS_MAJOR-scripts=$POSTGIS_VERSION \
+        postgis=$POSTGIS_VERSION && \
     rm -rf /var/lib/apt/lists/*
 
 # Data directory needs to be empty for initialization scripts to run, so stash one level up.
