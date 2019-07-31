@@ -18,16 +18,19 @@ resources:
   containers:
   - container: postgres_11
     image: npgsql/postgres:11
+    options: '--volume /var/run/postgresql:/var/run/postgresql'
     ports:
     - 5432:5432
 
   - container: postgres_10
     image: npgsql/postgres:10
+    options: '--volume /var/run/postgresql:/var/run/postgresql'
     ports:
     - 5432:5432
 
   - container: postgres_9_6
     image: npgsql/postgres:9.6
+    options: '--volume /var/run/postgresql:/var/run/postgresql'
     ports:
     - 5432:5432
 

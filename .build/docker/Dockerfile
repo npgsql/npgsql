@@ -23,6 +23,7 @@ RUN chmod 0640 $PGDATA/../server.key
 RUN mkdir -p /docker-entrypoint-initdb.d
 COPY ./initdb-npgsql.sql /docker-entrypoint-initdb.d/initdb-npgsql.sql
 
+VOLUME ["/var/run/postgresql"]
 ENV POSTGRES_PASSWORD "postgres"
 ENV POSTGRES_INITDB_ARGS "--auth-host=md5 --auth-local=peer"
 
