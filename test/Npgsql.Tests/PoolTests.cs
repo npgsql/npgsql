@@ -288,7 +288,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Makes sure that when a waiting async open is is given a connection, the continuation is executed in the TP rather than on the closing thread")]
-        public void CloseReleasesWaiterOnAnotherThread()
+        public async Task CloseReleasesWaiterOnAnotherThread()
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -317,7 +317,7 @@ namespace Npgsql.Tests
                 var asyncOpenerTask = asyncOpener();
                 AssertPoolState(pool, 0, 1, 1);
                 conn1.Close();  // Complete the async open by closing conn1
-                var asyncOpenerThreadId = asyncOpenerTask.Result;
+                var asyncOpenerThreadId = await asyncOpenerTask;
                 AssertPoolState(pool, 1, 0, 0);
 
                 Assert.That(asyncOpenerThreadId, Is.Not.EqualTo(Thread.CurrentThread.ManagedThreadId));

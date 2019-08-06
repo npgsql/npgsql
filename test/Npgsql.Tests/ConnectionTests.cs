@@ -102,7 +102,7 @@ namespace Npgsql.Tests
                     });
                     cmd.ExecuteNonQuery();
                     exitFlag = true;
-                    pollingTask.Wait();
+                    pollingTask.GetAwaiter().GetResult();
                 }
 
                 conn.Close();

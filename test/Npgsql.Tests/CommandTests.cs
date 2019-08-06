@@ -345,7 +345,7 @@ namespace Npgsql.Tests
                         cmd2.Cancel();
                     });
                     Assert.That(() => cmd1.ExecuteNonQuery(), Throws.Nothing);
-                    cancelTask.Wait();
+                    cancelTask.GetAwaiter().GetResult();
                 }
             }
         }

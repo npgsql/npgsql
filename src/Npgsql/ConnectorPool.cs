@@ -387,7 +387,7 @@ namespace Npgsql
                                         throw new NpgsqlException($"The connection pool has been exhausted, either raise MaxPoolSize (currently {_max}) or Timeout (currently {Settings.Timeout} seconds)");
                                 }
                                 else
-                                    tcs.Task.Wait();
+                                    await tcs.Task;
                             }
                         }
                         catch
@@ -404,7 +404,7 @@ namespace Npgsql
                         }
 
                         Debug.Assert(tcs.Task.IsCompleted);
-                        connector = tcs.Task.Result;
+                        connector = await tcs.Task;
 
                         // Our task completion may contain a null in order to unblock us, allowing us to try
                         // allocating again.

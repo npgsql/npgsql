@@ -876,7 +876,7 @@ namespace Npgsql
 
         internal void SendMessage(FrontendMessage message)
         {
-            message.Write(WriteBuffer, false).Wait();
+            message.Write(WriteBuffer, false).GetAwaiter().GetResult();
             WriteBuffer.Flush();
         }
 
@@ -1974,7 +1974,7 @@ namespace Npgsql
         #region Execute internal command
 
         internal void ExecuteInternalCommand(string query)
-            => ExecuteInternalCommand(QueryMessage.Populate(query), false).Wait();
+            => ExecuteInternalCommand(QueryMessage.Populate(query), false).GetAwaiter().GetResult();
 
         internal async Task ExecuteInternalCommand(FrontendMessage message, bool async)
         {

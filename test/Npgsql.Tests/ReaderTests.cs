@@ -815,7 +815,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void Null([Values(CommandBehavior.Default, CommandBehavior.SequentialAccess)] CommandBehavior behavior)
+        public async Task Null([Values(CommandBehavior.Default, CommandBehavior.SequentialAccess)] CommandBehavior behavior)
         {
             using (var conn = OpenConnection())
             using (var cmd = new NpgsqlCommand("SELECT @p1, @p2::TEXT", conn))
@@ -830,7 +830,7 @@ namespace Npgsql.Tests
                     for (var i = 0; i < cmd.Parameters.Count; i++)
                     {
                         Assert.That(reader.IsDBNull(i), Is.True);
-                        Assert.That(reader.IsDBNullAsync(i).Result, Is.True);
+                        Assert.That(await reader.IsDBNullAsync(i), Is.True);
                         Assert.That(reader.GetValue(i), Is.EqualTo(DBNull.Value));
                         Assert.That(reader.GetFieldValue<object>(i), Is.EqualTo(DBNull.Value));
                         Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(DBNull.Value));
