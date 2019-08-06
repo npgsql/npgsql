@@ -177,7 +177,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                 WriteDouble(value, buf);
         }
 
-        void WriteInteger(NpgsqlDateTime value, NpgsqlWriteBuffer buf)
+        void WriteInteger(in NpgsqlDateTime value, NpgsqlWriteBuffer buf)
         {
             if (value.IsInfinity)
             {
@@ -205,7 +205,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             }
         }
 
-        void WriteDouble(NpgsqlDateTime value, NpgsqlWriteBuffer buf)
+        void WriteDouble(in NpgsqlDateTime value, NpgsqlWriteBuffer buf)
         {
             if (value.IsInfinity)
             {

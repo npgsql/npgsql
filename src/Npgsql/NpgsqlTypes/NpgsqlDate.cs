@@ -531,7 +531,7 @@ namespace NpgsqlTypes
         public static NpgsqlDate operator -(NpgsqlDate date, NpgsqlTimeSpan interval)
             => date.Subtract(interval);
 
-        public NpgsqlDate Subtract(NpgsqlTimeSpan interval) => Add(-interval);
+        public NpgsqlDate Subtract(in NpgsqlTimeSpan interval) => Add(-interval);
 
         public static NpgsqlTimeSpan operator -(NpgsqlDate dateX, NpgsqlDate dateY)
         {
