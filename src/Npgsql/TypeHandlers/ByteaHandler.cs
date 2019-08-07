@@ -76,7 +76,7 @@ namespace Npgsql.TypeHandlers
 
         /// <inheritdoc />
         public Task Write(ArraySegment<byte> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
-            => Write(value.Array, buf, value.Offset, ValidateAndGetLength(value.Count, parameter), async);
+            => value.Array is null ? Task.CompletedTask : Write(value.Array, buf, value.Offset, ValidateAndGetLength(value.Count, parameter), async);
 
         async Task Write(byte[] value, NpgsqlWriteBuffer buf, int offset, int count, bool async)
         {
