@@ -523,9 +523,20 @@ namespace NpgsqlTypes
         /// <summary>
         /// The geography (geodetic) type for PostgreSQL spatial extension PostGIS.
         /// </summary>
-        Geography = 55     // Extension type
+        Geography = 55,    // Extension type
 
         #endregion
+
+        #region Ltree
+
+        /// <summary>
+        /// The PostgreSQL ltree type, each value is a label path "a.label.tree.value", forming a tree in a set.
+        /// </summary>
+        /// <remarks>See http://www.postgresql.org/docs/current/static/ltree.html</remarks>
+        Ltree = 61,    // Extension type
+
+        #endregion
+
     }
 
     /// <summary>
