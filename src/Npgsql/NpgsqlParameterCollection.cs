@@ -25,11 +25,7 @@ namespace Npgsql
         /// <summary>
         /// Initializes a new instance of the NpgsqlParameterCollection class.
         /// </summary>
-        internal NpgsqlParameterCollection()
-        {
-
-            InvalidateHashLookups();
-        }
+        internal NpgsqlParameterCollection() => InvalidateHashLookups();
 
         /// <summary>
         /// Invalidate the hash lookup tables.  This should be done any time a change
@@ -53,8 +49,10 @@ namespace Npgsql
         {
             get
             {
-                var index = IndexOf(parameterName);
+                if (parameterName is null)
+                    throw new ArgumentNullException(nameof(parameterName));
 
+                var index = IndexOf(parameterName);
                 if (index == -1)
                     throw new ArgumentException("Parameter not found");
 
@@ -62,14 +60,18 @@ namespace Npgsql
             }
             set
             {
+                if (parameterName is null)
+                    throw new ArgumentNullException(nameof(parameterName));
+                if (value is null)
+                    throw new ArgumentNullException(nameof(value));
+
                 var index = IndexOf(parameterName);
 
                 if (index == -1)
                     throw new ArgumentException("Parameter not found");
 
                 var oldValue = _internalList[index];
-
-                if (value.ParameterName != oldValue.ParameterName)
+                if (oldValue.ParameterName != value.ParameterName)
                     InvalidateHashLookups();
 
                 _internalList[index] = value;
@@ -87,6 +89,8 @@ namespace Npgsql
             get => _internalList[index];
             set
             {
+                if (value is null)
+                    throw new ArgumentNullException(nameof(value));
                 if (value.Collection != null)
                     throw new InvalidOperationException("The parameter already belongs to a collection");
 
@@ -111,6 +115,8 @@ namespace Npgsql
         /// <returns>The index of the new <see cref="NpgsqlParameter">NpgsqlParameter</see> object.</returns>
         public NpgsqlParameter Add(NpgsqlParameter value)
         {
+            if (value is null)
+                throw new ArgumentNullException(nameof(value));
             if (value.Collection != null)
                 throw new InvalidOperationException("The parameter already belongs to a collection");
 
@@ -232,26 +238,16 @@ namespace Npgsql
         [PublicAPI]
         // ReSharper disable once ImplicitNotNullOverridesUnknownExternalMember
         public override void RemoveAt(string parameterName)
-        {
-            if (parameterName == null)
-                throw new ArgumentNullException(nameof(parameterName));
-
-            RemoveAt(IndexOf(parameterName));
-        }
+            => RemoveAt(IndexOf(parameterName ?? throw new ArgumentNullException(nameof(parameterName))));
 
         /// <inheritdoc />
         public override bool Contains(string parameterName)
-        {
-            if (parameterName == null)
-                throw new ArgumentNullException(nameof(parameterName));
-
-            return IndexOf(parameterName) != -1;
-        }
+            => IndexOf(parameterName ?? throw new ArgumentNullException(nameof(parameterName))) != -1;
 
         /// <inheritdoc />
         public override int IndexOf(string parameterName)
         {
-            if (parameterName == null)
+            if (parameterName is null)
                 return -1;
 
             if (parameterName.Length > 0 && (parameterName[0] == ':' || parameterName[0] == '@'))
@@ -325,24 +321,14 @@ namespace Npgsql
         public override void RemoveAt(int index)
         {
             if (_internalList.Count - 1 < index)
-                throw new IndexOutOfRangeException();
+                throw new ArgumentOutOfRangeException(nameof(index));
+
             Remove(_internalList[index]);
         }
 
         /// <inheritdoc />
         public override void Insert(int index, object value)
-        {
-            if (value == null)
-                throw new ArgumentNullException(nameof(value));
-            if (!(value is NpgsqlParameter param))
-                throw new InvalidCastException($"{nameof(value)} must be an NpgsqlParameter");
-            if (param.Collection != null)
-                throw new InvalidOperationException("The parameter already belongs to a collection");
-
-            param.Collection = this;
-            _internalList.Insert(index, param);
-            InvalidateHashLookups();
-        }
+            => Insert(index, Cast(value));
 
         /// <summary>
         /// Removes the specified <see cref="NpgsqlParameter">NpgsqlParameter</see> from the collection.
@@ -351,9 +337,13 @@ namespace Npgsql
         [PublicAPI]
         public void Remove(string parameterName)
         {
+            if (parameterName is null)
+                throw new ArgumentNullException(nameof(parameterName));
+
             var index = IndexOf(parameterName);
             if (index < 0)
                 throw new InvalidOperationException("No parameter with the specified name exists in the collection");
+
             RemoveAt(index);
         }
 
@@ -362,14 +352,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="value">The <see cref="NpgsqlParameter">NpgsqlParameter</see> to remove from the collection.</param>
         public override void Remove(object value)
-        {
-            if (value == null)
-                throw new ArgumentNullException(nameof(value));
-            if (!(value is NpgsqlParameter param))
-                throw new InvalidCastException($"{nameof(value)} must be an NpgsqlParameter");
-
-            Remove(param);
-        }
+            => Remove(Cast(value));
 
         /// <inheritdoc />
         public override bool Contains(object value)
@@ -384,6 +367,9 @@ namespace Npgsql
         [ContractAnnotation("=>true,parameter:notnull; =>false,parameter:null")]
         public bool TryGetValue(string parameterName, [NotNullWhenTrue] out NpgsqlParameter? parameter)
         {
+            if (parameterName is null)
+                throw new ArgumentNullException(nameof(parameterName));
+
             var index = IndexOf(parameterName);
 
             if (index != -1)
@@ -391,6 +377,7 @@ namespace Npgsql
                 parameter = _internalList[index];
                 return true;
             }
+
             parameter = null;
             return false;
         }
@@ -400,33 +387,22 @@ namespace Npgsql
         /// </summary>
         public override void Clear()
         {
+            // clean up parameters so they can be added to another command if required.
             foreach (var toRemove in _internalList)
-            {
-                // clean up the parameter so it can be added to another command if required.
                 toRemove.Collection = null;
-            }
+
             _internalList.Clear();
             InvalidateHashLookups();
         }
 
         /// <inheritdoc />
         public override int IndexOf(object value)
-        {
-            if (value == null)
-                throw new ArgumentNullException(nameof(value));
-            if (!(value is NpgsqlParameter param))
-                throw new InvalidCastException($"{nameof(value)} must be an NpgsqlParameter");
-            return _internalList.IndexOf(param);
-        }
+            => IndexOf(Cast(value));
 
         /// <inheritdoc />
         public override int Add(object value)
         {
-            if (value == null)
-                throw new ArgumentNullException(nameof(value));
-            if (!(value is NpgsqlParameter param))
-                throw new InvalidCastException($"{nameof(value)} must be an NpgsqlParameter");
-            Add(param);
+            Add(Cast(value));
             return Count - 1;
         }
 
@@ -448,12 +424,7 @@ namespace Npgsql
 
         /// <inheritdoc />
         public override void CopyTo(Array array, int index)
-        {
-            if (array == null)
-                throw new ArgumentNullException(nameof(array));
-
-            ((ICollection)_internalList).CopyTo(array, index);
-        }
+            => ((ICollection)_internalList).CopyTo(array, index);
 
         /// <inheritdoc />
         bool ICollection<NpgsqlParameter>.IsReadOnly => false;
@@ -476,15 +447,16 @@ namespace Npgsql
         /// <inheritdoc />
         public override void AddRange(Array values)
         {
-            foreach (NpgsqlParameter parameter in values)
-                Add(parameter);
+            if (values is null)
+                throw new ArgumentNullException(nameof(values));
+
+            foreach (object parameter in values)
+                Add(Cast(parameter) ?? throw new ArgumentException("Collection contains a null value.", nameof(values)));
         }
 
         /// <inheritdoc />
         protected override DbParameter GetParameter(string parameterName)
-            => parameterName == null
-                ? throw new ArgumentNullException(nameof(parameterName))
-                : this[parameterName];
+            => this[parameterName];
 
         /// <inheritdoc />
         protected override DbParameter GetParameter(int index)
@@ -492,15 +464,11 @@ namespace Npgsql
 
         /// <inheritdoc />
         protected override void SetParameter(string parameterName, DbParameter value)
-        {
-            if (parameterName == null)
-                throw new ArgumentNullException(nameof(parameterName));
-            this[parameterName] = (NpgsqlParameter) value;
-        }
+            => this[parameterName] = Cast(value);
 
         /// <inheritdoc />
         protected override void SetParameter(int index, DbParameter value)
-            => this[index] = (NpgsqlParameter) value;
+            => this[index] = Cast(value);
 
         /// <summary>
         /// Report the offset within the collection of the given parameter.
@@ -519,7 +487,7 @@ namespace Npgsql
         [PublicAPI]
         public void Insert(int index, NpgsqlParameter item)
         {
-            if (item == null)
+            if (item is null)
                 throw new ArgumentNullException(nameof(item));
             if (item.Collection != null)
                 throw new Exception("The parameter already belongs to a collection");
@@ -556,6 +524,7 @@ namespace Npgsql
                 InvalidateHashLookups();
                 return true;
             }
+
             return false;
         }
 
@@ -596,6 +565,18 @@ namespace Npgsql
                     if (p.IsOutputDirection)
                         return true;
                 return false;
+            }
+        }
+
+        static NpgsqlParameter Cast(object value)
+        {
+            try
+            {
+                return (NpgsqlParameter)value;
+            }
+            catch (Exception)
+            {
+                throw new InvalidCastException($"The value \"{value}\" is not of type \"{nameof(NpgsqlParameter)}\" and cannot be used in this parameter collection.");
             }
         }
     }
