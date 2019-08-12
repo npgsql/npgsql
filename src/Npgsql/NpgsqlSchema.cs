@@ -365,7 +365,6 @@ from
 where
     i.relkind = 'i'
     and n.nspname not in ('pg_catalog', 'pg_toast')
-    and pg_catalog.pg_table_is_visible(i.oid)
     and a.attnum = ANY(ix.indkey)
     and t.relkind = 'r'");
 
