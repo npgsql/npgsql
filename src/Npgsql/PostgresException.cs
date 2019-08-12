@@ -28,6 +28,17 @@ namespace Npgsql
     {
         bool _dataInitialized;
 
+        /// <summary>
+        /// Creates a new instance.
+        /// </summary>
+        public PostgresException(string messageText, string severity, string invariantSeverity, string sqlState)
+        {
+            MessageText = messageText;
+            Severity = severity;
+            InvariantSeverity = invariantSeverity;
+            SqlState = sqlState;
+        }
+
         PostgresException(ErrorOrNoticeMessage msg)
         {
             Severity = msg.Severity;
