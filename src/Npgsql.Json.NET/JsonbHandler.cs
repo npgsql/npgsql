@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Npgsql.BackendMessages;
@@ -21,21 +22,27 @@ namespace Npgsql.Json.NET
             => new JsonbHandler(postgresType, conn, _settings);
     }
 
-    class JsonbHandler : Npgsql.TypeHandlers.JsonbHandler
+    class JsonbHandler : Npgsql.TypeHandlers.JsonHandler
     {
         readonly JsonSerializerSettings _settings;
 
         public JsonbHandler(PostgresType postgresType, NpgsqlConnection connection, JsonSerializerSettings settings)
-            : base(postgresType, connection) => _settings = settings;
+            : base(postgresType, connection, isJsonb: true) => _settings = settings;
 
         protected override async ValueTask<T> Read<T>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
-            var s = await base.Read<string>(buf, len, async, fieldDescription);
-            if (typeof(T) == typeof(string))
-                return (T)(object)s;
+            if (typeof(T) == typeof(string)             ||
+                typeof(T) == typeof(char[])             ||
+                typeof(T) == typeof(ArraySegment<char>) ||
+                typeof(T) == typeof(char)               ||
+                typeof(T) == typeof(byte[]))
+            {
+                return await base.Read<T>(buf, len, async, fieldDescription);
+            }
+
             try
             {
-                return JsonConvert.DeserializeObject<T>(s, _settings);
+                return JsonConvert.DeserializeObject<T>(await base.Read<string>(buf, len, async, fieldDescription), _settings);
             }
             catch (Exception e)
             {
@@ -55,14 +62,20 @@ namespace Npgsql.Json.NET
 
         protected override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
-            var s = value as string;
-            if (s == null)
+            switch (value)
             {
-                s = JsonConvert.SerializeObject(value, _settings);
+            case string _:
+            case char[] _:
+            case ArraySegment<char> _:
+            case char _:
+            case byte[] _:
+                return base.ValidateObjectAndGetLength(value, ref lengthCache, parameter);
+            default:
+                var serialized = JsonConvert.SerializeObject(value, _settings);
                 if (parameter != null)
-                    parameter.ConvertedValue = s;
+                    parameter.ConvertedValue = serialized;
+                return base.ValidateObjectAndGetLength(serialized, ref lengthCache, parameter);
             }
-            return base.ValidateObjectAndGetLength(s, ref lengthCache, parameter);
         }
 
         protected override Task WriteObjectWithLength(object? value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
@@ -70,10 +83,21 @@ namespace Npgsql.Json.NET
             if (value == null || value is DBNull)
                 return base.WriteObjectWithLength(DBNull.Value, buf, lengthCache, parameter, async);
 
-            if (parameter?.ConvertedValue != null)
-                value = parameter.ConvertedValue;
-            var s = value as string ?? JsonConvert.SerializeObject(value, _settings);
-            return base.WriteObjectWithLength(s, buf, lengthCache, parameter, async);
+            switch (value)
+            {
+            case string _:
+            case char[] _:
+            case ArraySegment<char> _:
+            case char _:
+            case byte[] _:
+                return base.WriteObjectWithLength(value, buf, lengthCache, parameter, async);
+            default:
+                // User POCO, read serialized representation from the validation phase
+                var serialized = parameter?.ConvertedValue != null
+                    ? (string)parameter.ConvertedValue
+                    : JsonConvert.SerializeObject(value, _settings);
+                return base.WriteObjectWithLength(serialized, buf, lengthCache, parameter, async);
+            }
         }
     }
 }

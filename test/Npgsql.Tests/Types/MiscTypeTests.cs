@@ -188,52 +188,6 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public void Json()
-        {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
-            {
-                TestUtil.MinimumPgVersion(conn, "9.2.0", "JSON data type not yet introduced");
-                const string expected = @"{ ""Key"" : ""Value"" }";
-                cmd.Parameters.AddWithValue("p", NpgsqlDbType.Json, expected);
-                using (var reader = cmd.ExecuteReader())
-                {
-                    reader.Read();
-                    Assert.That(reader.GetString(0), Is.EqualTo(expected));
-                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(string)));
-
-                    using (var textReader = reader.GetTextReader(0))
-                        Assert.That(textReader.ReadToEnd(), Is.EqualTo(expected));
-                }
-            }
-        }
-
-        [Test]
-        public void Jsonb()
-        {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
-            {
-                TestUtil.MinimumPgVersion(conn, "9.4.0", "JSONB data type not yet introduced");
-                var sb = new StringBuilder();
-                sb.Append(@"{""Key"": """);
-                sb.Append('x', conn.Settings.WriteBufferSize);
-                sb.Append(@"""}");
-                var value = sb.ToString();
-                cmd.Parameters.AddWithValue("p", NpgsqlDbType.Jsonb, value);
-                using (var reader = cmd.ExecuteReader())
-                {
-                    reader.Read();
-                    Assert.That(reader.GetString(0), Is.EqualTo(value));
-                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(string)));
-
-                    using (var textReader = reader.GetTextReader(0))
-                        Assert.That(textReader.ReadToEnd(), Is.EqualTo(value));
-                }
-            }
-        }
-
-        [Test]
         public void Hstore()
         {
             using (var conn = OpenConnection())
