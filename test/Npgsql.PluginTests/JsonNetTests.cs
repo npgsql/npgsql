@@ -61,6 +61,11 @@ namespace Npgsql.PluginTests
             public override int GetHashCode() => Bar.GetHashCode();
         }
 
+        class Bar
+        {
+            public int A { get; set; }
+        }
+
         [Test]
         public void RoundtripJObject()
         {
@@ -112,6 +117,29 @@ namespace Npgsql.PluginTests
                     reader.Read();
                     var actual = reader.GetFieldValue<Foo>(0);
                     Assert.That(actual.Bar, Is.EqualTo(8));
+                }
+            }
+        }
+
+        [Test, Ignore("https://github.com/npgsql/npgsql/issues/2568")]
+        public void ClrTypeMappingTwoTypes()
+        {
+            var value1 = new Foo { Bar = 8 };
+            var value2 = new Bar { A = 8 };
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand(@"SELECT @p1, @p2", conn))
+            {
+                conn.TypeMapper.UseJsonNet(new[] { typeof(Foo), typeof(Bar) });
+
+                cmd.Parameters.AddWithValue("p1", value1);
+                cmd.Parameters.AddWithValue("p2", value1);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    var actual1 = reader.GetFieldValue<Foo>(0);
+                    Assert.That(actual1.Bar, Is.EqualTo(8));
+                    var actual2 = reader.GetFieldValue<Bar>(1);
+                    Assert.That(actual2.A, Is.EqualTo(8));
                 }
             }
         }

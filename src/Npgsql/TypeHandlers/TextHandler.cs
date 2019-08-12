@@ -23,7 +23,6 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("character varying", NpgsqlDbType.Varchar, inferredDbType: DbType.String)]
     [TypeMapping("character", NpgsqlDbType.Char, inferredDbType: DbType.String)]
     [TypeMapping("name", NpgsqlDbType.Name, inferredDbType: DbType.String)]
-    [TypeMapping("json", NpgsqlDbType.Json, inferredDbType: DbType.String)]
     [TypeMapping("refcursor", NpgsqlDbType.Refcursor, inferredDbType: DbType.String)]
     [TypeMapping("citext", NpgsqlDbType.Citext, inferredDbType: DbType.String)]
     [TypeMapping("unknown")]

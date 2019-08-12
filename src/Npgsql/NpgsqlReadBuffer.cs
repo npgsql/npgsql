@@ -355,6 +355,12 @@ namespace Npgsql
         public void ReadBytes(byte[] output, int outputOffset, int len)
             => ReadBytes(new Span<byte>(output, outputOffset, len));
 
+        public ReadOnlySpan<byte> ReadSpan(int len)
+        {
+            Debug.Assert(len <= ReadBytesLeft);
+            return new ReadOnlySpan<byte>(Buffer, ReadPosition, len);
+        }
+
         #endregion
 
         #region Read Complex
