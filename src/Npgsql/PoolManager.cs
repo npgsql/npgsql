@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 
@@ -20,6 +19,8 @@ namespace Npgsql
         static readonly object _lock = new object();
         static volatile (string Key, ConnectorPool Pool)[] _pools = new (string, ConnectorPool)[InitialPoolsSize];
         static volatile int _nextSlot;
+
+        internal static (string Key, ConnectorPool Pool)[] Pools => _pools;
 
         internal static bool TryGetValue(string key, [NotNullWhen(true)] out ConnectorPool? pool)
         {

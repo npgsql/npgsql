@@ -61,10 +61,10 @@ namespace Npgsql
                 var enabled = false;
                 var expensiveEnabled = false;
 
-#if NET461
-                try
+                if (usePerfCounters)
                 {
-                    if (usePerfCounters)
+#if NET461
+                    try
                     {
                         enabled = PerformanceCounterCategory.Exists(Counter.DiagnosticsCounterCategory);
                         if (!enabled)
@@ -73,12 +73,15 @@ namespace Npgsql
                             "level of detail to track with connection pool performance counters");
                         expensiveEnabled = enabled && perfCtrSwitch.Level == TraceLevel.Verbose;
                     }
-                }
-                catch (Exception e)
-                {
-                    Log.Debug("Exception while checking for performance counter category (counters will be disabled)", e);
-                }
+                    catch (Exception e)
+                    {
+                        Log.Debug("Exception while checking for performance counter category (counters will be disabled)", e);
+                    }
+#else
+                    throw new NotSupportedException("The legacy Windows Performance Counters are only supported on .NET Framework. " +
+                                                    "The new .NET Core performance counter feature (EventSource) doesn't require any connection string parameters.");
 #endif
+                }
 
                 try
                 {

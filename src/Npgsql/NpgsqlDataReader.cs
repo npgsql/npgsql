@@ -816,6 +816,7 @@ namespace Npgsql
             Command.State = CommandState.Idle;
             Connector.CurrentReader = null;
             Connector.EndUserAction();
+            NpgsqlEventSource.Log.CommandStop();
 
             // If the reader is being closed as part of the connection closing, we don't apply
             // the reader's CommandBehavior.CloseConnection

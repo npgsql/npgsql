@@ -123,6 +123,7 @@ namespace Npgsql
 
                 try
                 {
+                    var totalRead = 0;
                     while (count > 0)
                     {
                         var toRead = Size - FilledBytes;
@@ -145,7 +146,10 @@ namespace Npgsql
                             throw new EndOfStreamException();
                         count -= read;
                         FilledBytes += read;
+                        totalRead += read;
                     }
+
+                    NpgsqlEventSource.Log.BytesRead(totalRead);
                 }
                 // We have a special case when reading async notifications - a timeout may be normal
                 // shouldn't be fatal
@@ -163,7 +167,6 @@ namespace Npgsql
                     throw new NpgsqlException("Exception while reading from stream", e);
                 }
             }
-
         }
 
         internal Task ReadMore(bool async) => Ensure(ReadBytesLeft + 1, async);
