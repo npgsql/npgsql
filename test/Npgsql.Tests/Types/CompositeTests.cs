@@ -34,6 +34,125 @@ namespace Npgsql.Tests.Types
 
         #endregion
 
+        [Test]
+        public void UnmappedComposite()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ApplicationName = nameof(UnmappedComposite),
+                Pooling = false
+            };
+            using (var conn = OpenConnection(csb))
+            {
+                conn.ExecuteNonQuery("CREATE TYPE pg_temp.unmapped_comp AS (x int, some_text text)");
+                conn.ReloadTypes();
+                var tempSchema = conn.ExecuteScalar("SELECT nspname FROM pg_namespace WHERE oid = pg_my_temp_schema()");
+
+                var composite = new SomeComposite { X = 8, SomeText = "foo" };
+
+                var expando = (dynamic)new ExpandoObject();
+                expando.X = 8;
+                expando.SomeText = "foo";
+
+                var compositeArray = new[]
+                {
+                    new SomeComposite { X = 9, SomeText = "bar" },
+                    new SomeComposite { X = 10, SomeText = "baz" }
+                };
+
+                var expandoArray = new dynamic[2];
+                expandoArray[0] = new ExpandoObject();
+                expandoArray[0].x = 9;
+                expandoArray[0].some_text = "bar";
+                expandoArray[1] = new ExpandoObject();
+                expandoArray[1].x = 10;
+                expandoArray[1].some_text = "baz";
+
+                using (var cmd = new NpgsqlCommand("SELECT @scalar1, @scalar2, @scalar3, @scalar4, @array1, @array2", conn))
+                {
+                    cmd.Parameters.Add(new NpgsqlParameter
+                    {
+                        ParameterName = "scalar1",
+                        Value = composite,
+                        DataTypeName = $"{tempSchema}.unmapped_comp"
+                    });
+                    cmd.Parameters.Add(new NpgsqlParameter
+                    {
+                        ParameterName = "scalar2",
+                        Value = expando,
+                        DataTypeName = $"{tempSchema}.unmapped_comp"
+                    });
+                    cmd.Parameters.Add(new NpgsqlParameter<SomeComposite>
+                    {
+                        ParameterName = "scalar3",
+                        TypedValue = composite,
+                        DataTypeName = $"{tempSchema}.unmapped_comp"
+                    });
+                    cmd.Parameters.Add(new NpgsqlParameter<dynamic>
+                    {
+                        ParameterName = "scalar4",
+                        TypedValue = expando,
+                        DataTypeName = $"{tempSchema}.unmapped_comp"
+                    });
+                    cmd.Parameters.Add(new NpgsqlParameter
+                    {
+                        ParameterName = "array1",
+                        Value = compositeArray,
+                        DataTypeName = $"{tempSchema}.unmapped_comp[]"
+                    });
+                    cmd.Parameters.Add(new NpgsqlParameter
+                    {
+                        ParameterName = "array2",
+                        Value = expandoArray,
+                        DataTypeName = $"{tempSchema}.unmapped_comp[]"
+                    });
+
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        reader.Read();
+
+                        for (var i = 0; i < 4; i++)
+                        {
+                            Assert.That(reader.GetDataTypeName(i),
+                                Does.StartWith("pg_temp") & Does.EndWith(".unmapped_comp"));
+
+                            var asTyped = reader.GetFieldValue<SomeComposite>(i);
+                            Assert.That(asTyped.X, Is.EqualTo(8));
+                            Assert.That(asTyped.SomeText, Is.EqualTo("foo"));
+
+                            // TODO: Need name translation...
+                            var asDynamic = (dynamic)reader.GetValue(i);
+                            Assert.That(asDynamic.x, Is.EqualTo(8));
+                            Assert.That(asDynamic.some_text, Is.EqualTo("foo"));
+                        }
+
+                        for (var i = 4; i < 6; i++)
+                        {
+                            Assert.That(reader.GetDataTypeName(i),
+                                Does.StartWith("pg_temp") & Does.EndWith(".unmapped_comp[]"));
+
+                            // TODO: The following doesn't work because of limitations in ArrayHandler.
+                            // You currently have to map the composite in order to read an array.
+                            /*
+                            var asTyped = reader.GetFieldValue<SomeComposite[]>(i);
+                            Assert.That(asTyped[0].X, Is.EqualTo(9));
+                            Assert.That(asTyped[0].SomeText, Is.EqualTo("bar"));
+                            Assert.That(asTyped[1].X, Is.EqualTo(10));
+                            Assert.That(asTyped[1].SomeText, Is.EqualTo("baz"));
+
+                            // TODO: Need name translation...
+                            var asDynamic = (dynamic[])reader.GetValue(i);
+                            Assert.That(asDynamic[0].x, Is.EqualTo(9));
+                            Assert.That(asDynamic[0].some_text, Is.EqualTo("bar"));
+                            Assert.That(asDynamic[1].x, Is.EqualTo(10));
+                            Assert.That(asDynamic[1].some_text, Is.EqualTo("baz"));
+                            */
+                        }
+                    }
+                }
+            }
+        }
+
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1779")]
         public void CompositePostgresType()
         {
@@ -265,7 +384,8 @@ namespace Npgsql.Tests.Types
 
                 using (var conn = OpenConnection(csb))
                 {
-                    Assert.That(() => conn.ExecuteScalar("SELECT '(8, \"foo\")'::composite4"), Throws.TypeOf<NotSupportedException>());
+                    // Composite should have been unmapped and so will return as dynamic
+                    Assert.That(conn.ExecuteScalar("SELECT '(8, \"foo\")'::composite4"), Is.TypeOf<ExpandoObject>());
                 }
             }
             finally

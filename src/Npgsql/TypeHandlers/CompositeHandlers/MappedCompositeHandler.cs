@@ -11,7 +11,7 @@ using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers.CompositeHandlers
 {
-    class CompositeHandler<T> : NpgsqlTypeHandler<T>, ICompositeHandler
+    class MappedCompositeHandler<T> : NpgsqlTypeHandler<T>, IMappedCompositeHandler
         where T : new()
     {
         static readonly Func<T> Constructor = Expression
@@ -24,7 +24,7 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
 
         public Type CompositeType => typeof(T);
 
-        public CompositeHandler(PostgresCompositeType postgresType, ConnectorTypeMapper typeMapper, INpgsqlNameTranslator nameTranslator)
+        public MappedCompositeHandler(PostgresCompositeType postgresType, ConnectorTypeMapper typeMapper, INpgsqlNameTranslator nameTranslator)
             : base(postgresType)
         {
             _typeMapper = typeMapper;
