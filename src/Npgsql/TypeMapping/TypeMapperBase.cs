@@ -92,7 +92,7 @@ namespace Npgsql.TypeMapping
             {
                 PgTypeName = pgName,
                 ClrTypes = new[] { typeof(T) },
-                TypeHandlerFactory = new CompositeTypeHandlerFactory<T>(nameTranslator)
+                TypeHandlerFactory = new MappedCompositeTypeHandlerFactory<T>(nameTranslator)
             }.Build());
         }
 
