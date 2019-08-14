@@ -553,6 +553,12 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 return Prepare(true);
         }
 
+        /// <summary>
+        /// Creates a server-side prepared statement on the PostgreSQL server.
+        /// This will make repeated future executions of this command much faster.
+        /// </summary>
+        public Task PrepareAsync() => PrepareAsync(CancellationToken.None);
+
         Task Prepare(bool async)
         {
             var connector = CheckReadyAndGetConnector();
