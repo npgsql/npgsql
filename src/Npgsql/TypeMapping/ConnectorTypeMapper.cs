@@ -8,6 +8,7 @@ using System.Reflection;
 using Npgsql.Logging;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandlers;
+using Npgsql.TypeHandlers.CompositeHandlers;
 using Npgsql.TypeHandling;
 using NpgsqlTypes;
 
@@ -239,6 +240,11 @@ namespace Npgsql.TypeMapping
                     if (domain.Array != null)
                         BindType(baseTypeHandler.CreateArrayHandler(domain.Array), domain.Array);
                 }
+
+            // Composites
+            var dynamicCompositeFactory = new UnmappedCompositeTypeHandlerFactory(DefaultNameTranslator);
+            foreach (var compType in DatabaseInfo.CompositeTypes.Where(e => !_byOID.ContainsKey(e.OID)))
+                BindType(dynamicCompositeFactory.Create(compType, _connector.Connection!), compType);
         }
 
         void BindType(NpgsqlTypeMapping mapping, NpgsqlConnector connector, bool externalCall)

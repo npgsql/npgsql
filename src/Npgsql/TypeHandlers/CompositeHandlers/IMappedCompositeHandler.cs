@@ -2,7 +2,7 @@ using System;
 
 namespace Npgsql.TypeHandlers.CompositeHandlers
 {
-    interface ICompositeHandler
+    interface IMappedCompositeHandler
     {
         /// <summary>
         /// The CLR type mapped to the PostgreSQL composite type.
