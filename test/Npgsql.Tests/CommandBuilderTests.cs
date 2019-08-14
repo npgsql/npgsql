@@ -740,6 +740,82 @@ $$ LANGUAGE SQL;
             }
         }
 
+        [Test]
+        public void DeriveTextCommandParameters_UnmappedComposite()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TYPE pg_temp.deriveparameterscomposite2 AS (x int, some_text text)");
+                conn.ReloadTypes();
+
+                var expected1 = new SomeComposite { X = 8, SomeText = "foo" };
+
+                using (var cmd = new NpgsqlCommand("SELECT @p1::deriveparameterscomposite2", conn))
+                {
+                    NpgsqlCommandBuilder.DeriveParameters(cmd);
+                    Assert.That(cmd.Parameters, Has.Count.EqualTo(1));
+                    Assert.That(cmd.Parameters[0].ParameterName, Is.EqualTo("p1"));
+                    Assert.That(cmd.Parameters[0].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Unknown));
+                    Assert.That(cmd.Parameters[0].PostgresType, Is.InstanceOf<PostgresCompositeType>());
+                    Assert.That(cmd.Parameters[0].DataTypeName, Does.EndWith("deriveparameterscomposite2"));
+                    var p1Fields = ((PostgresCompositeType)cmd.Parameters[0].PostgresType!).Fields;
+                    Assert.That(p1Fields[0].Name, Is.EqualTo("x"));
+                    Assert.That(p1Fields[1].Name, Is.EqualTo("some_text"));
+
+                    cmd.Parameters[0].Value = expected1;
+                    using (var reader = cmd.ExecuteReader(CommandBehavior.SingleResult | CommandBehavior.SingleRow))
+                    {
+                        Assert.That(reader.Read(), Is.True);
+                        Assert.That(reader.GetFieldValue<SomeComposite>(0).SomeText, Is.EqualTo(expected1.SomeText));
+                        Assert.That(reader.GetFieldValue<SomeComposite>(0).X, Is.EqualTo(expected1.X));
+                    }
+                }
+            }
+        }
+
+        [Test]
+        public void DeriveTextCommandParameters_UnmappedCompositeArray()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TYPE pg_temp.deriveparameterscomposite3 AS (x int, some_text text)");
+                conn.ReloadTypes();
+
+                var expected = new[] {
+                    new SomeComposite { X = 8, SomeText = "foo" },
+                    new SomeComposite { X = 9, SomeText = "bar" }
+                };
+
+                using (var cmd = new NpgsqlCommand("SELECT @p1::deriveparameterscomposite3[]", conn))
+                {
+                    NpgsqlCommandBuilder.DeriveParameters(cmd);
+                    Assert.That(cmd.Parameters, Has.Count.EqualTo(1));
+                    Assert.That(cmd.Parameters[0].ParameterName, Is.EqualTo("p1"));
+                    Assert.That(cmd.Parameters[0].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Unknown));
+                    Assert.That(cmd.Parameters[0].PostgresType, Is.InstanceOf<PostgresArrayType>());
+                    Assert.That(cmd.Parameters[0].DataTypeName, Does.EndWith("deriveparameterscomposite3[]"));
+                    var p1Element = ((PostgresArrayType)cmd.Parameters[0].PostgresType!).Element;
+                    Assert.That(p1Element, Is.InstanceOf<PostgresCompositeType>());
+                    Assert.That(p1Element.Name, Is.EqualTo("deriveparameterscomposite3"));
+                    var p1Fields = ((PostgresCompositeType)p1Element).Fields;
+                    Assert.That(p1Fields[0].Name, Is.EqualTo("x"));
+                    Assert.That(p1Fields[1].Name, Is.EqualTo("some_text"));
+
+                    cmd.Parameters[0].Value = expected;
+                    using (var reader = cmd.ExecuteReader(CommandBehavior.SingleResult | CommandBehavior.SingleRow))
+                    {
+                        Assert.That(reader.Read(), Is.True);
+                        var ex = Assert.Throws<Exception>(() =>
+                            {
+                                reader.GetValue(0);
+                            });
+                        Assert.That(ex.Message, Does.Contain("deriveparameterscomposite3 contains field x which could not match any on CLR type Object"));
+                    }
+
+                }
+            }
+        }
+
         #endregion
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1591")]
