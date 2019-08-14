@@ -121,6 +121,9 @@ namespace Npgsql
                 throw new NpgsqlException("Exception while flushing stream", e);
             }
 
+            NpgsqlEventSource.Log.BytesWritten(WritePosition);
+            //NpgsqlEventSource.Log.RequestFailed();
+
             WritePosition = 0;
             if (CurrentCommand != null)
             {
