@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using Npgsql.Logging;
@@ -112,13 +114,13 @@ namespace Npgsql
         static string GenerateTypesQuery(bool withRange, bool withEnum, bool withEnumSortOrder, bool loadTableComposites, bool withTypeCategory)
             => $@"
 /*** Load all supported types ***/
-SELECT ns.nspname, a.typname, a.oid, a.typrelid, a.typbasetype,
-CASE WHEN pg_proc.proname='array_recv' THEN 'a' ELSE a.typtype END AS type,
+SELECT ns.nspname, a.typname, a.oid, a.typbasetype,
+CASE WHEN pg_proc.proname='array_recv' THEN 'a' ELSE a.typtype END AS typtype,
 CASE
   WHEN pg_proc.proname='array_recv' THEN a.typelem
   {(withRange ? "WHEN a.typtype='r' THEN rngsubtype" : "")}
   ELSE 0
-END AS elemoid,
+END AS typelem,
 CASE
   {(withTypeCategory ? "WHEN a.typtype='d' AND a.typcategory='A' THEN 4 /* Domains over arrays last */" : "")}
   WHEN pg_proc.proname IN ('array_recv','oidvectorrecv') THEN 3    /* Arrays before */
@@ -191,6 +193,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
             {
                 command.CommandTimeout = commandTimeout;
                 command.AllResultTypesAreUnknown = true;
+
                 using (var reader = async ? await command.ExecuteReaderAsync() : command.ExecuteReader())
                 {
                     var byOID = new Dictionary<uint, PostgresType>();
@@ -200,13 +203,13 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
                     {
                         timeout.Check();
 
-                        var ns = reader.GetString(reader.GetOrdinal("nspname"));
-                        var internalName = reader.GetString(reader.GetOrdinal("typname"));
-                        var oid = Convert.ToUInt32(reader[reader.GetOrdinal("oid")]);
+                        var ns = reader.GetString("nspname");
+                        var internalName = reader.GetString("typname");
+                        var oid = uint.Parse(reader.GetString("oid"), NumberFormatInfo.InvariantInfo);
 
                         Debug.Assert(oid != 0);
 
-                        var typeChar = reader.GetChar(reader.GetOrdinal("type"));
+                        var typeChar = reader.GetChar("typtype");
                         switch (typeChar)
                         {
                         case 'b':  // Normal base type
@@ -216,7 +219,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
 
                         case 'a': // Array
                         {
-                            var elementOID = Convert.ToUInt32(reader[reader.GetOrdinal("elemoid")]);
+                            var elementOID = uint.Parse(reader.GetString("typelem"), NumberFormatInfo.InvariantInfo);
                             Debug.Assert(elementOID > 0);
                             if (!byOID.TryGetValue(elementOID, out var elementPostgresType))
                             {
@@ -231,7 +234,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
 
                         case 'r': // Range
                         {
-                            var elementOID = Convert.ToUInt32(reader[reader.GetOrdinal("elemoid")]);
+                            var elementOID = uint.Parse(reader.GetString("typelem"), NumberFormatInfo.InvariantInfo);
                             Debug.Assert(elementOID > 0);
                             if (!byOID.TryGetValue(elementOID, out var subtypePostgresType))
                             {
@@ -256,7 +259,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
                             continue;
 
                         case 'd':   // Domain
-                            var baseTypeOID = Convert.ToUInt32(reader[reader.GetOrdinal("typbasetype")]);
+                            var baseTypeOID = uint.Parse(reader.GetString("typbasetype"), NumberFormatInfo.InvariantInfo);
                             Debug.Assert(baseTypeOID > 0);
                             if (!byOID.TryGetValue(baseTypeOID, out var basePostgresType))
                             {
@@ -311,7 +314,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
 
             while (reader.Read())
             {
-                var oid = Convert.ToUInt32(reader[reader.GetOrdinal("oid")]);
+                var oid = uint.Parse(reader.GetString("oid"), NumberFormatInfo.InvariantInfo);
                 if (oid != currentOID)
                 {
                     currentOID = oid;
@@ -339,8 +342,8 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
                 if (skipCurrent)
                     continue;
 
-                var fieldName = reader.GetString(reader.GetOrdinal("attname"));
-                var fieldTypeOID = Convert.ToUInt32(reader[reader.GetOrdinal("atttypid")]);
+                var fieldName = reader.GetString("attname");
+                var fieldTypeOID = uint.Parse(reader.GetString("atttypid"), NumberFormatInfo.InvariantInfo);
                 if (!byOID.TryGetValue(fieldTypeOID, out var fieldType))  // See #2020
                 {
                     Log.Warn($"Skipping composite type {currentComposite!.DisplayName} with field {fieldName} with type OID {fieldTypeOID}, which could not be resolved to a PostgreSQL type.");
@@ -366,7 +369,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
 
             while (reader.Read())
             {
-                var oid = Convert.ToUInt32(reader[reader.GetOrdinal("oid")]);
+                var oid = uint.Parse(reader.GetString("oid"), NumberFormatInfo.InvariantInfo);
                 if (oid != currentOID)
                 {
                     currentOID = oid;
@@ -394,7 +397,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
                 if (skipCurrent)
                     continue;
 
-                currentEnum!.MutableLabels.Add(reader.GetString(reader.GetOrdinal("enumlabel")));
+                currentEnum!.MutableLabels.Add(reader.GetString("enumlabel"));
             }
         }
     }
