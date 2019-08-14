@@ -149,6 +149,13 @@ namespace Npgsql
                 return Commit(true);
         }
 
+        // This overload exists only to avoid introducing a binary breaking change in 4.1. Removed in 5.0.
+        /// <summary>
+        /// Commits the database transaction.
+        /// </summary>
+        [PublicAPI]
+        public Task CommitAsync() => CommitAsync(CancellationToken.None);
+
         #endregion
 
         #region Rollback
@@ -181,6 +188,13 @@ namespace Npgsql
             using (NoSynchronizationContextScope.Enter())
                 return Rollback(true);
         }
+
+        // This overload exists only to avoid introducing a binary breaking change in 4.1. Removed in 5.0.
+        /// <summary>
+        /// Rolls back a transaction from a pending state.
+        /// </summary>
+        [PublicAPI]
+        public Task RollbackAsync() => RollbackAsync(CancellationToken.None);
 
         #endregion
 
