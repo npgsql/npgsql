@@ -76,7 +76,7 @@ namespace Npgsql
         /// <summary>
         /// Initializes a new instance of the <see cref="NpgsqlCommand">NpgsqlCommand</see> class.
         /// </summary>
-        public NpgsqlCommand() : this(null, null, null) {}
+        public NpgsqlCommand() : this(string.Empty, null, null) {}
 
         /// <summary>
         /// Initializes a new instance of the <see cref="NpgsqlCommand">NpgsqlCommand</see> class with the text of the query.
@@ -125,6 +125,9 @@ namespace Npgsql
             get => _commandText;
             set
             {
+                if (value == null)
+                    throw new ArgumentNullException(nameof(value));
+
                 _commandText = State == CommandState.Idle
                     ? value
                     : throw new InvalidOperationException("An open data reader exists for this command.");
@@ -683,9 +686,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         void ProcessRawQuery(bool deriveParameters = false)
         {
-            if (string.IsNullOrEmpty(CommandText))
-                throw new InvalidOperationException("CommandText property has not been initialized");
-
             NpgsqlStatement statement;
             switch (CommandType) {
             case CommandType.Text:

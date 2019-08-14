@@ -517,21 +517,12 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void CommandTextNotSet()
+        public void EmptyQuery()
         {
             using (var conn = OpenConnection())
             {
-                using (var cmd = new NpgsqlCommand())
-                {
-                    cmd.Connection = conn;
-                    Assert.That(cmd.ExecuteNonQuery, Throws.Exception.TypeOf<InvalidOperationException>());
-                    cmd.CommandText = null;
-                    Assert.That(cmd.ExecuteNonQuery, Throws.Exception.TypeOf<InvalidOperationException>());
-                    cmd.CommandText = "";
-                }
-
-                using (var cmd = conn.CreateCommand())
-                    Assert.That(cmd.ExecuteNonQuery, Throws.Exception.TypeOf<InvalidOperationException>());
+                conn.ExecuteNonQuery("");
+                conn.ExecuteNonQuery(";");
             }
         }
 
