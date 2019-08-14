@@ -27,8 +27,14 @@ contains lots of useful compatibility information.
 
 Additional known issues:
 
+* If you want to connect over SSL, your connection string must contain `Server Compatibility Mode=Redshift`, otherwise you'll get a connection
+  error about `ssl_renegotiation_limit`.
 * Entity Framework with database-computed identity values don't work with Redshift, since it doesn't support sequences
 (see issue [#544](https://github.com/npgsql/npgsql/issues/544)).
+
+## DigitalOcean Managed Database
+
+DigitalOcean's Managed Database services requires you to connect to PostgreSQL over SSL.  Unfortunately when you enable it in your connection string, you will get the same error regarding `ssl_renegotiation_limit` as Amazon Redshift.  The Redshift compatibility mode setting resolves the issue on DigitalOcean.
 
 ## pgbouncer
 
