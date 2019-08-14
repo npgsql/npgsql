@@ -50,7 +50,7 @@ namespace Npgsql
         static bool _initialized;
         static readonly object InitLock = new object();
 
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(Counters));
 
 #pragma warning disable CA1801 // Review unused parameters
         internal static void Initialize(bool usePerfCounters)

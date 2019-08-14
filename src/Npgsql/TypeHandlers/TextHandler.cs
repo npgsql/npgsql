@@ -252,7 +252,7 @@ namespace Npgsql.TypeHandlers
             if (parameter?.Size > 0)
                 throw new ArgumentException($"Parameter {parameter.ParameterName} is of type ArraySegment<char> and should not have its Size set", parameter.ParameterName);
 
-            return lengthCache.Set(_encoding.GetByteCount(value.Array, value.Offset, value.Count));
+            return lengthCache.Set(value.Array is null ? 0 : _encoding.GetByteCount(value.Array, value.Offset, value.Count));
         }
 
         public int ValidateAndGetLength(char value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
@@ -275,8 +275,8 @@ namespace Npgsql.TypeHandlers
             return buf.WriteChars(value, 0, charLen, lengthCache.GetLast(), async);
         }
 
-        public virtual Task Write(ArraySegment<char> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async) => 
-            buf.WriteChars(value.Array, value.Offset, value.Count, lengthCache.GetLast(), async);
+        public virtual Task Write(ArraySegment<char> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+            => value.Array is null ? PGUtil.CompletedTask : buf.WriteChars(value.Array, value.Offset, value.Count, lengthCache.GetLast(), async);
 
         Task WriteString(string str, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter, bool async)
         {

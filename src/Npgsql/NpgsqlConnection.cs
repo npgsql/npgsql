@@ -121,7 +121,7 @@ namespace Npgsql
         /// </summary>
         internal const int TimeoutLimit = 1024;
 
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlConnection));
 
         static bool _countersInitialized;
 

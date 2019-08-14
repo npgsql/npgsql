@@ -1,7 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <VersionPrefix>4.0.8</VersionPrefix>
     <Description>GeoJSON plugin for Npgsql, allowing mapping of PostGIS geometry types to GeoJSON types.</Description>
     <Authors>Yoh Deadfall, Shay Rojansky</Authors>
     <Copyright>Copyright 2019 © The Npgsql Development Team</Copyright>

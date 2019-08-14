@@ -62,7 +62,7 @@ namespace Npgsql
         [ItemCanBeNull]
         readonly NpgsqlParameter[] _params;
 
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlBinaryImporter));
 
         #endregion
 
@@ -301,8 +301,8 @@ namespace Npgsql
                 _buf.EndCopyMode();
 
                 _connector.SendMessage(CopyDoneMessage.Instance);
-                Expect<CommandCompleteMessage>(_connector.ReadMessage());
-                Expect<ReadyForQueryMessage>(_connector.ReadMessage());
+                Expect<CommandCompleteMessage>(_connector.ReadMessage(), _connector);
+                Expect<ReadyForQueryMessage>(_connector.ReadMessage(), _connector);
                 _state = ImporterState.Committed;
             }
             catch
