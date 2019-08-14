@@ -458,6 +458,14 @@ namespace Npgsql
             if (!string.IsNullOrEmpty(Settings.SearchPath))
                 startupParams["search_path"] = Settings.SearchPath;
 
+            // SSL renegotiation support has been dropped in recent versions of PostgreSQL
+            // (OpenSSL implementations were buggy etc.), but disable them for older un-patched
+            // versions which turns it on by default.
+            // Amazon Redshift doesn't recognize the ssl_renegotiation_limit parameter and bombs
+            // (https://forums.aws.amazon.com/thread.jspa?messageID=721898&#721898)
+            if (IsSecure && !IsRedshift)
+                startupParams["ssl_renegotiation_limit"] = "0";
+
             var timezone = Settings.Timezone ?? Environment.GetEnvironmentVariable("PGTZ");
             if (timezone != null)
                 startupParams["TimeZone"] = timezone;
