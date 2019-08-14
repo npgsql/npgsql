@@ -3,7 +3,7 @@
   <PropertyGroup>
     <Copyright>Copyright 2019 © The Npgsql Development Team</Copyright>
     <Company>Npgsql</Company>
-    <VersionPrefix>5.0.0</VersionPrefix>
+    <VersionPrefix>4.1.0</VersionPrefix>
 
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>git://github.com/npgsql/npgsql</RepositoryUrl>
