@@ -1,5 +1,5 @@
 image: Visual Studio 2019 Preview
-version: 5.0.0-{build}
+version: 4.1.0-{build}
 environment:
   global:
     DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
