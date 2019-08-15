@@ -89,7 +89,7 @@ using (var reader = cmd.ExecuteReader())
 And for extra credit, you can specify JSON by default for array types just like for regular CLR types:
 
 ```c#
-NpgsqlConnection.GlobalTypeMapper.UseJsonNet(new[] { typeof(int[] });
+NpgsqlConnection.GlobalTypeMapper.UseJsonNet(new[] { typeof(int[]) });
 ```
 
 This overwrites the default array mapping (which sends [PostgreSQL arrays](https://www.postgresql.org/docs/current/static/arrays.html)), making Npgsql send int arrays as JSON by default.

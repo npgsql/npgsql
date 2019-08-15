@@ -3,27 +3,8 @@ layout: doc
 title: Documentation
 ---
 
-<p id="badges">
-  <a href="https://www.nuget.org/packages/Npgsql/">
-    <img src="https://img.shields.io/nuget/v/Npgsql.svg?label=Stable&amp;style=plastic;maxAge=600" />
-  </a>
-
-  <a href="https://www.myget.org/gallery/npgsql-unstable">
-    <img src="https://img.shields.io/myget/npgsql-unstable/vpre/npgsql.svg?label=Unstable&amp;style=plastic;maxAge=600" />
-  </a>
-
-  <a href="https://ci.appveyor.com/project/roji/npgsql">
-    <img src="https://img.shields.io/appveyor/ci/roji/npgsql/dev.svg" />
-  </a>
-
-  <a href="https://travis-ci.org/npgsql/npgsql" >
-    <img src="https://img.shields.io/travis/npgsql/npgsql.svg" />
-  </a>
-
-  <a href="https://gitter.im/npgsql/npgsql">
-    <img src="https://img.shields.io/badge/GITTER-JOIN%20CHAT-brightgreen.svg?style=plastic;maxAge=600" />
-  </a>
-</p>
+[![stable](https://img.shields.io/nuget/v/Npgsql.svg?label=stable)](https://www.nuget.org/packages/Npgsql/) [![unstable](https://img.shields.io/myget/npgsql-unstable/v/npgsql.svg?label=unstable)](https://www.myget.org/feed/npgsql-unstable/package/nuget/Npgsql) [![next patch](https://img.shields.io/myget/npgsql/v/npgsql.svg?label=next%20patch)](https://www.myget.org/feed/npgsql/package/nuget/Npgsql) 
+[![appveyor](https://img.shields.io/appveyor/ci/roji/npgsql/dev.svg?label=appveyor)](https://ci.appveyor.com/project/roji/npgsql) [![travis](https://img.shields.io/travis/npgsql/npgsql.svg?label=travis)](https://travis-ci.org/npgsql/npgsql) [![gitter](https://img.shields.io/badge/gitter-join%20chat-brightgreen.svg)](https://gitter.im/npgsql/npgsql)
 
 ## Getting Started
 
