@@ -51,7 +51,7 @@ namespace Npgsql
         /// </summary>
         public override DbDataAdapter CreateDataAdapter() => new NpgsqlDataAdapter();
 
-#if !NET461 && !NETSTANDARD2_0 && !NETSTANDARD2_1
+#if !NET461 && !NETSTANDARD2_0
         /// <summary>
         /// Specifies whether the specific <see cref="DbProviderFactory"/> supports the <see cref="DbDataAdapter"/> class.
         /// </summary>
