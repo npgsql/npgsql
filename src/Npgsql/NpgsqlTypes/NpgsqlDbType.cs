@@ -513,6 +513,18 @@ namespace NpgsqlTypes
         /// <remarks>See http://www.postgresql.org/docs/current/static/ltree.html</remarks>
         Ltree = 61,    // Extension type
 
+        /// <summary>
+        /// The PostgreSQL lquery type for PostgreSQL extension ltree
+        /// </summary>
+        /// <remarks>See http://www.postgresql.org/docs/current/static/ltree.html</remarks>
+        Lquery = 62,    // Extension type
+
+        /// <summary>
+        /// The PostgreSQL ltxtquery type for PostgreSQL extension ltree
+        /// </summary>
+        /// <remarks>See http://www.postgresql.org/docs/current/static/ltree.html</remarks>
+        Ltxtquery = 63,    // Extension type
+
         #endregion
 
     }
