@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.Common;
 using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
@@ -306,7 +305,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
         /// </summary>
         /// <param name="reader">The reader from which to read composite fields.</param>
         /// <param name="byOID">The OID of the composite type for which fields are read.</param>
-        static void LoadCompositeFields(DbDataReader reader, Dictionary<uint, PostgresType> byOID)
+        static void LoadCompositeFields(NpgsqlDataReader reader, Dictionary<uint, PostgresType> byOID)
         {
             var currentOID = uint.MaxValue;
             PostgresCompositeType? currentComposite = null;
@@ -361,7 +360,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
         /// </summary>
         /// <param name="reader">The reader from which to read enum labels.</param>
         /// <param name="byOID">The OID of the enum type for which labels are read.</param>
-        static void LoadEnumLabels(DbDataReader reader, Dictionary<uint, PostgresType> byOID)
+        static void LoadEnumLabels(NpgsqlDataReader reader, Dictionary<uint, PostgresType> byOID)
         {
             var currentOID = uint.MaxValue;
             PostgresEnumType? currentEnum = null;

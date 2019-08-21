@@ -10,7 +10,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Globalization;
-using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.Logging;
 using Npgsql.TypeMapping;
@@ -981,7 +980,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         async Task<int> ExecuteNonQuery(bool async, CancellationToken cancellationToken)
         {
-            using (var reader = await ExecuteDbDataReader(CommandBehavior.Default, async, cancellationToken))
+            using (var reader = await ExecuteReaderAsync(CommandBehavior.Default, async, cancellationToken))
             {
                 while (async ? await reader.NextResultAsync(cancellationToken) : reader.NextResult()) {}
                 reader.Close();
@@ -1025,7 +1024,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             var behavior = CommandBehavior.SingleRow;
             if (!Parameters.HasOutputParameters)
                 behavior |= CommandBehavior.SequentialAccess;
-            using (var reader = await ExecuteDbDataReader(behavior, async, cancellationToken))
+            using (var reader = await ExecuteReaderAsync(behavior, async, cancellationToken))
                 return reader.Read() && reader.FieldCount != 0 ? reader.GetValue(0) : null;
         }
 
@@ -1034,47 +1033,58 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         #region Execute Reader
 
         /// <summary>
-        /// Executes the CommandText against the Connection, and returns an DbDataReader.
+        /// Executes the command text against the connection.
         /// </summary>
-        /// <remarks>
-        /// Unlike the ADO.NET method which it replaces, this method returns a Npgsql-specific
-        /// DataReader.
-        /// </remarks>
-        /// <returns>A DbDataReader object.</returns>
-        public new NpgsqlDataReader ExecuteReader() => (NpgsqlDataReader) base.ExecuteReader();
-
-        /// <summary>
-        /// Executes the CommandText against the Connection, and returns an DbDataReader using one
-        /// of the CommandBehavior values.
-        /// </summary>
-        /// <remarks>
-        /// Unlike the ADO.NET method which it replaces, this method returns a Npgsql-specific
-        /// DataReader.
-        /// </remarks>
-        /// <returns>A DbDataReader object.</returns>
-        public new NpgsqlDataReader ExecuteReader(CommandBehavior behavior) => (NpgsqlDataReader) base.ExecuteReader(behavior);
+        /// <returns>A task representing the operation.</returns>
+        protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior)
+            => ExecuteReader(behavior);
 
         /// <summary>
         /// Executes the command text against the connection.
         /// </summary>
         /// <param name="behavior">An instance of <see cref="CommandBehavior"/>.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
-        /// <returns></returns>
-        protected override Task<DbDataReader> ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
-        {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled<DbDataReader>(cancellationToken);
-            using (NoSynchronizationContextScope.Enter())
-                return ExecuteDbDataReader(behavior, true, cancellationToken).AsTask();
-        }
+        /// <returns>A task representing the asynchronous operation.</returns>
+        protected override async Task<DbDataReader> ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
+            => await ExecuteReaderAsync(behavior, cancellationToken);
 
         /// <summary>
-        /// Executes the command text against the connection.
+        /// Executes the <see cref="CommandText"/> against the <see cref="Connection"/>
+        /// and returns a <see cref="NpgsqlDataReader"/>.
         /// </summary>
-        [NotNull]
-        protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior) => ExecuteDbDataReader(behavior, false, CancellationToken.None).GetAwaiter().GetResult();
+        /// <param name="behavior">One of the enumeration values that specified the command behavior.</param>
+        /// <returns>A task representing the operation.</returns>
+        public new NpgsqlDataReader ExecuteReader(CommandBehavior behavior = CommandBehavior.Default)
+            => ExecuteReaderAsync(behavior, async: false, CancellationToken.None).GetAwaiter().GetResult();
 
-        async ValueTask<DbDataReader> ExecuteDbDataReader(CommandBehavior behavior, bool async, CancellationToken cancellationToken)
+        /// <summary>
+        /// An asynchronous version of <see cref="ExecuteReader"/>, which executes
+        /// the <see cref="CommandText"/> against the <see cref="Connection"/>
+        /// and returns a <see cref="NpgsqlDataReader"/>.
+        /// </summary>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        public new Task<NpgsqlDataReader> ExecuteReaderAsync(CancellationToken cancellationToken = default)
+            => ExecuteReaderAsync(CommandBehavior.Default, cancellationToken);
+
+        /// <summary>
+        /// An asynchronous version of <see cref="ExecuteReader(CommandBehavior)"/>,
+        /// which executes the <see cref="CommandText"/> against the <see cref="Connection"/>
+        /// and returns a <see cref="NpgsqlDataReader"/>.
+        /// </summary>
+        /// <param name="behavior">One of the enumeration values that specified the command behavior.</param>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        public new Task<NpgsqlDataReader> ExecuteReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken = default)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled<NpgsqlDataReader>(cancellationToken);
+
+            using (NoSynchronizationContextScope.Enter())
+                return ExecuteReaderAsync(behavior, async: true, cancellationToken).AsTask();
+        }
+
+        async ValueTask<NpgsqlDataReader> ExecuteReaderAsync(CommandBehavior behavior, bool async, CancellationToken cancellationToken)
         {
             var connector = CheckReadyAndGetConnector();
             connector.StartUserAction(this);
@@ -1287,7 +1297,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// Create a new command based on this one.
         /// </summary>
         /// <returns>A new NpgsqlCommand object.</returns>
-        [PublicAPI]
         public NpgsqlCommand Clone()
         {
             var clone = new NpgsqlCommand(CommandText, _connection, Transaction)
