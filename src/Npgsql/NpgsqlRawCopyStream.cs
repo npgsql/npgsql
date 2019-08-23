@@ -115,7 +115,7 @@ namespace Npgsql
 
             try {
                 // Value is too big, flush.
-                Flush();
+                await FlushAsync(async);
 
                 if (count <= _writeBuf.WriteSpaceLeft)
                 {
@@ -132,10 +132,20 @@ namespace Npgsql
             }
         }
 
-        public override void Flush()
+        public override void Flush() => FlushAsync(false).GetAwaiter().GetResult();
+
+        public override Task FlushAsync(CancellationToken cancellationToken)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled(cancellationToken);
+            using (NoSynchronizationContextScope.Enter())
+                return FlushAsync(true);
+        }
+
+        Task FlushAsync(bool async)
         {
             CheckDisposed();
-            _writeBuf.Flush();
+            return _writeBuf.Flush(async);
         }
 
         #endregion
