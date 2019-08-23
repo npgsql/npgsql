@@ -17,7 +17,7 @@ namespace Npgsql
     /// <remarks>
     /// See http://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
-    public sealed class NpgsqlBinaryImporter : ICancelable
+    public sealed class NpgsqlBinaryImporter : ICancelable, IAsyncDisposable
     {
         #region Fields and Properties
 
@@ -415,6 +415,12 @@ namespace Npgsql
         /// </summary>
         public void Dispose() => Close();
 
+        /// <summary>
+        /// Async cancels that binary import and sets the connection back to idle state
+        /// </summary>
+        /// <returns></returns>
+        public ValueTask DisposeAsync() => CloseAsync(true);
+
         async Task Cancel(bool async)
         {
             _state = ImporterState.Cancelled;
@@ -440,14 +446,30 @@ namespace Npgsql
         /// Completes the import process and signals to the database to write everything.
         /// </summary>
         [PublicAPI]
-        public void Close()
+        public void Close() => CloseAsync(false).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Async completes the import process and signals to the database to write everything.
+        /// </summary>
+        /// <returns></returns>
+        /// <exception cref="Exception"></exception>
+        [PublicAPI]
+        public ValueTask CloseAsync(CancellationToken cancellationToken = default)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return new ValueTask(Task.FromCanceled(cancellationToken));
+            using (NoSynchronizationContextScope.Enter())
+                return CloseAsync(true);
+        }
+
+        async ValueTask CloseAsync(bool async)
         {
             switch (_state)
             {
             case ImporterState.Disposed:
                 return;
             case ImporterState.Ready:
-                Cancel(false).GetAwaiter().GetResult();
+                await Cancel(async);
                 break;
             case ImporterState.Cancelled:
             case ImporterState.Committed:
@@ -460,6 +482,7 @@ namespace Npgsql
             Cleanup();
             connector.EndUserAction();
         }
+
 
 #pragma warning disable CS8625
         void Cleanup()
