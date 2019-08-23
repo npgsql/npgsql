@@ -25,6 +25,7 @@ By default, the test suite expects an account named `npgsql_tests` with a passwo
 ```
 $ psql -h localhost -U postgres
 postgres=# CREATE USER npgsql_tests PASSWORD 'npgsql_tests' SUPERUSER;
+postgres=# CREATE DATABASE npgsql_tests OWNER npgsql_tests;
 ```
 
 _Note: superuser access is required to create and drop test databases, load extensions (e.g. `hstore`, `postgis`), etc._
@@ -33,7 +34,8 @@ _Note: superuser access is required to create and drop test databases, load exte
 
 ```
 cd ~
-git clone git@github.com:npgsql/npgsql.git
+git clone git@github.com:npgsql/npgsql.git	(use ssh)
+git clone https://github.com/npgsql/npgsql.git	(use https)
 ```
 
 ### Run the test suite
