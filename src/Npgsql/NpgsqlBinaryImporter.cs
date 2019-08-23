@@ -152,7 +152,7 @@ namespace Npgsql
                 return Write(value, true);
         }
 
-        async Task Write<T>([AllowNull] T value, bool async)
+        Task Write<T>([AllowNull] T value, bool async)
         {
             var p = _params[_column];
             if (p == null)
@@ -163,7 +163,7 @@ namespace Npgsql
                     : new NpgsqlParameter<T>();
             }
 
-            await Write(value, p, async);
+            return Write(value, p, async);
         }
 
         /// <summary>
@@ -200,7 +200,7 @@ namespace Npgsql
                 return Write(value, npgsqlDbType, true);
         }
 
-        async Task Write<T>([AllowNull] T value, NpgsqlDbType npgsqlDbType, bool async)
+        Task Write<T>([AllowNull] T value, NpgsqlDbType npgsqlDbType, bool async)
         {
             var p = _params[_column];
             if (p == null)
@@ -215,7 +215,7 @@ namespace Npgsql
             if (npgsqlDbType != p.NpgsqlDbType)
                 throw new InvalidOperationException($"Can't change {nameof(p.NpgsqlDbType)} from {p.NpgsqlDbType} to {npgsqlDbType}");
 
-            await Write(value, p, async);
+            return Write(value, p, async);
         }
 
         /// <summary>
@@ -248,7 +248,7 @@ namespace Npgsql
                 return Write(value, dataTypeName, true);
         }
 
-        async Task Write<T>([AllowNull] T value, string dataTypeName, bool async)
+        Task Write<T>([AllowNull] T value, string dataTypeName, bool async)
         {
             var p = _params[_column];
             if (p == null)
@@ -263,7 +263,7 @@ namespace Npgsql
             //if (dataTypeName!= p.DataTypeName)
             //    throw new InvalidOperationException($"Can't change {nameof(p.DataTypeName)} from {p.DataTypeName} to {dataTypeName}");
 
-            await Write(value, p, async);
+            return Write(value, p, async);
         }
 
         async Task Write<T>([AllowNull] T value, NpgsqlParameter param, bool async)
