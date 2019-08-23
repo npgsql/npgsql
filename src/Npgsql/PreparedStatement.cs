@@ -85,11 +85,7 @@ namespace Npgsql
 
             HandlerParamTypes = new Type[parameters.Count];
             for (var i = 0; i < parameters.Count; i++)
-            {
-                var handler = parameters[i].Handler != null;
-                Debug.Assert(handler, "Parameter handler type not set when creating prepared statement");
-                HandlerParamTypes[i] = handler.GetType();
-            }
+                HandlerParamTypes[i] = parameters[i].Handler!.GetType();
         }
 
         internal bool DoParametersMatch(List<NpgsqlParameter> parameters)
@@ -98,11 +94,8 @@ namespace Npgsql
                 return false;
 
             for (var i = 0; i < HandlerParamTypes.Length; i++)
-            {
-                var handler = parameters[i].Handler!;
-                if (HandlerParamTypes[i] != handler.GetType())
+                if (HandlerParamTypes[i] != parameters[i].Handler!.GetType())
                     return false;
-            }
 
             return true;
         }
