@@ -153,9 +153,9 @@ namespace Npgsql.TypeHandlers
             }
         }
 
-        protected internal override async Task WriteObjectWithLength(object? value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        protected internal override async Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
-            if (value == null || value is DBNull)
+            if (value is DBNull)
             {
                 await base.WriteObjectWithLength(DBNull.Value, buf, lengthCache, parameter, async);
                 return;

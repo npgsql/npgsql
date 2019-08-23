@@ -66,9 +66,9 @@ namespace Npgsql.TypeHandlers
             return base.ValidateAndGetLength(converted, ref lengthCache, parameter);
         }
 
-        protected internal override Task WriteObjectWithLength(object? value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
-            if (value == null || value is DBNull)
+            if (value is DBNull)
                 return base.WriteObjectWithLength(DBNull.Value, buf, lengthCache, parameter, async);
 
             var convertedValue = value is string asString

@@ -77,9 +77,9 @@ namespace Npgsql.TypeHandlers
         protected override Task WriteWithLength<TAny>(TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => WriteObjectWithLength(value!, buf, lengthCache, parameter, async);
 
-        protected internal override Task WriteObjectWithLength(object? value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
-            if (value == null || value is DBNull)
+            if (value is DBNull)
                 return WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async);
 
             if (buf.WriteSpaceLeft < 4)
