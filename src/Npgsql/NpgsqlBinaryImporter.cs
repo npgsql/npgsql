@@ -483,7 +483,6 @@ namespace Npgsql
             connector.EndUserAction();
         }
 
-
 #pragma warning disable CS8625
         void Cleanup()
         {

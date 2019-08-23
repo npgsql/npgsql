@@ -346,7 +346,9 @@ namespace Npgsql
         /// <summary>
         /// Completes that binary export and sets the connection back to idle state
         /// </summary>
-        public void Dispose()
+        public void Dispose() => DisposeAsync(false).GetAwaiter().GetResult();
+
+        async ValueTask DisposeAsync(bool async)
         {
             if (_isDisposed) { return; }
 
@@ -356,8 +358,8 @@ namespace Npgsql
                 _buf.Skip(_leftToReadInDataMsg);
                 // Read to the end
                 _connector.SkipUntil(BackendMessageCode.CopyDone);
-                Expect<CommandCompleteMessage>(_connector.ReadMessage(), _connector);
-                Expect<ReadyForQueryMessage>(_connector.ReadMessage(), _connector);
+                Expect<CommandCompleteMessage>(await _connector.ReadMessage(async), _connector);
+                Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async), _connector);
             }
 
             var connector = _connector;

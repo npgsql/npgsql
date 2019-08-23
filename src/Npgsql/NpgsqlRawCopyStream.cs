@@ -264,7 +264,9 @@ namespace Npgsql
 
         #region Dispose
 
-        protected override void Dispose(bool disposing)
+        protected override void Dispose(bool disposing) => DisposeAsync(disposing, false).GetAwaiter().GetResult();
+
+        async ValueTask DisposeAsync(bool disposing, bool async)
         {
             if (_isDisposed || !disposing) { return; }
 
@@ -272,12 +274,12 @@ namespace Npgsql
             {
                 if (CanWrite)
                 {
-                    Flush();
+                    await FlushAsync(async);
                     _writeBuf.EndCopyMode();
-                    _connector.WriteCopyDone();
-                    _connector.Flush();
-                    Expect<CommandCompleteMessage>(_connector.ReadMessage(), _connector);
-                    Expect<ReadyForQueryMessage>(_connector.ReadMessage(), _connector);
+                    await _connector.WriteCopyDone(async);
+                    await _connector.Flush(async);
+                    Expect<CommandCompleteMessage>(await _connector.ReadMessage(async), _connector);
+                    Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async), _connector);
                 }
                 else
                 {
@@ -285,7 +287,7 @@ namespace Npgsql
                     {
                         if (_leftToReadInDataMsg > 0)
                         {
-                            _readBuf.Skip(_leftToReadInDataMsg);
+                            await _readBuf.Skip(_leftToReadInDataMsg, async);
                         }
                         _connector.SkipUntil(BackendMessageCode.ReadyForQuery);
                     }
