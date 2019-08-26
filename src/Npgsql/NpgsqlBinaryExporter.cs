@@ -120,7 +120,7 @@ namespace Npgsql
             using (NoSynchronizationContextScope.Enter())
                 return StartRow(true);
         }
-        
+
         async ValueTask<int> StartRow(bool async)
         {
             CheckDisposed();
