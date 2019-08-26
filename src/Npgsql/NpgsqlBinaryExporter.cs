@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.Logging;
 using Npgsql.TypeHandling;
@@ -14,7 +16,7 @@ namespace Npgsql
     /// Provides an API for a binary COPY TO operation, a high-performance data export mechanism from
     /// a PostgreSQL table. Initiated by <see cref="NpgsqlConnection.BeginBinaryExport"/>
     /// </summary>
-    public sealed class NpgsqlBinaryExporter : ICancelable
+    public sealed class NpgsqlBinaryExporter : ICancelable, IDisposable, IAsyncDisposable
     {
         #region Fields and Properties
 
@@ -102,7 +104,24 @@ namespace Npgsql
         /// The number of columns in the row. -1 if there are no further rows.
         /// Note: This will currently be the same value for all rows, but this may change in the future.
         /// </returns>
-        public int StartRow()
+        public int StartRow() => StartRow(false).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Starts reading a single row, must be invoked before reading any columns.
+        /// </summary>
+        /// <returns>
+        /// The number of columns in the row. -1 if there are no further rows.
+        /// Note: This will currently be the same value for all rows, but this may change in the future.
+        /// </returns>
+        public ValueTask<int> StartRowAsync(CancellationToken cancellationToken = default)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return new ValueTask<int>(Task.FromCanceled<int>(cancellationToken));
+            using (NoSynchronizationContextScope.Enter())
+                return StartRow(true);
+        }
+        
+        async ValueTask<int> StartRow(bool async)
         {
             CheckDisposed();
             if (_isConsumed) { return -1; }
@@ -112,21 +131,21 @@ namespace Npgsql
             // message per row).
             if (_column == NumColumns)
             {
-                _leftToReadInDataMsg = Expect<CopyDataMessage>(_connector.ReadMessage(), _connector).Length;
+                _leftToReadInDataMsg = Expect<CopyDataMessage>(await _connector.ReadMessage(async), _connector).Length;
             }
             else if (_column != -1)
             {
                 throw new InvalidOperationException("Already in the middle of a row");
             }
-            _buf.Ensure(2);
+            await _buf.Ensure(2, async);
             _leftToReadInDataMsg -= 2;
             var numColumns = _buf.ReadInt16();
             if (numColumns == -1)
             {
                 Debug.Assert(_leftToReadInDataMsg == 0);
-                Expect<CopyDoneMessage>(_connector.ReadMessage(), _connector);
-                Expect<CommandCompleteMessage>(_connector.ReadMessage(), _connector);
-                Expect<ReadyForQueryMessage>(_connector.ReadMessage(), _connector);
+                Expect<CopyDoneMessage>(await _connector.ReadMessage(async), _connector);
+                Expect<CommandCompleteMessage>(await _connector.ReadMessage(async), _connector);
+                Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async), _connector);
                 _column = -1;
                 _isConsumed = true;
                 return -1;
@@ -147,7 +166,27 @@ namespace Npgsql
         /// specify the type.
         /// </typeparam>
         /// <returns>The value of the column</returns>
-        public T Read<T>()
+        public T Read<T>() => Read<T>(false).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Reads the current column, returns its value and moves ahead to the next column.
+        /// If the column is null an exception is thrown.
+        /// </summary>
+        /// <typeparam name="T">
+        /// The type of the column to be read. This must correspond to the actual type or data
+        /// corruption will occur. If in doubt, use <see cref="Read{T}(NpgsqlDbType)"/> to manually
+        /// specify the type.
+        /// </typeparam>
+        /// <returns>The value of the column</returns>
+        public ValueTask<T> ReadAsync<T>(CancellationToken cancellationToken = default)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return new ValueTask<T>(Task.FromCanceled<T>(cancellationToken));
+            using (NoSynchronizationContextScope.Enter())
+                return Read<T>(true);
+        }
+
+        ValueTask<T> Read<T>(bool async)
         {
             CheckDisposed();
             if (_column == -1 || _column == NumColumns) {
@@ -158,7 +197,7 @@ namespace Npgsql
             var handler = _typeHandlerCache[_column];
             if (handler == null)
                 handler = _typeHandlerCache[_column] = _typeMapper.GetByClrType(type);
-            return DoRead<T>(handler);
+            return DoRead<T>(handler, async);
         }
 
         /// <summary>
@@ -174,7 +213,31 @@ namespace Npgsql
         /// </param>
         /// <typeparam name="T">The .NET type of the column to be read.</typeparam>
         /// <returns>The value of the column</returns>
-        public T Read<T>(NpgsqlDbType type)
+        public T Read<T>(NpgsqlDbType type) => Read<T>(type, false).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Reads the current column, returns its value according to <paramref name="type"/> and
+        /// moves ahead to the next column.
+        /// If the column is null an exception is thrown.
+        /// </summary>
+        /// <param name="type">
+        /// In some cases <typeparamref name="T"/> isn't enough to infer the data type coming in from the
+        /// database. This parameter and be used to unambiguously specify the type. An example is the JSONB
+        /// type, for which <typeparamref name="T"/> will be a simple string but for which
+        /// <paramref name="type"/> must be specified as <see cref="NpgsqlDbType.Jsonb"/>.
+        /// </param>
+        /// <param name="cancellationToken"></param>
+        /// <typeparam name="T">The .NET type of the column to be read.</typeparam>
+        /// <returns>The value of the column</returns>
+        public ValueTask<T> ReadAsync<T>(NpgsqlDbType type, CancellationToken cancellationToken = default)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return new ValueTask<T>(Task.FromCanceled<T>(cancellationToken));
+            using (NoSynchronizationContextScope.Enter())
+                return Read<T>(type, true);
+        }
+
+        ValueTask<T> Read<T>(NpgsqlDbType type, bool async)
         {
             CheckDisposed();
             if (_column == -1 || _column == NumColumns) {
@@ -184,20 +247,20 @@ namespace Npgsql
             var handler = _typeHandlerCache[_column];
             if (handler == null)
                 handler = _typeHandlerCache[_column] = _typeMapper.GetByNpgsqlDbType(type);
-            return DoRead<T>(handler);
+            return DoRead<T>(handler, async);
         }
 
-        T DoRead<T>(NpgsqlTypeHandler handler)
+        async ValueTask<T> DoRead<T>(NpgsqlTypeHandler handler, bool async)
         {
             try {
-                ReadColumnLenIfNeeded();
+                await ReadColumnLenIfNeeded(async);
                 if (_columnLen == -1)
                     throw new InvalidCastException("Column is null");
 
                 // If we know the entire column is already in memory, use the code path without async
                 var result = _columnLen <= _buf.ReadBytesLeft
                     ? handler.Read<T>(_buf, _columnLen)
-                    : handler.Read<T>(_buf, _columnLen, false).GetAwaiter().GetResult();
+                    : await handler.Read<T>(_buf, _columnLen, async);
 
                 _leftToReadInDataMsg -= _columnLen;
                 _columnLen = int.MinValue;   // Mark that the (next) column length hasn't been read yet
@@ -217,7 +280,7 @@ namespace Npgsql
         {
             get
             {
-                ReadColumnLenIfNeeded();
+                ReadColumnLenIfNeeded(false).GetAwaiter().GetResult();
                 return _columnLen == -1;
             }
         }
@@ -225,11 +288,24 @@ namespace Npgsql
         /// <summary>
         /// Skips the current column without interpreting its value.
         /// </summary>
-        public void Skip()
+        public void Skip() => Skip(false).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Skips the current column without interpreting its value.
+        /// </summary>
+        public Task SkipAsync(CancellationToken cancellationToken = default)
         {
-            ReadColumnLenIfNeeded();
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled(cancellationToken);
+            using (NoSynchronizationContextScope.Enter())
+                return Skip(true);
+        }
+
+        async Task Skip(bool async)
+        {
+            await ReadColumnLenIfNeeded(async);
             if (_columnLen != -1) {
-                _buf.Skip(_columnLen);
+                await _buf.Skip(_columnLen, async);
             }
             _columnLen = int.MinValue;
             _column++;
@@ -239,10 +315,10 @@ namespace Npgsql
 
         #region Utilities
 
-        void ReadColumnLenIfNeeded()
+        async Task ReadColumnLenIfNeeded(bool async)
         {
             if (_columnLen == int.MinValue) {
-                _buf.Ensure(4);
+                await _buf.Ensure(4, async);
                 _columnLen = _buf.ReadInt32();
                 _leftToReadInDataMsg -= 4;
             }
@@ -270,7 +346,19 @@ namespace Npgsql
         /// <summary>
         /// Completes that binary export and sets the connection back to idle state
         /// </summary>
-        public void Dispose()
+        public void Dispose() => DisposeAsync(false).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Async completes that binary export and sets the connection back to idle state
+        /// </summary>
+        /// <returns></returns>
+        public ValueTask DisposeAsync()
+        {
+            using (NoSynchronizationContextScope.Enter())
+                return DisposeAsync(true);
+        }
+
+        async ValueTask DisposeAsync(bool async)
         {
             if (_isDisposed) { return; }
 
@@ -280,8 +368,8 @@ namespace Npgsql
                 _buf.Skip(_leftToReadInDataMsg);
                 // Read to the end
                 _connector.SkipUntil(BackendMessageCode.CopyDone);
-                Expect<CommandCompleteMessage>(_connector.ReadMessage(), _connector);
-                Expect<ReadyForQueryMessage>(_connector.ReadMessage(), _connector);
+                Expect<CommandCompleteMessage>(await _connector.ReadMessage(async), _connector);
+                Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async), _connector);
             }
 
             var connector = _connector;
