@@ -76,8 +76,6 @@ namespace Npgsql
                 Handler = typeMapper.GetByNpgsqlDbType(_npgsqlDbType.Value);
             else if (_dataTypeName != null)
                 Handler = typeMapper.GetByDataTypeName(_dataTypeName);
-            else if (_dbType.HasValue)
-                Handler = typeMapper.GetByDbType(_dbType.Value);
             else
                 Handler = typeMapper.GetByClrType(typeof(T));
         }
