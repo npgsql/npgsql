@@ -352,7 +352,11 @@ namespace Npgsql
         /// Async completes that binary export and sets the connection back to idle state
         /// </summary>
         /// <returns></returns>
-        public ValueTask DisposeAsync() => DisposeAsync(true);
+        public ValueTask DisposeAsync()
+        {
+            using (NoSynchronizationContextScope.Enter())
+                return DisposeAsync(true);
+        }
 
         async ValueTask DisposeAsync(bool async)
         {

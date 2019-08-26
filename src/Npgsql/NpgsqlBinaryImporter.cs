@@ -419,7 +419,11 @@ namespace Npgsql
         /// Async cancels that binary import and sets the connection back to idle state
         /// </summary>
         /// <returns></returns>
-        public ValueTask DisposeAsync() => CloseAsync(true);
+        public ValueTask DisposeAsync()
+        {
+            using (NoSynchronizationContextScope.Enter())
+                return CloseAsync(true);
+        }
 
         async Task Cancel(bool async)
         {
