@@ -2,8 +2,6 @@
 using System.Collections;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
-using GeoAPI;
-using GeoAPI.Geometries;
 using NetTopologySuite.Geometries;
 using NetTopologySuite.Geometries.Implementation;
 using Npgsql.Tests;
@@ -48,7 +46,6 @@ namespace Npgsql.PluginTests
             if (handleOrdinates == Ordinates.None)
                 handleOrdinates = Ordinates.XY;
 
-            NetTopologySuiteBootstrapper.Bootstrap();
             var conn = base.OpenConnection(connectionString);
             conn.TypeMapper.UseNetTopologySuite(
                 new DotSpatialAffineCoordinateSequenceFactory(handleOrdinates),
@@ -59,7 +56,7 @@ namespace Npgsql.PluginTests
         public struct TestData
         {
             public Ordinates Ordinates;
-            public IGeometry Geometry;
+            public Geometry Geometry;
             public string CommandText;
         }
 
@@ -133,7 +130,7 @@ namespace Npgsql.PluginTests
 
                 yield return new TestCaseData(
                     Ordinates.None,
-                    new GeometryCollection(new IGeometry[]
+                    new GeometryCollection(new Geometry[]
                     {
                         new Point(new Coordinate(1d, 1d)),
                         new MultiPolygon(new[]
@@ -154,10 +151,10 @@ namespace Npgsql.PluginTests
 
                 yield return new TestCaseData(
                     Ordinates.None,
-                    new GeometryCollection(new IGeometry[]
+                    new GeometryCollection(new Geometry[]
                     {
                         new Point(new Coordinate(1d, 1d)),
-                        new GeometryCollection(new IGeometry[]
+                        new GeometryCollection(new Geometry[]
                         {
                             new Point(new Coordinate(1d, 1d)),
                             new MultiPolygon(new[]
@@ -190,7 +187,7 @@ namespace Npgsql.PluginTests
         }
 
         [Test, TestCaseSource(nameof(TestCases))]
-        public void TestRead(Ordinates ordinates, IGeometry geometry, string sqlRepresentation)
+        public void TestRead(Ordinates ordinates, Geometry geometry, string sqlRepresentation)
         {
             using (var conn = OpenConnection())
             using (var cmd = conn.CreateCommand())
@@ -201,7 +198,7 @@ namespace Npgsql.PluginTests
         }
 
         [Test, TestCaseSource(nameof(TestCases))]
-        public void TestWrite(Ordinates ordinates, IGeometry geometry, string sqlRepresentation)
+        public void TestWrite(Ordinates ordinates, Geometry geometry, string sqlRepresentation)
         {
             using (var conn = OpenConnection(handleOrdinates: ordinates))
             using (var cmd = conn.CreateCommand())
@@ -220,7 +217,7 @@ namespace Npgsql.PluginTests
             {
                 cmd.CommandText = "SELECT ARRAY(SELECT st_makepoint(1,1))";
                 var result = cmd.ExecuteScalar();
-                Assert.That(result, Is.InstanceOf<IGeometry[]>());
+                Assert.That(result, Is.InstanceOf<Geometry[]>());
                 Assert.That(result, Is.EquivalentTo(new[] { new Point(new Coordinate(1d, 1d)) }));
             }
         }
