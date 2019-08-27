@@ -13,7 +13,7 @@ using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers
 {
-    [TypeMapping("jsonb", NpgsqlDbType.Jsonb)]
+    [TypeMapping("jsonb", NpgsqlDbType.Jsonb, typeof(JsonDocument))]
     public class JsonbHandlerFactory : NpgsqlTypeHandlerFactory<string>
     {
         readonly JsonSerializerOptions? _serializerOptions;
@@ -75,7 +75,20 @@ namespace Npgsql.TypeHandlers
                 return _textHandler.ValidateAndGetLength(value, ref lengthCache, parameter) + _headerLen;
             }
 
-            // User POCO, need to serialize
+            if (typeof(TAny) == typeof(JsonDocument))
+            {
+                if (lengthCache == null)
+                    lengthCache = new NpgsqlLengthCache(1);
+                if (lengthCache.IsPopulated)
+                    return lengthCache.Get();
+
+                var data = SerializeJsonDocument((JsonDocument)(object)value!);
+                if (parameter != null)
+                    parameter.ConvertedValue = data;
+                return lengthCache.Set(data.Length + _headerLen);
+            }
+
+            // User POCO, need to serialize. At least internally ArrayPool buffers are used...
             var s = JsonSerializer.Serialize(value, _serializerOptions);
             if (parameter != null)
                 parameter.ConvertedValue = s;
@@ -104,6 +117,13 @@ namespace Npgsql.TypeHandlers
                 await _textHandler.Write((char)(object)value!, buf, lengthCache, parameter, async);
             else if (typeof(TAny) == typeof(byte[]))
                 await _textHandler.Write((byte[])(object)value!, buf, lengthCache, parameter, async);
+            else if (typeof(TAny) == typeof(JsonDocument))
+            {
+                var data = parameter?.ConvertedValue != null
+                    ? (byte[])parameter.ConvertedValue
+                    : SerializeJsonDocument((JsonDocument)(object)value!);
+                await buf.WriteBytesRaw(data, async);
+            }
             else
             {
                 // User POCO, read serialized representation from the validation phase
@@ -144,6 +164,16 @@ namespace Npgsql.TypeHandlers
                 return _textHandler.ValidateAndGetLength(s, ref lengthCache, parameter) + _headerLen;
             case byte[] s:
                 return _textHandler.ValidateAndGetLength(s, ref lengthCache, parameter) + _headerLen;
+            case JsonDocument jsonDocument:
+                if (lengthCache == null)
+                    lengthCache = new NpgsqlLengthCache(1);
+                if (lengthCache.IsPopulated)
+                    return lengthCache.Get();
+
+                var data = SerializeJsonDocument(jsonDocument);
+                if (parameter != null)
+                    parameter.ConvertedValue = data;
+                return lengthCache.Set(data.Length + _headerLen);
             default:
                 // User POCO, need to serialize
                 var serialized = JsonSerializer.Serialize(value, _serializerOptions);
@@ -161,7 +191,7 @@ namespace Npgsql.TypeHandlers
                 return;
             }
 
-            buf.WriteInt32(ValidateAndGetLength(value, ref lengthCache, parameter));
+            buf.WriteInt32(ValidateObjectAndGetLength(value, ref lengthCache, parameter));
 
             if (_isJsonb)
             {
@@ -186,6 +216,12 @@ namespace Npgsql.TypeHandlers
                 return;
             case byte[] s:
                 await _textHandler.Write(s, buf, lengthCache, parameter, async);
+                return;
+            case JsonDocument jsonDocument:
+                var data = parameter?.ConvertedValue != null
+                    ? (byte[])parameter.ConvertedValue
+                    : SerializeJsonDocument(jsonDocument);
+                await buf.WriteBytesRaw(data, async);
                 return;
             default:
                 // User POCO, read serialized representation from the validation phase
@@ -221,16 +257,19 @@ namespace Npgsql.TypeHandlers
             try
             {
                 // Unless we're in SequentialAccess mode, the entire value is already buffered in memory -
-                // deserialize it directly from bytes.
+                // deserialize it directly from bytes. Otherwise deserialize to string first - we can optimize this
+                // later.
                 if (buf.ReadBytesLeft >= byteLen)
                 {
-                    return JsonSerializer.Deserialize<T>(buf.ReadSpan(byteLen), _serializerOptions);
+                    return typeof(T) == typeof(JsonDocument)
+                        ? (T)(object)JsonDocument.Parse(buf.ReadMemory(byteLen))
+                        : JsonSerializer.Deserialize<T>(buf.ReadSpan(byteLen), _serializerOptions);
                 }
 
-                // TODO: Chunked deserialization of JSON can probably be optimized, but would only help
-                // SequentialAccess mode
                 var s = await _textHandler.Read(buf, byteLen, async, fieldDescription);
-                return JsonSerializer.Deserialize<T>(s, _serializerOptions);
+                return typeof(T) == typeof(JsonDocument)
+                    ? (T)(object)JsonDocument.Parse(s)
+                    : JsonSerializer.Deserialize<T>(s, _serializerOptions);
             }
             catch (Exception e)
             {
@@ -251,6 +290,17 @@ namespace Npgsql.TypeHandlers
             }
 
             return _textHandler.GetTextReader(stream);
+        }
+
+        byte[] SerializeJsonDocument(JsonDocument document)
+        {
+            // TODO: Writing is currently really inefficient - please don't criticize :)
+            // We need to implement one-pass writing to serialize directly to the buffer (or just switch to pipelines).
+            using var stream = new MemoryStream();
+            using var writer = new Utf8JsonWriter(stream);
+            document.WriteTo(writer);
+            writer.Flush();
+            return stream.ToArray();
         }
     }
 }

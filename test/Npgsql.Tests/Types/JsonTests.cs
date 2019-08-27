@@ -1,5 +1,6 @@
 using System;
 using System.Text;
+using System.Text.Json;
 using NpgsqlTypes;
 using NUnit.Framework;
 
@@ -62,6 +63,55 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
+        public void ReadJsonDocument()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+            {
+                var value = @"{""Date"":""2019-09-01T00:00:00"",""TemperatureC"":10,""Summary"":""Partly cloudy""}";
+                cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType) { Value = value });
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo(PostgresType));
+                    var root = reader.GetFieldValue<JsonDocument>(0).RootElement;
+                    Assert.That(root.GetProperty("Date").GetDateTime(), Is.EqualTo(new DateTime(2019, 9, 1)));
+                    Assert.That(root.GetProperty("Summary").GetString(), Is.EqualTo("Partly cloudy"));
+                    Assert.That(root.GetProperty("TemperatureC").GetInt32(), Is.EqualTo(10));
+                }
+            }
+        }
+
+        [Test]
+        public void WriteJsonDocument()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn))
+            {
+                var value = JsonDocument.Parse(@"{""Date"": ""2019-09-01T00:00:00"", ""Summary"": ""Partly cloudy"", ""TemperatureC"": 10}");
+                cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType) { Value = value });
+                cmd.Parameters.Add(new NpgsqlParameter<JsonDocument>("p2", NpgsqlDbType) { TypedValue = value });
+                if (IsJsonb)
+                {
+                    cmd.CommandText += ", @p3";
+                    cmd.Parameters.AddWithValue("p3", value);
+                }
+
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    for (var i = 0; i < reader.FieldCount; i++)
+                    {
+                        // Warning: in theory jsonb order and whitespace may change across versions
+                        Assert.That(reader.GetString(0), Is.EqualTo(IsJsonb
+                            ? @"{""Date"": ""2019-09-01T00:00:00"", ""Summary"": ""Partly cloudy"", ""TemperatureC"": 10}"
+                            : @"{""Date"":""2019-09-01T00:00:00"",""Summary"":""Partly cloudy"",""TemperatureC"":10}"));
+                    }
+                }
+            }
+        }
+
+        [Test]
         public void WriteObject()
         {
             using (var conn = OpenConnection())
@@ -93,21 +143,18 @@ namespace Npgsql.Tests.Types
         public void ReadObject()
         {
             using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn))
+            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
             {
                 var value = @"{""Date"":""2019-09-01T00:00:00"",""TemperatureC"":10,""Summary"":""Partly cloudy""}";
-                cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType) { Value = value });
-                cmd.Parameters.Add(new NpgsqlParameter<string>("p2", NpgsqlDbType) { TypedValue = value });
+                cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType) { Value = value });
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
-                    for (var i = 0; i < 2; i++)
-                    {
-                        var actual = reader.GetFieldValue<WeatherForecast>(i);
-                        Assert.That(actual.Date, Is.EqualTo(new DateTime(2019, 9, 1)));
-                        Assert.That(actual.Summary, Is.EqualTo("Partly cloudy"));
-                        Assert.That(actual.TemperatureC, Is.EqualTo(10));
-                    }
+                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo(PostgresType));
+                    var actual = reader.GetFieldValue<WeatherForecast>(0);
+                    Assert.That(actual.Date, Is.EqualTo(new DateTime(2019, 9, 1)));
+                    Assert.That(actual.Summary, Is.EqualTo("Partly cloudy"));
+                    Assert.That(actual.TemperatureC, Is.EqualTo(10));
                 }
             }
         }
@@ -127,6 +174,7 @@ namespace Npgsql.Tests.Types
         }
 
         bool IsJsonb => NpgsqlDbType == NpgsqlDbType.Jsonb;
+        string PostgresType => IsJsonb ? "jsonb" : "json";
         readonly NpgsqlDbType NpgsqlDbType;
     }
 }
