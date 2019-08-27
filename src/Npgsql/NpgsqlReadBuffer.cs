@@ -364,6 +364,12 @@ namespace Npgsql
             return new ReadOnlySpan<byte>(Buffer, ReadPosition, len);
         }
 
+        public ReadOnlyMemory<byte> ReadMemory(int len)
+        {
+            Debug.Assert(len <= ReadBytesLeft);
+            return new ReadOnlyMemory<byte>(Buffer, ReadPosition, len);
+        }
+
         #endregion
 
         #region Read Complex
