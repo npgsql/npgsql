@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Data;
-using GeoAPI;
-using GeoAPI.Geometries;
+using NetTopologySuite;
 using NetTopologySuite.Geometries;
 using NetTopologySuite.IO;
 using Npgsql.NetTopologySuite;
@@ -17,14 +16,14 @@ namespace Npgsql
     {
         static readonly Type[] ClrTypes =
         {
-            typeof(IGeometry), typeof(Geometry),
-            typeof(IPoint), typeof(Point),
-            typeof(ILineString), typeof(LineString),
-            typeof(IPolygon), typeof(Polygon),
-            typeof(IMultiPoint), typeof(MultiPoint),
-            typeof(IMultiLineString), typeof(MultiLineString),
-            typeof(IMultiPolygon), typeof(MultiPolygon),
-            typeof(IGeometryCollection), typeof(GeometryCollection)
+            typeof(Geometry),
+            typeof(Point),
+            typeof(LineString),
+            typeof(Polygon),
+            typeof(MultiPoint),
+            typeof(MultiLineString),
+            typeof(MultiPolygon),
+            typeof(GeometryCollection),
         };
 
         /// <summary>
@@ -39,23 +38,23 @@ namespace Npgsql
         /// <param name="geographyAsDefault">Specifies that the geography type is used for mapping by default.</param>
         public static INpgsqlTypeMapper UseNetTopologySuite(
             this INpgsqlTypeMapper mapper,
-            ICoordinateSequenceFactory? coordinateSequenceFactory = null,
-            IPrecisionModel? precisionModel = null,
+            CoordinateSequenceFactory? coordinateSequenceFactory = null,
+            PrecisionModel? precisionModel = null,
             Ordinates handleOrdinates = Ordinates.None,
             bool geographyAsDefault = false)
         {
             if (coordinateSequenceFactory == null)
-                coordinateSequenceFactory = GeometryServiceProvider.Instance.DefaultCoordinateSequenceFactory;
+                coordinateSequenceFactory = NtsGeometryServices.Instance.DefaultCoordinateSequenceFactory;
+
             if (precisionModel == null)
-                precisionModel = GeometryServiceProvider.Instance.DefaultPrecisionModel;
+                precisionModel = NtsGeometryServices.Instance.DefaultPrecisionModel;
+
             if (handleOrdinates == Ordinates.None)
                 handleOrdinates = coordinateSequenceFactory.Ordinates;
 
-            NetTopologySuiteBootstrapper.Bootstrap();
-
             var typeHandlerFactory = new NetTopologySuiteHandlerFactory(
                 new PostGisReader(coordinateSequenceFactory, precisionModel, handleOrdinates),
-                new NpgsqlPostGisWriter());  // NOTE: We used our own patched-up version of PostGisWriter for now
+                new PostGisWriter());
 
             return mapper
                 .AddMapping(new NpgsqlTypeMappingBuilder
