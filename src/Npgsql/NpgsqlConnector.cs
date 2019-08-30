@@ -547,12 +547,20 @@ namespace Npgsql
                         throw new NpgsqlException($"Received unknown response {response} for SSLRequest (expecting S or N)");
                     case 'N':
                         if (SslMode == SslMode.Require)
-                        {
                             throw new NpgsqlException("SSL connection requested. No SSL enabled connection from this host is configured.");
-                        }
                         break;
                     case 'S':
                         var clientCertificates = new X509CertificateCollection();
+                        if (Settings.ClientCertificate != null)
+                            clientCertificates.Add(new X509Certificate(Settings.ClientCertificate));
+                        else if (Environment.GetEnvironmentVariable("PGSSLCERT") is string envCertPath)
+                            clientCertificates.Add(new X509Certificate(envCertPath));
+                        else if (Environment.GetEnvironmentVariable(PGUtil.IsWindows ? "APPDATA" : "HOME") is string homeDir)
+                        {
+                            var certPath = Path.Combine(homeDir, "postgresql", "postgresql.crt");
+                            if (File.Exists(certPath))
+                                clientCertificates.Add(new X509Certificate(certPath));
+                        }
                         ProvideClientCertificatesCallback?.Invoke(clientCertificates);
 
                         RemoteCertificateValidationCallback certificateValidationCallback;
@@ -563,7 +571,7 @@ namespace Npgsql
                         else
                             certificateValidationCallback = DefaultUserCertificateValidationCallback;
 
-                        var sslStream = new SslStream(_stream, false, certificateValidationCallback);
+                        var sslStream = new SslStream(_stream, leaveInnerStreamOpen: false, certificateValidationCallback);
                         if (async)
                             await sslStream.AuthenticateAsClientAsync(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, Settings.CheckCertificateRevocation);
                         else

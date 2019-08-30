@@ -21,7 +21,7 @@ Below are the connection string parameters which Npgsql understands.
 |--------------------------|-------------------------------------------------------------------------|------------------|
 | SSL Mode                 | Controls whether SSL is used, depending on server support. Can be `Require`, `Disable`, or `Prefer`. [See docs for more info](security.md). | Disable |
 | Trust Server Certificate | Whether to trust the server certificate without validating it. [See docs for more info](security.md). | false |
-| Use SSL Stream           | Npgsql uses its own internal implementation of TLS/SSL. Turn this on to use .NET SslStream instead. | false |
+| Client Certificate       | Location of a client certificate to be sent to the server.              | [See docs](security.md) | 
 | Check Certificate Revocation | Whether to check the certificate revocation list during authentication. False by default. | false |
 | Integrated Security      | Whether to use integrated security to log in (GSS/SSPI), currently supported on Windows only. [See docs for more info](security.md). | false |
 | Persist Security Info    | Gets or sets a Boolean value that indicates if security-sensitive information, such as the password, is not returned as part of the connection if the connection is open or has ever been in an open state. Since 3.1 only. | false |

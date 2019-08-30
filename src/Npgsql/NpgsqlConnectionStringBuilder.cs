@@ -505,14 +505,14 @@ namespace Npgsql
         [NpgsqlConnectionStringProperty]
         public SslMode SslMode
         {
-            get => _sslmode;
+            get => _sslMode;
             set
             {
-                _sslmode = value;
+                _sslMode = value;
                 SetValue(nameof(SslMode), value);
             }
         }
-        SslMode _sslmode;
+        SslMode _sslMode;
 
         /// <summary>
         /// Whether to trust the server certificate without validating it.
@@ -531,6 +531,24 @@ namespace Npgsql
             }
         }
         bool _trustServerCertificate;
+
+        /// <summary>
+        /// Location of a client certificate to be sent to the server.
+        /// </summary>
+        [Category("Security")]
+        [Description("Location of a client certificate to be sent to the server.")]
+        [DisplayName("Client Certificate")]
+        [NpgsqlConnectionStringProperty]
+        public string? ClientCertificate
+        {
+            get => _clientCertificate;
+            set
+            {
+                _clientCertificate = value;
+                SetValue(nameof(ClientCertificate), value);
+            }
+        }
+        string? _clientCertificate;
 
         /// <summary>
         /// Whether to check the certificate revocation list during authentication.
