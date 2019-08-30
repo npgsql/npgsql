@@ -32,7 +32,7 @@ namespace Npgsql.Tests
             {
                 if (e.SqlState == PostgresErrorCodes.InvalidCatalogName)
                     TestUtil.IgnoreExceptOnBuildServer("Please create a database npgsql_tests, owned by user npgsql_tests");
-                else if (e.SqlState == PostgresErrorCodes.InvalidPassword)
+                else if (e.SqlState == PostgresErrorCodes.InvalidPassword && connectionString == DefaultConnectionString)
                     TestUtil.IgnoreExceptOnBuildServer("Please create a user npgsql_tests as follows: create user npgsql_tests with password 'npgsql_tests'");
                 else
                     throw;

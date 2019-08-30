@@ -69,15 +69,10 @@ namespace Npgsql
         /// </remarks>
         /// <returns>Path to the pgpass file</returns>
         internal static string? GetSystemPgPassFilePath()
-        {
-            var pgpassEnv = Environment.GetEnvironmentVariable("PGPASSFILE");
-            if (pgpassEnv != null)
-                return pgpassEnv;
-
-            return PGUtil.IsWindows
-                ? Environment.GetEnvironmentVariable("APPDATA") is string appData ? Path.Combine(appData, "postgresql", "pgpass.conf") : null
-                : Environment.GetEnvironmentVariable("HOME") is string home ? Path.Combine(home, "postgresql", "pgpass.conf") : null;
-        }
+            => Environment.GetEnvironmentVariable("PGPASSFILE") ??
+               (Environment.GetEnvironmentVariable(PGUtil.IsWindows ? "APPDATA" : "HOME") is string appData
+                ? Path.Combine(appData, "postgresql", "pgpass.conf")
+                : null);
 
         /// <summary>
         /// Represents a hostname, port, database, username, and password combination that has been retrieved from a .pgpass file
