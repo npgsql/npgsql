@@ -593,60 +593,86 @@ namespace Npgsql
         #region Close
 
         /// <summary>
-        /// releases the connection to the database.  If the connection is pooled, it will be
-        /// made available for re-use.  If it is non-pooled, the actual connection will be shutdown.
+        /// Releases the connection. If the connection is pooled, it will be returned to the pull and made available for re-use.
+        /// If it is non-pooled, the physical connection will be closed.
         /// </summary>
-        public override void Close() => Close(false);
+        public override void Close() => Close(wasBroken: false, async: false);
 
-        internal void Close(bool wasBroken)
+        /// <summary>
+        /// Releases the connection. If the connection is pooled, it will be returned to the pull and made available for re-use.
+        /// If it is non-pooled, the physical connection will be closed.
+        /// </summary>
+#if !NET461 && !NETSTANDARD2_0
+        public override Task CloseAsync()
+#else
+        public Task CloseAsync()
+#endif
+        {
+            using (NoSynchronizationContextScope.Enter())
+                return Close(wasBroken: false, async: true);
+        }
+
+        internal Task Close(bool wasBroken, bool async)
         {
             if (Connector == null)
-                return;
+                return Task.CompletedTask;
             var connectorId = Connector.Id;
             Log.Trace("Closing connection...", connectorId);
             _wasBroken = wasBroken;
 
-            Connector.CloseOngoingOperations();
+            if (Connector.HasOngoingOperation)
+                return CloseOngoingOperationAndFinish();
 
-            // The connector has closed us during CloseOngoingOperations due to an underlying failure.
-            if (Connector == null)
-                return;
+            FinishClose();
+            return Task.CompletedTask;
 
-            if (Settings.Pooling)
+            async Task CloseOngoingOperationAndFinish()
             {
-                if (EnlistedTransaction == null)
-                    _pool!.Release(Connector);
-                else
+                await Connector!.CloseOngoingOperations(async);
+
+                // The connector has closed us during CloseOngoingOperations due to an underlying failure.
+                if (Connector == null)
+                    return;
+
+                FinishClose();
+            }
+
+            void FinishClose()
+            {
+                var connector = Connector!;
+                if (Settings.Pooling)
                 {
-                    // A System.Transactions transaction is still in progress, we need to wait for it to complete.
-                    // Close the connection and disconnect it from the resource manager but leave the connector
-                    // in a enlisted pending list in the pool.
-                    _pool!.AddPendingEnlistedConnector(Connector, EnlistedTransaction);
-                    Connector.Connection = null;
+                    if (EnlistedTransaction == null)
+                        _pool!.Release(connector);
+                    else
+                    {
+                        // A System.Transactions transaction is still in progress, we need to wait for it to complete.
+                        // Close the connection and disconnect it from the resource manager but leave the connector
+                        // in a enlisted pending list in the pool.
+                        _pool!.AddPendingEnlistedConnector(connector, EnlistedTransaction);
+                        connector.Connection = null;
+                        EnlistedTransaction = null;
+                    }
+                }
+                else // Non-pooled connection
+                {
+                    if (EnlistedTransaction == null)
+                        connector.Close();
+                    // If a non-pooled connection is being closed but is enlisted in an ongoing
+                    // TransactionScope, simply detach the connector from the connection and leave
+                    // it open. It will be closed when the TransactionScope is disposed.
+                    connector.Connection = null;
                     EnlistedTransaction = null;
                 }
+
+                Log.Debug("Connection closed", connectorId);
+                Connector = null;
+                OnStateChange(OpenToClosedEventArgs);
             }
-            else  // Non-pooled connection
-            {
-                if (EnlistedTransaction == null)
-                    Connector.Close();
-                // If a non-pooled connection is being closed but is enlisted in an ongoing
-                // TransactionScope, simply detach the connector from the connection and leave
-                // it open. It will be closed when the TransactionScope is disposed.
-                Connector.Connection = null;
-                EnlistedTransaction = null;
-            }
-
-            Log.Debug("Connection closed", connectorId);
-
-            Connector = null;
-
-            OnStateChange(OpenToClosedEventArgs);
         }
 
         /// <summary>
-        /// Releases all resources used by the
-        /// <see cref="NpgsqlConnection">NpgsqlConnection</see>.
+        /// Releases all resources used by the <see cref="NpgsqlConnection">NpgsqlConnection</see>.
         /// </summary>
         /// <param name="disposing"><b>true</b> when called from Dispose();
         /// <b>false</b> when being called from the finalizer.</param>
@@ -656,9 +682,21 @@ namespace Npgsql
                 return;
             if (disposing)
                 Close();
-            base.Dispose(disposing);
             _disposed = true;
         }
+
+#if !NET461 && !NETSTANDARD2_0
+        /// <summary>
+        /// Releases all resources used by the <see cref="NpgsqlConnection">NpgsqlConnection</see>.
+        /// </summary>
+        public override async ValueTask DisposeAsync()
+        {
+            if (_disposed)
+                return;
+            await CloseAsync();
+            _disposed = true;
+        }
+#endif
 
         #endregion
 
