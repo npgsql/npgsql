@@ -1208,16 +1208,22 @@ namespace Npgsql
 
         #region Close / Reset
 
+        internal bool HasOngoingOperation => CurrentReader != null || CurrentCopyOperation != null;
+
         /// <summary>
         /// Closes ongoing operations, i.e. an open reader exists or a COPY operation still in progress, as
         /// part of a connection close.
         /// Does nothing if the thread has been aborted - the connector will be closed immediately.
         /// </summary>
-        internal void CloseOngoingOperations()
+        internal async Task CloseOngoingOperations(bool async)
         {
-            CurrentReader?.Close(true, false);
-            var currentCopyOperation = CurrentCopyOperation;
-            if (currentCopyOperation == null)
+            var reader = CurrentReader;
+            var copyOperation = CurrentCopyOperation;
+
+            if (reader != null)
+                await reader.Close(connectionClosing: true, async);
+
+            if (copyOperation == null)
                 return;
 
             // TODO: There's probably a race condition as the COPY operation may finish on its own during the next few lines
@@ -1225,13 +1231,13 @@ namespace Npgsql
             // Note: we only want to cancel import operations, since in these cases cancel is safe.
             // Export cancellations go through the PostgreSQL "asynchronous" cancel mechanism and are
             // therefore vulnerable to the race condition in #615.
-            if (currentCopyOperation is NpgsqlBinaryImporter ||
-                currentCopyOperation is NpgsqlCopyTextWriter ||
-                currentCopyOperation is NpgsqlRawCopyStream rawCopyStream && rawCopyStream.CanWrite)
+            if (copyOperation is NpgsqlBinaryImporter ||
+                copyOperation is NpgsqlCopyTextWriter ||
+                copyOperation is NpgsqlRawCopyStream rawCopyStream && rawCopyStream.CanWrite)
             {
                 try
                 {
-                    currentCopyOperation.Cancel();
+                    copyOperation.Cancel();
                 }
                 catch (Exception e)
                 {
@@ -1241,7 +1247,7 @@ namespace Npgsql
 
             try
             {
-                currentCopyOperation.Dispose();
+                copyOperation.Dispose();
             }
             catch (Exception e)
             {
@@ -1249,6 +1255,8 @@ namespace Npgsql
             }
         }
 
+        // TODO in theory this should be async-optional, but the only I/O done here is the Terminate Flush, which is
+        // very unlikely to block (plus locking would need to be worked out)
         internal void Close()
         {
             lock (this)
@@ -1323,7 +1331,7 @@ namespace Npgsql
                     // Note that the connection's full state is usually calculated from the connector's, but in
                     // states closed/broken the connector is null. We therefore need a way to distinguish between
                     // Closed and Broken on the connection.
-                     conn.Close(true);
+                     conn.Close(wasBroken: true, async: false);
                 }
             }
         }
@@ -1331,6 +1339,9 @@ namespace Npgsql
         /// <summary>
         /// Closes the socket and cleans up client-side resources associated with this connector.
         /// </summary>
+        /// <remarks>
+        /// This method doesn't actually perform any meaningful I/O, and therefore is sync-only.
+        /// </remarks>
         void Cleanup()
         {
             Debug.Assert(Monitor.IsEntered(this));
@@ -1338,7 +1349,7 @@ namespace Npgsql
             Log.Trace("Cleaning up connector", Id);
             try
             {
-                _stream?.Dispose();
+                _stream.Dispose();
             }
             catch
             {
@@ -1350,6 +1361,7 @@ namespace Npgsql
                 CurrentReader.Command.State = CommandState.Idle;
                 try
                 {
+                    // Will never complete asynchronously (stream is already closed)
                     CurrentReader.Close();
                 }
                 catch

@@ -452,16 +452,12 @@ namespace Npgsql
                 openCount = prevState.Open - 1;
             }
             else
-            {
                 openCount = Interlocked.Decrement(ref State.Open);
-            }
 
             // Unblock a single waiter, if any, to get the slot that just opened up.
             while (_waiting.TryDequeue(out var waiter))
-            {
                 if (waiter.TaskCompletionSource.TrySetResult(null))
                     break;
-            }
 
             // Only turn off the timer one time, when it was this Close that brought Open back to _min.
             if (openCount == _min)

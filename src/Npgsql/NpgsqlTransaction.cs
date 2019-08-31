@@ -156,12 +156,12 @@ namespace Npgsql
         /// </summary>
         public override void Rollback() => Rollback(false).GetAwaiter().GetResult();
 
-        async Task Rollback(bool async)
+        Task Rollback(bool async)
         {
             CheckReady();
-            if (!_connector.DatabaseInfo.SupportsTransactions)
-                return;
-            await _connector.Rollback(async);
+            return _connector.DatabaseInfo.SupportsTransactions
+                ? _connector.Rollback(async)
+                : Task.CompletedTask;
         }
 
         /// <summary>
@@ -312,12 +312,34 @@ namespace Npgsql
 
             if (disposing && !IsCompleted)
             {
-                _connector.CloseOngoingOperations();
+                _connector.CloseOngoingOperations(async: false).GetAwaiter().GetResult();
                 Rollback();
             }
 
             IsDisposed = true;
         }
+
+#if !NET461 && !NETSTANDARD2_0
+        /// <summary>
+        /// Disposes the transaction, rolling it back if it is still pending.
+        /// </summary>
+        public override async ValueTask DisposeAsync()
+        {
+            if (IsDisposed)
+                return;
+
+            if (!IsCompleted)
+            {
+                using (NoSynchronizationContextScope.Enter())
+                {
+                    await _connector.CloseOngoingOperations(async: true);
+                    await Rollback(async: true);
+                }
+            }
+
+            IsDisposed = true;
+        }
+#endif
 
         /// <summary>
         /// Disposes the transaction, without rolling back. Used only in special circumstances, e.g. when
