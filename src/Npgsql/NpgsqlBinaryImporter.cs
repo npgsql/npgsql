@@ -17,7 +17,7 @@ namespace Npgsql
     /// <remarks>
     /// See http://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
-    public sealed class NpgsqlBinaryImporter : ICancelable, IDisposable, IAsyncDisposable
+    public sealed class NpgsqlBinaryImporter : ICancelable, IAsyncDisposable
     {
         #region Fields and Properties
 

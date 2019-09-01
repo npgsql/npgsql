@@ -248,7 +248,7 @@ namespace Npgsql.TypeHandling
                                     Expression.Constant($"Can't write CLR type {{0}} with handler type {handlerType.Name}"),
                                     Expression.Call(  // GetType() on the value
                                         valueParam,
-                                        typeof(object).GetMethod(nameof(string.GetType), new Type[0])
+                                        typeof(object).GetMethod(nameof(GetType), new Type[0])
                                     )
                                 }
                             )

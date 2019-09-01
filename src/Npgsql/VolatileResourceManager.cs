@@ -303,6 +303,7 @@ namespace Npgsql
                 return System.Data.IsolationLevel.Serializable;
             case IsolationLevel.Snapshot:
                 return System.Data.IsolationLevel.Snapshot;
+            // ReSharper disable once RedundantCaseLabel
             case IsolationLevel.Unspecified:
             default:
                 return System.Data.IsolationLevel.Unspecified;

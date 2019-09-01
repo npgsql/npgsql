@@ -13,7 +13,6 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.Logging;
 using Npgsql.TypeMapping;
@@ -179,7 +178,6 @@ namespace Npgsql
         /// </summary>
         internal object CancelLock { get; }
 
-        readonly int _keepAlive;
         readonly bool _isKeepAliveEnabled;
         readonly Timer? _keepAliveTimer;
 
@@ -276,7 +274,6 @@ namespace Npgsql
             _isKeepAliveEnabled = Settings.KeepAlive > 0;
             if (_isKeepAliveEnabled)
             {
-                _keepAlive = Settings.KeepAlive * 1000;
                 _userLock = new SemaphoreSlim(1, 1);
                 _keepAliveTimer = new Timer(PerformKeepAlive, null, Timeout.Infinite, Timeout.Infinite);
             }
@@ -798,8 +795,8 @@ namespace Npgsql
         {
             _pendingPrependedResponses += responseMessageCount;
 
-            var t = WritePregenerated(rawMessage, false);
-            Debug.Assert(t.IsCompleted, $"Could not fully write pregenerated message into the buffer");
+            var t = WritePregenerated(rawMessage);
+            Debug.Assert(t.IsCompleted, "Could not fully write pregenerated message into the buffer");
         }
 
         #endregion
@@ -836,7 +833,7 @@ namespace Npgsql
             case BackendMessageCode.ParameterStatus:
             case BackendMessageCode.ErrorResponse:
                 ReadBuffer.ReadPosition--;
-                return ReadMessageLong(dataRowLoadingMode, readingNotifications);
+                return ReadMessageLong(dataRowLoadingMode, readingNotifications2: false);
             }
 
             PGUtil.ValidateBackendMessageCode(messageCode);
@@ -844,7 +841,7 @@ namespace Npgsql
             if (len > ReadBuffer.ReadBytesLeft)
             {
                 ReadBuffer.ReadPosition -= 5;
-                return ReadMessageLong(dataRowLoadingMode, readingNotifications);
+                return ReadMessageLong(dataRowLoadingMode, readingNotifications2: false);
             }
 
             return new ValueTask<IBackendMessage?>(ParseServerMessage(ReadBuffer, messageCode, len, false));
@@ -1230,7 +1227,7 @@ namespace Npgsql
             // therefore vulnerable to the race condition in #615.
             if (currentCopyOperation is NpgsqlBinaryImporter ||
                 currentCopyOperation is NpgsqlCopyTextWriter ||
-                (currentCopyOperation is NpgsqlRawCopyStream rawCopyStream && rawCopyStream.CanWrite))
+                currentCopyOperation is NpgsqlRawCopyStream rawCopyStream && rawCopyStream.CanWrite)
             {
                 try
                 {
@@ -1889,8 +1886,6 @@ namespace Npgsql
         /// The connection's timezone as reported by PostgreSQL, in the IANA/Olson database format.
         /// </summary>
         internal string Timezone { get; private set; } = default!;
-
-        bool IsRedshift => Settings.ServerCompatibilityMode == ServerCompatibilityMode.Redshift;
 
         #endregion Supported features and PostgreSQL settings
 

@@ -41,7 +41,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
                 raw = new DecimalRaw(value);
             }
 
-            var result = (long)raw.Mid << 32 | (long)raw.Low;
+            var result = (long)raw.Mid << 32 | raw.Low;
             if (raw.Negative) result = -result;
             buf.WriteInt64(result);
         }

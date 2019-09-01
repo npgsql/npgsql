@@ -135,30 +135,30 @@ namespace Npgsql.NetTopologySuite
         #region Write
 
         public override Task Write(Geometry value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
-            => WriteCore(value, buf, lengthCache, parameter, async);
+            => WriteCore(value, buf);
 
         Task INpgsqlTypeHandler<Point>.Write(Point value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
-            => WriteCore(value, buf, lengthCache, parameter, async);
+            => WriteCore(value, buf);
 
         Task INpgsqlTypeHandler<LineString>.Write(LineString value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
-            => WriteCore(value, buf, lengthCache, parameter, async);
+            => WriteCore(value, buf);
 
         Task INpgsqlTypeHandler<Polygon>.Write(Polygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
-            => WriteCore(value, buf, lengthCache, parameter, async);
+            => WriteCore(value, buf);
 
         Task INpgsqlTypeHandler<MultiPoint>.Write(MultiPoint value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
-            => WriteCore(value, buf, lengthCache, parameter, async);
+            => WriteCore(value, buf);
 
         Task INpgsqlTypeHandler<MultiLineString>.Write(MultiLineString value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
-            => WriteCore(value, buf, lengthCache, parameter, async);
+            => WriteCore(value, buf);
 
         Task INpgsqlTypeHandler<MultiPolygon>.Write(MultiPolygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
-            => WriteCore(value, buf, lengthCache, parameter, async);
+            => WriteCore(value, buf);
 
         Task INpgsqlTypeHandler<GeometryCollection>.Write(GeometryCollection value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
-            => WriteCore(value, buf, lengthCache, parameter, async);
+            => WriteCore(value, buf);
 
-        Task WriteCore(Geometry value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        Task WriteCore(Geometry value, NpgsqlWriteBuffer buf)
         {
             _writer.Write(value, buf.GetStream());
             return Task.CompletedTask;

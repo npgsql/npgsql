@@ -80,8 +80,8 @@ namespace Npgsql.TypeHandlers
         {
             await buf.Ensure(12, async);
             var dimensions = buf.ReadInt32();
-            buf.ReadInt32();        // Has nulls. Not populated by PG?
-            var elementOID = buf.ReadUInt32();
+            buf.ReadInt32();  // Has nulls. Not populated by PG?
+            buf.ReadUInt32(); // Element OID
 
             var dimLengths = new int[dimensions];
 

@@ -2,7 +2,6 @@
 using System.IO;
 using System.Threading.Tasks;
 using System.Text.Json;
-using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;

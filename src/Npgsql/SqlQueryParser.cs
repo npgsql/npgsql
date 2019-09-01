@@ -2,7 +2,10 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
+
+#if NET461 || NETSTANDARD2_0
 using Npgsql.Util;
+#endif
 
 namespace Npgsql
 {

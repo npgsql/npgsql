@@ -20,7 +20,7 @@ namespace Npgsql.Json.NET
             => new JsonHandler(postgresType, conn, _settings);
     }
 
-    class JsonHandler : Npgsql.TypeHandlers.TextHandler
+    class JsonHandler : TypeHandlers.TextHandler
     {
         readonly JsonSerializerSettings _settings;
 

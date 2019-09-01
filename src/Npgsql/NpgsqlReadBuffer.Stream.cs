@@ -57,7 +57,7 @@ namespace Npgsql
                 set
                 {
                     if (value < 0)
-                        throw new ArgumentOutOfRangeException("Non - negative number required.");
+                        throw new ArgumentOutOfRangeException(nameof(value), "Non - negative number required.");
                     Seek(_start + value, SeekOrigin.Begin);
                 }
             }
@@ -71,33 +71,34 @@ namespace Npgsql
                 if (offset > int.MaxValue)
                     throw new ArgumentOutOfRangeException(nameof(offset), "Stream length must be non-negative and less than 2^31 - 1 - origin.");
 
-                const string SeekBeforeBegin = "An attempt was made to move the position before the beginning of the stream.";
+                const string seekBeforeBegin = "An attempt was made to move the position before the beginning of the stream.";
+
                 switch (origin)
                 {
                 case SeekOrigin.Begin:
-                    {
-                        var tempPosition = unchecked(_start + (int)offset);
-                        if (offset < 0 || tempPosition < _start)
-                            throw new IOException(SeekBeforeBegin);
-                        _buf.ReadPosition = _start;
-                        return tempPosition;
-                    }
+                {
+                    var tempPosition = unchecked(_start + (int)offset);
+                    if (offset < 0 || tempPosition < _start)
+                        throw new IOException(seekBeforeBegin);
+                    _buf.ReadPosition = _start;
+                    return tempPosition;
+                }
                 case SeekOrigin.Current:
-                    {
-                        var tempPosition = unchecked(_buf.ReadPosition + (int)offset);
-                        if (unchecked(_buf.ReadPosition + offset) < _start || tempPosition < _start)
-                            throw new IOException(SeekBeforeBegin);
-                        _buf.ReadPosition = tempPosition;
-                        return tempPosition;
-                    }
+                {
+                    var tempPosition = unchecked(_buf.ReadPosition + (int)offset);
+                    if (unchecked(_buf.ReadPosition + offset) < _start || tempPosition < _start)
+                        throw new IOException(seekBeforeBegin);
+                    _buf.ReadPosition = tempPosition;
+                    return tempPosition;
+                }
                 case SeekOrigin.End:
-                    {
-                        var tempPosition = unchecked(_len + (int)offset);
-                        if (unchecked(_len + offset) < _start || tempPosition < _start)
-                            throw new IOException(SeekBeforeBegin);
-                        _buf.ReadPosition = tempPosition;
-                        return tempPosition;
-                    }
+                {
+                    var tempPosition = unchecked(_len + (int)offset);
+                    if (unchecked(_len + offset) < _start || tempPosition < _start)
+                        throw new IOException(seekBeforeBegin);
+                    _buf.ReadPosition = tempPosition;
+                    return tempPosition;
+                }
                 default:
                     throw new ArgumentOutOfRangeException(nameof(origin), "Invalid seek origin.");
                 }
@@ -145,10 +146,10 @@ namespace Npgsql
                     return task;
                 }
 
-                return new ValueTask<int>(ReadLong(task, cancellationToken, async));
+                return new ValueTask<int>(ReadLong(task, async));
             }
 
-            async Task<int> ReadLong(ValueTask<int> task, CancellationToken cancellationToken, bool async)
+            async Task<int> ReadLong(ValueTask<int> task, bool async)
             {
                 var read = async
                     ? await task

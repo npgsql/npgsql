@@ -16,7 +16,7 @@ namespace Npgsql
     /// Provides an API for a binary COPY TO operation, a high-performance data export mechanism from
     /// a PostgreSQL table. Initiated by <see cref="NpgsqlConnection.BeginBinaryExport"/>
     /// </summary>
-    public sealed class NpgsqlBinaryExporter : ICancelable, IDisposable, IAsyncDisposable
+    public sealed class NpgsqlBinaryExporter : ICancelable, IAsyncDisposable
     {
         #region Fields and Properties
 

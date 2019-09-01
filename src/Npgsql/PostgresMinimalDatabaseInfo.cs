@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -21,8 +20,6 @@ namespace Npgsql
 
     class PostgresMinimalDatabaseInfo : PostgresDatabaseInfo
     {
-        static readonly Version DefaultVersion = new Version(10, 0);
-
         static readonly PostgresBaseType[] Types = typeof(NpgsqlDbType).GetFields()
             .Select(f => f.GetCustomAttribute<BuiltInPostgresType>())
             .OfType<BuiltInPostgresType>()

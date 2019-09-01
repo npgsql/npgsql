@@ -1,8 +1,10 @@
 ﻿using System;
-using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
-using System.Reflection;
 using Npgsql.Logging;
+
+#if NET461
+using System.Diagnostics;
+using System.Reflection;
+#endif
 
 namespace Npgsql
 {
@@ -191,7 +193,7 @@ namespace Npgsql
 
             var pid = Process.GetCurrentProcess().Id;
 
-            result = string.Format((IFormatProvider?)null, "{0}[{1}]", instanceName, pid);
+            result = string.Format(null, "{0}[{1}]", instanceName, pid);
             result = result.Replace('(', '[').Replace(')', ']').Replace('#', '_').Replace('/', '_').Replace('\\', '_');
 
             if (result.Length > CounterInstanceNameMaxLength)
@@ -209,7 +211,7 @@ namespace Npgsql
                     result.Substring(result.Length - lastPartLength, lastPartLength));
 
                 Debug.Assert(result.Length == CounterInstanceNameMaxLength,
-                    string.Format((IFormatProvider?)null, "wrong calculation of the instance name: expected {0}, actual: {1}", CounterInstanceNameMaxLength, result.Length));
+                    string.Format(null, "wrong calculation of the instance name: expected {0}, actual: {1}", CounterInstanceNameMaxLength, result.Length));
             }
 
             return result;

@@ -57,7 +57,7 @@ namespace Npgsql
                     // server will need to verify against a Kerberos/SSPI ticket
 
                     // If the computer does not belong to a domain, returns Empty.
-                    string domainName = System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties().DomainName;
+                    var domainName = System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties().DomainName;
                     if (domainName.Equals(string.Empty))
                     {
                         return GetWindowsIdentityUserName(includeRealm);

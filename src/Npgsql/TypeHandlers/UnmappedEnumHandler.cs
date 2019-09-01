@@ -63,12 +63,12 @@ namespace Npgsql.TypeHandlers
         {
             var type = value.GetType();
             if (type == typeof(string))
-                return base.ValidateAndGetLength((string)(object)value, ref lengthCache, parameter);
+                return base.ValidateAndGetLength((string)value, ref lengthCache, parameter);
             if (_resolvedType != type)
                 Map(type);
 
             // TODO: Avoid boxing
-            return _enumToLabel.TryGetValue((Enum)(object)value, out var str)
+            return _enumToLabel.TryGetValue((Enum)value, out var str)
                 ? base.ValidateAndGetLength(str, ref lengthCache, parameter)
                 : throw new InvalidCastException($"Can't write value {value} as enum {type}");
         }
@@ -100,12 +100,12 @@ namespace Npgsql.TypeHandlers
         {
             var type = value.GetType();
             if (type == typeof(string))
-                return base.Write((string)(object)value, buf, lengthCache, parameter, async);
+                return base.Write((string)value, buf, lengthCache, parameter, async);
             if (_resolvedType != type)
                 Map(type);
 
             // TODO: Avoid boxing
-            if (!_enumToLabel.TryGetValue((Enum)(object)value, out var str))
+            if (!_enumToLabel.TryGetValue((Enum)value, out var str))
                 throw new InvalidCastException($"Can't write value {value} as enum {type}");
             return base.Write(str, buf, lengthCache, parameter, async);
         }
