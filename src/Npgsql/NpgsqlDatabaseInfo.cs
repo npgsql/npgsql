@@ -15,7 +15,7 @@ namespace Npgsql
     {
         #region Fields
 
-        internal static ConcurrentDictionary<string, NpgsqlDatabaseInfo> Cache
+        internal static readonly ConcurrentDictionary<string, NpgsqlDatabaseInfo> Cache
             = new ConcurrentDictionary<string, NpgsqlDatabaseInfo>();
 
         static readonly List<INpgsqlDatabaseInfoFactory> Factories = new List<INpgsqlDatabaseInfoFactory>
@@ -97,19 +97,19 @@ namespace Npgsql
 
         #region Types
 
-        List<PostgresBaseType>      _baseTypes      { get; } = new List<PostgresBaseType>();
-        List<PostgresArrayType>     _arrayTypes     { get; } = new List<PostgresArrayType>();
-        List<PostgresRangeType>     _rangeTypes     { get; } = new List<PostgresRangeType>();
-        List<PostgresEnumType>      _enumTypes      { get; } = new List<PostgresEnumType>();
-        List<PostgresCompositeType> _compositeTypes { get; } = new List<PostgresCompositeType>();
-        List<PostgresDomainType>    _domainTypes    { get; } = new List<PostgresDomainType>();
+        readonly List<PostgresBaseType>      _baseTypesMutable      = new List<PostgresBaseType>();
+        readonly List<PostgresArrayType>     _arrayTypesMutable     = new List<PostgresArrayType>();
+        readonly List<PostgresRangeType>     _rangeTypesMutable     = new List<PostgresRangeType>();
+        readonly List<PostgresEnumType>      _enumTypesMutable      = new List<PostgresEnumType>();
+        readonly List<PostgresCompositeType> _compositeTypesMutable = new List<PostgresCompositeType>();
+        readonly List<PostgresDomainType>    _domainTypesMutable    = new List<PostgresDomainType>();
 
-        internal IReadOnlyList<PostgresBaseType>      BaseTypes      => _baseTypes;
-        internal IReadOnlyList<PostgresArrayType>     ArrayTypes     => _arrayTypes;
-        internal IReadOnlyList<PostgresRangeType>     RangeTypes     => _rangeTypes;
-        internal IReadOnlyList<PostgresEnumType>      EnumTypes      => _enumTypes;
-        internal IReadOnlyList<PostgresCompositeType> CompositeTypes => _compositeTypes;
-        internal IReadOnlyList<PostgresDomainType>    DomainTypes    => _domainTypes;
+        internal IReadOnlyList<PostgresBaseType>      BaseTypes      => _baseTypesMutable;
+        internal IReadOnlyList<PostgresArrayType>     ArrayTypes     => _arrayTypesMutable;
+        internal IReadOnlyList<PostgresRangeType>     RangeTypes     => _rangeTypesMutable;
+        internal IReadOnlyList<PostgresEnumType>      EnumTypes      => _enumTypesMutable;
+        internal IReadOnlyList<PostgresCompositeType> CompositeTypes => _compositeTypesMutable;
+        internal IReadOnlyList<PostgresDomainType>    DomainTypes    => _domainTypesMutable;
 
         /// <summary>
         /// Indexes backend types by their type OID.
@@ -156,22 +156,22 @@ namespace Npgsql
                 switch (type)
                 {
                 case PostgresBaseType baseType:
-                    _baseTypes.Add(baseType);
+                    _baseTypesMutable.Add(baseType);
                     continue;
                 case PostgresArrayType arrayType:
-                    _arrayTypes.Add(arrayType);
+                    _arrayTypesMutable.Add(arrayType);
                     continue;
                 case PostgresRangeType rangeType:
-                    _rangeTypes.Add(rangeType);
+                    _rangeTypesMutable.Add(rangeType);
                     continue;
                 case PostgresEnumType enumType:
-                    _enumTypes.Add(enumType);
+                    _enumTypesMutable.Add(enumType);
                     continue;
                 case PostgresCompositeType compositeType:
-                    _compositeTypes.Add(compositeType);
+                    _compositeTypesMutable.Add(compositeType);
                     continue;
                 case PostgresDomainType domainType:
-                    _domainTypes.Add(domainType);
+                    _domainTypesMutable.Add(domainType);
                     continue;
                 default:
                     throw new ArgumentOutOfRangeException();

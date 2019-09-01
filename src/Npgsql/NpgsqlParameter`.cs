@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Data;
-using System.Diagnostics;
 using System.Threading.Tasks;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;

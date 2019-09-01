@@ -117,7 +117,7 @@ namespace Npgsql
         /// <summary>
         /// A stream that has been opened on a column.
         /// </summary>
-        NpgsqlReadBuffer.ColumnStream? ColumnStream;
+        NpgsqlReadBuffer.ColumnStream? _columnStream;
 
         /// <summary>
         /// Used for internal temporary purposes
@@ -268,9 +268,7 @@ namespace Npgsql
 
         ValueTask<IBackendMessage> ReadMessage(bool async)
         {
-            return _isSequential
-                ? ReadMessageSequential(async)
-                : Connector.ReadMessage(async, DataRowLoadingMode.NonSequential);
+            return _isSequential ? ReadMessageSequential(async) : Connector.ReadMessage(async);
 
             async ValueTask<IBackendMessage> ReadMessageSequential(bool async2)
             {
@@ -293,7 +291,7 @@ namespace Npgsql
         /// Advances the reader to the next result when reading the results of a batch of statements.
         /// </summary>
         /// <returns></returns>
-        public sealed override bool NextResult()
+        public override bool NextResult()
         {
             try
             {
@@ -466,7 +464,7 @@ namespace Npgsql
                     // If output parameters are present and this is the first row of the first resultset,
                     // we must always read it in non-sequential mode because it will be traversed twice (once
                     // here for the parameters, then as a regular row).
-                    msg = await Connector.ReadMessage(async, DataRowLoadingMode.NonSequential);
+                    msg = await Connector.ReadMessage(async);
                     ProcessMessage(msg);
                     if (msg.Code == BackendMessageCode.DataRow)
                         PopulateOutputParameters();
@@ -1093,7 +1091,7 @@ namespace Npgsql
 
         ValueTask<Stream> GetStreamInternal(int ordinal, bool async)
         {
-            if (ColumnStream != null && !ColumnStream.IsDisposed)
+            if (_columnStream != null && !_columnStream.IsDisposed)
                 throw new InvalidOperationException("A stream is already open for this reader");
 
             var t = SeekToColumn(ordinal, async);
@@ -1103,7 +1101,7 @@ namespace Npgsql
             if (ColumnLen == -1)
                 throw new InvalidCastException("Column is null");
             PosInColumn += ColumnLen;
-            return new ValueTask<Stream>(ColumnStream = (NpgsqlReadBuffer.ColumnStream)Buffer.GetStream(ColumnLen, !_isSequential));
+            return new ValueTask<Stream>(_columnStream = (NpgsqlReadBuffer.ColumnStream)Buffer.GetStream(ColumnLen, !_isSequential));
 
             async Task<Stream> GetStreamLong(Task seekTask)
             {
@@ -1111,7 +1109,7 @@ namespace Npgsql
                 if (ColumnLen == -1)
                     throw new InvalidCastException("Column is null");
                 PosInColumn += ColumnLen;
-                return ColumnStream = (NpgsqlReadBuffer.ColumnStream)Buffer.GetStream(ColumnLen, !_isSequential);
+                return _columnStream = (NpgsqlReadBuffer.ColumnStream)Buffer.GetStream(ColumnLen, !_isSequential);
             }
         }
 
@@ -1203,7 +1201,7 @@ namespace Npgsql
 
                 var maxBytes = Math.Min(byteCount - bytesRead, Buffer.ReadBytesLeft);
                 decoder.Convert(Buffer.Buffer, Buffer.ReadPosition, maxBytes, output, outputOffset, charCount - charsRead, false,
-                    out var bytesUsed, out var charsUsed, out var completed);
+                    out var bytesUsed, out var charsUsed, out _);
                 Buffer.ReadPosition += bytesUsed;
                 bytesRead += bytesUsed;
                 charsRead += charsUsed;
@@ -1738,10 +1736,10 @@ namespace Npgsql
         void SeekToColumnNonSequential(int column)
         {
             // Shut down any streaming going on on the column
-            if (ColumnStream != null)
+            if (_columnStream != null)
             {
-                ColumnStream.Dispose();
-                ColumnStream = null;
+                _columnStream.Dispose();
+                _columnStream = null;
             }
 
             for (var lastColumnRead = _columns.Count; column >= lastColumnRead; lastColumnRead++)
@@ -1776,10 +1774,10 @@ namespace Npgsql
             // Need to seek forward
 
             // Shut down any streaming going on on the column
-            if (ColumnStream != null)
+            if (_columnStream != null)
             {
-                ColumnStream.Dispose();
-                ColumnStream = null;
+                _columnStream.Dispose();
+                _columnStream = null;
                 // Disposing the stream leaves us at the end of the column
                 PosInColumn = ColumnLen;
             }
@@ -1845,18 +1843,15 @@ namespace Npgsql
 
             if (_isSequential)
                 return ConsumeRowSequential(async);
-            else
-            {
-                ConsumeRowNonSequential();
-                return Task.CompletedTask;
-            }
+            ConsumeRowNonSequential();
+            return Task.CompletedTask;
 
             async Task ConsumeRowSequential(bool async2)
             {
-                if (ColumnStream != null)
+                if (_columnStream != null)
                 {
-                    ColumnStream.Dispose();
-                    ColumnStream = null;
+                    _columnStream.Dispose();
+                    _columnStream = null;
                     // Disposing the stream leaves us at the end of the column
                     PosInColumn = ColumnLen;
                 }
@@ -1883,10 +1878,10 @@ namespace Npgsql
         {
             Debug.Assert(State == ReaderState.InResult || State == ReaderState.BeforeResult);
 
-            if (ColumnStream != null)
+            if (_columnStream != null)
             {
-                ColumnStream.Dispose();
-                ColumnStream = null;
+                _columnStream.Dispose();
+                _columnStream = null;
                 // Disposing the stream leaves us at the end of the column
                 PosInColumn = ColumnLen;
             }
@@ -1898,7 +1893,7 @@ namespace Npgsql
         #region Checks
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        RowDescriptionMessage CheckResultSet()
+        void CheckResultSet()
         {
             switch (State)
             {
@@ -1910,19 +1905,6 @@ namespace Npgsql
             default:
                 throw new InvalidOperationException("No resultset is currently being traversed");
             }
-
-            return RowDescription!;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        FieldDescription CheckResultSetAndGetField(int column)
-        {
-            var rowDescription = CheckResultSet();
-
-            if (column < 0 || column >= rowDescription.NumFields)
-                throw new IndexOutOfRangeException($"Column must be between {0} and {rowDescription.NumFields - 1}");
-
-            return rowDescription[column];
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

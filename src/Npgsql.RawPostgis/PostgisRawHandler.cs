@@ -4,7 +4,7 @@ using Npgsql.TypeHandling;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
-namespace Npgsql.LegacyPostgis
+namespace Npgsql.RawPostgis
 {
     public class PostgisRawHandlerFactory : NpgsqlTypeHandlerFactory<byte[]>
     {

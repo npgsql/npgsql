@@ -462,8 +462,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                             case 'v':
                                 throw new NotImplementedException("Cannot derive function parameter of type VARIADIC");
                             default:
-                                throw new ArgumentOutOfRangeException("proargmode", modes[i],
-                                    "Unknown code in proargmodes while deriving: " + modes[i]);
+                                throw new ArgumentOutOfRangeException("Unknown code in proargmodes while deriving: " + modes[i]);
                         }
                     }
 
@@ -601,6 +600,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     // Loop over statements, skipping those that are already prepared (because they were persisted)
                     var isFirst = true;
                     foreach (var statement in _statements)
+                    {
                         if (statement.PreparedStatement?.State == PreparedState.BeingPrepared)
                         {
                             var pStatement = statement.PreparedStatement;
@@ -629,17 +629,19 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                             default:
                                 throw connector.UnexpectedMessageReceived(msg.Code);
                             }
+
                             pStatement.CompletePrepare();
                             isFirst = false;
                         }
-
-                        Expect<ReadyForQueryMessage>(await connector.ReadMessage(async), connector);
-
-                        if (async)
-                            await sendTask;
-                        else
-                            sendTask.GetAwaiter().GetResult();
                     }
+
+                    Expect<ReadyForQueryMessage>(await connector.ReadMessage(async), connector);
+
+                    if (async)
+                        await sendTask;
+                    else
+                        sendTask.GetAwaiter().GetResult();
+                }
             }
         }
 

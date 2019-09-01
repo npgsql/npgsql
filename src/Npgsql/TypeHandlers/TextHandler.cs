@@ -131,7 +131,7 @@ namespace Npgsql.TypeHandlers
                 await buf.ReadMore(async);
 
             var decoder = buf.TextEncoding.GetDecoder();
-            decoder.Convert(buf.Buffer, buf.ReadPosition, maxBytes, _singleCharArray, 0, 1, true, out var bytesUsed, out var charsUsed, out var completed);
+            decoder.Convert(buf.Buffer, buf.ReadPosition, maxBytes, _singleCharArray, 0, 1, true, out var bytesUsed, out var charsUsed, out _);
             buf.Skip(len - bytesUsed);
 
             if (charsUsed < 1)

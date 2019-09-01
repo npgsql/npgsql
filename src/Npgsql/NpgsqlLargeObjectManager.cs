@@ -10,10 +10,10 @@ namespace Npgsql
     /// </summary>
     public class NpgsqlLargeObjectManager
     {
-        const int INV_WRITE = 0x00020000;
-        const int INV_READ = 0x00040000;
+        const int InvWrite = 0x00020000;
+        const int InvRead = 0x00040000;
 
-        internal readonly NpgsqlConnection _connection;
+        internal NpgsqlConnection Connection { get; }
 
         /// <summary>
         /// The largest chunk size (in bytes) read and write operations will read/write each roundtrip to the network. Default 4 MB.
@@ -26,7 +26,7 @@ namespace Npgsql
         /// <param name="connection"></param>
         public NpgsqlLargeObjectManager(NpgsqlConnection connection)
         {
-            _connection = connection;
+            Connection = connection;
             MaxTransferBlockSize = 4 * 1024 * 1024; // 4MB
         }
 
@@ -35,7 +35,7 @@ namespace Npgsql
         /// </summary>
         internal async Task<T> ExecuteFunction<T>(string function, bool async, params object[] arguments)
         {
-            using (var command = new NpgsqlCommand(function, _connection))
+            using (var command = new NpgsqlCommand(function, Connection))
             {
                 command.CommandType = CommandType.StoredProcedure;
                 command.CommandText = function;
@@ -51,7 +51,7 @@ namespace Npgsql
         /// <returns></returns>
         internal async Task<int> ExecuteFunctionGetBytes(string function, byte[] buffer, int offset, int len, bool async, params object[] arguments)
         {
-            using (var command = new NpgsqlCommand(function, _connection))
+            using (var command = new NpgsqlCommand(function, Connection))
             {
                 command.CommandType = CommandType.StoredProcedure;
                 foreach (var argument in arguments)
@@ -121,7 +121,7 @@ namespace Npgsql
 
         async Task<NpgsqlLargeObjectStream> OpenRead(uint oid, bool async)
         {
-            var fd = await ExecuteFunction<int>("lo_open", async, (int)oid, INV_READ);
+            var fd = await ExecuteFunction<int>("lo_open", async, (int)oid, InvRead);
             return new NpgsqlLargeObjectStream(this, fd, false);
         }
 
@@ -151,7 +151,7 @@ namespace Npgsql
 
         async Task<NpgsqlLargeObjectStream> OpenReadWrite(uint oid, bool async)
         {
-            var fd = await ExecuteFunction<int>("lo_open", async, (int)oid, INV_READ | INV_WRITE);
+            var fd = await ExecuteFunction<int>("lo_open", async, (int)oid, InvRead | InvWrite);
             return new NpgsqlLargeObjectStream(this, fd, true);
         }
 
@@ -223,7 +223,7 @@ namespace Npgsql
         /// Since PostgreSQL 9.3, large objects larger than 2GB can be handled, up to 4TB.
         /// This property returns true whether the PostgreSQL version is >= 9.3.
         /// </summary>
-        public bool Has64BitSupport => _connection.PostgreSqlVersion >= new Version(9, 3);
+        public bool Has64BitSupport => Connection.PostgreSqlVersion >= new Version(9, 3);
 
         /*
         internal enum Function : uint

@@ -82,7 +82,7 @@ namespace Npgsql
                 {
                     var left = _buf.WriteSpaceLeft;
                     if (left == 0)
-                        return WriteLong(buffer, offset, count, cancellationToken, async);
+                        return WriteLong(buffer, offset, count, async);
 
                     var slice = Math.Min(count, left);
                     _buf.WriteBytes(buffer, offset, slice);
@@ -93,7 +93,7 @@ namespace Npgsql
                 return Task.CompletedTask;
             }
 
-            async Task WriteLong(byte[] buffer, int offset, int count, CancellationToken cancellationToken, bool async)
+            async Task WriteLong(byte[] buffer, int offset, int count, bool async)
             {
                 while (count > 0)
                 {

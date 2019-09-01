@@ -686,17 +686,17 @@ namespace NpgsqlTypes
                 var hours = 0;
                 var minutes = 0;
                 var seconds = 0m;
-                var idx = str.IndexOf("year");
+                var idx = str.IndexOf("year", StringComparison.Ordinal);
                 if (idx > 0) {
                     years = int.Parse(str.Substring(0, idx));
                     str = SafeSubstring(str, idx + 5);
                 }
-                idx = str.IndexOf("mon");
+                idx = str.IndexOf("mon", StringComparison.Ordinal);
                 if (idx > 0) {
                     months = int.Parse(str.Substring(0, idx));
                     str = SafeSubstring(str, idx + 4);
                 }
-                idx = str.IndexOf("day");
+                idx = str.IndexOf("day", StringComparison.Ordinal);
                 if (idx > 0) {
                     days = int.Parse(str.Substring(0, idx));
                     str = SafeSubstring(str, idx + 4).Trim();

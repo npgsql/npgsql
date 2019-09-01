@@ -76,9 +76,6 @@ namespace Npgsql
             var passwd = GetPassword(username) ??
                          throw new NpgsqlException($"No password has been provided but the backend requires one (in SASL/{mechanism})");
 
-            const string ClientKey = "Client Key";
-            const string ServerKey = "Server Key";
-
             // Assumption: the write buffer is big enough to contain all our outgoing messages
             var clientNonce = GetNonce();
 
@@ -95,7 +92,7 @@ namespace Npgsql
             var saltBytes = Convert.FromBase64String(firstServerMsg.Salt);
             var saltedPassword = Hi(passwd.Normalize(NormalizationForm.FormKC), saltBytes, firstServerMsg.Iteration);
 
-            var clientKey = HMAC(saltedPassword, ClientKey);
+            var clientKey = HMAC(saltedPassword, "Client Key");
             byte[] storedKey;
             using (var sha256 = SHA256.Create())
                 storedKey = sha256.ComputeHash(clientKey);
@@ -107,10 +104,10 @@ namespace Npgsql
             var authMessage = $"{clientFirstMessageBare},{serverFirstMessage},{clientFinalMessageWithoutProof}";
 
             var clientSignature = HMAC(storedKey, authMessage);
-            var clientProofBytes = XOR(clientKey, clientSignature);
+            var clientProofBytes = Xor(clientKey, clientSignature);
             var clientProof = Convert.ToBase64String(clientProofBytes);
 
-            var serverKey = HMAC(saltedPassword, ServerKey);
+            var serverKey = HMAC(saltedPassword, "Server Key");
             var serverSignature = HMAC(serverKey, authMessage);
 
             var messageStr = $"{clientFinalMessageWithoutProof},p={clientProof}";
@@ -148,14 +145,14 @@ namespace Npgsql
                     byte[] hi, u1;
 
                     Buffer.BlockCopy(salt, 0, salt1, 0, salt.Length);
-                    salt1[salt1.Length - 1] = (byte)1;
+                    salt1[salt1.Length - 1] = 1;
 
                     hi = u1 = hmac.ComputeHash(salt1);
 
                     for (var i = 1; i < count; i++)
                     {
                         var u2 = hmac.ComputeHash(u1);
-                        XOR(hi, u2);
+                        Xor(hi, u2);
                         u1 = u2;
                     }
 
@@ -163,7 +160,7 @@ namespace Npgsql
                 }
             }
 
-            static byte[] XOR(byte[] buffer1, byte[] buffer2)
+            static byte[] Xor(byte[] buffer1, byte[] buffer2)
             {
                 for (var i = 0; i < buffer1.Length; i++)
                     buffer1[i] ^= buffer2[i];
@@ -392,7 +389,7 @@ namespace Npgsql
                     throw new NpgsqlException($"Obtaining password using {nameof(NpgsqlConnection)}.{nameof(ProvidePasswordCallback)} delegate failed", e);
                 }
             }
-            
+
             return null;
         }
     }

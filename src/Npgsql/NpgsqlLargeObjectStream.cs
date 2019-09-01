@@ -35,7 +35,7 @@ namespace Npgsql
         /// Since PostgreSQL 9.3, large objects larger than 2GB can be handled, up to 4TB.
         /// This property returns true whether the PostgreSQL version is >= 9.3.
         /// </summary>
-        public bool Has64BitSupport => _manager._connection.PostgreSqlVersion >= new Version(9, 3);
+        public bool Has64BitSupport => _manager.Connection.PostgreSqlVersion >= new Version(9, 3);
 
         /// <summary>
         /// Reads <i>count</i> bytes from the large object. The only case when fewer bytes are read is when end of stream is reached.
@@ -55,7 +55,7 @@ namespace Npgsql
         /// <param name="count">The maximum number of bytes that should be read.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
         /// <returns>How many bytes actually read, or 0 if end of file was already reached.</returns>
-        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken = default)
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
             if (cancellationToken.IsCancellationRequested)
                 return Task.FromCanceled<int>(cancellationToken);
@@ -108,7 +108,7 @@ namespace Npgsql
         /// <param name="offset">The offset in the buffer at which to begin copying bytes.</param>
         /// <param name="count">The number of bytes to write.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
-        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken = default)
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
             if (cancellationToken.IsCancellationRequested)
                 return Task.FromCanceled(cancellationToken);
@@ -155,7 +155,7 @@ namespace Npgsql
         /// <summary>
         /// CanRead always returns true, unless the stream has been closed.
         /// </summary>
-        public override bool CanRead => true && !_disposed;
+        public override bool CanRead => !_disposed;
 
         /// <summary>
         /// CanWrite returns true if the stream was opened with write permissions, and the stream has not been closed.
@@ -165,7 +165,7 @@ namespace Npgsql
         /// <summary>
         /// CanSeek always returns true, unless the stream has been closed.
         /// </summary>
-        public override bool CanSeek => true && !_disposed;
+        public override bool CanSeek => !_disposed;
 
         /// <summary>
         /// Returns the current position in the stream. Getting the current position does not need a round-trip to the server, however setting the current position does.
@@ -232,15 +232,14 @@ namespace Npgsql
         {
             if (origin < SeekOrigin.Begin || origin > SeekOrigin.End)
                 throw new ArgumentException("Invalid origin");
-            if (!Has64BitSupport && offset != (long)(int)offset)
+            if (!Has64BitSupport && offset != (int)offset)
                 throw new ArgumentOutOfRangeException(nameof(offset), "offset must fit in 32 bits for PostgreSQL versions older than 9.3");
 
             CheckDisposed();
 
-            if (_manager.Has64BitSupport)
-                return _pos = await _manager.ExecuteFunction<long>("lo_lseek64", async, _fd, offset, (int)origin);
-            else
-                return _pos = await _manager.ExecuteFunction<int>("lo_lseek", async, _fd, (int)offset, (int)origin);
+            return _manager.Has64BitSupport
+                ? _pos = await _manager.ExecuteFunction<long>("lo_lseek64", async, _fd, offset, (int)origin)
+                : _pos = await _manager.ExecuteFunction<int>("lo_lseek", async, _fd, (int)offset, (int)origin);
         }
 
         /// <summary>
@@ -273,7 +272,7 @@ namespace Npgsql
         {
             if (value < 0)
                 throw new ArgumentOutOfRangeException(nameof(value));
-            if (!Has64BitSupport && value != (long)(int)value)
+            if (!Has64BitSupport && value != (int)value)
                 throw new ArgumentOutOfRangeException(nameof(value), "offset must fit in 32 bits for PostgreSQL versions older than 9.3");
 
             CheckDisposed();

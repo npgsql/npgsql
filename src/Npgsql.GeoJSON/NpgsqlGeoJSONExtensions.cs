@@ -6,6 +6,7 @@ using Npgsql.GeoJSON;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
+// ReSharper disable once CheckNamespace
 namespace Npgsql
 {
     /// <summary>

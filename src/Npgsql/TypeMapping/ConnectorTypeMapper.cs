@@ -5,11 +5,9 @@ using System.Data;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 using Npgsql.Logging;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandlers;
-using Npgsql.TypeHandlers.CompositeHandlers;
 using Npgsql.TypeHandling;
 using NpgsqlTypes;
 

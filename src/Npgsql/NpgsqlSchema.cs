@@ -149,7 +149,7 @@ namespace Npgsql
                             query.Append(" AND ");
                         }
 
-                        string paramName = RemoveSpecialChars(names[i]);
+                        var paramName = RemoveSpecialChars(names[i]);
 
                         query.AppendFormat("{0} = :{1}", names[i], paramName);
 

@@ -7,6 +7,7 @@ using Npgsql.NetTopologySuite;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
+// ReSharper disable once CheckNamespace
 namespace Npgsql
 {
     /// <summary>

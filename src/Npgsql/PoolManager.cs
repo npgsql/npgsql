@@ -16,7 +16,7 @@ namespace Npgsql
     {
         internal const int InitialPoolsSize = 10;
 
-        static readonly object _lock = new object();
+        static readonly object Lock = new object();
         static volatile (string Key, ConnectorPool Pool)[] _pools = new (string, ConnectorPool)[InitialPoolsSize];
         static volatile int _nextSlot;
 
@@ -65,7 +65,7 @@ namespace Npgsql
 
         internal static ConnectorPool GetOrAdd(string key, ConnectorPool pool)
         {
-            lock (_lock)
+            lock (Lock)
             {
                 if (TryGetValue(key, out var result))
                     return result;
@@ -93,7 +93,7 @@ namespace Npgsql
 
         internal static void ClearAll()
         {
-            lock (_lock)
+            lock (Lock)
             {
                 var pools = _pools;
                 for (var i = 0; i < _nextSlot; i++)
@@ -120,7 +120,7 @@ namespace Npgsql
         /// </summary>
         internal static void Reset()
         {
-            lock (_lock)
+            lock (Lock)
             {
                 ClearAll();
                 _pools = new (string, ConnectorPool)[InitialPoolsSize];

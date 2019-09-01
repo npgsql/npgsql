@@ -52,6 +52,7 @@ namespace Npgsql.TypeHandlers
                 var iterationEndPos = bytesLeft - Math.Min(bytesLeft, buf.ReadBytesLeft) + 1;
                 for (; bytesLeft > iterationEndPos; bytesLeft--)
                 {
+                    // ReSharper disable ShiftExpressionRealShiftCountIsZero
                     var chunk = buf.ReadByte();
                     result[bitNo++] = (chunk & (1 << 7)) != 0;
                     result[bitNo++] = (chunk & (1 << 6)) != 0;
