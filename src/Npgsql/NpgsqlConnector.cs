@@ -866,11 +866,12 @@ namespace Npgsql
                     }
                 }
 
+                PostgresException? error = null;
+
                 try
                 {
                     ReceiveTimeout = UserTimeout;
-                    PostgresException? error = null;
-
+                    
                     while (true)
                     {
                         await ReadBuffer.Ensure(5, async, readingNotifications2);
@@ -955,6 +956,13 @@ namespace Npgsql
                     {
                         EndUserAction();
                     }
+                    throw;
+                }
+                catch (NpgsqlException)
+                {
+                    // An ErrorResponse isn't followed by ReadyForQuery
+                    if (error != null)
+                        throw error;
                     throw;
                 }
             }
