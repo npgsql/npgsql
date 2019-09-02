@@ -8,6 +8,7 @@ using System.Net.Security;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Runtime.ExceptionServices;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
@@ -868,11 +869,12 @@ namespace Npgsql
                     }
                 }
 
+                PostgresException? error = null;
+
                 try
                 {
                     ReceiveTimeout = UserTimeout;
-                    PostgresException? error = null;
-
+                    
                     while (true)
                     {
                         await ReadBuffer.Ensure(5, async, readingNotifications2);
@@ -957,6 +959,13 @@ namespace Npgsql
                     {
                         EndUserAction();
                     }
+                    throw;
+                }
+                catch (NpgsqlException)
+                {
+                    // An ErrorResponse isn't followed by ReadyForQuery
+                    if (error != null)
+                        ExceptionDispatchInfo.Capture(error).Throw();
                     throw;
                 }
             }
