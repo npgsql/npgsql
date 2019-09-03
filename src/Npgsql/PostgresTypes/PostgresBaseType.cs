@@ -18,16 +18,13 @@ namespace Npgsql.PostgresTypes
             if (facets == PostgresFacets.None)
                 return Name;
 
-            switch (Name)
+            return Name switch
             {
-            // Special case for timestamptz and timetz where the facet is embedded in the middle
-            case "timestamp with time zone":
-                return $"timestamp{facets} with time zone";
-            case "time with time zone":
-                return $"time{facets} with time zone";
-            default:
-                return $"{Name}{facets}";
-            }
+                // Special case for timestamptz and timetz where the facet is embedded in the middle
+                "timestamp with time zone" => $"timestamp{facets} with time zone",
+                "time with time zone"      => $"time{facets} with time zone",
+                _                          => $"{Name}{facets}"
+            };
         }
 
         internal override PostgresFacets GetFacets(int typeModifier)
@@ -70,36 +67,21 @@ namespace Npgsql.PostgresTypes
         // integer). We perform translation to the user-facing standard names.
         // https://www.postgresql.org/docs/current/static/datatype.html#DATATYPE-TABLE
         static string TranslateInternalName(string internalName)
-        {
-            switch (internalName)
+            => internalName switch
             {
-            case "bool":
-                return "boolean";
-            case "bpchar":
-                return "character";
-            case "decimal":
-                return "numeric";
-            case "float4":
-                return "real";
-            case "float8":
-                return "double precision";
-            case "int2":
-                return "smallint";
-            case "int4":
-                return "integer";
-            case "int8":
-                return "bigint";
-            case "timetz":
-                return "time with time zone";
-            case "timestamptz":
-                return "timestamp with time zone";
-            case "varbit":
-                return "bit varying";
-            case "varchar":
-                return "character varying";
-            default:
-                return internalName;
-            }
-        }
+                "bool"        => "boolean",
+                "bpchar"      => "character",
+                "decimal"     => "numeric",
+                "float4"      => "real",
+                "float8"      => "double precision",
+                "int2"        => "smallint",
+                "int4"        => "integer",
+                "int8"        => "bigint",
+                "timetz"      => "time with time zone",
+                "timestamptz" => "timestamp with time zone",
+                "varbit"      => "bit varying",
+                "varchar"     => "character varying",
+                _             => internalName
+            };
     }
 }

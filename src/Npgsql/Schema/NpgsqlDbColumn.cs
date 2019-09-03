@@ -168,28 +168,16 @@ namespace Npgsql.Schema
         public NpgsqlDbType? NpgsqlDbType { get; internal set; }
 
         public override object? this[string propertyName]
-        {
-            get
+            => propertyName switch
             {
-                switch (propertyName)
-                {
-                case nameof(PostgresType):
-                    return PostgresType;
-                case nameof(TypeOID):
-                    return TypeOID;
-                case nameof(TableOID):
-                    return TableOID;
-                case nameof(ColumnAttributeNumber):
-                    return ColumnAttributeNumber;
-                case nameof(DefaultValue):
-                    return DefaultValue;
-                case nameof(NpgsqlDbType):
-                    return NpgsqlDbType;
-                }
-
-                return base[propertyName];
-            }
-        }
+                nameof(PostgresType)          => PostgresType,
+                nameof(TypeOID)               => TypeOID,
+                nameof(TableOID)              => TableOID,
+                nameof(ColumnAttributeNumber) => ColumnAttributeNumber,
+                nameof(DefaultValue)          => DefaultValue,
+                nameof(NpgsqlDbType)          => NpgsqlDbType,
+                _                             => base[propertyName]
+            };
 
         #endregion Npgsql-specific fields
     }

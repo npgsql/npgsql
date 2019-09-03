@@ -426,18 +426,12 @@ namespace Npgsql
 
                     Expect<BindCompleteMessage>(await Connector.ReadMessage(async), Connector);
                     msg = await Connector.ReadMessage(async);
-                    switch (msg.Code)
+                    RowDescription = statement.Description = msg.Code switch
                     {
-                    case BackendMessageCode.NoData:
-                        RowDescription = statement.Description = null;
-                        break;
-                    case BackendMessageCode.RowDescription:
-                        // We have a resultset
-                        RowDescription = statement.Description = (RowDescriptionMessage)msg;
-                        break;
-                    default:
-                        throw Connector.UnexpectedMessageReceived(msg.Code);
-                    }
+                        BackendMessageCode.NoData         => null,
+                        BackendMessageCode.RowDescription => (RowDescriptionMessage)msg,  // We have a resultset
+                        _ => throw Connector.UnexpectedMessageReceived(msg.Code)
+                    };
                 }
 
                 if (RowDescription == null)

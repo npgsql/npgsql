@@ -336,18 +336,12 @@ namespace NpgsqlTypes
 
         public static NpgsqlPath Parse(string s)
         {
-            bool open;
-            switch (s[0])
+            var open = s[0] switch
             {
-            case '[':
-                open = true;
-                break;
-            case '(':
-                open = false;
-                break;
-            default:
-                throw new Exception("Invalid path string: " + s);
-            }
+                '[' => true,
+                '(' => false,
+                _   => throw new Exception("Invalid path string: " + s)
+            };
             Debug.Assert(s[s.Length - 1] == (open ? ']' : ')'));
             var result = new NpgsqlPath(open);
             var i = 1;

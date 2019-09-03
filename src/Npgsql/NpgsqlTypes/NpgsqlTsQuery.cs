@@ -166,23 +166,13 @@ namespace NpgsqlTypes
                     var left = valStack.Pop();
 
                     var tsOp = opStack.Pop();
-                    switch (tsOp)
+                    valStack.Push((char)tsOp switch
                     {
-                    case '&':
-                        valStack.Push(new NpgsqlTsQueryAnd(left, right));
-                        break;
-
-                    case '|':
-                        valStack.Push(new NpgsqlTsQueryOr(left, right));
-                        break;
-
-                    case '<':
-                        valStack.Push(new NpgsqlTsQueryFollowedBy(left, tsOp.FollowedByDistance, right));
-                        break;
-
-                    default:
-                        throw new FormatException("Syntax error in tsquery");
-                    }
+                        '&' => (NpgsqlTsQuery)new NpgsqlTsQueryAnd(left, right),
+                        '|' => new NpgsqlTsQueryOr(left, right),
+                        '<' => new NpgsqlTsQueryFollowedBy(left, tsOp.FollowedByDistance, right),
+                        _   => throw new FormatException("Syntax error in tsquery")
+                    });
                 }
                 if (opStack.Count == 0)
                     throw new FormatException("Syntax error in tsquery: closing parenthesis without an opening parenthesis");
@@ -328,26 +318,14 @@ namespace NpgsqlTypes
                 var right = valStack.Pop();
                 var left = valStack.Pop();
 
-                NpgsqlTsQuery query;
                 var tsOp = opStack.Pop();
-                switch (tsOp)
+                var query = (char)tsOp switch
                 {
-                case '&':
-                    query = new NpgsqlTsQueryAnd(left, right);
-                    break;
-
-                case '|':
-                    query = new NpgsqlTsQueryOr(left, right);
-                    break;
-
-                case '<':
-                    query = new NpgsqlTsQueryFollowedBy(left, tsOp.FollowedByDistance, right);
-                    break;
-
-                default:
-                    throw new FormatException("Syntax error in tsquery");
-                }
-
+                    '&' => (NpgsqlTsQuery)new NpgsqlTsQueryAnd(left, right),
+                    '|' => new NpgsqlTsQueryOr(left, right),
+                    '<' => new NpgsqlTsQueryFollowedBy(left, tsOp.FollowedByDistance, right),
+                    _   => throw new FormatException("Syntax error in tsquery")
+                };
                 valStack.Push(query);
             }
             if (valStack.Count != 1)

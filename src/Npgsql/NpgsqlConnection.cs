@@ -421,29 +421,20 @@ namespace Npgsql
             get
             {
                 if (Connector == null || _disposed)
-                {
                     return _wasBroken ? ConnectionState.Broken : ConnectionState.Closed;
-                }
 
-                switch (Connector.State)
+                return Connector.State switch
                 {
-                case ConnectorState.Closed:
-                    return ConnectionState.Closed;
-                case ConnectorState.Connecting:
-                    return ConnectionState.Connecting;
-                case ConnectorState.Ready:
-                    return ConnectionState.Open;
-                case ConnectorState.Executing:
-                    return ConnectionState.Open | ConnectionState.Executing;
-                case ConnectorState.Copy:
-                case ConnectorState.Fetching:
-                case ConnectorState.Waiting:
-                    return ConnectionState.Open | ConnectionState.Fetching;
-                case ConnectorState.Broken:
-                    return ConnectionState.Broken;
-                default:
-                    throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {Connector.State} of enum {nameof(ConnectorState)}. Please file a bug.");
-                }
+                    ConnectorState.Closed     => ConnectionState.Closed,
+                    ConnectorState.Connecting => ConnectionState.Connecting,
+                    ConnectorState.Ready      => ConnectionState.Open,
+                    ConnectorState.Executing  => ConnectionState.Open | ConnectionState.Executing,
+                    ConnectorState.Copy       => ConnectionState.Open | ConnectionState.Fetching,
+                    ConnectorState.Fetching   => ConnectionState.Open | ConnectionState.Fetching,
+                    ConnectorState.Waiting    => ConnectionState.Open | ConnectionState.Fetching,
+                    ConnectorState.Broken     => ConnectionState.Broken,
+                    _ => throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {Connector.State} of enum {nameof(ConnectorState)}. Please file a bug.")
+                };
             }
         }
 

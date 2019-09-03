@@ -63,22 +63,13 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
                     }
                     else
                     {
-                        NpgsqlTsQuery node;
-                        switch (operKind)
+                        var node = operKind switch
                         {
-                        case NpgsqlTsQuery.NodeKind.And:
-                            node = new NpgsqlTsQueryAnd(null, null);
-                            break;
-                        case NpgsqlTsQuery.NodeKind.Or:
-                            node = new NpgsqlTsQueryOr(null, null);
-                            break;
-                        case NpgsqlTsQuery.NodeKind.Phrase:
-                            var distance = buf.ReadInt16();
-                            node = new NpgsqlTsQueryFollowedBy(null, distance, null);
-                            break;
-                        default:
-                            throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {operKind} of enum {nameof(NpgsqlTsQuery.NodeKind)}. Please file a bug.");
-                        }
+                            NpgsqlTsQuery.NodeKind.And    => (NpgsqlTsQuery)new NpgsqlTsQueryAnd(null, null),
+                            NpgsqlTsQuery.NodeKind.Or     => new NpgsqlTsQueryOr(null, null),
+                            NpgsqlTsQuery.NodeKind.Phrase => new NpgsqlTsQueryFollowedBy(null, buf.ReadInt16(), null),
+                            _ => throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {operKind} of enum {nameof(NpgsqlTsQuery.NodeKind)}. Please file a bug.")
+                        };
 
                         InsertInTree(node, nodes, ref value);
 
