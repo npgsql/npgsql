@@ -8,6 +8,7 @@ using System.Net.Security;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Runtime.ExceptionServices;
 using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
@@ -962,7 +963,7 @@ namespace Npgsql
                 {
                     // An ErrorResponse isn't followed by ReadyForQuery
                     if (error != null)
-                        throw error;
+                        ExceptionDispatchInfo.Capture(error).Throw();
                     throw;
                 }
             }
