@@ -60,15 +60,12 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         {
             var binDate = buf.ReadInt32();
 
-            switch (binDate)
+            return binDate switch
             {
-            case int.MaxValue:
-                return NpgsqlDate.Infinity;
-            case int.MinValue:
-                return NpgsqlDate.NegativeInfinity;
-            default:
-                return new NpgsqlDate(binDate + 730119);
-            }
+                int.MaxValue => NpgsqlDate.Infinity,
+                int.MinValue => NpgsqlDate.NegativeInfinity,
+                _            => new NpgsqlDate(binDate + 730119)
+            };
         }
 
         #endregion Read

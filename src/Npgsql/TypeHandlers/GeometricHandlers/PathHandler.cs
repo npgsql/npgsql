@@ -24,19 +24,12 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
         public override async ValueTask<NpgsqlPath> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
             await buf.Ensure(5, async);
-            bool open;
-            var openByte = buf.ReadByte();
-            switch (openByte)
+            var open = buf.ReadByte() switch
             {
-            case 1:
-                open = false;
-                break;
-            case 0:
-                open = true;
-                break;
-            default:
-                throw new Exception("Error decoding binary geometric path: bad open byte");
-            }
+                1 => false,
+                0 => true,
+                _ => throw new Exception("Error decoding binary geometric path: bad open byte")
+            };
 
             var numPoints = buf.ReadInt32();
             var result = new NpgsqlPath(numPoints, open);

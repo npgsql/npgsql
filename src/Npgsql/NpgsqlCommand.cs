@@ -447,23 +447,15 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         param.Direction = ParameterDirection.Input;
                     else
                     {
-                        switch (modes[i])
+                        param.Direction = modes[i] switch
                         {
-                            case 'i':
-                                param.Direction = ParameterDirection.Input;
-                                break;
-                            case 'o':
-                            case 't':
-                                param.Direction = ParameterDirection.Output;
-                                break;
-                            case 'b':
-                                param.Direction = ParameterDirection.InputOutput;
-                                break;
-                            case 'v':
-                                throw new NotImplementedException("Cannot derive function parameter of type VARIADIC");
-                            default:
-                                throw new ArgumentOutOfRangeException("Unknown code in proargmodes while deriving: " + modes[i]);
-                        }
+                            'i' => ParameterDirection.Input,
+                            'o' => ParameterDirection.Output,
+                            't' => ParameterDirection.Output,
+                            'b' => ParameterDirection.InputOutput,
+                            'v' => throw new NotSupportedException("Cannot derive function parameter of type VARIADIC"),
+                            _   => throw new ArgumentOutOfRangeException("Unknown code in proargmodes while deriving: " + modes[i])
+                        };
                     }
 
                     Parameters.Add(param);

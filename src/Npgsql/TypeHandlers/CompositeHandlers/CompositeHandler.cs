@@ -112,18 +112,15 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
 
             foreach (var clrMember in clrType.GetMembers(BindingFlags.Instance | BindingFlags.Public))
             {
-                Type clrMemberType;
-                switch (clrMember)
+                var clrMemberType = clrMember switch
                 {
-                    case FieldInfo clrField:
-                        clrMemberType = clrField.FieldType;
-                        break;
-                    case PropertyInfo clrProperty:
-                        clrMemberType = clrProperty.PropertyType;
-                        break;
-                    default:
-                        continue;
-                }
+                    FieldInfo clrField       => clrField.FieldType,
+                    PropertyInfo clrProperty => clrProperty.PropertyType,
+                    _                        => null
+                };
+
+                if (clrMemberType == null)
+                    continue;
 
                 var attr = clrMember.GetCustomAttribute<PgNameAttribute>();
                 var name = attr?.PgName ?? nameTranslator.TranslateMemberName(clrMember.Name);

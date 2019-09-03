@@ -22,16 +22,12 @@ namespace Npgsql.BackendMessages
             ColumnFormatCodes.Clear();
 
             var binaryIndicator = buf.ReadByte();
-            switch (binaryIndicator) {
-            case 0:
-                IsBinary = false;
-                break;
-            case 1:
-                IsBinary = true;
-                break;
-            default:
-                throw new Exception("Invalid binary indicator in CopyInResponse message: " + binaryIndicator);
-            }
+            IsBinary = binaryIndicator switch
+            {
+                0 => false,
+                1 => true,
+                _ => throw new Exception("Invalid binary indicator in CopyInResponse message: " + binaryIndicator)
+            };
 
             NumColumns = buf.ReadInt16();
             for (var i = 0; i < NumColumns; i++)

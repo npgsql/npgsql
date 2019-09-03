@@ -334,26 +334,18 @@ namespace Npgsql
         /// Returns whether the connector is open, regardless of any task it is currently performing
         /// </summary>
         bool IsConnected
-        {
-            get
+            => State switch
             {
-                switch (State)
-                {
-                    case ConnectorState.Ready:
-                    case ConnectorState.Executing:
-                    case ConnectorState.Fetching:
-                    case ConnectorState.Waiting:
-                    case ConnectorState.Copy:
-                        return true;
-                    case ConnectorState.Closed:
-                    case ConnectorState.Connecting:
-                    case ConnectorState.Broken:
-                        return false;
-                    default:
-                        throw new ArgumentOutOfRangeException("Unknown state: " + State);
-                }
-            }
-        }
+                ConnectorState.Ready      => true,
+                ConnectorState.Executing  => true,
+                ConnectorState.Fetching   => true,
+                ConnectorState.Waiting    => true,
+                ConnectorState.Copy       => true,
+                ConnectorState.Closed     => false,
+                ConnectorState.Connecting => false,
+                ConnectorState.Broken     => false,
+                _                         => throw new ArgumentOutOfRangeException("Unknown state: " + State)
+            };
 
         internal bool IsReady => State == ConnectorState.Ready;
         internal bool IsClosed => State == ConnectorState.Closed;
@@ -1008,45 +1000,29 @@ namespace Npgsql
 
                 case BackendMessageCode.AuthenticationRequest:
                     var authType = (AuthenticationRequestType)buf.ReadInt32();
-                    switch (authType)
+                    return authType switch
                     {
-                        case AuthenticationRequestType.AuthenticationOk:
-                            return AuthenticationOkMessage.Instance;
-                        case AuthenticationRequestType.AuthenticationCleartextPassword:
-                            return AuthenticationCleartextPasswordMessage.Instance;
-                        case AuthenticationRequestType.AuthenticationMD5Password:
-                            return AuthenticationMD5PasswordMessage.Load(buf);
-                        case AuthenticationRequestType.AuthenticationGSS:
-                            return AuthenticationGSSMessage.Instance;
-                        case AuthenticationRequestType.AuthenticationSSPI:
-                            return AuthenticationSSPIMessage.Instance;
-                        case AuthenticationRequestType.AuthenticationGSSContinue:
-                            return AuthenticationGSSContinueMessage.Load(buf, len);
-                        case AuthenticationRequestType.AuthenticationSASL:
-                            return new AuthenticationSASLMessage(buf);
-                        case AuthenticationRequestType.AuthenticationSASLContinue:
-                            return new AuthenticationSASLContinueMessage(buf, len - 4);
-                        case AuthenticationRequestType.AuthenticationSASLFinal:
-                            return new AuthenticationSASLFinalMessage(buf, len - 4);
-                        default:
-                            throw new NotSupportedException($"Authentication method not supported (Received: {authType})");
-                    }
+                        AuthenticationRequestType.AuthenticationOk                => (AuthenticationRequestMessage)AuthenticationOkMessage.Instance,
+                        AuthenticationRequestType.AuthenticationCleartextPassword => AuthenticationCleartextPasswordMessage.Instance,
+                        AuthenticationRequestType.AuthenticationMD5Password       => AuthenticationMD5PasswordMessage.Load(buf),
+                        AuthenticationRequestType.AuthenticationGSS               => AuthenticationGSSMessage.Instance,
+                        AuthenticationRequestType.AuthenticationSSPI              => AuthenticationSSPIMessage.Instance,
+                        AuthenticationRequestType.AuthenticationGSSContinue       => AuthenticationGSSContinueMessage.Load(buf, len),
+                        AuthenticationRequestType.AuthenticationSASL              => new AuthenticationSASLMessage(buf),
+                        AuthenticationRequestType.AuthenticationSASLContinue      => new AuthenticationSASLContinueMessage(buf, len - 4),
+                        AuthenticationRequestType.AuthenticationSASLFinal         => new AuthenticationSASLFinalMessage(buf, len - 4),
+                        _ => throw new NotSupportedException($"Authentication method not supported (Received: {authType})")
+                    };
 
                 case BackendMessageCode.BackendKeyData:
                     return new BackendKeyDataMessage(buf);
 
                 case BackendMessageCode.CopyInResponse:
-                    _copyInResponseMessage ??= new CopyInResponseMessage();
-                    return _copyInResponseMessage.Load(ReadBuffer);
-
+                    return (_copyInResponseMessage ??= new CopyInResponseMessage()).Load(ReadBuffer);
                 case BackendMessageCode.CopyOutResponse:
-                    _copyOutResponseMessage ??= new CopyOutResponseMessage();
-                    return _copyOutResponseMessage.Load(ReadBuffer);
-
+                    return (_copyOutResponseMessage ??= new CopyOutResponseMessage()).Load(ReadBuffer);
                 case BackendMessageCode.CopyData:
-                    _copyDataMessage ??= new CopyDataMessage();
-                    return _copyDataMessage.Load(len);
-
+                    return (_copyDataMessage ??= new CopyDataMessage()).Load(len);
                 case BackendMessageCode.CopyDone:
                     return CopyDoneMessage.Instance;
 
@@ -1054,9 +1030,11 @@ namespace Npgsql
                     throw new NpgsqlException("Unimplemented message: " + code);
                 case BackendMessageCode.ErrorResponse:
                     return null;
+
                 case BackendMessageCode.FunctionCallResponse:
                     // We don't use the obsolete function call protocol
                     throw new NpgsqlException("Unexpected backend message: " + code);
+
                 default:
                     throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {code} of enum {nameof(BackendMessageCode)}. Please file a bug.");
             }
@@ -1093,22 +1071,15 @@ namespace Npgsql
         }
 
         internal bool InTransaction
-        {
-            get
+            => TransactionStatus switch
             {
-                switch (TransactionStatus)
-                {
-                case TransactionStatus.Idle:
-                    return false;
-                case TransactionStatus.Pending:
-                case TransactionStatus.InTransactionBlock:
-                case TransactionStatus.InFailedTransactionBlock:
-                    return true;
-                default:
-                    throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {TransactionStatus} of enum {nameof(TransactionStatus)}. Please file a bug.");
-                }
-            }
-        }
+                TransactionStatus.Idle                     => false,
+                TransactionStatus.Pending                  => true,
+                TransactionStatus.InTransactionBlock       => true,
+                TransactionStatus.InFailedTransactionBlock => true,
+                _ => throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {TransactionStatus} of enum {nameof(TransactionStatus)}. Please file a bug.")
+            };
+
         /// <summary>
         /// Handles a new transaction indicator received on a ReadyForQuery message
         /// </summary>
@@ -1117,17 +1088,14 @@ namespace Npgsql
             if (newStatus == TransactionStatus)
                 return;
 
-            switch (newStatus) {
-            case TransactionStatus.Idle:
-            case TransactionStatus.InTransactionBlock:
-            case TransactionStatus.InFailedTransactionBlock:
-                TransactionStatus = newStatus;
-                return;
-            case TransactionStatus.Pending:
-                throw new Exception("Invalid TransactionStatus (should be frontend-only)");
-            default:
-                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {newStatus} of enum {nameof(TransactionStatus)}. Please file a bug.");
-            }
+            TransactionStatus = newStatus switch
+            {
+                TransactionStatus.Idle                     => newStatus,
+                TransactionStatus.InTransactionBlock       => newStatus,
+                TransactionStatus.InFailedTransactionBlock => newStatus,
+                TransactionStatus.Pending                  => throw new Exception("Invalid TransactionStatus (should be frontend-only)"),
+                _ => throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {newStatus} of enum {nameof(TransactionStatus)}. Please file a bug.")
+            };
         }
 
         void ClearTransaction()

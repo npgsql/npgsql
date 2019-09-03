@@ -322,34 +322,17 @@ namespace Npgsql.GeoJSON
         #region Write
 
         public override int ValidateAndGetLength(GeoJSONObject value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
-        {
-            switch (value.Type)
+            => value.Type switch
             {
-            case GeoJSONObjectType.Point:
-                return ValidateAndGetLength((Point)value, ref lengthCache, parameter);
-
-            case GeoJSONObjectType.LineString:
-                return ValidateAndGetLength((LineString)value, ref lengthCache, parameter);
-
-            case GeoJSONObjectType.Polygon:
-                return ValidateAndGetLength((Polygon)value, ref lengthCache, parameter);
-
-            case GeoJSONObjectType.MultiPoint:
-                return ValidateAndGetLength((MultiPoint)value, ref lengthCache, parameter);
-
-            case GeoJSONObjectType.MultiLineString:
-                return ValidateAndGetLength((MultiLineString)value, ref lengthCache, parameter);
-
-            case GeoJSONObjectType.MultiPolygon:
-                return ValidateAndGetLength((MultiPolygon)value, ref lengthCache, parameter);
-
-            case GeoJSONObjectType.GeometryCollection:
-                return ValidateAndGetLength((GeometryCollection)value, ref lengthCache, parameter);
-
-            default:
-                throw UnknownPostGisType();
-            }
-        }
+                GeoJSONObjectType.Point              => ValidateAndGetLength((Point)value, ref lengthCache, parameter),
+                GeoJSONObjectType.LineString         => ValidateAndGetLength((LineString)value, ref lengthCache, parameter),
+                GeoJSONObjectType.Polygon            => ValidateAndGetLength((Polygon)value, ref lengthCache, parameter),
+                GeoJSONObjectType.MultiPoint         => ValidateAndGetLength((MultiPoint)value, ref lengthCache, parameter),
+                GeoJSONObjectType.MultiLineString    => ValidateAndGetLength((MultiLineString)value, ref lengthCache, parameter),
+                GeoJSONObjectType.MultiPolygon       => ValidateAndGetLength((MultiPolygon)value, ref lengthCache, parameter),
+                GeoJSONObjectType.GeometryCollection => ValidateAndGetLength((GeometryCollection)value, ref lengthCache, parameter),
+                _                                    => throw UnknownPostGisType()
+            };
 
         public int ValidateAndGetLength(Point value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
@@ -471,34 +454,17 @@ namespace Npgsql.GeoJSON
             => ValidateAndGetLength((GeoJSONObject)value, ref lengthCache, parameter);
 
         public override Task Write(GeoJSONObject value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
-        {
-            switch (value.Type)
+            => value.Type switch
             {
-            case GeoJSONObjectType.Point:
-                return Write((Point)value, buf, lengthCache, parameter, async);
-
-            case GeoJSONObjectType.LineString:
-                return Write((LineString)value, buf, lengthCache, parameter, async);
-
-            case GeoJSONObjectType.Polygon:
-                return Write((Polygon)value, buf, lengthCache, parameter, async);
-
-            case GeoJSONObjectType.MultiPoint:
-                return Write((MultiPoint)value, buf, lengthCache, parameter, async);
-
-            case GeoJSONObjectType.MultiLineString:
-                return Write((MultiLineString)value, buf, lengthCache, parameter, async);
-
-            case GeoJSONObjectType.MultiPolygon:
-                return Write((MultiPolygon)value, buf, lengthCache, parameter, async);
-
-            case GeoJSONObjectType.GeometryCollection:
-                return Write((GeometryCollection)value, buf, lengthCache, parameter, async);
-
-            default:
-                throw UnknownPostGisType();
-            }
-        }
+                GeoJSONObjectType.Point              => Write((Point)value, buf, lengthCache, parameter, async),
+                GeoJSONObjectType.LineString         => Write((LineString)value, buf, lengthCache, parameter, async),
+                GeoJSONObjectType.Polygon            => Write((Polygon)value, buf, lengthCache, parameter, async),
+                GeoJSONObjectType.MultiPoint         => Write((MultiPoint)value, buf, lengthCache, parameter, async),
+                GeoJSONObjectType.MultiLineString    => Write((MultiLineString)value, buf, lengthCache, parameter, async),
+                GeoJSONObjectType.MultiPolygon       => Write((MultiPolygon)value, buf, lengthCache, parameter, async),
+                GeoJSONObjectType.GeometryCollection => Write((GeometryCollection)value, buf, lengthCache, parameter, async),
+                _                                    => throw UnknownPostGisType()
+            };
 
         public async Task Write(Point value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {

@@ -20,45 +20,29 @@ namespace Npgsql
             if (collectionName.Length == 0)
                 throw new ArgumentException("Collection name cannot be empty.", nameof(collectionName));
 
-            switch (collectionName.ToUpperInvariant())
+            return collectionName.ToUpperInvariant() switch
             {
-            case "METADATACOLLECTIONS":
-                return GetMetaDataCollections();
-            case "RESTRICTIONS":
-                return GetRestrictions();
-            case "DATASOURCEINFORMATION":
-                return GetDataSourceInformation(conn);
-            case "DATATYPES":
-                return GetDataTypes(conn);
-            case "RESERVEDWORDS":
-                return GetReservedWords();
-            // custom collections for npgsql
-            case "DATABASES":
-                return GetDatabases(conn, restrictions);
-            case "SCHEMATA":
-                return GetSchemata(conn, restrictions);
-            case "TABLES":
-                return GetTables(conn, restrictions);
-            case "COLUMNS":
-                return GetColumns(conn, restrictions);
-            case "VIEWS":
-                return GetViews(conn, restrictions);
-            case "USERS":
-                return GetUsers(conn, restrictions);
-            case "INDEXES":
-                return GetIndexes(conn, restrictions);
-            case "INDEXCOLUMNS":
-                return GetIndexColumns(conn, restrictions);
-            case "CONSTRAINTS":
-            case "PRIMARYKEY":
-            case "UNIQUEKEYS":
-            case "FOREIGNKEYS":
-                return GetConstraints(conn, restrictions, collectionName);
-            case "CONSTRAINTCOLUMNS":
-                return GetConstraintColumns(conn, restrictions);
-            default:
-                throw new ArgumentOutOfRangeException(nameof(collectionName), collectionName, "Invalid collection name.");
-            }
+                "METADATACOLLECTIONS"   => GetMetaDataCollections(),
+                "RESTRICTIONS"          => GetRestrictions(),
+                "DATASOURCEINFORMATION" => GetDataSourceInformation(conn),
+                "DATATYPES"             => GetDataTypes(conn),
+                "RESERVEDWORDS"         => GetReservedWords(),
+                // custom collections for npgsql
+                "DATABASES"             => GetDatabases(conn, restrictions),
+                "SCHEMATA"              => GetSchemata(conn, restrictions),
+                "TABLES"                => GetTables(conn, restrictions),
+                "COLUMNS"               => GetColumns(conn, restrictions),
+                "VIEWS"                 => GetViews(conn, restrictions),
+                "USERS"                 => GetUsers(conn, restrictions),
+                "INDEXES"               => GetIndexes(conn, restrictions),
+                "INDEXCOLUMNS"          => GetIndexColumns(conn, restrictions),
+                "CONSTRAINTS"           => GetConstraints(conn, restrictions, collectionName),
+                "PRIMARYKEY"            => GetConstraints(conn, restrictions, collectionName),
+                "UNIQUEKEYS"            => GetConstraints(conn, restrictions, collectionName),
+                "FOREIGNKEYS"           => GetConstraints(conn, restrictions, collectionName),
+                "CONSTRAINTCOLUMNS"     => GetConstraintColumns(conn, restrictions),
+                _ => throw new ArgumentOutOfRangeException(nameof(collectionName), collectionName, "Invalid collection name.")
+            };
         }
 
         /// <summary>

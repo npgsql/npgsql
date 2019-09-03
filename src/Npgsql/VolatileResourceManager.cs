@@ -288,27 +288,15 @@ namespace Npgsql
         #endregion
 
         static System.Data.IsolationLevel ConvertIsolationLevel(IsolationLevel isolationLevel)
-        {
-            switch (isolationLevel)
+            => isolationLevel switch
             {
-            case IsolationLevel.Chaos:
-                return System.Data.IsolationLevel.Chaos;
-            case IsolationLevel.ReadCommitted:
-                return System.Data.IsolationLevel.ReadCommitted;
-            case IsolationLevel.ReadUncommitted:
-                return System.Data.IsolationLevel.ReadUncommitted;
-            case IsolationLevel.RepeatableRead:
-                return System.Data.IsolationLevel.RepeatableRead;
-            case IsolationLevel.Serializable:
-                return System.Data.IsolationLevel.Serializable;
-            case IsolationLevel.Snapshot:
-                return System.Data.IsolationLevel.Snapshot;
-            // ReSharper disable once RedundantCaseLabel
-            case IsolationLevel.Unspecified:
-            default:
-                return System.Data.IsolationLevel.Unspecified;
-            }
-        }
-
+                IsolationLevel.Chaos           => System.Data.IsolationLevel.Chaos,
+                IsolationLevel.ReadCommitted   => System.Data.IsolationLevel.ReadCommitted,
+                IsolationLevel.ReadUncommitted => System.Data.IsolationLevel.ReadUncommitted,
+                IsolationLevel.RepeatableRead  => System.Data.IsolationLevel.RepeatableRead,
+                IsolationLevel.Serializable    => System.Data.IsolationLevel.Serializable,
+                IsolationLevel.Snapshot        => System.Data.IsolationLevel.Snapshot,
+                _                              => System.Data.IsolationLevel.Unspecified
+            };
     }
 }

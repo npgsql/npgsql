@@ -37,24 +37,15 @@ namespace Npgsql.Tests.Support
         }
 
         static LogLevel ToNLogLogLevel(NpgsqlLogLevel level)
-        {
-            switch (level)
+            => level switch
             {
-            case NpgsqlLogLevel.Trace:
-                return LogLevel.Trace;
-            case NpgsqlLogLevel.Debug:
-                return LogLevel.Debug;
-            case NpgsqlLogLevel.Info:
-                return LogLevel.Info;
-            case NpgsqlLogLevel.Warn:
-                return LogLevel.Warn;
-            case NpgsqlLogLevel.Error:
-                return LogLevel.Error;
-            case NpgsqlLogLevel.Fatal:
-                return LogLevel.Fatal;
-            default:
-                throw new ArgumentOutOfRangeException("level");
-            }
-        }
+                NpgsqlLogLevel.Trace => LogLevel.Trace,
+                NpgsqlLogLevel.Debug => LogLevel.Debug,
+                NpgsqlLogLevel.Info  => LogLevel.Info,
+                NpgsqlLogLevel.Warn  => LogLevel.Warn,
+                NpgsqlLogLevel.Error => LogLevel.Error,
+                NpgsqlLogLevel.Fatal => LogLevel.Fatal,
+                _                    => throw new ArgumentOutOfRangeException(nameof(level))
+            };
     }
 }

@@ -129,17 +129,12 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
         }
 
         internal static int GetLength(IPAddress value)
-        {
-            switch (value.AddressFamily)
+            => value.AddressFamily switch
             {
-            case AddressFamily.InterNetwork:
-                return 8;
-            case AddressFamily.InterNetworkV6:
-                return 20;
-            default:
-                throw new InvalidCastException($"Can't handle IPAddress with AddressFamily {value.AddressFamily}, only InterNetwork or InterNetworkV6!");
-            }
-        }
+                AddressFamily.InterNetwork   => 8,
+                AddressFamily.InterNetworkV6 => 20,
+                _ => throw new InvalidCastException($"Can't handle IPAddress with AddressFamily {value.AddressFamily}, only InterNetwork or InterNetworkV6!")
+            };
 
         #endregion Write
     }

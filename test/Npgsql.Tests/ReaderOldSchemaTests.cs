@@ -107,8 +107,6 @@ namespace Npgsql.Tests
                         case "field_int2":
                             Assert.IsTrue((bool)r["IsReadonly"]);
                             break;
-                        default:
-                            break;
                         }
                     }
                 }
