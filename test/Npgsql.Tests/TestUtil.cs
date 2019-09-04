@@ -153,9 +153,9 @@ namespace Npgsql.Tests
                 return rdr.Read() ? rdr.GetFieldValue<T>(0) : default;
         }
 
-        public static NpgsqlDataReader ExecuteRecord(this NpgsqlCommand cmd)
+        public static NpgsqlDataReader ExecuteFirstRecord(this NpgsqlCommand cmd, CommandBehavior behavior = CommandBehavior.Default)
         {
-            var rdr = cmd.ExecuteReader();
+            var rdr = cmd.ExecuteReader(behavior);
             Assert.That(rdr.Read());
             return rdr;
         }

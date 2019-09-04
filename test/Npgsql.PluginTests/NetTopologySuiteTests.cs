@@ -14,27 +14,30 @@ namespace Npgsql.PluginTests
         [OneTimeSetUp]
         public void SetUp()
         {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT postgis_version()", conn))
+            using var conn = OpenConnection();
+            using var cmd = new NpgsqlCommand("SELECT postgis_version()", conn);
+
+            try
             {
-                try
-                {
-                    cmd.ExecuteNonQuery();
-                }
-                catch (PostgresException)
-                {
-                    cmd.CommandText = "SELECT version()";
-                    var versionString = (string)cmd.ExecuteScalar();
-                    Debug.Assert(versionString != null);
-                    var m = Regex.Match(versionString, @"^PostgreSQL ([0-9.]+(\w*)?)");
-                    if (!m.Success)
-                        throw new Exception("Couldn't parse PostgreSQL version string: " + versionString);
-                    var version = m.Groups[1].Value;
-                    var prerelease = m.Groups[2].Value;
-                    if (!string.IsNullOrWhiteSpace(prerelease))
-                        Assert.Ignore($"PostGIS not installed, ignoring because we're on a prerelease version of PostgreSQL ({version})");
-                    TestUtil.IgnoreExceptOnBuildServer("PostGIS extension not installed.");
-                }
+                cmd.ExecuteNonQuery();
+            }
+            catch (PostgresException)
+            {
+                cmd.CommandText = "SELECT version()";
+                var versionString = (string)cmd.ExecuteScalar();
+                Debug.Assert(versionString != null);
+                var m = Regex.Match(versionString, @"^PostgreSQL ([0-9.]+(\w*)?)");
+
+                if (!m.Success)
+                    throw new Exception("Couldn't parse PostgreSQL version string: " + versionString);
+
+                var version = m.Groups[1].Value;
+                var prerelease = m.Groups[2].Value;
+
+                if (!string.IsNullOrWhiteSpace(prerelease))
+                    Assert.Ignore($"PostGIS not installed, ignoring because we're on a prerelease version of PostgreSQL ({version})");
+
+                TestUtil.IgnoreExceptOnBuildServer("PostGIS extension not installed.");
             }
         }
 
@@ -189,84 +192,73 @@ namespace Npgsql.PluginTests
         [Test, TestCaseSource(nameof(TestCases))]
         public void TestRead(Ordinates ordinates, Geometry geometry, string sqlRepresentation)
         {
-            using (var conn = OpenConnection())
-            using (var cmd = conn.CreateCommand())
-            {
-                cmd.CommandText = $"SELECT {sqlRepresentation}";
-                Assert.That(Equals(cmd.ExecuteScalar(), geometry));
-            }
+            using var conn = OpenConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = $"SELECT {sqlRepresentation}";
+            Assert.That(Equals(cmd.ExecuteScalar(), geometry));
         }
 
         [Test, TestCaseSource(nameof(TestCases))]
         public void TestWrite(Ordinates ordinates, Geometry geometry, string sqlRepresentation)
         {
-            using (var conn = OpenConnection(handleOrdinates: ordinates))
-            using (var cmd = conn.CreateCommand())
-            {
-                cmd.Parameters.AddWithValue("p1", geometry);
-                cmd.CommandText = $"SELECT st_asewkb(@p1) = st_asewkb({sqlRepresentation})";
-                Assert.That(cmd.ExecuteScalar(), Is.True);
-            }
+            using var conn = OpenConnection(handleOrdinates: ordinates);
+            using var cmd = conn.CreateCommand();
+            cmd.Parameters.AddWithValue("p1", geometry);
+            cmd.CommandText = $"SELECT st_asewkb(@p1) = st_asewkb({sqlRepresentation})";
+            Assert.That(cmd.ExecuteScalar(), Is.True);
         }
 
         [Test]
         public void TestArrayRead()
         {
-            using (var conn = OpenConnection(handleOrdinates: Ordinates.XY))
-            using (var cmd = conn.CreateCommand())
-            {
-                cmd.CommandText = "SELECT ARRAY(SELECT st_makepoint(1,1))";
-                var result = cmd.ExecuteScalar();
-                Assert.That(result, Is.InstanceOf<Geometry[]>());
-                Assert.That(result, Is.EquivalentTo(new[] { new Point(new Coordinate(1d, 1d)) }));
-            }
+            using var conn = OpenConnection(handleOrdinates: Ordinates.XY);
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT ARRAY(SELECT st_makepoint(1,1))";
+            var result = cmd.ExecuteScalar();
+            Assert.That(result, Is.InstanceOf<Geometry[]>());
+            Assert.That(result, Is.EquivalentTo(new[] { new Point(new Coordinate(1d, 1d)) }));
         }
 
         [Test]
         public void TestArrayWrite()
         {
-            using (var conn = OpenConnection(handleOrdinates: Ordinates.XY))
-            using (var cmd = conn.CreateCommand())
-            {
-                cmd.Parameters.AddWithValue("@p1", new[] { new Point(new Coordinate(1d, 1d)) });
-                cmd.CommandText = "SELECT @p1 = array(select st_makepoint(1,1))";
-                Assert.That(cmd.ExecuteScalar(), Is.True);
-            }
+            using var conn = OpenConnection(handleOrdinates: Ordinates.XY);
+            using var cmd = conn.CreateCommand();
+            cmd.Parameters.AddWithValue("@p1", new[] { new Point(new Coordinate(1d, 1d)) });
+            cmd.CommandText = "SELECT @p1 = array(select st_makepoint(1,1))";
+            Assert.That(cmd.ExecuteScalar(), Is.True);
         }
 
         [Test]
         public void ReadAsConcreteType()
         {
-            using (var conn = OpenConnection(handleOrdinates: Ordinates.XY))
-            using (var cmd = new NpgsqlCommand("SELECT st_makepoint(1,1)", conn))
-            using (var reader = cmd.ExecuteReader())
-            {
-                reader.Read();
-                Assert.That(reader.GetFieldValue<Point>(0), Is.EqualTo(new Point(new Coordinate(1d, 1d))));
-                Assert.That(() => reader.GetFieldValue<Polygon>(0), Throws.Exception.TypeOf<InvalidCastException>());
-            }
+            using var conn = OpenConnection(handleOrdinates: Ordinates.XY);
+            using var cmd = new NpgsqlCommand("SELECT st_makepoint(1,1)", conn);
+            using var reader = cmd.ExecuteReader();
+            reader.Read();
+            Assert.That(reader.GetFieldValue<Point>(0), Is.EqualTo(new Point(new Coordinate(1d, 1d))));
+            Assert.That(() => reader.GetFieldValue<Polygon>(0), Throws.Exception.TypeOf<InvalidCastException>());
         }
 
         [Test]
         public void RoundtripGeometryGeography()
         {
             var point = new Point(new Coordinate(1d, 1d));
-            using (var conn = OpenConnection(handleOrdinates: Ordinates.XY))
-            {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (geom GEOMETRY, geog GEOGRAPHY)");
-                using (var cmd = new NpgsqlCommand("INSERT INTO data (geom, geog) VALUES (@p, @p)", conn))
-                {
-                    cmd.Parameters.AddWithValue("@p", point);
-                    cmd.ExecuteNonQuery();
-                }
+            using var conn = OpenConnection(handleOrdinates: Ordinates.XY);
+            conn.ExecuteNonQuery("CREATE TEMP TABLE data (geom GEOMETRY, geog GEOGRAPHY)");
 
-                using (var cmd = new NpgsqlCommand("SELECT geom, geog FROM data", conn))
-                using (var reader = cmd.ExecuteReader())
-                {
-                    reader.Read();
-                    Assert.That(reader[0], Is.EqualTo(point));
-                    Assert.That(reader[1], Is.EqualTo(point));
-                }
+            using (var cmd = new NpgsqlCommand("INSERT INTO data (geom, geog) VALUES (@p, @p)", conn))
+            {
+                cmd.Parameters.AddWithValue("@p", point);
+                cmd.ExecuteNonQuery();
+            }
+
+            using (var cmd = new NpgsqlCommand("SELECT geom, geog FROM data", conn))
+            using (var reader = cmd.ExecuteReader())
+            {
+                reader.Read();
+                Assert.That(reader[0], Is.EqualTo(point));
+                Assert.That(reader[1], Is.EqualTo(point));
             }
         }
     }

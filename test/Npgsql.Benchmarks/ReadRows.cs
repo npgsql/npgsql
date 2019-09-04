@@ -20,8 +20,8 @@ namespace Npgsql.Benchmarks
         [Benchmark]
         public void Read()
         {
-            using (var reader = Command.ExecuteReader())
-                while (reader.Read()) { }
+            using var reader = Command.ExecuteReader();
+            while (reader.Read()) { }
         }
     }
 }

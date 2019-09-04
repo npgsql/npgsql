@@ -392,7 +392,7 @@ namespace Npgsql.Tests.Types
                     var twoDim = new[,] { { 1, 3 }, { 5, 9 } };
                     cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Integer | NpgsqlDbType.Array, oneDim);
                     cmd.Parameters.AddWithValue("p2", NpgsqlDbType.Integer | NpgsqlDbType.Array, twoDim);
-                    var reader = cmd.ExecuteRecord();
+                    var reader = cmd.ExecuteFirstRecord();
 
                     Assert.That(reader.GetValue(0), Is.EqualTo(oneDim));
                     Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(oneDim));
@@ -424,7 +424,7 @@ namespace Npgsql.Tests.Types
                     var twoDim = new[,] { { 1, 3 }, { 5, 9 } };
                     cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Integer | NpgsqlDbType.Array, oneDim);
                     cmd.Parameters.AddWithValue("p2", NpgsqlDbType.Integer | NpgsqlDbType.Array, twoDim);
-                    var reader = cmd.ExecuteRecord();
+                    var reader = cmd.ExecuteFirstRecord();
 
                     Assert.That(reader.GetValue(0), Is.EqualTo(oneDim));
                     Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(oneDim));

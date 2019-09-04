@@ -17,31 +17,27 @@ namespace Npgsql.Tests
         [Test, Description("Reproduce #2257")]
         public void Issue2257()
         {
-            using (var conn = OpenConnection(new NpgsqlConnectionStringBuilder(ConnectionString) { CommandTimeout = 3 }))
+            using var conn = OpenConnection(new NpgsqlConnectionStringBuilder(ConnectionString) { CommandTimeout = 3 });
+            const int rowCount = 1000000;
+            using (var cmd = conn.CreateCommand())
             {
-                const int rowCount = 1000000;
-                using (var cmd = conn.CreateCommand())
-                {
-                    cmd.CommandText = $"CREATE TEMP TABLE test_2257_master AS SELECT * FROM generate_series(1, {rowCount}) id";
-                    cmd.ExecuteNonQuery();
-                    cmd.CommandText = "ALTER TABLE test_2257_master ADD CONSTRAINT master_pk PRIMARY KEY (id)";
-                    cmd.ExecuteNonQuery();
-                    cmd.CommandText = "CREATE TEMP TABLE test_2257_detail (master_id integer NOT NULL REFERENCES test_2257_master (id))";
-                    cmd.ExecuteNonQuery();
-                }
-
-                using (var writer = conn.BeginBinaryImport("COPY test_2257_detail FROM STDIN BINARY"))
-                {
-                    for (var i = 1; i <= rowCount; ++i)
-                    {
-                        writer.StartRow();
-                        writer.Write(i);
-                    }
-
-                    var e = Assert.Throws<NpgsqlException>(() => writer.Complete());
-                    Assert.That(e.InnerException, Is.TypeOf<IOException>());
-                }
+                cmd.CommandText = $"CREATE TEMP TABLE test_2257_master AS SELECT * FROM generate_series(1, {rowCount}) id";
+                cmd.ExecuteNonQuery();
+                cmd.CommandText = "ALTER TABLE test_2257_master ADD CONSTRAINT master_pk PRIMARY KEY (id)";
+                cmd.ExecuteNonQuery();
+                cmd.CommandText = "CREATE TEMP TABLE test_2257_detail (master_id integer NOT NULL REFERENCES test_2257_master (id))";
+                cmd.ExecuteNonQuery();
             }
+
+            using var writer = conn.BeginBinaryImport("COPY test_2257_detail FROM STDIN BINARY");
+            for (var i = 1; i <= rowCount; ++i)
+            {
+                writer.StartRow();
+                writer.Write(i);
+            }
+
+            var e = Assert.Throws<NpgsqlException>(() => writer.Complete());
+            Assert.That(e.InnerException, Is.TypeOf<IOException>());
         }
 
         #endregion
@@ -51,162 +47,148 @@ namespace Npgsql.Tests
         [Test, Description("Exports data in binary format (raw mode) and then loads it back in")]
         public void RawBinaryRoundtrip()
         {
-            using (var conn = OpenConnection())
+            using var conn = OpenConnection();
+            conn.ExecuteNonQuery("CREATE TEMP TABLE data (field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER)");
+
+            //var iterations = Conn.BufferSize / 10 + 100;
+            //var iterations = Conn.BufferSize / 10 - 100;
+            var iterations = 500;
+
+            // Preload some data into the table
+            using (var cmd = new NpgsqlCommand("INSERT INTO data (field_text, field_int4) VALUES (@p1, @p2)", conn))
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER)");
-
-                //var iterations = Conn.BufferSize / 10 + 100;
-                //var iterations = Conn.BufferSize / 10 - 100;
-                var iterations = 500;
-
-                // Preload some data into the table
-                using (var cmd = new NpgsqlCommand("INSERT INTO data (field_text, field_int4) VALUES (@p1, @p2)", conn))
+                cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Text, "HELLO");
+                cmd.Parameters.AddWithValue("p2", NpgsqlDbType.Integer, 8);
+                cmd.Prepare();
+                for (var i = 0; i < iterations; i++)
                 {
-                    cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Text, "HELLO");
-                    cmd.Parameters.AddWithValue("p2", NpgsqlDbType.Integer, 8);
-                    cmd.Prepare();
-                    for (var i = 0; i < iterations; i++)
-                    {
-                        cmd.ExecuteNonQuery();
-                    }
+                    cmd.ExecuteNonQuery();
                 }
-
-                var data = new byte[10000];
-                var len = 0;
-                using (var outStream = conn.BeginRawBinaryCopy("COPY data (field_text, field_int4) TO STDIN BINARY"))
-                {
-                    StateAssertions(conn);
-
-                    while (true)
-                    {
-                        var read = outStream.Read(data, len, data.Length - len);
-                        if (read == 0)
-                            break;
-                        len += read;
-                    }
-
-                    Assert.That(len, Is.GreaterThan(conn.Settings.ReadBufferSize) & Is.LessThan(data.Length));
-                }
-
-                conn.ExecuteNonQuery("TRUNCATE data");
-
-                using (var inStream = conn.BeginRawBinaryCopy("COPY data (field_text, field_int4) FROM STDIN BINARY"))
-                {
-                    StateAssertions(conn);
-
-                    inStream.Write(data, 0, len);
-                }
-
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM DATA"), Is.EqualTo(iterations));
             }
+
+            var data = new byte[10000];
+            var len = 0;
+            using (var outStream = conn.BeginRawBinaryCopy("COPY data (field_text, field_int4) TO STDIN BINARY"))
+            {
+                StateAssertions(conn);
+
+                while (true)
+                {
+                    var read = outStream.Read(data, len, data.Length - len);
+                    if (read == 0)
+                        break;
+                    len += read;
+                }
+
+                Assert.That(len, Is.GreaterThan(conn.Settings.ReadBufferSize) & Is.LessThan(data.Length));
+            }
+
+            conn.ExecuteNonQuery("TRUNCATE data");
+
+            using (var inStream = conn.BeginRawBinaryCopy("COPY data (field_text, field_int4) FROM STDIN BINARY"))
+            {
+                StateAssertions(conn);
+
+                inStream.Write(data, 0, len);
+            }
+
+            Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM DATA"), Is.EqualTo(iterations));
         }
 
         [Test, Description("Disposes a raw binary stream in the middle of an export")]
         public void DisposeInMiddleOfRawBinaryExport()
         {
-            using (var conn = OpenConnection())
-            {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER)");
-                conn.ExecuteNonQuery("INSERT INTO data (field_text, field_int4) VALUES ('HELLO', 8)");
+            using var conn = OpenConnection();
+            conn.ExecuteNonQuery("CREATE TEMP TABLE data (field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER)");
+            conn.ExecuteNonQuery("INSERT INTO data (field_text, field_int4) VALUES ('HELLO', 8)");
 
-                var data = new byte[3];
-                using (var inStream = conn.BeginRawBinaryCopy("COPY data (field_text, field_int4) TO STDIN BINARY"))
-                {
-                    // Read some bytes
-                    var len = inStream.Read(data, 0, data.Length);
-                    Assert.That(len, Is.EqualTo(data.Length));
-                }
-                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+            var data = new byte[3];
+            using (var inStream = conn.BeginRawBinaryCopy("COPY data (field_text, field_int4) TO STDIN BINARY"))
+            {
+                // Read some bytes
+                var len = inStream.Read(data, 0, data.Length);
+                Assert.That(len, Is.EqualTo(data.Length));
             }
+            Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
         }
 
         [Test, Description("Disposes a raw binary stream in the middle of an import")]
         public void DisposeInMiddleOfRawBinaryImport()
         {
-            using (var conn = OpenConnection())
-            {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER)");
-                var inStream = conn.BeginRawBinaryCopy("COPY data (field_text, field_int4) FROM STDIN BINARY");
-                inStream.Write(NpgsqlRawCopyStream.BinarySignature, 0, NpgsqlRawCopyStream.BinarySignature.Length);
-                Assert.That(() => inStream.Dispose(), Throws.Exception
-                    .TypeOf<PostgresException>()
-                    .With.Property(nameof(PostgresException.SqlState)).EqualTo("22P04")
-                );
-                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
-            }
+            using var conn = OpenConnection();
+            conn.ExecuteNonQuery("CREATE TEMP TABLE data (field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER)");
+            var inStream = conn.BeginRawBinaryCopy("COPY data (field_text, field_int4) FROM STDIN BINARY");
+            inStream.Write(NpgsqlRawCopyStream.BinarySignature, 0, NpgsqlRawCopyStream.BinarySignature.Length);
+
+            Assert.That(() => inStream.Dispose(), Throws.Exception
+                .TypeOf<PostgresException>()
+                .With.Property(nameof(PostgresException.SqlState)).EqualTo("22P04"));
+            Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
         }
 
         [Test, Description("Cancels a binary write")]
         public void CancelRawBinaryImport()
         {
-            using (var conn = OpenConnection())
+            using var conn = OpenConnection();
+            conn.ExecuteNonQuery("CREATE TEMP TABLE data (field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER)");
+            var garbage = new byte[] { 1, 2, 3, 4 };
+            using (var s = conn.BeginRawBinaryCopy("COPY data (field_text, field_int4) FROM STDIN BINARY"))
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (field_text TEXT, field_int2 SMALLINT, field_int4 INTEGER)");
-                var garbage = new byte[] {1, 2, 3, 4};
-                using (var s = conn.BeginRawBinaryCopy("COPY data (field_text, field_int4) FROM STDIN BINARY"))
-                {
-                    s.Write(garbage, 0, garbage.Length);
-                    s.Cancel();
-                }
-
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
+                s.Write(garbage, 0, garbage.Length);
+                s.Cancel();
             }
+
+            Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
         }
 
         [Test]
         public void ImportLargeValueRaw()
         {
-            using (var conn = OpenConnection())
+            using var conn = OpenConnection();
+            conn.ExecuteNonQuery("CREATE TEMP TABLE data (blob BYTEA)");
+
+            var data = new byte[conn.Settings.WriteBufferSize + 10];
+            var dump = new byte[conn.Settings.WriteBufferSize + 200];
+            var len = 0;
+
+            // Insert a blob with a regular insert
+            using (var cmd = new NpgsqlCommand("INSERT INTO data (blob) VALUES (@p)", conn))
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (blob BYTEA)");
-
-                var data = new byte[conn.Settings.WriteBufferSize + 10];
-                var dump = new byte[conn.Settings.WriteBufferSize + 200];
-                var len = 0;
-
-                // Insert a blob with a regular insert
-                using (var cmd = new NpgsqlCommand("INSERT INTO data (blob) VALUES (@p)", conn))
-                {
-                    cmd.Parameters.AddWithValue("p", data);
-                    cmd.ExecuteNonQuery();
-                }
-
-                // Raw dump out
-                using (var outStream = conn.BeginRawBinaryCopy("COPY data (blob) TO STDIN BINARY"))
-                {
-                    while (true)
-                    {
-                        var read = outStream.Read(dump, len, dump.Length - len);
-                        if (read == 0)
-                            break;
-                        len += read;
-                    }
-                    Assert.That(len < dump.Length);
-                }
-
-                conn.ExecuteNonQuery("TRUNCATE data");
-
-                // And raw dump back in
-                using (var inStream = conn.BeginRawBinaryCopy("COPY data (blob) FROM STDIN BINARY"))
-                {
-                    inStream.Write(dump, 0, len);
-                }
+                cmd.Parameters.AddWithValue("p", data);
+                cmd.ExecuteNonQuery();
             }
+
+            // Raw dump out
+            using (var outStream = conn.BeginRawBinaryCopy("COPY data (blob) TO STDIN BINARY"))
+            {
+                while (true)
+                {
+                    var read = outStream.Read(dump, len, dump.Length - len);
+                    if (read == 0)
+                        break;
+                    len += read;
+                }
+                Assert.That(len < dump.Length);
+            }
+
+            conn.ExecuteNonQuery("TRUNCATE data");
+
+            // And raw dump back in
+            using var inStream = conn.BeginRawBinaryCopy("COPY data (blob) FROM STDIN BINARY");
+            inStream.Write(dump, 0, len);
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
         public void WrongTableDefinitionRawBinaryCopy()
         {
-            using (var conn = OpenConnection())
-            {
-                Assert.Throws<PostgresException>(() => conn.BeginRawBinaryCopy("COPY table_is_not_exist (blob) TO STDOUT BINARY"));
-                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
-                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+            using var conn = OpenConnection();
+            Assert.Throws<PostgresException>(() => conn.BeginRawBinaryCopy("COPY table_is_not_exist (blob) TO STDOUT BINARY"));
+            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+            Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
 
-                Assert.Throws<PostgresException>(() => conn.BeginRawBinaryCopy("COPY table_is_not_exist (blob) FROM STDIN BINARY"));
-                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
-                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
-            }
+            Assert.Throws<PostgresException>(() => conn.BeginRawBinaryCopy("COPY table_is_not_exist (blob) FROM STDIN BINARY"));
+            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+            Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]

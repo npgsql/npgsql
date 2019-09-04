@@ -45,11 +45,9 @@ namespace Npgsql.Benchmarks
         [Benchmark]
         public object ExecuteReader()
         {
-            using (var reader = _executeReaderCmd.ExecuteReader())
-            {
-                reader.Read();
-                return reader.GetValue(0);
-            }
+            using var reader = _executeReaderCmd.ExecuteReader();
+            reader.Read();
+            return reader.GetValue(0);
         }
 
         class Config : ManualConfig

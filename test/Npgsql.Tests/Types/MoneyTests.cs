@@ -39,7 +39,7 @@ namespace Npgsql.Tests.Types
             using (var cmd = new NpgsqlCommand("SELECT @p, @p = " + query, conn))
             {
                 cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Money) { Value = expected });
-                using (var rdr = cmd.ExecuteRecord())
+                using (var rdr = cmd.ExecuteFirstRecord())
                 {
                     Assert.That(decimal.GetBits(rdr.GetFieldValue<decimal>(0)), Is.EqualTo(decimal.GetBits(expected)));
                     Assert.That(rdr.GetFieldValue<bool>(1));
@@ -61,7 +61,7 @@ namespace Npgsql.Tests.Types
             using (var cmd = new NpgsqlCommand("SELECT @p, @p = " + query, conn))
             {
                 cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Money) { Value = parameter });
-                using (var rdr = cmd.ExecuteRecord())
+                using (var rdr = cmd.ExecuteFirstRecord())
                 {
                     Assert.That(decimal.GetBits(rdr.GetFieldValue<decimal>(0)), Is.EqualTo(decimal.GetBits(expected)));
                     Assert.That(rdr.GetFieldValue<bool>(1));
@@ -78,7 +78,7 @@ namespace Npgsql.Tests.Types
                 cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.Money) { Value = 8M });
                 cmd.Parameters.Add(new NpgsqlParameter("p2", DbType.Currency) { Value = 8M });
 
-                using (var rdr = cmd.ExecuteRecord())
+                using (var rdr = cmd.ExecuteFirstRecord())
                     for (var i = 0; i < cmd.Parameters.Count; i++)
                     {
                         Assert.That(rdr.GetFieldType(i), Is.EqualTo(typeof(decimal)));

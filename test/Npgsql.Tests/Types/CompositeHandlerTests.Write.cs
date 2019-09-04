@@ -18,9 +18,25 @@ namespace Npgsql.Tests.Types
         {
             using var connection = OpenAndMapComposite<T>(composite, schema, nameof(Write), out var _);
             using var command = new NpgsqlCommand("SELECT (@c).*", connection);
+            var reader = default(NpgsqlDataReader?);
 
             command.Parameters.AddWithValue("c", composite);
-            assert(() => command.ExecuteRecord(), composite);
+
+            try
+            {
+                assert(() =>
+                    {
+                        reader = command.ExecuteReader();
+                        reader.Read();
+
+                        return reader;
+                    },
+                    composite);
+            }
+            finally
+            {
+                reader?.Dispose();
+            }
         }
 
         [Test]

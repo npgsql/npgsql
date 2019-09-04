@@ -36,16 +36,14 @@ namespace Npgsql.Benchmarks
 
             foreach (var conn in new[] { _conn, _autoPreparingConn })
             {
-                using (var cmd = new NpgsqlCommand { Connection = conn })
+                using var cmd = new NpgsqlCommand { Connection = conn };
+                for (var i = 0; i < 100; i++)
                 {
-                    for (var i = 0; i < 100; i++)
-                    {
-                        cmd.CommandText = $@"
+                    cmd.CommandText = $@"
 CREATE TEMP TABLE table{i} (id INT PRIMARY KEY, data INT);
 INSERT INTO table{i} (id, data) VALUES (1, {i});
 ";
-                        cmd.ExecuteNonQuery();
-                    }
+                    cmd.ExecuteNonQuery();
                 }
             }
             _query = Queries[TablesToJoin];
@@ -62,33 +60,32 @@ INSERT INTO table{i} (id, data) VALUES (1, {i});
         public Prepare()
         {
             // Create tables and data
-            using (var conn = BenchmarkEnvironment.OpenConnection())
-            using (var cmd = new NpgsqlCommand {Connection = conn})
+            using var conn = BenchmarkEnvironment.OpenConnection();
+            using var cmd = new NpgsqlCommand { Connection = conn };
+
+            for (var i = 0; i < TablesToJoinValues.Max(); i++)
             {
-                for (var i = 0; i < TablesToJoinValues.Max(); i++)
-                {
-                    cmd.CommandText = $@"
+                cmd.CommandText = $@"
 DROP TABLE IF EXISTS table{i};
 CREATE TABLE table{i} (id INT PRIMARY KEY, data INT);
 INSERT INTO table{i} (id, data) VALUES (1, {i});
 ";
-                    cmd.ExecuteNonQuery();
-                }
+                cmd.ExecuteNonQuery();
             }
         }
 
         [Benchmark(Baseline = true)]
         public object Unprepared()
         {
-            using (var cmd = new NpgsqlCommand(_query, _conn))
-                return cmd.ExecuteScalar();
+            using var cmd = new NpgsqlCommand(_query, _conn);
+            return cmd.ExecuteScalar();
         }
 
         [Benchmark]
         public object AutoPrepared()
         {
-            using (var cmd = new NpgsqlCommand(_query, _autoPreparingConn))
-                return cmd.ExecuteScalar();
+            using var cmd = new NpgsqlCommand(_query, _autoPreparingConn);
+            return cmd.ExecuteScalar();
         }
 
         [Benchmark]

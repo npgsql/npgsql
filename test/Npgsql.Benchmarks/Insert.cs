@@ -73,7 +73,6 @@ namespace Npgsql.Benchmarks
         public void Copy()
         {
             using (var s = _conn.BeginBinaryImport("COPY data (int1, text1, int2, text2) FROM STDIN BINARY"))
-            {
                 for (var i = 0; i < BatchSize; i++)
                 {
                     s.StartRow();
@@ -82,7 +81,7 @@ namespace Npgsql.Benchmarks
                     s.Write(9);
                     s.Write("bar");
                 }
-            }
+
             _truncateCmd.ExecuteNonQuery();
         }
     }
