@@ -120,21 +120,17 @@ ORDER BY attnum";
                 {
                     connection.Open();
 
-                    using (var cmd = new NpgsqlCommand(query, connection))
-                    using (var reader = cmd.ExecuteReader())
+                    using var cmd = new NpgsqlCommand(query, connection);
+                    using var reader = cmd.ExecuteReader();
+                    for (; reader.Read(); populatedColumns++)
                     {
-                        for (; reader.Read(); populatedColumns++)
-                        {
-                            var column = LoadColumnDefinition(reader, _connection.Connector!.TypeMapper.DatabaseInfo);
+                        var column = LoadColumnDefinition(reader, _connection.Connector!.TypeMapper.DatabaseInfo);
+                        var ordinal = fields.FindIndex(f => f.TableOID == column.TableOID && f.ColumnAttributeNumber - 1 == column.ColumnAttributeNumber);
+                        Debug.Assert(ordinal >= 0);
 
-                            var ordinal = fields.FindIndex(f => f.TableOID == column.TableOID && f.ColumnAttributeNumber - 1 == column.ColumnAttributeNumber);
-                            Debug.Assert(ordinal >= 0);
-
-                            // The column's ordinal is with respect to the resultset, not its table
-                            column.ColumnOrdinal = ordinal;
-
-                            result[ordinal] = column;
-                        }
+                        // The column's ordinal is with respect to the resultset, not its table
+                        column.ColumnOrdinal = ordinal;
+                        result[ordinal] = column;
                     }
                 }
             }
@@ -145,6 +141,7 @@ ORDER BY attnum";
             {
                 NpgsqlDbColumn column;
                 var field = fields[i];
+
                 if (result[i] == null)
                 {
                     column = SetUpNonColumnField(field);
@@ -154,12 +151,6 @@ ORDER BY attnum";
                 }
 
                 result[i]!.ColumnName = result[i]!.BaseColumnName = field.Name.StartsWith("?column?") ? null : field.Name;
-                //column = result[i]!;
-                //column.ColumnName = column.BaseColumnName = field.Name.StartsWith("?column?") ? null : field.Name;
-                /*
-                Debug.Assert(result[i] != null);
-                result[i].ColumnName = result[i].BaseColumnName = field.Name.StartsWith("?column?") ? null : field.Name;
-                */
             }
 
             if (populatedColumns != fields.Count)

@@ -160,7 +160,7 @@ namespace Npgsql
         {
             var databases = new DataTable("Databases") { Locale = CultureInfo.InvariantCulture };
 
-            databases.Columns.AddRange(new [] {
+            databases.Columns.AddRange(new[] {
                 new DataColumn("database_name"),
                 new DataColumn("owner"),
                 new DataColumn("encoding")
@@ -181,7 +181,7 @@ namespace Npgsql
         {
             var schemata = new DataTable("Schemata") { Locale = CultureInfo.InvariantCulture };
 
-            schemata.Columns.AddRange(new [] {
+            schemata.Columns.AddRange(new[] {
                 new DataColumn("catalog_name"),
                 new DataColumn("schema_name"),
                 new DataColumn("schema_owner")
@@ -247,7 +247,7 @@ WHERE table_type IN ('BASE TABLE', 'FOREIGN') AND table_schema NOT IN ('pg_catal
         {
             var columns = new DataTable("Columns") { Locale = CultureInfo.InvariantCulture };
 
-            columns.Columns.AddRange(new [] {
+            columns.Columns.AddRange(new[] {
                 new DataColumn("table_catalog"), new DataColumn("table_schema"), new DataColumn("table_name"),
                 new DataColumn("column_name"), new DataColumn("ordinal_position", typeof(int)), new DataColumn("column_default"),
                 new DataColumn("is_nullable"), new DataColumn("data_type"),
@@ -429,13 +429,12 @@ select 'UNIQUE KEY' as ""CONSTRAINT_TYPE"", 'u' as ""contype""
             else
                 constraintType = "Constraints";
 
-            using (var command = BuildCommand(conn, getConstraints, restrictions, false, "current_database()", "pgtn.nspname", "pgt.relname", "pgc.conname"))
-            using (var adapter = new NpgsqlDataAdapter(command))
-            {
-                var table = new DataTable(constraintType) { Locale = CultureInfo.InvariantCulture };
-                adapter.Fill(table);
-                return table;
-            }
+            using var command = BuildCommand(conn, getConstraints, restrictions, false, "current_database()", "pgtn.nspname", "pgt.relname", "pgc.conname");
+            using var adapter = new NpgsqlDataAdapter(command);
+            var table = new DataTable(constraintType) { Locale = CultureInfo.InvariantCulture };
+
+            adapter.Fill(table);
+            return table;
         }
 
         static DataTable GetConstraintColumns(NpgsqlConnection conn, string?[]? restrictions)
@@ -463,13 +462,12 @@ select 'UNIQUE KEY' as constraint_type, 'u' as contype
 ) mapping_table on mapping_table.contype = c.contype
 and n.nspname not in ('pg_catalog', 'pg_toast')");
 
-            using (var command = BuildCommand(conn, getConstraintColumns, restrictions, false, "current_database()", "n.nspname", "t.relname", "c.conname", "a.attname"))
-            using (var adapter = new NpgsqlDataAdapter(command))
-            {
-                var table = new DataTable("ConstraintColumns") { Locale = CultureInfo.InvariantCulture };
-                adapter.Fill(table);
-                return table;
-            }
+            using var command = BuildCommand(conn, getConstraintColumns, restrictions, false, "current_database()", "n.nspname", "t.relname", "c.conname", "a.attname");
+            using var adapter = new NpgsqlDataAdapter(command);
+            var table = new DataTable("ConstraintColumns") { Locale = CultureInfo.InvariantCulture };
+
+            adapter.Fill(table);
+            return table;
         }
 
         static DataTable GetDataSourceInformation(NpgsqlConnection conn)

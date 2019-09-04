@@ -395,71 +395,69 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         void DeriveParametersForFunction()
         {
-            using (var c = new NpgsqlCommand(DeriveParametersForFunctionQuery, _connection))
+            using var c = new NpgsqlCommand(DeriveParametersForFunctionQuery, _connection);
+            c.Parameters.Add(new NpgsqlParameter("proname", NpgsqlDbType.Text));
+            c.Parameters[0].Value = CommandText;
+
+            string[]? names = null;
+            uint[]? types = null;
+            char[]? modes = null;
+
+            using (var rdr = c.ExecuteReader(CommandBehavior.SingleRow | CommandBehavior.SingleResult))
             {
-                c.Parameters.Add(new NpgsqlParameter("proname", NpgsqlDbType.Text));
-                c.Parameters[0].Value = CommandText;
-
-                string[]? names = null;
-                uint[]? types = null;
-                char[]? modes = null;
-
-                using (var rdr = c.ExecuteReader(CommandBehavior.SingleRow | CommandBehavior.SingleResult))
+                if (rdr.Read())
                 {
-                    if (rdr.Read())
+                    if (!rdr.IsDBNull(0))
+                        names = rdr.GetValue(0) as string[];
+                    if (!rdr.IsDBNull(2))
+                        types = rdr.GetValue(2) as uint[];
+                    if (!rdr.IsDBNull(3))
+                        modes = rdr.GetValue(3) as char[];
+                    if (types == null)
                     {
-                        if (!rdr.IsDBNull(0))
-                            names = rdr.GetValue(0) as string[];
-                        if (!rdr.IsDBNull(2))
-                            types = rdr.GetValue(2) as uint[];
-                        if (!rdr.IsDBNull(3))
-                            modes = rdr.GetValue(3) as char[];
-                        if (types == null)
-                        {
-                            if (rdr.IsDBNull(1) || rdr.GetFieldValue<uint[]>(1).Length == 0)
-                                return;  // Parameter-less function
-                            types = rdr.GetFieldValue<uint[]>(1);
-                        }
+                        if (rdr.IsDBNull(1) || rdr.GetFieldValue<uint[]>(1).Length == 0)
+                            return;  // Parameter-less function
+                        types = rdr.GetFieldValue<uint[]>(1);
                     }
-                    else
-                        throw new InvalidOperationException($"{CommandText} does not exist in pg_proc");
+                }
+                else
+                    throw new InvalidOperationException($"{CommandText} does not exist in pg_proc");
+            }
+
+            var typeMapper = c._connection!.Connector!.TypeMapper;
+
+            for (var i = 0; i < types.Length; i++)
+            {
+                var param = new NpgsqlParameter();
+
+                var (npgsqlDbType, postgresType) = typeMapper.GetTypeInfoByOid(types[i]);
+
+                param.DataTypeName = postgresType.DisplayName;
+                param.PostgresType = postgresType;
+                if (npgsqlDbType.HasValue)
+                    param.NpgsqlDbType = npgsqlDbType.Value;
+
+                if (names != null && i < names.Length)
+                    param.ParameterName = names[i];
+                else
+                    param.ParameterName = "parameter" + (i + 1);
+
+                if (modes == null) // All params are IN, or server < 8.1.0 (and only IN is supported)
+                    param.Direction = ParameterDirection.Input;
+                else
+                {
+                    param.Direction = modes[i] switch
+                    {
+                        'i' => ParameterDirection.Input,
+                        'o' => ParameterDirection.Output,
+                        't' => ParameterDirection.Output,
+                        'b' => ParameterDirection.InputOutput,
+                        'v' => throw new NotSupportedException("Cannot derive function parameter of type VARIADIC"),
+                        _ => throw new ArgumentOutOfRangeException("Unknown code in proargmodes while deriving: " + modes[i])
+                    };
                 }
 
-                var typeMapper = c._connection!.Connector!.TypeMapper;
-
-                for (var i = 0; i < types.Length; i++)
-                {
-                    var param = new NpgsqlParameter();
-
-                    var (npgsqlDbType, postgresType) = typeMapper.GetTypeInfoByOid(types[i]);
-
-                    param.DataTypeName = postgresType.DisplayName;
-                    param.PostgresType = postgresType;
-                    if (npgsqlDbType.HasValue)
-                        param.NpgsqlDbType = npgsqlDbType.Value;
-
-                    if (names != null && i < names.Length)
-                        param.ParameterName = names[i];
-                    else
-                        param.ParameterName = "parameter" + (i + 1);
-
-                    if (modes == null) // All params are IN, or server < 8.1.0 (and only IN is supported)
-                        param.Direction = ParameterDirection.Input;
-                    else
-                    {
-                        param.Direction = modes[i] switch
-                        {
-                            'i' => ParameterDirection.Input,
-                            'o' => ParameterDirection.Output,
-                            't' => ParameterDirection.Output,
-                            'b' => ParameterDirection.InputOutput,
-                            'v' => throw new NotSupportedException("Cannot derive function parameter of type VARIADIC"),
-                            _   => throw new ArgumentOutOfRangeException("Unknown code in proargmodes while deriving: " + modes[i])
-                        };
-                    }
-
-                    Parameters.Add(param);
-                }
+                Parameters.Add(param);
             }
         }
 
@@ -974,12 +972,12 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         async Task<int> ExecuteNonQuery(bool async, CancellationToken cancellationToken)
         {
-            using (var reader = await ExecuteReaderAsync(CommandBehavior.Default, async, cancellationToken))
-            {
-                while (async ? await reader.NextResultAsync(cancellationToken) : reader.NextResult()) {}
-                reader.Close();
-                return reader.RecordsAffected;
-            }
+            using var reader = await ExecuteReaderAsync(CommandBehavior.Default, async, cancellationToken);
+            while (async ? await reader.NextResultAsync(cancellationToken) : reader.NextResult()) ;
+
+            reader.Close();
+
+            return reader.RecordsAffected;
         }
 
         #endregion Execute Non Query
@@ -1018,8 +1016,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             var behavior = CommandBehavior.SingleRow;
             if (!Parameters.HasOutputParameters)
                 behavior |= CommandBehavior.SequentialAccess;
-            using (var reader = await ExecuteReaderAsync(behavior, async, cancellationToken))
-                return reader.Read() && reader.FieldCount != 0 ? reader.GetValue(0) : null;
+
+            using var reader = await ExecuteReaderAsync(behavior, async, cancellationToken);
+            return reader.Read() && reader.FieldCount != 0 ? reader.GetValue(0) : null;
         }
 
         #endregion Execute Scalar
