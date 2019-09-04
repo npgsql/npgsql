@@ -187,117 +187,114 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
             }
 
             var typeLoadingQuery = GenerateTypesQuery(SupportsRangeTypes, SupportsEnumTypes, HasEnumSortOrder, conn.Settings.LoadTableComposites, HasTypeCategory);
-
-            using (var command = new NpgsqlCommand(typeLoadingQuery, conn))
+            using var command = new NpgsqlCommand(typeLoadingQuery, conn)
             {
-                command.CommandTimeout = commandTimeout;
-                command.AllResultTypesAreUnknown = true;
+                CommandTimeout = commandTimeout,
+                AllResultTypesAreUnknown = true
+            };
 
-                using (var reader = async ? await command.ExecuteReaderAsync() : command.ExecuteReader())
+            using var reader = async ? await command.ExecuteReaderAsync() : command.ExecuteReader();
+            var byOID = new Dictionary<uint, PostgresType>();
+
+            // First load the types themselves
+            while (async ? await reader.ReadAsync() : reader.Read())
+            {
+                timeout.Check();
+
+                var ns = reader.GetString("nspname");
+                var internalName = reader.GetString("typname");
+                var oid = uint.Parse(reader.GetString("oid"), NumberFormatInfo.InvariantInfo);
+
+                Debug.Assert(oid != 0);
+
+                var typeChar = reader.GetChar("typtype");
+                switch (typeChar)
                 {
-                    var byOID = new Dictionary<uint, PostgresType>();
+                    case 'b':  // Normal base type
+                        var baseType = new PostgresBaseType(ns, internalName, oid);
+                        byOID[baseType.OID] = baseType;
+                        continue;
 
-                    // First load the types themselves
-                    while (async ? await reader.ReadAsync() : reader.Read())
+                    case 'a': // Array
                     {
-                        timeout.Check();
-
-                        var ns = reader.GetString("nspname");
-                        var internalName = reader.GetString("typname");
-                        var oid = uint.Parse(reader.GetString("oid"), NumberFormatInfo.InvariantInfo);
-
-                        Debug.Assert(oid != 0);
-
-                        var typeChar = reader.GetChar("typtype");
-                        switch (typeChar)
+                        var elementOID = uint.Parse(reader.GetString("typelem"), NumberFormatInfo.InvariantInfo);
+                        Debug.Assert(elementOID > 0);
+                        if (!byOID.TryGetValue(elementOID, out var elementPostgresType))
                         {
-                        case 'b':  // Normal base type
-                            var baseType = new PostgresBaseType(ns, internalName, oid);
-                            byOID[baseType.OID] = baseType;
-                            continue;
-
-                        case 'a': // Array
-                        {
-                            var elementOID = uint.Parse(reader.GetString("typelem"), NumberFormatInfo.InvariantInfo);
-                            Debug.Assert(elementOID > 0);
-                            if (!byOID.TryGetValue(elementOID, out var elementPostgresType))
-                            {
-                                Log.Trace($"Array type '{internalName}' refers to unknown element with OID {elementOID}, skipping", conn.ProcessID);
-                                continue;
-                            }
-
-                            var arrayType = new PostgresArrayType(ns, internalName, oid, elementPostgresType);
-                            byOID[arrayType.OID] = arrayType;
+                            Log.Trace($"Array type '{internalName}' refers to unknown element with OID {elementOID}, skipping", conn.ProcessID);
                             continue;
                         }
 
-                        case 'r': // Range
-                        {
-                            var elementOID = uint.Parse(reader.GetString("typelem"), NumberFormatInfo.InvariantInfo);
-                            Debug.Assert(elementOID > 0);
-                            if (!byOID.TryGetValue(elementOID, out var subtypePostgresType))
-                            {
-                                Log.Trace($"Range type '{internalName}' refers to unknown subtype with OID {elementOID}, skipping", conn.ProcessID);
-                                continue;
-                            }
-
-                            var rangeType = new PostgresRangeType(ns, internalName, oid, subtypePostgresType);
-                            byOID[rangeType.OID] = rangeType;
-                            continue;
-                        }
-
-                        case 'e':   // Enum
-                            var enumType = new PostgresEnumType(ns, internalName, oid);
-                            byOID[enumType.OID] = enumType;
-                            continue;
-
-                        case 'c':   // Composite
-                            // Unlike other types, we don't
-                            var compositeType = new PostgresCompositeType(ns, internalName, oid);
-                            byOID[compositeType.OID] = compositeType;
-                            continue;
-
-                        case 'd':   // Domain
-                            var baseTypeOID = uint.Parse(reader.GetString("typbasetype"), NumberFormatInfo.InvariantInfo);
-                            Debug.Assert(baseTypeOID > 0);
-                            if (!byOID.TryGetValue(baseTypeOID, out var basePostgresType))
-                            {
-                                Log.Trace($"Domain type '{internalName}' refers to unknown base type with OID {baseTypeOID}, skipping", conn.ProcessID);
-                                continue;
-                            }
-                            var domainType = new PostgresDomainType(ns, internalName, oid, basePostgresType);
-                            byOID[domainType.OID] = domainType;
-                            continue;
-
-                        case 'p':   // pseudo-type (record, void)
-                            // Hack this as a base type
-                            goto case 'b';
-
-                        default:
-                            throw new ArgumentOutOfRangeException($"Unknown typtype for type '{internalName}' in pg_type: {typeChar}");
-                        }
+                        var arrayType = new PostgresArrayType(ns, internalName, oid, elementPostgresType);
+                        byOID[arrayType.OID] = arrayType;
+                        continue;
                     }
 
-                    if (async)
-                        await reader.NextResultAsync();
-                    else
-                        reader.NextResult();
-
-                    LoadCompositeFields(reader, byOID);
-
-                    if (SupportsEnumTypes)
+                    case 'r': // Range
                     {
-                        if (async)
-                            await reader.NextResultAsync();
-                        else
-                            reader.NextResult();
+                        var elementOID = uint.Parse(reader.GetString("typelem"), NumberFormatInfo.InvariantInfo);
+                        Debug.Assert(elementOID > 0);
+                        if (!byOID.TryGetValue(elementOID, out var subtypePostgresType))
+                        {
+                            Log.Trace($"Range type '{internalName}' refers to unknown subtype with OID {elementOID}, skipping", conn.ProcessID);
+                            continue;
+                        }
 
-                        LoadEnumLabels(reader, byOID);
+                        var rangeType = new PostgresRangeType(ns, internalName, oid, subtypePostgresType);
+                        byOID[rangeType.OID] = rangeType;
+                        continue;
                     }
 
-                    return byOID.Values.ToList();
+                    case 'e':   // Enum
+                        var enumType = new PostgresEnumType(ns, internalName, oid);
+                        byOID[enumType.OID] = enumType;
+                        continue;
+
+                    case 'c':   // Composite
+                                // Unlike other types, we don't
+                        var compositeType = new PostgresCompositeType(ns, internalName, oid);
+                        byOID[compositeType.OID] = compositeType;
+                        continue;
+
+                    case 'd':   // Domain
+                        var baseTypeOID = uint.Parse(reader.GetString("typbasetype"), NumberFormatInfo.InvariantInfo);
+                        Debug.Assert(baseTypeOID > 0);
+                        if (!byOID.TryGetValue(baseTypeOID, out var basePostgresType))
+                        {
+                            Log.Trace($"Domain type '{internalName}' refers to unknown base type with OID {baseTypeOID}, skipping", conn.ProcessID);
+                            continue;
+                        }
+                        var domainType = new PostgresDomainType(ns, internalName, oid, basePostgresType);
+                        byOID[domainType.OID] = domainType;
+                        continue;
+
+                    case 'p':   // pseudo-type (record, void)
+                                // Hack this as a base type
+                        goto case 'b';
+
+                    default:
+                        throw new ArgumentOutOfRangeException($"Unknown typtype for type '{internalName}' in pg_type: {typeChar}");
                 }
             }
+
+            if (async)
+                await reader.NextResultAsync();
+            else
+                reader.NextResult();
+
+            LoadCompositeFields(reader, byOID);
+
+            if (SupportsEnumTypes)
+            {
+                if (async)
+                    await reader.NextResultAsync();
+                else
+                    reader.NextResult();
+
+                LoadEnumLabels(reader, byOID);
+            }
+
+            return byOID.Values.ToList();
         }
 
         /// <summary>

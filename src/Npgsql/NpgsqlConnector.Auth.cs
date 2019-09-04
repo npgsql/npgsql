@@ -118,8 +118,8 @@ namespace Npgsql
             var saslFinalServerMsg = Expect<AuthenticationSASLFinalMessage>(await ReadMessage(async), this);
             if (saslFinalServerMsg.AuthRequestType != AuthenticationRequestType.AuthenticationSASLFinal)
                 throw new NpgsqlException("[SASL] AuthenticationSASLFinal message expected");
-            var scramFinalServerMsg = AuthenticationSCRAMServerFinalMessage.Load(saslFinalServerMsg.Payload);
 
+            var scramFinalServerMsg = AuthenticationSCRAMServerFinalMessage.Load(saslFinalServerMsg.Payload);
             if (scramFinalServerMsg.ServerSignature != Convert.ToBase64String(serverSignature))
                 throw new NpgsqlException("[SCRAM] Unable to verify server signature");
 
@@ -129,35 +129,32 @@ namespace Npgsql
 
             static string GetNonce()
             {
-                using (var rncProvider = RandomNumberGenerator.Create())
-                {
-                    var nonceBytes = new byte[18];
-                    rncProvider.GetBytes(nonceBytes);
-                    return Convert.ToBase64String(nonceBytes);
-                }
+                using var rncProvider = RandomNumberGenerator.Create();
+                var nonceBytes = new byte[18];
+
+                rncProvider.GetBytes(nonceBytes);
+                return Convert.ToBase64String(nonceBytes);
             }
 
             static byte[] Hi(string str, byte[] salt, int count)
             {
-                using (var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(str)))
+                using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(str));
+                var salt1 = new byte[salt.Length + 4];
+                byte[] hi, u1;
+
+                Buffer.BlockCopy(salt, 0, salt1, 0, salt.Length);
+                salt1[salt1.Length - 1] = 1;
+
+                hi = u1 = hmac.ComputeHash(salt1);
+
+                for (var i = 1; i < count; i++)
                 {
-                    var salt1 = new byte[salt.Length + 4];
-                    byte[] hi, u1;
-
-                    Buffer.BlockCopy(salt, 0, salt1, 0, salt.Length);
-                    salt1[salt1.Length - 1] = 1;
-
-                    hi = u1 = hmac.ComputeHash(salt1);
-
-                    for (var i = 1; i < count; i++)
-                    {
-                        var u2 = hmac.ComputeHash(u1);
-                        Xor(hi, u2);
-                        u1 = u2;
-                    }
-
-                    return hi;
+                    var u2 = hmac.ComputeHash(u1);
+                    Xor(hi, u2);
+                    u1 = u2;
                 }
+
+                return hi;
             }
 
             static byte[] Xor(byte[] buffer1, byte[] buffer2)
@@ -169,8 +166,8 @@ namespace Npgsql
 
             static byte[] HMAC(byte[] data, string key)
             {
-                using (var hmacsha256 = new HMACSHA256(data))
-                    return hmacsha256.ComputeHash(Encoding.UTF8.GetBytes(key));
+                using var hmacsha256 = new HMACSHA256(data);
+                return hmacsha256.ComputeHash(Encoding.UTF8.GetBytes(key));
             }
         }
 

@@ -59,28 +59,19 @@ namespace Npgsql
                     // If the computer does not belong to a domain, returns Empty.
                     var domainName = System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties().DomainName;
                     if (domainName.Equals(string.Empty))
-                    {
                         return GetWindowsIdentityUserName(includeRealm);
-                    }
 
                     // First, find a domain server we can talk to
                     string domainHostName;
 
-                    using (DirectoryEntry rootDse = new DirectoryEntry("LDAP://rootDSE") { AuthenticationType = AuthenticationTypes.Secure })
-                    {
+                    using (var rootDse = new DirectoryEntry("LDAP://rootDSE") { AuthenticationType = AuthenticationTypes.Secure })
                         domainHostName = (string)rootDse.Properties["dnsHostName"].Value;
-                    }
 
                     // Query the domain server by the current user's SID
-                    using (DirectoryEntry entry = new DirectoryEntry("LDAP://" + domainHostName) { AuthenticationType = AuthenticationTypes.Secure })
-                    {
-                        DirectorySearcher search = new DirectorySearcher(entry,
-                            "(objectSid=" + identity.User.Value + ")", new[] { "userPrincipalName" });
+                    using var entry = new DirectoryEntry("LDAP://" + domainHostName) { AuthenticationType = AuthenticationTypes.Secure };
+                    using var search = new DirectorySearcher(entry, "(objectSid=" + identity.User.Value + ")", new[] { "userPrincipalName" });
 
-                        SearchResult result = search.FindOne();
-
-                        upn = (string)result.Properties["userPrincipalName"][0];
-                    }
+                    upn = (string)search.FindOne().Properties["userPrincipalName"][0];
                 }
 
                 if (cachedUpn == null)
@@ -94,17 +85,10 @@ namespace Npgsql
                     }
                 }
 
-                string[] upnParts = upn.Split('@');
-
-                if (includeRealm)
-                {
-                    // Make it Kerberos-y by uppercasing the realm part
-                    return upnParts[0] + "@" + upnParts[1].ToUpperInvariant();
-                }
-                else
-                {
-                    return upnParts[0];
-                }
+                var upnParts = upn.Split('@');
+                return includeRealm
+                    ? upnParts[0] + "@" + upnParts[1].ToUpperInvariant() // Make it Kerberos-y by uppercasing the realm part
+                    : upnParts[0];
             }
             catch
             {

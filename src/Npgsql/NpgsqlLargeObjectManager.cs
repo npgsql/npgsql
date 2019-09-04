@@ -35,14 +35,16 @@ namespace Npgsql
         /// </summary>
         internal async Task<T> ExecuteFunction<T>(string function, bool async, params object[] arguments)
         {
-            using (var command = new NpgsqlCommand(function, Connection))
+            using var command = new NpgsqlCommand(function, Connection)
             {
-                command.CommandType = CommandType.StoredProcedure;
-                command.CommandText = function;
-                foreach (var argument in arguments)
-                    command.Parameters.Add(new NpgsqlParameter { Value = argument });
-                return (T)(async ? await command.ExecuteScalarAsync() : command.ExecuteScalar());
-            }
+                CommandType = CommandType.StoredProcedure,
+                CommandText = function
+            };
+
+            foreach (var argument in arguments)
+                command.Parameters.Add(new NpgsqlParameter { Value = argument });
+
+            return (T)(async ? await command.ExecuteScalarAsync() : command.ExecuteScalar());
         }
 
         /// <summary>
@@ -51,20 +53,24 @@ namespace Npgsql
         /// <returns></returns>
         internal async Task<int> ExecuteFunctionGetBytes(string function, byte[] buffer, int offset, int len, bool async, params object[] arguments)
         {
-            using (var command = new NpgsqlCommand(function, Connection))
+            using var command = new NpgsqlCommand(function, Connection)
             {
-                command.CommandType = CommandType.StoredProcedure;
-                foreach (var argument in arguments)
-                    command.Parameters.Add(new NpgsqlParameter { Value = argument });
-                using (var reader = async ? await command.ExecuteReaderAsync(CommandBehavior.SequentialAccess) : command.ExecuteReader(CommandBehavior.SequentialAccess))
-                {
-                    if (async)
-                        await reader.ReadAsync();
-                    else
-                        reader.Read();
-                    return (int)reader.GetBytes(0, 0, buffer, offset, len);
-                }
-            }
+                CommandType = CommandType.StoredProcedure
+            };
+
+            foreach (var argument in arguments)
+                command.Parameters.Add(new NpgsqlParameter { Value = argument });
+
+            using var reader = async
+                ? await command.ExecuteReaderAsync(CommandBehavior.SequentialAccess)
+                : command.ExecuteReader(CommandBehavior.SequentialAccess);
+
+            if (async)
+                await reader.ReadAsync();
+            else
+                reader.Read();
+
+            return (int)reader.GetBytes(0, 0, buffer, offset, len);
         }
 
         /// <summary>
