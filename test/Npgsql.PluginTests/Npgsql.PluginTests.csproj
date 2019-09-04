@@ -3,7 +3,7 @@
     <SignAssembly>false</SignAssembly>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="NodaTime" Version="2.4.4" />
+    <PackageReference Include="NodaTime" Version="$(NodaTimeVersion)" />
     <PackageReference Include="NUnit" Version="3.11.0" />
     <PackageReference Include="NLog" Version="4.5.11" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.9.0" />
