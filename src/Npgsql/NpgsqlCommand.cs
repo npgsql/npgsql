@@ -1052,13 +1052,21 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// Executes the <see cref="CommandText"/> against the <see cref="Connection"/>
         /// and returns a <see cref="NpgsqlDataReader"/>.
         /// </summary>
+        /// <returns>A task representing the operation.</returns>
+        public new NpgsqlDataReader ExecuteReader()
+            => ExecuteReaderAsync(CommandBehavior.Default, async: false, CancellationToken.None).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Executes the <see cref="CommandText"/> against the <see cref="Connection"/>
+        /// and returns a <see cref="NpgsqlDataReader"/>.
+        /// </summary>
         /// <param name="behavior">One of the enumeration values that specified the command behavior.</param>
         /// <returns>A task representing the operation.</returns>
         public new NpgsqlDataReader ExecuteReader(CommandBehavior behavior = CommandBehavior.Default)
             => ExecuteReaderAsync(behavior, async: false, CancellationToken.None).GetAwaiter().GetResult();
 
         /// <summary>
-        /// An asynchronous version of <see cref="ExecuteReader"/>, which executes
+        /// An asynchronous version of <see cref="ExecuteReader()"/>, which executes
         /// the <see cref="CommandText"/> against the <see cref="Connection"/>
         /// and returns a <see cref="NpgsqlDataReader"/>.
         /// </summary>
