@@ -1290,6 +1290,7 @@ namespace Npgsql
             var conn = new NpgsqlConnection(_connectionString) {
                 ProvideClientCertificatesCallback = ProvideClientCertificatesCallback,
                 UserCertificateValidationCallback = UserCertificateValidationCallback,
+                ProvidePasswordCallback = ProvidePasswordCallback,
                 _userFacingConnectionString = _userFacingConnectionString
             };
             return conn;
@@ -1310,7 +1311,8 @@ namespace Npgsql
                 csb.Password = Password;
             return new NpgsqlConnection(csb.ToString()) {
                 ProvideClientCertificatesCallback = ProvideClientCertificatesCallback,
-                UserCertificateValidationCallback = UserCertificateValidationCallback
+                UserCertificateValidationCallback = UserCertificateValidationCallback,
+                ProvidePasswordCallback = ProvidePasswordCallback,
             };
         }
 
