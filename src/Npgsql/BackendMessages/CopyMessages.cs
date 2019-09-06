@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Npgsql.Util;
 
 namespace Npgsql.BackendMessages
 {
@@ -21,16 +22,12 @@ namespace Npgsql.BackendMessages
             ColumnFormatCodes.Clear();
 
             var binaryIndicator = buf.ReadByte();
-            switch (binaryIndicator) {
-            case 0:
-                IsBinary = false;
-                break;
-            case 1:
-                IsBinary = true;
-                break;
-            default:
-                throw new Exception("Invalid binary indicator in CopyInResponse message: " + binaryIndicator);
-            }
+            IsBinary = binaryIndicator switch
+            {
+                0 => false,
+                1 => true,
+                _ => throw new Exception("Invalid binary indicator in CopyInResponse message: " + binaryIndicator)
+            };
 
             NumColumns = buf.ReadInt16();
             for (var i = 0; i < NumColumns; i++)
@@ -88,21 +85,10 @@ namespace Npgsql.BackendMessages
         }
     }
 
-    /// <remarks>
-    /// Note: This message is both a frontend and a backend message
-    /// </remarks>
-    class CopyDoneMessage : SimpleFrontendMessage, IBackendMessage
+    class CopyDoneMessage : IBackendMessage
     {
         public BackendMessageCode Code => BackendMessageCode.CopyDone;
         internal static readonly CopyDoneMessage Instance = new CopyDoneMessage();
         CopyDoneMessage() { }
-
-        internal override int Length => 5;
-
-        internal override void WriteFully(NpgsqlWriteBuffer buf)
-        {
-            buf.WriteByte((byte)BackendMessageCode.CopyDone);
-            buf.WriteInt32(4);
-        }
     }
 }

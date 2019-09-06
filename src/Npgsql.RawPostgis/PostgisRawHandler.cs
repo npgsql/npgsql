@@ -1,15 +1,19 @@
-﻿using Npgsql.TypeHandlers;
+﻿using Npgsql.PostgresTypes;
+using Npgsql.TypeHandlers;
 using Npgsql.TypeHandling;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
-namespace Npgsql.LegacyPostgis
+namespace Npgsql.RawPostgis
 {
     public class PostgisRawHandlerFactory : NpgsqlTypeHandlerFactory<byte[]>
     {
-        protected override NpgsqlTypeHandler<byte[]> Create(NpgsqlConnection conn)
-            => new PostgisRawHandler();
+        public override NpgsqlTypeHandler<byte[]> Create(PostgresType postgresType, NpgsqlConnection conn)
+            => new PostgisRawHandler(postgresType);
     }
 
-    class PostgisRawHandler : ByteaHandler {}
+    class PostgisRawHandler : ByteaHandler
+    {
+        public PostgisRawHandler(PostgresType postgresType) : base(postgresType) {}
+    }
 }

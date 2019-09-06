@@ -1,6 +1,7 @@
 using System;
 using System.Globalization;
 using System.Net;
+using Npgsql.Util;
 using NpgsqlTypes;
 using NUnit.Framework;
 
@@ -479,7 +480,9 @@ namespace Npgsql.Tests
             var v = new NpgsqlInet(IPAddress.Parse("2001:1db8:85a3:1142:1000:8a2e:1370:7334"), 32);
             Assert.That(v.ToString(), Is.EqualTo("2001:1db8:85a3:1142:1000:8a2e:1370:7334/32"));
 
+#pragma warning disable CS8625
             Assert.That(v != null);  // #776
+#pragma warning disable CS8625
         }
 #pragma warning restore 618
     }

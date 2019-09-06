@@ -1,8 +1,10 @@
 ﻿using System;
+using Npgsql.Logging;
+
+#if NET461
 using System.Diagnostics;
 using System.Reflection;
-using JetBrains.Annotations;
-using Npgsql.Logging;
+#endif
 
 namespace Npgsql
 {
@@ -11,44 +13,44 @@ namespace Npgsql
         /// <summary>
         /// The number of connections per second that are being made to a database server.
         /// </summary>
-        internal static Counter HardConnectsPerSecond;
+        internal static readonly Counter HardConnectsPerSecond = new Counter(nameof(HardConnectsPerSecond));
         /// <summary>
         /// The number of disconnects per second that are being made to a database server.
         /// </summary>
-        internal static Counter HardDisconnectsPerSecond;
+        internal static readonly Counter HardDisconnectsPerSecond = new Counter(nameof(HardDisconnectsPerSecond));
         /// <summary>
         /// The total number of connection pools.
         /// </summary>
-        internal static Counter NumberOfActiveConnectionPools;
+        internal static readonly Counter NumberOfActiveConnectionPools = new Counter(nameof(NumberOfActiveConnectionPools));
         /// <summary>
         /// The number of (pooled) active connections that are currently in use.
         /// </summary>
-        internal static Counter NumberOfActiveConnections;
+        internal static readonly Counter NumberOfActiveConnections = new Counter(nameof(NumberOfActiveConnections));
         /// <summary>
         /// The number of connections available for use in the connection pools.
         /// </summary>
-        internal static Counter NumberOfFreeConnections;
+        internal static readonly Counter NumberOfFreeConnections = new Counter(nameof(NumberOfFreeConnections));
         /// <summary>
         /// The number of active connections that are not pooled.
         /// </summary>
-        internal static Counter NumberOfNonPooledConnections;
+        internal static readonly Counter NumberOfNonPooledConnections = new Counter(nameof(NumberOfNonPooledConnections));
         /// <summary>
         /// The number of active connections that are being managed by the connection pooling infrastructure.
         /// </summary>
-        internal static Counter NumberOfPooledConnections;
+        internal static readonly Counter NumberOfPooledConnections = new Counter(nameof(NumberOfPooledConnections));
         /// <summary>
         /// The number of active connections being pulled from the connection pool.
         /// </summary>
-        internal static Counter SoftConnectsPerSecond;
+        internal static readonly Counter SoftConnectsPerSecond = new Counter(nameof(SoftConnectsPerSecond));
         /// <summary>
         /// The number of active connections that are being returned to the connection pool.
         /// </summary>
-        internal static Counter SoftDisconnectsPerSecond;
+        internal static readonly Counter SoftDisconnectsPerSecond = new Counter(nameof(SoftDisconnectsPerSecond));
 
         static bool _initialized;
         static readonly object InitLock = new object();
 
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(Counters));
 
 #pragma warning disable CA1801 // Review unused parameters
         internal static void Initialize(bool usePerfCounters)
@@ -61,10 +63,10 @@ namespace Npgsql
                 var enabled = false;
                 var expensiveEnabled = false;
 
-#if NET452
-                try
+                if (usePerfCounters)
                 {
-                    if (usePerfCounters)
+#if NET461
+                    try
                     {
                         enabled = PerformanceCounterCategory.Exists(Counter.DiagnosticsCounterCategory);
                         if (!enabled)
@@ -73,24 +75,27 @@ namespace Npgsql
                             "level of detail to track with connection pool performance counters");
                         expensiveEnabled = enabled && perfCtrSwitch.Level == TraceLevel.Verbose;
                     }
-                }
-                catch (Exception e)
-                {
-                    Log.Debug("Exception while checking for performance counter category (counters will be disabled)", e);
-                }
+                    catch (Exception e)
+                    {
+                        Log.Debug("Exception while checking for performance counter category (counters will be disabled)", e);
+                    }
+#else
+                    throw new NotSupportedException("The legacy Windows Performance Counters are only supported on .NET Framework. " +
+                                                    "The new .NET Core performance counter feature (EventSource) doesn't require any connection string parameters.");
 #endif
+                }
 
                 try
                 {
-                    HardConnectsPerSecond = new Counter(enabled, nameof(HardConnectsPerSecond));
-                    HardDisconnectsPerSecond = new Counter(enabled, nameof(HardDisconnectsPerSecond));
-                    NumberOfActiveConnectionPools = new Counter(enabled, nameof(NumberOfActiveConnectionPools));
-                    NumberOfNonPooledConnections = new Counter(enabled, nameof(NumberOfNonPooledConnections));
-                    NumberOfPooledConnections = new Counter(enabled, nameof(NumberOfPooledConnections));
-                    SoftConnectsPerSecond = new Counter(expensiveEnabled, nameof(SoftConnectsPerSecond));
-                    SoftDisconnectsPerSecond = new Counter(expensiveEnabled, nameof(SoftDisconnectsPerSecond));
-                    NumberOfActiveConnections = new Counter(expensiveEnabled, nameof(NumberOfActiveConnections));
-                    NumberOfFreeConnections = new Counter(expensiveEnabled, nameof(NumberOfFreeConnections));
+                    HardConnectsPerSecond.Initialize(enabled);
+                    HardDisconnectsPerSecond.Initialize(enabled);
+                    NumberOfActiveConnectionPools.Initialize(enabled);
+                    NumberOfNonPooledConnections.Initialize(enabled);
+                    NumberOfPooledConnections.Initialize(enabled);
+                    SoftConnectsPerSecond.Initialize(expensiveEnabled);
+                    SoftDisconnectsPerSecond.Initialize(expensiveEnabled);
+                    NumberOfActiveConnections.Initialize(expensiveEnabled);
+                    NumberOfFreeConnections.Initialize(expensiveEnabled);
                 }
                 catch (Exception e)
                 {
@@ -108,25 +113,26 @@ namespace Npgsql
     /// </summary>
     sealed class Counter : IDisposable
     {
-#if NET452
+#if NET461
         internal const string DiagnosticsCounterCategory = ".NET Data Provider for PostgreSQL (Npgsql)";
 
-        [CanBeNull]
-        internal PerformanceCounter DiagnosticsCounter { get; private set; }
+        internal PerformanceCounter? DiagnosticsCounter { get; private set; }
 #endif
         public string Name { get; }
 
-        internal Counter(bool enabled, string diagnosticsCounterName)
+        internal Counter(string diagnosticsCounterName)
+            => Name = diagnosticsCounterName;
+
+        internal void Initialize(bool enabled)
         {
-            Name = diagnosticsCounterName;
+#if NET461
             if (!enabled)
                 return;
 
-#if NET452
             DiagnosticsCounter = new PerformanceCounter
             {
                 CategoryName = DiagnosticsCounterCategory,
-                CounterName = diagnosticsCounterName,
+                CounterName = Name,
                 InstanceName = InstanceName,
                 InstanceLifetime = PerformanceCounterInstanceLifetime.Process,
                 ReadOnly = false,
@@ -141,28 +147,28 @@ namespace Npgsql
 
         internal void Increment()
         {
-#if NET452
+#if NET461
             DiagnosticsCounter?.Increment();
 #endif
         }
 
         internal void Decrement()
         {
-#if NET452
+#if NET461
             DiagnosticsCounter?.Decrement();
 #endif
         }
 
         public void Dispose()
         {
-#if NET452
+#if NET461
             var diagnosticsCounter = DiagnosticsCounter;
             DiagnosticsCounter = null;
             diagnosticsCounter?.RemoveInstance();
 #endif
         }
 
-#if NET452
+#if NET461
         void OnProcessExit(object sender, EventArgs e) => Dispose();
         void OnDomainUnload(object sender, EventArgs e) => Dispose();
         void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)
@@ -177,7 +183,7 @@ namespace Npgsql
 
         static string GetInstanceName()
         {
-            string result = null;
+            string? result = null;
 
             // Code borrowed from the .NET reference sources
 
@@ -187,7 +193,7 @@ namespace Npgsql
 
             var pid = Process.GetCurrentProcess().Id;
 
-            result = string.Format((IFormatProvider)null, "{0}[{1}]", instanceName, pid);
+            result = string.Format(null, "{0}[{1}]", instanceName, pid);
             result = result.Replace('(', '[').Replace(')', ']').Replace('#', '_').Replace('/', '_').Replace('\\', '_');
 
             if (result.Length > CounterInstanceNameMaxLength)
@@ -205,7 +211,7 @@ namespace Npgsql
                     result.Substring(result.Length - lastPartLength, lastPartLength));
 
                 Debug.Assert(result.Length == CounterInstanceNameMaxLength,
-                    string.Format((IFormatProvider)null, "wrong calculation of the instance name: expected {0}, actual: {1}", CounterInstanceNameMaxLength, result.Length));
+                    string.Format(null, "wrong calculation of the instance name: expected {0}, actual: {1}", CounterInstanceNameMaxLength, result.Length));
             }
 
             return result;

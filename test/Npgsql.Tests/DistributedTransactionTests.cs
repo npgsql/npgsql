@@ -7,7 +7,7 @@ using System.Transactions;
 using NUnit.Framework;
 
 // TransactionScope exists in netstandard20, but distributed transactions do not
-#if NET452
+#if NET461
 
 namespace Npgsql.Tests
 {
@@ -438,21 +438,21 @@ Start formatting event queue, going to sleep a bit for late events
 
             readonly bool _shouldRollBack;
             readonly string _name;
-            readonly ConcurrentQueue<TransactionEvent> _eventQueue;
+            readonly ConcurrentQueue<TransactionEvent>? _eventQueue;
 
             public static void EnlistVolatile(ConcurrentQueue<TransactionEvent> eventQueue)
                 => EnlistVolatile(false, eventQueue);
 
-            public static void EnlistVolatile(bool shouldRollBack = false, ConcurrentQueue<TransactionEvent> eventQueue = null)
+            public static void EnlistVolatile(bool shouldRollBack = false, ConcurrentQueue<TransactionEvent>? eventQueue = null)
                 => Enlist(false, shouldRollBack, eventQueue);
 
             public static void EscalateToDistributed(ConcurrentQueue<TransactionEvent> eventQueue)
                 => EscalateToDistributed(false, eventQueue);
 
-            public static void EscalateToDistributed(bool shouldRollBack = false, ConcurrentQueue<TransactionEvent> eventQueue = null)
+            public static void EscalateToDistributed(bool shouldRollBack = false, ConcurrentQueue<TransactionEvent>? eventQueue = null)
                 => Enlist(true, shouldRollBack, eventQueue);
 
-            static void Enlist(bool durable, bool shouldRollBack, ConcurrentQueue<TransactionEvent> eventQueue)
+            static void Enlist(bool durable, bool shouldRollBack, ConcurrentQueue<TransactionEvent>? eventQueue)
             {
                 Counter++;
 
@@ -468,7 +468,7 @@ Start formatting event queue, going to sleep a bit for late events
                 eventQueue?.Enqueue(new TransactionEvent(name + ": enlisted"));
             }
 
-            EnlistResource(bool shouldRollBack, string name, ConcurrentQueue<TransactionEvent> eventQueue)
+            EnlistResource(bool shouldRollBack, string name, ConcurrentQueue<TransactionEvent>? eventQueue)
             {
                 _shouldRollBack = shouldRollBack;
                 _name = name;
@@ -545,8 +545,8 @@ Start formatting event queue, going to sleep a bit for late events
         #endregion Utilities
 
         #region Setup
-        
-        NpgsqlConnection _controlConn;
+
+        NpgsqlConnection _controlConn = default!;
 
         [OneTimeSetUp]
         public void OneTimeSetUp()
@@ -606,12 +606,12 @@ Start formatting event queue, going to sleep a bit for late events
         public void OneTimeTearDown()
         {
             _controlConn?.Close();
-            _controlConn = null;
+            _controlConn = null!;
         }
 
         class FakePromotableSinglePhaseNotification : IPromotableSinglePhaseNotification
         {
-            public byte[] Promote() => null;
+            public byte[] Promote() => null!;
             public void Initialize() {}
             public void SinglePhaseCommit(SinglePhaseEnlistment singlePhaseEnlistment) {}
             public void Rollback(SinglePhaseEnlistment singlePhaseEnlistment) {}

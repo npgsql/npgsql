@@ -173,6 +173,27 @@ namespace Npgsql.Tests.Types
             }
         }
 
+#if !NETSTANDARD2_0 && !NET461
+        [Test]
+        public void Memory()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn))
+            {
+                var bytes = new byte[] { 1, 2, 3 };
+                cmd.Parameters.AddWithValue("p1", new ReadOnlyMemory<byte>(bytes));
+                cmd.Parameters.AddWithValue("p2", new Memory<byte>(bytes));
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader[0], Is.EqualTo(bytes));
+                    Assert.That(reader[1], Is.EqualTo(bytes));
+                    Assert.That(() => reader.GetFieldValue<ReadOnlyMemory<byte>>(0), Throws.Exception.TypeOf<NotSupportedException>());
+                    Assert.That(() => reader.GetFieldValue<Memory<byte>>(0), Throws.Exception.TypeOf<NotSupportedException>());
+                }
+            }
+        }
+#endif
 
         // Older tests from here
 
@@ -230,7 +251,7 @@ namespace Npgsql.Tests.Types
 
                     cmd.Parameters[0].Size = 17000;
                     returned = (byte[]) cmd.ExecuteScalar();
-                    Assert.That(returned.SequenceEqual(new ArraySegment<byte>(segment.Array, segment.Offset, 17000)));
+                    Assert.That(returned.SequenceEqual(new ArraySegment<byte>(segment.Array!, segment.Offset, 17000)));
 
                     // Small value, should be written normally through the NpgsqlBuffer
                     segment = new ArraySegment<byte>(arr, 6, 10);
@@ -240,7 +261,7 @@ namespace Npgsql.Tests.Types
 
                     cmd.Parameters[0].Size = 2;
                     returned = (byte[]) cmd.ExecuteScalar();
-                    Assert.That(returned.SequenceEqual(new ArraySegment<byte>(segment.Array, segment.Offset, 2)));
+                    Assert.That(returned.SequenceEqual(new ArraySegment<byte>(segment.Array!, segment.Offset, 2)));
                 }
 
                 using (var cmd = new NpgsqlCommand("select :bytearr", conn))

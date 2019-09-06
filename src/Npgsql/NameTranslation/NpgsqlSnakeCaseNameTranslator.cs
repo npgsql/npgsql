@@ -1,4 +1,5 @@
-﻿using System.Globalization;
+﻿using System;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 
@@ -13,7 +14,8 @@ namespace Npgsql.NameTranslation
         /// <summary>
         /// Creates a new <see cref="NpgsqlSnakeCaseNameTranslator"/>.
         /// </summary>
-        public NpgsqlSnakeCaseNameTranslator() : this(false) {}
+        public NpgsqlSnakeCaseNameTranslator()
+            : this(false) { }
 
         /// <summary>
         /// Creates a new <see cref="NpgsqlSnakeCaseNameTranslator"/>.
@@ -32,9 +34,15 @@ namespace Npgsql.NameTranslation
         /// <summary>
         /// Given a CLR member name (property or field), translates its name to a database type name.
         /// </summary>
-        public string TranslateMemberName(string clrName) => LegacyMode
-            ? string.Concat(clrName.Select((c, i) => i > 0 && char.IsUpper(c) ? "_" + c.ToString() : c.ToString())).ToLower()
-            : ConvertToSnakeCase(clrName);
+        public string TranslateMemberName(string clrName)
+        {
+            if (clrName == null)
+                throw new ArgumentNullException(nameof(clrName));
+
+            return LegacyMode
+                ? string.Concat(clrName.Select((c, i) => i > 0 && char.IsUpper(c) ? "_" + c.ToString() : c.ToString())).ToLower()
+                : ConvertToSnakeCase(clrName);
+        }
 
         /// <summary>
         /// Converts a string to its snake_case equivalent.
@@ -42,9 +50,6 @@ namespace Npgsql.NameTranslation
         /// <param name="value">The value to convert.</param>
         public static string ConvertToSnakeCase(string value)
         {
-            if (string.IsNullOrEmpty(value))
-                return value;
-
             const char underscore = '_';
             const UnicodeCategory noneCategory = UnicodeCategory.Control;
 

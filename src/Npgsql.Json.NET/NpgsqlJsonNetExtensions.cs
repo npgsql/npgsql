@@ -21,9 +21,9 @@ namespace Npgsql
         /// <param name="settings">Optional settings to customize JSON serialization</param>
         public static INpgsqlTypeMapper UseJsonNet(
             this INpgsqlTypeMapper mapper,
-            Type[] jsonbClrTypes = null,
-            Type[] jsonClrTypes = null,
-            JsonSerializerSettings settings = null
+            Type[]? jsonbClrTypes = null,
+            Type[]? jsonClrTypes = null,
+            JsonSerializerSettings? settings = null
         )
         {
             mapper.AddMapping(new NpgsqlTypeMappingBuilder

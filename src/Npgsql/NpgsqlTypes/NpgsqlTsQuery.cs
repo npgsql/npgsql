@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using JetBrains.Annotations;
 
 #pragma warning disable CA1034
 
@@ -17,7 +16,7 @@ namespace NpgsqlTypes
         /// <summary>
         /// Node kind
         /// </summary>
-        public NodeKind Kind { get; protected set; }
+        public NodeKind Kind { get; }
 
         /// <summary>
         /// NodeKind
@@ -49,6 +48,12 @@ namespace NpgsqlTypes
             /// </summary>
             Phrase = 4
         }
+
+        /// <summary>
+        /// Constructs an <see cref="NpgsqlTsQuery"/>.
+        /// </summary>
+        /// <param name="kind"></param>
+        protected NpgsqlTsQuery(NodeKind kind) => Kind = kind;
 
         internal abstract void Write(StringBuilder sb, bool first = false);
 
@@ -161,23 +166,13 @@ namespace NpgsqlTypes
                     var left = valStack.Pop();
 
                     var tsOp = opStack.Pop();
-                    switch (tsOp)
+                    valStack.Push((char)tsOp switch
                     {
-                    case '&':
-                        valStack.Push(new NpgsqlTsQueryAnd(left, right));
-                        break;
-
-                    case '|':
-                        valStack.Push(new NpgsqlTsQueryOr(left, right));
-                        break;
-
-                    case '<':
-                        valStack.Push(new NpgsqlTsQueryFollowedBy(left, tsOp.FollowedByDistance, right));
-                        break;
-
-                    default:
-                        throw new FormatException("Syntax error in tsquery");
-                    }
+                        '&' => (NpgsqlTsQuery)new NpgsqlTsQueryAnd(left, right),
+                        '|' => new NpgsqlTsQueryOr(left, right),
+                        '<' => new NpgsqlTsQueryFollowedBy(left, tsOp.FollowedByDistance, right),
+                        _   => throw new FormatException("Syntax error in tsquery")
+                    });
                 }
                 if (opStack.Count == 0)
                     throw new FormatException("Syntax error in tsquery: closing parenthesis without an opening parenthesis");
@@ -323,26 +318,14 @@ namespace NpgsqlTypes
                 var right = valStack.Pop();
                 var left = valStack.Pop();
 
-                NpgsqlTsQuery query;
                 var tsOp = opStack.Pop();
-                switch (tsOp)
+                var query = (char)tsOp switch
                 {
-                case '&':
-                    query = new NpgsqlTsQueryAnd(left, right);
-                    break;
-
-                case '|':
-                    query = new NpgsqlTsQueryOr(left, right);
-                    break;
-
-                case '<':
-                    query = new NpgsqlTsQueryFollowedBy(left, tsOp.FollowedByDistance, right);
-                    break;
-
-                default:
-                    throw new FormatException("Syntax error in tsquery");
-                }
-
+                    '&' => (NpgsqlTsQuery)new NpgsqlTsQueryAnd(left, right),
+                    '|' => new NpgsqlTsQueryOr(left, right),
+                    '<' => new NpgsqlTsQueryFollowedBy(left, tsOp.FollowedByDistance, right),
+                    _   => throw new FormatException("Syntax error in tsquery")
+                };
                 valStack.Push(query);
             }
             if (valStack.Count != 1)
@@ -430,9 +413,9 @@ namespace NpgsqlTypes
         /// <param name="weights">Bitmask of enum Weight.</param>
         /// <param name="isPrefixSearch">Is prefix search?</param>
         public NpgsqlTsQueryLexeme(string text, Weight weights, bool isPrefixSearch)
+            : base(NodeKind.Lexeme)
         {
-            Kind = NodeKind.Lexeme;
-            Text = text;
+            _text = text;
             Weights = weights;
             IsPrefixSearch = isPrefixSearch;
         }
@@ -493,15 +476,15 @@ namespace NpgsqlTypes
         /// <summary>
         /// Child node
         /// </summary>
-        public NpgsqlTsQuery Child { get; set; }
+        public NpgsqlTsQuery? Child { get; set; }
 
         /// <summary>
         /// Creates a not operator, with a given child node.
         /// </summary>
         /// <param name="child"></param>
-        public NpgsqlTsQueryNot([CanBeNull] NpgsqlTsQuery child)
+        public NpgsqlTsQueryNot(NpgsqlTsQuery? child)
+            : base(NodeKind.Not)
         {
-            Kind = NodeKind.Not;
             Child = child;
         }
 
@@ -537,6 +520,16 @@ namespace NpgsqlTypes
         /// Right child
         /// </summary>
         public NpgsqlTsQuery Right { get; set; }
+
+        /// <summary>
+        /// Constructs a <see cref="NpgsqlTsQueryBinOp"/>.
+        /// </summary>
+        protected NpgsqlTsQueryBinOp(NodeKind kind, NpgsqlTsQuery left, NpgsqlTsQuery right)
+            : base(kind)
+        {
+            Left = left;
+            Right = right;
+        }
     }
 
     /// <summary>
@@ -549,12 +542,8 @@ namespace NpgsqlTypes
         /// </summary>
         /// <param name="left"></param>
         /// <param name="right"></param>
-        public NpgsqlTsQueryAnd([CanBeNull] NpgsqlTsQuery left, [CanBeNull] NpgsqlTsQuery right)
-        {
-            Kind = NodeKind.And;
-            Left = left;
-            Right = right;
-        }
+        public NpgsqlTsQueryAnd(NpgsqlTsQuery left, NpgsqlTsQuery right)
+            : base(NodeKind.And, left, right) {}
 
         internal override void Write(StringBuilder sb, bool first = false)
         {
@@ -574,15 +563,12 @@ namespace NpgsqlTypes
         /// </summary>
         /// <param name="left"></param>
         /// <param name="right"></param>
-        public NpgsqlTsQueryOr([CanBeNull] NpgsqlTsQuery left, [CanBeNull] NpgsqlTsQuery right)
-        {
-            Kind = NodeKind.Or;
-            Left = left;
-            Right = right;
-        }
+        public NpgsqlTsQueryOr(NpgsqlTsQuery left, NpgsqlTsQuery right)
+            : base(NodeKind.Or, left, right) {}
 
         internal override void Write(StringBuilder sb, bool first = false)
         {
+            // TODO: Figure out the nullability strategy here
             if (!first)
                 sb.Append("( ");
 
@@ -606,28 +592,27 @@ namespace NpgsqlTypes
         public int Distance { get; set; }
 
         /// <summary>
-        /// Creates a "followed by" operator, specifying 2 child nodes and the 
+        /// Creates a "followed by" operator, specifying 2 child nodes and the
         /// distance between them in lexemes.
         /// </summary>
         /// <param name="left"></param>
         /// <param name="distance"></param>
         /// <param name="right"></param>
         public NpgsqlTsQueryFollowedBy(
-            [CanBeNull] NpgsqlTsQuery left,
+            NpgsqlTsQuery left,
             int distance,
-            [CanBeNull] NpgsqlTsQuery right)
+            NpgsqlTsQuery right)
+            : base(NodeKind.Phrase, left, right)
         {
             if (distance < 0)
                 throw new ArgumentOutOfRangeException(nameof(distance));
 
-            Left = left;
             Distance = distance;
-            Right = right;
-            Kind = NodeKind.Phrase;
         }
 
         internal override void Write(StringBuilder sb, bool first = false)
         {
+            // TODO: Figure out the nullability strategy here
             if (!first)
                 sb.Append("( ");
 
@@ -653,13 +638,8 @@ namespace NpgsqlTypes
         /// <summary>
         /// Creates a tsquery that represents an empty query. Should not be used as child node.
         /// </summary>
-        public NpgsqlTsQueryEmpty()
-        {
-            Kind = NodeKind.Empty;
-        }
+        public NpgsqlTsQueryEmpty() : base(NodeKind.Empty) {}
 
-        internal override void Write(StringBuilder sb, bool first = false)
-        {
-        }
+        internal override void Write(StringBuilder sb, bool first = false) {}
     }
 }

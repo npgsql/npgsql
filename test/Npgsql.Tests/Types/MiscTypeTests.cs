@@ -161,65 +161,28 @@ namespace Npgsql.Tests.Types
         public void Null()
         {
             using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT @p1::TEXT, @p2::TEXT, @p3::TEXT", conn))
             {
-                cmd.Parameters.AddWithValue("p1", DBNull.Value);
-                cmd.Parameters.Add(new NpgsqlParameter<string>("p2", null));
-                cmd.Parameters.Add(new NpgsqlParameter<DBNull>("p3", DBNull.Value));
-                using (var reader = cmd.ExecuteReader())
+                using (var cmd = new NpgsqlCommand("SELECT @p1::TEXT, @p2::TEXT, @p3::TEXT", conn))
                 {
-                    reader.Read();
-                    for (var i = 0; i < cmd.Parameters.Count; i++)
+                    cmd.Parameters.AddWithValue("p1", DBNull.Value);
+                    cmd.Parameters.Add(new NpgsqlParameter<string?>("p2", null));
+                    cmd.Parameters.Add(new NpgsqlParameter<DBNull>("p3", DBNull.Value));
+                    using (var reader = cmd.ExecuteReader())
                     {
-                        Assert.That(reader.IsDBNull(i));
-                        Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(string)));
+                        reader.Read();
+                        for (var i = 0; i < cmd.Parameters.Count; i++)
+                        {
+                            Assert.That(reader.IsDBNull(i));
+                            Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(string)));
+                        }
                     }
                 }
-            }
-        }
 
-        [Test]
-        public void Json()
-        {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
-            {
-                TestUtil.MinimumPgVersion(conn, "9.2.0", "JSON data type not yet introduced");
-                const string expected = @"{ ""Key"" : ""Value"" }";
-                cmd.Parameters.AddWithValue("p", NpgsqlDbType.Json, expected);
-                using (var reader = cmd.ExecuteReader())
+                // Setting non-generic NpgsqlParameter.Value is not allowed, only DBNull.Value
+                using (var cmd = new NpgsqlCommand("SELECT @p::TEXT", conn))
                 {
-                    reader.Read();
-                    Assert.That(reader.GetString(0), Is.EqualTo(expected));
-                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(string)));
-
-                    using (var textReader = reader.GetTextReader(0))
-                        Assert.That(textReader.ReadToEnd(), Is.EqualTo(expected));
-                }
-            }
-        }
-
-        [Test]
-        public void Jsonb()
-        {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
-            {
-                TestUtil.MinimumPgVersion(conn, "9.4.0", "JSONB data type not yet introduced");
-                var sb = new StringBuilder();
-                sb.Append(@"{""Key"": """);
-                sb.Append('x', conn.Settings.WriteBufferSize);
-                sb.Append(@"""}");
-                var value = sb.ToString();
-                cmd.Parameters.AddWithValue("p", NpgsqlDbType.Jsonb, value);
-                using (var reader = cmd.ExecuteReader())
-                {
-                    reader.Read();
-                    Assert.That(reader.GetString(0), Is.EqualTo(value));
-                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(string)));
-
-                    using (var textReader = reader.GetTextReader(0))
-                        Assert.That(textReader.ReadToEnd(), Is.EqualTo(value));
+                    cmd.Parameters.AddWithValue("p4", NpgsqlDbType.Text, null);
+                    Assert.That(() => cmd.ExecuteReader(), Throws.Exception.TypeOf<InvalidCastException>());
                 }
             }
         }
@@ -231,13 +194,13 @@ namespace Npgsql.Tests.Types
             {
                 TestUtil.EnsureExtension(conn, "hstore", "9.1");
 
-                var expected = new Dictionary<string, string> {
+                var expected = new Dictionary<string, string?> {
                     {"a", "3"},
                     {"b", null},
                     {"cd", "hello"}
                 };
 
-                var expected2 = new Dictionary<string, string> {};
+                var expected2 = new Dictionary<string, string?>();
 
                 using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4", conn))
                 {

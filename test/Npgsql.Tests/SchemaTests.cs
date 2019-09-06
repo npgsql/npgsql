@@ -17,9 +17,9 @@ namespace Npgsql.Tests
             {
                 var metaDataCollections = conn.GetSchema(DbMetaDataCollectionNames.MetaDataCollections);
                 Assert.That(metaDataCollections.Rows, Has.Count.GreaterThan(0));
-                foreach (DataRow row in metaDataCollections.Rows)
+                foreach (var row in metaDataCollections.Rows.OfType<DataRow>())
                 {
-                    var collectionName = (string)row["CollectionName"];
+                    var collectionName = (string?)row!["CollectionName"];
                     Assert.That(conn.GetSchema(collectionName), Is.Not.Null, $"Collection {collectionName} advertise in MetaDataCollections but is null");
                 }
             }
@@ -190,7 +190,7 @@ namespace Npgsql.Tests
 
         enum TestEnum { A, B };
 
-        class TestComposite { int A { get; set; } }
+        class TestComposite { public int A { get; set; } }
 
         [Test]
         public void Restrictions()
@@ -236,7 +236,7 @@ namespace Npgsql.Tests
                 {
                     const string parameterName = "@p_int";
                     command.CommandText = "SELECT * FROM data WHERE int=" +
-                                            String.Format(parameterMarkerFormat, parameterName);
+                                            string.Format(parameterMarkerFormat, parameterName);
                     command.Parameters.Add(new NpgsqlParameter(parameterName, 4));
                     using (var reader = command.ExecuteReader())
                     {
@@ -313,9 +313,9 @@ namespace Npgsql.Tests
 
                 try
                 {
-                    string[] restrictions = { null, null, "data" };
+                    string?[] restrictions = { null, null, "data" };
                     var dt = conn.GetSchema("Tables", restrictions);
-                    foreach (DataRow row in dt.Rows)
+                    foreach (var row in dt.Rows.OfType<DataRow>())
                     {
                         var d = row["table_name"];
                         Assert.That(row["table_name"], Is.EqualTo("data"));
@@ -334,11 +334,10 @@ namespace Npgsql.Tests
 
                 try
                 {
-                    string[] restrictions = { null, null, "view" };
+                    string?[] restrictions = { null, null, "view" };
                     var dt = conn.GetSchema("Views", restrictions);
-                    foreach (DataRow row in dt.Rows)
+                    foreach (var row in dt.Rows.OfType<DataRow>())
                     {
-                        var d = row["table_name"];
                         Assert.That(row["table_name"], Is.EqualTo("view"));
                     }
                 }

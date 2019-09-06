@@ -149,8 +149,8 @@ namespace Npgsql.Tests
                 scope.Complete();
             }
             AssertNumberOfRows(1);
-            Assert.That(PoolManager.TryGetValue(connString, out var pool), Is.True);
-            Assert.That(pool.State.Idle, Is.EqualTo(1));
+            Assert.True(PoolManager.TryGetValue(connString, out var pool));
+            Assert.That(pool!.State.Idle, Is.EqualTo(1));
 
             using (var conn = new NpgsqlConnection(connString))
                 NpgsqlConnection.ClearPool(conn);
@@ -351,7 +351,7 @@ namespace Npgsql.Tests
 
         #region Setup
 
-        NpgsqlConnection _controlConn;
+        NpgsqlConnection _controlConn = default!;
 
         [OneTimeSetUp]
         public void OneTimeSetUp()
@@ -373,12 +373,14 @@ namespace Npgsql.Tests
             _controlConn.ExecuteNonQuery("TRUNCATE data");
         }
 
+#pragma warning disable CS8625
         [OneTimeTearDown]
         public void OneTimeTearDown()
         {
             _controlConn?.Close();
             _controlConn = null;
         }
+#pragma warning restore CS8625
 
         #endregion
     }

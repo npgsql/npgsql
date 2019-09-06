@@ -1,5 +1,6 @@
 ﻿using System.Data;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -12,13 +13,15 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     [TypeMapping("double precision", NpgsqlDbType.Double, DbType.Double, typeof(double))]
     class DoubleHandler : NpgsqlSimpleTypeHandler<double>
     {
-        public override double Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public DoubleHandler(PostgresType postgresType) : base(postgresType) {}
+
+        public override double Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             => buf.ReadDouble();
 
-        public override int ValidateAndGetLength(double value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(double value, NpgsqlParameter? parameter)
             => 8;
 
-        public override void Write(double value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public override void Write(double value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => buf.WriteDouble(value);
     }
 }

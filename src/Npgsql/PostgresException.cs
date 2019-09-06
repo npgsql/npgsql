@@ -19,20 +19,30 @@ namespace Npgsql
     /// Other errors (e.g. network issues) will be raised via <see cref="NpgsqlException"/>,
     /// and purely Npgsql-related issues which aren't related to the server will be raised
     /// via the standard CLR exceptions (e.g. ArgumentException).
-    /// 
+    ///
     /// See http://www.postgresql.org/docs/current/static/errcodes-appendix.html,
     /// http://www.postgresql.org/docs/current/static/protocol-error-fields.html
     /// </remarks>
     [Serializable]
     public sealed class PostgresException : NpgsqlException
     {
-        [CanBeNull]
         bool _dataInitialized;
 
-        internal PostgresException(NpgsqlReadBuffer buf)
+        /// <summary>
+        /// Creates a new instance.
+        /// </summary>
+        public PostgresException(string messageText, string severity, string invariantSeverity, string sqlState)
         {
-            var msg = new ErrorOrNoticeMessage(buf);
+            MessageText = messageText;
+            Severity = severity;
+            InvariantSeverity = invariantSeverity;
+            SqlState = sqlState;
+        }
+
+        PostgresException(ErrorOrNoticeMessage msg)
+        {
             Severity = msg.Severity;
+            InvariantSeverity = msg.InvariantSeverity;
             SqlState = msg.Code;
             MessageText = msg.Message;
             Detail = msg.Detail;
@@ -51,10 +61,14 @@ namespace Npgsql
             Routine = msg.Routine;
         }
 
+        internal static PostgresException Load(NpgsqlReadBuffer buf)
+            => new PostgresException(ErrorOrNoticeMessage.Load(buf));
+
         internal PostgresException(SerializationInfo info, StreamingContext context)
             : base(info, context)
         {
             Severity = GetValue<string>(nameof(Severity));
+            InvariantSeverity = GetValue<string>(nameof(InvariantSeverity));
             SqlState = GetValue<string>(nameof(SqlState));
             MessageText = GetValue<string>(nameof(MessageText));
             Detail = GetValue<string>(nameof(Detail));
@@ -72,8 +86,7 @@ namespace Npgsql
             Line = GetValue<string>(nameof(Line));
             Routine = GetValue<string>(nameof(Routine));
 
-            T GetValue<T>(string propertyName) =>
-                (T)info.GetValue(propertyName, typeof(T));
+            T GetValue<T>(string propertyName) => (T)info.GetValue(propertyName, typeof(T))!;
         }
 
         /// <summary>
@@ -85,6 +98,7 @@ namespace Npgsql
         {
             base.GetObjectData(info, context);
             info.AddValue(nameof(Severity), Severity);
+            info.AddValue(nameof(InvariantSeverity), InvariantSeverity);
             info.AddValue(nameof(SqlState), SqlState);
             info.AddValue(nameof(MessageText), MessageText);
             info.AddValue(nameof(Detail), Detail);
@@ -129,11 +143,13 @@ namespace Npgsql
 
             return builder.ToString();
 
+#pragma warning disable CS8653
             void AppendLine<T>(string propertyName, T propertyValue)
             {
                 if (!EqualityComparer<T>.Default.Equals(propertyValue, default))
                     builder.AppendLine().Append("    ").Append(propertyName).Append(": ").Append(propertyValue);
             }
+#pragma warning restore CS8653
         }
 
         /// <summary>
@@ -179,7 +195,7 @@ namespace Npgsql
         /// <summary>
         /// Returns the statement which triggered this exception.
         /// </summary>
-        public NpgsqlStatement Statement { get; internal set; }
+        public NpgsqlStatement? Statement { get; internal set; }
 
         /// <summary>
         /// Gets a collection of key/value pairs that provide additional PostgreSQL fields about the exception.
@@ -191,8 +207,9 @@ namespace Npgsql
                 var data = base.Data;
                 if (_dataInitialized)
                     return data;
-                
+
                 AddData(nameof(Severity), Severity);
+                AddData(nameof(InvariantSeverity), InvariantSeverity);
                 AddData(nameof(SqlState), SqlState);
                 AddData(nameof(MessageText), MessageText);
                 AddData(nameof(Detail), Detail);
@@ -213,11 +230,13 @@ namespace Npgsql
                 _dataInitialized = true;
                 return data;
 
+#pragma warning disable CS8653
                 void AddData<T>(string key, T value)
                 {
                     if (!EqualityComparer<T>.Default.Equals(value, default))
                         data.Add(key, value);
                 }
+#pragma warning restore CS8653
             }
         }
 
@@ -229,6 +248,13 @@ namespace Npgsql
         /// </summary>
         [PublicAPI]
         public string Severity { get; }
+
+        /// <summary>
+        /// Severity of the error or notice, not localized.
+        /// Always present since PostgreSQL 9.6.
+        /// </summary>
+        [PublicAPI]
+        public string InvariantSeverity { get; }
 
         /// <summary>
         /// The SQLSTATE code for the error.
@@ -266,7 +292,7 @@ namespace Npgsql
         /// May run to multiple lines.
         /// </summary>
         [PublicAPI]
-        public string Detail { get; }
+        public string? Detail { get; }
 
         /// <summary>
         /// An optional suggestion what to do about the problem.
@@ -274,7 +300,7 @@ namespace Npgsql
         /// May run to multiple lines.
         /// </summary>
         [PublicAPI]
-        public string Hint { get; }
+        public string? Hint { get; }
 
         /// <summary>
         /// The field value is a decimal ASCII integer, indicating an error cursor position as an index into the original query string.
@@ -297,7 +323,7 @@ namespace Npgsql
         /// This could be, for example, a SQL query issued by a PL/pgSQL function.
         /// </summary>
         [PublicAPI]
-        public string InternalQuery { get; }
+        public string? InternalQuery { get; }
 
         /// <summary>
         /// An indication of the context in which the error occurred.
@@ -305,14 +331,14 @@ namespace Npgsql
         /// The trace is one entry per line, most recent first.
         /// </summary>
         [PublicAPI]
-        public string Where { get; }
+        public string? Where { get; }
 
         /// <summary>
         /// If the error was associated with a specific database object, the name of the schema containing that object, if any.
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
         [PublicAPI]
-        public string SchemaName { get; }
+        public string? SchemaName { get; }
 
         /// <summary>
         /// Table name: if the error was associated with a specific table, the name of the table.
@@ -320,7 +346,7 @@ namespace Npgsql
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
         [PublicAPI]
-        public string TableName { get; }
+        public string? TableName { get; }
 
         /// <summary>
         /// If the error was associated with a specific table column, the name of the column.
@@ -328,7 +354,7 @@ namespace Npgsql
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
         [PublicAPI]
-        public string ColumnName { get; }
+        public string? ColumnName { get; }
 
         /// <summary>
         /// If the error was associated with a specific data type, the name of the data type.
@@ -336,7 +362,7 @@ namespace Npgsql
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
         [PublicAPI]
-        public string DataTypeName { get; }
+        public string? DataTypeName { get; }
 
         /// <summary>
         /// If the error was associated with a specific constraint, the name of the constraint.
@@ -345,26 +371,26 @@ namespace Npgsql
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
         [PublicAPI]
-        public string ConstraintName { get; }
+        public string? ConstraintName { get; }
 
         /// <summary>
         /// The file name of the source-code location where the error was reported.
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
         [PublicAPI]
-        public string File { get; }
+        public string? File { get; }
 
         /// <summary>
         /// The line number of the source-code location where the error was reported.
         /// </summary>
         [PublicAPI]
-        public string Line { get; }
+        public string? Line { get; }
 
         /// <summary>
         /// The name of the source-code routine reporting the error.
         /// </summary>
         [PublicAPI]
-        public string Routine { get; }
+        public string? Routine { get; }
 
         #endregion
     }

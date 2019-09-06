@@ -365,14 +365,14 @@ namespace Npgsql.Tests.Types
         [TypeConverter(typeof(SimpleTypeConverter))]
         class SimpleType
         {
-            string Value { get; }
+            string? Value { get; }
 
-            SimpleType(string value)
+            SimpleType(string? value)
             {
                 Value = value;
             }
 
-            public override string ToString()
+            public override string? ToString()
             {
                 return Value;
             }
@@ -383,7 +383,7 @@ namespace Npgsql.Tests.Types
                     => typeof(string) == sourceType;
 
                 public override object ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, object value)
-                    => new SimpleType(value?.ToString());
+                    => new SimpleType(value.ToString());
             }
         }
 

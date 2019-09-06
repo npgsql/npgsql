@@ -35,7 +35,7 @@ namespace Npgsql
         /// Since PostgreSQL 9.3, large objects larger than 2GB can be handled, up to 4TB.
         /// This property returns true whether the PostgreSQL version is >= 9.3.
         /// </summary>
-        public bool Has64BitSupport => _manager._connection.PostgreSqlVersion >= new Version(9, 3);
+        public bool Has64BitSupport => _manager.Connection.PostgreSqlVersion >= new Version(9, 3);
 
         /// <summary>
         /// Reads <i>count</i> bytes from the large object. The only case when fewer bytes are read is when end of stream is reached.
@@ -53,11 +53,12 @@ namespace Npgsql
         /// <param name="buffer">The buffer where read data should be stored.</param>
         /// <param name="offset">The offset in the buffer where the first byte should be read.</param>
         /// <param name="count">The maximum number of bytes that should be read.</param>
-        /// <param name="cancellationToken">Cancellation token</param>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
         /// <returns>How many bytes actually read, or 0 if end of file was already reached.</returns>
         public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled<int>(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
                 return Read(buffer, offset, count, true);
         }
@@ -106,10 +107,11 @@ namespace Npgsql
         /// <param name="buffer">The buffer to write data from.</param>
         /// <param name="offset">The offset in the buffer at which to begin copying bytes.</param>
         /// <param name="count">The number of bytes to write.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
                 return Write(buffer, offset, count, true);
         }
@@ -153,7 +155,7 @@ namespace Npgsql
         /// <summary>
         /// CanRead always returns true, unless the stream has been closed.
         /// </summary>
-        public override bool CanRead => true && !_disposed;
+        public override bool CanRead => !_disposed;
 
         /// <summary>
         /// CanWrite returns true if the stream was opened with write permissions, and the stream has not been closed.
@@ -163,7 +165,7 @@ namespace Npgsql
         /// <summary>
         /// CanSeek always returns true, unless the stream has been closed.
         /// </summary>
-        public override bool CanSeek => true && !_disposed;
+        public override bool CanSeek => !_disposed;
 
         /// <summary>
         /// Returns the current position in the stream. Getting the current position does not need a round-trip to the server, however setting the current position does.
@@ -181,20 +183,18 @@ namespace Npgsql
         /// <summary>
         /// Gets the length of the large object. This internally seeks to the end of the stream to retrieve the length, and then back again.
         /// </summary>
-#pragma warning disable CA1721 
         public override long Length => GetLength(false).GetAwaiter().GetResult();
-#pragma warning restore CA1721
 
         /// <summary>
         /// Gets the length of the large object. This internally seeks to the end of the stream to retrieve the length, and then back again.
         /// </summary>
-        public Task<long> GetLengthAsync()
+        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        public Task<long> GetLengthAsync(CancellationToken cancellationToken = default)
         {
             using (NoSynchronizationContextScope.Enter())
                 return GetLength(true);
         }
 
-#pragma warning disable CA1721 
         async Task<long> GetLength(bool async)
         {
             CheckDisposed();
@@ -204,7 +204,6 @@ namespace Npgsql
                 await Seek(old, SeekOrigin.Begin, async);
             return retval;
         }
-#pragma warning restore CA1721
 
         /// <summary>
         /// Seeks in the stream to the specified position. This requires a round-trip to the backend.
@@ -220,11 +219,11 @@ namespace Npgsql
         /// </summary>
         /// <param name="offset">A byte offset relative to the <i>origin</i> parameter.</param>
         /// <param name="origin">A value of type SeekOrigin indicating the reference point used to obtain the new position.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        /// <returns></returns>
-        public Task<long> SeekAsync(long offset, SeekOrigin origin, CancellationToken cancellationToken)
+        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        public Task<long> SeekAsync(long offset, SeekOrigin origin, CancellationToken cancellationToken = default)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled<long>(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
                 return Seek(offset, origin, true);
         }
@@ -233,15 +232,14 @@ namespace Npgsql
         {
             if (origin < SeekOrigin.Begin || origin > SeekOrigin.End)
                 throw new ArgumentException("Invalid origin");
-            if (!Has64BitSupport && offset != (long)(int)offset)
+            if (!Has64BitSupport && offset != (int)offset)
                 throw new ArgumentOutOfRangeException(nameof(offset), "offset must fit in 32 bits for PostgreSQL versions older than 9.3");
 
             CheckDisposed();
 
-            if (_manager.Has64BitSupport)
-                return _pos = await _manager.ExecuteFunction<long>("lo_lseek64", async, _fd, offset, (int)origin);
-            else
-                return _pos = await _manager.ExecuteFunction<int>("lo_lseek", async, _fd, (int)offset, (int)origin);
+            return _manager.Has64BitSupport
+                ? _pos = await _manager.ExecuteFunction<long>("lo_lseek64", async, _fd, offset, (int)origin)
+                : _pos = await _manager.ExecuteFunction<int>("lo_lseek", async, _fd, (int)offset, (int)origin);
         }
 
         /// <summary>
@@ -274,7 +272,7 @@ namespace Npgsql
         {
             if (value < 0)
                 throw new ArgumentOutOfRangeException(nameof(value));
-            if (!Has64BitSupport && value != (long)(int)value)
+            if (!Has64BitSupport && value != (int)value)
                 throw new ArgumentOutOfRangeException(nameof(value), "offset must fit in 32 bits for PostgreSQL versions older than 9.3");
 
             CheckDisposed();

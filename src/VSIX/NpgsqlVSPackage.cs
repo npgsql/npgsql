@@ -10,8 +10,11 @@ using System.Configuration;
 using System.Data;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.VisualStudio.Shell;
 using Microsoft.VisualStudio.Shell.Interop;
+using Task = System.Threading.Tasks.Task;
 
 namespace Npgsql.VSIX
 {
@@ -32,16 +35,17 @@ namespace Npgsql.VSIX
     /// To get loaded into VS, the package must be referred by &lt;Asset Type="Microsoft.VisualStudio.VsPackage" ...&gt; in .vsixmanifest file.
     /// </para>
     /// </remarks>
-    [PackageRegistration(UseManagedResourcesOnly = true)]
+    [PackageRegistration(UseManagedResourcesOnly = true, AllowsBackgroundLoading = true)]
     [InstalledProductRegistration("#110", "#112", "1.0", IconResourceID = 400)] // Info on this package for Help/About
     [ProvideMenuResource("Menus.ctmenu", 1)]
-    [ProvideService(typeof(NpgsqlProviderObjectFactory), ServiceName = "PostgreSQL Provider Object Factory")]
+    [ProvideService(typeof(NpgsqlProviderObjectFactory), IsAsyncQueryable = true, ServiceName = "PostgreSQL Provider Object Factory")]
     [ProvideBindingPath]  // Necessary for loading Npgsql via DbProviderFactories.GetProvider()
     [NpgsqlProviderRegistration]
     [Guid(PackageGuidString)]
-    [ProvideAutoLoad(UIContextGuids80.DataSourceWindowAutoVisible), ProvideAutoLoad(UIContextGuids80.DataSourceWindowSupported)]
+    [ProvideAutoLoad(UIContextGuids80.DataSourceWindowAutoVisible, PackageAutoLoadFlags.BackgroundLoad)]
+    [ProvideAutoLoad(UIContextGuids80.DataSourceWindowSupported, PackageAutoLoadFlags.BackgroundLoad)]
     [SuppressMessage("StyleCop.CSharp.DocumentationRules", "SA1650:ElementDocumentationMustBeSpelledCorrectly", Justification = "pkgdef, VS and vsixmanifest are valid VS terms")]
-    public sealed class NpgsqlVSPackage : Package
+    public sealed class NpgsqlVSPackage : AsyncPackage
     {
         /// <summary>
         /// NpgsqlVSPackage GUID string.
@@ -49,26 +53,20 @@ namespace Npgsql.VSIX
         public const string PackageGuidString = "ef991dc4-3119-4ed6-bdb3-c160ca562560";
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="NpgsqlVSPackage"/> class.
-        /// </summary>
-        public NpgsqlVSPackage()
-        {
-            // Inside this method you can place any initialization code that does not require
-            // any Visual Studio service because at this point the package object is created but
-            // not sited yet inside Visual Studio environment. The place to do all the other
-            // initialization is the Initialize method.
-        }
-
-        /// <summary>
         /// Initialization of the package; this method is called right after the package is sited, so this is the place
         /// where you can put all the initialization code that rely on services provided by VisualStudio.
         /// </summary>
-        protected override void Initialize()
+        protected override Task InitializeAsync(CancellationToken cancellationToken, IProgress<ServiceProgressData> progress)
         {
-            ((IServiceContainer)this).AddService(typeof(NpgsqlProviderObjectFactory), new NpgsqlProviderObjectFactory(), true);
+            AddService(typeof(NpgsqlProviderObjectFactory), CreateService, true);
             SetupNpgsqlProviderFactory();
-            base.Initialize();
+            return base.InitializeAsync(cancellationToken, progress);
         }
+
+        Task<object> CreateService(IAsyncServiceContainer container, CancellationToken cancellationtoken, Type servicetype)
+            => servicetype == typeof(NpgsqlProviderObjectFactory)
+                ? Task.FromResult<object>(new NpgsqlProviderObjectFactory())
+                : throw new ArgumentException($"Can't create service of type '{servicetype.Name}'");
 
         void SetupNpgsqlProviderFactory()
         {

@@ -2,6 +2,7 @@
 using System.Data;
 using System.Data.Common;
 using System.Threading.Tasks;
+using Npgsql.Util;
 using NUnit.Framework;
 
 namespace Npgsql.Tests
@@ -18,6 +19,9 @@ namespace Npgsql.Tests
                 conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')", tx: tx);
                 tx.Commit();
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(1));
+                Assert.That(() => tx.Connection, Throws.Exception.TypeOf<InvalidOperationException>());
+                tx.Dispose();
+                Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
             }
         }
 
@@ -31,6 +35,9 @@ namespace Npgsql.Tests
                 conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')", tx: tx);
                 await tx.CommitAsync();
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(1));
+                Assert.That(() => tx.Connection, Throws.Exception.TypeOf<InvalidOperationException>());
+                tx.Dispose();
+                Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
             }
         }
 
@@ -49,6 +56,9 @@ namespace Npgsql.Tests
                 tx.Rollback();
                 Assert.That(tx.IsCompleted);
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
+                Assert.That(() => tx.Connection, Throws.Exception.TypeOf<InvalidOperationException>());
+                tx.Dispose();
+                Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
             }
         }
 
@@ -67,6 +77,9 @@ namespace Npgsql.Tests
                 await tx.RollbackAsync();
                 Assert.That(tx.IsCompleted);
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
+                Assert.That(() => tx.Connection, Throws.Exception.TypeOf<InvalidOperationException>());
+                tx.Dispose();
+                Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
             }
         }
 
@@ -79,7 +92,6 @@ namespace Npgsql.Tests
                 var tx = conn.BeginTransaction();
                 conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')", tx: tx);
                 tx.Dispose();
-                Assert.That(tx.IsCompleted);
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
             }
         }
@@ -99,8 +111,8 @@ namespace Npgsql.Tests
                     tx = conn2.BeginTransaction();
                     conn2.ExecuteNonQuery($"INSERT INTO {tableName} (name) VALUES ('X')", tx);
                 }
-                Assert.That(tx.IsCompleted);
                 Assert.That(conn1.ExecuteScalar($"SELECT COUNT(*) FROM {tableName}"), Is.EqualTo(0));
+                Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
                 conn1.ExecuteNonQuery($"DROP TABLE {tableName}");
             }
         }
@@ -205,7 +217,7 @@ namespace Npgsql.Tests
             using (var conn = OpenConnection())
             {
                 conn.BeginTransaction();
-                Assert.That(() => conn.BeginTransaction(), Throws.TypeOf<NotSupportedException>());
+                Assert.That(() => conn.BeginTransaction(), Throws.TypeOf<InvalidOperationException>());
             }
         }
 
@@ -300,7 +312,7 @@ namespace Npgsql.Tests
             using (var conn = new NpgsqlConnection(ConnectionString + $";Application Name={TestUtil.GetUniqueIdentifier(nameof(TransactionOnRecycledConnection))}"))
             {
                 conn.Open();
-                var prevConnectorId = conn.Connector.Id;
+                var prevConnectorId = conn.Connector!.Id;
                 conn.Close();
                 conn.Open();
                 Assert.That(conn.Connector.Id, Is.EqualTo(prevConnectorId), "Connection pool returned a different connector, can't test");
@@ -329,6 +341,32 @@ namespace Npgsql.Tests
                     Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data", tx: tx), Is.EqualTo(0));
                     conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('savepointtest')", tx: tx);
                     tx.Release(name);
+                    Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data", tx: tx), Is.EqualTo(1));
+
+                    tx.Commit();
+                }
+                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(1));
+            }
+        }
+
+        [Test]
+        public async Task SavepointAsync()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
+                const string name = "theSavePoint";
+
+                using (var tx = conn.BeginTransaction())
+                {
+                    await tx.SaveAsync(name);
+
+                    conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('savepointtest')", tx: tx);
+                    Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data", tx: tx), Is.EqualTo(1));
+                    await tx.RollbackAsync(name);
+                    Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data", tx: tx), Is.EqualTo(0));
+                    conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('savepointtest')", tx: tx);
+                    await tx.ReleaseAsync(name);
                     Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data", tx: tx), Is.EqualTo(1));
 
                     tx.Commit();
@@ -439,9 +477,9 @@ namespace Npgsql.Tests
 
         class NoTransactionDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
         {
-            public async Task<NpgsqlDatabaseInfo> Load(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
+            public async Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
             {
-                var db = new NoTransactionDatabaseInfo();
+                var db = new NoTransactionDatabaseInfo(conn);
                 await db.LoadPostgresInfo(conn, timeout, async);
                 return db;
             }
@@ -450,6 +488,8 @@ namespace Npgsql.Tests
         class NoTransactionDatabaseInfo : PostgresDatabaseInfo
         {
             public override bool SupportsTransactions => false;
+
+            internal NoTransactionDatabaseInfo(NpgsqlConnection conn) : base(conn) {}
         }
 
         // Older tests

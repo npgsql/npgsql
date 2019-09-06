@@ -18,7 +18,7 @@ namespace Npgsql.PostgresTypes
         public readonly int? Precision;
         public readonly int? Scale;
 
-        public override bool Equals(object o)
+        public override bool Equals(object? o)
             => o is PostgresFacets otherFacets && Equals(otherFacets);
 
         public bool Equals(PostgresFacets o)
@@ -41,9 +41,9 @@ namespace Npgsql.PostgresTypes
             if (Size == null && Precision == null && Scale == null)
                 return string.Empty;
 
-            var sb = new StringBuilder();
-            sb.Append('(');
+            var sb = new StringBuilder().Append('(');
             var needComma = false;
+
             if (Size != null)
             {
                 sb.Append(Size);
@@ -65,8 +65,7 @@ namespace Npgsql.PostgresTypes
                 sb.Append(Scale);
             }
 
-            sb.Append(')');
-            return sb.ToString();
+            return sb.Append(')').ToString();
         }
     }
 }

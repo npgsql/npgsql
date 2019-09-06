@@ -3,7 +3,6 @@ using System.Data;
 using System.Data.Common;
 using System.Globalization;
 using System.Text;
-using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 
@@ -14,50 +13,36 @@ namespace Npgsql
     /// </summary>
     static class NpgsqlSchema
     {
-        public static DataTable GetSchema(NpgsqlConnection conn, [CanBeNull] string collectionName, [CanBeNull] string[] restrictions)
+        public static DataTable GetSchema(NpgsqlConnection conn, string? collectionName, string?[]? restrictions)
         {
-            if (string.IsNullOrEmpty(collectionName))
-                throw new ArgumentException("Collection name cannot be null or empty", nameof(collectionName));
+            if (collectionName is null)
+                throw new ArgumentNullException(nameof(collectionName));
+            if (collectionName.Length == 0)
+                throw new ArgumentException("Collection name cannot be empty.", nameof(collectionName));
 
-            switch (collectionName.ToUpperInvariant())
+            return collectionName.ToUpperInvariant() switch
             {
-            case "METADATACOLLECTIONS":
-                return GetMetaDataCollections();
-            case "RESTRICTIONS":
-                return GetRestrictions();
-            case "DATASOURCEINFORMATION":
-                return GetDataSourceInformation(conn);
-            case "DATATYPES":
-                return GetDataTypes(conn);
-            case "RESERVEDWORDS":
-                return GetReservedWords();
-            // custom collections for npgsql
-            case "DATABASES":
-                return GetDatabases(conn, restrictions);
-            case "SCHEMATA":
-                return GetSchemata(conn, restrictions);
-            case "TABLES":
-                return GetTables(conn, restrictions);
-            case "COLUMNS":
-                return GetColumns(conn, restrictions);
-            case "VIEWS":
-                return GetViews(conn, restrictions);
-            case "USERS":
-                return GetUsers(conn, restrictions);
-            case "INDEXES":
-                return GetIndexes(conn, restrictions);
-            case "INDEXCOLUMNS":
-                return GetIndexColumns(conn, restrictions);
-            case "CONSTRAINTS":
-            case "PRIMARYKEY":
-            case "UNIQUEKEYS":
-            case "FOREIGNKEYS":
-                return GetConstraints(conn, restrictions, collectionName);
-            case "CONSTRAINTCOLUMNS":
-                return GetConstraintColumns(conn, restrictions);
-            default:
-                throw new ArgumentOutOfRangeException(nameof(collectionName), collectionName, "Invalid collection name");
-            }
+                "METADATACOLLECTIONS"   => GetMetaDataCollections(),
+                "RESTRICTIONS"          => GetRestrictions(),
+                "DATASOURCEINFORMATION" => GetDataSourceInformation(conn),
+                "DATATYPES"             => GetDataTypes(conn),
+                "RESERVEDWORDS"         => GetReservedWords(),
+                // custom collections for npgsql
+                "DATABASES"             => GetDatabases(conn, restrictions),
+                "SCHEMATA"              => GetSchemata(conn, restrictions),
+                "TABLES"                => GetTables(conn, restrictions),
+                "COLUMNS"               => GetColumns(conn, restrictions),
+                "VIEWS"                 => GetViews(conn, restrictions),
+                "USERS"                 => GetUsers(conn, restrictions),
+                "INDEXES"               => GetIndexes(conn, restrictions),
+                "INDEXCOLUMNS"          => GetIndexColumns(conn, restrictions),
+                "CONSTRAINTS"           => GetConstraints(conn, restrictions, collectionName),
+                "PRIMARYKEY"            => GetConstraints(conn, restrictions, collectionName),
+                "UNIQUEKEYS"            => GetConstraints(conn, restrictions, collectionName),
+                "FOREIGNKEYS"           => GetConstraints(conn, restrictions, collectionName),
+                "CONSTRAINTCOLUMNS"     => GetConstraintColumns(conn, restrictions),
+                _ => throw new ArgumentOutOfRangeException(nameof(collectionName), collectionName, "Invalid collection name.")
+            };
         }
 
         /// <summary>
@@ -125,10 +110,10 @@ namespace Npgsql
             return table;
         }
 
-        static NpgsqlCommand BuildCommand(NpgsqlConnection conn, StringBuilder query, [CanBeNull] string[] restrictions, [CanBeNull] params string[] names)
+        static NpgsqlCommand BuildCommand(NpgsqlConnection conn, StringBuilder query, string?[]? restrictions, params string[]? names)
             => BuildCommand(conn, query, restrictions, true, names);
 
-        static NpgsqlCommand BuildCommand(NpgsqlConnection conn, StringBuilder query, [CanBeNull] string[] restrictions, bool addWhere, [CanBeNull] params string[] names)
+        static NpgsqlCommand BuildCommand(NpgsqlConnection conn, StringBuilder query, string?[]? restrictions, bool addWhere, params string[]? names)
         {
             var command = new NpgsqlCommand();
 
@@ -136,7 +121,7 @@ namespace Npgsql
             {
                 for (var i = 0; i < restrictions.Length && i < names.Length; ++i)
                 {
-                    if (restrictions[i] != null && restrictions[i].Length != 0)
+                    if (restrictions[i] is string restriction && restriction.Length != 0)
                     {
                         if (addWhere)
                         {
@@ -148,11 +133,11 @@ namespace Npgsql
                             query.Append(" AND ");
                         }
 
-                        string paramName = RemoveSpecialChars(names[i]);
+                        var paramName = RemoveSpecialChars(names[i]);
 
                         query.AppendFormat("{0} = :{1}", names[i], paramName);
 
-                        command.Parameters.Add(new NpgsqlParameter(paramName, restrictions[i]));
+                        command.Parameters.Add(new NpgsqlParameter(paramName, restriction));
                     }
                 }
             }
@@ -171,7 +156,7 @@ namespace Npgsql
         /// <param name="conn">The database connection on which to run the metadataquery.</param>
         /// <param name="restrictions">The restrictions to filter the collection.</param>
         /// <returns>The Databases</returns>
-        static DataTable GetDatabases(NpgsqlConnection conn, [CanBeNull] string[] restrictions)
+        static DataTable GetDatabases(NpgsqlConnection conn, string?[]? restrictions)
         {
             var databases = new DataTable("Databases") { Locale = CultureInfo.InvariantCulture };
 
@@ -192,7 +177,7 @@ namespace Npgsql
             return databases;
         }
 
-        static DataTable GetSchemata(NpgsqlConnection conn, [CanBeNull] string[] restrictions)
+        static DataTable GetSchemata(NpgsqlConnection conn, string?[]? restrictions)
         {
             var schemata = new DataTable("Schemata") { Locale = CultureInfo.InvariantCulture };
 
@@ -226,7 +211,7 @@ namespace Npgsql
         /// <param name="conn">The database connection on which to run the metadataquery.</param>
         /// <param name="restrictions">The restrictions to filter the collection.</param>
         /// <returns>The Tables</returns>
-        static DataTable GetTables(NpgsqlConnection conn, [CanBeNull] string[] restrictions)
+        static DataTable GetTables(NpgsqlConnection conn, string?[]? restrictions)
         {
             var tables = new DataTable("Tables") { Locale = CultureInfo.InvariantCulture };
 
@@ -243,7 +228,7 @@ namespace Npgsql
             getTables.Append(@"
 SELECT table_catalog, table_schema, table_name, table_type
 FROM information_schema.tables
-WHERE table_type = 'BASE TABLE' AND table_schema NOT IN ('pg_catalog', 'information_schema')");
+WHERE table_type IN ('BASE TABLE', 'FOREIGN') AND table_schema NOT IN ('pg_catalog', 'information_schema')");
 
             using (var command = BuildCommand(conn, getTables, restrictions, false, "table_catalog", "table_schema", "table_name", "table_type"))
             using (var adapter = new NpgsqlDataAdapter(command))
@@ -258,7 +243,7 @@ WHERE table_type = 'BASE TABLE' AND table_schema NOT IN ('pg_catalog', 'informat
         /// <param name="conn">The database connection on which to run the metadataquery.</param>
         /// <param name="restrictions">The restrictions to filter the collection.</param>
         /// <returns>The Columns.</returns>
-        static DataTable GetColumns(NpgsqlConnection conn, [CanBeNull] string[] restrictions)
+        static DataTable GetColumns(NpgsqlConnection conn, string?[]? restrictions)
         {
             var columns = new DataTable("Columns") { Locale = CultureInfo.InvariantCulture };
 
@@ -291,7 +276,7 @@ WHERE table_type = 'BASE TABLE' AND table_schema NOT IN ('pg_catalog', 'informat
         /// <param name="conn">The database connection on which to run the metadataquery.</param>
         /// <param name="restrictions">The restrictions to filter the collection.</param>
         /// <returns>The Views</returns>
-        static DataTable GetViews(NpgsqlConnection conn, [CanBeNull] string[] restrictions)
+        static DataTable GetViews(NpgsqlConnection conn, string?[]? restrictions)
         {
             var views = new DataTable("Views") { Locale = CultureInfo.InvariantCulture };
 
@@ -321,7 +306,7 @@ WHERE table_schema NOT IN ('pg_catalog', 'information_schema')");
         /// <param name="conn">The database connection on which to run the metadataquery.</param>
         /// <param name="restrictions">The restrictions to filter the collection.</param>
         /// <returns>The Users.</returns>
-        static DataTable GetUsers(NpgsqlConnection conn, [CanBeNull] string[] restrictions)
+        static DataTable GetUsers(NpgsqlConnection conn, string?[]? restrictions)
         {
             var users = new DataTable("Users") { Locale = CultureInfo.InvariantCulture };
 
@@ -338,7 +323,7 @@ WHERE table_schema NOT IN ('pg_catalog', 'information_schema')");
             return users;
         }
 
-        static DataTable GetIndexes(NpgsqlConnection conn, [CanBeNull] string[] restrictions)
+        static DataTable GetIndexes(NpgsqlConnection conn, string?[]? restrictions)
         {
             var indexes = new DataTable("Indexes") { Locale = CultureInfo.InvariantCulture };
 
@@ -364,7 +349,6 @@ from
 where
     i.relkind = 'i'
     and n.nspname not in ('pg_catalog', 'pg_toast')
-    and pg_catalog.pg_table_is_visible(i.oid)
     and a.attnum = ANY(ix.indkey)
     and t.relkind = 'r'");
 
@@ -375,7 +359,7 @@ where
             return indexes;
         }
 
-        static DataTable GetIndexColumns(NpgsqlConnection conn, [CanBeNull] string[] restrictions)
+        static DataTable GetIndexColumns(NpgsqlConnection conn, string?[]? restrictions)
         {
             var indexColumns = new DataTable("IndexColumns") { Locale = CultureInfo.InvariantCulture };
 
@@ -412,7 +396,7 @@ where
             return indexColumns;
         }
 
-        static DataTable GetConstraints(NpgsqlConnection conn, [CanBeNull] string[] restrictions, [CanBeNull] string constraintType)
+        static DataTable GetConstraints(NpgsqlConnection conn, string?[]? restrictions, string? constraintType)
         {
             var getConstraints = new StringBuilder();
 
@@ -454,7 +438,7 @@ select 'UNIQUE KEY' as ""CONSTRAINT_TYPE"", 'u' as ""contype""
             }
         }
 
-        static DataTable GetConstraintColumns(NpgsqlConnection conn, [CanBeNull] string[] restrictions)
+        static DataTable GetConstraintColumns(NpgsqlConnection conn, string?[]? restrictions)
         {
             var getConstraintColumns = new StringBuilder();
 
@@ -546,7 +530,7 @@ and n.nspname not in ('pg_catalog', 'pg_toast')");
 
         static DataTable GetDataTypes(NpgsqlConnection conn)
         {
-            var connector = conn.Connector;
+            var connector = conn.CheckReadyAndGetConnector();
 
             var table = new DataTable("DataTypes");
 

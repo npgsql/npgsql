@@ -57,8 +57,13 @@ namespace Npgsql.PluginTests
         class Foo
         {
             public int Bar { get; set; }
-            public override bool Equals(object obj) => (obj as Foo)?.Bar == Bar;
+            public override bool Equals(object? obj) => (obj as Foo)?.Bar == Bar;
             public override int GetHashCode() => Bar.GetHashCode();
+        }
+
+        class Bar
+        {
+            public int A { get; set; }
         }
 
         [Test]
@@ -116,6 +121,29 @@ namespace Npgsql.PluginTests
             }
         }
 
+        [Test, Ignore("https://github.com/npgsql/npgsql/issues/2568")]
+        public void ClrTypeMappingTwoTypes()
+        {
+            var value1 = new Foo { Bar = 8 };
+            var value2 = new Bar { A = 8 };
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand(@"SELECT @p1, @p2", conn))
+            {
+                conn.TypeMapper.UseJsonNet(new[] { typeof(Foo), typeof(Bar) });
+
+                cmd.Parameters.AddWithValue("p1", value1);
+                cmd.Parameters.AddWithValue("p2", value1);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    var actual1 = reader.GetFieldValue<Foo>(0);
+                    Assert.That(actual1.Bar, Is.EqualTo(8));
+                    var actual2 = reader.GetFieldValue<Bar>(1);
+                    Assert.That(actual2.A, Is.EqualTo(8));
+                }
+            }
+        }
+
         [Test]
         public void RoundtripClrArray()
         {
@@ -141,7 +169,7 @@ namespace Npgsql.PluginTests
         class DateWrapper
         {
             public System.DateTime Date;
-            public override bool Equals(object obj) => (obj as DateWrapper)?.Date == Date;
+            public override bool Equals(object? obj) => (obj as DateWrapper)?.Date == Date;
             public override int GetHashCode() => Date.GetHashCode();
         }
 
@@ -190,7 +218,7 @@ namespace Npgsql.PluginTests
         [Test]
         public void RoundtripJsonCustomSerializerSettings() => RoundtripCustomSerializerSettings(asJsonb : false);
 
-        protected override NpgsqlConnection OpenConnection(string connectionString = null)
+        protected override NpgsqlConnection OpenConnection(string? connectionString = null)
         {
             var conn = base.OpenConnection(connectionString);
             conn.TypeMapper.UseJsonNet();

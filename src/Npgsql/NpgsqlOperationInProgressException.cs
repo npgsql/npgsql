@@ -23,6 +23,6 @@ namespace Npgsql
         /// If the connection is busy with another command, this will contain a reference to that command.
         /// Otherwise, if the connection if busy with another type of operation (e.g. COPY), contains null.
         /// </summary>
-        public NpgsqlCommand CommandInProgress { get; }
+        public NpgsqlCommand? CommandInProgress { get; }
     }
 }

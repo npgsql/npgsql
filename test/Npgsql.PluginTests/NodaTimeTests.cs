@@ -355,7 +355,7 @@ namespace Npgsql.PluginTests
 
         #region Support
 
-        protected override NpgsqlConnection OpenConnection(string connectionString = null)
+        protected override NpgsqlConnection OpenConnection(string? connectionString = null)
         {
             var conn = new NpgsqlConnection(connectionString ?? ConnectionString);
             conn.Open();

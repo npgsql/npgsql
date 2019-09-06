@@ -449,12 +449,8 @@ namespace Npgsql.Tests
                     CommandText = "SELECT interval FROM data",
                     Connection = conn
                 };
-                var da = new NpgsqlDataAdapter {SelectCommand = command};
+                var da = new NpgsqlDataAdapter { SelectCommand = command };
                 da.Fill(dt);
-                foreach (DataRow dr in dt.Rows)
-                {
-                    //Console.Out.WriteLine(dr["interval"]);
-                }
             }
         }
 
@@ -480,10 +476,6 @@ namespace Npgsql.Tests
                 var da = new NpgsqlDataAdapter();
                 da.SelectCommand = command;
                 da.Fill(dt);
-                foreach (DataRow dr in dt.Rows)
-                {
-                    //Console.Out.WriteLine(dr["interval"]);
-                }
             }
         }
 

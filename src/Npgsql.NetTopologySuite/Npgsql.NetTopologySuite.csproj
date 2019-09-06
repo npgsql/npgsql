@@ -3,11 +3,11 @@
     <Authors>Yoh Deadfall, Shay Rojansky</Authors>
     <Description>NetTopologySuite plugin for Npgsql, allowing mapping of PostGIS geometry types to NetTopologySuite types.</Description>
     <PackageTags>npgsql postgresql postgres postgis nts ado ado.net database sql</PackageTags>
-    <VersionPrefix>1.0.2</VersionPrefix>
+    <TargetFrameworks>net461;netstandard2.0</TargetFrameworks>
     <NoWarn>NU5104</NoWarn>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="NetTopologySuite.IO.PostGIS" Version="1.15.0" />
+    <PackageReference Include="NetTopologySuite.IO.PostGIS" Version="2.0.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../Npgsql/Npgsql.csproj" />

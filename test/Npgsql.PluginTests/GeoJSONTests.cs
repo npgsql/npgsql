@@ -41,10 +41,10 @@ namespace Npgsql.PluginTests
             }
         }
 
-        protected override NpgsqlConnection OpenConnection(string connectionString = null)
+        protected override NpgsqlConnection OpenConnection(string? connectionString = null)
             => OpenConnection(connectionString, GeoJSONOptions.None);
 
-        protected NpgsqlConnection OpenConnection(string connectionString = null, GeoJSONOptions option = GeoJSONOptions.None)
+        protected NpgsqlConnection OpenConnection(string? connectionString = null, GeoJSONOptions option = GeoJSONOptions.None)
         {
             var conn = base.OpenConnection(connectionString);
             conn.TypeMapper.UseGeoJson(option);
@@ -234,7 +234,7 @@ namespace Npgsql.PluginTests
                 var crs = point.CRS as NamedCRS;
 
                 Assert.That(crs, Is.Not.Null);
-                Assert.That(crs.Properties["name"], Is.EqualTo("EPSG:4326"));
+                Assert.That(crs!.Properties["name"], Is.EqualTo("EPSG:4326"));
             }
         }
 
@@ -248,7 +248,7 @@ namespace Npgsql.PluginTests
                 var crs = point.CRS as NamedCRS;
 
                 Assert.That(crs, Is.Not.Null);
-                Assert.That(crs.Properties["name"], Is.EqualTo("urn:ogc:def:crs:EPSG::4326"));
+                Assert.That(crs!.Properties["name"], Is.EqualTo("urn:ogc:def:crs:EPSG::4326"));
             }
         }
 

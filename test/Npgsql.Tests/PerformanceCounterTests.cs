@@ -1,4 +1,4 @@
-﻿#if NET452
+﻿#if NET461
 using System;
 using System.Diagnostics;
 using System.Threading;
@@ -26,10 +26,10 @@ namespace Npgsql.Tests
             using (var nonPooledConn = new NpgsqlConnection(nonPooledConnString))
             {
                 Thread.Sleep(2000);  // Let the counter reset
-                Assert.That(hardConnectCounter.RawValue, Is.Zero);
-                Assert.That(hardDisconnectCounter.RawValue, Is.Zero);
-                Assert.That(softConnectCounter.RawValue, Is.Zero);
-                Assert.That(softDisconnectCounter.RawValue, Is.Zero);
+                Assert.That(hardConnectCounter!.RawValue, Is.Zero);
+                Assert.That(hardDisconnectCounter!.RawValue, Is.Zero);
+                Assert.That(softConnectCounter!.RawValue, Is.Zero);
+                Assert.That(softDisconnectCounter!.RawValue, Is.Zero);
                 pooledConn.Open();   // Pool is empty so this is a hard connect
                 nonPooledConn.Open();
                 Assert.That(hardConnectCounter.RawValue, Is.EqualTo(2));
@@ -68,7 +68,7 @@ namespace Npgsql.Tests
             using (var pooledConn = new NpgsqlConnection(ConnectionString))
             using (var nonPooledConn = new NpgsqlConnection(nonPooledConnString))
             {
-                Assert.That(counter.RawValue, Is.Zero);
+                Assert.That(counter!.RawValue, Is.Zero);
                 nonPooledConn.Open();
                 Assert.That(counter.RawValue, Is.EqualTo(1));
                 pooledConn.Open();
@@ -94,9 +94,9 @@ namespace Npgsql.Tests
             using (var pooledConn = new NpgsqlConnection(ConnectionString))
             using (var nonPooledConn = new NpgsqlConnection(nonPooledConnString))
             {
-                Assert.That(totalCounter.RawValue, Is.Zero);
-                Assert.That(activeCounter.RawValue, Is.Zero);
-                Assert.That(freeCounter.RawValue, Is.Zero);
+                Assert.That(totalCounter!.RawValue, Is.Zero);
+                Assert.That(activeCounter!.RawValue, Is.Zero);
+                Assert.That(freeCounter!.RawValue, Is.Zero);
                 nonPooledConn.Open();
                 Assert.That(totalCounter.RawValue, Is.Zero);
                 Assert.That(activeCounter.RawValue, Is.Zero);

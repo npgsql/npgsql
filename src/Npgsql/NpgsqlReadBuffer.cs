@@ -6,7 +6,6 @@ using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
-using JetBrains.Annotations;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
@@ -20,7 +19,7 @@ namespace Npgsql
     {
         #region Fields and Properties
 
-        public NpgsqlConnection Connection => Connector.Connection;
+        public NpgsqlConnection Connection => Connector.Connection!;
 
         internal readonly NpgsqlConnector Connector;
 
@@ -29,8 +28,7 @@ namespace Npgsql
         /// <summary>
         /// Wraps SocketAsyncEventArgs for better async I/O as long as we're not doing SSL.
         /// </summary>
-        [CanBeNull]
-        internal AwaitableSocket AwaitableSocket { get; set; }
+        internal AwaitableSocket? AwaitableSocket { get; set; }
 
         /// <summary>
         /// The total byte length of the buffer.
@@ -52,8 +50,7 @@ namespace Npgsql
         internal readonly byte[] Buffer;
         internal int FilledBytes;
 
-        [CanBeNull]
-        ColumnStream _columnStream;
+        ColumnStream? _columnStream;
 
         /// <summary>
         /// The minimum buffer size possible.
@@ -66,7 +63,7 @@ namespace Npgsql
         #region Constructors
 
         internal NpgsqlReadBuffer(
-            [CanBeNull] NpgsqlConnector connector,
+            NpgsqlConnector connector,
             Stream stream,
             int size,
             Encoding textEncoding,
@@ -104,7 +101,7 @@ namespace Npgsql
 
         internal Task Ensure(int count, bool async, bool dontBreakOnTimeouts)
         {
-            return count <= ReadBytesLeft ? PGUtil.CompletedTask : EnsureLong();
+            return count <= ReadBytesLeft ? Task.CompletedTask : EnsureLong();
 
             async Task EnsureLong()
             {
@@ -126,6 +123,7 @@ namespace Npgsql
 
                 try
                 {
+                    var totalRead = 0;
                     while (count > 0)
                     {
                         var toRead = Size - FilledBytes;
@@ -148,7 +146,10 @@ namespace Npgsql
                             throw new EndOfStreamException();
                         count -= read;
                         FilledBytes += read;
+                        totalRead += read;
                     }
+
+                    NpgsqlEventSource.Log.BytesRead(totalRead);
                 }
                 // We have a special case when reading async notifications - a timeout may be normal
                 // shouldn't be fatal
@@ -166,7 +167,6 @@ namespace Npgsql
                     throw new NpgsqlException("Exception while reading from stream", e);
                 }
             }
-
         }
 
         internal Task ReadMore(bool async) => Ensure(ReadBytesLeft + 1, async);
@@ -358,6 +358,18 @@ namespace Npgsql
         public void ReadBytes(byte[] output, int outputOffset, int len)
             => ReadBytes(new Span<byte>(output, outputOffset, len));
 
+        public ReadOnlySpan<byte> ReadSpan(int len)
+        {
+            Debug.Assert(len <= ReadBytesLeft);
+            return new ReadOnlySpan<byte>(Buffer, ReadPosition, len);
+        }
+
+        public ReadOnlyMemory<byte> ReadMemory(int len)
+        {
+            Debug.Assert(len <= ReadBytesLeft);
+            return new ReadOnlyMemory<byte>(Buffer, ReadPosition, len);
+        }
+
         #endregion
 
         #region Read Complex
@@ -426,11 +438,21 @@ namespace Npgsql
         {
             int i;
             for (i = ReadPosition; Buffer[i] != 0; i++)
-            {
                 Debug.Assert(i <= ReadPosition + ReadBytesLeft);
-            }
             Debug.Assert(i >= ReadPosition);
             var result = encoding.GetString(Buffer, ReadPosition, i - ReadPosition);
+            ReadPosition = i + 1;
+            return result;
+        }
+
+        public ReadOnlySpan<byte> GetNullTerminatedBytes()
+        {
+            int i;
+            for (i = ReadPosition; Buffer[i] != 0; i++)
+                Debug.Assert(i <= ReadPosition + ReadBytesLeft);
+            Debug.Assert(i >= ReadPosition);
+
+            var result = new ReadOnlySpan<byte>(Buffer, ReadPosition, i - ReadPosition);
             ReadPosition = i + 1;
             return result;
         }

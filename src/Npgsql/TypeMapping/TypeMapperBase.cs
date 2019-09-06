@@ -1,19 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
-using JetBrains.Annotations;
 using Npgsql.TypeHandlers;
+using Npgsql.TypeHandlers.CompositeHandlers;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeMapping
 {
     abstract class TypeMapperBase : INpgsqlTypeMapper
     {
-        internal Dictionary<string, NpgsqlTypeMapping> Mappings { get; set; }
+        internal Dictionary<string, NpgsqlTypeMapping> Mappings { get; } = new Dictionary<string, NpgsqlTypeMapping>();
 
         public INpgsqlNameTranslator DefaultNameTranslator { get; }
 
-        protected TypeMapperBase([NotNull] INpgsqlNameTranslator defaultNameTranslator)
+        protected TypeMapperBase(INpgsqlNameTranslator defaultNameTranslator)
         {
             if (defaultNameTranslator == null)
                 throw new ArgumentNullException(nameof(defaultNameTranslator));
@@ -41,7 +41,7 @@ namespace Npgsql.TypeMapping
 
         #region Enum mapping
 
-        public INpgsqlTypeMapper MapEnum<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null)
+        public INpgsqlTypeMapper MapEnum<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
             where TEnum : struct, Enum
         {
             if (pgName != null && pgName.Trim() == "")
@@ -60,7 +60,7 @@ namespace Npgsql.TypeMapping
             }.Build());
         }
 
-        public bool UnmapEnum<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null)
+        public bool UnmapEnum<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
             where TEnum : struct, Enum
         {
             if (pgName != null && pgName.Trim() == "")
@@ -78,7 +78,7 @@ namespace Npgsql.TypeMapping
 
         #region Composite mapping
 
-        public INpgsqlTypeMapper MapComposite<T>(string pgName = null, INpgsqlNameTranslator nameTranslator = null)
+        public INpgsqlTypeMapper MapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
             where T : new()
         {
             if (pgName != null && pgName.Trim() == "")
@@ -93,11 +93,11 @@ namespace Npgsql.TypeMapping
             {
                 PgTypeName = pgName,
                 ClrTypes = new[] { typeof(T) },
-                TypeHandlerFactory = new MappedCompositeTypeHandlerFactory<T>(nameTranslator)
+                TypeHandlerFactory = new CompositeTypeHandlerFactory<T>(nameTranslator)
             }.Build());
         }
 
-        public bool UnmapComposite<T>(string pgName = null, INpgsqlNameTranslator nameTranslator = null)
+        public bool UnmapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
             where T : new()
         {
             if (pgName != null && pgName.Trim() == "")

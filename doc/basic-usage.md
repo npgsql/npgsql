@@ -108,7 +108,7 @@ using (var cmd = new NpgsqlCommand("SELECT my_func()", conn))
 {
     cmd.Parameters.Add(new NpgsqlParameter("p_out", DbType.String) { Direction = ParameterDirection.Output });
     cmd.ExecuteNonQuery();
-    Console.WriteLine(c.Parameters[0].Value);
+    Console.WriteLine(cmd.Parameters[0].Value);
 }
 ```
 

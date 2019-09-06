@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Data;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -15,17 +16,19 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     {
         const int MoneyScale = 2;
 
-        public override decimal Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public MoneyHandler(PostgresType postgresType) : base(postgresType) {}
+
+        public override decimal Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
             return new DecimalRaw(buf.ReadInt64()) { Scale = MoneyScale }.Value;
         }
 
-        public override int ValidateAndGetLength(decimal value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(decimal value, NpgsqlParameter? parameter)
             => value < -92233720368547758.08M || value > 92233720368547758.07M
                 ? throw new OverflowException($"The supplied value ({value}) is outside the range for a PostgreSQL money value.")
                 : 8;
 
-        public override void Write(decimal value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public override void Write(decimal value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
             var raw = new DecimalRaw(value);
 
@@ -38,7 +41,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
                 raw = new DecimalRaw(value);
             }
 
-            var result = (long)raw.Mid << 32 | (long)raw.Low;
+            var result = (long)raw.Mid << 32 | raw.Low;
             if (raw.Negative) result = -result;
             buf.WriteInt64(result);
         }

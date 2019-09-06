@@ -362,9 +362,11 @@ namespace Npgsql.Tests
                 Assert.Ignore("Unique not supported in reader schema on Redshift");
             using (var conn = OpenConnection())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (id INT PRIMARY KEY, non_id INT, uniq INT UNIQUE)");
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (id INT PRIMARY KEY, non_id INT, uniq INT UNIQUE, non_id_second INT, non_id_third INT)");
 
-                using (var cmd = new NpgsqlCommand("SELECT id,non_id,uniq,8 FROM data", conn))
+                conn.ExecuteNonQuery("CREATE UNIQUE INDEX idx_two_cols_unique ON data (non_id_second, non_id_third)");
+
+                using (var cmd = new NpgsqlCommand("SELECT id,non_id,uniq,8,non_id_second,non_id_third FROM data", conn))
                 using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
                 {
                     var columns = reader.GetColumnSchema();
@@ -372,6 +374,8 @@ namespace Npgsql.Tests
                     Assert.That(columns[1].IsUnique, Is.False);
                     Assert.That(columns[2].IsUnique, Is.True);
                     Assert.That(columns[3].IsUnique, Is.Null);
+                    Assert.That(columns[4].IsUnique, Is.False);
+                    Assert.That(columns[5].IsUnique, Is.False);
                 }
             }
         }

@@ -7,37 +7,37 @@ namespace Npgsql.Benchmarks.TypeHandlers
     [Config(typeof(Config))]
     public class Int16 : TypeHandlerBenchmarks<short>
     {
-        public Int16() : base(new Int16Handler()) { }
+        public Int16() : base(new Int16Handler(GetPostgresType("smallint"))) { }
     }
 
     [Config(typeof(Config))]
     public class Int32 : TypeHandlerBenchmarks<int>
     {
-        public Int32() : base(new Int32Handler()) { }
+        public Int32() : base(new Int32Handler(GetPostgresType("integer"))) { }
     }
 
     [Config(typeof(Config))]
     public class Int64 : TypeHandlerBenchmarks<long>
     {
-        public Int64() : base(new Int64Handler()) { }
+        public Int64() : base(new Int64Handler(GetPostgresType("bigint"))) { }
     }
 
     [Config(typeof(Config))]
     public class Single : TypeHandlerBenchmarks<float>
     {
-        public Single() : base(new SingleHandler()) { }
+        public Single() : base(new SingleHandler(GetPostgresType("real"))) { }
     }
 
     [Config(typeof(Config))]
     public class Double : TypeHandlerBenchmarks<double>
     {
-        public Double() : base(new DoubleHandler()) { }
+        public Double() : base(new DoubleHandler(GetPostgresType("double precision"))) { }
     }
 
     [Config(typeof(Config))]
     public class Numeric : TypeHandlerBenchmarks<decimal>
     {
-        public Numeric() : base(new NumericHandler()) { }
+        public Numeric() : base(new NumericHandler(GetPostgresType("numeric"))) { }
 
         protected override IEnumerable<decimal> ValuesOverride() => new[]
         {
@@ -62,6 +62,6 @@ namespace Npgsql.Benchmarks.TypeHandlers
     [Config(typeof(Config))]
     public class Money : TypeHandlerBenchmarks<decimal>
     {
-        public Money() : base(new MoneyHandler()) { }
+        public Money() : base(new MoneyHandler(GetPostgresType("money"))) { }
     }
 }

@@ -1,6 +1,6 @@
 ﻿using System;
-using JetBrains.Annotations;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -11,9 +11,9 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     class TimeTzHandlerFactory : NpgsqlTypeHandlerFactory<DateTimeOffset>
     {
         // Check for the legacy floating point timestamps feature
-        protected override NpgsqlTypeHandler<DateTimeOffset> Create(NpgsqlConnection conn)
+        public override NpgsqlTypeHandler<DateTimeOffset> Create(PostgresType postgresType, NpgsqlConnection conn)
             => conn.HasIntegerDateTimes
-                ? new TimeTzHandler()
+                ? new TimeTzHandler(postgresType)
                 : throw new NotSupportedException($"The deprecated floating-point date/time format is not supported by {nameof(Npgsql)}.");
     }
 
@@ -24,9 +24,11 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     {
         // Binary Format: int64 expressing microseconds, int32 expressing timezone in seconds, negative
 
+        internal TimeTzHandler(PostgresType postgresType) : base(postgresType) {}
+
         #region Read
 
-        public override DateTimeOffset Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override DateTimeOffset Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
             // Adjust from 1 microsecond to 100ns. Time zone (in seconds) is inverted.
             var ticks = buf.ReadInt64() * 10;
@@ -34,32 +36,32 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             return new DateTimeOffset(ticks + TimeSpan.TicksPerDay, offset);
         }
 
-        DateTime INpgsqlSimpleTypeHandler<DateTime>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        DateTime INpgsqlSimpleTypeHandler<DateTime>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
             => Read(buf, len, fieldDescription).LocalDateTime;
 
-        TimeSpan INpgsqlSimpleTypeHandler<TimeSpan>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        TimeSpan INpgsqlSimpleTypeHandler<TimeSpan>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
             => Read(buf, len, fieldDescription).LocalDateTime.TimeOfDay;
 
         #endregion Read
 
         #region Write
 
-        public override int ValidateAndGetLength(DateTimeOffset value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(DateTimeOffset value, NpgsqlParameter? parameter)
             => 12;
 
-        public int ValidateAndGetLength(TimeSpan value, NpgsqlParameter parameter)
+        public int ValidateAndGetLength(TimeSpan value, NpgsqlParameter? parameter)
             => 12;
 
-        public int ValidateAndGetLength(DateTime value, NpgsqlParameter parameter)
+        public int ValidateAndGetLength(DateTime value, NpgsqlParameter? parameter)
             => 12;
 
-        public override void Write(DateTimeOffset value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public override void Write(DateTimeOffset value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
             buf.WriteInt64(value.TimeOfDay.Ticks / 10);
             buf.WriteInt32(-(int)(value.Offset.Ticks / TimeSpan.TicksPerSecond));
         }
 
-        public void Write(DateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public void Write(DateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
             buf.WriteInt64(value.TimeOfDay.Ticks / 10);
 
@@ -78,7 +80,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             }
         }
 
-        public void Write(TimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public void Write(TimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
             buf.WriteInt64(value.Ticks / 10);
             buf.WriteInt32(-(int)(TimeZoneInfo.Local.BaseUtcOffset.Ticks / TimeSpan.TicksPerSecond));

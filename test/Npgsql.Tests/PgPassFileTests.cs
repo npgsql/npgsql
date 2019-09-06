@@ -10,7 +10,7 @@ namespace Npgsql.Tests
         [Test]
         public void ShouldParseAllEntries()
         {
-            var file = PgPassFile.Load(_pgpassFile);
+            var file = PgPassFile.Load(_pgpassFile)!;
             var entries = file.Entries.ToList();
             Assert.That(entries.Count, Is.EqualTo(3));
         }
@@ -18,20 +18,20 @@ namespace Npgsql.Tests
         [Test]
         public void ShouldFindFirstEntryWhenMultipleMatch()
         {
-            var file = PgPassFile.Load(_pgpassFile);
-            var entry = file.GetFirstMatchingEntry("testhost");
+            var file = PgPassFile.Load(_pgpassFile)!;
+            var entry = file.GetFirstMatchingEntry("testhost")!;
             Assert.That(entry.Password, Is.EqualTo("testpass"));
         }
 
         [Test]
         public void ShouldFindDefaultForNoMatches()
         {
-            var file = PgPassFile.Load(_pgpassFile);
-            var entry = file.GetFirstMatchingEntry("notarealhost");
+            var file = PgPassFile.Load(_pgpassFile)!;
+            var entry = file.GetFirstMatchingEntry("notarealhost")!;
             Assert.That(entry.Password, Is.EqualTo("defaultpass"));
         }
 
-        string _pgpassFile;
+        readonly string _pgpassFile = Path.GetTempFileName();
 
         [OneTimeSetUp]
         public void CreateTestFile()
@@ -41,8 +41,6 @@ namespace Npgsql.Tests
 testhost:*:*:*:testdefaultpass
 # helpful comment goes here
 *:*:*:*:defaultpass";
-
-            _pgpassFile = Path.GetTempFileName();
 
             File.WriteAllText(_pgpassFile, content);
         }

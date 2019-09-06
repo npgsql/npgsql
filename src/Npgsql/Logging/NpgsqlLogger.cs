@@ -10,7 +10,7 @@ namespace Npgsql.Logging
     public abstract class NpgsqlLogger
     {
         public abstract bool IsEnabled(NpgsqlLogLevel level);
-        public abstract void Log(NpgsqlLogLevel level, int connectorId, string msg, Exception exception = null);
+        public abstract void Log(NpgsqlLogLevel level, int connectorId, string msg, Exception? exception = null);
 
         internal void Trace(string msg, int connectionId = 0) => Log(NpgsqlLogLevel.Trace, connectionId, msg);
         internal void Debug(string msg, int connectionId = 0) => Log(NpgsqlLogLevel.Debug, connectionId, msg);

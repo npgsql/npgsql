@@ -1,6 +1,7 @@
 ﻿using System;
 using NodaTime;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
@@ -10,15 +11,17 @@ namespace Npgsql.NodaTime
     public class IntervalHandlerFactory : NpgsqlTypeHandlerFactory<Period>
     {
         // Check for the legacy floating point timestamps feature
-        protected override NpgsqlTypeHandler<Period> Create(NpgsqlConnection conn)
+        public override NpgsqlTypeHandler<Period> Create(PostgresType postgresType, NpgsqlConnection conn)
             => conn.HasIntegerDateTimes
-                ? new IntervalHandler()
+                ? new IntervalHandler(postgresType)
                 : throw new NotSupportedException($"The deprecated floating-point date/time format is not supported by {nameof(Npgsql)}.");
     }
 
     class IntervalHandler : NpgsqlSimpleTypeHandler<Period>
     {
-        public override Period Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public IntervalHandler(PostgresType postgresType) : base(postgresType) {}
+
+        public override Period Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
             var microsecondsInDay = buf.ReadInt64();
             var days = buf.ReadInt32();
@@ -38,10 +41,10 @@ namespace Npgsql.NodaTime
             }.Build().Normalize();
         }
 
-        public override int ValidateAndGetLength(Period value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(Period value, NpgsqlParameter? parameter)
             => 16;
 
-        public override void Write(Period value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public override void Write(Period value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
             var microsecondsInDay =
                 (((value.Hours * NodaConstants.MinutesPerHour + value.Minutes) * NodaConstants.SecondsPerMinute + value.Seconds) * NodaConstants.MillisecondsPerSecond + value.Milliseconds) * 1000 +

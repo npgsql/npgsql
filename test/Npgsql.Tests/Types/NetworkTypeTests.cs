@@ -127,6 +127,24 @@ namespace Npgsql.Tests.Types
             }
         }
 
+        [Test, Description("Tests support for ReadOnlyIPAddress, see https://github.com/dotnet/corefx/issues/33373")]
+        public void IPAddressAny()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", conn))
+            {
+                cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.Inet) { Value = IPAddress.Any });
+                cmd.Parameters.Add(new NpgsqlParameter<IPAddress>("p2", NpgsqlDbType.Inet) { TypedValue = IPAddress.Any });
+                cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p3", Value = IPAddress.Any });
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    for (var i = 0; i < reader.FieldCount; i++)
+                        Assert.That(reader.GetFieldValue<IPAddress>(i), Is.EqualTo(IPAddress.Any));
+                }
+            }
+        }
+
         [Test]
         public void Cidr()
         {

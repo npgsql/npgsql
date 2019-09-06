@@ -28,12 +28,12 @@ namespace Npgsql
         /// Row updated event.
         /// </summary>
         [PublicAPI]
-        public event NpgsqlRowUpdatedEventHandler RowUpdated;
+        public event NpgsqlRowUpdatedEventHandler? RowUpdated;
 
         /// <summary>
         /// Row updating event.
         /// </summary>
-        public event NpgsqlRowUpdatingEventHandler RowUpdating;
+        public event NpgsqlRowUpdatingEventHandler? RowUpdating;
 
         /// <summary>
         /// Default constructor.
@@ -66,24 +66,24 @@ namespace Npgsql
         /// <summary>
         /// Create row updated event.
         /// </summary>
-        protected override RowUpdatedEventArgs CreateRowUpdatedEvent([NotNull] DataRow dataRow, [NotNull] IDbCommand command,
+        protected override RowUpdatedEventArgs CreateRowUpdatedEvent(DataRow dataRow, IDbCommand command,
                                                                      System.Data.StatementType statementType,
-                                                                     [NotNull] DataTableMapping tableMapping)
+                                                                     DataTableMapping tableMapping)
             => new NpgsqlRowUpdatedEventArgs(dataRow, command, statementType, tableMapping);
 
         /// <summary>
         /// Create row updating event.
         /// </summary>
-        protected override RowUpdatingEventArgs CreateRowUpdatingEvent([NotNull] DataRow dataRow, [NotNull] IDbCommand command,
+        protected override RowUpdatingEventArgs CreateRowUpdatingEvent(DataRow dataRow, IDbCommand command,
                                                                        System.Data.StatementType statementType,
-                                                                       [NotNull] DataTableMapping tableMapping)
+                                                                       DataTableMapping tableMapping)
             => new NpgsqlRowUpdatingEventArgs(dataRow, command, statementType, tableMapping);
 
         /// <summary>
         /// Raise the RowUpdated event.
         /// </summary>
         /// <param name="value"></param>
-        protected override void OnRowUpdated([NotNull] RowUpdatedEventArgs value)
+        protected override void OnRowUpdated(RowUpdatedEventArgs value)
         {
             //base.OnRowUpdated(value);
             if (value is NpgsqlRowUpdatedEventArgs args)
@@ -96,7 +96,7 @@ namespace Npgsql
         /// Raise the RowUpdating event.
         /// </summary>
         /// <param name="value"></param>
-        protected override void OnRowUpdating([NotNull] RowUpdatingEventArgs value)
+        protected override void OnRowUpdating(RowUpdatingEventArgs value)
         {
             if (value is NpgsqlRowUpdatingEventArgs args)
                 RowUpdating?.Invoke(this, args);

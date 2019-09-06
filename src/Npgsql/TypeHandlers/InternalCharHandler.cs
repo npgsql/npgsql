@@ -1,5 +1,5 @@
-﻿using JetBrains.Annotations;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -16,46 +16,48 @@ namespace Npgsql.TypeHandlers
     class InternalCharHandler : NpgsqlSimpleTypeHandler<char>,
         INpgsqlSimpleTypeHandler<byte>, INpgsqlSimpleTypeHandler<short>, INpgsqlSimpleTypeHandler<int>, INpgsqlSimpleTypeHandler<long>
     {
+        public InternalCharHandler(PostgresType postgresType) : base(postgresType) {}
+
         #region Read
 
-        public override char Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override char Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             => (char)buf.ReadByte();
 
-        byte INpgsqlSimpleTypeHandler<byte>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        byte INpgsqlSimpleTypeHandler<byte>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
             => buf.ReadByte();
 
-        short INpgsqlSimpleTypeHandler<short>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        short INpgsqlSimpleTypeHandler<short>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
             => buf.ReadByte();
 
-        int INpgsqlSimpleTypeHandler<int>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        int INpgsqlSimpleTypeHandler<int>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
             => buf.ReadByte();
 
-        long INpgsqlSimpleTypeHandler<long>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        long INpgsqlSimpleTypeHandler<long>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
             => buf.ReadByte();
 
         #endregion
 
         #region Write
 
-        public override int ValidateAndGetLength(char value, NpgsqlParameter parameter) => 1;
-        public int ValidateAndGetLength(byte value, NpgsqlParameter parameter)          => 1;
-        public int ValidateAndGetLength(short value, NpgsqlParameter parameter)         => 1;
-        public int ValidateAndGetLength(int value, NpgsqlParameter parameter)           => 1;
-        public int ValidateAndGetLength(long value, NpgsqlParameter parameter)          => 1;
+        public override int ValidateAndGetLength(char value, NpgsqlParameter? parameter) => 1;
+        public int ValidateAndGetLength(byte value, NpgsqlParameter? parameter)          => 1;
+        public int ValidateAndGetLength(short value, NpgsqlParameter? parameter)         => 1;
+        public int ValidateAndGetLength(int value, NpgsqlParameter? parameter)           => 1;
+        public int ValidateAndGetLength(long value, NpgsqlParameter? parameter)          => 1;
 
-        public override void Write(char value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public override void Write(char value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => buf.WriteByte(checked((byte)value));
 
-        public void Write(byte value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public void Write(byte value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => buf.WriteByte(value);
 
-        public void Write(short value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public void Write(short value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => buf.WriteByte(checked((byte)value));
 
-        public void Write(int value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public void Write(int value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => buf.WriteByte(checked((byte)value));
 
-        public void Write(long value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public void Write(long value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => buf.WriteByte(checked((byte)value));
 
         #endregion

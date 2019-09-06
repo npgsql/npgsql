@@ -6,15 +6,19 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Npgsql
+namespace Npgsql.Util
 {
     static class Statics
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static T Expect<T>(IBackendMessage msg)
-            => msg is T asT
-                ? asT
-                : throw new NpgsqlException($"Received backend message {msg.Code} while expecting {typeof(T).Name}. Please file a bug.");
+        internal static T Expect<T>(IBackendMessage msg, NpgsqlConnector connector)
+        {
+            if (msg is T asT)
+                return asT;
+
+            connector.Break();
+            throw new NpgsqlException($"Received backend message {msg.Code} while expecting {typeof(T).Name}. Please file a bug.");
+        }
     }
 
     // ReSharper disable once InconsistentNaming
@@ -64,22 +68,13 @@ namespace Npgsql
         internal static int RotateShift(int val, int shift)
             => (val << shift) | (val >> (BitsInInt - shift));
 
-        internal static readonly Task CompletedTask = Task.FromResult(0);
         internal static readonly Task<bool> TrueTask = Task.FromResult(true);
         internal static readonly Task<bool> FalseTask = Task.FromResult(false);
-        internal static readonly Task<int> CancelledTask = CreateCancelledTask<int>();
-
-        static Task<T> CreateCancelledTask<T>()
-        {
-            var source = new TaskCompletionSource<T>();
-            source.SetCanceled();
-            return source.Task;
-        }
 
         internal static StringComparer InvariantCaseIgnoringStringComparer => StringComparer.InvariantCultureIgnoreCase;
 
         internal static bool IsWindows =>
-#if NET452
+#if NET461
             Environment.OSVersion.Platform == PlatformID.Win32NT;
 #else
             System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows);
@@ -92,7 +87,7 @@ namespace Npgsql
         Binary = 1
     }
 
-    internal static class EnumerableExtensions
+    static class EnumerableExtensions
     {
         internal static string Join(this IEnumerable<string> values, string separator)
         {
@@ -137,7 +132,7 @@ namespace Npgsql
         internal CultureSetter(CultureInfo newCulture)
         {
             _oldCulture = CultureInfo.CurrentCulture;
-#if NET452
+#if NET461
             Thread.CurrentThread.CurrentCulture = newCulture;
 #else
             CultureInfo.CurrentCulture = newCulture;
@@ -146,7 +141,7 @@ namespace Npgsql
 
         public void Dispose()
         {
-#if NET452
+#if NET461
             Thread.CurrentThread.CurrentCulture = _oldCulture;
 #else
             CultureInfo.CurrentCulture = _oldCulture;

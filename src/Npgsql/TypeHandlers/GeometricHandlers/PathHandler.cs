@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -16,24 +17,19 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
     [TypeMapping("path", NpgsqlDbType.Path, typeof(NpgsqlPath))]
     class PathHandler : NpgsqlTypeHandler<NpgsqlPath>
     {
+        public PathHandler(PostgresType postgresType) : base(postgresType) {}
+
         #region Read
 
-        public override async ValueTask<NpgsqlPath> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+        public override async ValueTask<NpgsqlPath> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
             await buf.Ensure(5, async);
-            bool open;
-            var openByte = buf.ReadByte();
-            switch (openByte)
+            var open = buf.ReadByte() switch
             {
-            case 1:
-                open = false;
-                break;
-            case 0:
-                open = true;
-                break;
-            default:
-                throw new Exception("Error decoding binary geometric path: bad open byte");
-            }
+                1 => false,
+                0 => true,
+                _ => throw new Exception("Error decoding binary geometric path: bad open byte")
+            };
 
             var numPoints = buf.ReadInt32();
             var result = new NpgsqlPath(numPoints, open);
@@ -49,10 +45,10 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
 
         #region Write
 
-        public override int ValidateAndGetLength(NpgsqlPath value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(NpgsqlPath value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => 5 + value.Count * 16;
 
-        public override async Task Write(NpgsqlPath value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        public override async Task Write(NpgsqlPath value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             if (buf.WriteSpaceLeft < 5)
                 await buf.Flush(async);

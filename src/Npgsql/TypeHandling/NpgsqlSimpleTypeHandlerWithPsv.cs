@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Data.Common;
 using System.Threading.Tasks;
-using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandlers;
@@ -24,36 +23,46 @@ namespace Npgsql.TypeHandling
     /// <typeparam name="TPsv">The provider-specific CLR type that this handler will read and write.</typeparam>
     public abstract class NpgsqlSimpleTypeHandlerWithPsv<TDefault, TPsv> : NpgsqlSimpleTypeHandler<TDefault>, INpgsqlSimpleTypeHandler<TPsv>
     {
+        /// <summary>
+        /// Constructs an <see cref="NpgsqlSimpleTypeHandlerWithPsv{TDefault,TPsv}"/>
+        /// </summary>
+        /// <param name="postgresType"></param>
+        protected NpgsqlSimpleTypeHandlerWithPsv(PostgresType postgresType)
+            : base(postgresType) {}
+
         #region Read
 
         /// <summary>
         /// Reads a value of type <typeparamref name="TPsv"/> with the given length from the provided buffer,
         /// with the assumption that it is entirely present in the provided memory buffer and no I/O will be
-        /// required. 
+        /// required.
         /// </summary>
         /// <param name="buf">The buffer from which to read.</param>
         /// <param name="len">The byte length of the value. The buffer might not contain the full length, requiring I/O to be performed.</param>
         /// <param name="fieldDescription">Additional PostgreSQL information about the type, such as the length in varchar(30).</param>
         /// <returns>The fully-read value.</returns>
-        protected abstract TPsv ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null);
+        protected abstract TPsv ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null);
 
-        TPsv INpgsqlSimpleTypeHandler<TPsv>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        TPsv INpgsqlSimpleTypeHandler<TPsv>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
             => ReadPsv(buf, len, fieldDescription);
+
+        // Since TAny isn't constrained to class? or struct (C# doesn't have a non-nullable constraint that doesn't limit us to either struct or class),
+        // we must use the bang operator here to tell the compiler that a null value will never returned.
 
         /// <summary>
         /// Reads a column as the type handler's provider-specific type, assuming that it is already entirely
         /// in memory (i.e. no I/O is necessary). Called by <see cref="NpgsqlDataReader"/> in non-sequential mode, which
         /// buffers entire rows in memory.
         /// </summary>
-        internal override object ReadPsvAsObject(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
-            => Read<TPsv>(buf, len, fieldDescription);
+        internal override object ReadPsvAsObject(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
+            => Read<TPsv>(buf, len, fieldDescription)!;
 
         /// <summary>
         /// Reads a column as the type handler's provider-specific type. If it is not already entirely in
         /// memory, sync or async I/O will be performed as specified by <paramref name="async"/>.
         /// </summary>
-        internal override async ValueTask<object> ReadPsvAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
-            => await Read<TPsv>(buf, len, async, fieldDescription);
+        internal override async ValueTask<object> ReadPsvAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
+            => (await Read<TPsv>(buf, len, async, fieldDescription))!;
 
         #endregion Read
 
@@ -70,7 +79,7 @@ namespace Npgsql.TypeHandling
         /// information relevant to the write process (e.g. <see cref="NpgsqlParameter.Size"/>).
         /// </param>
         /// <returns>The number of bytes required to write the value.</returns>
-        public abstract int ValidateAndGetLength(TPsv value, NpgsqlParameter parameter);
+        public abstract int ValidateAndGetLength(TPsv value, NpgsqlParameter? parameter);
 
         /// <summary>
         /// Writes a value to the provided buffer, with the assumption that there is enough space in the buffer
@@ -82,18 +91,18 @@ namespace Npgsql.TypeHandling
         /// The <see cref="NpgsqlParameter"/> instance where this value resides. Can be used to access additional
         /// information relevant to the write process (e.g. <see cref="NpgsqlParameter.Size"/>).
         /// </param>
-        public abstract void Write(TPsv value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter);
+        public abstract void Write(TPsv value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter);
 
         #endregion Write
 
         #region Misc
 
-        internal override Type GetProviderSpecificFieldType(FieldDescription fieldDescription = null)
+        internal override Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null)
             => typeof(TPsv);
 
         /// <inheeritdoc />
-        public override ArrayHandler CreateArrayHandler(PostgresType arrayBackendType)
-            => new ArrayHandlerWithPsv<TDefault, TPsv>(this) { PostgresType = arrayBackendType };
+        public override ArrayHandler CreateArrayHandler(PostgresArrayType arrayBackendType)
+            => new ArrayHandlerWithPsv<TDefault, TPsv>(arrayBackendType, this);
 
         #endregion Misc
     }

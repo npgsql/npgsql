@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Npgsql.PostgresTypes;
+using Npgsql.Util;
 
 namespace Npgsql
 {
@@ -14,7 +15,7 @@ namespace Npgsql
     {
         #region Fields
 
-        internal static ConcurrentDictionary<string, NpgsqlDatabaseInfo> Cache
+        internal static readonly ConcurrentDictionary<string, NpgsqlDatabaseInfo> Cache
             = new ConcurrentDictionary<string, NpgsqlDatabaseInfo>();
 
         static readonly List<INpgsqlDatabaseInfoFactory> Factories = new List<INpgsqlDatabaseInfoFactory>
@@ -30,20 +31,20 @@ namespace Npgsql
         /// <summary>
         /// The hostname of IP address of the database.
         /// </summary>
-        public string Host { get; protected set; }
+        public string Host { get; }
         /// <summary>
         /// The TCP port of the database.
         /// </summary>
-        public int Port { get; protected set; }
+        public int Port { get; }
         /// <summary>
         /// The database name.
         /// </summary>
-        public string Name { get; protected set; }
+        public string Name { get; }
         /// <summary>
         /// The version of the PostgreSQL database we're connected to, as reported in the "server_version" parameter.
         /// Exposed via <see cref="NpgsqlConnection.PostgreSqlVersion"/>.
         /// </summary>
-        public Version Version { get; protected set; }
+        public Version Version { get; }
 
         #endregion General database info
 
@@ -52,35 +53,35 @@ namespace Npgsql
         /// <summary>
         /// Whether the backend supports range types.
         /// </summary>
-        public virtual bool SupportsRangeTypes => Version >= new Version(9, 2, 0);
+        public virtual bool SupportsRangeTypes => Version.IsGreaterOrEqual(9, 2, 0);
         /// <summary>
         /// Whether the backend supports enum types.
         /// </summary>
-        public virtual bool SupportsEnumTypes => Version >= new Version(8, 3, 0);
+        public virtual bool SupportsEnumTypes => Version.IsGreaterOrEqual(8, 3, 0);
         /// <summary>
         /// Whether the backend supports the CLOSE ALL statement.
         /// </summary>
-        public virtual bool SupportsCloseAll => Version >= new Version(8, 3, 0);
+        public virtual bool SupportsCloseAll => Version.IsGreaterOrEqual(8, 3, 0);
         /// <summary>
         /// Whether the backend supports advisory locks.
         /// </summary>
-        public virtual bool SupportsAdvisoryLocks => Version >= new Version(8, 2, 0);
+        public virtual bool SupportsAdvisoryLocks => Version.IsGreaterOrEqual(8, 2, 0);
         /// <summary>
         /// Whether the backend supports the DISCARD SEQUENCES statement.
         /// </summary>
-        public virtual bool SupportsDiscardSequences => Version >= new Version(9, 4, 0);
+        public virtual bool SupportsDiscardSequences => Version.IsGreaterOrEqual(9, 4, 0);
         /// <summary>
         /// Whether the backend supports the UNLISTEN statement.
         /// </summary>
-        public virtual bool SupportsUnlisten => Version >= new Version(6, 4, 0);  // overridden by PostgresDatabase
+        public virtual bool SupportsUnlisten => Version.IsGreaterOrEqual(6, 4, 0);  // overridden by PostgresDatabase
         /// <summary>
         /// Whether the backend supports the DISCARD TEMP statement.
         /// </summary>
-        public virtual bool SupportsDiscardTemp => Version >= new Version(8, 3, 0);
+        public virtual bool SupportsDiscardTemp => Version.IsGreaterOrEqual(8, 3, 0);
         /// <summary>
         /// Whether the backend supports the DISCARD statement.
         /// </summary>
-        public virtual bool SupportsDiscard => Version >= new Version(8, 3, 0);
+        public virtual bool SupportsDiscard => Version.IsGreaterOrEqual(8, 3, 0);
 
         /// <summary>
         /// Reports whether the backend uses the newer integer timestamp representation.
@@ -96,12 +97,19 @@ namespace Npgsql
 
         #region Types
 
-        internal IReadOnlyList<PostgresBaseType>      BaseTypes      { get; private set; }
-        internal IReadOnlyList<PostgresArrayType>     ArrayTypes     { get; private set; }
-        internal IReadOnlyList<PostgresRangeType>     RangeTypes     { get; private set; }
-        internal IReadOnlyList<PostgresEnumType>      EnumTypes      { get; private set; }
-        internal IReadOnlyList<PostgresCompositeType> CompositeTypes { get; private set; }
-        internal IReadOnlyList<PostgresDomainType>    DomainTypes    { get; private set; }
+        readonly List<PostgresBaseType>      _baseTypesMutable      = new List<PostgresBaseType>();
+        readonly List<PostgresArrayType>     _arrayTypesMutable     = new List<PostgresArrayType>();
+        readonly List<PostgresRangeType>     _rangeTypesMutable     = new List<PostgresRangeType>();
+        readonly List<PostgresEnumType>      _enumTypesMutable      = new List<PostgresEnumType>();
+        readonly List<PostgresCompositeType> _compositeTypesMutable = new List<PostgresCompositeType>();
+        readonly List<PostgresDomainType>    _domainTypesMutable    = new List<PostgresDomainType>();
+
+        internal IReadOnlyList<PostgresBaseType>      BaseTypes      => _baseTypesMutable;
+        internal IReadOnlyList<PostgresArrayType>     ArrayTypes     => _arrayTypesMutable;
+        internal IReadOnlyList<PostgresRangeType>     RangeTypes     => _rangeTypesMutable;
+        internal IReadOnlyList<PostgresEnumType>      EnumTypes      => _enumTypesMutable;
+        internal IReadOnlyList<PostgresCompositeType> CompositeTypes => _compositeTypesMutable;
+        internal IReadOnlyList<PostgresDomainType>    DomainTypes    => _domainTypesMutable;
 
         /// <summary>
         /// Indexes backend types by their type OID.
@@ -120,17 +128,21 @@ namespace Npgsql
         /// table will contain an entry with a null value.
         /// Only used for enums and composites.
         /// </summary>
-        internal Dictionary<string, PostgresType> ByName { get; } = new Dictionary<string, PostgresType>();
+        internal Dictionary<string, PostgresType?> ByName { get; } = new Dictionary<string, PostgresType?>();
+
+        /// <summary>
+        /// Initializes the instance of <see cref="NpgsqlDatabaseInfo"/>.
+        /// </summary>
+        protected NpgsqlDatabaseInfo(string host, int port, string databaseName, Version version)
+        {
+            Host = host;
+            Port = port;
+            Name = databaseName;
+            Version = version;
+        }
 
         internal void ProcessTypes()
         {
-            var baseTypes      = new List<PostgresBaseType>();
-            var arrayTypes     = new List<PostgresArrayType>();
-            var rangeTypes     = new List<PostgresRangeType>();
-            var enumTypes      = new List<PostgresEnumType>();
-            var compositeTypes = new List<PostgresCompositeType>();
-            var domainTypes    = new List<PostgresDomainType>();
-
             foreach (var type in GetTypes())
             {
                 ByOID[type.OID] = type;
@@ -144,34 +156,27 @@ namespace Npgsql
                 switch (type)
                 {
                 case PostgresBaseType baseType:
-                    baseTypes.Add(baseType);
+                    _baseTypesMutable.Add(baseType);
                     continue;
                 case PostgresArrayType arrayType:
-                    arrayTypes.Add(arrayType);
+                    _arrayTypesMutable.Add(arrayType);
                     continue;
                 case PostgresRangeType rangeType:
-                    rangeTypes.Add(rangeType);
+                    _rangeTypesMutable.Add(rangeType);
                     continue;
                 case PostgresEnumType enumType:
-                    enumTypes.Add(enumType);
+                    _enumTypesMutable.Add(enumType);
                     continue;
                 case PostgresCompositeType compositeType:
-                    compositeTypes.Add(compositeType);
+                    _compositeTypesMutable.Add(compositeType);
                     continue;
                 case PostgresDomainType domainType:
-                    domainTypes.Add(domainType);
+                    _domainTypesMutable.Add(domainType);
                     continue;
                 default:
                     throw new ArgumentOutOfRangeException();
                 }
             }
-
-            BaseTypes      = baseTypes;
-            ArrayTypes     = arrayTypes;
-            RangeTypes     = rangeTypes;
-            EnumTypes      = enumTypes;
-            CompositeTypes = compositeTypes;
-            DomainTypes    = domainTypes;
         }
 
         /// <summary>

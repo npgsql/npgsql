@@ -5,8 +5,8 @@ namespace Npgsql.Benchmarks
 {
     public class CopyImport
     {
-        NpgsqlConnection _conn;
-        NpgsqlCommand _truncateCmd;
+        NpgsqlConnection _conn = default!;
+        NpgsqlCommand _truncateCmd = default!;
         const int Rows = 1000;
 
         [GlobalSetup]

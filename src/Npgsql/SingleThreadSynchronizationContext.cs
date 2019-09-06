@@ -1,25 +1,21 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Threading;
-using JetBrains.Annotations;
 
 namespace Npgsql
 {
     sealed class SingleThreadSynchronizationContext : SynchronizationContext, IDisposable
     {
         readonly BlockingCollection<CallbackAndState> _tasks = new BlockingCollection<CallbackAndState>();
-        [CanBeNull]
-        Thread _thread;
+        Thread? _thread;
 
         const int ThreadStayAliveMs = 10000;
         readonly string _threadName;
 
         internal SingleThreadSynchronizationContext(string threadName)
-        {
-            _threadName = threadName;
-        }
+            => _threadName = threadName;
 
-        public override void Post(SendOrPostCallback callback, object state)
+        public override void Post(SendOrPostCallback callback, object? state)
         {
             _tasks.Add(new CallbackAndState { Callback = callback, State = state });
 
@@ -38,6 +34,8 @@ namespace Npgsql
         public void Dispose()
         {
             _tasks.CompleteAdding();
+            _tasks.Dispose();
+
             lock (this)
             {
                 _thread?.Join();
@@ -65,7 +63,7 @@ namespace Npgsql
         struct CallbackAndState
         {
             internal SendOrPostCallback Callback;
-            internal object State;
+            internal object? State;
         }
     }
 }

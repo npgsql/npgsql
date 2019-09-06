@@ -158,9 +158,17 @@ namespace Npgsql.Tests
         {
             using (var conn = OpenConnection())
             {
+                Assert.That(async () => await conn.WaitAsync(new CancellationToken(true)),
+                    Throws.Exception.TypeOf<TaskCanceledException>());
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+            }
+
+            using (var conn = OpenConnection())
+            {
                 conn.ExecuteNonQuery("LISTEN notifytest");
                 var cts = new CancellationTokenSource(1000);
-                Assert.That(async () => await conn.WaitAsync(cts.Token), Throws.Exception.TypeOf<OperationCanceledException>());
+                Assert.That(async () => await conn.WaitAsync(cts.Token),
+                    Throws.Exception.TypeOf<OperationCanceledException>());
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
             }
         }
@@ -176,7 +184,7 @@ namespace Npgsql.Tests
                         conn2.ExecuteNonQuery($"SELECT pg_terminate_backend({conn.ProcessID})");
                 });
 
-                Assert.That(() => conn.Wait(), Throws.Exception.TypeOf<NpgsqlException>());
+                Assert.That(() => conn.Wait(), Throws.Exception.TypeOf<PostgresException>());
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
             }
         }

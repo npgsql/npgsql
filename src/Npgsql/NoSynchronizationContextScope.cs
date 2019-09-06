@@ -26,14 +26,13 @@ namespace Npgsql
 
         internal struct Disposable : IDisposable
         {
-            readonly SynchronizationContext _synchronizationContext;
+            readonly SynchronizationContext? _synchronizationContext;
 
-            internal Disposable(SynchronizationContext synchronizationContext)
-            {
-                _synchronizationContext = synchronizationContext;
-            }
+            internal Disposable(SynchronizationContext? synchronizationContext)
+                => _synchronizationContext = synchronizationContext;
 
-            public void Dispose() => SynchronizationContext.SetSynchronizationContext(_synchronizationContext);
+            public void Dispose()
+                => SynchronizationContext.SetSynchronizationContext(_synchronizationContext);
         }
     }
 }

@@ -88,7 +88,7 @@ namespace Npgsql.Tests
                 {
                     var metadata = dr.GetSchemaTable();
 
-                    foreach (DataRow r in metadata.Rows)
+                    foreach (var r in metadata.Rows.OfType<DataRow>())
                     {
                         switch ((string)r["ColumnName"])
                         {
@@ -106,8 +106,6 @@ namespace Npgsql.Tests
                             break;
                         case "field_int2":
                             Assert.IsTrue((bool)r["IsReadonly"]);
-                            break;
-                        default:
                             break;
                         }
                     }
@@ -127,7 +125,7 @@ namespace Npgsql.Tests
                 using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
                 using (var metadata = reader.GetSchemaTable())
                 {
-                    foreach (DataRow row in metadata.Rows)
+                    foreach (var row in metadata.Rows.OfType<DataRow>())
                     {
                         var isNullable = (bool)row["AllowDBNull"];
                         switch ((string)row["ColumnName"])
@@ -178,7 +176,7 @@ namespace Npgsql.Tests
             using (var reader = cmd.ExecuteReader())
             {
                 var schemaTable = reader.GetSchemaTable();
-                foreach (DataRow myField in schemaTable.Rows)
+                foreach (var myField in schemaTable.Rows.OfType<DataRow>())
                 {
                     Assert.That(myField["NumericScale"], Is.EqualTo(0));
                     Assert.That(myField["NumericPrecision"], Is.EqualTo(0));

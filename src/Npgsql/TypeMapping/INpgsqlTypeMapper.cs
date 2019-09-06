@@ -65,8 +65,8 @@ namespace Npgsql.TypeMapping
         /// <typeparam name="TEnum">The .NET enum type to be mapped</typeparam>
         [NotNull]
         INpgsqlTypeMapper MapEnum<TEnum>(
-            [CanBeNull] string pgName = null,
-            [CanBeNull] INpgsqlNameTranslator nameTranslator = null)
+            string? pgName = null,
+            INpgsqlNameTranslator? nameTranslator = null)
             where TEnum : struct, Enum;
 
         /// <summary>
@@ -81,8 +81,8 @@ namespace Npgsql.TypeMapping
         /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
         bool UnmapEnum<TEnum>(
-            [CanBeNull] string pgName = null,
-            [CanBeNull] INpgsqlNameTranslator nameTranslator = null)
+            string? pgName = null,
+            INpgsqlNameTranslator? nameTranslator = null)
             where TEnum : struct, Enum;
 
         /// <summary>
@@ -107,8 +107,8 @@ namespace Npgsql.TypeMapping
         /// <typeparam name="T">The .NET type to be mapped</typeparam>
         [NotNull]
         INpgsqlTypeMapper MapComposite<T>(
-            [CanBeNull] string pgName = null,
-            [CanBeNull] INpgsqlNameTranslator nameTranslator = null) where T : new();
+            string? pgName = null,
+            INpgsqlNameTranslator? nameTranslator = null) where T : new();
 
         /// <summary>
         /// Removes an existing enum mapping.
@@ -122,8 +122,8 @@ namespace Npgsql.TypeMapping
         /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
         bool UnmapComposite<T>(
-            [CanBeNull] string pgName = null,
-            [CanBeNull] INpgsqlNameTranslator nameTranslator = null) where T : new();
+            string? pgName = null,
+            INpgsqlNameTranslator? nameTranslator = null) where T : new();
 
         /// <summary>
         /// Resets all mapping changes performed on this type mapper and reverts it to its original, starting state.

@@ -32,6 +32,7 @@ namespace Npgsql
         }
     }
 
+    // ReSharper disable once UnusedTypeParameter
     [Obsolete("Purely for EF Core backwards compatibility")]
     class TypeHandler<T> {}
 

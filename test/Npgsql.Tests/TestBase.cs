@@ -15,11 +15,11 @@ namespace Npgsql.Tests
         /// Unless the NPGSQL_TEST_DB environment variable is defined, this is used as the connection string for the
         /// test database.
         /// </summary>
-        const string DefaultConnectionString = "Server=localhost;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;Timeout=0;Command Timeout=0";
+        const string DefaultConnectionString = "Server=localhost;Username=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;Timeout=0;Command Timeout=0";
 
         #region Utilities for use by tests
 
-        protected virtual NpgsqlConnection OpenConnection(string connectionString = null)
+        protected virtual NpgsqlConnection OpenConnection(string? connectionString = null)
         {
             if (connectionString == null)
                 connectionString = ConnectionString;
@@ -32,7 +32,7 @@ namespace Npgsql.Tests
             {
                 if (e.SqlState == PostgresErrorCodes.InvalidCatalogName)
                     TestUtil.IgnoreExceptOnBuildServer("Please create a database npgsql_tests, owned by user npgsql_tests");
-                else if (e.SqlState == PostgresErrorCodes.InvalidPassword)
+                else if (e.SqlState == PostgresErrorCodes.InvalidPassword && connectionString == DefaultConnectionString)
                     TestUtil.IgnoreExceptOnBuildServer("Please create a user npgsql_tests as follows: create user npgsql_tests with password 'npgsql_tests'");
                 else
                     throw;

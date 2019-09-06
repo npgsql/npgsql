@@ -5,18 +5,21 @@ using Npgsql.TypeMapping;
 namespace Npgsql.TypeHandling
 {
     /// <summary>
-    /// Base class for all type handler factories, which construct type handlers that know how
+    /// Interface for all type handler factories, which construct type handlers that know how
     /// to read and write CLR types from/to PostgreSQL types.
     /// Do not inherit from this class, inherit from <see cref="NpgsqlTypeHandlerFactory{T}"/> instead.
     /// </summary>
-    public abstract class NpgsqlTypeHandlerFactory
+    public interface INpgsqlTypeHandlerFactory
     {
-        internal abstract NpgsqlTypeHandler Create(PostgresType pgType, NpgsqlConnection conn);
+        /// <summary>
+        /// Creates a type handler.
+        /// </summary>
+        NpgsqlTypeHandler Create(PostgresType pgType, NpgsqlConnection conn);
 
         /// <summary>
         /// The default CLR type that handlers produced by this factory will read and write.
         /// </summary>
-        internal abstract Type DefaultValueType { get; }
+        Type DefaultValueType { get; }
     }
 
     /// <summary>
@@ -28,24 +31,17 @@ namespace Npgsql.TypeHandling
     /// <seealso cref="NpgsqlConnection.GlobalTypeMapper"/>
     /// <seealso cref="NpgsqlConnection.TypeMapper"/>
     /// <typeparam name="TDefault">The default CLR type that handlers produced by this factory will read and write.</typeparam>
-    public abstract class NpgsqlTypeHandlerFactory<TDefault> : NpgsqlTypeHandlerFactory
+    public abstract class NpgsqlTypeHandlerFactory<TDefault> : INpgsqlTypeHandlerFactory
     {
-        internal override NpgsqlTypeHandler Create(PostgresType pgType, NpgsqlConnection conn)
-        {
-            var handler = Create(conn);
-            handler.PostgresType = pgType;
-            return handler;
-        }
-
         /// <summary>
-        /// Creates a type handler. The provided connection can be examined to modify type handler
-        /// behavior based on server settings, etc.
+        /// Creates a type handler
         /// </summary>
-        protected abstract NpgsqlTypeHandler<TDefault> Create(NpgsqlConnection conn);
+        public abstract NpgsqlTypeHandler<TDefault> Create(PostgresType pgType, NpgsqlConnection conn);
 
-        /// <summary>
-        /// The default CLR type that handlers produced by this factory will read and write.
-        /// </summary>
-        internal override Type DefaultValueType => typeof(TDefault);
+        NpgsqlTypeHandler INpgsqlTypeHandlerFactory.Create(PostgresType pgType, NpgsqlConnection conn)
+            => Create(pgType, conn);
+
+        /// <inheritdoc />
+        public Type DefaultValueType => typeof(TDefault);
     }
 }

@@ -6,8 +6,8 @@ namespace Npgsql.Benchmarks
 {
     public class Insert
     {
-        NpgsqlConnection _conn;
-        NpgsqlCommand _truncateCmd;
+        NpgsqlConnection _conn = default!;
+        NpgsqlCommand _truncateCmd = default!;
 
         [Params(1, 100, 1000, 10000)]
         public int BatchSize { get; set; }
@@ -29,11 +29,7 @@ namespace Npgsql.Benchmarks
         }
 
         [GlobalCleanup]
-        public void GlobalCleanup()
-        {
-            _conn.Close();
-            _conn = null;
-        }
+        public void GlobalCleanup() => _conn.Close();
 
         [Benchmark(Baseline = true)]
         public void Unbatched()

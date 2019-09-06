@@ -1,4 +1,4 @@
-﻿using Npgsql.LegacyPostgis;
+﻿using Npgsql.RawPostgis;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 

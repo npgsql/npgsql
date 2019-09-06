@@ -13,7 +13,7 @@ namespace Npgsql
         readonly SocketAsyncEventArgs _socketAsyncEventArgs;
         readonly Socket _socket;
 
-        Action _continuation;
+        Action? _continuation;
 
         public AwaitableSocket(SocketAsyncEventArgs socketAsyncEventArgs, Socket socket)
         {

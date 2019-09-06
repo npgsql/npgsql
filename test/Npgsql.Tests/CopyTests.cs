@@ -12,6 +12,40 @@ namespace Npgsql.Tests
 {
     public class CopyTests : TestBase
     {
+        #region issue 2257
+
+        [Test, Description("Reproduce #2257")]
+        public void Issue2257()
+        {
+            using (var conn = OpenConnection(new NpgsqlConnectionStringBuilder(ConnectionString) { CommandTimeout = 3 }))
+            {
+                const int rowCount = 1000000;
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = $"CREATE TEMP TABLE test_2257_master AS SELECT * FROM generate_series(1, {rowCount}) id";
+                    cmd.ExecuteNonQuery();
+                    cmd.CommandText = "ALTER TABLE test_2257_master ADD CONSTRAINT master_pk PRIMARY KEY (id)";
+                    cmd.ExecuteNonQuery();
+                    cmd.CommandText = "CREATE TEMP TABLE test_2257_detail (master_id integer NOT NULL REFERENCES test_2257_master (id))";
+                    cmd.ExecuteNonQuery();
+                }
+
+                using (var writer = conn.BeginBinaryImport("COPY test_2257_detail FROM STDIN BINARY"))
+                {
+                    for (var i = 1; i <= rowCount; ++i)
+                    {
+                        writer.StartRow();
+                        writer.Write(i);
+                    }
+
+                    var e = Assert.Throws<NpgsqlException>(() => writer.Complete());
+                    Assert.That(e.InnerException, Is.TypeOf<IOException>());
+                }
+            }
+        }
+
+        #endregion
+
         #region Raw
 
         [Test, Description("Exports data in binary format (raw mode) and then loads it back in")]
@@ -858,9 +892,9 @@ namespace Npgsql.Tests
                 {
                     writer.StartRow();
                     writer.Write(DBNull.Value, NpgsqlDbType.Integer);
-                    writer.Write((string)null, NpgsqlDbType.Uuid);
+                    writer.Write((string?)null, NpgsqlDbType.Uuid);
                     writer.Write(DBNull.Value);
-                    writer.Write((string)null);
+                    writer.Write((string?)null);
                     var rowsWritten = writer.Complete();
                     Assert.That(rowsWritten, Is.EqualTo(1));
                 }
@@ -905,7 +939,7 @@ namespace Npgsql.Tests
         /// </summary>
         void StateAssertions(NpgsqlConnection conn)
         {
-            Assert.That(conn.Connector.State, Is.EqualTo(ConnectorState.Copy));
+            Assert.That(conn.Connector!.State, Is.EqualTo(ConnectorState.Copy));
             Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open | ConnectionState.Fetching));
             Assert.That(() => conn.ExecuteScalar("SELECT 1"), Throws.Exception.TypeOf<NpgsqlOperationInProgressException>());

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Data;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -11,9 +12,9 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     class TimestampTzHandlerFactory : NpgsqlTypeHandlerFactory<DateTime>
     {
         // Check for the legacy floating point timestamps feature
-        protected override NpgsqlTypeHandler<DateTime> Create(NpgsqlConnection conn)
+        public override NpgsqlTypeHandler<DateTime> Create(PostgresType postgresType, NpgsqlConnection conn)
             => conn.HasIntegerDateTimes
-                ? new TimestampTzHandler(conn.Connector.ConvertInfinityDateTime)
+                ? new TimestampTzHandler(postgresType, conn.Connector!.ConvertInfinityDateTime)
                 : throw new NotSupportedException($"The deprecated floating-point date/time format is not supported by {nameof(Npgsql)}.");
     }
 
@@ -22,11 +23,12 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// </remarks>
     class TimestampTzHandler : TimestampHandler, INpgsqlSimpleTypeHandler<DateTimeOffset>
     {
-        public TimestampTzHandler(bool convertInfinityDateTime) : base(convertInfinityDateTime) {}
+        internal TimestampTzHandler(PostgresType postgresType, bool convertInfinityDateTime)
+            : base(postgresType, convertInfinityDateTime) {}
 
         #region Read
 
-        public override DateTime Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override DateTime Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
             // TODO: Convert directly to DateTime without passing through NpgsqlTimeStamp?
             var ts = ReadTimeStamp(buf, len, fieldDescription);
@@ -46,13 +48,13 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             }
         }
 
-        protected override NpgsqlDateTime ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        protected override NpgsqlDateTime ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
             var ts = ReadTimeStamp(buf, len, fieldDescription);
             return new NpgsqlDateTime(ts.Date, ts.Time, DateTimeKind.Utc).ToLocalTime();
         }
 
-        DateTimeOffset INpgsqlSimpleTypeHandler<DateTimeOffset>.Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription)
+        DateTimeOffset INpgsqlSimpleTypeHandler<DateTimeOffset>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
         {
             // TODO: Convert directly to DateTime without passing through NpgsqlTimeStamp?
             var ts = ReadTimeStamp(buf, len, fieldDescription);
@@ -76,10 +78,10 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
 
         #region Write
 
-        public int ValidateAndGetLength(DateTimeOffset value, NpgsqlParameter parameter)
+        public int ValidateAndGetLength(DateTimeOffset value, NpgsqlParameter? parameter)
             => 8;
 
-        public override void Write(NpgsqlDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public override void Write(NpgsqlDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
             switch (value.Kind)
             {
@@ -96,7 +98,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             base.Write(value, buf, parameter);
         }
 
-        public override void Write(DateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public override void Write(DateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
             switch (value.Kind)
             {
@@ -113,7 +115,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             base.Write(value, buf, parameter);
         }
 
-        public void Write(DateTimeOffset value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public void Write(DateTimeOffset value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => base.Write(value.ToUniversalTime().DateTime, buf, parameter);
 
         #endregion Write

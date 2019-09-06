@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
+using System.Net;
 using System.Reflection;
 using System.Threading;
 using Npgsql.NameTranslation;
@@ -32,8 +33,7 @@ namespace Npgsql.TypeMapping
             Instance = instance;
         }
 
-        internal GlobalTypeMapper() : base(new NpgsqlSnakeCaseNameTranslator())
-            => Mappings = new Dictionary<string, NpgsqlTypeMapping>();
+        internal GlobalTypeMapper() : base(new NpgsqlSnakeCaseNameTranslator()) {}
 
         #region Mapping management
 
@@ -132,7 +132,7 @@ namespace Npgsql.TypeMapping
             {
                 if (type == typeof(byte[]))
                     return NpgsqlDbType.Bytea;
-                return NpgsqlDbType.Array | ToNpgsqlDbType(type.GetElementType());
+                return NpgsqlDbType.Array | ToNpgsqlDbType(type.GetElementType()!);
             }
 
             var typeInfo = type.GetTypeInfo();
@@ -158,13 +158,13 @@ namespace Npgsql.TypeMapping
         void SetupGlobalTypeMapper()
         {
             // Look for TypeHandlerFactories with mappings in our assembly, set them up
-            foreach (var t in typeof(TypeMapperBase).GetTypeInfo().Assembly.GetTypes().Where(t => t.GetTypeInfo().IsSubclassOf(typeof(NpgsqlTypeHandlerFactory))))
+            foreach (var t in typeof(TypeMapperBase).GetTypeInfo().Assembly.GetTypes().Where(t => typeof(INpgsqlTypeHandlerFactory).IsAssignableFrom(t.GetTypeInfo())))
             {
                 var mappingAttributes = t.GetTypeInfo().GetCustomAttributes(typeof(TypeMappingAttribute), false);
                 if (!mappingAttributes.Any())
                     continue;
 
-                var factory = (NpgsqlTypeHandlerFactory)Activator.CreateInstance(t);
+                var factory = (INpgsqlTypeHandlerFactory)Activator.CreateInstance(t)!;
 
                 foreach (TypeMappingAttribute m in mappingAttributes)
                 {
@@ -204,6 +204,27 @@ namespace Npgsql.TypeMapping
                         TypeHandlerFactory = factory
                     }.Build());
                 }
+            }
+
+            // This is an extremely ugly hack to support ReadOnlyIPAddress, which as an internal subclass of IPAddress
+            // added to .NET Core 3.0 (see https://github.com/dotnet/corefx/issues/33373)
+            if (_typeToNpgsqlDbType.ContainsKey(typeof(IPAddress)) &&
+                Mappings.TryGetValue("inet", out var inetMapping) &&
+                typeof(IPAddress).GetNestedType("ReadOnlyIPAddress", BindingFlags.NonPublic) is Type readOnlyIpType)
+            {
+                _typeToNpgsqlDbType[readOnlyIpType] = _typeToNpgsqlDbType[typeof(IPAddress)];
+                var augmentedClrType = new Type[inetMapping.ClrTypes.Length + 1];
+                Array.Copy(inetMapping.ClrTypes, augmentedClrType, inetMapping.ClrTypes.Length);
+                augmentedClrType[augmentedClrType.Length - 1] = readOnlyIpType;
+                Mappings["inet"] = new NpgsqlTypeMappingBuilder
+                {
+                    PgTypeName = "inet",
+                    NpgsqlDbType = inetMapping.NpgsqlDbType,
+                    DbTypes = inetMapping.DbTypes,
+                    ClrTypes = augmentedClrType,
+                    InferredDbType = inetMapping.InferredDbType,
+                    TypeHandlerFactory = inetMapping.TypeHandlerFactory
+                }.Build();
             }
         }
 

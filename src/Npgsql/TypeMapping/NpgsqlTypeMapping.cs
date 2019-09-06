@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Data;
+using System.Diagnostics.CodeAnalysis;
 using Npgsql.TypeHandling;
 using NpgsqlTypes;
 
@@ -18,7 +19,8 @@ namespace Npgsql.TypeMapping
         /// (schema.typename) - the latter can be used if you have two types with the same
         /// name in different schemas.
         /// </remarks>
-        public string PgTypeName { get; set; }
+        [DisallowNull]
+        public string? PgTypeName { get; set; }
 
         /// <summary>
         /// The <see cref="NpgsqlDbType"/> that corresponds to this type. Setting an
@@ -32,14 +34,14 @@ namespace Npgsql.TypeMapping
         /// <see cref="NpgsqlParameter"/>'s <see cref="NpgsqlParameter.DbType"/> property
         /// to one of these values will make Npgsql write its value to PostgreSQL with this mapping.
         /// </summary>
-        public DbType[] DbTypes { get; set; }
+        public DbType[]? DbTypes { get; set; }
 
         /// <summary>
         /// A set of CLR types that correspond to this type. Setting an
         /// <see cref="NpgsqlParameter"/>'s <see cref="NpgsqlParameter.Value"/> property
         /// to one of these types will make Npgsql write its value to PostgreSQL with this mapping.
         /// </summary>
-        public Type[] ClrTypes { get; set; }
+        public Type[]? ClrTypes { get; set; }
 
         /// <summary>
         /// Determines what is returned from <see cref="NpgsqlParameter.DbType"/> when this mapping
@@ -50,7 +52,8 @@ namespace Npgsql.TypeMapping
         /// <summary>
         /// A factory for a type handler that will be used to read and write values for PostgreSQL type.
         /// </summary>
-        public NpgsqlTypeHandlerFactory TypeHandlerFactory { get; set; }
+        [DisallowNull]
+        public INpgsqlTypeHandlerFactory? TypeHandlerFactory { get; set; }
 
         /// <summary>
         /// Builds an <see cref="NpgsqlTypeMapping"/> that can be added to an <see cref="INpgsqlTypeMapper"/>.
@@ -59,10 +62,12 @@ namespace Npgsql.TypeMapping
         public NpgsqlTypeMapping Build()
         {
             if (string.IsNullOrWhiteSpace(PgTypeName))
-                throw new ArgumentException($"{PgTypeName} must contain the name of a PostgreSQL data type");
-            if (TypeHandlerFactory == null)
+                throw new ArgumentException($"{PgTypeName} must contain the name of a PostgreSQL data type", nameof(PgTypeName));
+
+            if (TypeHandlerFactory is null)
                 throw new ArgumentException($"{TypeHandlerFactory} must refer to a type handler factory");
-            return new NpgsqlTypeMapping(PgTypeName, NpgsqlDbType, DbTypes, ClrTypes, InferredDbType, TypeHandlerFactory);
+
+            return new NpgsqlTypeMapping(PgTypeName!, NpgsqlDbType, DbTypes, ClrTypes, InferredDbType, TypeHandlerFactory);
         }
     }
 
@@ -76,8 +81,8 @@ namespace Npgsql.TypeMapping
     {
         internal NpgsqlTypeMapping(
             string pgTypeName,
-            NpgsqlDbType? npgsqlDbType, DbType[] dbTypes, Type[] clrTypes, DbType? inferredDbType,
-            NpgsqlTypeHandlerFactory typeHandlerFactory)
+            NpgsqlDbType? npgsqlDbType, DbType[]? dbTypes, Type[]? clrTypes, DbType? inferredDbType,
+            INpgsqlTypeHandlerFactory typeHandlerFactory)
         {
             PgTypeName = pgTypeName;
             NpgsqlDbType = npgsqlDbType;
@@ -127,7 +132,7 @@ namespace Npgsql.TypeMapping
         /// <summary>
         /// A factory for a type handler that will be used to read and write values for PostgreSQL type.
         /// </summary>
-        public NpgsqlTypeHandlerFactory TypeHandlerFactory { get; }
+        public INpgsqlTypeHandlerFactory TypeHandlerFactory { get; }
 
         /// <summary>
         /// The default CLR type that handlers produced by this factory will read and write.

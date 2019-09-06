@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
+using Npgsql.Util;
 using NpgsqlTypes;
 using NUnit.Framework;
 
@@ -292,19 +293,13 @@ namespace Npgsql.Tests.Types
             }
 
             string GetTypeAsString(NpgsqlDbType dbType)
-            {
-                switch (dbType)
+                => dbType switch
                 {
-                case NpgsqlDbType.Smallint:
-                    return "int2";
-                case NpgsqlDbType.Integer:
-                    return "int4";
-                case NpgsqlDbType.Bigint:
-                    return "int8";
-                default:
-                    throw new NotSupportedException();
-                }
-            }
+                    NpgsqlDbType.Smallint => "int2",
+                    NpgsqlDbType.Integer  => "int4",
+                    NpgsqlDbType.Bigint   => "int8",
+                    _                     => throw new NotSupportedException()
+                };
         }
 
         // Older tests

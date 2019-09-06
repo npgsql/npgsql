@@ -2,6 +2,7 @@
 using System.Data;
 using System.Runtime.InteropServices;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -28,7 +29,9 @@ namespace Npgsql.TypeHandlers
         // | 16   | 2     | Data3 | Native            | Big                   |
         // | 64   | 8     | Data4 | Big               | Big                   |
 
-        public override Guid Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public UuidHandler(PostgresType postgresType) : base(postgresType) {}
+
+        public override Guid Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
             var raw = new GuidRaw
             {
@@ -41,13 +44,13 @@ namespace Npgsql.TypeHandlers
             return raw.Value;
         }
 
-        public override int ValidateAndGetLength(Guid value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(Guid value, NpgsqlParameter? parameter)
             => 16;
 
-        public override void Write(Guid value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public override void Write(Guid value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
             var raw = new GuidRaw(value);
-            
+
             buf.WriteInt32(raw.Data1);
             buf.WriteInt16(raw.Data2);
             buf.WriteInt16(raw.Data3);

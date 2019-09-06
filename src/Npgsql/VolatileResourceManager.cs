@@ -2,7 +2,6 @@ using System;
 using System.Diagnostics;
 using System.Threading;
 using System.Transactions;
-using JetBrains.Annotations;
 using Npgsql.Logging;
 
 namespace Npgsql
@@ -16,21 +15,21 @@ namespace Npgsql
     /// </remarks>
     class VolatileResourceManager : ISinglePhaseNotification
     {
-        [CanBeNull] NpgsqlConnector _connector;
-        [CanBeNull] Transaction _transaction;
-        [CanBeNull] readonly string _txId;
-        [CanBeNull] NpgsqlTransaction _localTx;
-        [CanBeNull] string _preparedTxName;
+        NpgsqlConnector _connector;
+        Transaction _transaction;
+        readonly string _txId;
+        NpgsqlTransaction _localTx;
+        string? _preparedTxName;
         bool IsPrepared => _preparedTxName != null;
         bool _isDisposed;
 
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(VolatileResourceManager));
 
         const int MaximumRollbackAttempts = 20;
 
-        internal VolatileResourceManager(NpgsqlConnection connection, [NotNull] Transaction transaction)
+        internal VolatileResourceManager(NpgsqlConnection connection, Transaction transaction)
         {
-            _connector = connection.Connector;
+            _connector = connection.Connector!;
             _transaction = transaction;
             // _tx gets disposed by System.Transactions at some point, but we want to be able to log its local ID
             _txId = transaction.TransactionInformation.LocalIdentifier;
@@ -40,11 +39,6 @@ namespace Npgsql
         public void SinglePhaseCommit(SinglePhaseEnlistment singlePhaseEnlistment)
         {
             CheckDisposed();
-
-            Debug.Assert(_transaction != null, "No transaction");
-            Debug.Assert(_localTx != null, "No local transaction");
-            Debug.Assert(_connector != null, "No connector");
-
             Log.Debug($"Single Phase Commit (localid={_txId})", _connector.Id);
 
             try
@@ -69,10 +63,6 @@ namespace Npgsql
         public void Prepare(PreparingEnlistment preparingEnlistment)
         {
             CheckDisposed();
-            Debug.Assert(_transaction != null, "No transaction");
-            Debug.Assert(_localTx != null, "No local transaction");
-            Debug.Assert(_connector != null, "No connector");
-
             Log.Debug($"Two-phase transaction prepare (localid={_txId})", _connector.Id);
 
             // The PostgreSQL prepared transaction name is the distributed GUID + our connection's process ID, for uniqueness
@@ -105,9 +95,6 @@ namespace Npgsql
         public void Commit(Enlistment enlistment)
         {
             CheckDisposed();
-            Debug.Assert(_transaction != null, "No transaction");
-            Debug.Assert(_connector != null, "No connector");
-
             Log.Debug($"Two-phase transaction commit (localid={_txId})", _connector.Id);
 
             try
@@ -133,8 +120,7 @@ namespace Npgsql
                     using (var conn2 = (NpgsqlConnection)((ICloneable)_connector.Connection).Clone())
                     {
                         conn2.Open();
-                        var connector = conn2.Connector;
-                        Debug.Assert(connector != null);
+                        var connector = conn2.Connector!;
                         using (connector.StartUserAction())
                             connector.ExecuteInternalCommand($"COMMIT PREPARED '{_preparedTxName}'");
                     }
@@ -154,8 +140,6 @@ namespace Npgsql
         public void Rollback(Enlistment enlistment)
         {
             CheckDisposed();
-            Debug.Assert(_transaction != null, "No transaction");
-            Debug.Assert(_connector != null, "No connector");
 
             try
             {
@@ -177,9 +161,6 @@ namespace Npgsql
 
         public void InDoubt(Enlistment enlistment)
         {
-            Debug.Assert(_transaction != null, "No transaction");
-            Debug.Assert(_connector != null, "No connector");
-
             Log.Warn($"Two-phase transaction in doubt (localid={_txId})", _connector.Id);
 
             // TODO: Is this the correct behavior?
@@ -200,9 +181,6 @@ namespace Npgsql
 
         void RollbackLocal()
         {
-            Debug.Assert(_connector != null, "No connector");
-            Debug.Assert(_localTx != null, "No local transaction");
-
             Log.Debug($"Single-phase transaction rollback (localid={_txId})", _connector.Id);
 
             var attempt = 0;
@@ -256,8 +234,7 @@ namespace Npgsql
                 using (var conn2 = (NpgsqlConnection)((ICloneable)_connector.Connection).Clone())
                 {
                     conn2.Open();
-                    var connector = conn2.Connector;
-                    Debug.Assert(connector != null);
+                    var connector = conn2.Connector!;
                     using (connector.StartUserAction())
                         connector.ExecuteInternalCommand($"ROLLBACK PREPARED '{_preparedTxName}'");
                 }
@@ -266,12 +243,11 @@ namespace Npgsql
 
         #region Dispose/Cleanup
 
+#pragma warning disable CS8625
         void Dispose()
         {
             if (_isDisposed)
                 return;
-            Debug.Assert(_transaction != null, "No transaction");
-            Debug.Assert(_connector != null, "No connector");
 
             Log.Trace($"Cleaning up resource manager (localid={_txId}", _connector.Id);
             if (_localTx != null)
@@ -290,17 +266,18 @@ namespace Npgsql
                 {
                     var found = PoolManager.TryGetValue(_connector.ConnectionString, out var pool);
                     Debug.Assert(found);
-                    pool.TryRemovePendingEnlistedConnector(_connector, _transaction);
+                    pool!.TryRemovePendingEnlistedConnector(_connector, _transaction);
                     pool.Release(_connector);
                 }
                 else
                     _connector.Close();
             }
 
-            _connector = null;
-            _transaction = null;
+            _connector = null!;
+            _transaction = null!;
             _isDisposed = true;
         }
+#pragma warning restore CS8625
 
         void CheckDisposed()
         {
@@ -311,26 +288,15 @@ namespace Npgsql
         #endregion
 
         static System.Data.IsolationLevel ConvertIsolationLevel(IsolationLevel isolationLevel)
-        {
-            switch (isolationLevel)
+            => isolationLevel switch
             {
-            case IsolationLevel.Chaos:
-                return System.Data.IsolationLevel.Chaos;
-            case IsolationLevel.ReadCommitted:
-                return System.Data.IsolationLevel.ReadCommitted;
-            case IsolationLevel.ReadUncommitted:
-                return System.Data.IsolationLevel.ReadUncommitted;
-            case IsolationLevel.RepeatableRead:
-                return System.Data.IsolationLevel.RepeatableRead;
-            case IsolationLevel.Serializable:
-                return System.Data.IsolationLevel.Serializable;
-            case IsolationLevel.Snapshot:
-                return System.Data.IsolationLevel.Snapshot;
-            case IsolationLevel.Unspecified:
-            default:
-                return System.Data.IsolationLevel.Unspecified;
-            }
-        }
-
+                IsolationLevel.Chaos           => System.Data.IsolationLevel.Chaos,
+                IsolationLevel.ReadCommitted   => System.Data.IsolationLevel.ReadCommitted,
+                IsolationLevel.ReadUncommitted => System.Data.IsolationLevel.ReadUncommitted,
+                IsolationLevel.RepeatableRead  => System.Data.IsolationLevel.RepeatableRead,
+                IsolationLevel.Serializable    => System.Data.IsolationLevel.Serializable,
+                IsolationLevel.Snapshot        => System.Data.IsolationLevel.Snapshot,
+                _                              => System.Data.IsolationLevel.Unspecified
+            };
     }
 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using Npgsql.Util;
 using NUnit.Framework;
 
 namespace Npgsql.Tests
@@ -54,16 +55,18 @@ namespace Npgsql.Tests
             Assert.That(ReadBuffer.ReadByte(), Is.EqualTo(8));
         }
 
+#pragma warning disable CS8625
         [SetUp]
         public void SetUp()
         {
             Underlying = new MemoryStream();
             ReadBuffer = new NpgsqlReadBuffer(null, Underlying, NpgsqlReadBuffer.DefaultSize, PGUtil.UTF8Encoding, PGUtil.RelaxedUTF8Encoding);
         }
+#pragma warning restore CS8625
 
         // ReSharper disable once InconsistentNaming
-        NpgsqlReadBuffer ReadBuffer;
+        NpgsqlReadBuffer ReadBuffer = default!;
         // ReSharper disable once InconsistentNaming
-        MemoryStream Underlying;
+        MemoryStream Underlying = default!;
     }
 }

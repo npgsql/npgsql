@@ -8,7 +8,7 @@ namespace Npgsql.Benchmarks.TypeHandlers
     [Config(typeof(Config))]
     public class Text : TypeHandlerBenchmarks<string>
     {
-        public Text() : base(new TextHandler(Encoding.UTF8)) { }
+        public Text() : base(new TextHandler(GetPostgresType("text"), Encoding.UTF8)) { }
 
         protected override IEnumerable<string> ValuesOverride()
         {

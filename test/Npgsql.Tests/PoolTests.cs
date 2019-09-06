@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net.Sockets;
 using System.Threading;
@@ -13,7 +14,8 @@ namespace Npgsql.Tests
         [Test]
         public void MinPoolSizeEqualsMaxPoolSize()
         {
-            using (var conn = new NpgsqlConnection(new NpgsqlConnectionStringBuilder(ConnectionString) {
+            using (var conn = new NpgsqlConnection(new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
                 MinPoolSize = 30,
                 MaxPoolSize = 30
             }.ToString()))
@@ -47,7 +49,7 @@ namespace Npgsql.Tests
             using (var conn = new NpgsqlConnection(ConnectionString))
             {
                 conn.Open();
-                var backendId = conn.Connector.BackendProcessId;
+                var backendId = conn.Connector!.BackendProcessId;
                 conn.Close();
                 conn.Open();
                 Assert.That(conn.Connector.BackendProcessId, Is.EqualTo(backendId));
@@ -57,7 +59,8 @@ namespace Npgsql.Tests
         [Test, Timeout(10000)]
         public void GetConnectorFromExhaustedPool()
         {
-            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
                 MaxPoolSize = 1,
                 Timeout = 0
             }.ToString();
@@ -98,7 +101,8 @@ namespace Npgsql.Tests
         [Test]
         public void TimeoutGettingConnectorFromExhaustedPool()
         {
-            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
                 MaxPoolSize = 1,
                 Timeout = 2
             }.ToString();
@@ -141,7 +145,8 @@ namespace Npgsql.Tests
         //[Explicit("Timing-based")]
         public async Task CancelOpenAsync()
         {
-            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
                 ApplicationName = nameof(CancelOpenAsync),
                 MaxPoolSize = 1,
             }.ToString();
@@ -186,7 +191,7 @@ namespace Npgsql.Tests
             {
                 conn.Open();
                 Assert.That(conn.ExecuteScalar("SHOW search_path"), Is.Not.Contains("pg_temp"));
-                var backendId = conn.Connector.BackendProcessId;
+                var backendId = conn.Connector!.BackendProcessId;
                 conn.ExecuteNonQuery("SET search_path=pg_temp");
                 conn.Close();
 
@@ -215,7 +220,7 @@ namespace Npgsql.Tests
 
                 conn1.Close();
                 conn2.Close();
-                AssertPoolState(pool, 2, 1);
+                AssertPoolState(pool!, 2, 1);
 
                 Thread.Sleep(1500);
 
@@ -287,7 +292,7 @@ namespace Npgsql.Tests
         [Test]
         public void ClearWithBusy()
         {
-            ConnectorPool pool;
+            ConnectorPool? pool;
             using (var conn = OpenConnection())
             {
                 NpgsqlConnection.ClearPool(conn);
@@ -302,7 +307,8 @@ namespace Npgsql.Tests
         [Test]
         public void ClearWithNoPool()
         {
-            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
                 ApplicationName = nameof(ClearWithNoPool)
             }.ToString();
             using (var conn = new NpgsqlConnection(connString))
@@ -312,7 +318,8 @@ namespace Npgsql.Tests
         [Test, Description("https://github.com/npgsql/npgsql/commit/45e33ecef21f75f51a625c7b919a50da3ed8e920#r28239653")]
         public void PhysicalOpenFailure()
         {
-            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
                 ApplicationName = nameof(PhysicalOpenFailure),
                 Port = 44444,
                 MaxPoolSize = 1
@@ -320,7 +327,9 @@ namespace Npgsql.Tests
             using (var conn = new NpgsqlConnection(connString))
             {
                 for (var i = 0; i < 1; i++)
-                    Assert.That(() => conn.Open(), Throws.Exception.TypeOf<SocketException>());
+                    Assert.That(() => conn.Open(), Throws.Exception
+                        .TypeOf<NpgsqlException>()
+                        .With.InnerException.TypeOf<SocketException>());
                 Assert.True(PoolManager.TryGetValue(connString, out var pool));
                 AssertPoolState(pool, 0, 0);
             }
@@ -333,7 +342,8 @@ namespace Npgsql.Tests
         //[TestCase(10, 20, 30, false)]
         public void ExercisePool(int maxPoolSize, int numTasks, int seconds, bool async)
         {
-            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
                 ApplicationName = nameof(ExercisePool),
                 MaxPoolSize = maxPoolSize
             }.ToString();
@@ -361,12 +371,15 @@ namespace Npgsql.Tests
 
         volatile int StopFlag;
 
-        void AssertPoolState(ConnectorPool pool, int idle, int busy, int waiting=0)
+        void AssertPoolState(ConnectorPool? pool, int idle, int busy, int waiting=0)
         {
+            if (pool == null)
+                throw new ArgumentNullException(nameof(pool));
+
             var state = pool.State;
             Assert.That(state.Idle, Is.EqualTo(idle), $"Idle should be {idle} but is {state.Idle}");
-            Assert.That(state.Busy, Is.EqualTo(busy), $"Busy should be {busy} but is {state.Busy}");
-            Assert.That(state.Waiting, Is.EqualTo(waiting), $"Waiting should be {waiting} but is {state.Waiting}");
+            var stateBusy = state.Open - state.Idle;
+            Assert.That(stateBusy, Is.EqualTo(busy), $"Busy should be {busy} but is {stateBusy}");
         }
     }
 }

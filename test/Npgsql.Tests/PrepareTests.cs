@@ -178,6 +178,37 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        public void ReusePreparedStatement()
+        {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ApplicationName = nameof(PrepareTests) + '.' + nameof(ReusePreparedStatement)
+            }.ToString();
+            using (var conn1 = OpenConnection(connString))
+            {
+                var preparedStatement = "";
+                using (var cmd1 = new NpgsqlCommand("SELECT @p", conn1))
+                {
+                    cmd1.Parameters.AddWithValue("p", 8);
+                    cmd1.Prepare();
+                    Assert.That(cmd1.IsPrepared, Is.True);
+                    Assert.That(cmd1.ExecuteScalar(), Is.EqualTo(8));
+                    preparedStatement = cmd1.Statements[0].PreparedStatement!.Name!;
+                }
+
+                using (var cmd2 = new NpgsqlCommand("SELECT @p", conn1))
+                {
+                    cmd2.Parameters.AddWithValue("p", 8);
+                    cmd2.Prepare();
+                    Assert.That(cmd2.IsPrepared, Is.True);
+                    Assert.That(cmd2.Statements[0].PreparedStatement!.Name, Is.EqualTo(preparedStatement));
+                    Assert.That(cmd2.ExecuteScalar(), Is.EqualTo(8));
+                }
+                NpgsqlConnection.ClearPool(conn1);
+            }
+        }
+
+        [Test]
         public void Multistatement()
         {
             using (var conn = OpenConnectionAndUnprepare())
@@ -544,7 +575,7 @@ namespace Npgsql.Tests
         }
         */
 
-        NpgsqlConnection OpenConnectionAndUnprepare(string connectionString = null)
+        NpgsqlConnection OpenConnectionAndUnprepare(string? connectionString = null)
         {
             var conn = OpenConnection(connectionString);
             conn.UnprepareAll();

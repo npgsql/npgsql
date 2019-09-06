@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using Npgsql.BackendMessages;
-using Npgsql.FrontendMessages;
 using Npgsql.Logging;
-using static Npgsql.Statics;
+using static Npgsql.Util.Statics;
 
 #pragma warning disable 1591
 
@@ -45,7 +46,7 @@ namespace Npgsql
             (byte)'\n', 255, (byte)'\r', (byte)'\n', 0
         };
 
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.GetCurrentClassLogger();
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlRawCopyStream));
 
         #endregion
 
@@ -56,7 +57,10 @@ namespace Npgsql
             _connector = connector;
             _readBuf = connector.ReadBuffer;
             _writeBuf = connector.WriteBuffer;
-            _connector.SendQuery(copyCommand);
+
+            _connector.WriteQuery(copyCommand);
+            _connector.Flush();
+
             var msg = _connector.ReadMessage();
             switch (msg.Code)
             {
@@ -85,7 +89,17 @@ namespace Npgsql
 
         #region Write
 
-        public override void Write(byte[] buffer, int offset, int count)
+        public override void Write(byte[] buffer, int offset, int count) => Write(buffer, offset, count, false).GetAwaiter().GetResult();
+
+        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled(cancellationToken);
+            using (NoSynchronizationContextScope.Enter())
+                return Write(buffer, offset, count, true);
+        }
+
+        async Task Write(byte[] buffer, int offset, int count, bool async)
         {
             CheckDisposed();
             if (!CanWrite)
@@ -101,7 +115,7 @@ namespace Npgsql
 
             try {
                 // Value is too big, flush.
-                Flush();
+                await FlushAsync(async);
 
                 if (count <= _writeBuf.WriteSpaceLeft)
                 {
@@ -110,7 +124,7 @@ namespace Npgsql
                 }
 
                 // Value is too big even after a flush - bypass the buffer and write directly.
-                _writeBuf.DirectWrite(buffer, offset, count);
+                await _writeBuf.DirectWrite(buffer, offset, count, async);
             } catch {
                 _connector.Break();
                 Cleanup();
@@ -118,17 +132,37 @@ namespace Npgsql
             }
         }
 
-        public override void Flush()
+        public override void Flush() => FlushAsync(false).GetAwaiter().GetResult();
+
+        public override Task FlushAsync(CancellationToken cancellationToken)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled(cancellationToken);
+            using (NoSynchronizationContextScope.Enter())
+                return FlushAsync(true);
+        }
+
+        Task FlushAsync(bool async)
         {
             CheckDisposed();
-            _writeBuf.Flush();
+            return _writeBuf.Flush(async);
         }
 
         #endregion
 
         #region Read
 
-        public override int Read(byte[] buffer, int offset, int count)
+        public override int Read(byte[] buffer, int offset, int count) => Read(buffer, offset, count, false).GetAwaiter().GetResult();
+
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled<int>(cancellationToken);
+            using (NoSynchronizationContextScope.Enter())
+                return Read(buffer, offset, count, true);
+        }
+
+        async Task<int> Read(byte[] buffer, int offset, int count, bool async)
         {
             CheckDisposed();
             if (!CanRead)
@@ -142,14 +176,14 @@ namespace Npgsql
             {
                 // We've consumed the current DataMessage (or haven't yet received the first),
                 // read the next message
-                var msg = _connector.ReadMessage();
+                var msg = await _connector.ReadMessage(async);
                 switch (msg.Code) {
                 case BackendMessageCode.CopyData:
                     _leftToReadInDataMsg = ((CopyDataMessage)msg).Length;
                     break;
                 case BackendMessageCode.CopyDone:
-                    Expect<CommandCompleteMessage>(_connector.ReadMessage());
-                    Expect<ReadyForQueryMessage>(_connector.ReadMessage());
+                    Expect<CommandCompleteMessage>(await _connector.ReadMessage(async), _connector);
+                    Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async), _connector);
                     _isConsumed = true;
                     return 0;
                 default:
@@ -162,7 +196,7 @@ namespace Npgsql
             // If our buffer is empty, read in more. Otherwise return whatever is there, even if the
             // user asked for more (normal socket behavior)
             if (_readBuf.ReadBytesLeft == 0) {
-                _readBuf.ReadMore(false).GetAwaiter().GetResult();
+                await _readBuf.ReadMore(async);
             }
 
             Debug.Assert(_readBuf.ReadBytesLeft > 0);
@@ -184,7 +218,18 @@ namespace Npgsql
         /// <summary>
         /// Cancels and terminates an ongoing operation. Any data already written will be discarded.
         /// </summary>
-        public void Cancel()
+        public void Cancel() => Cancel(false).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Cancels and terminates an ongoing operation. Any data already written will be discarded.
+        /// </summary>
+        public Task CancelAsync()
+        {
+            using (NoSynchronizationContextScope.Enter())
+               return Cancel(true);
+        }
+
+        async Task Cancel(bool async)
         {
             CheckDisposed();
 
@@ -193,10 +238,11 @@ namespace Npgsql
                 _isDisposed = true;
                 _writeBuf.EndCopyMode();
                 _writeBuf.Clear();
-                _connector.SendMessage(new CopyFailMessage());
+                await _connector.WriteCopyFail(async);
+                await _connector.Flush(async);
                 try
                 {
-                    var msg = _connector.ReadMessage();
+                    var msg = await _connector.ReadMessage(async);
                     // The CopyFail should immediately trigger an exception from the read above.
                     _connector.Break();
                     throw new NpgsqlException("Expected ErrorResponse when cancelling COPY but got: " + msg.Code);
@@ -218,7 +264,9 @@ namespace Npgsql
 
         #region Dispose
 
-        protected override void Dispose(bool disposing)
+        protected override void Dispose(bool disposing) => DisposeAsync(disposing, false).GetAwaiter().GetResult();
+
+        async ValueTask DisposeAsync(bool disposing, bool async)
         {
             if (_isDisposed || !disposing) { return; }
 
@@ -226,11 +274,12 @@ namespace Npgsql
             {
                 if (CanWrite)
                 {
-                    Flush();
+                    await FlushAsync(async);
                     _writeBuf.EndCopyMode();
-                    _connector.SendMessage(CopyDoneMessage.Instance);
-                    Expect<CommandCompleteMessage>(_connector.ReadMessage());
-                    Expect<ReadyForQueryMessage>(_connector.ReadMessage());
+                    await _connector.WriteCopyDone(async);
+                    await _connector.Flush(async);
+                    Expect<CommandCompleteMessage>(await _connector.ReadMessage(async), _connector);
+                    Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async), _connector);
                 }
                 else
                 {
@@ -238,7 +287,7 @@ namespace Npgsql
                     {
                         if (_leftToReadInDataMsg > 0)
                         {
-                            _readBuf.Skip(_leftToReadInDataMsg);
+                            await _readBuf.Skip(_leftToReadInDataMsg, async);
                         }
                         _connector.SkipUntil(BackendMessageCode.ReadyForQuery);
                     }
@@ -252,6 +301,7 @@ namespace Npgsql
             }
         }
 
+#pragma warning disable CS8625
         void Cleanup()
         {
             Log.Debug("COPY operation ended", _connector.Id);
@@ -261,6 +311,7 @@ namespace Npgsql
             _writeBuf = null;
             _isDisposed = true;
         }
+#pragma warning restore CS8625
 
         void CheckDisposed()
         {
@@ -320,6 +371,15 @@ namespace Npgsql
         {
             ((NpgsqlRawCopyStream)BaseStream).Cancel();
         }
+
+        /// <summary>
+        /// Cancels and terminates an ongoing import. Any data already written will be discarded.
+        /// </summary>
+        public Task CancelAsync()
+        {
+            using (NoSynchronizationContextScope.Enter())
+                return ((NpgsqlRawCopyStream)BaseStream).CancelAsync();
+        }
     }
 
     /// <summary>
@@ -345,6 +405,15 @@ namespace Npgsql
         public void Cancel()
         {
             ((NpgsqlRawCopyStream)BaseStream).Cancel();
+        }
+
+        /// <summary>
+        /// Cancels and terminates an ongoing import. Any data already written will be discarded.
+        /// </summary>
+        public Task CancelAsync()
+        {
+            using (NoSynchronizationContextScope.Enter())
+                return ((NpgsqlRawCopyStream)BaseStream).CancelAsync();
         }
     }
 }

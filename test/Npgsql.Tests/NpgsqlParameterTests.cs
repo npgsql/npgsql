@@ -65,6 +65,31 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test]
+        public void SettingDbTypeSetsNpgsqlDbType()
+        {
+            var p = new NpgsqlParameter();
+            p.DbType = DbType.Binary;
+            Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Bytea));
+        }
+
+        [Test]
+        public void SettingNpgsqlDbTypeSetsDbType()
+        {
+            var p = new NpgsqlParameter();
+            p.NpgsqlDbType = NpgsqlDbType.Bytea;
+            Assert.That(p.DbType, Is.EqualTo(DbType.Binary));
+        }
+
+        [Test]
+        public void SettingValueDoesNotChangeDbType()
+        {
+            var p = new NpgsqlParameter { DbType = DbType.String, NpgsqlDbType = NpgsqlDbType.Bytea };
+            p.Value = 8;
+            Assert.That(p.DbType, Is.EqualTo(DbType.Binary));
+            Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Bytea));
+        }
+
         // Older tests
 
         /// <summary>
@@ -144,7 +169,7 @@ namespace Npgsql.Tests
         [Test]
         public void Constructor2_Value_Null()
         {
-            var p = new NpgsqlParameter("address", (object)null);
+            var p = new NpgsqlParameter("address", null);
             Assert.AreEqual(DbType.Object, p.DbType, "A:DbType");
             Assert.AreEqual(ParameterDirection.Input, p.Direction, "A:Direction");
             Assert.IsFalse(p.IsNullable, "A:IsNullable");

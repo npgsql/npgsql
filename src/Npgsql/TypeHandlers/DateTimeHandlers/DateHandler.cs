@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Data;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -10,8 +11,8 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     [TypeMapping("date", NpgsqlDbType.Date, DbType.Date, typeof(NpgsqlDate))]
     class DateHandlerFactory : NpgsqlTypeHandlerFactory<DateTime>
     {
-        protected override NpgsqlTypeHandler<DateTime> Create(NpgsqlConnection conn)
-            => new DateHandler(conn.Connector.ConvertInfinityDateTime);
+        public override NpgsqlTypeHandler<DateTime> Create(PostgresType postgresType, NpgsqlConnection conn)
+            => new DateHandler(postgresType, conn.Connector!.ConvertInfinityDateTime);
     }
 
     /// <remarks>
@@ -28,14 +29,15 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         /// </summary>
         readonly bool _convertInfinityDateTime;
 
-        public DateHandler(bool convertInfinityDateTime)
+        internal DateHandler(PostgresType postgresType, bool convertInfinityDateTime)
+            : base(postgresType)
         {
             _convertInfinityDateTime = convertInfinityDateTime;
         }
 
         #region Read
 
-        public override DateTime Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        public override DateTime Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
             var npgsqlDate = ReadPsv(buf, len, fieldDescription);
             try {
@@ -54,32 +56,29 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         /// <remarks>
         /// Copied wholesale from Postgresql backend/utils/adt/datetime.c:j2date
         /// </remarks>
-        protected override NpgsqlDate ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        protected override NpgsqlDate ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
             var binDate = buf.ReadInt32();
 
-            switch (binDate)
+            return binDate switch
             {
-            case int.MaxValue:
-                return NpgsqlDate.Infinity;
-            case int.MinValue:
-                return NpgsqlDate.NegativeInfinity;
-            default:
-                return new NpgsqlDate(binDate + 730119);
-            }
+                int.MaxValue => NpgsqlDate.Infinity,
+                int.MinValue => NpgsqlDate.NegativeInfinity,
+                _            => new NpgsqlDate(binDate + 730119)
+            };
         }
 
         #endregion Read
 
         #region Write
 
-        public override int ValidateAndGetLength(DateTime value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(DateTime value, NpgsqlParameter? parameter)
             => 4;
 
-        public override int ValidateAndGetLength(NpgsqlDate value, NpgsqlParameter parameter)
+        public override int ValidateAndGetLength(NpgsqlDate value, NpgsqlParameter? parameter)
             => 4;
 
-        public override void Write(DateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public override void Write(DateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
             NpgsqlDate value2;
             if (_convertInfinityDateTime)
@@ -97,7 +96,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             Write(value2, buf, parameter);
         }
 
-        public override void Write(NpgsqlDate value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        public override void Write(NpgsqlDate value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
             if (value == NpgsqlDate.NegativeInfinity)
                 buf.WriteInt32(int.MinValue);
