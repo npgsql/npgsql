@@ -22,7 +22,7 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
         public CompositeStructMemberHandler(FieldInfo fieldInfo, PostgresType postgresType, NpgsqlTypeHandler handler)
             : base(fieldInfo, postgresType)
         {
-            var composite = Expression.Parameter(typeof(TComposite), "composite");
+            var composite = Expression.Parameter(typeof(TComposite).MakeByRefType(), "composite");
             var value = Expression.Parameter(typeof(TMember), "value");
 
             _get = Expression
