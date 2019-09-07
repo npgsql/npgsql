@@ -7,11 +7,11 @@ namespace Npgsql
     static class ThrowHelper
     {
         [DoesNotReturn]
-        internal static void ThrowNotSupportedException_NoPropertyGetter(Type type, MemberInfo property) =>
-            throw new NotSupportedException($"Composite type {type} cannot be written because the {property} property has no getter.");
+        internal static void ThrowInvalidOperationException_NoPropertyGetter(Type type, MemberInfo property) =>
+            throw new InvalidOperationException($"Composite type {type} cannot be written because the {property} property has no getter.");
 
         [DoesNotReturn]
-        internal static void ThrowNotSupportedException_NoPropertySetter(Type type, MemberInfo property) =>
-            throw new NotSupportedException($"Composite type {type} cannot be read because the {property} property has no setter.");
+        internal static void ThrowInvalidOperationException_NoPropertySetter(Type type, MemberInfo property) =>
+            throw new InvalidOperationException($"Composite type {type} cannot be read because the {property} property has no setter.");
     }
 }

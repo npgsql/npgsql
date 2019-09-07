@@ -56,7 +56,7 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
         public override async ValueTask Read(ByReference<TComposite> composite, NpgsqlReadBuffer buffer, bool async)
         {
             if (_set == null)
-                ThrowHelper.ThrowNotSupportedException_NoPropertySetter(typeof(TComposite), MemberInfo);
+                ThrowHelper.ThrowInvalidOperationException_NoPropertySetter(typeof(TComposite), MemberInfo);
 
             await buffer.Ensure(sizeof(uint) + sizeof(int), async);
 
@@ -77,7 +77,7 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
         public override async Task Write(TComposite composite, NpgsqlWriteBuffer buffer, NpgsqlLengthCache? lengthCache, bool async)
         {
             if (_get == null)
-                ThrowHelper.ThrowNotSupportedException_NoPropertyGetter(typeof(TComposite), MemberInfo);
+                ThrowHelper.ThrowInvalidOperationException_NoPropertyGetter(typeof(TComposite), MemberInfo);
 
             if (buffer.WriteSpaceLeft < sizeof(int))
                 await buffer.Flush(async);
@@ -91,7 +91,7 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
         public override int ValidateAndGetLength(TComposite composite, ref NpgsqlLengthCache? lengthCache)
         {
             if (_get == null)
-                ThrowHelper.ThrowNotSupportedException_NoPropertyGetter(typeof(TComposite), MemberInfo);
+                ThrowHelper.ThrowInvalidOperationException_NoPropertyGetter(typeof(TComposite), MemberInfo);
 
             var value = _get(ref composite);
             if (value == null)
