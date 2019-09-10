@@ -150,87 +150,35 @@ namespace Npgsql.TypeHandlers
         }
 
         protected internal override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
-        {
-            switch (value)
+            => value switch
             {
-            case string s:
-                return _textHandler.ValidateAndGetLength(s, ref lengthCache, parameter) + _headerLen;
-            case char[] s:
-                return _textHandler.ValidateAndGetLength(s, ref lengthCache, parameter) + _headerLen;
-            case ArraySegment<char> s:
-                return _textHandler.ValidateAndGetLength(s, ref lengthCache, parameter) + _headerLen;
-            case char s:
-                return _textHandler.ValidateAndGetLength(s, ref lengthCache, parameter) + _headerLen;
-            case byte[] s:
-                return _textHandler.ValidateAndGetLength(s, ref lengthCache, parameter) + _headerLen;
-            case JsonDocument jsonDocument:
-                if (lengthCache == null)
-                    lengthCache = new NpgsqlLengthCache(1);
-                if (lengthCache.IsPopulated)
-                    return lengthCache.Get();
-
-                var data = SerializeJsonDocument(jsonDocument);
-                if (parameter != null)
-                    parameter.ConvertedValue = data;
-                return lengthCache.Set(data.Length + _headerLen);
-            default:
-                // User POCO, need to serialize
-                var serialized = JsonSerializer.Serialize(value, _serializerOptions);
-                if (parameter != null)
-                    parameter.ConvertedValue = serialized;
-                return _textHandler.ValidateAndGetLength(serialized, ref lengthCache, parameter) + _headerLen;
-            }
-        }
+                DBNull _                  => base.ValidateObjectAndGetLength(value, ref lengthCache, parameter),
+                string s                  => ValidateAndGetLength(s, ref lengthCache, parameter),
+                char[] s                  => ValidateAndGetLength(s, ref lengthCache, parameter),
+                ArraySegment<char> s      => ValidateAndGetLength(s, ref lengthCache, parameter),
+                char s                    => ValidateAndGetLength(s, ref lengthCache, parameter),
+                byte[] s                  => ValidateAndGetLength(s, ref lengthCache, parameter),
+                JsonDocument jsonDocument => ValidateAndGetLength(jsonDocument, ref lengthCache, parameter),
+                _                         => ValidateAndGetLength(value, ref lengthCache, parameter)
+            };
 
         protected internal override async Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
-            if (value is DBNull)
+            // We call into WriteWithLength<T> below, which assumes it as at least enough write space for the length
+            if (buf.WriteSpaceLeft < 4)
+                await buf.Flush(async);
+
+            await (value switch
             {
-                await base.WriteObjectWithLength(DBNull.Value, buf, lengthCache, parameter, async);
-                return;
-            }
-
-            buf.WriteInt32(ValidateObjectAndGetLength(value, ref lengthCache, parameter));
-
-            if (_isJsonb)
-            {
-                if (buf.WriteSpaceLeft < 1)
-                    await buf.Flush(async);
-                buf.WriteByte(JsonbProtocolVersion);
-            }
-
-            switch (value)
-            {
-            case string s:
-                await _textHandler.Write(s, buf, lengthCache, parameter, async);
-                return;
-            case char[] s:
-                await _textHandler.Write(s, buf, lengthCache, parameter, async);
-                return;
-            case ArraySegment<char> s:
-                await _textHandler.Write(s, buf, lengthCache, parameter, async);
-                return;
-            case char s:
-                await _textHandler.Write(s, buf, lengthCache, parameter, async);
-                return;
-            case byte[] s:
-                await _textHandler.Write(s, buf, lengthCache, parameter, async);
-                return;
-            case JsonDocument jsonDocument:
-                var data = parameter?.ConvertedValue != null
-                    ? (byte[])parameter.ConvertedValue
-                    : SerializeJsonDocument(jsonDocument);
-                await buf.WriteBytesRaw(data, async);
-                return;
-            default:
-                // User POCO, read serialized representation from the validation phase
-                var serialized = parameter?.ConvertedValue != null
-                    ? (string)parameter.ConvertedValue
-                    : JsonSerializer.Serialize(value, value.GetType(), _serializerOptions);
-
-                await _textHandler.Write(serialized, buf, lengthCache, parameter, async);
-                return;
-            }
+                DBNull _                  => base.WriteObjectWithLength(value, buf, lengthCache, parameter, async),
+                string s                  => WriteWithLength(s, buf, lengthCache, parameter, async),
+                char[] s                  => WriteWithLength(s, buf, lengthCache, parameter, async),
+                ArraySegment<char> s      => WriteWithLength(s, buf, lengthCache, parameter, async),
+                char s                    => WriteWithLength(s, buf, lengthCache, parameter, async),
+                byte[] s                  => WriteWithLength(s, buf, lengthCache, parameter, async),
+                JsonDocument jsonDocument => WriteWithLength(jsonDocument, buf, lengthCache, parameter, async),
+                _                         => WriteWithLength(value, buf, lengthCache, parameter, async),
+            });
         }
 
         protected internal override async ValueTask<T> Read<T>(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription? fieldDescription = null)
