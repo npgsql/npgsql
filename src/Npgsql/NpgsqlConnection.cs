@@ -531,7 +531,7 @@ namespace Npgsql
             // However, we do this for consistency as if we did (for the checks and exceptions)
             using (connector.StartUserAction())
             {
-                if (connector.InTransaction)
+                if (connector.IsTransactionInProgress)
                     throw new InvalidOperationException("A transaction is already in progress; nested/concurrent transactions aren't supported.");
 
                 connector.Transaction.Init(level);
@@ -578,6 +578,14 @@ namespace Npgsql
             transaction.EnlistVolatile(new VolatileResourceManager(this, transaction), EnlistmentOptions.None);
             Log.Debug($"Enlisted volatile resource manager (localid={transaction.TransactionInformation.LocalIdentifier})", connector.Id);
         }
+
+        /// <summary>
+        /// Returns whether the connection currently has a transaction in progress.
+        /// </summary>
+        /// <remarks>
+        /// This will return true for aborted transactions (error occurred).
+        /// </remarks>
+        public bool IsTransactionInProgress => CheckConnectionOpen().IsTransactionInProgress;
 
         #endregion
 

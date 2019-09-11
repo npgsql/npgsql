@@ -38,11 +38,6 @@ namespace Npgsql
         /// <value>The <see cref="NpgsqlConnection"/> object associated with the transaction.</value>
         protected override DbConnection? DbConnection => Connection;
 
-        /// <summary>
-        /// If true, the transaction has been committed/rolled back, but not disposed.
-        /// </summary>
-        internal bool IsCompleted => _connector.TransactionStatus == TransactionStatus.Idle;
-
         internal bool IsDisposed;
 
         /// <summary>
@@ -310,7 +305,7 @@ namespace Npgsql
             if (IsDisposed)
                 return;
 
-            if (disposing && !IsCompleted)
+            if (disposing && _connector.TransactionStatus != TransactionStatus.Idle)
             {
                 _connector.CloseOngoingOperations(async: false).GetAwaiter().GetResult();
                 Rollback();
@@ -328,7 +323,7 @@ namespace Npgsql
             if (IsDisposed)
                 return;
 
-            if (!IsCompleted)
+            if (_connector.TransactionStatus != TransactionStatus.Idle)
             {
                 using (NoSynchronizationContextScope.Enter())
                 {
@@ -355,7 +350,7 @@ namespace Npgsql
         {
             if (IsDisposed)
                 throw new ObjectDisposedException(typeof(NpgsqlTransaction).Name);
-            if (IsCompleted)
+            if (_connector.TransactionStatus == TransactionStatus.Idle)
                 throw new InvalidOperationException("This NpgsqlTransaction has completed; it is no longer usable.");
         }
 

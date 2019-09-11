@@ -54,7 +54,7 @@ namespace Npgsql.Tests
                 cmd.ExecuteNonQuery();
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(1));
                 tx.Rollback();
-                Assert.That(tx.IsCompleted);
+                Assert.That(!conn.IsTransactionInProgress);
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
                 Assert.That(() => tx.Connection, Throws.Exception.TypeOf<InvalidOperationException>());
                 tx.Dispose();
@@ -75,7 +75,7 @@ namespace Npgsql.Tests
                 cmd.ExecuteNonQuery();
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(1));
                 await tx.RollbackAsync();
-                Assert.That(tx.IsCompleted);
+                Assert.That(!conn.IsTransactionInProgress);
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
                 Assert.That(() => tx.Connection, Throws.Exception.TypeOf<InvalidOperationException>());
                 tx.Dispose();
@@ -94,6 +94,16 @@ namespace Npgsql.Tests
                 tx.Dispose();
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
             }
+        }
+
+        [Test, Description("Dispose a transaction right after starting it, i.e. before anything has been sent to the database")]
+        public void DisposeAfterBegin()
+        {
+            using var conn = OpenConnection();
+            using (conn.BeginTransaction())
+                Assert.True(conn.IsTransactionInProgress);
+            Assert.False(conn.IsTransactionInProgress);
+            Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
         }
 
         [Test]
@@ -127,7 +137,7 @@ namespace Npgsql.Tests
                 conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')", tx: tx);
                 Assert.That(() => conn.ExecuteNonQuery("BAD QUERY"), Throws.Exception.TypeOf<PostgresException>());
                 tx.Rollback();
-                Assert.That(tx.IsCompleted);
+                Assert.That(!conn.IsTransactionInProgress);
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
             }
         }
@@ -383,54 +393,57 @@ namespace Npgsql.Tests
                 Assert.That(() => tx.Save("a;b"), Throws.Exception.TypeOf<ArgumentException>());
         }
 
-        [Test, Description("Check IsCompleted before, during and after a normal committed transaction")]
+        [Test, Description("Check IsTransactionInProgress before, during and after a normal committed transaction")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/985")]
-        public void IsCompletedCommit()
+        public void IsTransactionInProgressCommit()
         {
             using (var conn = OpenConnection())
             {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
+                Assert.That(!conn.IsTransactionInProgress);
                 var tx = conn.BeginTransaction();
-                Assert.That(!tx.IsCompleted);
+                Assert.That(conn.IsTransactionInProgress);
                 conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')", tx: tx);
-                Assert.That(!tx.IsCompleted);
+                Assert.That(conn.IsTransactionInProgress);
                 tx.Commit();
-                Assert.That(tx.IsCompleted);
+                Assert.That(!conn.IsTransactionInProgress);
             }
         }
 
-        [Test, Description("Check IsCompleted before, during, and after a successful but rolled back transaction")]
+        [Test, Description("Check IsTransactionInProgress before, during, and after a successful but rolled back transaction")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/985")]
-        public void IsCompletedRollback()
+        public void IsTransactionInProgressRollback()
         {
             using (var conn = OpenConnection())
             {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
+                Assert.That(!conn.IsTransactionInProgress);
                 var tx = conn.BeginTransaction();
-                Assert.That(!tx.IsCompleted);
+                Assert.That(conn.IsTransactionInProgress);
                 conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')", tx: tx);
-                Assert.That(!tx.IsCompleted);
+                Assert.That(conn.IsTransactionInProgress);
                 tx.Rollback();
-                Assert.That(tx.IsCompleted);
+                Assert.That(!conn.IsTransactionInProgress);
             }
         }
 
 
-        [Test, Description("Check IsCompleted before, during, and after a failed then rolled back transaction")]
+        [Test, Description("Check IsTransactionInProgress before, during, and after a failed then rolled back transaction")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/985")]
-        public void IsCompletedRollbackFailed()
+        public void IsTransactionInProgressRollbackFailed()
         {
             using (var conn = OpenConnection())
             {
                 conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
+                Assert.That(!conn.IsTransactionInProgress);
                 var tx = conn.BeginTransaction();
-                Assert.That(!tx.IsCompleted);
+                Assert.That(conn.IsTransactionInProgress);
                 conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')", tx: tx);
-                Assert.That(!tx.IsCompleted);
+                Assert.That(conn.IsTransactionInProgress);
                 Assert.That(() => conn.ExecuteNonQuery("BAD QUERY"), Throws.Exception.TypeOf<PostgresException>());
-                Assert.That(!tx.IsCompleted);
+                Assert.That(conn.IsTransactionInProgress);
                 tx.Rollback();
-                Assert.That(tx.IsCompleted);
+                Assert.That(!conn.IsTransactionInProgress);
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
             }
         }

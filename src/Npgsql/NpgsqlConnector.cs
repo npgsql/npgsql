@@ -1087,7 +1087,7 @@ namespace Npgsql
                 return ExecuteInternalCommand(PregeneratedMessages.RollbackTransaction, async);
         }
 
-        internal bool InTransaction
+        internal bool IsTransactionInProgress
             => TransactionStatus switch
             {
                 TransactionStatus.Idle                     => false,
@@ -2037,7 +2037,7 @@ namespace Npgsql
     /// <summary>
     /// Specifies how to load/parse DataRow messages as they're received from the backend.
     /// </summary>
-    internal enum DataRowLoadingMode
+    enum DataRowLoadingMode
     {
         /// <summary>
         /// Load DataRows in non-sequential mode
