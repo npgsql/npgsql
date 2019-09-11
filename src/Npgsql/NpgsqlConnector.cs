@@ -102,11 +102,21 @@ namespace Npgsql
         internal TransactionStatus TransactionStatus { get; set; }
 
         /// <summary>
-        /// A transaction object for this connector. Since only one transaction can be in progress at any given time,
-        /// this instance is recycled. To check whether a transaction is currently in progress on this connector,
-        /// see <see cref="TransactionStatus"/>.
+        /// The transaction currently in progress, if any.
         /// </summary>
-        internal NpgsqlTransaction Transaction { get; }
+        /// <remarks>
+        /// <para>
+        /// Note that this doesn't mean a transaction request has actually been sent to the backend - for
+        /// efficiency we defer sending the request to the first query after BeginTransaction is called.
+        /// See <see cref="TransactionStatus"/> for the actual transaction status.
+        /// </para>
+        /// <para>
+        /// Also, the user can initiate a transaction in SQL (i.e. BEGIN), in which case there will be no
+        /// NpgsqlTransaction instance. As a result, never check <see cref="Transaction"/> to know whether
+        /// a transaction is in progress, check <see cref="TransactionStatus"/> instead.
+        /// </para>
+        /// </remarks>
+        internal NpgsqlTransaction? Transaction { get; set; }
 
         /// <summary>
         /// The NpgsqlConnection that (currently) owns this connector. Null if the connector isn't
@@ -268,8 +278,6 @@ namespace Npgsql
             ConnectionString = connectionString;
             PostgresParameters = new Dictionary<string, string>();
             SqlParser = new SqlQueryParser(UseConformantStrings);
-            Transaction = new NpgsqlTransaction(this);
-
             CancelLock = new object();
 
             _isKeepAliveEnabled = Settings.KeepAlive > 0;
@@ -882,7 +890,7 @@ namespace Npgsql
                 try
                 {
                     ReceiveTimeout = UserTimeout;
-                    
+
                     while (true)
                     {
                         await ReadBuffer.Ensure(5, async, readingNotifications2);
@@ -1113,19 +1121,30 @@ namespace Npgsql
             if (newStatus == TransactionStatus)
                 return;
 
-            TransactionStatus = newStatus switch
-            {
-                TransactionStatus.Idle                     => newStatus,
-                TransactionStatus.InTransactionBlock       => newStatus,
-                TransactionStatus.InFailedTransactionBlock => newStatus,
-                TransactionStatus.Pending                  => throw new Exception("Invalid TransactionStatus (should be frontend-only)"),
-                _ => throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {newStatus} of enum {nameof(TransactionStatus)}. Please file a bug.")
-            };
+            switch (newStatus) {
+            case TransactionStatus.Idle:
+                ClearTransaction();
+                break;
+            case TransactionStatus.InTransactionBlock:
+            case TransactionStatus.InFailedTransactionBlock:
+                break;
+            case TransactionStatus.Pending:
+                throw new Exception("Invalid TransactionStatus (should be frontend-only)");
+            default:
+                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {newStatus} of enum {nameof(TransactionStatus)}. Please file a bug.");
+            }
+            TransactionStatus = newStatus;
         }
 
         void ClearTransaction()
         {
-            Transaction.DisposeImmediately();
+            if (TransactionStatus == TransactionStatus.Idle) { return; }
+            // We may not have an NpgsqlTransaction for the transaction (i.e. user executed BEGIN)
+            if (Transaction != null)
+            {
+                Transaction.Clear();
+                Transaction = null;
+            }
             TransactionStatus = TransactionStatus.Idle;
         }
 
@@ -1480,7 +1499,6 @@ namespace Npgsql
             case TransactionStatus.InTransactionBlock:
             case TransactionStatus.InFailedTransactionBlock:
                 Rollback(false);
-                ClearTransaction();
                 break;
             default:
                 throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {TransactionStatus} of enum {nameof(TransactionStatus)}. Please file a bug.");

@@ -19,9 +19,6 @@ namespace Npgsql.Tests
                 conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')", tx: tx);
                 tx.Commit();
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(1));
-                Assert.That(() => tx.Connection, Throws.Exception.TypeOf<InvalidOperationException>());
-                tx.Dispose();
-                Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
             }
         }
 
@@ -35,9 +32,6 @@ namespace Npgsql.Tests
                 conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')", tx: tx);
                 await tx.CommitAsync();
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(1));
-                Assert.That(() => tx.Connection, Throws.Exception.TypeOf<InvalidOperationException>());
-                tx.Dispose();
-                Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
             }
         }
 
@@ -56,9 +50,6 @@ namespace Npgsql.Tests
                 tx.Rollback();
                 Assert.That(tx.IsCompleted);
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
-                Assert.That(() => tx.Connection, Throws.Exception.TypeOf<InvalidOperationException>());
-                tx.Dispose();
-                Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
             }
         }
 
@@ -77,9 +68,6 @@ namespace Npgsql.Tests
                 await tx.RollbackAsync();
                 Assert.That(tx.IsCompleted);
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
-                Assert.That(() => tx.Connection, Throws.Exception.TypeOf<InvalidOperationException>());
-                tx.Dispose();
-                Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
             }
         }
 
@@ -92,6 +80,7 @@ namespace Npgsql.Tests
                 var tx = conn.BeginTransaction();
                 conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')", tx: tx);
                 tx.Dispose();
+                Assert.That(tx.IsCompleted);
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
             }
         }
@@ -111,8 +100,8 @@ namespace Npgsql.Tests
                     tx = conn2.BeginTransaction();
                     conn2.ExecuteNonQuery($"INSERT INTO {tableName} (name) VALUES ('X')", tx);
                 }
+                Assert.That(tx.IsCompleted);
                 Assert.That(conn1.ExecuteScalar($"SELECT COUNT(*) FROM {tableName}"), Is.EqualTo(0));
-                Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
                 conn1.ExecuteNonQuery($"DROP TABLE {tableName}");
             }
         }
