@@ -874,7 +874,7 @@ namespace Npgsql
                 try
                 {
                     ReceiveTimeout = UserTimeout;
-                    
+
                     while (true)
                     {
                         await ReadBuffer.Ensure(5, async, readingNotifications2);

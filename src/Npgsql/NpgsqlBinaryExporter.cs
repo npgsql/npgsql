@@ -82,13 +82,14 @@ namespace Npgsql
             _leftToReadInDataMsg = Expect<CopyDataMessage>(_connector.ReadMessage(), _connector).Length;
             var headerLen = NpgsqlRawCopyStream.BinarySignature.Length + 4 + 4;
             _buf.Ensure(headerLen);
-            if (NpgsqlRawCopyStream.BinarySignature.Any(t => _buf.ReadByte() != t)) {
+
+            if (NpgsqlRawCopyStream.BinarySignature.Any(t => _buf.ReadByte() != t))
                 throw new NpgsqlException("Invalid COPY binary signature at beginning!");
-            }
+
             var flags = _buf.ReadInt32();
-            if (flags != 0) {
+            if (flags != 0)
                 throw new NotSupportedException("Unsupported flags in COPY operation (OID inclusion?)");
-            }
+
             _buf.ReadInt32();   // Header extensions, currently unused
             _leftToReadInDataMsg -= headerLen;
         }
@@ -124,21 +125,20 @@ namespace Npgsql
         async ValueTask<int> StartRow(bool async)
         {
             CheckDisposed();
-            if (_isConsumed) { return -1; }
+            if (_isConsumed)
+                return -1;
 
             // The very first row (i.e. _column == -1) is included in the header's CopyData message.
             // Otherwise we need to read in a new CopyData row (the docs specify that there's a CopyData
             // message per row).
             if (_column == NumColumns)
-            {
                 _leftToReadInDataMsg = Expect<CopyDataMessage>(await _connector.ReadMessage(async), _connector).Length;
-            }
             else if (_column != -1)
-            {
                 throw new InvalidOperationException("Already in the middle of a row");
-            }
+
             await _buf.Ensure(2, async);
             _leftToReadInDataMsg -= 2;
+
             var numColumns = _buf.ReadInt16();
             if (numColumns == -1)
             {
@@ -150,6 +150,7 @@ namespace Npgsql
                 _isConsumed = true;
                 return -1;
             }
+
             Debug.Assert(numColumns == NumColumns);
 
             _column = 0;
@@ -189,14 +190,14 @@ namespace Npgsql
         ValueTask<T> Read<T>(bool async)
         {
             CheckDisposed();
-            if (_column == -1 || _column == NumColumns) {
+            if (_column == -1 || _column == NumColumns)
                 throw new InvalidOperationException("Not reading a row");
-            }
 
             var type = typeof(T);
             var handler = _typeHandlerCache[_column];
             if (handler == null)
                 handler = _typeHandlerCache[_column] = _typeMapper.GetByClrType(type);
+
             return DoRead<T>(handler, async);
         }
 
@@ -240,19 +241,20 @@ namespace Npgsql
         ValueTask<T> Read<T>(NpgsqlDbType type, bool async)
         {
             CheckDisposed();
-            if (_column == -1 || _column == NumColumns) {
+            if (_column == -1 || _column == NumColumns)
                 throw new InvalidOperationException("Not reading a row");
-            }
 
             var handler = _typeHandlerCache[_column];
             if (handler == null)
                 handler = _typeHandlerCache[_column] = _typeMapper.GetByNpgsqlDbType(type);
+
             return DoRead<T>(handler, async);
         }
 
         async ValueTask<T> DoRead<T>(NpgsqlTypeHandler handler, bool async)
         {
-            try {
+            try
+            {
                 await ReadColumnLenIfNeeded(async);
                 if (_columnLen == -1)
                     throw new InvalidCastException("Column is null");
@@ -266,7 +268,9 @@ namespace Npgsql
                 _columnLen = int.MinValue;   // Mark that the (next) column length hasn't been read yet
                 _column++;
                 return result;
-            } catch {
+            }
+            catch
+            {
                 _connector.Break();
                 Cleanup();
                 throw;
@@ -304,9 +308,9 @@ namespace Npgsql
         async Task Skip(bool async)
         {
             await ReadColumnLenIfNeeded(async);
-            if (_columnLen != -1) {
+            if (_columnLen != -1)
                 await _buf.Skip(_columnLen, async);
-            }
+
             _columnLen = int.MinValue;
             _column++;
         }
@@ -317,7 +321,8 @@ namespace Npgsql
 
         async Task ReadColumnLenIfNeeded(bool async)
         {
-            if (_columnLen == int.MinValue) {
+            if (_columnLen == int.MinValue)
+            {
                 await _buf.Ensure(4, async);
                 _columnLen = _buf.ReadInt32();
                 _leftToReadInDataMsg -= 4;
@@ -326,9 +331,8 @@ namespace Npgsql
 
         void CheckDisposed()
         {
-            if (_isDisposed) {
+            if (_isDisposed)
                 throw new ObjectDisposedException(GetType().FullName, "The COPY operation has already ended.");
-            }
         }
 
         #endregion
@@ -338,10 +342,7 @@ namespace Npgsql
         /// <summary>
         /// Cancels an ongoing export.
         /// </summary>
-        public void Cancel()
-        {
-            _connector.CancelRequest();
-        }
+        public void Cancel() => _connector.CancelRequest();
 
         /// <summary>
         /// Completes that binary export and sets the connection back to idle state
@@ -360,7 +361,8 @@ namespace Npgsql
 
         async ValueTask DisposeAsync(bool async)
         {
-            if (_isDisposed) { return; }
+            if (_isDisposed)
+                return;
 
             if (!_isConsumed)
             {
