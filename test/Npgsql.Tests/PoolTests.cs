@@ -201,8 +201,8 @@ namespace Npgsql.Tests
             }
         }
 
-        //[Test, NonParallelizable]
-        //[Explicit("Flaky, based on timing")]
+        [Test, NonParallelizable]
+        [Explicit("Flaky, based on timing")]
         public void PruneIdleConnectors()
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
@@ -224,12 +224,12 @@ namespace Npgsql.Tests
 
                 Thread.Sleep(1500);
 
-                // Pruning attempted, but ConnectionIdleLifetime not yet reached
+                // ConnectionIdleLifetime not yet reached.
                 AssertPoolState(pool, 2, 1);
 
                 Thread.Sleep(1500);
 
-                // ConnectionIdleLifetime reached, but only one idle connection should be pruned (MinPoolSize=2)
+                // ConnectionIdleLifetime reached, one idle connection should be pruned (MinPoolSize=2)
                 AssertPoolState(pool, 1, 1);
             }
         }
