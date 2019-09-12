@@ -50,7 +50,7 @@ namespace Npgsql
         readonly int _min;
 
         readonly NpgsqlConnector?[] _idle;
-        readonly NpgsqlConnector?[] _open; // TODO could be a 'bitmap' whether the index has a connector or not
+        readonly NpgsqlConnector?[] _open;
 
         readonly ConcurrentQueue<(TaskCompletionSource<NpgsqlConnector?> TaskCompletionSource, bool IsAsync)> _waiting;
 
@@ -82,7 +82,7 @@ namespace Npgsql
             }
         }
 
-        // mutable struct: do not make this readonly
+        // Mutable struct, do not make this readonly.
         internal PoolState State;
 
         /// <summary>
@@ -92,9 +92,14 @@ namespace Npgsql
         /// </summary>
         int _clearCounter;
 
+        // TODO move all this out of the pool
         static readonly TimerCallback PruningTimerCallback = PruneIdleConnectors;
-        Timer _pruningTimer;
-        readonly TimeSpan _pruningInterval;
+        readonly Timer _pruningTimer;
+        readonly TimeSpan _pruningSamplingInterval;
+        readonly int _pruningSampleSize;
+        readonly int[] _pruningSamples;
+        int _pruningSampleIndex;
+        bool _pruningTimerEnabled;
 
         /// <summary>
         /// Maximum number of possible connections in any pool.
@@ -122,8 +127,15 @@ namespace Npgsql
                 ? connString
                 : settings.ToStringWithoutPassword();
 
-            _pruningInterval = TimeSpan.FromSeconds(Settings.ConnectionPruningInterval);
+            var pruningInterval = TimeSpan.FromSeconds(Settings.ConnectionIdleLifetime);
+            _pruningSamplingInterval = TimeSpan.FromSeconds(Settings.ConnectionPruningInterval);
+            if (pruningInterval < _pruningSamplingInterval)
+                throw new ArgumentException($"Connection can't have ConnectionIdleLifetime {pruningInterval} under ConnectionPruningInterval {_pruningSamplingInterval}");
+
             _pruningTimer = new Timer(PruningTimerCallback, this, -1, -1);
+            _pruningSampleSize = (int)Math.Ceiling((double)pruningInterval.Ticks / _pruningSamplingInterval.Ticks);
+            _pruningSamples = new int[_pruningSampleSize];
+            _pruningTimerEnabled = false;
             _idle = new NpgsqlConnector[_max];
             _open = new NpgsqlConnector[_max];
             _waiting = new ConcurrentQueue<(TaskCompletionSource<NpgsqlConnector?> TaskCompletionSource, bool IsAsync)>();
@@ -214,7 +226,7 @@ namespace Npgsql
                     }
                     // Restart the outer loop if we're at max opens.
                     if (prevOpenCount == _max) continue;
-                    openCount = prevOpenCount;
+                    openCount = prevOpenCount + 1;
 
                     try
                     {
@@ -244,8 +256,8 @@ namespace Npgsql
                     Debug.Assert(connector.PoolIndex != int.MaxValue);
 
                     // Only when we are the ones that incremented openCount past _min Change the timer.
-                    if (openCount - 1 == _min)
-                        _pruningTimer.Change(_pruningInterval, _pruningInterval);
+                    if (openCount == _min)
+                        EnablePruning();
                     Counters.NumberOfPooledConnections.Increment();
                     Counters.NumberOfActiveConnections.Increment();
                     CheckInvariants(State);
@@ -456,7 +468,7 @@ namespace Npgsql
 
             // Only turn off the timer one time, when it was this Close that brought Open back to _min.
             if (openCount == _min)
-                _pruningTimer.Change(-1, -1);
+                DisablePruning();
             Counters.NumberOfPooledConnections.Decrement();
             CheckInvariants(State);
         }
@@ -472,23 +484,71 @@ namespace Npgsql
                     break;
         }
 
+        // Manual reactivation of timer happens in callback
+        void EnablePruning()
+        {
+            lock (_pruningTimer)
+            {
+                _pruningTimerEnabled = true;
+                _pruningTimer.Change(_pruningSamplingInterval, Timeout.InfiniteTimeSpan);
+            }
+        }
+
+        void DisablePruning()
+        {
+            lock (_pruningTimer)
+            {
+                _pruningTimer.Change(Timeout.Infinite, Timeout.Infinite);
+                _pruningSampleIndex = 0;
+                _pruningTimerEnabled = false;
+            }
+        }
+
         static void PruneIdleConnectors(object? state)
         {
             var pool = (ConnectorPool)state!;
-            var idle = pool._idle;
-            var now = DateTime.UtcNow;
-            var idleLifetime = pool.Settings.ConnectionIdleLifetime;
+            var samples = pool._pruningSamples;
+            int toPrune;
+            lock (pool._pruningTimer)
+            {
+                // Check if we might have been contending with DisablePruning.
+                if (!pool._pruningTimerEnabled)
+                    return;
 
+                var sampleIndex = pool._pruningSampleIndex;
+                if (sampleIndex < pool._pruningSampleSize)
+                {
+                    samples[sampleIndex] = pool.State.Idle;
+                    pool._pruningSampleIndex = sampleIndex + 1;
+                    pool._pruningTimer.Change(pool._pruningSamplingInterval, Timeout.InfiniteTimeSpan);
+                    return;
+                }
+
+                // Reset before releasing the lock and starting the prune
+                toPrune = Median(samples);
+                pool._pruningSampleIndex = 0;
+                pool._pruningTimer.Change(pool._pruningSamplingInterval, Timeout.InfiniteTimeSpan);
+            }
+
+            var idle = pool._idle;
             for (var i = 0; i < idle.Length; i++)
             {
-                if (Volatile.Read(ref pool.State.Open) <= pool._min)
+                if (Volatile.Read(ref pool.State.Open) <= pool._min || toPrune == 0)
                     return;
 
                 var connector = idle[i];
-                if (connector == null || (now - connector.ReleaseTimestamp).TotalSeconds < idleLifetime)
+                if (connector == null || Interlocked.CompareExchange(ref idle[i], null, connector) != connector)
                     continue;
-                if (Interlocked.CompareExchange(ref idle[i], null, connector) == connector)
-                    pool.CloseConnector(connector, true);
+
+                toPrune -= 1;
+                pool.CloseConnector(connector, true);
+            }
+
+            int Median(int[] values)
+            {
+                var i = (int)Math.Ceiling((double)(values.Length - 1) / 2);
+                Array.Sort(values);
+                return i >= 0 ? values[i] : 0;
             }
         }
 
