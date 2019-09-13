@@ -7,4 +7,4 @@
 
 Npgsql is a .NET data provider for PostgreSQL. It allows you to connect and interact with PostgreSQL server using .NET.
 
-For any additional information, please visit the Npgsql website at [http://www.npgsql.org](http://www.npgsql.org).
+For any additional information, please visit the Npgsql website at [https://www.npgsql.org](https://www.npgsql.org).
