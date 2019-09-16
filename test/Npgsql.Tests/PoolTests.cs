@@ -277,6 +277,41 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        public void ReleaseWaiterOnConnectionFailure()
+        {
+            var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Port = 9999,
+                MaxPoolSize = 1
+            }.ToString();
+
+            try
+            {
+                var tasks = Enumerable.Range(0, 2).Select(i => Task.Run(async () =>
+                {
+                    using var conn = new NpgsqlConnection(connectionString);
+                    await conn.OpenAsync();
+                })).ToArray();
+
+                try
+                {
+                    Task.WaitAll(tasks);
+                }
+                catch (AggregateException e)
+                {
+                    foreach (var inner in e.InnerExceptions)
+                        Assert.That(inner, Is.TypeOf<NpgsqlException>());
+                    return;
+                }
+                Assert.Fail();
+            }
+            finally
+            {
+                NpgsqlConnection.ClearPool(new NpgsqlConnection(connectionString));
+            }
+        }
+
+        [Test]
         public void ClearPool()
         {
             NpgsqlConnection conn;

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -227,6 +227,7 @@ namespace Npgsql
                         // Physical open failed, decrement the open and busy counter back down.
                         conn.Connector = null;
                         Interlocked.Decrement(ref State.Open);
+                        ReleaseOneWaiter();
                         throw;
                     }
 
@@ -412,11 +413,7 @@ namespace Npgsql
             // We try to complete exactly one waiter as long as there are any in the queue, if any came in at all.
             // The performance of trying this after each _idle release is fine as the queue is very uncontended.
             // In the .Net Core BCL, 3.0 as of writing, TryDequeue for the empty path is as fast as doing IsEmpty.
-            while (_waiting.TryDequeue(out var racedWaiter))
-            {
-                if (racedWaiter.TaskCompletionSource.TrySetResult(null))
-                    break;
-            }
+            ReleaseOneWaiter();
 
             // Scenario: pre-empted waiter
             // Could have a pre-empted waiter, that didn't enqueue yet it wakes up right after
@@ -455,15 +452,24 @@ namespace Npgsql
                 openCount = Interlocked.Decrement(ref State.Open);
 
             // Unblock a single waiter, if any, to get the slot that just opened up.
-            while (_waiting.TryDequeue(out var waiter))
-                if (waiter.TaskCompletionSource.TrySetResult(null))
-                    break;
+            ReleaseOneWaiter();
 
             // Only turn off the timer one time, when it was this Close that brought Open back to _min.
             if (openCount == _min)
                 _pruningTimer.Change(-1, -1);
             Counters.NumberOfPooledConnections.Decrement();
             CheckInvariants(State);
+        }
+
+        /// <summary>
+        /// Dequeues a single waiter and signals that it should re-attempt to allocate again. Needed in various
+        /// race conditions.
+        /// </summary>
+        void ReleaseOneWaiter()
+        {
+            while (_waiting.TryDequeue(out var waiter))
+                if (waiter.TaskCompletionSource.TrySetResult(null))
+                    break;
         }
 
         static void PruneIdleConnectors(object? state)
