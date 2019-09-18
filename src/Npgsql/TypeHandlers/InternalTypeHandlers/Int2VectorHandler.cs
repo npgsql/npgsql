@@ -8,13 +8,13 @@ using NpgsqlTypes;
 namespace Npgsql.TypeHandlers.InternalTypeHandlers
 {
     [TypeMapping("int2vector", NpgsqlDbType.Int2Vector)]
-    class Int2VectorHandlerFactory : INpgsqlTypeHandlerFactory
+    class Int2VectorHandlerFactory : NpgsqlTypeHandlerFactory
     {
-        public NpgsqlTypeHandler Create(PostgresType pgType, NpgsqlConnection conn)
+        public override NpgsqlTypeHandler CreateNonGeneric(PostgresType pgType, NpgsqlConnection conn)
             => new Int2VectorHandler(pgType, conn.Connector!.TypeMapper.DatabaseInfo.ByName["smallint"]
                                              ?? throw new NpgsqlException("Two types called 'smallint' defined in the database"));
 
-        public Type DefaultValueType => typeof(short[]);
+        public override Type DefaultValueType => typeof(short[]);
     }
 
     /// <summary>
