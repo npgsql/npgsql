@@ -5,21 +5,23 @@ using Npgsql.TypeMapping;
 namespace Npgsql.TypeHandling
 {
     /// <summary>
-    /// Interface for all type handler factories, which construct type handlers that know how
+    /// Base class for all type handler factories, which construct type handlers that know how
     /// to read and write CLR types from/to PostgreSQL types.
-    /// Do not inherit from this class, inherit from <see cref="NpgsqlTypeHandlerFactory{T}"/> instead.
     /// </summary>
-    public interface INpgsqlTypeHandlerFactory
+    /// <remarks>
+    /// In general, do not inherit from this class, inherit from <see cref="NpgsqlTypeHandlerFactory{T}"/> instead.
+    /// </remarks>
+    public abstract class NpgsqlTypeHandlerFactory
     {
         /// <summary>
         /// Creates a type handler.
         /// </summary>
-        NpgsqlTypeHandler Create(PostgresType pgType, NpgsqlConnection conn);
+        public abstract NpgsqlTypeHandler CreateNonGeneric(PostgresType pgType, NpgsqlConnection conn);
 
         /// <summary>
         /// The default CLR type that handlers produced by this factory will read and write.
         /// </summary>
-        Type DefaultValueType { get; }
+        public abstract Type DefaultValueType { get; }
     }
 
     /// <summary>
@@ -31,17 +33,18 @@ namespace Npgsql.TypeHandling
     /// <seealso cref="NpgsqlConnection.GlobalTypeMapper"/>
     /// <seealso cref="NpgsqlConnection.TypeMapper"/>
     /// <typeparam name="TDefault">The default CLR type that handlers produced by this factory will read and write.</typeparam>
-    public abstract class NpgsqlTypeHandlerFactory<TDefault> : INpgsqlTypeHandlerFactory
+    public abstract class NpgsqlTypeHandlerFactory<TDefault> : NpgsqlTypeHandlerFactory
     {
         /// <summary>
         /// Creates a type handler
         /// </summary>
         public abstract NpgsqlTypeHandler<TDefault> Create(PostgresType pgType, NpgsqlConnection conn);
 
-        NpgsqlTypeHandler INpgsqlTypeHandlerFactory.Create(PostgresType pgType, NpgsqlConnection conn)
+        /// <inheritdoc />
+        public override NpgsqlTypeHandler CreateNonGeneric(PostgresType pgType, NpgsqlConnection conn)
             => Create(pgType, conn);
 
         /// <inheritdoc />
-        public Type DefaultValueType => typeof(TDefault);
+        public override Type DefaultValueType => typeof(TDefault);
     }
 }

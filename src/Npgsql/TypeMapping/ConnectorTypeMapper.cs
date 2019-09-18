@@ -285,7 +285,7 @@ namespace Npgsql.TypeMapping
                 return;
             }
 
-            var handler = mapping.TypeHandlerFactory.Create(pgType, connector.Connection!);
+            var handler = mapping.TypeHandlerFactory.CreateNonGeneric(pgType, connector.Connection!);
             BindType(handler, pgType, mapping.NpgsqlDbType, mapping.DbTypes, mapping.ClrTypes);
 
             if (!externalCall)

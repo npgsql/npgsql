@@ -8,13 +8,13 @@ using NpgsqlTypes;
 namespace Npgsql.TypeHandlers.InternalTypeHandlers
 {
     [TypeMapping("oidvector", NpgsqlDbType.Oidvector)]
-    class OIDVectorHandlerFactory : INpgsqlTypeHandlerFactory
+    class OIDVectorHandlerFactory : NpgsqlTypeHandlerFactory
     {
-        public NpgsqlTypeHandler Create(PostgresType pgType, NpgsqlConnection conn)
+        public override NpgsqlTypeHandler CreateNonGeneric(PostgresType pgType, NpgsqlConnection conn)
             => new OIDVectorHandler(pgType, conn.Connector!.TypeMapper.DatabaseInfo.ByName["oid"]
                                     ?? throw new NpgsqlException("Two types called 'oid' defined in the database"));
 
-        public Type DefaultValueType => typeof(uint[]);
+        public override Type DefaultValueType => typeof(uint[]);
     }
 
     /// <summary>
