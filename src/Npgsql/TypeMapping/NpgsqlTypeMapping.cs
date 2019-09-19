@@ -62,10 +62,10 @@ namespace Npgsql.TypeMapping
         public NpgsqlTypeMapping Build()
         {
             if (string.IsNullOrWhiteSpace(PgTypeName))
-                throw new ArgumentException($"{PgTypeName} must contain the name of a PostgreSQL data type", nameof(PgTypeName));
+                throw new ArgumentException($"{nameof(PgTypeName)} must contain the name of a PostgreSQL data type", nameof(PgTypeName));
 
             if (TypeHandlerFactory is null)
-                throw new ArgumentException($"{TypeHandlerFactory} must refer to a type handler factory");
+                throw new ArgumentException($"{nameof(TypeHandlerFactory)} must refer to a type handler factory");
 
             return new NpgsqlTypeMapping(PgTypeName!, NpgsqlDbType, DbTypes, ClrTypes, InferredDbType, TypeHandlerFactory);
         }
