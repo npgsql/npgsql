@@ -347,13 +347,9 @@ namespace NpgsqlTypes
 
         #region Comparison
 
-        public int Compare(NpgsqlDate x, NpgsqlDate y)
-        {
-            return x.CompareTo(y);
-        }
+        public int Compare(NpgsqlDate x, NpgsqlDate y) => x.CompareTo(y);
 
-#nullable disable
-        public int Compare(object x, object y)
+        public int Compare(object? x, object? y)
         {
             if (x == null)
             {
@@ -379,7 +375,7 @@ namespace NpgsqlTypes
                 _ => false
             };
 
-        public override bool Equals(object obj) => obj is NpgsqlDate date && Equals(date);
+        public override bool Equals(object? obj) => obj is NpgsqlDate date && Equals(date);
 
         public int CompareTo(NpgsqlDate other)
             => _type switch
@@ -394,13 +390,12 @@ namespace NpgsqlTypes
                 }
             };
 
-        public int CompareTo(object o)
+        public int CompareTo(object? o)
             => o == null
                 ? 1
                 : o is NpgsqlDate npgsqlDate
                     ? CompareTo(npgsqlDate)
                     : throw new ArgumentException();
-#nullable enable
 
         public override int GetHashCode() => _daysSinceEra;
 

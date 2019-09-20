@@ -134,8 +134,8 @@ namespace Npgsql
         internal void Init(NpgsqlCommand command, CommandBehavior behavior, List<NpgsqlStatement> statements, Task sendTask)
         {
             Command = command;
-            Debug.Assert(command.Connection == Connector.Connection);
-            _connection = command.Connection;
+            Debug.Assert(command.Connection != null && command.Connection == Connector.Connection);
+            _connection = command.Connection!;
             _behavior = behavior;
             _isSchemaOnly = _behavior.HasFlag(CommandBehavior.SchemaOnly);
             _isSequential = _behavior.HasFlag(CommandBehavior.SequentialAccess);
@@ -1311,11 +1311,9 @@ namespace Npgsql
 
             if (ColumnLen == -1)
             {
-#pragma warning disable CS8653 // A default expression introduces a null value when 'T' is a non-nullable reference type.
-                // When T is a Nullable<T>, we support returning null
+                // When T is a Nullable<T> (and only in that case), we support returning null
                 if (NullableHandler<T>.Exists)
-                    return default;
-#pragma warning restore CS8653
+                    return default!;
                 if (typeof(T) == typeof(object))
                     return (T)(object)DBNull.Value;
                 throw new InvalidCastException("Column is null");
@@ -1353,11 +1351,9 @@ namespace Npgsql
 
             if (ColumnLen == -1)
             {
-#pragma warning disable CS8653 // A default expression introduces a null value when 'T' is a non-nullable reference type.
-                // When T is a Nullable<T>, we support returning null
+                // When T is a Nullable<T> (and only in that case), we support returning null
                 if (NullableHandler<T>.Exists)
-                    return default;
-#pragma warning restore CS8653
+                    return default!;
                 if (typeof(T) == typeof(object))
                     return (T)(object)DBNull.Value;
                 throw new InvalidCastException("Column is null");
@@ -1657,7 +1653,7 @@ namespace Npgsql
         /// </summary>
 #nullable disable
         public override DataTable GetSchemaTable()
-#nullable enable
+#nullable restore
         {
             if (FieldCount == 0) // No resultset
                 return null;

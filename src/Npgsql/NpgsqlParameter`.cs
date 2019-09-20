@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Data;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -13,16 +14,18 @@ namespace Npgsql
     /// <typeparam name="T">The type of the value that will be stored in the parameter.</typeparam>
     public sealed class NpgsqlParameter<T> : NpgsqlParameter
     {
-#nullable disable   // TypedValue is actually nullable, but we can't mark it as such
         /// <summary>
         /// Gets or sets the strongly-typed value of the parameter.
         /// </summary>
-        public T TypedValue { get; set; }
+        [MaybeNull, AllowNull]
+        public T TypedValue { get; set; } = default!;
 
         /// <summary>
         /// Gets or sets the value of the parameter. This delegates to <see cref="TypedValue"/>.
         /// </summary>
+#nullable disable
         public override object Value
+#nullable restore
         {
             get => TypedValue;
             set => TypedValue = (T)value;
@@ -63,7 +66,6 @@ namespace Npgsql
         }
 
         #endregion Constructors
-#nullable enable
 
         internal override void ResolveHandler(ConnectorTypeMapper typeMapper)
         {

@@ -225,7 +225,7 @@ namespace Npgsql
             Value = value;
             DbType = parameterType;
         }
-#nullable enable
+#nullable restore
         #endregion
 
         #region Name
@@ -236,7 +236,9 @@ namespace Npgsql
         /// <value>The name of the <see cref="NpgsqlParameter">NpgsqlParameter</see>.
         /// The default is an empty string.</value>
         [DefaultValue("")]
-        public sealed override string? ParameterName
+#nullable disable
+        public sealed override string ParameterName
+#nullable restore
         {
             get => _name;
             set
@@ -259,7 +261,9 @@ namespace Npgsql
 
         /// <inheritdoc />
         [TypeConverter(typeof(StringConverter)), Category("Data")]
-        public override object? Value
+#nullable disable
+        public override object Value
+#nullable restore
         {
             get => _value;
             set
@@ -278,7 +282,9 @@ namespace Npgsql
         /// The default value is null.</value>
         [Category("Data")]
         [TypeConverter(typeof(StringConverter))]
-        public object? NpgsqlValue
+#nullable disable
+        public object NpgsqlValue
+#nullable restore
         {
             get => Value;
             set => Value = value;

@@ -432,12 +432,10 @@ namespace NpgsqlTypes
                 /// </summary>
                 public bool Equals(WordEntryPos o) => Value == o.Value;
 
-#nullable disable
                 /// <summary>
                 /// Determines whether the specified object is equal to the current object.
                 /// </summary>
-                public override bool Equals(object o) => o is WordEntryPos pos && Equals(pos);
-#nullable enable
+                public override bool Equals(object? o) => o is WordEntryPos pos && Equals(pos);
 
                 /// <summary>
                 /// Gets a hash code for the current object.
@@ -489,12 +487,10 @@ namespace NpgsqlTypes
                     ((WordEntryPositions == null && o.WordEntryPositions == null) ||
                     (WordEntryPositions != null && WordEntryPositions.Equals(o.WordEntryPositions)));
 
-#nullable disable
             /// <summary>
             /// Determines whether the specified object is equal to the current object.
             /// </summary>
-            public override bool Equals(object o) => o is Lexeme lexeme && Equals(lexeme);
-#nullable enable
+            public override bool Equals(object? o) => o is Lexeme lexeme && Equals(lexeme);
 
             /// <summary>
             /// Gets a hash code for the current object.
