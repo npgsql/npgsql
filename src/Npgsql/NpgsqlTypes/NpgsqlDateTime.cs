@@ -283,8 +283,7 @@ namespace NpgsqlTypes
             }
         }
 
-#nullable disable
-        public int CompareTo(object o)
+        public int CompareTo(object? o)
             => o == null
                 ? 1
                 : o is NpgsqlDateTime npgsqlDateTime
@@ -293,7 +292,7 @@ namespace NpgsqlTypes
 
         public int Compare(NpgsqlDateTime x, NpgsqlDateTime y) => x.CompareTo(y);
 
-        public int Compare(object x, object y)
+        public int Compare(object? x, object? y)
         {
             if (x == null)
                 return y == null ? 0 : -1;
@@ -303,7 +302,6 @@ namespace NpgsqlTypes
                 throw new ArgumentException();
             return ((IComparable)x).CompareTo(y);
         }
-#nullable enable
 
         #endregion
 

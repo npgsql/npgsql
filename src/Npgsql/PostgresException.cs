@@ -143,13 +143,11 @@ namespace Npgsql
 
             return builder.ToString();
 
-#pragma warning disable CS8653
             void AppendLine<T>(string propertyName, T propertyValue)
             {
-                if (!EqualityComparer<T>.Default.Equals(propertyValue, default))
+                if (!EqualityComparer<T>.Default.Equals(propertyValue, default!))
                     builder.AppendLine().Append("    ").Append(propertyName).Append(": ").Append(propertyValue);
             }
-#pragma warning restore CS8653
         }
 
         /// <summary>
@@ -230,13 +228,11 @@ namespace Npgsql
                 _dataInitialized = true;
                 return data;
 
-#pragma warning disable CS8653
                 void AddData<T>(string key, T value)
                 {
-                    if (!EqualityComparer<T>.Default.Equals(value, default))
+                    if (!EqualityComparer<T>.Default.Equals(value, default!))
                         data.Add(key, value);
                 }
-#pragma warning restore CS8653
             }
         }
 

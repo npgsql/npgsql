@@ -66,7 +66,6 @@ namespace Npgsql.TypeHandlers
         internal override object ReadAsObject(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             => Read(buf, len, false, fieldDescription).Result;
 
-#pragma warning disable CS8653
         public async ValueTask<NpgsqlRange<TElement>> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
             await buf.Ensure(1, async);
@@ -75,18 +74,16 @@ namespace Npgsql.TypeHandlers
             if ((flags & RangeFlags.Empty) != 0)
                 return NpgsqlRange<TElement>.Empty;
 
-            var lowerBound = default(TElement);
-            var upperBound = default(TElement);
+            var lowerBound = flags.HasFlag(RangeFlags.LowerBoundInfinite)
+                ? default
+                : await _elementHandler.ReadWithLength<TElement>(buf, async);
 
-            if ((flags & RangeFlags.LowerBoundInfinite) == 0)
-                lowerBound = await _elementHandler.ReadWithLength<TElement>(buf, async);
-
-            if ((flags & RangeFlags.UpperBoundInfinite) == 0)
-                upperBound = await _elementHandler.ReadWithLength<TElement>(buf, async);
+            var upperBound = flags.HasFlag(RangeFlags.UpperBoundInfinite)
+                ? default
+                : await _elementHandler.ReadWithLength<TElement>(buf, async);
 
             return new NpgsqlRange<TElement>(lowerBound, upperBound, flags);
         }
-#pragma warning restore CS8653
 
         #endregion
 

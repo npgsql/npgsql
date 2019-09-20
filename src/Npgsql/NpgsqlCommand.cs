@@ -133,7 +133,7 @@ namespace Npgsql
             }
         }
 
-#nullable enable
+#nullable restore
 
         /// <summary>
         /// Gets or sets the wait time before terminating the attempt  to execute a command and generating an error.
@@ -162,15 +162,13 @@ namespace Npgsql
         [Category("Data")]
         public override CommandType CommandType { get; set; }
 
-#nullable disable
-
         /// <summary>
         /// DB connection.
         /// </summary>
-        protected override DbConnection DbConnection
+        protected override DbConnection? DbConnection
         {
             get => _connection;
-            set => _connection = (NpgsqlConnection)value;
+            set => _connection = (NpgsqlConnection?)value;
         }
 
         /// <summary>
@@ -180,7 +178,7 @@ namespace Npgsql
         /// <value>The connection to a data source. The default value is a null reference.</value>
         [DefaultValue(null)]
         [Category("Behavior")]
-        public new NpgsqlConnection Connection
+        public new NpgsqlConnection? Connection
         {
             get => _connection;
             set
@@ -195,8 +193,6 @@ namespace Npgsql
                 Transaction = null;
             }
         }
-
-#nullable enable
 
         /// <summary>
         /// Design time visible.
@@ -1008,7 +1004,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 return ExecuteScalar(true, cancellationToken).AsTask();
         }
 
-#nullable enable
+#nullable restore
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         async ValueTask<object?> ExecuteScalar(bool async, CancellationToken cancellationToken)
@@ -1186,24 +1182,20 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         #region Transactions
 
-#nullable disable
-
         /// <summary>
         /// DB transaction.
         /// </summary>
-        protected override DbTransaction DbTransaction
+        protected override DbTransaction? DbTransaction
         {
             get => Transaction;
-            set => Transaction = (NpgsqlTransaction)value;
+            set => Transaction = (NpgsqlTransaction?)value;
         }
         /// <summary>
         /// This property is ignored by Npgsql. PostgreSQL only supports a single transaction at a given time on
         /// a given connection, and all commands implicitly run inside the current transaction started via
         /// <see cref="NpgsqlConnection.BeginTransaction()"/>
         /// </summary>
-        public new NpgsqlTransaction Transaction { get; set; }
-
-#nullable enable
+        public new NpgsqlTransaction? Transaction { get; set; }
 
         #endregion Transactions
 

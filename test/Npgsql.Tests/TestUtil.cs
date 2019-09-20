@@ -131,13 +131,11 @@ namespace Npgsql.Tests
 
     public static class NpgsqlCommandExtensions
     {
-#pragma warning disable CS8653
         public static T ExecuteScalar<T>(this NpgsqlCommand cmd)
         {
             using (var rdr = cmd.ExecuteReader())
                 return rdr.Read() ? rdr.GetFieldValue<T>(0) : default;
         }
-#pragma warning restore CS8653
 
         public static NpgsqlDataReader ExecuteRecord(this NpgsqlCommand cmd)
         {

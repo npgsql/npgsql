@@ -66,9 +66,7 @@ namespace Npgsql.LegacyPostgis
         public override int GetHashCode()
             => X.GetHashCode() ^ Util.RotateShift(Y.GetHashCode(), Util.BitsInInt / 2);
 
-#nullable disable
-        public override bool Equals(object obj) => obj is Coordinate2D coord && Equals(coord);
-#nullable enable
+        public override bool Equals(object? obj) => obj is Coordinate2D coord && Equals(coord);
 
         public static bool operator ==(Coordinate2D left, Coordinate2D right)
             => Equals(left, right);
@@ -114,20 +112,15 @@ namespace Npgsql.LegacyPostgis
         internal override WkbIdentifier Identifier => WkbIdentifier.Point;
         protected override int GetLenHelper() => 16;
 
-        public PostgisPoint(double x, double y)
-        {
-            _coord = new Coordinate2D(x, y);
-        }
+        public PostgisPoint(double x, double y) => _coord = new Coordinate2D(x, y);
 
         public double X => _coord.X;
         public double Y => _coord.Y;
 
-#nullable disable
-        public bool Equals(PostgisPoint other)
+        public bool Equals(PostgisPoint? other)
             => !(other is null) && _coord.Equals(other._coord);
 
-        public override bool Equals(object obj) => Equals(obj as PostgisPoint);
-#nullable enable
+        public override bool Equals(object? obj) => Equals(obj as PostgisPoint);
 
         public static bool operator ==(PostgisPoint x, PostgisPoint y)
             => x is null ? y is null : x.Equals(y);
@@ -154,20 +147,13 @@ namespace Npgsql.LegacyPostgis
 
         public Coordinate2D this[int index] => _points[index];
 
-        public PostgisLineString(IEnumerable<Coordinate2D> points)
-        {
-            _points = points.ToArray();
-        }
+        public PostgisLineString(IEnumerable<Coordinate2D> points) => _points = points.ToArray();
 
-        public PostgisLineString(Coordinate2D[] points)
-        {
-            _points = points;
-        }
+        public PostgisLineString(Coordinate2D[] points) => _points = points;
 
         public int PointCount => _points.Length;
 
-#nullable disable
-        public bool Equals(PostgisLineString other)
+        public bool Equals(PostgisLineString? other)
         {
             if (ReferenceEquals(other , null))
                 return false ;
@@ -180,11 +166,10 @@ namespace Npgsql.LegacyPostgis
             return true;
         }
 
-        public override bool Equals(object obj) => Equals(obj as PostgisLineString);
+        public override bool Equals(object? obj) => Equals(obj as PostgisLineString);
 
         public static bool operator ==(PostgisLineString x, PostgisLineString y)
             => x is null ? y is null : x.Equals(y);
-#nullable enable
 
         public static bool operator !=(PostgisLineString x, PostgisLineString y) => !(x == y);
 
@@ -210,23 +195,17 @@ namespace Npgsql.LegacyPostgis
         public Coordinate2D this[int ringIndex, int pointIndex] => _rings[ringIndex][pointIndex];
         public Coordinate2D[] this[int ringIndex] => _rings[ringIndex];
 
-        public PostgisPolygon(Coordinate2D[][] rings)
-        {
-            _rings = rings;
-        }
+        public PostgisPolygon(Coordinate2D[][] rings) => _rings = rings;
 
         public PostgisPolygon(IEnumerable<IEnumerable<Coordinate2D>> rings)
-        {
-            _rings = rings.Select(x => x.ToArray()).ToArray();
-        }
+            => _rings = rings.Select(x => x.ToArray()).ToArray();
 
         public IEnumerator<IEnumerable<Coordinate2D>> GetEnumerator()
             => ((IEnumerable<IEnumerable<Coordinate2D>>)_rings).GetEnumerator();
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-#nullable disable
-        public bool Equals(PostgisPolygon other)
+        public bool Equals(PostgisPolygon? other)
         {
             if (other is null)
                 return false;
@@ -244,12 +223,11 @@ namespace Npgsql.LegacyPostgis
             return true;
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
             => Equals(obj as PostgisPolygon);
 
         public static bool operator ==(PostgisPolygon x, PostgisPolygon y)
             => x is null ? y is null : x.Equals(y);
-#nullable enable
 
         public static bool operator !=(PostgisPolygon x, PostgisPolygon y) => !(x == y);
 
@@ -283,24 +261,17 @@ namespace Npgsql.LegacyPostgis
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
         public PostgisMultiPoint (Coordinate2D[] points)
-        {
-            _points = points;
-        }
+            => _points = points;
 
         public PostgisMultiPoint(IEnumerable<PostgisPoint> points)
-        {
-            _points = points.Select(x => new Coordinate2D(x.X, x.Y)).ToArray();
-        }
+            => _points = points.Select(x => new Coordinate2D(x.X, x.Y)).ToArray();
 
         public PostgisMultiPoint(IEnumerable<Coordinate2D> points)
-        {
-            _points = points.ToArray();
-        }
+            => _points = points.ToArray();
 
         public Coordinate2D this[int indexer] => _points[indexer];
 
-#nullable disable
-        public bool Equals(PostgisMultiPoint other)
+        public bool Equals(PostgisMultiPoint? other)
         {
             if (ReferenceEquals(other ,null))
                 return false ;
@@ -313,11 +284,10 @@ namespace Npgsql.LegacyPostgis
             return true;
         }
 
-        public override bool Equals(object obj) => Equals(obj as PostgisMultiPoint);
+        public override bool Equals(object? obj) => Equals(obj as PostgisMultiPoint);
 
         public static bool operator ==(PostgisMultiPoint x, PostgisMultiPoint y)
             => x is null ? y is null : x.Equals(y);
-#nullable enable
 
         public static bool operator !=(PostgisMultiPoint x, PostgisMultiPoint y) => !(x == y);
 
@@ -361,23 +331,16 @@ namespace Npgsql.LegacyPostgis
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
         public PostgisMultiLineString(PostgisLineString[] linestrings)
-        {
-            _lineStrings = linestrings;
-        }
+            => _lineStrings = linestrings;
 
         public PostgisMultiLineString(IEnumerable<PostgisLineString> linestrings)
-        {
-            _lineStrings = linestrings.ToArray();
-        }
+            => _lineStrings = linestrings.ToArray();
+
+        public PostgisMultiLineString(IEnumerable<IEnumerable<Coordinate2D>> pointList)
+            => _lineStrings = pointList.Select(x => new PostgisLineString(x)).ToArray();
 
         public PostgisLineString this[int index] => _lineStrings[index];
 
-        public PostgisMultiLineString(IEnumerable<IEnumerable<Coordinate2D>> pointList)
-        {
-            _lineStrings = pointList.Select(x => new PostgisLineString(x)).ToArray();
-        }
-
-#nullable disable
         public bool Equals(PostgisMultiLineString other)
         {
             if (other is null)
@@ -391,12 +354,11 @@ namespace Npgsql.LegacyPostgis
             return true;
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
             => obj is PostgisMultiLineString multiLineString && Equals(multiLineString);
 
         public static bool operator ==(PostgisMultiLineString x, PostgisMultiLineString y)
             => x is null ? y is null : x.Equals(y);
-#nullable enable
 
         public static bool operator !=(PostgisMultiLineString x, PostgisMultiLineString y) => !(x == y);
 
@@ -426,21 +388,14 @@ namespace Npgsql.LegacyPostgis
         public PostgisPolygon this[int index] => _polygons[index];
 
         public PostgisMultiPolygon(PostgisPolygon[] polygons)
-        {
-            _polygons = polygons;
-        }
+            => _polygons = polygons;
 
         public PostgisMultiPolygon(IEnumerable<PostgisPolygon> polygons)
-        {
-            _polygons = polygons.ToArray();
-        }
+            => _polygons = polygons.ToArray();
 
         public PostgisMultiPolygon(IEnumerable<IEnumerable<IEnumerable<Coordinate2D>>> ringList)
-        {
-            _polygons = ringList.Select(x => new PostgisPolygon(x)).ToArray();
-        }
+            => _polygons = ringList.Select(x => new PostgisPolygon(x)).ToArray();
 
-#nullable disable
         public bool Equals(PostgisMultiPolygon other)
         {
             if (other is null)
@@ -452,9 +407,8 @@ namespace Npgsql.LegacyPostgis
             return true;
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
             => obj is PostgisMultiPolygon polygon && Equals(polygon);
-#nullable enable
 
         public static bool operator ==(PostgisMultiPolygon x, PostgisMultiPolygon y)
             => x is null ? y is null : x.Equals(y);
@@ -495,17 +449,10 @@ namespace Npgsql.LegacyPostgis
         public IEnumerator<PostgisGeometry> GetEnumerator() => ((IEnumerable<PostgisGeometry>)_geometries).GetEnumerator();
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-        public PostgisGeometryCollection(PostgisGeometry[] geometries)
-        {
-            _geometries = geometries;
-        }
+        public PostgisGeometryCollection(PostgisGeometry[] geometries) => _geometries = geometries;
 
-        public PostgisGeometryCollection(IEnumerable<PostgisGeometry> geometries)
-        {
-            _geometries = geometries.ToArray();
-        }
+        public PostgisGeometryCollection(IEnumerable<PostgisGeometry> geometries) => _geometries = geometries.ToArray();
 
-#nullable disable
         public bool Equals(PostgisGeometryCollection other)
         {
             if (other is null)
@@ -518,12 +465,11 @@ namespace Npgsql.LegacyPostgis
             return true;
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
             => obj is PostgisGeometryCollection collection && Equals(collection);
 
         public static bool operator ==(PostgisGeometryCollection x, PostgisGeometryCollection y)
             => x is null ? y is null : x.Equals(y);
-#nullable enable
 
         public static bool operator !=(PostgisGeometryCollection x, PostgisGeometryCollection y) => !(x == y);
 

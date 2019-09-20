@@ -80,7 +80,6 @@ namespace Npgsql.TypeHandling
         internal virtual ValueTask<object> ReadPsvAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
             => ReadAsObject(buf, len, async, fieldDescription);
 
-#pragma warning disable CS8653
 // The following function is used by array and range to read their elements, including their length - which means null
 // handling. Only arrays can actually get nulls here (in ranges infinite bounds are indicated via header flags).
 // We can't mix generics and nullability, hence the warning suppression - but we have an effort to support
@@ -94,10 +93,9 @@ namespace Npgsql.TypeHandling
             await buf.Ensure(4, async);
             var len = buf.ReadInt32();
             if (len == -1)
-                return default;
+                return default!;
             return await Read<TAny>(buf, len, async, fieldDescription);
         }
-#pragma warning restore CS8653
 
         #endregion
 

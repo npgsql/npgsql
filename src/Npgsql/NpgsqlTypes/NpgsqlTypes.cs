@@ -34,14 +34,12 @@ namespace NpgsqlTypes
             Y = y;
         }
 
-#nullable disable
         // ReSharper disable CompareOfFloatsByEqualityOperator
         public bool Equals(NpgsqlPoint other) => X == other.X && Y == other.Y;
         // ReSharper restore CompareOfFloatsByEqualityOperator
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
             => obj is NpgsqlPoint point && Equals(point);
-#nullable enable
 
         public static bool operator ==(NpgsqlPoint x, NpgsqlPoint y) => x.Equals(y);
 
@@ -103,12 +101,10 @@ namespace NpgsqlTypes
 
         public override int GetHashCode() => A.GetHashCode() * B.GetHashCode() * C.GetHashCode();
 
-#nullable disable
         public bool Equals(NpgsqlLine other) => A == other.A && B == other.B && C == other.C;
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
             => obj is NpgsqlLine line && Equals(line);
-#nullable enable
 
         public static bool operator ==(NpgsqlLine x, NpgsqlLine y) => x.Equals(y);
         public static bool operator !=(NpgsqlLine x, NpgsqlLine y) => !(x == y);
@@ -161,12 +157,10 @@ namespace NpgsqlTypes
                PGUtil.RotateShift(End.X.GetHashCode(), PGUtil.BitsInInt / 2) ^
                PGUtil.RotateShift(End.Y.GetHashCode(), PGUtil.BitsInInt * 3 / 4);
 
-#nullable disable
         public bool Equals(NpgsqlLSeg other) => Start == other.Start && End == other.End;
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
             => obj is NpgsqlLSeg seg && Equals(seg);
-#nullable enable
 
         public static bool operator ==(NpgsqlLSeg x, NpgsqlLSeg y) => x.Equals(y);
         public static bool operator !=(NpgsqlLSeg x, NpgsqlLSeg y) => !(x == y);
@@ -203,12 +197,10 @@ namespace NpgsqlTypes
 
         public bool IsEmpty => Width == 0 || Height == 0;
 
-#nullable disable
         public bool Equals(NpgsqlBox other) => UpperRight == other.UpperRight && LowerLeft == other.LowerLeft;
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
             => obj is NpgsqlBox box && Equals(box);
-#nullable enable
 
         public static bool operator ==(NpgsqlBox x, NpgsqlBox y) => x.Equals(y);
         public static bool operator !=(NpgsqlBox x, NpgsqlBox y) => !(x == y);
@@ -285,7 +277,6 @@ namespace NpgsqlTypes
         public IEnumerator<NpgsqlPoint> GetEnumerator() =>  _points.GetEnumerator();
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-#nullable disable
         public bool Equals(NpgsqlPath other)
         {
             if (Open != other.Open || Count != other.Count)
@@ -298,9 +289,8 @@ namespace NpgsqlTypes
             return true;
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
             => obj is NpgsqlPath path && Equals(path);
-#nullable enable
 
         public static bool operator ==(NpgsqlPath x, NpgsqlPath y) => x.Equals(y);
         public static bool operator !=(NpgsqlPath x, NpgsqlPath y) => !(x == y);
@@ -397,7 +387,6 @@ namespace NpgsqlTypes
         public IEnumerator<NpgsqlPoint> GetEnumerator() => _points.GetEnumerator();
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-#nullable disable
         public bool Equals(NpgsqlPolygon other)
         {
             if (Count != other.Count)
@@ -410,9 +399,8 @@ namespace NpgsqlTypes
             return true;
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
             => obj is NpgsqlPolygon polygon && Equals(polygon);
-#nullable enable
 
         public static bool operator ==(NpgsqlPolygon x, NpgsqlPolygon y) => x.Equals(y);
         public static bool operator !=(NpgsqlPolygon x, NpgsqlPolygon y) => !(x == y);
@@ -499,15 +487,13 @@ namespace NpgsqlTypes
             }
         }
 
-#nullable disable
         // ReSharper disable CompareOfFloatsByEqualityOperator
         public bool Equals(NpgsqlCircle other)
             => X == other.X && Y == other.Y && Radius == other.Radius;
         // ReSharper restore CompareOfFloatsByEqualityOperator
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
             => obj is NpgsqlCircle circle && Equals(circle);
-#nullable enable
 
         public static NpgsqlCircle Parse(string s)
         {
@@ -613,12 +599,10 @@ namespace NpgsqlTypes
             netmask = Netmask;
         }
 
-#nullable disable
         public bool Equals(NpgsqlInet other) => Address.Equals(other.Address) && Netmask == other.Netmask;
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
             => obj is NpgsqlInet inet && Equals(inet);
-#nullable enable
 
         public override int GetHashCode()
             => PGUtil.RotateShift(Address.GetHashCode(), Netmask%32);
@@ -651,13 +635,11 @@ namespace NpgsqlTypes
             OffsetNumber = offsetNumber;
         }
 
-#nullable disable
         public bool Equals(NpgsqlTid other)
             => BlockNumber == other.BlockNumber && OffsetNumber == other.OffsetNumber;
 
-        public override bool Equals(object o)
+        public override bool Equals(object? o)
             => o is NpgsqlTid tid && Equals(tid);
-#nullable enable
 
         public override int GetHashCode() => (int)BlockNumber ^ OffsetNumber;
         public static bool operator ==(NpgsqlTid left, NpgsqlTid right) => left.Equals(right);

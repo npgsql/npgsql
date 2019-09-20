@@ -149,7 +149,7 @@ namespace Npgsql.Schema
             get => base.DataTypeName;
             protected internal set => base.DataTypeName = value;
         }
-#nullable enable
+#nullable restore
         #endregion Standard fields
 
         #region Npgsql-specific fields

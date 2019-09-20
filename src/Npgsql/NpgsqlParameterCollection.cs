@@ -195,7 +195,7 @@ namespace Npgsql
         [PublicAPI]
         public NpgsqlParameter AddWithValue(NpgsqlDbType parameterType, object value)
             => Add(new NpgsqlParameter { NpgsqlDbType = parameterType, Value = value });
-#nullable enable
+#nullable restore
 
         /// <summary>
         /// Adds a <see cref="NpgsqlParameter">NpgsqlParameter</see> to the <see cref="NpgsqlParameterCollection">NpgsqlParameterCollection</see> given the parameter name and the data type.

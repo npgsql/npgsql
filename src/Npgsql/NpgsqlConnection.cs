@@ -315,7 +315,7 @@ namespace Npgsql
         /// </value>
 #nullable disable
         public override string ConnectionString
-#nullable enable
+#nullable restore
         {
             get => _userFacingConnectionString;
             set
@@ -544,7 +544,7 @@ namespace Npgsql
         /// </summary>
 #nullable disable
         public override void EnlistTransaction(Transaction transaction)
-#nullable enable
+#nullable restore
         {
             if (EnlistedTransaction != null)
             {

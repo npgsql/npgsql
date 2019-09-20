@@ -29,7 +29,7 @@ namespace Npgsql
         /// <param name="adapter">The adapter.</param>
 #nullable disable
         public NpgsqlCommandBuilder(NpgsqlDataAdapter adapter)
-#nullable enable
+#nullable restore
         {
             DataAdapter = adapter;
             QuotePrefix = "\"";
