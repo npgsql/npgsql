@@ -101,6 +101,9 @@ namespace Npgsql.TypeMapping
             if (_byClrType.TryGetValue(type, out var handler))
                 return handler;
 
+            if (Nullable.GetUnderlyingType(type) is Type underlyingType && _byClrType.TryGetValue(underlyingType, out handler))
+                return handler;
+
             // Try to see if it is an array type
             var arrayElementType = GetArrayElementType(type);
             if (arrayElementType != null)

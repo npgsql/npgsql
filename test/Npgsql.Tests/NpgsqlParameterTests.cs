@@ -771,5 +771,31 @@ namespace Npgsql.Tests
 
             Assert.AreEqual((byte)42, paramBase.Scale);
         }
+
+        [Test]
+        public void ResolveHandler_NullValue_ThrowsInvalidOperationException()
+        {
+            using var connection = OpenConnection();
+            using var command = new NpgsqlCommand("SELECT @p", connection)
+            {
+                Parameters = { new NpgsqlParameter("p", null) }
+            };
+
+            Assert.That(() => command.ExecuteReader(), Throws.InvalidOperationException);
+        }
+
+        [Test]
+        public void ResolveHandler_NullableValue_Succeeds()
+        {
+            using var connection = OpenConnection();
+            using var command = new NpgsqlCommand("SELECT @p", connection)
+            {
+                Parameters = { new NpgsqlParameter<int?>("p", null) }
+            };
+            using var reader = command.ExecuteReader();
+
+            Assert.That(reader.Read(), Is.True);
+            Assert.That(reader.GetFieldValue<int?>(0), Is.Null);
+        }
     }
 }

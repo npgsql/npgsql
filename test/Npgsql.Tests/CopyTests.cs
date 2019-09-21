@@ -583,6 +583,28 @@ namespace Npgsql.Tests
 
         enum Mood { Sad, Ok, Happy };
 
+        [Test]
+        public void Read_NullAsNullable_Succeeds()
+        {
+            using var connection = OpenConnection();
+            using var exporter = connection.BeginBinaryExport("COPY (SELECT NULL::int) TO STDOUT BINARY");
+
+            exporter.StartRow();
+
+            Assert.That(exporter.Read<int?>(), Is.Null);
+        }
+
+        [Test]
+        public void Read_NullAsValue_ThrowsInvalidCastException()
+        {
+            using var connection = OpenConnection();
+            using var exporter = connection.BeginBinaryExport("COPY (SELECT NULL::int) TO STDOUT BINARY");
+
+            exporter.StartRow();
+
+            Assert.Throws<InvalidCastException>(() => exporter.Read<int>());
+        }
+
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1440")]
         public void ErrorDuringImport()
         {
