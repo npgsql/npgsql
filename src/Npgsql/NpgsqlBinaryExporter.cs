@@ -256,13 +256,25 @@ namespace Npgsql
             try
             {
                 await ReadColumnLenIfNeeded(async);
+
                 if (_columnLen == -1)
+                {
+#pragma warning disable CS8653 // A default expression introduces a null value when 'T' is a non-nullable reference type.
+                    // When T is a Nullable<T>, we support returning null
+                    if (NullableHandler<T>.Exists)
+                        return default;
+#pragma warning restore CS8653
                     throw new InvalidCastException("Column is null");
+                }
 
                 // If we know the entire column is already in memory, use the code path without async
-                var result = _columnLen <= _buf.ReadBytesLeft
-                    ? handler.Read<T>(_buf, _columnLen)
-                    : await handler.Read<T>(_buf, _columnLen, async);
+                var result = NullableHandler<T>.Exists
+                    ? _columnLen <= _buf.ReadBytesLeft
+                        ? NullableHandler<T>.Read(handler, _buf, _columnLen)
+                        : await NullableHandler<T>.ReadAsync(handler, _buf, _columnLen, async)
+                    : _columnLen <= _buf.ReadBytesLeft
+                        ? handler.Read<T>(_buf, _columnLen)
+                        : await handler.Read<T>(_buf, _columnLen, async);
 
                 _leftToReadInDataMsg -= _columnLen;
                 _columnLen = int.MinValue;   // Mark that the (next) column length hasn't been read yet
