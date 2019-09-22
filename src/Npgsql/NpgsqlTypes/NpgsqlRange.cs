@@ -1,8 +1,10 @@
 ﻿using System;
 using System.ComponentModel;
-using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text;
+
+// NpgsqlRange mixes generics and nullability in a way that isn't currently supported by the language
+#nullable disable
 
 // ReSharper disable once CheckNamespace
 namespace NpgsqlTypes
@@ -95,13 +97,11 @@ namespace NpgsqlTypes
         /// <summary>
         /// The lower bound of the range. Only valid when <see cref="LowerBoundInfinite"/> is false.
         /// </summary>
-        [MaybeNull, AllowNull]
         public T LowerBound { get; }
 
         /// <summary>
         /// The upper bound of the range. Only valid when <see cref="UpperBoundInfinite"/> is false.
         /// </summary>
-        [MaybeNull, AllowNull]
         public T UpperBound { get; }
 
         /// <summary>
@@ -178,7 +178,7 @@ namespace NpgsqlTypes
         /// <param name="lowerBound">The lower bound of the range.</param>
         /// <param name="upperBound">The upper bound of the range.</param>
         /// <param name="flags">The characteristics of the range boundaries.</param>
-        internal NpgsqlRange([AllowNull] T lowerBound, [AllowNull] T upperBound, RangeFlags flags) : this()
+        internal NpgsqlRange(T lowerBound, T upperBound, RangeFlags flags) : this()
         {
             // TODO: We need to check if the bounds are implicitly empty. E.g. '(1,1)' or '(0,0]'.
             // See: https://github.com/npgsql/npgsql/issues/1943.
@@ -189,8 +189,8 @@ namespace NpgsqlTypes
 
             if (IsEmptyRange(LowerBound, UpperBound, Flags))
             {
-                LowerBound = default!;
-                UpperBound = default!;
+                LowerBound = default;
+                UpperBound = default;
                 Flags = RangeFlags.Empty;
             }
         }
@@ -230,12 +230,13 @@ namespace NpgsqlTypes
             if (!HasEquatableBounds)
                 return lowerBound?.Equals(upperBound) ?? false;
 
-            var lower = (IEquatable<T>?)lowerBound;
-            var upper = (IEquatable<T>?)upperBound;
+            var lower = (IEquatable<T>)lowerBound;
+            var upper = (IEquatable<T>)upperBound;
 
-            return lower != null && !lower.Equals(default!) &&
-                   upper != null && !upper.Equals(default!) &&
-                   lower.Equals(upperBound);
+            return
+                !(lower?.Equals(default) ?? true) &&
+                !(upper?.Equals(default) ?? true) &&
+                lower.Equals(upperBound);
         }
 
         /// <summary>
@@ -294,7 +295,7 @@ namespace NpgsqlTypes
         public static bool operator !=(NpgsqlRange<T> x, NpgsqlRange<T> y) => !x.Equals(y);
 
         /// <inheritdoc />
-        public override bool Equals(object? o) => o is NpgsqlRange<T> range && Equals(range);
+        public override bool Equals(object o) => o is NpgsqlRange<T> range && Equals(range);
 
         /// <inheritdoc />
         public bool Equals(NpgsqlRange<T> other)
@@ -304,8 +305,8 @@ namespace NpgsqlTypes
 
             if (HasEquatableBounds)
                 return
-                    (LowerBound == null ? other.LowerBound == null : ((IEquatable<T>)LowerBound).Equals(other.LowerBound)) &&
-                    (UpperBound == null ? other.UpperBound == null : ((IEquatable<T>)UpperBound).Equals(other.UpperBound));
+                    (((IEquatable<T>)LowerBound)?.Equals(other.LowerBound) ?? other.LowerBound == null) &&
+                    (((IEquatable<T>)UpperBound)?.Equals(other.UpperBound) ?? other.UpperBound == null);
 
             return
                 (LowerBound?.Equals(other.LowerBound) ?? other.LowerBound == null) &&
@@ -422,6 +423,7 @@ namespace NpgsqlTypes
             return new NpgsqlRange<T>(lower, lowerInclusive, lowerInfinite, upper, upperInclusive, upperInfinite);
         }
 
+        /// <inheritdoc />
         /// <summary>
         /// Represents a type converter for <see cref="NpgsqlRange{T}" />.
         /// </summary>
@@ -449,9 +451,7 @@ namespace NpgsqlTypes
 
             /// <inheritdoc />
             public override object ConvertTo(ITypeDescriptorContext context, CultureInfo culture, object value, Type destinationType)
-#nullable disable
                 => value.ToString();
-#nullable restore
         }
     }
 
