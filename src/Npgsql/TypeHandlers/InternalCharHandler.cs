@@ -7,19 +7,25 @@ using NpgsqlTypes;
 namespace Npgsql.TypeHandlers
 {
     /// <summary>
-    /// Type handler for the Postgresql "char" type, used only internally
+    /// A type handler for the PostgreSQL "char" type, used only internally.
     /// </summary>
     /// <remarks>
-    /// http://www.postgresql.org/docs/current/static/datatype-character.html
+    /// See http://www.postgresql.org/docs/current/static/datatype-character.html.
+    ///
+    /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
+    /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
+    /// Use it at your own risk.
     /// </remarks>
     [TypeMapping("char", NpgsqlDbType.InternalChar)]
-    class InternalCharHandler : NpgsqlSimpleTypeHandler<char>,
+    public class InternalCharHandler : NpgsqlSimpleTypeHandler<char>,
         INpgsqlSimpleTypeHandler<byte>, INpgsqlSimpleTypeHandler<short>, INpgsqlSimpleTypeHandler<int>, INpgsqlSimpleTypeHandler<long>
     {
+        /// <inheritdoc />
         public InternalCharHandler(PostgresType postgresType) : base(postgresType) {}
 
         #region Read
 
+        /// <inheritdoc />
         public override char Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             => (char)buf.ReadByte();
 
@@ -39,24 +45,34 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
+        /// <inheritdoc />
         public override int ValidateAndGetLength(char value, NpgsqlParameter? parameter) => 1;
+        /// <inheritdoc />
         public int ValidateAndGetLength(byte value, NpgsqlParameter? parameter)          => 1;
+        /// <inheritdoc />
         public int ValidateAndGetLength(short value, NpgsqlParameter? parameter)         => 1;
+        /// <inheritdoc />
         public int ValidateAndGetLength(int value, NpgsqlParameter? parameter)           => 1;
+        /// <inheritdoc />
         public int ValidateAndGetLength(long value, NpgsqlParameter? parameter)          => 1;
 
+        /// <inheritdoc />
         public override void Write(char value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => buf.WriteByte(checked((byte)value));
 
+        /// <inheritdoc />
         public void Write(byte value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => buf.WriteByte(value);
 
+        /// <inheritdoc />
         public void Write(short value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => buf.WriteByte(checked((byte)value));
 
+        /// <inheritdoc />
         public void Write(int value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => buf.WriteByte(checked((byte)value));
 
+        /// <inheritdoc />
         public void Write(long value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => buf.WriteByte(checked((byte)value));
 

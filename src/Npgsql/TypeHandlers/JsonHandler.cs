@@ -8,38 +8,72 @@ using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
-#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
-
 namespace Npgsql.TypeHandlers
 {
+    /// <summary>
+    /// A factory for type handlers for the PostgreSQL jsonb data type.
+    /// </summary>
+    /// <remarks>
+    /// See https://www.postgresql.org/docs/current/datatype-json.html.
+    ///
+    /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
+    /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
+    /// Use it at your own risk.
+    /// </remarks>
     [TypeMapping("jsonb", NpgsqlDbType.Jsonb, typeof(JsonDocument))]
     public class JsonbHandlerFactory : NpgsqlTypeHandlerFactory<string>
     {
         readonly JsonSerializerOptions? _serializerOptions;
 
+        /// <inheritdoc />
         public JsonbHandlerFactory() => _serializerOptions = null;
 
+        /// <inheritdoc />
         public JsonbHandlerFactory(JsonSerializerOptions serializerOptions)
             => _serializerOptions = serializerOptions;
 
+        /// <inheritdoc />
         public override NpgsqlTypeHandler<string> Create(PostgresType postgresType, NpgsqlConnection conn)
             => new JsonHandler(postgresType, conn, isJsonb: true, _serializerOptions);
     }
 
+    /// <summary>
+    /// A factory for type handlers for the PostgreSQL json data type.
+    /// </summary>
+    /// <remarks>
+    /// See https://www.postgresql.org/docs/current/datatype-json.html.
+    ///
+    /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
+    /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
+    /// Use it at your own risk.
+    /// </remarks>
     [TypeMapping("json", NpgsqlDbType.Json)]
     public class JsonHandlerFactory : NpgsqlTypeHandlerFactory<string>
     {
         readonly JsonSerializerOptions? _serializerOptions;
 
+        /// <inheritdoc />
         public JsonHandlerFactory() => _serializerOptions = null;
 
+        /// <inheritdoc />
         public JsonHandlerFactory(JsonSerializerOptions serializerOptions)
             => _serializerOptions = serializerOptions;
 
+        /// <inheritdoc />
         public override NpgsqlTypeHandler<string> Create(PostgresType postgresType, NpgsqlConnection conn)
             => new JsonHandler(postgresType, conn, isJsonb: false, _serializerOptions);
     }
 
+    /// <summary>
+    /// A type handler for the PostgreSQL json and jsonb data type.
+    /// </summary>
+    /// <remarks>
+    /// See https://www.postgresql.org/docs/current/datatype-json.html.
+    ///
+    /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
+    /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
+    /// Use it at your own risk.
+    /// </remarks>
     public class JsonHandler : NpgsqlTypeHandler<string>, ITextReaderHandler
     {
         readonly JsonSerializerOptions _serializerOptions;
@@ -54,6 +88,7 @@ namespace Npgsql.TypeHandlers
 
         static readonly JsonSerializerOptions DefaultSerializerOptions = new JsonSerializerOptions();
 
+        /// <inheritdoc />
         protected internal JsonHandler(PostgresType postgresType, NpgsqlConnection connection, bool isJsonb, JsonSerializerOptions? serializerOptions = null)
             : base(postgresType)
         {
@@ -63,6 +98,7 @@ namespace Npgsql.TypeHandlers
             _textHandler = new TextHandler(postgresType, connection);
         }
 
+        /// <inheritdoc />
         protected internal override int ValidateAndGetLength<TAny>(TAny value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
             if (typeof(TAny) == typeof(string)             ||
@@ -95,6 +131,7 @@ namespace Npgsql.TypeHandlers
             return _textHandler.ValidateAndGetLength(s, ref lengthCache, parameter) + _headerLen;
         }
 
+        /// <inheritdoc />
         protected override async Task WriteWithLength<TAny>(TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             buf.WriteInt32(ValidateAndGetLength(value, ref lengthCache, parameter));
@@ -134,9 +171,11 @@ namespace Npgsql.TypeHandlers
             }
         }
 
+        /// <inheritdoc />
         public override int ValidateAndGetLength(string value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLength<string>(value, ref lengthCache, parameter);
 
+        /// <inheritdoc />
         public override async Task Write(string value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             if (_isJsonb)
@@ -149,6 +188,7 @@ namespace Npgsql.TypeHandlers
             await _textHandler.Write(value, buf, lengthCache, parameter, async);
         }
 
+        /// <inheritdoc />
         protected internal override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => value switch
             {
@@ -162,6 +202,7 @@ namespace Npgsql.TypeHandlers
                 _                         => ValidateAndGetLength(value, ref lengthCache, parameter)
             };
 
+        /// <inheritdoc />
         protected internal override async Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             // We call into WriteWithLength<T> below, which assumes it as at least enough write space for the length
@@ -181,6 +222,7 @@ namespace Npgsql.TypeHandlers
             });
         }
 
+        /// <inheritdoc />
         protected internal override async ValueTask<T> Read<T>(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription? fieldDescription = null)
         {
             if (_isJsonb)
@@ -224,9 +266,11 @@ namespace Npgsql.TypeHandlers
             }
         }
 
+        /// <inheritdoc />
         public override ValueTask<string> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
             => Read<string>(buf, len, async, fieldDescription);
 
+        /// <inheritdoc />
         public TextReader GetTextReader(Stream stream)
         {
             if (_isJsonb)

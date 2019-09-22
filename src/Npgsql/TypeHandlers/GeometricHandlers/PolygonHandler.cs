@@ -8,18 +8,24 @@ using NpgsqlTypes;
 namespace Npgsql.TypeHandlers.GeometricHandlers
 {
     /// <summary>
-    /// Type handler for the PostgreSQL geometric polygon type.
+    /// A type handler for the PostgreSQL polygon data type.
     /// </summary>
     /// <remarks>
-    /// http://www.postgresql.org/docs/current/static/datatype-geometric.html
+    /// See http://www.postgresql.org/docs/current/static/datatype-geometric.html.
+    ///
+    /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
+    /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
+    /// Use it at your own risk.
     /// </remarks>
     [TypeMapping("polygon", NpgsqlDbType.Polygon, typeof(NpgsqlPolygon))]
-    class PolygonHandler : NpgsqlTypeHandler<NpgsqlPolygon>
+    public class PolygonHandler : NpgsqlTypeHandler<NpgsqlPolygon>
     {
+        /// <inheritdoc />
         public PolygonHandler(PostgresType postgresType) : base(postgresType) {}
 
         #region Read
 
+        /// <inheritdoc />
         public override async ValueTask<NpgsqlPolygon> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
             await buf.Ensure(4, async);
@@ -37,9 +43,11 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
 
         #region Write
 
+        /// <inheritdoc />
         public override int ValidateAndGetLength(NpgsqlPolygon value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => 4 + value.Count * 16;
 
+        /// <inheritdoc />
         public override async Task Write(NpgsqlPolygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             if (buf.WriteSpaceLeft < 4)

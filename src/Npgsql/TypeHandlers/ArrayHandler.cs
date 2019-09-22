@@ -8,11 +8,22 @@ using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 
-#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 namespace Npgsql.TypeHandlers
 {
+    /// <summary>
+    /// Non-generic base class for all type handlers which handle PostgreSQL arrays.
+    /// Extend from <see cref="ArrayHandler{TElement}"/> instead.
+    /// </summary>
+    /// <remarks>
+    /// http://www.postgresql.org/docs/current/static/arrays.html.
+    ///
+    /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
+    /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
+    /// Use it at your own risk.
+    /// </remarks>
     public abstract class ArrayHandler : NpgsqlTypeHandler
     {
+        /// <inheritdoc />
         protected ArrayHandler(PostgresType arrayPostgresType) : base(arrayPostgresType) {}
 
         internal static class IsArrayOf<TArray, TElement>
@@ -33,13 +44,18 @@ namespace Npgsql.TypeHandlers
     /// Base class for all type handlers which handle PostgreSQL arrays.
     /// </summary>
     /// <remarks>
-    /// http://www.postgresql.org/docs/current/static/arrays.html
+    /// http://www.postgresql.org/docs/current/static/arrays.html.
+    ///
+    /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
+    /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
+    /// Use it at your own risk.
     /// </remarks>
     public class ArrayHandler<TElement> : ArrayHandler
     {
         readonly int _lowerBound; // The lower bound value sent to the backend when writing arrays. Normally 1 (the PG default) but is 0 for OIDVector.
         readonly NpgsqlTypeHandler _elementHandler;
 
+        /// <inheritdoc />
         public ArrayHandler(PostgresType arrayPostgresType, NpgsqlTypeHandler elementHandler, int lowerBound = 1)
             : base(arrayPostgresType)
         {
@@ -55,6 +71,7 @@ namespace Npgsql.TypeHandlers
         internal override TAny Read<TAny>(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             => Read<TAny>(buf, len, false, fieldDescription).Result;
 
+        /// <inheritdoc />
         protected internal override async ValueTask<TAny> Read<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
             if (IsArrayOf<TAny, TElement>.Value)
@@ -76,7 +93,10 @@ namespace Npgsql.TypeHandlers
         internal override object ReadAsObject(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             => ReadArray<TElement>(buf, false).Result;
 
-        protected async ValueTask<Array> ReadArray<T>(NpgsqlReadBuffer buf, bool async)
+        /// <summary>
+        /// Reads an array of element type <typeparamref name="TAnyElement"/> from the given buffer <paramref name="buf"/>.
+        /// </summary>
+        protected async ValueTask<Array> ReadArray<TAnyElement>(NpgsqlReadBuffer buf, bool async)
         {
             await buf.Ensure(12, async);
             var dimensions = buf.ReadInt32();
@@ -93,15 +113,15 @@ namespace Npgsql.TypeHandlers
             }
 
             if (dimensions == 0)
-                return new T[0];   // TODO: static instance
+                return new TAnyElement[0];   // TODO: static instance
 
-            var result = Array.CreateInstance(typeof(T), dimLengths);
+            var result = Array.CreateInstance(typeof(TAnyElement), dimLengths);
 
             if (dimensions == 1)
             {
-                var oneDimensional = (T[])result;
+                var oneDimensional = (TAnyElement[])result;
                 for (var i = 0; i < oneDimensional.Length; i++)
-                    oneDimensional[i] = await _elementHandler.ReadWithLength<T>(buf, async);
+                    oneDimensional[i] = await _elementHandler.ReadWithLength<TAnyElement>(buf, async);
                 return oneDimensional;
             }
 
@@ -109,7 +129,7 @@ namespace Npgsql.TypeHandlers
             var indices = new int[dimensions];
             while (true)
             {
-                var element = await _elementHandler.ReadWithLength<T>(buf, async);
+                var element = await _elementHandler.ReadWithLength<TAnyElement>(buf, async);
                 result.SetValue(element, indices);
 
                 // TODO: Overly complicated/inefficient...
@@ -129,15 +149,18 @@ namespace Npgsql.TypeHandlers
             }
         }
 
-        protected async ValueTask<List<T>> ReadList<T>(NpgsqlReadBuffer buf, bool async)
+        /// <summary>
+        /// Reads an array of element type <typeparamref name="TAnyElement"/> from the given buffer <paramref name="buf"/>.
+        /// </summary>
+        protected async ValueTask<List<TAnyElement>> ReadList<TAnyElement>(NpgsqlReadBuffer buf, bool async)
         {
             await buf.Ensure(12, async);
             var dimensions = buf.ReadInt32();
 
             if (dimensions == 0)
-                return new List<T>();
+                return new List<TAnyElement>();
             if (dimensions > 1)
-                throw new NotSupportedException($"Can't read multidimensional array as List<{typeof(T).Name}>");
+                throw new NotSupportedException($"Can't read multidimensional array as List<{typeof(TAnyElement).Name}>");
 
             buf.ReadInt32();  // Has nulls. Not populated by PG?
             buf.ReadUInt32(); // Element OID. Ignored.
@@ -146,9 +169,9 @@ namespace Npgsql.TypeHandlers
             var length = buf.ReadInt32();
             buf.ReadInt32(); // We don't care about the lower bounds
 
-            var list = new List<T>(length);
+            var list = new List<TAnyElement>(length);
             for (var i = 0; i < length; i++)
-                list.Add(await _elementHandler.ReadWithLength<T>(buf, async));
+                list.Add(await _elementHandler.ReadWithLength<TAnyElement>(buf, async));
             return list;
         }
 
@@ -166,9 +189,11 @@ namespace Npgsql.TypeHandlers
         // Since TAny isn't constrained to class? or struct (C# doesn't have a non-nullable constraint that doesn't limit us to either struct or class),
         // we must use the bang operator here to tell the compiler that a null value will never be returned.
 
+        /// <inheritdoc />
         protected internal override int ValidateAndGetLength<TAny>(TAny value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLength(value!, ref lengthCache);
 
+        /// <inheritdoc />
         protected internal override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLength(value!, ref lengthCache);
 
@@ -283,6 +308,7 @@ namespace Npgsql.TypeHandlers
 
         // The default WriteObjectWithLength casts the type handler to INpgsqlTypeHandler<T>, but that's not sufficient for
         // us (need to handle many types of T, e.g. int[], int[,]...)
+        /// <inheritdoc />
         protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => value is DBNull
                 ? WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async)

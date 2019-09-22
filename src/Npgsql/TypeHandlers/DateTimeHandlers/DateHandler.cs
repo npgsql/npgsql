@@ -8,21 +8,36 @@ using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers.DateTimeHandlers
 {
+    /// <summary>
+    /// A factory for type handlers for the PostgreSQL date data type.
+    /// </summary>
+    /// <remarks>
+    /// See http://www.postgresql.org/docs/current/static/datatype-datetime.html.
+    ///
+    /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
+    /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
+    /// Use it at your own risk.
+    /// </remarks>
     [TypeMapping("date", NpgsqlDbType.Date, DbType.Date, typeof(NpgsqlDate))]
-    class DateHandlerFactory : NpgsqlTypeHandlerFactory<DateTime>
+    public class DateHandlerFactory : NpgsqlTypeHandlerFactory<DateTime>
     {
+        /// <inheritdoc />
         public override NpgsqlTypeHandler<DateTime> Create(PostgresType postgresType, NpgsqlConnection conn)
             => new DateHandler(postgresType, conn.Connector!.ConvertInfinityDateTime);
     }
 
+    /// <summary>
+    /// A type handler for the PostgreSQL date data type.
+    /// </summary>
     /// <remarks>
-    /// http://www.postgresql.org/docs/current/static/datatype-datetime.html
+    /// See http://www.postgresql.org/docs/current/static/datatype-datetime.html.
+    ///
+    /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
+    /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
+    /// Use it at your own risk.
     /// </remarks>
-    class DateHandler : NpgsqlSimpleTypeHandlerWithPsv<DateTime, NpgsqlDate>
+    public class DateHandler : NpgsqlSimpleTypeHandlerWithPsv<DateTime, NpgsqlDate>
     {
-        internal const int PostgresEpochJdate = 2451545; // == date2j(2000, 1, 1)
-        internal const int MonthsPerYear = 12;
-
         /// <summary>
         /// Whether to convert positive and negative infinity values to DateTime.{Max,Min}Value when
         /// a DateTime is requested
@@ -31,12 +46,11 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
 
         internal DateHandler(PostgresType postgresType, bool convertInfinityDateTime)
             : base(postgresType)
-        {
-            _convertInfinityDateTime = convertInfinityDateTime;
-        }
+            => _convertInfinityDateTime = convertInfinityDateTime;
 
         #region Read
 
+        /// <inheritdoc />
         public override DateTime Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
             var npgsqlDate = ReadPsv(buf, len, fieldDescription);
@@ -72,12 +86,13 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
 
         #region Write
 
-        public override int ValidateAndGetLength(DateTime value, NpgsqlParameter? parameter)
-            => 4;
+        /// <inheritdoc />
+        public override int ValidateAndGetLength(DateTime value, NpgsqlParameter? parameter) => 4;
 
-        public override int ValidateAndGetLength(NpgsqlDate value, NpgsqlParameter? parameter)
-            => 4;
+        /// <inheritdoc />
+        public override int ValidateAndGetLength(NpgsqlDate value, NpgsqlParameter? parameter) => 4;
 
+        /// <inheritdoc />
         public override void Write(DateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
             NpgsqlDate value2;
@@ -96,6 +111,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             Write(value2, buf, parameter);
         }
 
+        /// <inheritdoc />
         public override void Write(NpgsqlDate value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
             if (value == NpgsqlDate.NegativeInfinity)

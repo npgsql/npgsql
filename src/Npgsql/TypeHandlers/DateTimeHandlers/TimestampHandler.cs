@@ -8,23 +8,38 @@ using Npgsql.TypeMapping;
 
 namespace Npgsql.TypeHandlers.DateTimeHandlers
 {
+    /// <summary>
+    /// A factory for type handlers for the PostgreSQL timestamp data type.
+    /// </summary>
+    /// <remarks>
+    /// See http://www.postgresql.org/docs/current/static/datatype-datetime.html.
+    ///
+    /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
+    /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
+    /// Use it at your own risk.
+    /// </remarks>
     [TypeMapping("timestamp", NpgsqlDbType.Timestamp, new[] { DbType.DateTime, DbType.DateTime2 }, new[] { typeof(NpgsqlDateTime), typeof(DateTime) }, DbType.DateTime)]
-    class TimestampHandlerFactory : NpgsqlTypeHandlerFactory<DateTime>
+    public class TimestampHandlerFactory : NpgsqlTypeHandlerFactory<DateTime>
     {
-        // Check for the legacy floating point timestamps feature
+        /// <inheritdoc />
         public override NpgsqlTypeHandler<DateTime> Create(PostgresType postgresType, NpgsqlConnection conn)
-            => conn.HasIntegerDateTimes
+            => conn.HasIntegerDateTimes  // Check for the legacy floating point timestamps feature
                 ? new TimestampHandler(postgresType, conn.Connector!.ConvertInfinityDateTime)
                 : throw new NotSupportedException($"The deprecated floating-point date/time format is not supported by {nameof(Npgsql)}.");
     }
 
+    /// <summary>
+    /// A type handler for the PostgreSQL timestamp data type.
+    /// </summary>
     /// <remarks>
-    /// http://www.postgresql.org/docs/current/static/datatype-datetime.html
+    /// See http://www.postgresql.org/docs/current/static/datatype-datetime.html.
+    ///
+    /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
+    /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
+    /// Use it at your own risk.
     /// </remarks>
-    class TimestampHandler : NpgsqlSimpleTypeHandlerWithPsv<DateTime, NpgsqlDateTime>
+    public class TimestampHandler : NpgsqlSimpleTypeHandlerWithPsv<DateTime, NpgsqlDateTime>
     {
-        internal const uint TypeOID = 1114;
-
         /// <summary>
         /// Whether to convert positive and negative infinity values to DateTime.{Max,Min}Value when
         /// a DateTime is requested
@@ -36,6 +51,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
 
         #region Read
 
+        /// <inheritdoc />
         public override DateTime Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
             // TODO: Convert directly to DateTime without passing through NpgsqlTimeStamp?
@@ -56,9 +72,13 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             }
         }
 
+        /// <inheritdoc />
         protected override NpgsqlDateTime ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             => ReadTimeStamp(buf, len, fieldDescription);
 
+        /// <summary>
+        /// Reads a timestamp from the buffer as an <see cref="NpgsqlDateTime"/>.
+        /// </summary>
         protected NpgsqlDateTime ReadTimeStamp(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
             var value = buf.ReadInt64();
@@ -98,12 +118,13 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
 
         #region Write
 
-        public override int ValidateAndGetLength(DateTime value, NpgsqlParameter? parameter)
-            => 8;
+        /// <inheritdoc />
+        public override int ValidateAndGetLength(DateTime value, NpgsqlParameter? parameter) => 8;
 
-        public override int ValidateAndGetLength(NpgsqlDateTime value, NpgsqlParameter? parameter)
-            => 8;
+        /// <inheritdoc />
+        public override int ValidateAndGetLength(NpgsqlDateTime value, NpgsqlParameter? parameter) => 8;
 
+        /// <inheritdoc />
         public override void Write(NpgsqlDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
             if (value.IsInfinity)
@@ -132,6 +153,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             }
         }
 
+        /// <inheritdoc />
         public override void Write(DateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
             if (ConvertInfinityDateTime)

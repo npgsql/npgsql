@@ -9,10 +9,18 @@ using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
-#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
-
 namespace Npgsql.TypeHandlers
 {
+    /// <summary>
+    /// A factory for type handlers for PostgreSQL character data types (text, char, varchar, xml...).
+    /// </summary>
+    /// <remarks>
+    /// See https://www.postgresql.org/docs/current/datatype-character.html.
+    ///
+    /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
+    /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
+    /// Use it at your own risk.
+    /// </remarks>
     [TypeMapping("text", NpgsqlDbType.Text,
         new[] { DbType.String, DbType.StringFixedLength, DbType.AnsiString, DbType.AnsiStringFixedLength },
         new[] { typeof(string), typeof(char[]), typeof(char), typeof(ArraySegment<char>) },
@@ -28,10 +36,21 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("unknown")]
     public class TextHandlerFactory : NpgsqlTypeHandlerFactory<string>
     {
+        /// <inheritdoc />
         public override NpgsqlTypeHandler<string> Create(PostgresType pgType, NpgsqlConnection conn)
             => new TextHandler(pgType, conn);
     }
 
+    /// <summary>
+    /// A type handler for PostgreSQL character data types (text, char, varchar, xml...).
+    /// </summary>
+    /// <remarks>
+    /// See https://www.postgresql.org/docs/current/datatype-character.html.
+    ///
+    /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
+    /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
+    /// Use it at your own risk.
+    /// </remarks>
     public class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler<char[]>, INpgsqlTypeHandler<ArraySegment<char>>,
         INpgsqlTypeHandler<char>, INpgsqlTypeHandler<byte[]>, ITextReaderHandler
     {
@@ -47,14 +66,17 @@ namespace Npgsql.TypeHandlers
 
         #endregion
 
+        /// <inheritdoc />
         protected internal TextHandler(PostgresType postgresType, NpgsqlConnection connection)
             : this(postgresType, connection.Connector!.TextEncoding) { }
 
+        /// <inheritdoc />
         protected internal TextHandler(PostgresType postgresType, Encoding encoding)
             : base(postgresType) => _encoding = encoding;
 
         #region Read
 
+        /// <inheritdoc />
         public override ValueTask<string> Read(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription? fieldDescription = null)
         {
             return buf.ReadBytesLeft >= byteLen
@@ -193,6 +215,7 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
+        /// <inheritdoc />
         public override unsafe int ValidateAndGetLength(string value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
             if (lengthCache == null)
@@ -206,6 +229,7 @@ namespace Npgsql.TypeHandlers
                 return lengthCache.Set(_encoding.GetByteCount(p, parameter.Size));
         }
 
+        /// <inheritdoc />
         public virtual int ValidateAndGetLength(char[] value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
             if (lengthCache == null)
@@ -220,6 +244,7 @@ namespace Npgsql.TypeHandlers
             );
         }
 
+        /// <inheritdoc />
         public virtual int ValidateAndGetLength(ArraySegment<char> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
             if (lengthCache == null)
@@ -233,18 +258,22 @@ namespace Npgsql.TypeHandlers
             return lengthCache.Set(value.Array is null ? 0 : _encoding.GetByteCount(value.Array, value.Offset, value.Count));
         }
 
+        /// <inheritdoc />
         public int ValidateAndGetLength(char value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
             _singleCharArray[0] = value;
             return _encoding.GetByteCount(_singleCharArray);
         }
 
+        /// <inheritdoc />
         public int ValidateAndGetLength(byte[] value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => value.Length;
 
+        /// <inheritdoc />
         public override Task Write(string value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => WriteString(value, buf, lengthCache!, parameter, async);
 
+        /// <inheritdoc />
         public virtual Task Write(char[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             var charLen = parameter == null || parameter.Size <= 0 || parameter.Size >= value.Length
@@ -253,6 +282,7 @@ namespace Npgsql.TypeHandlers
             return buf.WriteChars(value, 0, charLen, lengthCache!.GetLast(), async);
         }
 
+        /// <inheritdoc />
         public virtual Task Write(ArraySegment<char> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => value.Array is null ? Task.CompletedTask : buf.WriteChars(value.Array, value.Offset, value.Count, lengthCache!.GetLast(), async);
 
@@ -264,6 +294,7 @@ namespace Npgsql.TypeHandlers
             return buf.WriteString(str, charLen, lengthCache!.GetLast(), async);
         }
 
+        /// <inheritdoc />
         public Task Write(char value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             _singleCharArray[0] = value;
@@ -271,13 +302,13 @@ namespace Npgsql.TypeHandlers
             return buf.WriteChars(_singleCharArray, 0, 1, len, async);
         }
 
+        /// <inheritdoc />
         public Task Write(byte[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => buf.WriteBytesRaw(value, async);
 
         #endregion
 
-#pragma warning disable CA2119 // Seal methods that satisfy private interfaces
+        /// <inheritdoc />
         public virtual TextReader GetTextReader(Stream stream) => new StreamReader(stream);
-#pragma warning restore CA2119 // Seal methods that satisfy private interfaces
     }
 }
