@@ -9,8 +9,15 @@ using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers
 {
+    /// <summary>
+    /// A type handler for the PostgreSQL bytea data type.
+    /// </summary>
     /// <remarks>
-    /// http://www.postgresql.org/docs/current/static/datatype-binary.html
+    /// See http://www.postgresql.org/docs/current/static/datatype-binary.html.
+    ///
+    /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
+    /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
+    /// Use it at your own risk.
     /// </remarks>
     [TypeMapping(
         "bytea",

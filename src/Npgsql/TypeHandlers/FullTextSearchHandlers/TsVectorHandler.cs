@@ -12,19 +12,28 @@ using NpgsqlTypes;
 namespace Npgsql.TypeHandlers.FullTextSearchHandlers
 {
     /// <summary>
-    /// http://www.postgresql.org/docs/current/static/datatype-textsearch.html
+    /// A type handler for the PostgreSQL tsvector data type.
     /// </summary>
+    /// <remarks>
+    /// See http://www.postgresql.org/docs/current/static/datatype-textsearch.html.
+    ///
+    /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
+    /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
+    /// Use it at your own risk.
+    /// </remarks>
     [TypeMapping("tsvector", NpgsqlDbType.TsVector, typeof(NpgsqlTsVector))]
-    class TsVectorHandler : NpgsqlTypeHandler<NpgsqlTsVector>
+    public class TsVectorHandler : NpgsqlTypeHandler<NpgsqlTsVector>
     {
         // 2561 = 2046 (max length lexeme string) + (1) null terminator +
         // 2 (num_pos) + sizeof(int16) * 256 (max_num_pos (positions/wegihts))
         const int MaxSingleLexemeBytes = 2561;
 
+        /// <inheritdoc />
         public TsVectorHandler(PostgresType postgresType) : base(postgresType) {}
 
         #region Read
 
+        /// <inheritdoc />
         public override async ValueTask<NpgsqlTsVector> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
             await buf.Ensure(4, async);
@@ -62,9 +71,11 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
         #region Write
 
         // TODO: Implement length cache
+        /// <inheritdoc />
         public override int ValidateAndGetLength(NpgsqlTsVector value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => 4 + value.Sum(l => Encoding.UTF8.GetByteCount(l.Text) + 1 + 2 + l.Count * 2);
 
+        /// <inheritdoc />
         public override async Task Write(NpgsqlTsVector vector, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             if (buf.WriteSpaceLeft < 4)

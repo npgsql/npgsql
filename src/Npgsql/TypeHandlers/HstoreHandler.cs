@@ -10,15 +10,38 @@ using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers
 {
+    /// <summary>
+    /// A factory for type handlers for the PostgreSQL hstore extension data type, which stores sets of key/value pairs
+    /// within a single PostgreSQL value.
+    /// </summary>
+    /// <remarks>
+    /// See https://www.postgresql.org/docs/current/hstore.html.
+    ///
+    /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
+    /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
+    /// Use it at your own risk.
+    /// </remarks>
     [TypeMapping("hstore", NpgsqlDbType.Hstore, new[] { typeof(Dictionary<string, string?>), typeof(IDictionary<string, string?>) })]
-    class HstoreHandlerFactory : NpgsqlTypeHandlerFactory<Dictionary<string, string?>>
+    public class HstoreHandlerFactory : NpgsqlTypeHandlerFactory<Dictionary<string, string?>>
     {
+        /// <inheritdoc />
         public override NpgsqlTypeHandler<Dictionary<string, string?>> Create(PostgresType postgresType, NpgsqlConnection conn)
             => new HstoreHandler(postgresType, conn);
     }
 
+    /// <summary>
+    /// A type handler for the PostgreSQL hstore extension data type, which stores sets of key/value pairs within a
+    /// single PostgreSQL value.
+    /// </summary>
+    /// <remarks>
+    /// See https://www.postgresql.org/docs/current/hstore.html.
+    ///
+    /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
+    /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
+    /// Use it at your own risk.
+    /// </remarks>
 #pragma warning disable CA1061 // Do not hide base class methods
-    class HstoreHandler : NpgsqlTypeHandler<Dictionary<string, string?>>, INpgsqlTypeHandler<IDictionary<string, string?>>
+    public class HstoreHandler : NpgsqlTypeHandler<Dictionary<string, string?>>, INpgsqlTypeHandler<IDictionary<string, string?>>
     {
         /// <summary>
         /// The text handler to which we delegate encoding/decoding of the actual strings
@@ -30,6 +53,7 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
+        /// <inheritdoc />
         public int ValidateAndGetLength(IDictionary<string, string?> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
             if (lengthCache == null)
@@ -55,9 +79,11 @@ namespace Npgsql.TypeHandlers
             return lengthCache.Lengths[pos] = totalLen;
         }
 
+        /// <inheritdoc />
         public override int ValidateAndGetLength(Dictionary<string, string?> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLength(value, ref lengthCache, parameter);
 
+        /// <inheritdoc />
         public async Task Write(IDictionary<string, string?> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             if (buf.WriteSpaceLeft < 4)
@@ -73,6 +99,7 @@ namespace Npgsql.TypeHandlers
             }
         }
 
+        /// <inheritdoc />
         public override Task Write(Dictionary<string, string?> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => Write(value, buf, lengthCache, parameter, async);
 
@@ -80,6 +107,7 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
+        /// <inheritdoc />
         public override async ValueTask<Dictionary<string, string?>> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
             await buf.Ensure(4, async);

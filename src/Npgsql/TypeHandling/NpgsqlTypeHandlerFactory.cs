@@ -36,7 +36,7 @@ namespace Npgsql.TypeHandling
     public abstract class NpgsqlTypeHandlerFactory<TDefault> : NpgsqlTypeHandlerFactory
     {
         /// <summary>
-        /// Creates a type handler
+        /// Creates a type handler.
         /// </summary>
         public abstract NpgsqlTypeHandler<TDefault> Create(PostgresType pgType, NpgsqlConnection conn);
 

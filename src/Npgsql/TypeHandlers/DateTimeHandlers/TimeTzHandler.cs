@@ -7,20 +7,37 @@ using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers.DateTimeHandlers
 {
+    /// <summary>
+    /// A factory for type handlers for the PostgreSQL timetz data type.
+    /// </summary>
+    /// <remarks>
+    /// See http://www.postgresql.org/docs/current/static/datatype-datetime.html.
+    ///
+    /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
+    /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
+    /// Use it at your own risk.
+    /// </remarks>
     [TypeMapping("time with time zone", NpgsqlDbType.TimeTz)]
-    class TimeTzHandlerFactory : NpgsqlTypeHandlerFactory<DateTimeOffset>
+    public class TimeTzHandlerFactory : NpgsqlTypeHandlerFactory<DateTimeOffset>
     {
-        // Check for the legacy floating point timestamps feature
+        /// <inheritdoc />
         public override NpgsqlTypeHandler<DateTimeOffset> Create(PostgresType postgresType, NpgsqlConnection conn)
-            => conn.HasIntegerDateTimes
+            => conn.HasIntegerDateTimes  // Check for the legacy floating point timestamps feature
                 ? new TimeTzHandler(postgresType)
                 : throw new NotSupportedException($"The deprecated floating-point date/time format is not supported by {nameof(Npgsql)}.");
     }
 
+    /// <summary>
+    /// A type handler for the PostgreSQL timetz data type.
+    /// </summary>
     /// <remarks>
-    /// http://www.postgresql.org/docs/current/static/datatype-datetime.html
+    /// See http://www.postgresql.org/docs/current/static/datatype-datetime.html.
+    ///
+    /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
+    /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
+    /// Use it at your own risk.
     /// </remarks>
-    class TimeTzHandler : NpgsqlSimpleTypeHandler<DateTimeOffset>, INpgsqlSimpleTypeHandler<DateTime>, INpgsqlSimpleTypeHandler<TimeSpan>
+    public class TimeTzHandler : NpgsqlSimpleTypeHandler<DateTimeOffset>, INpgsqlSimpleTypeHandler<DateTime>, INpgsqlSimpleTypeHandler<TimeSpan>
     {
         // Binary Format: int64 expressing microseconds, int32 expressing timezone in seconds, negative
 
@@ -28,6 +45,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
 
         #region Read
 
+        /// <inheritdoc />
         public override DateTimeOffset Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
             // Adjust from 1 microsecond to 100ns. Time zone (in seconds) is inverted.
@@ -46,21 +64,21 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
 
         #region Write
 
-        public override int ValidateAndGetLength(DateTimeOffset value, NpgsqlParameter? parameter)
-            => 12;
+        /// <inheritdoc />
+        public override int ValidateAndGetLength(DateTimeOffset value, NpgsqlParameter? parameter) => 12;
+        /// <inheritdoc />
+        public int ValidateAndGetLength(TimeSpan value, NpgsqlParameter? parameter)                => 12;
+        /// <inheritdoc />
+        public int ValidateAndGetLength(DateTime value, NpgsqlParameter? parameter)                => 12;
 
-        public int ValidateAndGetLength(TimeSpan value, NpgsqlParameter? parameter)
-            => 12;
-
-        public int ValidateAndGetLength(DateTime value, NpgsqlParameter? parameter)
-            => 12;
-
+        /// <inheritdoc />
         public override void Write(DateTimeOffset value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
             buf.WriteInt64(value.TimeOfDay.Ticks / 10);
             buf.WriteInt32(-(int)(value.Offset.Ticks / TimeSpan.TicksPerSecond));
         }
 
+        /// <inheritdoc />
         public void Write(DateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
             buf.WriteInt64(value.TimeOfDay.Ticks / 10);
@@ -80,6 +98,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             }
         }
 
+        /// <inheritdoc />
         public void Write(TimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
             buf.WriteInt64(value.Ticks / 10);

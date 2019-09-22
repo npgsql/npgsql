@@ -9,15 +9,20 @@ using NpgsqlTypes;
 namespace Npgsql.TypeHandlers.NetworkHandlers
 {
     /// <summary>
-    /// Defines the type handler for macaddr and macaddr8.
+    /// A type handler for the PostgreSQL macaddr and macaddr8 data types.
     /// </summary>
     /// <remarks>
-    /// http://www.postgresql.org/docs/current/static/datatype-net-types.html
+    /// See http://www.postgresql.org/docs/current/static/datatype-net-types.html.
+    ///
+    /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
+    /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
+    /// Use it at your own risk.
     /// </remarks>
     [TypeMapping("macaddr8", NpgsqlDbType.MacAddr8)]
     [TypeMapping("macaddr", NpgsqlDbType.MacAddr, typeof(PhysicalAddress))]
-    class MacaddrHandler : NpgsqlSimpleTypeHandler<PhysicalAddress>
+    public class MacaddrHandler : NpgsqlSimpleTypeHandler<PhysicalAddress>
     {
+        /// <inheritdoc />
         public MacaddrHandler(PostgresType postgresType) : base(postgresType) {}
 
         #region Read
