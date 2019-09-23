@@ -189,11 +189,6 @@ namespace Npgsql
         NpgsqlCommand? _currentCommand;
 
         /// <summary>
-        /// If pooled, the timestamp when this connector was returned to the pool.
-        /// </summary>
-        internal DateTime ReleaseTimestamp { get; set; } = DateTime.MaxValue;
-
-        /// <summary>
         /// If pooled, the pool index on which this connector will be returned to the pool.
         /// </summary>
         internal int PoolIndex { get; set; } = int.MaxValue;
