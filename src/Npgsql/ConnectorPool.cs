@@ -99,7 +99,8 @@ namespace Npgsql
         readonly int _pruningSampleSize;
         readonly int[] _pruningSamples;
         int _pruningSampleIndex;
-        bool _pruningTimerEnabled;
+        int _pruningMedianIndex;
+        volatile bool _pruningTimerEnabled;
 
         /// <summary>
         /// Maximum number of possible connections in any pool.
@@ -127,13 +128,14 @@ namespace Npgsql
                 ? connString
                 : settings.ToStringWithoutPassword();
 
-            var pruningInterval = TimeSpan.FromSeconds(Settings.ConnectionIdleLifetime);
+            var connectionIdleLifetime = TimeSpan.FromSeconds(Settings.ConnectionIdleLifetime);
             _pruningSamplingInterval = TimeSpan.FromSeconds(Settings.ConnectionPruningInterval);
-            if (pruningInterval < _pruningSamplingInterval)
-                throw new ArgumentException($"Connection can't have ConnectionIdleLifetime {pruningInterval} under ConnectionPruningInterval {_pruningSamplingInterval}");
+            if (connectionIdleLifetime < _pruningSamplingInterval)
+                throw new ArgumentException($"Connection can't have ConnectionIdleLifetime {connectionIdleLifetime} under ConnectionPruningInterval {_pruningSamplingInterval}");
 
-            _pruningTimer = new Timer(PruningTimerCallback, this, -1, -1);
-            _pruningSampleSize = (int)Math.Ceiling((double)pruningInterval.Ticks / _pruningSamplingInterval.Ticks);
+            _pruningMedianIndex = Divide(_pruningSampleSize, 2);
+            _pruningTimer = new Timer(PruningTimerCallback, this, Timeout.Infinite, Timeout.Infinite);
+            _pruningSampleSize = Divide(Settings.ConnectionIdleLifetime, Settings.ConnectionPruningInterval);
             _pruningSamples = new int[_pruningSampleSize];
             _pruningTimerEnabled = false;
             _idle = new NpgsqlConnector[_max];
@@ -414,8 +416,6 @@ namespace Npgsql
             // We increment Idle, any allocate that is racing us will not match Busy == _max
             // and will not enqueue but try to get our connector.
             Interlocked.Increment(ref State.Idle);
-            connector.ReleaseTimestamp = DateTime.UtcNow;
-            // Prevent reordering with ReleaseTimestamp
             Volatile.Write(ref _idle[connector.PoolIndex], connector);
             CheckInvariants(State);
 
@@ -524,8 +524,9 @@ namespace Npgsql
                     return;
                 }
 
-                // Reset before releasing the lock and starting the prune
-                toPrune = Median(samples);
+                // Calculate median value for pruning, reset index and timer, and release the lock.
+                Array.Sort(samples);
+                toPrune = samples[pool._pruningMedianIndex];
                 pool._pruningSampleIndex = 0;
                 pool._pruningTimer.Change(pool._pruningSamplingInterval, Timeout.InfiniteTimeSpan);
             }
@@ -536,19 +537,11 @@ namespace Npgsql
                 if (Volatile.Read(ref pool.State.Open) <= pool._min || toPrune == 0)
                     return;
 
-                var connector = idle[i];
-                if (connector == null || Interlocked.CompareExchange(ref idle[i], null, connector) != connector)
-                    continue;
+                var connector = Interlocked.Exchange(ref idle[i], null);
+                if (connector == null) continue;
 
                 toPrune -= 1;
                 pool.CloseConnector(connector, true);
-            }
-
-            int Median(int[] values)
-            {
-                var i = (int)Math.Ceiling((double)(values.Length - 1) / 2);
-                Array.Sort(values);
-                return i >= 0 ? values[i] : 0;
             }
         }
 
@@ -610,6 +603,8 @@ namespace Npgsql
         #endregion
 
         #region Misc
+
+        static int Divide(int value, int divisor) => 1 + (value - 1) / divisor;
 
         [Conditional("DEBUG")]
         void CheckInvariants(PoolState state)
