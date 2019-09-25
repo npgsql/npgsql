@@ -7,7 +7,7 @@ environment:
     NPGSQL_TEST_DB: Host=localhost;Database=postgres;Username=postgres;Password=Password12!
     PGUSER: postgres
     PGPASSWORD: Password12!
-    POSTGIS_EXE: postgis-bundle-pg11x64-setup-2.5.2-1.exe
+    POSTGIS_EXE: postgis-bundle-pg11x64-setup-2.5.3-1.exe
     NoPackageAnalysis: true  # Suppresses warning about SemVer 2.0.0 version suffixes when packing
 cache:
   - '%USERPROFILE%\.nuget\packages -> **\*.csproj'
