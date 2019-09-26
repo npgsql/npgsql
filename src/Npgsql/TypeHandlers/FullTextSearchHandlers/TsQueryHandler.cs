@@ -1,46 +1,34 @@
-﻿#region License
-// The PostgreSQL License
-//
-// Copyright (C) 2018 The Npgsql Development Team
-//
-// Permission to use, copy, modify, and distribute this software and its
-// documentation for any purpose, without fee, and without a written
-// agreement is hereby granted, provided that the above copyright notice
-// and this paragraph and the following two paragraphs appear in all copies.
-//
-// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
-// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
-// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
-// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
-// THE POSSIBILITY OF SUCH DAMAGE.
-//
-// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
-// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
-// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-#endregion
-
-using Npgsql.BackendMessages;
-using NpgsqlTypes;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
-using JetBrains.Annotations;
+using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
+using NpgsqlTypes;
+
+// TODO: Need to work on the nullbility here
+#nullable disable
+#pragma warning disable CS8632
 
 namespace Npgsql.TypeHandlers.FullTextSearchHandlers
 {
     /// <summary>
-    /// http://www.postgresql.org/docs/current/static/datatype-textsearch.html
+    /// A type handler for the PostgreSQL tsquery data type.
     /// </summary>
+    /// <remarks>
+    /// See http://www.postgresql.org/docs/current/static/datatype-textsearch.html.
+    ///
+    /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
+    /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
+    /// Use it at your own risk.
+    /// </remarks>
     [TypeMapping("tsquery", NpgsqlDbType.TsQuery, new[] {
         typeof(NpgsqlTsQuery), typeof(NpgsqlTsQueryAnd), typeof(NpgsqlTsQueryEmpty), typeof(NpgsqlTsQueryFollowedBy),
         typeof(NpgsqlTsQueryLexeme), typeof(NpgsqlTsQueryNot), typeof(NpgsqlTsQueryOr), typeof(NpgsqlTsQueryBinOp) })
     ]
-    class TsQueryHandler : NpgsqlTypeHandler<NpgsqlTsQuery>,
+    public class TsQueryHandler : NpgsqlTypeHandler<NpgsqlTsQuery>,
         INpgsqlTypeHandler<NpgsqlTsQueryEmpty>, INpgsqlTypeHandler<NpgsqlTsQueryLexeme>,
         INpgsqlTypeHandler<NpgsqlTsQueryNot>, INpgsqlTypeHandler<NpgsqlTsQueryAnd>,
         INpgsqlTypeHandler<NpgsqlTsQueryOr>, INpgsqlTypeHandler<NpgsqlTsQueryFollowedBy>
@@ -48,21 +36,23 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
         // 1 (type) + 1 (weight) + 1 (is prefix search) + 2046 (max str len) + 1 (null terminator)
         const int MaxSingleTokenBytes = 2050;
 
-        Stack<Tuple<NpgsqlTsQuery, int>> _nodes;
-        NpgsqlTsQuery _value;
-
         readonly Stack<NpgsqlTsQuery> _stack = new Stack<NpgsqlTsQuery>();
+
+        /// <inheritdoc />
+        public TsQueryHandler(PostgresType postgresType) : base(postgresType) {}
 
         #region Read
 
-        public override async ValueTask<NpgsqlTsQuery> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+        /// <inheritdoc />
+        public override async ValueTask<NpgsqlTsQuery> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
             await buf.Ensure(4, async);
             var numTokens = buf.ReadInt32();
             if (numTokens == 0)
                 return new NpgsqlTsQueryEmpty();
 
-            _nodes = new Stack<Tuple<NpgsqlTsQuery, int>>();
+            NpgsqlTsQuery? value = null;
+            var nodes = new Stack<Tuple<NpgsqlTsQuery, int>>();
             len -= 4;
 
             for (var tokenPos = 0; tokenPos < numTokens; tokenPos++)
@@ -77,32 +67,23 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
                     if (operKind == NpgsqlTsQuery.NodeKind.Not)
                     {
                         var node = new NpgsqlTsQueryNot(null);
-                        InsertInTree(node);
-                        _nodes.Push(new Tuple<NpgsqlTsQuery, int>(node, 0));
+                        InsertInTree(node, nodes, ref value);
+                        nodes.Push(new Tuple<NpgsqlTsQuery, int>(node, 0));
                     }
                     else
                     {
-                        NpgsqlTsQuery node;
-                        switch (operKind)
+                        var node = operKind switch
                         {
-                        case NpgsqlTsQuery.NodeKind.And:
-                            node = new NpgsqlTsQueryAnd(null, null);
-                            break;
-                        case NpgsqlTsQuery.NodeKind.Or:
-                            node = new NpgsqlTsQueryOr(null, null);
-                            break;
-                        case NpgsqlTsQuery.NodeKind.Phrase:
-                            var distance = buf.ReadInt16();
-                            node = new NpgsqlTsQueryFollowedBy(null, distance, null);
-                            break;
-                        default:
-                            throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {operKind} of enum {nameof(NpgsqlTsQuery.NodeKind)}. Please file a bug.");
-                        }
+                            NpgsqlTsQuery.NodeKind.And    => (NpgsqlTsQuery)new NpgsqlTsQueryAnd(null, null),
+                            NpgsqlTsQuery.NodeKind.Or     => new NpgsqlTsQueryOr(null, null),
+                            NpgsqlTsQuery.NodeKind.Phrase => new NpgsqlTsQueryFollowedBy(null, buf.ReadInt16(), null),
+                            _ => throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {operKind} of enum {nameof(NpgsqlTsQuery.NodeKind)}. Please file a bug.")
+                        };
 
-                        InsertInTree(node);
+                        InsertInTree(node, nodes, ref value);
 
-                        _nodes.Push(new Tuple<NpgsqlTsQuery, int>(node, 2));
-                        _nodes.Push(new Tuple<NpgsqlTsQuery, int>(node, 1));
+                        nodes.Push(new Tuple<NpgsqlTsQuery, int>(node, 2));
+                        nodes.Push(new Tuple<NpgsqlTsQuery, int>(node, 1));
                     }
                 }
                 else
@@ -110,63 +91,65 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
                     var weight = (NpgsqlTsQueryLexeme.Weight)buf.ReadByte();
                     var prefix = buf.ReadByte() != 0;
                     var str = buf.ReadNullTerminatedString();
-                    InsertInTree(new NpgsqlTsQueryLexeme(str, weight, prefix));
+                    InsertInTree(new NpgsqlTsQueryLexeme(str, weight, prefix), nodes, ref value);
                 }
 
                 len -= buf.ReadPosition - readPos;
             }
 
-            if (_nodes.Count != 0)
+            if (nodes.Count != 0)
                 throw new InvalidOperationException("Internal Npgsql bug, please report.");
 
-            return _value;
+            return value!;
+
+            static void InsertInTree(NpgsqlTsQuery node, Stack<Tuple<NpgsqlTsQuery, int>> nodes, ref NpgsqlTsQuery? value)
+            {
+                if (nodes.Count == 0)
+                    value = node;
+                else
+                {
+                    var parent = nodes.Pop();
+                    if (parent.Item2 == 0)
+                        ((NpgsqlTsQueryNot)parent.Item1).Child = node;
+                    else if (parent.Item2 == 1)
+                        ((NpgsqlTsQueryBinOp)parent.Item1).Left = node;
+                    else
+                        ((NpgsqlTsQueryBinOp)parent.Item1).Right = node;
+                }
+            }
         }
 
-        async ValueTask<NpgsqlTsQueryEmpty> INpgsqlTypeHandler<NpgsqlTsQueryEmpty>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<NpgsqlTsQueryEmpty> INpgsqlTypeHandler<NpgsqlTsQueryEmpty>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
             => (NpgsqlTsQueryEmpty)await Read(buf, len, async, fieldDescription);
 
-        async ValueTask<NpgsqlTsQueryLexeme> INpgsqlTypeHandler<NpgsqlTsQueryLexeme>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<NpgsqlTsQueryLexeme> INpgsqlTypeHandler<NpgsqlTsQueryLexeme>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
             => (NpgsqlTsQueryLexeme)await Read(buf, len, async, fieldDescription);
 
-        async ValueTask<NpgsqlTsQueryNot> INpgsqlTypeHandler<NpgsqlTsQueryNot>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<NpgsqlTsQueryNot> INpgsqlTypeHandler<NpgsqlTsQueryNot>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
             => (NpgsqlTsQueryNot)await Read(buf, len, async, fieldDescription);
 
-        async ValueTask<NpgsqlTsQueryAnd> INpgsqlTypeHandler<NpgsqlTsQueryAnd>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<NpgsqlTsQueryAnd> INpgsqlTypeHandler<NpgsqlTsQueryAnd>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
             => (NpgsqlTsQueryAnd)await Read(buf, len, async, fieldDescription);
 
-        async ValueTask<NpgsqlTsQueryOr> INpgsqlTypeHandler<NpgsqlTsQueryOr>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<NpgsqlTsQueryOr> INpgsqlTypeHandler<NpgsqlTsQueryOr>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
             => (NpgsqlTsQueryOr)await Read(buf, len, async, fieldDescription);
 
-        async ValueTask<NpgsqlTsQueryFollowedBy> INpgsqlTypeHandler<NpgsqlTsQueryFollowedBy>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<NpgsqlTsQueryFollowedBy> INpgsqlTypeHandler<NpgsqlTsQueryFollowedBy>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
             => (NpgsqlTsQueryFollowedBy)await Read(buf, len, async, fieldDescription);
 
         #endregion Read
 
         #region Write
 
-        void InsertInTree([CanBeNull] NpgsqlTsQuery node)
-        {
-            if (_nodes.Count == 0)
-                _value = node;
-            else
-            {
-                var parent = _nodes.Pop();
-                if (parent.Item2 == 0)
-                    ((NpgsqlTsQueryNot)parent.Item1).Child = node;
-                else if (parent.Item2 == 1)
-                    ((NpgsqlTsQueryBinOp)parent.Item1).Left = node;
-                else
-                    ((NpgsqlTsQueryBinOp)parent.Item1).Right = node;
-            }
-        }
-
-        public override int ValidateAndGetLength(NpgsqlTsQuery value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        /// <inheritdoc />
+        public override int ValidateAndGetLength(NpgsqlTsQuery value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => value.Kind == NpgsqlTsQuery.NodeKind.Empty
                 ? 4
                 : 4 + GetNodeLength(value);
 
         int GetNodeLength(NpgsqlTsQuery node)
         {
+            // TODO: Figure out the nullability strategy here
             switch (node.Kind)
             {
             case NpgsqlTsQuery.NodeKind.Lexeme:
@@ -189,7 +172,8 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             }
         }
 
-        public override async Task Write(NpgsqlTsQuery query, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        /// <inheritdoc />
+        public override async Task Write(NpgsqlTsQuery query, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             var numTokens = GetTokenCount(query);
 
@@ -257,44 +241,56 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             return -1;
         }
 
-        public int ValidateAndGetLength(NpgsqlTsQueryOr value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        /// <inheritdoc />
+        public int ValidateAndGetLength(NpgsqlTsQueryOr value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLength((NpgsqlTsQuery)value, ref lengthCache, parameter);
 
-        public int ValidateAndGetLength(NpgsqlTsQueryAnd value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        /// <inheritdoc />
+        public int ValidateAndGetLength(NpgsqlTsQueryAnd value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLength((NpgsqlTsQuery)value, ref lengthCache, parameter);
 
-        public int ValidateAndGetLength(NpgsqlTsQueryNot value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        /// <inheritdoc />
+        public int ValidateAndGetLength(NpgsqlTsQueryNot value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLength((NpgsqlTsQuery)value, ref lengthCache, parameter);
 
-        public int ValidateAndGetLength(NpgsqlTsQueryLexeme value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        /// <inheritdoc />
+        public int ValidateAndGetLength(NpgsqlTsQueryLexeme value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLength((NpgsqlTsQuery)value, ref lengthCache, parameter);
 
-        public int ValidateAndGetLength(NpgsqlTsQueryEmpty value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        /// <inheritdoc />
+        public int ValidateAndGetLength(NpgsqlTsQueryEmpty value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLength((NpgsqlTsQuery)value, ref lengthCache, parameter);
 
-        public int ValidateAndGetLength(NpgsqlTsQueryFollowedBy value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        /// <inheritdoc />
+        public int ValidateAndGetLength(NpgsqlTsQueryFollowedBy value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLength((NpgsqlTsQuery)value, ref lengthCache, parameter);
 
-        public Task Write(NpgsqlTsQueryOr value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        /// <inheritdoc />
+        public Task Write(NpgsqlTsQueryOr value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => Write((NpgsqlTsQuery)value, buf, lengthCache, parameter, async);
 
-        public Task Write(NpgsqlTsQueryAnd value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        /// <inheritdoc />
+        public Task Write(NpgsqlTsQueryAnd value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => Write((NpgsqlTsQuery)value, buf, lengthCache, parameter, async);
 
-        public Task Write(NpgsqlTsQueryNot value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        /// <inheritdoc />
+        public Task Write(NpgsqlTsQueryNot value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => Write((NpgsqlTsQuery)value, buf, lengthCache, parameter, async);
 
-        public Task Write(NpgsqlTsQueryLexeme value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        /// <inheritdoc />
+        public Task Write(NpgsqlTsQueryLexeme value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => Write((NpgsqlTsQuery)value, buf, lengthCache, parameter, async);
 
-        public Task Write(NpgsqlTsQueryEmpty value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        /// <inheritdoc />
+        public Task Write(NpgsqlTsQueryEmpty value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => Write((NpgsqlTsQuery)value, buf, lengthCache, parameter, async);
 
+        /// <inheritdoc />
         public Task Write(
             NpgsqlTsQueryFollowedBy value,
             NpgsqlWriteBuffer buf,
-            NpgsqlLengthCache lengthCache,
-            NpgsqlParameter parameter,
+            NpgsqlLengthCache? lengthCache,
+            NpgsqlParameter? parameter,
             bool async)
             => Write((NpgsqlTsQuery)value, buf, lengthCache, parameter, async);
 

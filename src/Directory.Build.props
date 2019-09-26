@@ -1,8 +1,13 @@
 ﻿<Project>
+  <Import Project="../Directory.Build.props" />
+
+  <!-- Build configuration -->
   <PropertyGroup>
-    <VersionPrefix>4.0.10</VersionPrefix>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
+
+  <!-- Debug configuration -->
   <ItemGroup>
-    <PackageReference Include="SourceLink.Create.CommandLine" Version="2.8.1" PrivateAssets="All" /> 
+    <PackageReference Include="SourceLink.Create.CommandLine" PrivateAssets="All" />
   </ItemGroup>
 </Project>

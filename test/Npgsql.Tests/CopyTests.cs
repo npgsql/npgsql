@@ -1,27 +1,4 @@
-﻿#region License
-// The PostgreSQL License
-//
-// Copyright (C) 2018 The Npgsql Development Team
-//
-// Permission to use, copy, modify, and distribute this software and its
-// documentation for any purpose, without fee, and without a written
-// agreement is hereby granted, provided that the above copyright notice
-// and this paragraph and the following two paragraphs appear in all copies.
-//
-// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
-// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
-// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
-// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
-// THE POSSIBILITY OF SUCH DAMAGE.
-//
-// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
-// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
-// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-#endregion
-
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;
@@ -217,6 +194,39 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
+        public void WrongTableDefinitionRawBinaryCopy()
+        {
+            using (var conn = OpenConnection())
+            {
+                Assert.Throws<PostgresException>(() => conn.BeginRawBinaryCopy("COPY table_is_not_exist (blob) TO STDOUT BINARY"));
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+
+                Assert.Throws<PostgresException>(() => conn.BeginRawBinaryCopy("COPY table_is_not_exist (blob) FROM STDIN BINARY"));
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
+        public void WrongFormatRawBinaryCopy()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("create temp table temp_table(blob bytea)");
+                Assert.Throws<ArgumentException>(() => conn.BeginRawBinaryCopy("COPY temp_table (blob) TO STDOUT"));
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+            }
+
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("create temp table temp_table(blob bytea)");
+                Assert.Throws<ArgumentException>(() => conn.BeginRawBinaryCopy("COPY temp_table (blob) FROM STDIN"));
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+            }
+        }
+
         #endregion
 
         #region Binary
@@ -243,7 +253,8 @@ namespace Npgsql.Tests
                     writer.Write(longString, "text");
                     writer.WriteNull();
 
-                    writer.Complete();
+                    var rowsWritten = writer.Complete();
+                    Assert.That(rowsWritten, Is.EqualTo(3));
                 }
 
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
@@ -303,7 +314,8 @@ namespace Npgsql.Tests
                 {
                     writer.StartRow();
                     writer.Write(data, NpgsqlDbType.Bytea);
-                    writer.Complete();
+                    var rowsWritten = writer.Complete();
+                    Assert.That(rowsWritten, Is.EqualTo(1));
                 }
 
                 Assert.That(conn.ExecuteScalar("SELECT field FROM data"), Is.EqualTo(data));
@@ -322,7 +334,8 @@ namespace Npgsql.Tests
                 {
                     writer.StartRow();
                     writer.Write(data, NpgsqlDbType.Array | NpgsqlDbType.Text);
-                    writer.Complete();
+                    var rowsWritten = writer.Complete();
+                    Assert.That(rowsWritten, Is.EqualTo(1));
                 }
 
                 Assert.That(conn.ExecuteScalar("SELECT field FROM data"), Is.EqualTo(data));
@@ -341,7 +354,8 @@ namespace Npgsql.Tests
                 {
                     writer.StartRow();
                     writer.Write(data, NpgsqlDbType.Text);
-                    writer.Complete();
+                    var rowsWritten = writer.Complete();
+                    Assert.That(rowsWritten, Is.EqualTo(1));
                 }
                 Assert.That(conn.ExecuteScalar("SELECT field FROM data"), Is.EqualTo(data));
             }
@@ -364,6 +378,52 @@ namespace Npgsql.Tests
                     writer.StartRow();
                     writer.Write(data);
                 }
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
+        public void WrongTableDefinitionBinaryImport()
+        {
+            using (var conn = OpenConnection())
+            {
+                // Connection should be kept alive after PostgresException was triggered
+                Assert.Throws<PostgresException>(() => conn.BeginBinaryImport("COPY table_is_not_exist (blob) FROM STDIN BINARY"));
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
+        public void WrongFormatBinaryImport()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("create temp table temp_table(blob bytea)");
+                Assert.Throws<ArgumentException>(() => conn.BeginBinaryImport("COPY temp_table (blob) FROM STDIN"));
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
+        public void WrongTableDefinitionBinaryExport()
+        {
+            using (var conn = OpenConnection())
+            {
+                // Connection should be kept alive after PostgresException was triggered
+                Assert.Throws<PostgresException>(() => conn.BeginBinaryExport("COPY table_is_not_exist (blob) TO STDOUT BINARY"));
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
+        public void WrongFormatBinaryExport()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("create temp table temp_table(blob bytea)");
+                Assert.Throws<ArgumentException>(() => conn.BeginBinaryExport("COPY temp_table (blob) TO STDOUT"));
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
             }
         }
 
@@ -480,7 +540,8 @@ namespace Npgsql.Tests
                 {
                     writer.StartRow();
                     writer.Write(expected);
-                    writer.Complete();
+                    var rowsWritten = writer.Complete();
+                    Assert.That(rowsWritten, Is.EqualTo(1));
                 }
 
                 using (var reader = conn.BeginBinaryExport("COPY data (arr) TO STDIN BINARY"))
@@ -508,7 +569,8 @@ namespace Npgsql.Tests
                 {
                     writer.StartRow();
                     writer.Write(expected);
-                    writer.Complete();
+                    var rowsWritten = writer.Complete();
+                    Assert.That(rowsWritten, Is.EqualTo(1));
                 }
 
                 using (var reader = conn.BeginBinaryExport("COPY data (mymood) TO STDIN BINARY"))
@@ -520,6 +582,28 @@ namespace Npgsql.Tests
         }
 
         enum Mood { Sad, Ok, Happy };
+
+        [Test]
+        public void Read_NullAsNullable_Succeeds()
+        {
+            using var connection = OpenConnection();
+            using var exporter = connection.BeginBinaryExport("COPY (SELECT NULL::int) TO STDOUT BINARY");
+
+            exporter.StartRow();
+
+            Assert.That(exporter.Read<int?>(), Is.Null);
+        }
+
+        [Test]
+        public void Read_NullAsValue_ThrowsInvalidCastException()
+        {
+            using var connection = OpenConnection();
+            using var exporter = connection.BeginBinaryExport("COPY (SELECT NULL::int) TO STDOUT BINARY");
+
+            exporter.StartRow();
+
+            Assert.Throws<InvalidCastException>(() => exporter.Read<int>());
+        }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1440")]
         public void ErrorDuringImport()
@@ -551,7 +635,8 @@ namespace Npgsql.Tests
                     {
                         writer.StartRow();
                         writer.Write(8);
-                        writer.Complete();
+                        var rowsWritten = writer.Complete();
+                        Assert.That(rowsWritten, Is.EqualTo(1));
                         writer.StartRow();
                         Assert.Fail("StartRow should have thrown");
                     }
@@ -705,6 +790,50 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
+        public void WrongTableDefinitionTextImport()
+        {
+            using (var conn = OpenConnection())
+            {
+                Assert.Throws<PostgresException>(() => conn.BeginTextImport("COPY table_is_not_exist (blob) FROM STDIN"));
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
+        public void WrongFormatTextImport()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("create temp table temp_table(blob bytea)");
+                Assert.Throws<Exception>(() => conn.BeginTextImport("COPY temp_table (blob) FROM STDIN BINARY"));
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
+        public void WrongTableDefinitionTextExport()
+        {
+            using (var conn = OpenConnection())
+            {
+                Assert.Throws<PostgresException>(() => conn.BeginTextExport("COPY table_is_not_exist (blob) TO STDOUT"));
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2330")]
+        public void WrongFormatTextExport()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("create temp table temp_table(blob bytea)");
+                Assert.Throws<Exception>(() => conn.BeginTextExport("COPY temp_table (blob) TO STDOUT BINARY"));
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+            }
+        }
+
         #endregion
 
         #region Other
@@ -785,10 +914,11 @@ namespace Npgsql.Tests
                 {
                     writer.StartRow();
                     writer.Write(DBNull.Value, NpgsqlDbType.Integer);
-                    writer.Write((string)null, NpgsqlDbType.Uuid);
+                    writer.Write((string?)null, NpgsqlDbType.Uuid);
                     writer.Write(DBNull.Value);
-                    writer.Write((string)null);
-                    writer.Complete();
+                    writer.Write((string?)null);
+                    var rowsWritten = writer.Complete();
+                    Assert.That(rowsWritten, Is.EqualTo(1));
                 }
                 using (var cmd = new NpgsqlCommand("SELECT foo1,foo2,foo3,foo4 FROM data", conn))
                 using (var reader = cmd.ExecuteReader())
@@ -815,7 +945,8 @@ namespace Npgsql.Tests
                     writer.StartRow();
                     writer.Write(3, NpgsqlDbType.Integer);
                     writer.Write((object)new List<int> { 4, 5, 6 });
-                    writer.Complete();
+                    var rowsWritten = writer.Complete();
+                    Assert.That(rowsWritten, Is.EqualTo(2));
                 }
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(2));
             }
@@ -830,7 +961,7 @@ namespace Npgsql.Tests
         /// </summary>
         void StateAssertions(NpgsqlConnection conn)
         {
-            Assert.That(conn.Connector.State, Is.EqualTo(ConnectorState.Copy));
+            Assert.That(conn.Connector!.State, Is.EqualTo(ConnectorState.Copy));
             Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open | ConnectionState.Fetching));
             Assert.That(() => conn.ExecuteScalar("SELECT 1"), Throws.Exception.TypeOf<NpgsqlOperationInProgressException>());

@@ -1,42 +1,26 @@
-﻿#region License
-// The PostgreSQL License
-//
-// Copyright (C) 2018 The Npgsql Development Team
-//
-// Permission to use, copy, modify, and distribute this software and its
-// documentation for any purpose, without fee, and without a written
-// agreement is hereby granted, provided that the above copyright notice
-// and this paragraph and the following two paragraphs appear in all copies.
-//
-// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
-// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
-// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
-// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
-// THE POSSIBILITY OF SUCH DAMAGE.
-//
-// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
-// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
-// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-#endregion
-
-using System;
-using System.IO;
-using Npgsql.BackendMessages;
-using NpgsqlTypes;
+﻿using System;
 using System.Data;
-using System.Diagnostics;
+using System.IO;
 using System.Text;
 using System.Threading.Tasks;
-using JetBrains.Annotations;
+using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
-
-#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers
 {
+    /// <summary>
+    /// A factory for type handlers for PostgreSQL character data types (text, char, varchar, xml...).
+    /// </summary>
+    /// <remarks>
+    /// See https://www.postgresql.org/docs/current/datatype-character.html.
+    ///
+    /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
+    /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
+    /// Use it at your own risk.
+    /// </remarks>
     [TypeMapping("text", NpgsqlDbType.Text,
         new[] { DbType.String, DbType.StringFixedLength, DbType.AnsiString, DbType.AnsiStringFixedLength },
         new[] { typeof(string), typeof(char[]), typeof(char), typeof(ArraySegment<char>) },
@@ -47,16 +31,26 @@ namespace Npgsql.TypeHandlers
     [TypeMapping("character varying", NpgsqlDbType.Varchar, inferredDbType: DbType.String)]
     [TypeMapping("character", NpgsqlDbType.Char, inferredDbType: DbType.String)]
     [TypeMapping("name", NpgsqlDbType.Name, inferredDbType: DbType.String)]
-    [TypeMapping("json", NpgsqlDbType.Json, inferredDbType: DbType.String)]
     [TypeMapping("refcursor", NpgsqlDbType.Refcursor, inferredDbType: DbType.String)]
     [TypeMapping("citext", NpgsqlDbType.Citext, inferredDbType: DbType.String)]
     [TypeMapping("unknown")]
     public class TextHandlerFactory : NpgsqlTypeHandlerFactory<string>
     {
-        protected override NpgsqlTypeHandler<string> Create(NpgsqlConnection conn)
-            => new TextHandler(conn);
+        /// <inheritdoc />
+        public override NpgsqlTypeHandler<string> Create(PostgresType pgType, NpgsqlConnection conn)
+            => new TextHandler(pgType, conn);
     }
 
+    /// <summary>
+    /// A type handler for PostgreSQL character data types (text, char, varchar, xml...).
+    /// </summary>
+    /// <remarks>
+    /// See https://www.postgresql.org/docs/current/datatype-character.html.
+    ///
+    /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
+    /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
+    /// Use it at your own risk.
+    /// </remarks>
     public class TextHandler : NpgsqlTypeHandler<string>, INpgsqlTypeHandler<char[]>, INpgsqlTypeHandler<ArraySegment<char>>,
         INpgsqlTypeHandler<char>, INpgsqlTypeHandler<byte[]>, ITextReaderHandler
     {
@@ -72,12 +66,18 @@ namespace Npgsql.TypeHandlers
 
         #endregion
 
-        protected internal TextHandler(NpgsqlConnection connection)
-            => _encoding = connection.Connector.TextEncoding;
+        /// <inheritdoc />
+        protected internal TextHandler(PostgresType postgresType, NpgsqlConnection connection)
+            : this(postgresType, connection.Connector!.TextEncoding) { }
+
+        /// <inheritdoc />
+        protected internal TextHandler(PostgresType postgresType, Encoding encoding)
+            : base(postgresType) => _encoding = encoding;
 
         #region Read
 
-        public override ValueTask<string> Read(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription fieldDescription = null)
+        /// <inheritdoc />
+        public override ValueTask<string> Read(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription? fieldDescription = null)
         {
             return buf.ReadBytesLeft >= byteLen
                 ? new ValueTask<string>(buf.ReadString(byteLen))
@@ -117,7 +117,7 @@ namespace Npgsql.TypeHandlers
             }
         }
 
-        async ValueTask<char[]> INpgsqlTypeHandler<char[]>.Read(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription fieldDescription)
+        async ValueTask<char[]> INpgsqlTypeHandler<char[]>.Read(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription? fieldDescription)
         {
             if (byteLen <= buf.Size)
             {
@@ -145,7 +145,7 @@ namespace Npgsql.TypeHandlers
             return buf.TextEncoding.GetChars(tempBuf);
         }
 
-        async ValueTask<char> INpgsqlTypeHandler<char>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<char> INpgsqlTypeHandler<char>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
         {
             // Make sure we have enough bytes in the buffer for a single character
             var maxBytes = Math.Min(buf.TextEncoding.GetMaxByteCount(1), len);
@@ -153,7 +153,7 @@ namespace Npgsql.TypeHandlers
                 await buf.ReadMore(async);
 
             var decoder = buf.TextEncoding.GetDecoder();
-            decoder.Convert(buf.Buffer, buf.ReadPosition, maxBytes, _singleCharArray, 0, 1, true, out var bytesUsed, out var charsUsed, out var completed);
+            decoder.Convert(buf.Buffer, buf.ReadPosition, maxBytes, _singleCharArray, 0, 1, true, out var bytesUsed, out var charsUsed, out _);
             buf.Skip(len - bytesUsed);
 
             if (charsUsed < 1)
@@ -162,13 +162,13 @@ namespace Npgsql.TypeHandlers
             return _singleCharArray[0];
         }
 
-        ValueTask<ArraySegment<char>> INpgsqlTypeHandler<ArraySegment<char>>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        ValueTask<ArraySegment<char>> INpgsqlTypeHandler<ArraySegment<char>>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
         {
             buf.Skip(len);
             throw new NpgsqlSafeReadException(new NotSupportedException("Only writing ArraySegment<char> to PostgreSQL text is supported, no reading."));
         }
 
-        ValueTask<byte[]> INpgsqlTypeHandler<byte[]>.Read(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription fieldDescription)
+        ValueTask<byte[]> INpgsqlTypeHandler<byte[]>.Read(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription? fieldDescription)
         {
             var bytes = new byte[byteLen];
             if (buf.ReadBytesLeft >= byteLen)
@@ -215,7 +215,8 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        public override unsafe int ValidateAndGetLength(string value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        /// <inheritdoc />
+        public override unsafe int ValidateAndGetLength(string value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
             if (lengthCache == null)
                 lengthCache = new NpgsqlLengthCache(1);
@@ -228,7 +229,8 @@ namespace Npgsql.TypeHandlers
                 return lengthCache.Set(_encoding.GetByteCount(p, parameter.Size));
         }
 
-        public virtual int ValidateAndGetLength(char[] value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        /// <inheritdoc />
+        public virtual int ValidateAndGetLength(char[] value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
             if (lengthCache == null)
                 lengthCache = new NpgsqlLengthCache(1);
@@ -242,7 +244,8 @@ namespace Npgsql.TypeHandlers
             );
         }
 
-        public virtual int ValidateAndGetLength(ArraySegment<char> value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        /// <inheritdoc />
+        public virtual int ValidateAndGetLength(ArraySegment<char> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
             if (lengthCache == null)
                 lengthCache = new NpgsqlLengthCache(1);
@@ -255,51 +258,57 @@ namespace Npgsql.TypeHandlers
             return lengthCache.Set(value.Array is null ? 0 : _encoding.GetByteCount(value.Array, value.Offset, value.Count));
         }
 
-        public int ValidateAndGetLength(char value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        /// <inheritdoc />
+        public int ValidateAndGetLength(char value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
             _singleCharArray[0] = value;
             return _encoding.GetByteCount(_singleCharArray);
         }
 
-        public int ValidateAndGetLength(byte[] value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        /// <inheritdoc />
+        public int ValidateAndGetLength(byte[] value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => value.Length;
 
-        public override Task Write(string value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-            => WriteString(value, buf, lengthCache, parameter, async);
+        /// <inheritdoc />
+        public override Task Write(string value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+            => WriteString(value, buf, lengthCache!, parameter, async);
 
-        public virtual Task Write(char[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        /// <inheritdoc />
+        public virtual Task Write(char[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             var charLen = parameter == null || parameter.Size <= 0 || parameter.Size >= value.Length
                 ? value.Length
                 : parameter.Size;
-            return buf.WriteChars(value, 0, charLen, lengthCache.GetLast(), async);
+            return buf.WriteChars(value, 0, charLen, lengthCache!.GetLast(), async);
         }
 
-        public virtual Task Write(ArraySegment<char> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-            => value.Array is null ? PGUtil.CompletedTask : buf.WriteChars(value.Array, value.Offset, value.Count, lengthCache.GetLast(), async);
+        /// <inheritdoc />
+        public virtual Task Write(ArraySegment<char> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+            => value.Array is null ? Task.CompletedTask : buf.WriteChars(value.Array, value.Offset, value.Count, lengthCache!.GetLast(), async);
 
-        Task WriteString(string str, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, [CanBeNull] NpgsqlParameter parameter, bool async)
+        Task WriteString(string str, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter? parameter, bool async)
         {
             var charLen = parameter == null || parameter.Size <= 0 || parameter.Size >= str.Length
                 ? str.Length
                 : parameter.Size;
-            return buf.WriteString(str, charLen, lengthCache.GetLast(), async);
+            return buf.WriteString(str, charLen, lengthCache!.GetLast(), async);
         }
 
-        public Task Write(char value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        /// <inheritdoc />
+        public Task Write(char value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             _singleCharArray[0] = value;
             var len = _encoding.GetByteCount(_singleCharArray);
             return buf.WriteChars(_singleCharArray, 0, 1, len, async);
         }
 
-        public Task Write(byte[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        /// <inheritdoc />
+        public Task Write(byte[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => buf.WriteBytesRaw(value, async);
 
         #endregion
 
-#pragma warning disable CA2119 // Seal methods that satisfy private interfaces
+        /// <inheritdoc />
         public virtual TextReader GetTextReader(Stream stream) => new StreamReader(stream);
-#pragma warning restore CA2119 // Seal methods that satisfy private interfaces
     }
 }

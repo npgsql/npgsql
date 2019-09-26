@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Data;
-using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -17,12 +17,15 @@ namespace Npgsql
         /// <summary>
         /// Gets or sets the strongly-typed value of the parameter.
         /// </summary>
-        public T TypedValue { get; set; }
+        [MaybeNull, AllowNull]
+        public T TypedValue { get; set; } = default!;
 
         /// <summary>
         /// Gets or sets the value of the parameter. This delegates to <see cref="TypedValue"/>.
         /// </summary>
+#nullable disable
         public override object Value
+#nullable restore
         {
             get => TypedValue;
             set => TypedValue = (T)value;
@@ -74,16 +77,12 @@ namespace Npgsql
                 Handler = typeMapper.GetByNpgsqlDbType(_npgsqlDbType.Value);
             else if (_dataTypeName != null)
                 Handler = typeMapper.GetByDataTypeName(_dataTypeName);
-            else if (_dbType.HasValue)
-                Handler = typeMapper.GetByDbType(_dbType.Value);
             else
                 Handler = typeMapper.GetByClrType(typeof(T));
         }
 
         internal override int ValidateAndGetLength()
         {
-            Debug.Assert(Handler != null);
-
             if (TypedValue == null)
                 return 0;
 
@@ -92,15 +91,12 @@ namespace Npgsql
                 return 0;
 
             var lengthCache = LengthCache;
-            var len = Handler.ValidateAndGetLength(TypedValue, ref lengthCache, this);
+            var len = Handler!.ValidateAndGetLength(TypedValue, ref lengthCache, this);
             LengthCache = lengthCache;
             return len;
         }
 
         internal override Task WriteWithLength(NpgsqlWriteBuffer buf, bool async)
-        {
-            Debug.Assert(Handler != null);
-            return Handler.WriteWithLengthInternal(TypedValue, buf, LengthCache, this, async);
-        }
+            => Handler!.WriteWithLengthInternal(TypedValue, buf, LengthCache, this, async);
     }
 }

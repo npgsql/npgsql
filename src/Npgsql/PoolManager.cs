@@ -1,28 +1,5 @@
-﻿#region License
-// The PostgreSQL License
-//
-// Copyright (C) 2018 The Npgsql Development Team
-//
-// Permission to use, copy, modify, and distribute this software and its
-// documentation for any purpose, without fee, and without a written
-// agreement is hereby granted, provided that the above copyright notice
-// and this paragraph and the following two paragraphs appear in all copies.
-//
-// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
-// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
-// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
-// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
-// THE POSSIBILITY OF SUCH DAMAGE.
-//
-// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
-// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
-// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-#endregion
-
-using System;
-using System.Diagnostics;
+﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 
 namespace Npgsql
@@ -39,11 +16,13 @@ namespace Npgsql
     {
         internal const int InitialPoolsSize = 10;
 
-        static readonly object _lock = new object();
+        static readonly object Lock = new object();
         static volatile (string Key, ConnectorPool Pool)[] _pools = new (string, ConnectorPool)[InitialPoolsSize];
         static volatile int _nextSlot;
 
-        internal static bool TryGetValue(string key, out ConnectorPool pool)
+        internal static (string Key, ConnectorPool Pool)[] Pools => _pools;
+
+        internal static bool TryGetValue(string key, [NotNullWhen(true)] out ConnectorPool? pool)
         {
             // Note that pools never get removed. _pools is strictly append-only.
             var nextSlot = _nextSlot;
@@ -86,7 +65,7 @@ namespace Npgsql
 
         internal static ConnectorPool GetOrAdd(string key, ConnectorPool pool)
         {
-            lock (_lock)
+            lock (Lock)
             {
                 if (TryGetValue(key, out var result))
                     return result;
@@ -108,15 +87,13 @@ namespace Npgsql
 
         internal static void Clear(string connString)
         {
-            Debug.Assert(connString != null);
-
             if (TryGetValue(connString, out var pool))
                 pool.Clear();
         }
 
         internal static void ClearAll()
         {
-            lock (_lock)
+            lock (Lock)
             {
                 var pools = _pools;
                 for (var i = 0; i < _nextSlot; i++)
@@ -143,7 +120,7 @@ namespace Npgsql
         /// </summary>
         internal static void Reset()
         {
-            lock (_lock)
+            lock (Lock)
             {
                 ClearAll();
                 _pools = new (string, ConnectorPool)[InitialPoolsSize];

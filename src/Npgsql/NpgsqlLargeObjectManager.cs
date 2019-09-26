@@ -1,27 +1,4 @@
-﻿#region License
-// The PostgreSQL License
-//
-// Copyright (C) 2018 The Npgsql Development Team
-//
-// Permission to use, copy, modify, and distribute this software and its
-// documentation for any purpose, without fee, and without a written
-// agreement is hereby granted, provided that the above copyright notice
-// and this paragraph and the following two paragraphs appear in all copies.
-//
-// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
-// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
-// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
-// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
-// THE POSSIBILITY OF SUCH DAMAGE.
-//
-// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
-// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
-// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-#endregion
-
-using System;
+﻿using System;
 using System.Data;
 using System.Threading;
 using System.Threading.Tasks;
@@ -33,10 +10,10 @@ namespace Npgsql
     /// </summary>
     public class NpgsqlLargeObjectManager
     {
-        const int INV_WRITE = 0x00020000;
-        const int INV_READ = 0x00040000;
+        const int InvWrite = 0x00020000;
+        const int InvRead = 0x00040000;
 
-        internal readonly NpgsqlConnection _connection;
+        internal NpgsqlConnection Connection { get; }
 
         /// <summary>
         /// The largest chunk size (in bytes) read and write operations will read/write each roundtrip to the network. Default 4 MB.
@@ -49,7 +26,7 @@ namespace Npgsql
         /// <param name="connection"></param>
         public NpgsqlLargeObjectManager(NpgsqlConnection connection)
         {
-            _connection = connection;
+            Connection = connection;
             MaxTransferBlockSize = 4 * 1024 * 1024; // 4MB
         }
 
@@ -58,14 +35,16 @@ namespace Npgsql
         /// </summary>
         internal async Task<T> ExecuteFunction<T>(string function, bool async, params object[] arguments)
         {
-            using (var command = new NpgsqlCommand(function, _connection))
+            using var command = new NpgsqlCommand(function, Connection)
             {
-                command.CommandType = CommandType.StoredProcedure;
-                command.CommandText = function;
-                foreach (var argument in arguments)
-                    command.Parameters.Add(new NpgsqlParameter { Value = argument });
-                return (T)(async ? await command.ExecuteScalarAsync() : command.ExecuteScalar());
-            }
+                CommandType = CommandType.StoredProcedure,
+                CommandText = function
+            };
+
+            foreach (var argument in arguments)
+                command.Parameters.Add(new NpgsqlParameter { Value = argument });
+
+            return (T)(async ? await command.ExecuteScalarAsync() : command.ExecuteScalar());
         }
 
         /// <summary>
@@ -74,20 +53,24 @@ namespace Npgsql
         /// <returns></returns>
         internal async Task<int> ExecuteFunctionGetBytes(string function, byte[] buffer, int offset, int len, bool async, params object[] arguments)
         {
-            using (var command = new NpgsqlCommand(function, _connection))
+            using var command = new NpgsqlCommand(function, Connection)
             {
-                command.CommandType = CommandType.StoredProcedure;
-                foreach (var argument in arguments)
-                    command.Parameters.Add(new NpgsqlParameter { Value = argument });
-                using (var reader = async ? await command.ExecuteReaderAsync(CommandBehavior.SequentialAccess) : command.ExecuteReader(CommandBehavior.SequentialAccess))
-                {
-                    if (async)
-                        await reader.ReadAsync();
-                    else
-                        reader.Read();
-                    return (int)reader.GetBytes(0, 0, buffer, offset, len);
-                }
-            }
+                CommandType = CommandType.StoredProcedure
+            };
+
+            foreach (var argument in arguments)
+                command.Parameters.Add(new NpgsqlParameter { Value = argument });
+
+            using var reader = async
+                ? await command.ExecuteReaderAsync(CommandBehavior.SequentialAccess)
+                : command.ExecuteReader(CommandBehavior.SequentialAccess);
+
+            if (async)
+                await reader.ReadAsync();
+            else
+                reader.Read();
+
+            return (int)reader.GetBytes(0, 0, buffer, offset, len);
         }
 
         /// <summary>
@@ -103,13 +86,13 @@ namespace Npgsql
         /// Create an empty large object in the database. If an oid is specified but is already in use, an PostgresException will be thrown.
         /// </summary>
         /// <param name="preferredOid">A preferred oid, or specify 0 if one should be automatically assigned</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
         /// <returns>The oid for the large object created</returns>
         /// <exception cref="PostgresException">If an oid is already in use</exception>
-#pragma warning disable CA1801
-        public Task<uint> CreateAsync(uint preferredOid, CancellationToken cancellationToken)
-#pragma warning restore CA1801 // Review unused parameters
-            => Create(preferredOid, true);
+        public Task<uint> CreateAsync(uint preferredOid, CancellationToken cancellationToken = default)
+            => cancellationToken.IsCancellationRequested
+                ? Task.FromCanceled<uint>(cancellationToken)
+                : Create(preferredOid, true);
 
         Task<uint> Create(uint preferredOid, bool async)
             => ExecuteFunction<uint>("lo_create", async, (int)preferredOid);
@@ -132,18 +115,19 @@ namespace Npgsql
         /// Note that this method, as well as operations on the stream must be wrapped inside a transaction.
         /// </summary>
         /// <param name="oid">Oid of the object</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
         /// <returns>An NpgsqlLargeObjectStream</returns>
-        public Task<NpgsqlLargeObjectStream> OpenReadAsync(uint oid, CancellationToken cancellationToken)
+        public Task<NpgsqlLargeObjectStream> OpenReadAsync(uint oid, CancellationToken cancellationToken = default)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled<NpgsqlLargeObjectStream>(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
                 return OpenRead(oid, true);
         }
 
         async Task<NpgsqlLargeObjectStream> OpenRead(uint oid, bool async)
         {
-            var fd = await ExecuteFunction<int>("lo_open", async, (int)oid, INV_READ);
+            var fd = await ExecuteFunction<int>("lo_open", async, (int)oid, InvRead);
             return new NpgsqlLargeObjectStream(this, fd, false);
         }
 
@@ -161,18 +145,19 @@ namespace Npgsql
         /// Note that this method, as well as operations on the stream must be wrapped inside a transaction.
         /// </summary>
         /// <param name="oid">Oid of the object</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
         /// <returns>An NpgsqlLargeObjectStream</returns>
-        public Task<NpgsqlLargeObjectStream> OpenReadWriteAsync(uint oid, CancellationToken cancellationToken)
+        public Task<NpgsqlLargeObjectStream> OpenReadWriteAsync(uint oid, CancellationToken cancellationToken = default)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled<NpgsqlLargeObjectStream>(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
                 return OpenReadWrite(oid, true);
         }
 
         async Task<NpgsqlLargeObjectStream> OpenReadWrite(uint oid, bool async)
         {
-            var fd = await ExecuteFunction<int>("lo_open", async, (int)oid, INV_READ | INV_WRITE);
+            var fd = await ExecuteFunction<int>("lo_open", async, (int)oid, InvRead | InvWrite);
             return new NpgsqlLargeObjectStream(this, fd, true);
         }
 
@@ -187,10 +172,11 @@ namespace Npgsql
         /// Deletes a large object on the backend.
         /// </summary>
         /// <param name="oid">Oid of the object to delete</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        public Task UnlinkAsync(uint oid, CancellationToken cancellationToken)
+        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        public Task UnlinkAsync(uint oid, CancellationToken cancellationToken = default)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
                 return ExecuteFunction<object>("lo_unlink", true, (int)oid);
         }
@@ -208,10 +194,11 @@ namespace Npgsql
         /// </summary>
         /// <param name="oid">Oid of the object to export</param>
         /// <param name="path">Path to write the file on the backend</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        public Task ExportRemoteAsync(uint oid, string path, CancellationToken cancellationToken)
+        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        public Task ExportRemoteAsync(uint oid, string path, CancellationToken cancellationToken = default)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
                 return ExecuteFunction<object>("lo_export", true, (int)oid, path);
         }
@@ -229,10 +216,11 @@ namespace Npgsql
         /// </summary>
         /// <param name="path">Path to read the file on the backend</param>
         /// <param name="oid">A preferred oid, or specify 0 if one should be automatically assigned</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
-        public Task ImportRemoteAsync(string path, uint oid, CancellationToken cancellationToken)
+        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        public Task ImportRemoteAsync(string path, uint oid, CancellationToken cancellationToken = default)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
                 return ExecuteFunction<object>("lo_import", true, path, (int)oid);
         }
@@ -241,7 +229,7 @@ namespace Npgsql
         /// Since PostgreSQL 9.3, large objects larger than 2GB can be handled, up to 4TB.
         /// This property returns true whether the PostgreSQL version is >= 9.3.
         /// </summary>
-        public bool Has64BitSupport => _connection.PostgreSqlVersion >= new Version(9, 3);
+        public bool Has64BitSupport => Connection.PostgreSqlVersion >= new Version(9, 3);
 
         /*
         internal enum Function : uint

@@ -1,132 +1,160 @@
-﻿#region License
-// The PostgreSQL License
-//
-// Copyright (C) 2018 The Npgsql Development Team
-//
-// Permission to use, copy, modify, and distribute this software and its
-// documentation for any purpose, without fee, and without a written
-// agreement is hereby granted, provided that the above copyright notice
-// and this paragraph and the following two paragraphs appear in all copies.
-//
-// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
-// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
-// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
-// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
-// THE POSSIBILITY OF SUCH DAMAGE.
-//
-// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
-// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
-// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-#endregion
-
-using System;
+﻿using System;
 using Npgsql.Logging;
-using System.Runtime.Serialization;
 
 namespace Npgsql.BackendMessages
 {
     [Serializable]
     class ErrorOrNoticeMessage
     {
-        internal string Severity { get; private set; }
-        internal string Code { get; private set; }
-        internal string Message { get; private set; }
-        internal string Detail { get; private set; }
-        internal string Hint { get; private set; }
-        internal int Position { get; private set; }
-        internal int InternalPosition { get; private set; }
-        internal string InternalQuery { get; private set; }
-        internal string Where { get; private set; }
-        internal string SchemaName { get; private set; }
-        internal string TableName { get; private set; }
-        internal string ColumnName { get; private set; }
-        internal string DataTypeName { get; private set; }
-        internal string ConstraintName { get; private set; }
-        internal string File { get; private set; }
-        internal string Line { get; private set; }
-        internal string Routine { get; private set; }
+        internal string Severity { get; }
+        internal string InvariantSeverity { get; }
+        internal string Code { get; }
+        internal string Message { get; }
+        internal string? Detail { get; }
+        internal string? Hint { get; }
+        internal int Position { get; }
+        internal int InternalPosition { get; }
+        internal string? InternalQuery { get; }
+        internal string? Where { get; }
+        internal string? SchemaName { get; }
+        internal string? TableName { get; }
+        internal string? ColumnName { get; }
+        internal string? DataTypeName { get; }
+        internal string? ConstraintName { get; }
+        internal string? File { get; }
+        internal string? Line { get; }
+        internal string? Routine { get; }
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(ErrorOrNoticeMessage));
 
         // ReSharper disable once FunctionComplexityOverflow
-        internal ErrorOrNoticeMessage(NpgsqlReadBuffer buf)
+        internal static ErrorOrNoticeMessage Load(NpgsqlReadBuffer buf)
         {
+            (string? severity, string? invariantSeverity, string? code, string? message, string? detail, string? hint) = (null, null, null, null, null, null);
+            var (position, internalPosition) = (0, 0);
+            (string? internalQuery, string? where) = (null, null);
+            (string? schemaName, string? tableName, string? columnName, string? dataTypeName, string? constraintName) =
+                (null, null, null, null, null);
+            (string? file, string? line, string? routine) = (null, null, null);
+
             while (true)
             {
-                var code = (ErrorFieldTypeCode)buf.ReadByte();
-                switch (code) {
+                var fieldCode = (ErrorFieldTypeCode)buf.ReadByte();
+                switch (fieldCode) {
                 case ErrorFieldTypeCode.Done:
                     // Null terminator; error message fully consumed.
-                    return;
+                    goto End;
                 case ErrorFieldTypeCode.Severity:
-                    Severity = buf.ReadNullTerminatedString(PGUtil.RelaxedUTF8Encoding);
+                    severity = buf.ReadNullTerminatedStringRelaxed();
+                    break;
+                case ErrorFieldTypeCode.InvariantSeverity:
+                    invariantSeverity = buf.ReadNullTerminatedStringRelaxed();
                     break;
                 case ErrorFieldTypeCode.Code:
-                    Code = buf.ReadNullTerminatedString();
+                    code = buf.ReadNullTerminatedStringRelaxed();
                     break;
                 case ErrorFieldTypeCode.Message:
-                    Message = buf.ReadNullTerminatedString(PGUtil.RelaxedUTF8Encoding);
+                    message = buf.ReadNullTerminatedStringRelaxed();
                     break;
                 case ErrorFieldTypeCode.Detail:
-                    Detail = buf.ReadNullTerminatedString(PGUtil.RelaxedUTF8Encoding);
+                    detail = buf.ReadNullTerminatedStringRelaxed();
                     break;
                 case ErrorFieldTypeCode.Hint:
-                    Hint = buf.ReadNullTerminatedString(PGUtil.RelaxedUTF8Encoding);
+                    hint = buf.ReadNullTerminatedStringRelaxed();
                     break;
                 case ErrorFieldTypeCode.Position:
-                    var positionStr = buf.ReadNullTerminatedString();
-                    if (!int.TryParse(positionStr, out var position)) {
+                    var positionStr = buf.ReadNullTerminatedStringRelaxed();
+                    if (!int.TryParse(positionStr, out var tmpPosition)) {
                         Log.Warn("Non-numeric position in ErrorResponse: " + positionStr);
                         continue;
                     }
-                    Position = position;
+                    position = tmpPosition;
                     break;
                 case ErrorFieldTypeCode.InternalPosition:
-                    var internalPositionStr = buf.ReadNullTerminatedString();
-                    if (!Int32.TryParse(internalPositionStr, out var internalPosition)) {
+                    var internalPositionStr = buf.ReadNullTerminatedStringRelaxed();
+                    if (!int.TryParse(internalPositionStr, out var internalPositionTmp)) {
                         Log.Warn("Non-numeric position in ErrorResponse: " + internalPositionStr);
                         continue;
                     }
-                    InternalPosition = internalPosition;
+                    internalPosition = internalPositionTmp;
                     break;
                 case ErrorFieldTypeCode.InternalQuery:
-                    InternalQuery = buf.ReadNullTerminatedString();
+                    internalQuery = buf.ReadNullTerminatedStringRelaxed();
                     break;
                 case ErrorFieldTypeCode.Where:
-                    Where = buf.ReadNullTerminatedString();
+                    where = buf.ReadNullTerminatedStringRelaxed();
                     break;
                 case ErrorFieldTypeCode.File:
-                    File = buf.ReadNullTerminatedString(PGUtil.RelaxedUTF8Encoding);
+                    file = buf.ReadNullTerminatedStringRelaxed();
                     break;
                 case ErrorFieldTypeCode.Line:
-                    Line = buf.ReadNullTerminatedString();
+                    line = buf.ReadNullTerminatedStringRelaxed();
                     break;
                 case ErrorFieldTypeCode.Routine:
-                    Routine = buf.ReadNullTerminatedString();
+                    routine = buf.ReadNullTerminatedStringRelaxed();
                     break;
                 case ErrorFieldTypeCode.SchemaName:
-                    SchemaName = buf.ReadNullTerminatedString();
+                    schemaName = buf.ReadNullTerminatedStringRelaxed();
                     break;
                 case ErrorFieldTypeCode.TableName:
-                    TableName = buf.ReadNullTerminatedString();
+                    tableName = buf.ReadNullTerminatedStringRelaxed();
                     break;
                 case ErrorFieldTypeCode.ColumnName:
-                    ColumnName = buf.ReadNullTerminatedString();
+                    columnName = buf.ReadNullTerminatedStringRelaxed();
                     break;
                 case ErrorFieldTypeCode.DataTypeName:
-                    DataTypeName = buf.ReadNullTerminatedString();
+                    dataTypeName = buf.ReadNullTerminatedStringRelaxed();
                     break;
                 case ErrorFieldTypeCode.ConstraintName:
-                    ConstraintName = buf.ReadNullTerminatedString();
+                    constraintName = buf.ReadNullTerminatedStringRelaxed();
                     break;
                 default:
                     // Unknown error field; consume and discard.
-                    buf.ReadNullTerminatedString();
+                    buf.ReadNullTerminatedStringRelaxed();
                     break;
                 }
             }
+
+            End:
+            if (severity == null)
+                throw new NpgsqlException("Severity not received in server error message");
+            if (code == null)
+                throw new NpgsqlException("Code not received in server error message");
+            if (message == null)
+                throw new NpgsqlException("Message not received in server error message");
+
+            return new ErrorOrNoticeMessage(
+                severity, invariantSeverity ?? severity, code, message,
+                detail, hint, position, internalPosition, internalQuery, where,
+                schemaName, tableName, columnName, dataTypeName, constraintName,
+                file, line, routine);
+
+        }
+
+        internal ErrorOrNoticeMessage(
+            string severity, string invariantSeverity, string code, string message,
+            string? detail = null, string? hint = null, int position = 0, int internalPosition = 0, string? internalQuery = null, string? where = null,
+            string? schemaName = null, string? tableName = null, string? columnName = null, string? dataTypeName = null, string? constraintName = null,
+            string? file = null, string? line = null, string? routine = null)
+        {
+            Severity = severity;
+            InvariantSeverity = invariantSeverity;
+            Code = code;
+            Message = message;
+            Detail = detail;
+            Hint = hint;
+            Position = position;
+            InternalPosition = internalPosition;
+            InternalQuery = internalQuery;
+            Where = where;
+            SchemaName = schemaName;
+            TableName = tableName;
+            ColumnName = columnName;
+            DataTypeName = dataTypeName;
+            ConstraintName = constraintName;
+            File = file;
+            Line = line;
+            Routine = routine;
         }
 
         /// <summary>
@@ -136,6 +164,7 @@ namespace Npgsql.BackendMessages
         {
             Done = 0,
             Severity = (byte)'S',
+            InvariantSeverity = (byte)'V',
             Code = (byte)'C',
             Message = (byte)'M',
             Detail = (byte)'D',

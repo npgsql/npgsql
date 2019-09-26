@@ -1,31 +1,8 @@
-﻿#region License
-// The PostgreSQL License
-//
-// Copyright (C) 2018 The Npgsql Development Team
-//
-// Permission to use, copy, modify, and distribute this software and its
-// documentation for any purpose, without fee, and without a written
-// agreement is hereby granted, provided that the above copyright notice
-// and this paragraph and the following two paragraphs appear in all copies.
-//
-// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
-// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
-// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
-// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
-// THE POSSIBILITY OF SUCH DAMAGE.
-//
-// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
-// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
-// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-#endregion
-
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using NUnit.Framework;
-using NpgsqlTypes;
 using Npgsql.Tests;
+using NpgsqlTypes;
+using NUnit.Framework;
 
 // ReSharper disable AccessToModifiedClosure
 // ReSharper disable AccessToDisposedClosure
@@ -80,8 +57,13 @@ namespace Npgsql.PluginTests
         class Foo
         {
             public int Bar { get; set; }
-            public override bool Equals(object obj) => (obj as Foo)?.Bar == Bar;
+            public override bool Equals(object? obj) => (obj as Foo)?.Bar == Bar;
             public override int GetHashCode() => Bar.GetHashCode();
+        }
+
+        class Bar
+        {
+            public int A { get; set; }
         }
 
         [Test]
@@ -139,6 +121,29 @@ namespace Npgsql.PluginTests
             }
         }
 
+        [Test, Ignore("https://github.com/npgsql/npgsql/issues/2568")]
+        public void ClrTypeMappingTwoTypes()
+        {
+            var value1 = new Foo { Bar = 8 };
+            var value2 = new Bar { A = 8 };
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand(@"SELECT @p1, @p2", conn))
+            {
+                conn.TypeMapper.UseJsonNet(new[] { typeof(Foo), typeof(Bar) });
+
+                cmd.Parameters.AddWithValue("p1", value1);
+                cmd.Parameters.AddWithValue("p2", value1);
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    var actual1 = reader.GetFieldValue<Foo>(0);
+                    Assert.That(actual1.Bar, Is.EqualTo(8));
+                    var actual2 = reader.GetFieldValue<Bar>(1);
+                    Assert.That(actual2.A, Is.EqualTo(8));
+                }
+            }
+        }
+
         [Test]
         public void RoundtripClrArray()
         {
@@ -164,7 +169,7 @@ namespace Npgsql.PluginTests
         class DateWrapper
         {
             public System.DateTime Date;
-            public override bool Equals(object obj) => (obj as DateWrapper)?.Date == Date;
+            public override bool Equals(object? obj) => (obj as DateWrapper)?.Date == Date;
             public override int GetHashCode() => Date.GetHashCode();
         }
 
@@ -213,7 +218,7 @@ namespace Npgsql.PluginTests
         [Test]
         public void RoundtripJsonCustomSerializerSettings() => RoundtripCustomSerializerSettings(asJsonb : false);
 
-        protected override NpgsqlConnection OpenConnection(string connectionString = null)
+        protected override NpgsqlConnection OpenConnection(string? connectionString = null)
         {
             var conn = base.OpenConnection(connectionString);
             conn.TypeMapper.UseJsonNet();

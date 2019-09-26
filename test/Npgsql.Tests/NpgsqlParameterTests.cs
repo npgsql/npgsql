@@ -1,39 +1,10 @@
-#region License
-// The PostgreSQL License
-//
-// Copyright (C) 2018 The Npgsql Development Team
-//
-// Permission to use, copy, modify, and distribute this software and its
-// documentation for any purpose, without fee, and without a written
-// agreement is hereby granted, provided that the above copyright notice
-// and this paragraph and the following two paragraphs appear in all copies.
-//
-// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
-// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
-// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
-// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
-// THE POSSIBILITY OF SUCH DAMAGE.
-//
-// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
-// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
-// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-#endregion
-
-
 #define NET_2_0
 
+using NpgsqlTypes;
+using NUnit.Framework;
 using System;
 using System.Data;
 using System.Data.Common;
-using System.IO;
-using System.Threading;
-using System.Xml;
-using Npgsql;
-using NpgsqlTypes;
-
-using NUnit.Framework;
 
 namespace Npgsql.Tests
 {
@@ -92,6 +63,31 @@ namespace Npgsql.Tests
                 p2.DataTypeName = "text";
                 Assert.That(() => cmd.ExecuteScalar(), Throws.Exception.TypeOf<InvalidCastException>());
             }
+        }
+
+        [Test]
+        public void SettingDbTypeSetsNpgsqlDbType()
+        {
+            var p = new NpgsqlParameter();
+            p.DbType = DbType.Binary;
+            Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Bytea));
+        }
+
+        [Test]
+        public void SettingNpgsqlDbTypeSetsDbType()
+        {
+            var p = new NpgsqlParameter();
+            p.NpgsqlDbType = NpgsqlDbType.Bytea;
+            Assert.That(p.DbType, Is.EqualTo(DbType.Binary));
+        }
+
+        [Test]
+        public void SettingValueDoesNotChangeDbType()
+        {
+            var p = new NpgsqlParameter { DbType = DbType.String, NpgsqlDbType = NpgsqlDbType.Bytea };
+            p.Value = 8;
+            Assert.That(p.DbType, Is.EqualTo(DbType.Binary));
+            Assert.That(p.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Bytea));
         }
 
         // Older tests
@@ -173,7 +169,7 @@ namespace Npgsql.Tests
         [Test]
         public void Constructor2_Value_Null()
         {
-            var p = new NpgsqlParameter("address", (object)null);
+            var p = new NpgsqlParameter("address", null);
             Assert.AreEqual(DbType.Object, p.DbType, "A:DbType");
             Assert.AreEqual(ParameterDirection.Input, p.Direction, "A:Direction");
             Assert.IsFalse(p.IsNullable, "A:IsNullable");
@@ -774,6 +770,32 @@ namespace Npgsql.Tests
             paramBase.Scale = 42;
 
             Assert.AreEqual((byte)42, paramBase.Scale);
+        }
+
+        [Test]
+        public void ResolveHandler_NullValue_ThrowsInvalidOperationException()
+        {
+            using var connection = OpenConnection();
+            using var command = new NpgsqlCommand("SELECT @p", connection)
+            {
+                Parameters = { new NpgsqlParameter("p", null) }
+            };
+
+            Assert.That(() => command.ExecuteReader(), Throws.InvalidOperationException);
+        }
+
+        [Test]
+        public void ResolveHandler_NullableValue_Succeeds()
+        {
+            using var connection = OpenConnection();
+            using var command = new NpgsqlCommand("SELECT @p", connection)
+            {
+                Parameters = { new NpgsqlParameter<int?>("p", null) }
+            };
+            using var reader = command.ExecuteReader();
+
+            Assert.That(reader.Read(), Is.True);
+            Assert.That(reader.GetFieldValue<int?>(0), Is.Null);
         }
     }
 }

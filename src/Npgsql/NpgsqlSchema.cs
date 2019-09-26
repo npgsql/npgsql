@@ -1,32 +1,10 @@
-#region License
-// The PostgreSQL License
-//
-// Copyright (C) 2018 The Npgsql Development Team
-//
-// Permission to use, copy, modify, and distribute this software and its
-// documentation for any purpose, without fee, and without a written
-// agreement is hereby granted, provided that the above copyright notice
-// and this paragraph and the following two paragraphs appear in all copies.
-//
-// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
-// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
-// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
-// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
-// THE POSSIBILITY OF SUCH DAMAGE.
-//
-// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
-// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
-// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-#endregion
-
 using System;
 using System.Data;
+using System.Data.Common;
 using System.Globalization;
-using System.Reflection;
 using System.Text;
-using JetBrains.Annotations;
+using Npgsql.PostgresTypes;
+using NpgsqlTypes;
 
 namespace Npgsql
 {
@@ -35,34 +13,107 @@ namespace Npgsql
     /// </summary>
     static class NpgsqlSchema
     {
-        const string MetaDataResourceName = "Npgsql.NpgsqlMetaData.xml";
+        public static DataTable GetSchema(NpgsqlConnection conn, string? collectionName, string?[]? restrictions)
+        {
+            if (collectionName is null)
+                throw new ArgumentNullException(nameof(collectionName));
+            if (collectionName.Length == 0)
+                throw new ArgumentException("Collection name cannot be empty.", nameof(collectionName));
+
+            return collectionName.ToUpperInvariant() switch
+            {
+                "METADATACOLLECTIONS"   => GetMetaDataCollections(),
+                "RESTRICTIONS"          => GetRestrictions(),
+                "DATASOURCEINFORMATION" => GetDataSourceInformation(conn),
+                "DATATYPES"             => GetDataTypes(conn),
+                "RESERVEDWORDS"         => GetReservedWords(),
+                // custom collections for npgsql
+                "DATABASES"             => GetDatabases(conn, restrictions),
+                "SCHEMATA"              => GetSchemata(conn, restrictions),
+                "TABLES"                => GetTables(conn, restrictions),
+                "COLUMNS"               => GetColumns(conn, restrictions),
+                "VIEWS"                 => GetViews(conn, restrictions),
+                "USERS"                 => GetUsers(conn, restrictions),
+                "INDEXES"               => GetIndexes(conn, restrictions),
+                "INDEXCOLUMNS"          => GetIndexColumns(conn, restrictions),
+                "CONSTRAINTS"           => GetConstraints(conn, restrictions, collectionName),
+                "PRIMARYKEY"            => GetConstraints(conn, restrictions, collectionName),
+                "UNIQUEKEYS"            => GetConstraints(conn, restrictions, collectionName),
+                "FOREIGNKEYS"           => GetConstraints(conn, restrictions, collectionName),
+                "CONSTRAINTCOLUMNS"     => GetConstraintColumns(conn, restrictions),
+                _ => throw new ArgumentOutOfRangeException(nameof(collectionName), collectionName, "Invalid collection name.")
+            };
+        }
 
         /// <summary>
         /// Returns the MetaDataCollections that lists all possible collections.
         /// </summary>
         /// <returns>The MetaDataCollections</returns>
-        internal static DataTable GetMetaDataCollections()
+        static DataTable GetMetaDataCollections()
         {
-            var ds = new DataSet { Locale = CultureInfo.InvariantCulture };
-            LoadMetaDataXmlResource(ds);
-            return ds.Tables["MetaDataCollections"].Copy();
+            var table = new DataTable("MetaDataCollections");
+            table.Columns.Add("CollectionName", typeof(string));
+            table.Columns.Add("NumberOfRestrictions", typeof(int));
+            table.Columns.Add("NumberOfIdentifierParts", typeof(int));
+
+            table.Rows.Add("MetaDataCollections", 0, 0);
+            table.Rows.Add("DataSourceInformation", 0, 0);
+            table.Rows.Add("Restrictions", 0, 0);
+            table.Rows.Add("DataTypes", 0, 0);  // TODO: Support type name restriction
+            table.Rows.Add("Databases", 1, 1);
+            table.Rows.Add("Tables", 4, 3);
+            table.Rows.Add("Columns", 4, 4);
+            table.Rows.Add("Views", 3, 3);
+            table.Rows.Add("Users", 1, 1);
+            table.Rows.Add("Indexes", 4, 4);
+            table.Rows.Add("IndexColumns", 5, 5);
+
+            return table;
         }
 
         /// <summary>
         /// Returns the Restrictions that contains the meaning and position of the values in the restrictions array.
         /// </summary>
         /// <returns>The Restrictions</returns>
-        internal static DataTable GetRestrictions()
+        static DataTable GetRestrictions()
         {
-            var ds = new DataSet { Locale = CultureInfo.InvariantCulture };
-            LoadMetaDataXmlResource(ds);
-            return ds.Tables["Restrictions"].Copy();
+            var table = new DataTable("Restrictions");
+
+            table.Columns.Add("CollectionName", typeof(string));
+            table.Columns.Add("RestrictionName", typeof(string));
+            table.Columns.Add("RestrictionDefault", typeof(string));
+            table.Columns.Add("RestrictionNumber", typeof(int));
+
+            table.Rows.Add("Database", "Name", "Name", 1);
+            table.Rows.Add("Tables", "Catalog", "table_catalog", 1);
+            table.Rows.Add("Tables", "Schema", "schema_catalog", 2);
+            table.Rows.Add("Tables", "Table", "table_name", 3);
+            table.Rows.Add("Tables", "TableType", "table_type", 4);
+            table.Rows.Add("Columns", "Catalog", "table_catalog", 1);
+            table.Rows.Add("Columns", "Schema", "table_schema", 2);
+            table.Rows.Add("Columns", "TableName", "table_name", 3);
+            table.Rows.Add("Columns", "Column", "column_name", 4);
+            table.Rows.Add("Views", "Catalog", "table_catalog", 1);
+            table.Rows.Add("Views", "Schema", "table_schema", 2);
+            table.Rows.Add("Views", "Table", "table_name", 3);
+            table.Rows.Add("Users", "User", "user_name", 1);
+            table.Rows.Add("Indexes", "Catalog", "table_catalog", 1);
+            table.Rows.Add("Indexes", "Schema", "table_schema", 2);
+            table.Rows.Add("Indexes", "Table", "table_name", 3);
+            table.Rows.Add("Indexes", "Index", "index_name", 4);
+            table.Rows.Add("IndexColumns", "Catalog", "table_catalog", 1);
+            table.Rows.Add("IndexColumns", "Schema", "table_schema", 2);
+            table.Rows.Add("IndexColumns", "Table", "table_name", 3);
+            table.Rows.Add("IndexColumns", "Index", "index_name", 4);
+            table.Rows.Add("IndexColumns", "Column", "column_name", 5);
+
+            return table;
         }
 
-        static NpgsqlCommand BuildCommand(NpgsqlConnection conn, StringBuilder query, [CanBeNull] string[] restrictions, [CanBeNull] params string[] names)
+        static NpgsqlCommand BuildCommand(NpgsqlConnection conn, StringBuilder query, string?[]? restrictions, params string[]? names)
             => BuildCommand(conn, query, restrictions, true, names);
 
-        static NpgsqlCommand BuildCommand(NpgsqlConnection conn, StringBuilder query, [CanBeNull] string[] restrictions, bool addWhere, [CanBeNull] params string[] names)
+        static NpgsqlCommand BuildCommand(NpgsqlConnection conn, StringBuilder query, string?[]? restrictions, bool addWhere, params string[]? names)
         {
             var command = new NpgsqlCommand();
 
@@ -70,7 +121,7 @@ namespace Npgsql
             {
                 for (var i = 0; i < restrictions.Length && i < names.Length; ++i)
                 {
-                    if (restrictions[i] != null && restrictions[i].Length != 0)
+                    if (restrictions[i] is string restriction && restriction.Length != 0)
                     {
                         if (addWhere)
                         {
@@ -82,11 +133,11 @@ namespace Npgsql
                             query.Append(" AND ");
                         }
 
-                        string paramName = RemoveSpecialChars(names[i]);
+                        var paramName = RemoveSpecialChars(names[i]);
 
                         query.AppendFormat("{0} = :{1}", names[i], paramName);
 
-                        command.Parameters.Add(new NpgsqlParameter(paramName, restrictions[i]));
+                        command.Parameters.Add(new NpgsqlParameter(paramName, restriction));
                     }
                 }
             }
@@ -105,11 +156,11 @@ namespace Npgsql
         /// <param name="conn">The database connection on which to run the metadataquery.</param>
         /// <param name="restrictions">The restrictions to filter the collection.</param>
         /// <returns>The Databases</returns>
-        internal static DataTable GetDatabases(NpgsqlConnection conn, [CanBeNull] string[] restrictions)
+        static DataTable GetDatabases(NpgsqlConnection conn, string?[]? restrictions)
         {
             var databases = new DataTable("Databases") { Locale = CultureInfo.InvariantCulture };
 
-            databases.Columns.AddRange(new [] {
+            databases.Columns.AddRange(new[] {
                 new DataColumn("database_name"),
                 new DataColumn("owner"),
                 new DataColumn("encoding")
@@ -126,11 +177,11 @@ namespace Npgsql
             return databases;
         }
 
-        internal static DataTable GetSchemata(NpgsqlConnection conn, [CanBeNull] string[] restrictions)
+        static DataTable GetSchemata(NpgsqlConnection conn, string?[]? restrictions)
         {
             var schemata = new DataTable("Schemata") { Locale = CultureInfo.InvariantCulture };
 
-            schemata.Columns.AddRange(new [] {
+            schemata.Columns.AddRange(new[] {
                 new DataColumn("catalog_name"),
                 new DataColumn("schema_name"),
                 new DataColumn("schema_owner")
@@ -160,7 +211,7 @@ namespace Npgsql
         /// <param name="conn">The database connection on which to run the metadataquery.</param>
         /// <param name="restrictions">The restrictions to filter the collection.</param>
         /// <returns>The Tables</returns>
-        internal static DataTable GetTables(NpgsqlConnection conn, [CanBeNull] string[] restrictions)
+        static DataTable GetTables(NpgsqlConnection conn, string?[]? restrictions)
         {
             var tables = new DataTable("Tables") { Locale = CultureInfo.InvariantCulture };
 
@@ -177,7 +228,7 @@ namespace Npgsql
             getTables.Append(@"
 SELECT table_catalog, table_schema, table_name, table_type
 FROM information_schema.tables
-WHERE table_type = 'BASE TABLE' AND table_schema NOT IN ('pg_catalog', 'information_schema')");
+WHERE table_type IN ('BASE TABLE', 'FOREIGN') AND table_schema NOT IN ('pg_catalog', 'information_schema')");
 
             using (var command = BuildCommand(conn, getTables, restrictions, false, "table_catalog", "table_schema", "table_name", "table_type"))
             using (var adapter = new NpgsqlDataAdapter(command))
@@ -192,11 +243,11 @@ WHERE table_type = 'BASE TABLE' AND table_schema NOT IN ('pg_catalog', 'informat
         /// <param name="conn">The database connection on which to run the metadataquery.</param>
         /// <param name="restrictions">The restrictions to filter the collection.</param>
         /// <returns>The Columns.</returns>
-        internal static DataTable GetColumns(NpgsqlConnection conn, [CanBeNull] string[] restrictions)
+        static DataTable GetColumns(NpgsqlConnection conn, string?[]? restrictions)
         {
             var columns = new DataTable("Columns") { Locale = CultureInfo.InvariantCulture };
 
-            columns.Columns.AddRange(new [] {
+            columns.Columns.AddRange(new[] {
                 new DataColumn("table_catalog"), new DataColumn("table_schema"), new DataColumn("table_name"),
                 new DataColumn("column_name"), new DataColumn("ordinal_position", typeof(int)), new DataColumn("column_default"),
                 new DataColumn("is_nullable"), new DataColumn("data_type"),
@@ -225,7 +276,7 @@ WHERE table_type = 'BASE TABLE' AND table_schema NOT IN ('pg_catalog', 'informat
         /// <param name="conn">The database connection on which to run the metadataquery.</param>
         /// <param name="restrictions">The restrictions to filter the collection.</param>
         /// <returns>The Views</returns>
-        internal static DataTable GetViews(NpgsqlConnection conn, [CanBeNull] string[] restrictions)
+        static DataTable GetViews(NpgsqlConnection conn, string?[]? restrictions)
         {
             var views = new DataTable("Views") { Locale = CultureInfo.InvariantCulture };
 
@@ -255,7 +306,7 @@ WHERE table_schema NOT IN ('pg_catalog', 'information_schema')");
         /// <param name="conn">The database connection on which to run the metadataquery.</param>
         /// <param name="restrictions">The restrictions to filter the collection.</param>
         /// <returns>The Users.</returns>
-        internal static DataTable GetUsers(NpgsqlConnection conn, [CanBeNull] string[] restrictions)
+        static DataTable GetUsers(NpgsqlConnection conn, string?[]? restrictions)
         {
             var users = new DataTable("Users") { Locale = CultureInfo.InvariantCulture };
 
@@ -272,7 +323,7 @@ WHERE table_schema NOT IN ('pg_catalog', 'information_schema')");
             return users;
         }
 
-        internal static DataTable GetIndexes(NpgsqlConnection conn, [CanBeNull] string[] restrictions)
+        static DataTable GetIndexes(NpgsqlConnection conn, string?[]? restrictions)
         {
             var indexes = new DataTable("Indexes") { Locale = CultureInfo.InvariantCulture };
 
@@ -308,7 +359,7 @@ where
             return indexes;
         }
 
-        internal static DataTable GetIndexColumns(NpgsqlConnection conn, [CanBeNull] string[] restrictions)
+        static DataTable GetIndexColumns(NpgsqlConnection conn, string?[]? restrictions)
         {
             var indexColumns = new DataTable("IndexColumns") { Locale = CultureInfo.InvariantCulture };
 
@@ -345,7 +396,7 @@ where
             return indexColumns;
         }
 
-        internal static DataTable GetConstraints(NpgsqlConnection conn, [CanBeNull] string[] restrictions, [CanBeNull] string constraintType)
+        static DataTable GetConstraints(NpgsqlConnection conn, string?[]? restrictions, string? constraintType)
         {
             var getConstraints = new StringBuilder();
 
@@ -378,16 +429,15 @@ select 'UNIQUE KEY' as ""CONSTRAINT_TYPE"", 'u' as ""contype""
             else
                 constraintType = "Constraints";
 
-            using (var command = BuildCommand(conn, getConstraints, restrictions, false, "current_database()", "pgtn.nspname", "pgt.relname", "pgc.conname"))
-            using (var adapter = new NpgsqlDataAdapter(command))
-            {
-                var table = new DataTable(constraintType) { Locale = CultureInfo.InvariantCulture };
-                adapter.Fill(table);
-                return table;
-            }
+            using var command = BuildCommand(conn, getConstraints, restrictions, false, "current_database()", "pgtn.nspname", "pgt.relname", "pgc.conname");
+            using var adapter = new NpgsqlDataAdapter(command);
+            var table = new DataTable(constraintType) { Locale = CultureInfo.InvariantCulture };
+
+            adapter.Fill(table);
+            return table;
         }
 
-        internal static DataTable GetConstraintColumns(NpgsqlConnection conn, [CanBeNull] string[] restrictions)
+        static DataTable GetConstraintColumns(NpgsqlConnection conn, string?[]? restrictions)
         {
             var getConstraintColumns = new StringBuilder();
 
@@ -412,23 +462,311 @@ select 'UNIQUE KEY' as constraint_type, 'u' as contype
 ) mapping_table on mapping_table.contype = c.contype
 and n.nspname not in ('pg_catalog', 'pg_toast')");
 
-            using (var command = BuildCommand(conn, getConstraintColumns, restrictions, false, "current_database()", "n.nspname", "t.relname", "c.conname", "a.attname"))
-            using (var adapter = new NpgsqlDataAdapter(command))
+            using var command = BuildCommand(conn, getConstraintColumns, restrictions, false, "current_database()", "n.nspname", "t.relname", "c.conname", "a.attname");
+            using var adapter = new NpgsqlDataAdapter(command);
+            var table = new DataTable("ConstraintColumns") { Locale = CultureInfo.InvariantCulture };
+
+            adapter.Fill(table);
+            return table;
+        }
+
+        static DataTable GetDataSourceInformation(NpgsqlConnection conn)
+        {
+            var table = new DataTable("DataSourceInformation");
+            var row = table.Rows.Add();
+
+            table.Columns.Add("CompositeIdentifierSeparatorPattern", typeof(string));
+            // TODO: DefaultCatalog? Was in XML (unfilled) but isn't in docs
+            table.Columns.Add("DataSourceProductName", typeof(string));
+            table.Columns.Add("DataSourceProductVersion", typeof(string));
+            table.Columns.Add("DataSourceProductVersionNormalized", typeof(string));
+            table.Columns.Add("GroupByBehavior", typeof(GroupByBehavior));
+            table.Columns.Add("IdentifierPattern", typeof(string));
+            table.Columns.Add("IdentifierCase", typeof(IdentifierCase));
+            table.Columns.Add("OrderByColumnsInSelect", typeof(bool));
+            table.Columns.Add("ParameterMarkerFormat", typeof(string));
+            table.Columns.Add("ParameterMarkerPattern", typeof(string));
+            table.Columns.Add("ParameterNameMaxLength", typeof(int));
+            table.Columns.Add("QuotedIdentifierPattern", typeof(string));
+            table.Columns.Add("QuotedIdentifierCase", typeof(IdentifierCase));
+            table.Columns.Add("ParameterNamePattern", typeof(string));
+            table.Columns.Add("StatementSeparatorPattern", typeof(string));
+            table.Columns.Add("StringLiteralPattern", typeof(string));
+            table.Columns.Add("SupportedJoinOperators", typeof(SupportedJoinOperators));
+
+            var version = conn.PostgreSqlVersion;
+            var normalizedVersion = $"{version.Major:00}.{version.Minor:00}";
+            if (version.Build >= 0)
+                normalizedVersion += $".{version.Build:00}";
+
+            row["CompositeIdentifierSeparatorPattern"] = @"\.";
+            row["DataSourceProductName"] = "Npgsql";
+            row["DataSourceProductVersion"] = version.ToString();
+            row["DataSourceProductVersionNormalized"] = normalizedVersion;
+            row["GroupByBehavior"] = GroupByBehavior.Unrelated;
+            row["IdentifierPattern"] = @"(^\[\p{Lo}\p{Lu}\p{Ll}_@#][\p{Lo}\p{Lu}\p{Ll}\p{Nd}@$#_]*$)|(^\[[^\]\0]|\]\]+\]$)|(^\""[^\""\0]|\""\""+\""$)";
+            row["IdentifierCase"] = IdentifierCase.Insensitive;
+            row["OrderByColumnsInSelect"] = false;
+            row["ParameterMarkerFormat"] = @"{0}";  // TODO: Not sure
+            row["ParameterMarkerPattern"] = @"@[\p{Lo}\p{Lu}\p{Ll}\p{Lm}_@#][\p{Lo}\p{Lu}\p{Ll}\p{Lm}\p{Nd}\uff3f_@#\$]*(?=\s+|$)";
+            row["ParameterNameMaxLength"] = 63; // For function out parameters
+            row["QuotedIdentifierPattern"] = @"""(([^\""]|\""\"")*)""";
+            row["QuotedIdentifierCase"] = IdentifierCase.Sensitive;
+            row["ParameterNamePattern"] = @"^[\p{Lo}\p{Lu}\p{Ll}\p{Lm}_@#][\p{Lo}\p{Lu}\p{Ll}\p{Lm}\p{Nd}\uff3f_@#\$]*(?=\s+|$)";
+            row["StatementSeparatorPattern"] = ";";
+            row["StringLiteralPattern"] = @"'(([^']|'')*)'";
+            row["SupportedJoinOperators"] =
+                SupportedJoinOperators.FullOuter |
+                SupportedJoinOperators.Inner |
+                SupportedJoinOperators.LeftOuter |
+                SupportedJoinOperators.RightOuter;
+
+            return table;
+        }
+
+        #region DataTypes
+
+        static DataTable GetDataTypes(NpgsqlConnection conn)
+        {
+            var connector = conn.CheckReadyAndGetConnector();
+
+            var table = new DataTable("DataTypes");
+
+            table.Columns.Add("TypeName", typeof(string));
+            table.Columns.Add("ColumnSize", typeof(long));
+            table.Columns.Add("CreateFormat", typeof(string));
+            table.Columns.Add("CreateParameters", typeof(string));
+            table.Columns.Add("DataType", typeof(string));
+            table.Columns.Add("IsAutoIncrementable", typeof(bool));
+            table.Columns.Add("IsBestMatch", typeof(bool));
+            table.Columns.Add("IsCaseSensitive", typeof(bool));
+            table.Columns.Add("IsConcurrencyType", typeof(bool));
+            table.Columns.Add("IsFixedLength", typeof(bool));
+            table.Columns.Add("IsFixedPrecisionAndScale", typeof(bool));
+            table.Columns.Add("IsLiteralSupported", typeof(bool));
+            table.Columns.Add("IsLong", typeof(bool));
+            table.Columns.Add("IsNullable", typeof(bool));
+            table.Columns.Add("IsSearchable", typeof(bool));
+            table.Columns.Add("IsSearchableWithLike", typeof(bool));
+            table.Columns.Add("IsUnsigned", typeof(bool));
+            table.Columns.Add("LiteralPrefix", typeof(string));
+            table.Columns.Add("LiteralSuffix", typeof(string));
+            table.Columns.Add("MaximumScale", typeof(short));
+            table.Columns.Add("MinimumScale", typeof(short));
+            table.Columns.Add("NativeDataType", typeof(string));
+            table.Columns.Add("ProviderDbType", typeof(int));
+
+            // Npgsql-specific
+            table.Columns.Add("OID", typeof(uint));
+
+            // TODO: Support type name restriction
+
+            foreach (var baseType in connector.DatabaseInfo.BaseTypes)
             {
-                var table = new DataTable("ConstraintColumns") { Locale = CultureInfo.InvariantCulture };
-                adapter.Fill(table);
-                return table;
+                if (!connector.TypeMapper.Mappings.TryGetValue(baseType.Name, out var mapping) &&
+                    !connector.TypeMapper.Mappings.TryGetValue(baseType.FullName, out mapping))
+                    continue;
+
+                var row = table.Rows.Add();
+
+                PopulateDefaultDataTypeInfo(row, baseType);
+                PopulateHardcodedDataTypeInfo(row, baseType);
+
+                if (mapping.ClrTypes.Length > 0)
+                    row["DataType"] = mapping.ClrTypes[0].FullName;
+                if (mapping.NpgsqlDbType.HasValue)
+                    row["ProviderDbType"] = (int)mapping.NpgsqlDbType.Value;
+            }
+
+            foreach (var arrayType in connector.DatabaseInfo.ArrayTypes)
+            {
+                if (!connector.TypeMapper.Mappings.TryGetValue(arrayType.Element.Name, out var elementMapping) &&
+                    !connector.TypeMapper.Mappings.TryGetValue(arrayType.Element.FullName, out elementMapping))
+                    continue;
+
+                var row = table.Rows.Add();
+
+                PopulateDefaultDataTypeInfo(row, arrayType.Element);
+                // Populate hardcoded values based on the element type (e.g. citext[] is case-insensitive).
+                PopulateHardcodedDataTypeInfo(row, arrayType.Element);
+
+                row["TypeName"] = arrayType.DisplayName;
+                row["OID"] = arrayType.OID;
+                row["CreateFormat"] += "[]";
+                if (elementMapping.ClrTypes.Length > 0)
+                    row["DataType"] = elementMapping.ClrTypes[0].MakeArrayType().FullName;
+                if (elementMapping.NpgsqlDbType.HasValue)
+                    row["ProviderDbType"] = (int)(elementMapping.NpgsqlDbType.Value | NpgsqlDbType.Array);
+            }
+
+            foreach (var rangeType in connector.DatabaseInfo.RangeTypes)
+            {
+                if (!connector.TypeMapper.Mappings.TryGetValue(rangeType.Subtype.Name, out var elementMapping) &&
+                    !connector.TypeMapper.Mappings.TryGetValue(rangeType.Subtype.FullName, out elementMapping))
+                    continue;
+
+                var row = table.Rows.Add();
+
+                PopulateDefaultDataTypeInfo(row, rangeType.Subtype);
+                // Populate hardcoded values based on the element type (e.g. citext[] is case-insensitive).
+                PopulateHardcodedDataTypeInfo(row, rangeType.Subtype);
+
+                row["TypeName"] = rangeType.DisplayName;
+                row["OID"] = rangeType.OID;
+                row["CreateFormat"] = rangeType.DisplayName.ToUpperInvariant();
+                if (elementMapping.ClrTypes.Length > 0)
+                    row["DataType"] = typeof(NpgsqlRange<>).MakeGenericType(elementMapping.ClrTypes[0]).FullName;
+                if (elementMapping.NpgsqlDbType.HasValue)
+                    row["ProviderDbType"] = (int)(elementMapping.NpgsqlDbType.Value | NpgsqlDbType.Range);
+            }
+
+            foreach (var enumType in connector.DatabaseInfo.EnumTypes)
+            {
+                if (!connector.TypeMapper.Mappings.TryGetValue(enumType.Name, out var mapping) &&
+                    !connector.TypeMapper.Mappings.TryGetValue(enumType.FullName, out mapping))
+                    continue;
+
+                var row = table.Rows.Add();
+
+                PopulateDefaultDataTypeInfo(row, enumType);
+                PopulateHardcodedDataTypeInfo(row, enumType);
+
+                if (mapping.ClrTypes.Length > 0)
+                    row["DataType"] = mapping.ClrTypes[0].FullName;
+            }
+
+            foreach (var compositeType in connector.DatabaseInfo.CompositeTypes)
+            {
+                if (!connector.TypeMapper.Mappings.TryGetValue(compositeType.Name, out var mapping) &&
+                    !connector.TypeMapper.Mappings.TryGetValue(compositeType.FullName, out mapping))
+                    continue;
+
+                var row = table.Rows.Add();
+
+                PopulateDefaultDataTypeInfo(row, compositeType);
+                PopulateHardcodedDataTypeInfo(row, compositeType);
+
+                if (mapping.ClrTypes.Length > 0)
+                    row["DataType"] = mapping.ClrTypes[0].FullName;
+            }
+
+            foreach (var domainType in connector.DatabaseInfo.DomainTypes)
+            {
+                if (!connector.TypeMapper.Mappings.TryGetValue(domainType.BaseType.Name, out var baseMapping) &&
+                    !connector.TypeMapper.Mappings.TryGetValue(domainType.BaseType.FullName, out baseMapping))
+                    continue;
+
+                var row = table.Rows.Add();
+
+                PopulateDefaultDataTypeInfo(row, domainType.BaseType);
+                // Populate hardcoded values based on the element type (e.g. citext[] is case-insensitive).
+                PopulateHardcodedDataTypeInfo(row, domainType.BaseType);
+                row["TypeName"] = domainType.DisplayName;
+                row["OID"] = domainType.OID;
+                // A domain is never the best match, since its underlying base type is
+                row["IsBestMatch"] = false;
+
+                if (baseMapping.ClrTypes.Length > 0)
+                    row["DataType"] = baseMapping.ClrTypes[0].FullName;
+                if (baseMapping.NpgsqlDbType.HasValue)
+                    row["ProviderDbType"] = (int)baseMapping.NpgsqlDbType.Value;
+            }
+
+            return table;
+        }
+
+        /// <summary>
+        /// Populates some generic type information that is common for base types, arrays, enums, etc. Some will
+        /// be overridden later.
+        /// </summary>
+        static void PopulateDefaultDataTypeInfo(DataRow row, PostgresType type)
+        {
+            row["TypeName"] = type.DisplayName;
+            // Skipping ColumnSize at least for now, not very meaningful
+            row["CreateFormat"] = type.DisplayName.ToUpperInvariant();
+            row["CreateParameters"] = "";
+            row["IsAutoIncrementable"] = false;
+            // We populate the DataType above from mapping.ClrTypes, which means we take the .NET type from
+            // which we *infer* the PostgreSQL type. Since only a single PostgreSQL type gets inferred from a given
+            // .NET type, we never have the same DataType in more than one row - so the mapping is always the
+            // best match. See the hardcoding override  below for some exceptions.
+            row["IsBestMatch"] = true;
+            row["IsCaseSensitive"] = true;
+            row["IsConcurrencyType"] = false;
+            row["IsFixedLength"] = false;
+            row["IsFixedPrecisionAndScale"] = false;
+            row["IsLiteralSupported"] = false;  // See hardcoding override below
+            row["IsLong"] = false;
+            row["IsNullable"] = true;
+            row["IsSearchable"] = true;
+            row["IsSearchableWithLike"] = false;
+            row["IsUnsigned"] = DBNull.Value; // See hardcoding override below
+            // LiteralPrefix/Suffix: no literal for now except for strings, see hardcoding override below
+            row["MaximumScale"] = DBNull.Value;
+            row["MinimumScale"] = DBNull.Value;
+            // NativeDataType is unset
+            row["OID"] = type.OID;
+        }
+
+        /// <summary>
+        /// Sets some custom, hardcoded info on a DataType row that cannot be loaded/inferred from PostgreSQL
+        /// </summary>
+        static void PopulateHardcodedDataTypeInfo(DataRow row, PostgresType type)
+        {
+            switch (type.Name)
+            {
+            case "varchar":
+            case "char":
+                row["DataType"] = "String";
+                row["IsBestMatch"] = false;
+                goto case "text";
+            case "text":
+                row["CreateFormat"] += "({0})";
+                row["CreateParameters"] = "size";
+                row["IsSearchableWithLike"] = true;
+                row["IsLiteralSupported"] = true;
+                row["LiteralPrefix"] = "'";
+                row["LiteralSuffix"] = "'";
+                return;
+            case "numeric":
+                row["CreateFormat"] += "({0},{1})";
+                row["CreateParameters"] = "precision, scale";
+                row["MaximumScale"] = 16383;
+                row["MinimumScale"] = 16383;
+                row["IsUnsigned"] = false;
+                return;
+            case "bytea":
+                row["IsLong"] = true;
+                return;
+            case "citext":
+                row["IsCaseSensitive"] = false;
+                return;
+            case "integer":
+            case "smallint":
+            case "bigint":
+            case "double precision":
+            case "real":
+            case "money":
+                row["IsUnsigned"] = false;
+                return;
+            case "oid":
+            case "cid":
+            case "regtype":
+            case "regconfig":
+                row["IsUnsigned"] = true;
+                return;
+            case "xid":
+                row["IsUnsigned"] = true;
+                row["IsConcurrencyType"] = true;
+                return;
             }
         }
 
-        internal static DataTable GetDataSourceInformation()
-        {
-            var ds = new DataSet { Locale = CultureInfo.InvariantCulture };
-            LoadMetaDataXmlResource(ds);
-            return ds.Tables["DataSourceInformation"].Copy();
-        }
+        #endregion DataTypes
 
-        public static DataTable GetReservedWords()
+        #region Reserved Keywords
+
+        static DataTable GetReservedWords()
         {
             var table = new DataTable("ReservedWords") { Locale = CultureInfo.InvariantCulture };
             table.Columns.Add("ReservedWord", typeof(string));
@@ -436,18 +774,6 @@ and n.nspname not in ('pg_catalog', 'pg_toast')");
                 table.Rows.Add(keyword);
             return table;
         }
-
-        static void LoadMetaDataXmlResource(DataSet dataSet)
-        {
-            var xmlStream = Assembly.GetExecutingAssembly().GetManifestResourceStream(MetaDataResourceName);
-            if (xmlStream == null)
-                throw new Exception($"Couldn't load {MetaDataResourceName} resource from assembly, Npgsql was compiled badly");
-
-            using (xmlStream)
-                dataSet.ReadXml(xmlStream);
-        }
-
-        #region Reserved Keywords
 
         /// <summary>
         /// List of keywords taken from PostgreSQL 9.0 reserved words documentation.

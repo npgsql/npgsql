@@ -1,38 +1,13 @@
-#region License
-// The PostgreSQL License
-//
-// Copyright (C) 2018 The Npgsql Development Team
-//
-// Permission to use, copy, modify, and distribute this software and its
-// documentation for any purpose, without fee, and without a written
-// agreement is hereby granted, provided that the above copyright notice
-// and this paragraph and the following two paragraphs appear in all copies.
-//
-// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
-// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
-// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
-// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
-// THE POSSIBILITY OF SUCH DAMAGE.
-//
-// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
-// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
-// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-#endregion
-
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Data;
 using System.Text;
 using System.Threading;
 using System.Transactions;
-using JetBrains.Annotations;
 using NUnit.Framework;
 
 // TransactionScope exists in netstandard20, but distributed transactions do not
-#if NET451
+#if NET461
 
 namespace Npgsql.Tests
 {
@@ -62,7 +37,7 @@ namespace Npgsql.Tests
             AssertNumberOfRows(2);
         }
 
-                [Test]
+        [Test]
         public void TwoConnectionsRollback()
         {
             using (new TransactionScope())
@@ -463,21 +438,21 @@ Start formatting event queue, going to sleep a bit for late events
 
             readonly bool _shouldRollBack;
             readonly string _name;
-            readonly ConcurrentQueue<TransactionEvent> _eventQueue;
+            readonly ConcurrentQueue<TransactionEvent>? _eventQueue;
 
             public static void EnlistVolatile(ConcurrentQueue<TransactionEvent> eventQueue)
                 => EnlistVolatile(false, eventQueue);
 
-            public static void EnlistVolatile(bool shouldRollBack = false, ConcurrentQueue<TransactionEvent> eventQueue = null)
+            public static void EnlistVolatile(bool shouldRollBack = false, ConcurrentQueue<TransactionEvent>? eventQueue = null)
                 => Enlist(false, shouldRollBack, eventQueue);
 
             public static void EscalateToDistributed(ConcurrentQueue<TransactionEvent> eventQueue)
                 => EscalateToDistributed(false, eventQueue);
 
-            public static void EscalateToDistributed(bool shouldRollBack = false, ConcurrentQueue<TransactionEvent> eventQueue = null)
+            public static void EscalateToDistributed(bool shouldRollBack = false, ConcurrentQueue<TransactionEvent>? eventQueue = null)
                 => Enlist(true, shouldRollBack, eventQueue);
 
-            static void Enlist(bool durable, bool shouldRollBack, ConcurrentQueue<TransactionEvent> eventQueue)
+            static void Enlist(bool durable, bool shouldRollBack, ConcurrentQueue<TransactionEvent>? eventQueue)
             {
                 Counter++;
 
@@ -493,7 +468,7 @@ Start formatting event queue, going to sleep a bit for late events
                 eventQueue?.Enqueue(new TransactionEvent(name + ": enlisted"));
             }
 
-            EnlistResource(bool shouldRollBack, string name, ConcurrentQueue<TransactionEvent> eventQueue)
+            EnlistResource(bool shouldRollBack, string name, ConcurrentQueue<TransactionEvent>? eventQueue)
             {
                 _shouldRollBack = shouldRollBack;
                 _name = name;
@@ -571,8 +546,7 @@ Start formatting event queue, going to sleep a bit for late events
 
         #region Setup
 
-        [CanBeNull]
-        NpgsqlConnection _controlConn;
+        NpgsqlConnection _controlConn = default!;
 
         [OneTimeSetUp]
         public void OneTimeSetUp()
@@ -632,12 +606,12 @@ Start formatting event queue, going to sleep a bit for late events
         public void OneTimeTearDown()
         {
             _controlConn?.Close();
-            _controlConn = null;
+            _controlConn = null!;
         }
 
         class FakePromotableSinglePhaseNotification : IPromotableSinglePhaseNotification
         {
-            public byte[] Promote() => null;
+            public byte[] Promote() => null!;
             public void Initialize() {}
             public void SinglePhaseCommit(SinglePhaseEnlistment singlePhaseEnlistment) {}
             public void Rollback(SinglePhaseEnlistment singlePhaseEnlistment) {}

@@ -1,0 +1,8 @@
+﻿<Project>
+  <Import Project="../Directory.Build.props" />
+
+  <!-- Build configuration -->
+  <PropertyGroup>
+    <TargetFrameworks>net461;netcoreapp3.0</TargetFrameworks>
+  </PropertyGroup>
+</Project>

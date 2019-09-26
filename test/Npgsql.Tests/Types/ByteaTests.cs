@@ -1,37 +1,8 @@
-﻿#region License
-// The PostgreSQL License
-//
-// Copyright (C) 2018 The Npgsql Development Team
-//
-// Permission to use, copy, modify, and distribute this software and its
-// documentation for any purpose, without fee, and without a written
-// agreement is hereby granted, provided that the above copyright notice
-// and this paragraph and the following two paragraphs appear in all copies.
-//
-// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
-// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
-// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
-// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
-// THE POSSIBILITY OF SUCH DAMAGE.
-//
-// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
-// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
-// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-#endregion
-
-using System;
-using System.Collections.Generic;
+﻿using System;
 using System.Data;
-using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Npgsql;
 using NpgsqlTypes;
 using NUnit.Framework;
-using NUnit.Framework.Constraints;
 
 namespace Npgsql.Tests.Types
 {
@@ -202,6 +173,27 @@ namespace Npgsql.Tests.Types
             }
         }
 
+#if !NETSTANDARD2_0 && !NET461
+        [Test]
+        public void Memory()
+        {
+            using (var conn = OpenConnection())
+            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn))
+            {
+                var bytes = new byte[] { 1, 2, 3 };
+                cmd.Parameters.AddWithValue("p1", new ReadOnlyMemory<byte>(bytes));
+                cmd.Parameters.AddWithValue("p2", new Memory<byte>(bytes));
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader[0], Is.EqualTo(bytes));
+                    Assert.That(reader[1], Is.EqualTo(bytes));
+                    Assert.That(() => reader.GetFieldValue<ReadOnlyMemory<byte>>(0), Throws.Exception.TypeOf<NotSupportedException>());
+                    Assert.That(() => reader.GetFieldValue<Memory<byte>>(0), Throws.Exception.TypeOf<NotSupportedException>());
+                }
+            }
+        }
+#endif
 
         // Older tests from here
 
@@ -259,7 +251,7 @@ namespace Npgsql.Tests.Types
 
                     cmd.Parameters[0].Size = 17000;
                     returned = (byte[]) cmd.ExecuteScalar();
-                    Assert.That(returned.SequenceEqual(new ArraySegment<byte>(segment.Array, segment.Offset, 17000)));
+                    Assert.That(returned.SequenceEqual(new ArraySegment<byte>(segment.Array!, segment.Offset, 17000)));
 
                     // Small value, should be written normally through the NpgsqlBuffer
                     segment = new ArraySegment<byte>(arr, 6, 10);
@@ -269,7 +261,7 @@ namespace Npgsql.Tests.Types
 
                     cmd.Parameters[0].Size = 2;
                     returned = (byte[]) cmd.ExecuteScalar();
-                    Assert.That(returned.SequenceEqual(new ArraySegment<byte>(segment.Array, segment.Offset, 2)));
+                    Assert.That(returned.SequenceEqual(new ArraySegment<byte>(segment.Array!, segment.Offset, 2)));
                 }
 
                 using (var cmd = new NpgsqlCommand("select :bytearr", conn))

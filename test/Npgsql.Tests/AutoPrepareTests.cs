@@ -1,9 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
 
@@ -155,7 +151,7 @@ namespace Npgsql.Tests
                 cmd1.ExecuteNonQuery(); cmd1.ExecuteNonQuery();
                 // cmd1 is now autoprepared
                 Assert.That(checkCmd.ExecuteScalar(), Is.EqualTo(1));
-                Assert.That(conn.Connector.PreparedStatementManager.NumPrepared, Is.EqualTo(2));
+                Assert.That(conn.Connector!.PreparedStatementManager.NumPrepared, Is.EqualTo(2));
 
                 // Promote (replace) the autoprepared statement with an explicit one.
                 cmd2.Prepare();
@@ -334,7 +330,7 @@ namespace Npgsql.Tests
                 cmd.Parameters.AddWithValue("@p", NpgsqlDbType.Integer, answer);
                 cmd.ExecuteNonQuery(); cmd.ExecuteNonQuery(); // cmd1 is now autoprepared
                 Assert.That(checkCmd.ExecuteScalar(), Is.EqualTo(1));
-                Assert.That(conn.Connector.PreparedStatementManager.NumPrepared, Is.EqualTo(2));
+                Assert.That(conn.Connector!.PreparedStatementManager.NumPrepared, Is.EqualTo(2));
 
                 // Derive parameters for the already autoprepared statement
                 NpgsqlCommandBuilder.DeriveParameters(cmd);

@@ -1,27 +1,5 @@
-﻿#region License
-// The PostgreSQL License
-//
-// Copyright (C) 2018 The Npgsql Development Team
-//
-// Permission to use, copy, modify, and distribute this software and its
-// documentation for any purpose, without fee, and without a written
-// agreement is hereby granted, provided that the above copyright notice
-// and this paragraph and the following two paragraphs appear in all copies.
-//
-// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
-// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
-// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
-// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
-// THE POSSIBILITY OF SUCH DAMAGE.
-//
-// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
-// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
-// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-#endregion
-
-using System;
+﻿using System;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 
@@ -36,7 +14,8 @@ namespace Npgsql.NameTranslation
         /// <summary>
         /// Creates a new <see cref="NpgsqlSnakeCaseNameTranslator"/>.
         /// </summary>
-        public NpgsqlSnakeCaseNameTranslator() : this(false) {}
+        public NpgsqlSnakeCaseNameTranslator()
+            : this(false) { }
 
         /// <summary>
         /// Creates a new <see cref="NpgsqlSnakeCaseNameTranslator"/>.
@@ -61,78 +40,67 @@ namespace Npgsql.NameTranslation
                 throw new ArgumentNullException(nameof(clrName));
 
             return LegacyMode
-              ? string.Concat(clrName.Select((c, i) => i > 0 && char.IsUpper(c) ? "_" + c.ToString() : c.ToString())).ToLower()
-              : ConvertToSnakeCase(clrName);
+                ? string.Concat(clrName.Select((c, i) => i > 0 && char.IsUpper(c) ? "_" + c.ToString() : c.ToString())).ToLower()
+                : ConvertToSnakeCase(clrName);
         }
 
         /// <summary>
         /// Converts a string to its snake_case equivalent.
         /// </summary>
-        /// <remarks>
-        /// Code borrowed from Newtonsoft.Json.
-        /// See https://github.com/JamesNK/Newtonsoft.Json/blob/f012ba857f36fe75b1294a210b9104130a4db4d5/Src/Newtonsoft.Json/Utilities/StringUtils.cs#L200-L276.
-        /// </remarks>
         /// <param name="value">The value to convert.</param>
         public static string ConvertToSnakeCase(string value)
         {
-            var sb = new StringBuilder();
-            var state = SnakeCaseState.Start;
+            const char underscore = '_';
+            const UnicodeCategory noneCategory = UnicodeCategory.Control;
 
-            for (var i = 0; i < value.Length; i++)
+            var builder = new StringBuilder();
+            var previousCategory = noneCategory;
+
+            for (var currentIndex = 0; currentIndex< value.Length; currentIndex++)
             {
-                if (value[i] == ' ')
+                var currentChar = value[currentIndex];
+                if (currentChar == underscore)
                 {
-                    if (state != SnakeCaseState.Start)
-                        state = SnakeCaseState.NewWord;
+                    builder.Append(underscore);
+                    previousCategory = noneCategory;
+                    continue;
                 }
-                else if (char.IsUpper(value[i]))
+
+                var currentCategory = char.GetUnicodeCategory(currentChar);
+                switch (currentCategory)
                 {
-                    switch (state)
-                    {
-                    case SnakeCaseState.Upper:
-                        var hasNext = (i + 1 < value.Length);
-                        if (i > 0 && hasNext)
+                    case UnicodeCategory.UppercaseLetter:
+                    case UnicodeCategory.TitlecaseLetter:
+                        if (previousCategory == UnicodeCategory.SpaceSeparator ||
+                            previousCategory == UnicodeCategory.LowercaseLetter ||
+                            previousCategory != UnicodeCategory.DecimalDigitNumber &&
+                            currentIndex > 0 &&
+                            currentIndex + 1 < value.Length &&
+                            char.IsLower(value[currentIndex + 1]))
                         {
-                            var nextChar = value[i + 1];
-                            if (!char.IsUpper(nextChar) && nextChar != '_')
-                            {
-                                sb.Append('_');
-                            }
+                            builder.Append(underscore);
                         }
-                        break;
-                    case SnakeCaseState.Lower:
-                    case SnakeCaseState.NewWord:
-                        sb.Append('_');
-                        break;
-                    }
 
-                    sb.Append(char.ToLowerInvariant(value[i]));
-                    state = SnakeCaseState.Upper;
-                }
-                else if (value[i] == '_')
-                {
-                    sb.Append('_');
-                    state = SnakeCaseState.Start;
-                }
-                else
-                {
-                    if (state == SnakeCaseState.NewWord)
-                        sb.Append('_');
+                        currentChar = char.ToLower(currentChar);
+                        break;
 
-                    sb.Append(value[i]);
-                    state = SnakeCaseState.Lower;
+                    case UnicodeCategory.LowercaseLetter:
+                    case UnicodeCategory.DecimalDigitNumber:
+                        if (previousCategory == UnicodeCategory.SpaceSeparator)
+                            builder.Append(underscore);
+                        break;
+
+                    default:
+                        if (previousCategory != noneCategory)
+                            previousCategory = UnicodeCategory.SpaceSeparator;
+                        continue;
                 }
+
+                builder.Append(currentChar);
+                previousCategory = currentCategory;
             }
 
-            return sb.ToString();
-        }
-
-        enum SnakeCaseState
-        {
-            Start,
-            Lower,
-            Upper,
-            NewWord
+            return builder.ToString();
         }
     }
 }

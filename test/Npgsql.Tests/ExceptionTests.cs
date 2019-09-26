@@ -1,32 +1,10 @@
-#region License
-// The PostgreSQL License
-//
-// Copyright (C) 2018 The Npgsql Development Team
-//
-// Permission to use, copy, modify, and distribute this software and its
-// documentation for any purpose, without fee, and without a written
-// agreement is hereby granted, provided that the above copyright notice
-// and this paragraph and the following two paragraphs appear in all copies.
-//
-// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
-// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
-// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
-// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
-// THE POSSIBILITY OF SUCH DAMAGE.
-//
-// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
-// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
-// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-#endregion
-
 using System;
 using System.Data;
 using System.IO;
 using System.Net.Sockets;
-using NUnit.Framework;
+using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
+using NUnit.Framework;
 
 namespace Npgsql.Tests
 {
@@ -38,14 +16,14 @@ namespace Npgsql.Tests
             using (var conn = OpenConnection())
             {
                 // Make sure messages are in English
-                conn.ExecuteNonQuery(@"SET lc_messages='en_US.UTF8'");
+                conn.ExecuteNonQuery(@"SET lc_messages='en_US.UTF-8'");
                 conn.ExecuteNonQuery(@"
                      CREATE OR REPLACE FUNCTION pg_temp.emit_exception() RETURNS VOID AS
                         'BEGIN RAISE EXCEPTION ''testexception'' USING ERRCODE = ''12345''; END;'
                      LANGUAGE 'plpgsql';
                 ");
 
-                PostgresException ex = null;
+                PostgresException ex = null!;
                 try
                 {
                     conn.ExecuteNonQuery("SELECT pg_temp.emit_exception()");
@@ -58,6 +36,7 @@ namespace Npgsql.Tests
 
                 Assert.That(ex.MessageText, Is.EqualTo("testexception"));
                 Assert.That(ex.Severity, Is.EqualTo("ERROR"));
+                Assert.That(ex.InvariantSeverity, Is.EqualTo("ERROR"));
                 Assert.That(ex.SqlState, Is.EqualTo("12345"));
                 Assert.That(ex.Position, Is.EqualTo(0));
 
@@ -65,6 +44,10 @@ namespace Npgsql.Tests
                 Assert.That(data[nameof(PostgresException.Severity)], Is.EqualTo("ERROR"));
                 Assert.That(data[nameof(PostgresException.SqlState)], Is.EqualTo("12345"));
                 Assert.That(data.Contains(nameof(PostgresException.Position)), Is.False);
+
+                var exString = ex.ToString();
+                Assert.That(exString, Contains.Substring(nameof(PostgresException.Severity) + ": ERROR"));
+                Assert.That(exString, Contains.Substring(nameof(PostgresException.SqlState) + ": 12345"));
 
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1), "Connection in bad state after an exception");
             }
@@ -173,32 +156,95 @@ namespace Npgsql.Tests
         [Test]
         public void PostgresExceptionTransience()
         {
-            Assert.True(new PostgresException { SqlState = "53300" }.IsTransient);
-            Assert.False(new PostgresException { SqlState = "0" }.IsTransient);
+            Assert.True(CreateWithSqlState("53300").IsTransient);
+            Assert.False(CreateWithSqlState("0").IsTransient);
+
+            PostgresException CreateWithSqlState(string sqlState)
+            {
+                var info = CreateSerializationInfo();
+
+                info.AddValue(nameof(PostgresException.Severity), null);
+                info.AddValue(nameof(PostgresException.InvariantSeverity), null);
+                info.AddValue(nameof(PostgresException.SqlState), sqlState);
+                info.AddValue(nameof(PostgresException.MessageText), null);
+                info.AddValue(nameof(PostgresException.Detail), null);
+                info.AddValue(nameof(PostgresException.Hint), null);
+                info.AddValue(nameof(PostgresException.Position), 0);
+                info.AddValue(nameof(PostgresException.InternalPosition), 0);
+                info.AddValue(nameof(PostgresException.InternalQuery), null);
+                info.AddValue(nameof(PostgresException.Where), null);
+                info.AddValue(nameof(PostgresException.SchemaName), null);
+                info.AddValue(nameof(PostgresException.TableName), null);
+                info.AddValue(nameof(PostgresException.ColumnName), null);
+                info.AddValue(nameof(PostgresException.DataTypeName), null);
+                info.AddValue(nameof(PostgresException.ConstraintName), null);
+                info.AddValue(nameof(PostgresException.File), null);
+                info.AddValue(nameof(PostgresException.Line), null);
+                info.AddValue(nameof(PostgresException.Routine), null);
+
+                return new PostgresException(info, default);
+            }
         }
 
-#if NET451
         [Test]
-        [Ignore("DbException doesn't support serialization in .NET Core 2.0 (PlatformNotSupportedException)")]
         public void Serialization()
         {
-            var e = new PostgresException
-            {
-                Severity = "High",
-                TableName = "foo",
-                Position = 18
-            };
+            var info = CreateSerializationInfo();
 
+            info.AddValue(nameof(PostgresException.Severity), "high");
+            info.AddValue(nameof(PostgresException.InvariantSeverity), "high2");
+            info.AddValue(nameof(PostgresException.SqlState), "53300");
+            info.AddValue(nameof(PostgresException.MessageText), "message");
+            info.AddValue(nameof(PostgresException.Detail), "detail");
+            info.AddValue(nameof(PostgresException.Hint), "hint");
+            info.AddValue(nameof(PostgresException.Position), 18);
+            info.AddValue(nameof(PostgresException.InternalPosition), 42);
+            info.AddValue(nameof(PostgresException.InternalQuery), "query");
+            info.AddValue(nameof(PostgresException.Where), "where");
+            info.AddValue(nameof(PostgresException.SchemaName), "schema");
+            info.AddValue(nameof(PostgresException.TableName), "table");
+            info.AddValue(nameof(PostgresException.ColumnName), "column");
+            info.AddValue(nameof(PostgresException.DataTypeName), "type");
+            info.AddValue(nameof(PostgresException.ConstraintName), "constraint");
+            info.AddValue(nameof(PostgresException.File), "file");
+            info.AddValue(nameof(PostgresException.Line), "line");
+            info.AddValue(nameof(PostgresException.Routine), "routine");
+
+            var actual = new PostgresException(info, default);
             var formatter = new BinaryFormatter();
             var stream = new MemoryStream();
-            formatter.Serialize(stream, e);
-            stream.Seek(0, SeekOrigin.Begin);
-            var e2 = (PostgresException)formatter.Deserialize(stream);
 
-            Assert.That(e2.Severity, Is.EqualTo(e.Severity));
-            Assert.That(e2.TableName, Is.EqualTo(e.TableName));
-            Assert.That(e2.Position, Is.EqualTo(e.Position));
+            formatter.Serialize(stream, actual);
+            stream.Seek(0, SeekOrigin.Begin);
+
+            var expected = (PostgresException)formatter.Deserialize(stream);
+
+            Assert.That(expected.Severity, Is.EqualTo(actual.Severity));
+            Assert.That(expected.InvariantSeverity, Is.EqualTo(actual.InvariantSeverity));
+            Assert.That(expected.SqlState, Is.EqualTo(actual.SqlState));
+            Assert.That(expected.MessageText, Is.EqualTo(actual.MessageText));
+            Assert.That(expected.Detail, Is.EqualTo(actual.Detail));
+            Assert.That(expected.Hint, Is.EqualTo(actual.Hint));
+            Assert.That(expected.Position, Is.EqualTo(actual.Position));
+            Assert.That(expected.InternalPosition, Is.EqualTo(actual.InternalPosition));
+            Assert.That(expected.InternalQuery, Is.EqualTo(actual.InternalQuery));
+            Assert.That(expected.Where, Is.EqualTo(actual.Where));
+            Assert.That(expected.SchemaName, Is.EqualTo(actual.SchemaName));
+            Assert.That(expected.TableName, Is.EqualTo(actual.TableName));
+            Assert.That(expected.ColumnName, Is.EqualTo(actual.ColumnName));
+            Assert.That(expected.DataTypeName, Is.EqualTo(actual.DataTypeName));
+            Assert.That(expected.ConstraintName, Is.EqualTo(actual.ConstraintName));
+            Assert.That(expected.File, Is.EqualTo(actual.File));
+            Assert.That(expected.Line, Is.EqualTo(actual.Line));
+            Assert.That(expected.Routine, Is.EqualTo(actual.Routine));
         }
-#endif
+
+        SerializationInfo CreateSerializationInfo()
+        {
+            var info = new SerializationInfo(typeof(PostgresException), new FormatterConverter());
+            new Exception().GetObjectData(info, default);
+
+            return info;
+        }
     }
 }

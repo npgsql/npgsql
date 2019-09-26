@@ -1,13 +1,7 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using JetBrains.Annotations;
 using Npgsql.Logging;
-using NpgsqlTypes;
 
 namespace Npgsql
 {
@@ -20,8 +14,7 @@ namespace Npgsql
         readonly PreparedStatement[] _autoPrepared;
         int _numAutoPrepared;
 
-        [CanBeNull, ItemCanBeNull]
-        readonly PreparedStatement[] _candidates;
+        readonly PreparedStatement?[] _candidates;
 
         /// <summary>
         /// Total number of current prepared statements (whether explicit or automatic).
@@ -49,14 +42,18 @@ namespace Npgsql
                 _autoPrepared = new PreparedStatement[MaxAutoPrepared];
                 _candidates = new PreparedStatement[CandidateCount];
             }
+            else
+            {
+                _autoPrepared = null!;
+                _candidates = null!;
+            }
         }
 
-        [CanBeNull]
-        internal PreparedStatement GetOrAddExplicit(NpgsqlStatement statement)
+        internal PreparedStatement? GetOrAddExplicit(NpgsqlStatement statement)
         {
             var sql = statement.SQL;
 
-            PreparedStatement statementBeingReplaced=null;
+            PreparedStatement? statementBeingReplaced = null;
             if (BySql.TryGetValue(sql, out var pStatement))
             {
                 Debug.Assert(pStatement.State != PreparedState.Unprepared);
@@ -94,11 +91,8 @@ namespace Npgsql
             return BySql[sql] = PreparedStatement.CreateExplicit(this, sql, NextPreparedStatementName(), statement.InputParameters, statementBeingReplaced);
         }
 
-        [CanBeNull]
-        internal PreparedStatement TryGetAutoPrepared(NpgsqlStatement statement)
+        internal PreparedStatement? TryGetAutoPrepared(NpgsqlStatement statement)
         {
-            Debug.Assert(_candidates != null);
-
             var sql = statement.SQL;
             if (!BySql.TryGetValue(sql, out var pStatement))
             {
@@ -152,7 +146,7 @@ namespace Npgsql
             if (++pStatement.Usages < UsagesBeforePrepare)
             {
                 // Statement still hasn't passed the usage threshold, no automatic preparation.
-                // Return null for unprepared exection.
+                // Return null for unprepared execution.
                 pStatement.LastUsed = DateTime.UtcNow;
                 return null;
             }
@@ -199,7 +193,6 @@ namespace Npgsql
 
         void RemoveCandidate(PreparedStatement candidate)
         {
-            Debug.Assert(_candidates != null);
             var i = 0;
             for (; i < _candidates.Length; i++)
             {

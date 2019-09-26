@@ -1,26 +1,3 @@
-#region License
-// The PostgreSQL License
-//
-// Copyright (C) 2018 The Npgsql Development Team
-//
-// Permission to use, copy, modify, and distribute this software and its
-// documentation for any purpose, without fee, and without a written
-// agreement is hereby granted, provided that the above copyright notice
-// and this paragraph and the following two paragraphs appear in all copies.
-//
-// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
-// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
-// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
-// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
-// THE POSSIBILITY OF SUCH DAMAGE.
-//
-// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
-// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
-// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-#endregion
-
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -30,18 +7,17 @@ using System.Diagnostics;
 using System.IO;
 using System.Net.Security;
 using System.Net.Sockets;
-using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Transactions;
 using JetBrains.Annotations;
 using Npgsql.Logging;
 using Npgsql.NameTranslation;
 using Npgsql.TypeMapping;
+using Npgsql.Util;
 using NpgsqlTypes;
-using System.Transactions;
 using IsolationLevel = System.Data.IsolationLevel;
 
 namespace Npgsql
@@ -73,8 +49,7 @@ namespace Npgsql
         /// <summary>
         /// The connector object connected to the backend.
         /// </summary>
-        [CanBeNull]
-        internal NpgsqlConnector Connector;
+        internal NpgsqlConnector? Connector;
 
         /// <summary>
         /// The parsed connection string set by the user
@@ -83,13 +58,11 @@ namespace Npgsql
 
         static readonly NpgsqlConnectionStringBuilder DefaultSettings = new NpgsqlConnectionStringBuilder();
 
-        [CanBeNull]
-        ConnectorPool _pool;
+        ConnectorPool? _pool;
 
         bool _wasBroken;
 
-        [CanBeNull]
-        internal Transaction EnlistedTransaction { get; set; }
+        internal Transaction? EnlistedTransaction { get; set; }
 
         /// <summary>
         /// The global type mapper, which contains defaults used by all new connections.
@@ -101,14 +74,7 @@ namespace Npgsql
         /// The connection-specific type mapper - all modifications affect this connection only,
         /// and are lost when it is closed.
         /// </summary>
-        public INpgsqlTypeMapper TypeMapper
-        {
-            get
-            {
-                CheckConnectionOpen();
-                return Connector.TypeMapper;
-            }
-        }
+        public INpgsqlTypeMapper TypeMapper => CheckReadyAndGetConnector().TypeMapper;
 
         ///
         /// <summary>
@@ -158,7 +124,7 @@ namespace Npgsql
         /// <remarks>
         /// Do not invoke other methods and properties of the <see cref="NpgsqlConnection"/> object until the returned Task is complete.
         /// </remarks>
-        /// <param name="cancellationToken">The cancellation instruction.</param>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <returns>A task representing the asynchronous operation.</returns>
         public override Task OpenAsync(CancellationToken cancellationToken)
         {
@@ -187,7 +153,7 @@ namespace Npgsql
             if (!Settings.Pooling)
                 return;
 
-            // Connstring may be equivalent to one that has already been seen though (e.g. different
+            // The connection string may be equivalent to one that has already been seen though (e.g. different
             // ordering). Have NpgsqlConnectionStringBuilder produce a canonical string representation
             // and recheck.
             var canonical = Settings.ConnectionString;
@@ -208,9 +174,10 @@ namespace Npgsql
 
             if (_pool == newPool)
             {
-                // If the pool we created was the one that ened up being stored we need to increment the appropriate counter.
+                // If the pool we created was the one that ended up being stored we need to increment the appropriate counter.
                 // Avoids a race condition where multiple threads will create a pool but only one will be stored.
                 Counters.NumberOfActiveConnectionPools.Increment();
+                NpgsqlEventSource.Log.PoolCreated();
             }
 
             _pool = PoolManager.GetOrAdd(_connectionString, _pool);
@@ -246,7 +213,7 @@ namespace Npgsql
             Debug.Assert(Connector.Connection != null, "Open done but connector not set on Connection");
             Log.Debug("Connection opened", Connector.Id);
             OnStateChange(new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open));
-            return PGUtil.CompletedTask;
+            return Task.CompletedTask;
 
             async Task OpenLong()
             {
@@ -258,13 +225,14 @@ namespace Npgsql
 
                 try
                 {
-                    Debug.Assert(Settings != null);
-
                     var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
-                    Transaction transaction = null;
+                    Transaction? transaction = null;
 
-                    if (_pool == null) // Unpooled connection
+                    if (_pool == null) // Un-pooled connection (or user forgot to set connection string)
                     {
+                        if (string.IsNullOrEmpty(_connectionString))
+                            throw new InvalidOperationException("The ConnectionString property has not been initialized.");
+
                         if (!Settings.PersistSecurityInfo)
                             _userFacingConnectionString = Settings.ToStringWithoutPassword();
 
@@ -345,8 +313,9 @@ namespace Npgsql
         /// the database name, and other parameters needed to establish
         /// the initial connection. The default value is an empty string.
         /// </value>
-        [CanBeNull]
+#nullable disable
         public override string ConnectionString
+#nullable restore
         {
             get => _userFacingConnectionString;
             set
@@ -360,6 +329,20 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Gets or sets the delegate used to generate a password for new database connections.
+        /// </summary>
+        /// <remarks>
+        /// This delegate is executed when a new database connection is opened that requires a password.
+        /// <see cref="NpgsqlConnectionStringBuilder.Password">Password</see> and
+        /// <see cref="NpgsqlConnectionStringBuilder.Passfile">Passfile</see> connection string
+        /// properties have precedence over this delegate. It will not be executed if a password is
+        /// specified, or the specified or default Passfile contains a valid entry.
+        /// Due to connection pooling this delegate is only executed when a new physical connection
+        /// is opened, not when reusing a connection that was previously opened from the pool.
+        /// </remarks>
+        public ProvidePasswordCallback? ProvidePasswordCallback { get; set; }
+
         #endregion Connection string management
 
         #region Configuration settings
@@ -369,7 +352,7 @@ namespace Npgsql
         /// </summary>
         [Browsable(true)]
         [PublicAPI]
-        public string Host => Settings.Host;
+        public string? Host => Settings.Host;
 
         /// <summary>
         /// Backend server port.
@@ -397,13 +380,12 @@ namespace Npgsql
         /// </summary>
         /// <value>The name of the current database or the name of the database to be
         /// used after a connection is opened. The default value is the empty string.</value>
-        [CanBeNull]
-        public override string Database => Settings.Database ?? Settings.Username;
+        public override string? Database => Settings.Database ?? Settings.Username;
 
         /// <summary>
         /// Gets the string identifying the database server (host and port)
         /// </summary>
-        public override string DataSource => $"tcp://{Host}:{Port}";
+        public override string DataSource => Settings.DataSourceCached;
 
         /// <summary>
         /// Whether to use Windows integrated security to log in.
@@ -415,15 +397,15 @@ namespace Npgsql
         /// User name.
         /// </summary>
         [PublicAPI]
-        [CanBeNull]
-        public string UserName => Settings.Username;
+        public string? UserName => Settings.Username;
 
-        [CanBeNull]
-        internal string Password => Settings.Password;
+        internal string? Password => Settings.Password;
 
         // The following two lines are here for backwards compatibility with the EF6 provider
-        internal string EntityTemplateDatabase => Settings.EntityTemplateDatabase;
-        internal string EntityAdminDatabase => Settings.EntityAdminDatabase;
+        // ReSharper disable UnusedMember.Global
+        internal string? EntityTemplateDatabase => Settings.EntityTemplateDatabase;
+        internal string? EntityAdminDatabase => Settings.EntityAdminDatabase;
+        // ReSharper restore UnusedMember.Global
 
         #endregion Configuration settings
 
@@ -439,29 +421,20 @@ namespace Npgsql
             get
             {
                 if (Connector == null || _disposed)
-                {
                     return _wasBroken ? ConnectionState.Broken : ConnectionState.Closed;
-                }
 
-                switch (Connector.State)
+                return Connector.State switch
                 {
-                case ConnectorState.Closed:
-                    return ConnectionState.Closed;
-                case ConnectorState.Connecting:
-                    return ConnectionState.Connecting;
-                case ConnectorState.Ready:
-                    return ConnectionState.Open;
-                case ConnectorState.Executing:
-                    return ConnectionState.Open | ConnectionState.Executing;
-                case ConnectorState.Copy:
-                case ConnectorState.Fetching:
-                case ConnectorState.Waiting:
-                    return ConnectionState.Open | ConnectionState.Fetching;
-                case ConnectorState.Broken:
-                    return ConnectionState.Broken;
-                default:
-                    throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {Connector.State} of enum {nameof(ConnectorState)}. Please file a bug.");
-                }
+                    ConnectorState.Closed     => ConnectionState.Closed,
+                    ConnectorState.Connecting => ConnectionState.Connecting,
+                    ConnectorState.Ready      => ConnectionState.Open,
+                    ConnectorState.Executing  => ConnectionState.Open | ConnectionState.Executing,
+                    ConnectorState.Copy       => ConnectionState.Open | ConnectionState.Fetching,
+                    ConnectorState.Fetching   => ConnectionState.Open | ConnectionState.Fetching,
+                    ConnectorState.Waiting    => ConnectionState.Open | ConnectionState.Fetching,
+                    ConnectorState.Broken     => ConnectionState.Broken,
+                    _ => throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {Connector.State} of enum {nameof(ConnectorState)}. Please file a bug.")
+                };
             }
         }
 
@@ -552,7 +525,6 @@ namespace Npgsql
             if (level == IsolationLevel.Chaos)
                 throw new NotSupportedException("Unsupported IsolationLevel: " + level);
             var connector = CheckReadyAndGetConnector();
-            Debug.Assert(Connector != null);
 
             // Note that beginning a transaction doesn't actually send anything to the backend
             // (only prepends), so strictly speaking we don't have to start a user action.
@@ -560,16 +532,19 @@ namespace Npgsql
             using (connector.StartUserAction())
             {
                 if (connector.InTransaction)
-                    throw new NotSupportedException("Nested/Concurrent transactions aren't supported.");
+                    throw new InvalidOperationException("A transaction is already in progress; nested/concurrent transactions aren't supported.");
 
-                return new NpgsqlTransaction(this, level);
+                connector.Transaction.Init(level);
+                return connector.Transaction;
             }
         }
 
         /// <summary>
-        /// Enlist transation.
+        /// Enlist transaction.
         /// </summary>
+#nullable disable
         public override void EnlistTransaction(Transaction transaction)
+#nullable restore
         {
             if (EnlistedTransaction != null)
             {
@@ -609,56 +584,86 @@ namespace Npgsql
         #region Close
 
         /// <summary>
-        /// releases the connection to the database.  If the connection is pooled, it will be
-        /// made available for re-use.  If it is non-pooled, the actual connection will be shutdown.
+        /// Releases the connection. If the connection is pooled, it will be returned to the pull and made available for re-use.
+        /// If it is non-pooled, the physical connection will be closed.
         /// </summary>
-        public override void Close() => Close(false);
+        public override void Close() => Close(wasBroken: false, async: false);
 
-        internal void Close(bool wasBroken)
+        /// <summary>
+        /// Releases the connection. If the connection is pooled, it will be returned to the pull and made available for re-use.
+        /// If it is non-pooled, the physical connection will be closed.
+        /// </summary>
+#if !NET461 && !NETSTANDARD2_0
+        public override Task CloseAsync()
+#else
+        public Task CloseAsync()
+#endif
+        {
+            using (NoSynchronizationContextScope.Enter())
+                return Close(wasBroken: false, async: true);
+        }
+
+        internal Task Close(bool wasBroken, bool async)
         {
             if (Connector == null)
-                return;
+                return Task.CompletedTask;
             var connectorId = Connector.Id;
             Log.Trace("Closing connection...", connectorId);
             _wasBroken = wasBroken;
 
-            Connector.CloseOngoingOperations();
+            if (Connector.HasOngoingOperation)
+                return CloseOngoingOperationAndFinish();
 
-            if (Settings.Pooling)
+            FinishClose();
+            return Task.CompletedTask;
+
+            async Task CloseOngoingOperationAndFinish()
             {
-                if (EnlistedTransaction == null)
-                    _pool.Release(Connector);
-                else
+                await Connector!.CloseOngoingOperations(async);
+
+                // The connector has closed us during CloseOngoingOperations due to an underlying failure.
+                if (Connector == null)
+                    return;
+
+                FinishClose();
+            }
+
+            void FinishClose()
+            {
+                var connector = Connector!;
+                if (Settings.Pooling)
                 {
-                    // A System.Transactions transaction is still in progress, we need to wait for it to complete.
-                    // Close the connection and disconnect it from the resource manager but leave the connector
-                    // in a enlisted pending list in the pool.
-                    _pool.AddPendingEnlistedConnector(Connector, EnlistedTransaction);
-                    Connector.Connection = null;
+                    if (EnlistedTransaction == null)
+                        _pool!.Release(connector);
+                    else
+                    {
+                        // A System.Transactions transaction is still in progress, we need to wait for it to complete.
+                        // Close the connection and disconnect it from the resource manager but leave the connector
+                        // in a enlisted pending list in the pool.
+                        _pool!.AddPendingEnlistedConnector(connector, EnlistedTransaction);
+                        connector.Connection = null;
+                        EnlistedTransaction = null;
+                    }
+                }
+                else // Non-pooled connection
+                {
+                    if (EnlistedTransaction == null)
+                        connector.Close();
+                    // If a non-pooled connection is being closed but is enlisted in an ongoing
+                    // TransactionScope, simply detach the connector from the connection and leave
+                    // it open. It will be closed when the TransactionScope is disposed.
+                    connector.Connection = null;
                     EnlistedTransaction = null;
                 }
+
+                Log.Debug("Connection closed", connectorId);
+                Connector = null;
+                OnStateChange(OpenToClosedEventArgs);
             }
-            else  // Non-pooled connection
-            {
-                if (EnlistedTransaction == null)
-                    Connector.Close();
-                // If a non-pooled connection is being closed but is enlisted in an ongoing
-                // TransactionScope, simply detach the connector from the connection and leave
-                // it open. It will be closed when the TransactionScope is disposed.
-                Connector.Connection = null;
-                EnlistedTransaction = null;
-            }
-
-            Log.Debug("Connection closed", connectorId);
-
-            Connector = null;
-
-            OnStateChange(OpenToClosedEventArgs);
         }
 
         /// <summary>
-        /// Releases all resources used by the
-        /// <see cref="NpgsqlConnection">NpgsqlConnection</see>.
+        /// Releases all resources used by the <see cref="NpgsqlConnection">NpgsqlConnection</see>.
         /// </summary>
         /// <param name="disposing"><b>true</b> when called from Dispose();
         /// <b>false</b> when being called from the finalizer.</param>
@@ -668,9 +673,21 @@ namespace Npgsql
                 return;
             if (disposing)
                 Close();
-            base.Dispose(disposing);
             _disposed = true;
         }
+
+#if !NET461 && !NETSTANDARD2_0
+        /// <summary>
+        /// Releases all resources used by the <see cref="NpgsqlConnection">NpgsqlConnection</see>.
+        /// </summary>
+        public override async ValueTask DisposeAsync()
+        {
+            if (_disposed)
+                return;
+            await CloseAsync();
+            _disposed = true;
+        }
+#endif
 
         #endregion
 
@@ -686,7 +703,7 @@ namespace Npgsql
         ///
         /// Note that notices are very different from notifications (see the <see cref="Notification"/> event).
         /// </remarks>
-        public event NoticeEventHandler Notice;
+        public event NoticeEventHandler? Notice;
 
         /// <summary>
         /// Fires when PostgreSQL notifications are received from PostgreSQL.
@@ -697,7 +714,7 @@ namespace Npgsql
         ///
         /// Note that notifications are very different from notices (see the <see cref="Notice"/> event).
         /// </remarks>
-        public event NotificationEventHandler Notification;
+        public event NotificationEventHandler? Notification;
 
         internal void OnNotice(PostgresNotice e)
         {
@@ -732,15 +749,7 @@ namespace Npgsql
         /// <summary>
         /// Returns whether SSL is being used for the connection.
         /// </summary>
-        internal bool IsSecure
-        {
-            get
-            {
-                CheckConnectionOpen();
-                Debug.Assert(Connector != null);
-                return Connector.IsSecure;
-            }
-        }
+        internal bool IsSecure =>  CheckConnectionOpen().IsSecure;
 
         /// <summary>
         /// Selects the local Secure Sockets Layer (SSL) certificate used for authentication.
@@ -748,8 +757,7 @@ namespace Npgsql
         /// <remarks>
         /// See <see href="https://msdn.microsoft.com/en-us/library/system.net.security.localcertificateselectioncallback(v=vs.110).aspx"/>
         /// </remarks>
-        [CanBeNull]
-        public ProvideClientCertificatesCallback ProvideClientCertificatesCallback { get; set; }
+        public ProvideClientCertificatesCallback? ProvideClientCertificatesCallback { get; set; }
 
         /// <summary>
         /// Verifies the remote Secure Sockets Layer (SSL) certificate used for authentication.
@@ -758,8 +766,7 @@ namespace Npgsql
         /// <remarks>
         /// See <see href="https://msdn.microsoft.com/en-us/library/system.net.security.remotecertificatevalidationcallback(v=vs.110).aspx"/>
         /// </remarks>
-        [CanBeNull]
-        public RemoteCertificateValidationCallback UserCertificateValidationCallback { get; set; }
+        public RemoteCertificateValidationCallback? UserCertificateValidationCallback { get; set; }
 
         #endregion SSL
 
@@ -770,15 +777,7 @@ namespace Npgsql
         /// This can only be called when there is an active connection.
         /// </summary>
         [Browsable(false)]
-        public Version PostgreSqlVersion
-        {
-            get
-            {
-                CheckConnectionOpen();
-                Debug.Assert(Connector != null);
-                return Connector.DatabaseInfo.Version;
-            }
-        }
+        public Version PostgreSqlVersion => CheckConnectionOpen().DatabaseInfo.Version;
 
         /// <summary>
         /// PostgreSQL server version.
@@ -791,47 +790,23 @@ namespace Npgsql
         /// </summary>
         [Browsable(false)]
         // ReSharper disable once InconsistentNaming
-        public int ProcessID
-        {
-            get
-            {
-                CheckConnectionOpen();
-                Debug.Assert(Connector != null);
-                return Connector.BackendProcessId;
-            }
-        }
+        public int ProcessID => CheckConnectionOpen().BackendProcessId;
 
         /// <summary>
         /// Reports whether the backend uses the newer integer timestamp representation.
         /// Note that the old floating point representation is not supported.
-        /// Meant for use by type plugins (e.g. Nodatime)
+        /// Meant for use by type plugins (e.g. NodaTime)
         /// </summary>
         [Browsable(false)]
         [PublicAPI]
-        public bool HasIntegerDateTimes
-        {
-            get
-            {
-                CheckConnectionOpen();
-                Debug.Assert(Connector != null);
-                return Connector.DatabaseInfo.HasIntegerDateTimes;
-            }
-        }
+        public bool HasIntegerDateTimes => CheckConnectionOpen().DatabaseInfo.HasIntegerDateTimes;
 
         /// <summary>
         /// The connection's timezone as reported by PostgreSQL, in the IANA/Olson database format.
         /// </summary>
         [Browsable(false)]
         [PublicAPI]
-        public string Timezone
-        {
-            get
-            {
-                CheckConnectionOpen();
-                Debug.Assert(Connector != null);
-                return Connector.Timezone;
-            }
-        }
+        public string Timezone => CheckConnectionOpen().Timezone;
 
         /// <summary>
         /// Holds all PostgreSQL parameters received for this connection. Is updated if the values change
@@ -839,15 +814,7 @@ namespace Npgsql
         /// </summary>
         [Browsable(false)]
         [PublicAPI]
-        public IReadOnlyDictionary<string, string> PostgresParameters
-        {
-            get
-            {
-                CheckConnectionOpen();
-                Debug.Assert(Connector != null);
-                return Connector.PostgresParameters;
-            }
-        }
+        public IReadOnlyDictionary<string, string> PostgresParameters => CheckConnectionOpen().PostgresParameters;
 
         #endregion Backend version, capabilities, settings
 
@@ -904,8 +871,8 @@ namespace Npgsql
             connector.StartUserAction(ConnectorState.Copy);
             try
             {
-                var exporter = new NpgsqlBinaryExporter(Connector, copyToCommand);
-                Connector.CurrentCopyOperation = exporter;
+                var exporter = new NpgsqlBinaryExporter(connector, copyToCommand);
+                connector.CurrentCopyOperation = exporter;
                 return exporter;
             }
             catch
@@ -938,7 +905,7 @@ namespace Npgsql
             connector.StartUserAction(ConnectorState.Copy);
             try
             {
-                var writer = new NpgsqlCopyTextWriter(new NpgsqlRawCopyStream(connector, copyFromCommand));
+                var writer = new NpgsqlCopyTextWriter(connector, new NpgsqlRawCopyStream(connector, copyFromCommand));
                 connector.CurrentCopyOperation = writer;
                 return writer;
             }
@@ -972,7 +939,7 @@ namespace Npgsql
             connector.StartUserAction(ConnectorState.Copy);
             try
             {
-                var reader = new NpgsqlCopyTextReader(new NpgsqlRawCopyStream(connector, copyToCommand));
+                var reader = new NpgsqlCopyTextReader(connector, new NpgsqlRawCopyStream(connector, copyToCommand));
                 connector.CurrentCopyOperation = reader;
                 return reader;
             }
@@ -1053,7 +1020,8 @@ namespace Npgsql
         /// <typeparam name="TEnum">The .NET enum type to be mapped</typeparam>
         [PublicAPI]
         [Obsolete("Use NpgsqlConnection.TypeMapper.MapEnum() instead")]
-        public void MapEnum<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null) where TEnum : struct
+        public void MapEnum<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+            where TEnum : struct, Enum
             => TypeMapper.MapEnum<TEnum>(pgName, nameTranslator);
 
         /// <summary>
@@ -1080,8 +1048,9 @@ namespace Npgsql
         /// <typeparam name="TEnum">The .NET enum type to be mapped</typeparam>
         [PublicAPI]
         [Obsolete("Use NpgsqlConnection.GlobalTypeMapper.MapEnum() instead")]
-        public static void MapEnumGlobally<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null) where TEnum : struct
-            => NpgsqlConnection.GlobalTypeMapper.MapEnum<TEnum>(pgName, nameTranslator);
+        public static void MapEnumGlobally<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+            where TEnum : struct, Enum
+            => GlobalTypeMapper.MapEnum<TEnum>(pgName, nameTranslator);
 
         /// <summary>
         /// Removes a previous global enum mapping.
@@ -1094,9 +1063,11 @@ namespace Npgsql
         /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
         /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
+        [PublicAPI]
         [Obsolete("Use NpgsqlConnection.GlobalTypeMapper.UnmapEnum() instead")]
-        public static void UnmapEnumGlobally<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null) where TEnum : struct
-            => NpgsqlConnection.GlobalTypeMapper.UnmapEnum<TEnum>(pgName, nameTranslator);
+        public static void UnmapEnumGlobally<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+            where TEnum : struct, Enum
+            => GlobalTypeMapper.UnmapEnum<TEnum>(pgName, nameTranslator);
 
         #endregion
 
@@ -1126,8 +1097,9 @@ namespace Npgsql
         /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
         /// <typeparam name="T">The .NET type to be mapped</typeparam>
+        [PublicAPI]
         [Obsolete("Use NpgsqlConnection.TypeMapper.MapComposite() instead")]
-        public void MapComposite<T>(string pgName = null, INpgsqlNameTranslator nameTranslator = null) where T : new()
+        public void MapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null) where T : new()
             => TypeMapper.MapComposite<T>(pgName, nameTranslator);
 
         /// <summary>
@@ -1152,9 +1124,10 @@ namespace Npgsql
         /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
         /// <typeparam name="T">The .NET type to be mapped</typeparam>
+        [PublicAPI]
         [Obsolete("Use NpgsqlConnection.GlobalTypeMapper.MapComposite() instead")]
-        public static void MapCompositeGlobally<T>(string pgName = null, INpgsqlNameTranslator nameTranslator = null) where T : new()
-            => NpgsqlConnection.GlobalTypeMapper.MapComposite<T>(pgName, nameTranslator);
+        public static void MapCompositeGlobally<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null) where T : new()
+            => GlobalTypeMapper.MapComposite<T>(pgName, nameTranslator);
 
         /// <summary>
         /// Removes a previous global enum mapping.
@@ -1167,9 +1140,10 @@ namespace Npgsql
         /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
         /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
+        [PublicAPI]
         [Obsolete("Use NpgsqlConnection.GlobalTypeMapper.UnmapComposite() instead")]
-        public static void UnmapCompositeGlobally<T>(string pgName, INpgsqlNameTranslator nameTranslator = null) where T : new()
-            => NpgsqlConnection.GlobalTypeMapper.UnmapComposite<T>(pgName, nameTranslator);
+        public static void UnmapCompositeGlobally<T>(string pgName, INpgsqlNameTranslator? nameTranslator = null) where T : new()
+            => GlobalTypeMapper.UnmapComposite<T>(pgName, nameTranslator);
 
         #endregion
 
@@ -1191,11 +1165,10 @@ namespace Npgsql
             if (timeout != -1 && timeout < 0)
                 throw new ArgumentException("Argument must be -1, 0 or positive", nameof(timeout));
 
-            CheckConnectionOpen();
-            Debug.Assert(Connector != null);
-            Log.Debug($"Starting to wait (timeout={timeout})...", Connector.Id);
+            var connector = CheckConnectionOpen();
+            Log.Debug($"Starting to wait (timeout={timeout})...", connector.Id);
 
-            return Connector.Wait(timeout);
+            return connector.Wait(timeout);
         }
 
         /// <summary>
@@ -1222,39 +1195,28 @@ namespace Npgsql
         /// Waits asynchronously until an asynchronous PostgreSQL messages (e.g. a notification)
         /// arrives, and exits immediately. The asynchronous message is delivered via the normal events
         /// (<see cref="Notification"/>, <see cref="Notice"/>).
-        /// CancelationToken can not cancel wait operation if underlying NetworkStream does not support it
-        /// (see https://stackoverflow.com/questions/12421989/networkstream-readasync-with-a-cancellation-token-never-cancels ).
         /// </summary>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
         [PublicAPI]
-        public Task WaitAsync(CancellationToken cancellationToken)
+        public Task WaitAsync(CancellationToken cancellationToken = default)
         {
             if (cancellationToken.IsCancellationRequested)
-                return PGUtil.CancelledTask;
+                return Task.FromCanceled(cancellationToken);
 
-            CheckConnectionOpen();
-            Debug.Assert(Connector != null);
-            Log.Debug("Starting to wait asynchronously...", Connector.Id);
-
-            return Connector.WaitAsync(cancellationToken);
+            var connector = CheckConnectionOpen();
+            Log.Debug("Starting to wait asynchronously...", connector.Id);
+            return connector.WaitAsync(cancellationToken);
         }
-
-        /// <summary>
-        /// Waits asynchronously until an asynchronous PostgreSQL messages (e.g. a notification)
-        /// arrives, and exits immediately. The asynchronous message is delivered via the normal events
-        /// (<see cref="Notification"/>, <see cref="Notice"/>).
-        /// </summary>
-        public Task WaitAsync() => WaitAsync(CancellationToken.None);
 
         #endregion
 
         #region State checks
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        void CheckConnectionOpen()
+        NpgsqlConnector CheckConnectionOpen()
         {
             CheckDisposed();
-            if (Connector == null)
-                throw new InvalidOperationException("Connection is not open");
+            return Connector ?? throw new InvalidOperationException("Connection is not open");
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1293,15 +1255,15 @@ namespace Npgsql
         /// <summary>
         /// Returns the supported collections
         /// </summary>
-        public override DataTable GetSchema() => NpgsqlSchema.GetMetaDataCollections();
+        public override DataTable GetSchema()
+            => GetSchema("MetaDataCollections", null);
 
         /// <summary>
         /// Returns the schema collection specified by the collection name.
         /// </summary>
         /// <param name="collectionName">The collection name.</param>
         /// <returns>The collection specified.</returns>
-        public override DataTable GetSchema([CanBeNull] string collectionName)
-            => GetSchema(collectionName, null);
+        public override DataTable GetSchema(string? collectionName) => GetSchema(collectionName, null);
 
         /// <summary>
         /// Returns the schema collection specified by the collection name filtered by the restrictions.
@@ -1312,51 +1274,8 @@ namespace Npgsql
         /// in the Restrictions collection.
         /// </param>
         /// <returns>The collection specified.</returns>
-        public override DataTable GetSchema([CanBeNull] string collectionName, [CanBeNull] string[] restrictions)
-        {
-            if (string.IsNullOrEmpty(collectionName))
-                throw new ArgumentException("Collection name cannot be null or empty", nameof(collectionName));
-
-            switch (collectionName.ToUpperInvariant())
-            {
-                case "METADATACOLLECTIONS":
-                    return NpgsqlSchema.GetMetaDataCollections();
-                case "RESTRICTIONS":
-                    return NpgsqlSchema.GetRestrictions();
-                case "DATASOURCEINFORMATION":
-                    return NpgsqlSchema.GetDataSourceInformation();
-                case "DATATYPES":
-                    throw new NotSupportedException();
-                case "RESERVEDWORDS":
-                    return NpgsqlSchema.GetReservedWords();
-                // custom collections for npgsql
-                case "DATABASES":
-                    return NpgsqlSchema.GetDatabases(this, restrictions);
-                case "SCHEMATA":
-                    return NpgsqlSchema.GetSchemata(this, restrictions);
-                case "TABLES":
-                    return NpgsqlSchema.GetTables(this, restrictions);
-                case "COLUMNS":
-                    return NpgsqlSchema.GetColumns(this, restrictions);
-                case "VIEWS":
-                    return NpgsqlSchema.GetViews(this, restrictions);
-                case "USERS":
-                    return NpgsqlSchema.GetUsers(this, restrictions);
-                case "INDEXES":
-                    return NpgsqlSchema.GetIndexes(this, restrictions);
-                case "INDEXCOLUMNS":
-                    return NpgsqlSchema.GetIndexColumns(this, restrictions);
-                case "CONSTRAINTS":
-                case "PRIMARYKEY":
-                case "UNIQUEKEYS":
-                case "FOREIGNKEYS":
-                    return NpgsqlSchema.GetConstraints(this, restrictions, collectionName);
-                case "CONSTRAINTCOLUMNS":
-                    return NpgsqlSchema.GetConstraintColumns(this, restrictions);
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(collectionName), collectionName, "Invalid collection name");
-            }
-        }
+        public override DataTable GetSchema(string? collectionName, string?[]? restrictions)
+            => NpgsqlSchema.GetSchema(this, collectionName, restrictions);
 
         #endregion Schema operations
 
@@ -1371,6 +1290,7 @@ namespace Npgsql
             var conn = new NpgsqlConnection(_connectionString) {
                 ProvideClientCertificatesCallback = ProvideClientCertificatesCallback,
                 UserCertificateValidationCallback = UserCertificateValidationCallback,
+                ProvidePasswordCallback = ProvidePasswordCallback,
                 _userFacingConnectionString = _userFacingConnectionString
             };
             return conn;
@@ -1391,7 +1311,8 @@ namespace Npgsql
                 csb.Password = Password;
             return new NpgsqlConnection(csb.ToString()) {
                 ProvideClientCertificatesCallback = ProvideClientCertificatesCallback,
-                UserCertificateValidationCallback = UserCertificateValidationCallback
+                UserCertificateValidationCallback = UserCertificateValidationCallback,
+                ProvidePasswordCallback = ProvidePasswordCallback,
             };
         }
 
@@ -1408,7 +1329,6 @@ namespace Npgsql
                 throw new ArgumentOutOfRangeException(nameof(dbName), dbName, $"Invalid database name: {dbName}");
 
             CheckConnectionOpen();
-
             Close();
 
             _pool = null;
@@ -1483,6 +1403,16 @@ namespace Npgsql
     /// </summary>
     /// <param name="certificates">A <see cref="System.Security.Cryptography.X509Certificates.X509CertificateCollection">X509CertificateCollection</see> to be filled with one or more client certificates.</param>
     public delegate void ProvideClientCertificatesCallback(X509CertificateCollection certificates);
+
+    /// <summary>
+    /// Represents the method that allows the application to provide a password at connection time in code rather than configuration
+    /// </summary>
+    /// <param name="host">Hostname</param>
+    /// <param name="port">Port</param>
+    /// <param name="database">Database Name</param>
+    /// <param name="username">User</param>
+    /// <returns>A valid password for connecting to the database</returns>
+    public delegate string ProvidePasswordCallback(string host, int port, string database, string username);
 
     #endregion
 }

@@ -1,9 +1,8 @@
-﻿#if NET45 || NET451
+﻿#if NET461
 using System;
 using System.Collections.Generic;
 using System.DirectoryServices;
 using System.Security.Principal;
-using JetBrains.Annotations;
 
 namespace Npgsql
 {
@@ -11,14 +10,19 @@ namespace Npgsql
     {
         class CachedUpn
         {
+            internal CachedUpn(string upn, DateTime expiryTimeUtc)
+            {
+                Upn = upn;
+                ExpiryTimeUtc = expiryTimeUtc;
+            }
+
             internal string Upn;
             internal DateTime ExpiryTimeUtc;
         }
 
         static readonly Dictionary<SecurityIdentifier, CachedUpn> CachedUpns = new Dictionary<SecurityIdentifier, CachedUpn>();
 
-        [CanBeNull]
-        internal static string GetUsername(bool includeRealm)
+        internal static string? GetUsername(bool includeRealm)
         {
             // Side note: This maintains the hack fix mentioned before for https://github.com/npgsql/Npgsql/issues/133.
             // In a nutshell, starting with .NET 4.5 WindowsIdentity inherits from ClaimsIdentity
@@ -31,7 +35,7 @@ namespace Npgsql
             if (identity.User == null)
                 return null;
             CachedUpn cachedUpn;
-            string upn = null;
+            string? upn = null;
 
             // Check to see if we already have this UPN cached
             lock (CachedUpns)
@@ -53,36 +57,27 @@ namespace Npgsql
                     // server will need to verify against a Kerberos/SSPI ticket
 
                     // If the computer does not belong to a domain, returns Empty.
-                    string domainName = System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties().DomainName;
+                    var domainName = System.Net.NetworkInformation.IPGlobalProperties.GetIPGlobalProperties().DomainName;
                     if (domainName.Equals(string.Empty))
-                    {
                         return GetWindowsIdentityUserName(includeRealm);
-                    }
 
                     // First, find a domain server we can talk to
                     string domainHostName;
 
-                    using (DirectoryEntry rootDse = new DirectoryEntry("LDAP://rootDSE") { AuthenticationType = AuthenticationTypes.Secure })
-                    {
+                    using (var rootDse = new DirectoryEntry("LDAP://rootDSE") { AuthenticationType = AuthenticationTypes.Secure })
                         domainHostName = (string)rootDse.Properties["dnsHostName"].Value;
-                    }
 
                     // Query the domain server by the current user's SID
-                    using (DirectoryEntry entry = new DirectoryEntry("LDAP://" + domainHostName) { AuthenticationType = AuthenticationTypes.Secure })
-                    {
-                        DirectorySearcher search = new DirectorySearcher(entry,
-                            "(objectSid=" + identity.User.Value + ")", new[] { "userPrincipalName" });
+                    using var entry = new DirectoryEntry("LDAP://" + domainHostName) { AuthenticationType = AuthenticationTypes.Secure };
+                    using var search = new DirectorySearcher(entry, "(objectSid=" + identity.User.Value + ")", new[] { "userPrincipalName" });
 
-                        SearchResult result = search.FindOne();
-
-                        upn = (string)result.Properties["userPrincipalName"][0];
-                    }
+                    upn = (string)search.FindOne().Properties["userPrincipalName"][0];
                 }
 
                 if (cachedUpn == null)
                 {
                     // Save this value
-                    cachedUpn = new CachedUpn() { Upn = upn, ExpiryTimeUtc = DateTime.UtcNow.AddHours(3.0) };
+                    cachedUpn = new CachedUpn(upn, DateTime.UtcNow.AddHours(3.0));
 
                     lock (CachedUpns)
                     {
@@ -90,17 +85,10 @@ namespace Npgsql
                     }
                 }
 
-                string[] upnParts = upn.Split('@');
-
-                if (includeRealm)
-                {
-                    // Make it Kerberos-y by uppercasing the realm part
-                    return upnParts[0] + "@" + upnParts[1].ToUpperInvariant();
-                }
-                else
-                {
-                    return upnParts[0];
-                }
+                var upnParts = upn.Split('@');
+                return includeRealm
+                    ? upnParts[0] + "@" + upnParts[1].ToUpperInvariant() // Make it Kerberos-y by uppercasing the realm part
+                    : upnParts[0];
             }
             catch
             {

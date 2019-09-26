@@ -1,42 +1,12 @@
-#region License
-// The PostgreSQL License
-//
-// Copyright (C) 2018 The Npgsql Development Team
-//
-// Permission to use, copy, modify, and distribute this software and its
-// documentation for any purpose, without fee, and without a written
-// agreement is hereby granted, provided that the above copyright notice
-// and this paragraph and the following two paragraphs appear in all copies.
-//
-// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
-// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
-// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
-// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
-// THE POSSIBILITY OF SUCH DAMAGE.
-//
-// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
-// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
-// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-#endregion
-
 using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Data;
-using System.Text;
-using System.Threading;
 using System.Transactions;
-using JetBrains.Annotations;
 using NUnit.Framework;
-using NUnit.Framework.Internal.Commands;
-
-// This test suite contains ambient transaction tests, except those involving distributed transactions which are only
-// supported on .NET Framework / Windows. Distributed transaction tests are in DistributedTransactionTests.
 
 namespace Npgsql.Tests
 {
+    // This test suite contains ambient transaction tests, except those involving distributed transactions which are only
+    // supported on .NET Framework / Windows. Distributed transaction tests are in DistributedTransactionTests.
     [NonParallelizable]
     public class SystemTransactionTests : TestBase
     {
@@ -179,8 +149,8 @@ namespace Npgsql.Tests
                 scope.Complete();
             }
             AssertNumberOfRows(1);
-            Assert.That(PoolManager.TryGetValue(connString, out var pool), Is.True);
-            Assert.That(pool.State.Idle, Is.EqualTo(1));
+            Assert.True(PoolManager.TryGetValue(connString, out var pool));
+            Assert.That(pool!.State.Idle, Is.EqualTo(1));
 
             using (var conn = new NpgsqlConnection(connString))
                 NpgsqlConnection.ClearPool(conn);
@@ -381,8 +351,7 @@ namespace Npgsql.Tests
 
         #region Setup
 
-        [CanBeNull]
-        NpgsqlConnection _controlConn;
+        NpgsqlConnection _controlConn = default!;
 
         [OneTimeSetUp]
         public void OneTimeSetUp()
@@ -404,12 +373,14 @@ namespace Npgsql.Tests
             _controlConn.ExecuteNonQuery("TRUNCATE data");
         }
 
+#pragma warning disable CS8625
         [OneTimeTearDown]
         public void OneTimeTearDown()
         {
             _controlConn?.Close();
             _controlConn = null;
         }
+#pragma warning restore CS8625
 
         #endregion
     }

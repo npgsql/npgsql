@@ -1,66 +1,53 @@
-﻿#region License
-// The PostgreSQL License
-//
-// Copyright (C) 2018 The Npgsql Development Team
-//
-// Permission to use, copy, modify, and distribute this software and its
-// documentation for any purpose, without fee, and without a written
-// agreement is hereby granted, provided that the above copyright notice
-// and this paragraph and the following two paragraphs appear in all copies.
-//
-// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
-// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
-// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
-// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
-// THE POSSIBILITY OF SUCH DAMAGE.
-//
-// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
-// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
-// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-#endregion
-
-using Npgsql.BackendMessages;
-using Npgsql.PostgresTypes;
-using Npgsql.TypeHandling;
-using Npgsql.TypeMapping;
-using NpgsqlTypes;
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
 using System.Threading.Tasks;
+using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
+using Npgsql.TypeHandling;
+using Npgsql.TypeMapping;
+using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers
 {
     /// <summary>
-    /// Handler for the PostgreSQL bit string type.
-    /// Note that for BIT(1), this handler will return a bool by default, to align with SQLClient
-    /// (see discussion https://github.com/npgsql/npgsql/pull/362#issuecomment-59622101).
+    /// A type handler for the PostgreSQL bit string data type.
     /// </summary>
     /// <remarks>
-    /// http://www.postgresql.org/docs/current/static/datatype-bit.html
+    /// See http://www.postgresql.org/docs/current/static/datatype-bit.html.
+    ///
+    /// Note that for BIT(1), this handler will return a bool by default, to align with SQLClient
+    /// (see discussion https://github.com/npgsql/npgsql/pull/362#issuecomment-59622101).
+    ///
+    /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
+    /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
+    /// Use it at your own risk.
     /// </remarks>
     [TypeMapping("bit varying", NpgsqlDbType.Varbit, new[] { typeof(BitArray), typeof(BitVector32) })]
     [TypeMapping("bit", NpgsqlDbType.Bit)]
-    class BitStringHandler : NpgsqlTypeHandler<BitArray>,
+    public class BitStringHandler : NpgsqlTypeHandler<BitArray>,
         INpgsqlTypeHandler<BitVector32>, INpgsqlTypeHandler<bool>, INpgsqlTypeHandler<string>
     {
-        internal override Type GetFieldType(FieldDescription fieldDescription = null)
+        /// <inheritdoc />
+        public BitStringHandler(PostgresType postgresType) : base(postgresType) {}
+
+        internal override Type GetFieldType(FieldDescription? fieldDescription = null)
             => fieldDescription != null && fieldDescription.TypeModifier == 1 ? typeof(bool) : typeof(BitArray);
 
-        internal override Type GetProviderSpecificFieldType(FieldDescription fieldDescription = null)
+        internal override Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null)
             => GetFieldType(fieldDescription);
 
         // BitString requires a special array handler which returns bool or BitArray
-        public override ArrayHandler CreateArrayHandler(PostgresType backendType)
-            => new BitStringArrayHandler(this) { PostgresType = backendType };
+        /// <inheritdoc />
+        public override ArrayHandler CreateArrayHandler(PostgresArrayType backendType)
+            => new BitStringArrayHandler(backendType, this);
 
         #region Read
 
-        public override async ValueTask<BitArray> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+        /// <inheritdoc />
+        public override async ValueTask<BitArray> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
             await buf.Ensure(4, async);
             var numBits = buf.ReadInt32();
@@ -73,6 +60,7 @@ namespace Npgsql.TypeHandlers
                 var iterationEndPos = bytesLeft - Math.Min(bytesLeft, buf.ReadBytesLeft) + 1;
                 for (; bytesLeft > iterationEndPos; bytesLeft--)
                 {
+                    // ReSharper disable ShiftExpressionRealShiftCountIsZero
                     var chunk = buf.ReadByte();
                     result[bitNo++] = (chunk & (1 << 7)) != 0;
                     result[bitNo++] = (chunk & (1 << 6)) != 0;
@@ -97,7 +85,7 @@ namespace Npgsql.TypeHandlers
             return result;
         }
 
-        async ValueTask<BitVector32> INpgsqlTypeHandler<BitVector32>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<BitVector32> INpgsqlTypeHandler<BitVector32>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
         {
             if (len > 4 + 4)
             {
@@ -115,7 +103,7 @@ namespace Npgsql.TypeHandlers
                 : new BitVector32(buf.ReadInt32());
         }
 
-        async ValueTask<bool> INpgsqlTypeHandler<bool>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        async ValueTask<bool> INpgsqlTypeHandler<bool>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
         {
             await buf.Ensure(5, async);
             var bitLen = buf.ReadInt32();
@@ -130,18 +118,18 @@ namespace Npgsql.TypeHandlers
             return (b & 128) != 0;
         }
 
-        ValueTask<string> INpgsqlTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        ValueTask<string> INpgsqlTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
         {
             buf.Skip(len);
             throw new NpgsqlSafeReadException(new NotSupportedException("Only writing string to PostgreSQL bitstring is supported, no reading."));
         }
 
-        internal override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+        internal override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
             => fieldDescription?.TypeModifier == 1
                 ? (object)await Read<bool>(buf, len, async, fieldDescription)
                 : await Read<BitArray>(buf, len, async, fieldDescription);
 
-        internal override object ReadAsObject(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        internal override object ReadAsObject(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             => fieldDescription?.TypeModifier == 1
                 ? (object)Read<bool>(buf, len, false, fieldDescription).Result
                 : Read<BitArray>(buf, len, false, fieldDescription).Result;
@@ -150,23 +138,28 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        public override int ValidateAndGetLength(BitArray value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        /// <inheritdoc />
+        public override int ValidateAndGetLength(BitArray value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => 4 + (value.Length + 7) / 8;
 
-        public int ValidateAndGetLength(BitVector32 value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        /// <inheritdoc />
+        public int ValidateAndGetLength(BitVector32 value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => value.Data == 0 ? 4 : 8;
 
-        public int ValidateAndGetLength(bool value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        /// <inheritdoc />
+        public int ValidateAndGetLength(bool value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => 5;
 
-        public int ValidateAndGetLength(string value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        /// <inheritdoc />
+        public int ValidateAndGetLength(string value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
             if (value.Any(c => c != '0' && c != '1'))
                 throw new FormatException("Cannot interpret as ASCII BitString: " + value);
             return 4 + (value.Length + 7) / 8;
         }
 
-        public override async Task Write(BitArray value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        /// <inheritdoc />
+        public override async Task Write(BitArray value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             // Initial bitlength byte
             if (buf.WriteSpaceLeft < 4)
@@ -193,7 +186,8 @@ namespace Npgsql.TypeHandlers
             }
         }
 
-        public async Task Write(BitVector32 value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        /// <inheritdoc />
+        public async Task Write(BitVector32 value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             if (buf.WriteSpaceLeft < 8)
                 await buf.Flush(async);
@@ -207,7 +201,8 @@ namespace Npgsql.TypeHandlers
             }
         }
 
-        public async Task Write(bool value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        /// <inheritdoc />
+        public async Task Write(bool value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             if (buf.WriteSpaceLeft < 5)
                 await buf.Flush(async);
@@ -215,7 +210,8 @@ namespace Npgsql.TypeHandlers
             buf.WriteByte(value ? (byte)0x80 : (byte)0);
         }
 
-        public async Task Write(string value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        /// <inheritdoc />
+        public async Task Write(string value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             // Initial bitlength byte
             if (buf.WriteSpaceLeft < 4)
@@ -270,12 +266,19 @@ namespace Npgsql.TypeHandlers
     /// Differs from the standard array handlers in that it returns arrays of bool for BIT(1) and arrays
     /// of BitArray otherwise (just like the scalar BitStringHandler does).
     /// </summary>
-    class BitStringArrayHandler : ArrayHandler<BitArray>
+    /// <remarks>
+    /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
+    /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
+    /// Use it at your own risk.
+    /// </remarks>
+    public class BitStringArrayHandler : ArrayHandler<BitArray>
     {
-        public BitStringArrayHandler(BitStringHandler elementHandler)
-            : base(elementHandler) { }
+        /// <inheritdoc />
+        public BitStringArrayHandler(PostgresType postgresType, BitStringHandler elementHandler)
+            : base(postgresType, elementHandler) {}
 
-        protected internal override async ValueTask<TAny> Read<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+        /// <inheritdoc />
+        protected internal override async ValueTask<TAny> Read<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
             if (IsArrayOf<TAny, BitArray>.Value)
                 return (TAny)(object)await ReadArray<BitArray>(buf, async);
@@ -292,10 +295,10 @@ namespace Npgsql.TypeHandlers
             return await base.Read<TAny>(buf, len, async, fieldDescription);
         }
 
-        internal override object ReadAsObject(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        internal override object ReadAsObject(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             => ReadAsObject(buf, len, false, fieldDescription).Result;
 
-        internal override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription)
+        internal override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
             => fieldDescription?.TypeModifier == 1
                 ? await ReadArray<bool>(buf, async)
                 : await ReadArray<BitArray>(buf, async);

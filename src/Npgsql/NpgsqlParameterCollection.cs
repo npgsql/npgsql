@@ -1,31 +1,10 @@
-#region License
-// The PostgreSQL License
-//
-// Copyright (C) 2018 The Npgsql Development Team
-//
-// Permission to use, copy, modify, and distribute this software and its
-// documentation for any purpose, without fee, and without a written
-// agreement is hereby granted, provided that the above copyright notice
-// and this paragraph and the following two paragraphs appear in all copies.
-//
-// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
-// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
-// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
-// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
-// THE POSSIBILITY OF SUCH DAMAGE.
-//
-// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
-// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
-// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-#endregion
-
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data.Common;
+using System.Diagnostics.CodeAnalysis;
 using JetBrains.Annotations;
+using Npgsql.Util;
 using NpgsqlTypes;
 
 namespace Npgsql
@@ -40,10 +19,8 @@ namespace Npgsql
         readonly List<NpgsqlParameter> _internalList = new List<NpgsqlParameter>(5);
 
         // Dictionary lookups for GetValue to improve performance
-        [CanBeNull]
-        Dictionary<string, int> _lookup;
-        [CanBeNull]
-        Dictionary<string, int> _lookupIgnoreCase;
+        Dictionary<string, int>? _lookup;
+        Dictionary<string, int>? _lookupIgnoreCase;
 
         /// <summary>
         /// Initializes a new instance of the NpgsqlParameterCollection class.
@@ -153,6 +130,7 @@ namespace Npgsql
         void ICollection<NpgsqlParameter>.Add(NpgsqlParameter item)
             => Add(item);
 
+#nullable disable
         /// <summary>
         /// Adds a <see cref="NpgsqlParameter">NpgsqlParameter</see> to the <see cref="NpgsqlParameterCollection">NpgsqlParameterCollection</see> given the specified parameter name and value.
         /// </summary>
@@ -217,6 +195,7 @@ namespace Npgsql
         [PublicAPI]
         public NpgsqlParameter AddWithValue(NpgsqlDbType parameterType, object value)
             => Add(new NpgsqlParameter { NpgsqlDbType = parameterType, Value = value });
+#nullable restore
 
         /// <summary>
         /// Adds a <see cref="NpgsqlParameter">NpgsqlParameter</see> to the <see cref="NpgsqlParameterCollection">NpgsqlParameterCollection</see> given the parameter name and the data type.
@@ -266,7 +245,7 @@ namespace Npgsql
             => IndexOf(parameterName ?? throw new ArgumentNullException(nameof(parameterName))) != -1;
 
         /// <inheritdoc />
-        public override int IndexOf([CanBeNull] string parameterName)
+        public override int IndexOf(string parameterName)
         {
             if (parameterName is null)
                 return -1;
@@ -385,8 +364,7 @@ namespace Npgsql
         /// <param name="parameterName">The name of the <see cref="NpgsqlParameter">NpgsqlParameter</see> object to find.</param>
         /// <param name="parameter">A reference to the requested parameter is returned in this out param if it is found in the list.  This value is null if the parameter is not found.</param>
         /// <returns><b>true</b> if the collection contains the parameter and param will contain the parameter; otherwise, <b>false</b>.</returns>
-        [ContractAnnotation("=>true,parameter:notnull; =>false,parameter:null")]
-        public bool TryGetValue(string parameterName, [CanBeNull] out NpgsqlParameter parameter)
+        public bool TryGetValue(string parameterName, [NotNullWhen(true)] out NpgsqlParameter? parameter)
         {
             if (parameterName is null)
                 throw new ArgumentNullException(nameof(parameterName));
@@ -471,7 +449,7 @@ namespace Npgsql
             if (values is null)
                 throw new ArgumentNullException(nameof(values));
 
-            foreach (object parameter in values)
+            foreach (object? parameter in values)
                 Add(Cast(parameter) ?? throw new ArgumentException("Collection contains a null value.", nameof(values)));
         }
 
@@ -589,11 +567,11 @@ namespace Npgsql
             }
         }
 
-        static NpgsqlParameter Cast(object value)
+        static NpgsqlParameter Cast(object? value)
         {
             try
             {
-                return (NpgsqlParameter)value;
+                return (NpgsqlParameter)value!;
             }
             catch (Exception)
             {

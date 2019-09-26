@@ -1,27 +1,4 @@
-﻿﻿#region License
-// The PostgreSQL License
-//
-// Copyright (C) 2015 The Npgsql Development Team
-//
-// Permission to use, copy, modify, and distribute this software and its
-// documentation for any purpose, without fee, and without a written
-// agreement is hereby granted, provided that the above copyright notice
-// and this paragraph and the following two paragraphs appear in all copies.
-//
-// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
-// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
-// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
-// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
-// THE POSSIBILITY OF SUCH DAMAGE.
-//
-// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
-// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
-// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-#endregion
-
-using System;
+﻿using System;
 using System.Linq;
 using System.Net.Sockets;
 using System.Threading;
@@ -71,7 +48,7 @@ namespace Npgsql.Tests
             using (var conn = new NpgsqlConnection(ConnectionString))
             {
                 conn.Open();
-                var backendId = conn.Connector.BackendProcessId;
+                var backendId = conn.Connector!.BackendProcessId;
                 conn.Close();
                 conn.Open();
                 Assert.That(conn.Connector.BackendProcessId, Is.EqualTo(backendId));
@@ -163,37 +140,6 @@ namespace Npgsql.Tests
                 conn3.Open();
         }
 
-        [Test]
-        public void OverflowExceptionWhenTooManyWaiting()
-        {
-            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
-            {
-                ApplicationName = nameof(OverflowExceptionWhenTooManyWaiting),
-                MaxPoolSize = 1,
-            }.ToString();
-
-            using (var conn = new NpgsqlConnection(connString))
-            {
-                conn.Open();
-                Assert.True(PoolManager.TryGetValue(connString, out var pool));
-                var state = pool.State;
-
-                try
-                {
-                    var newState = state;
-                    newState.Waiting = int.MaxValue;
-                    pool.State = newState;
-                    var conn2 = new NpgsqlConnection(connString);
-                    Assert.Catch<OverflowException>(() => conn2.Open());
-                }
-                finally
-                {
-                    // Restore state for the closes work correctly.
-                    pool.State = state;
-                }
-            }
-        }
-
         //[Test, Timeout(10000)]
         //[Explicit("Timing-based")]
         public async Task CancelOpenAsync()
@@ -244,7 +190,7 @@ namespace Npgsql.Tests
             {
                 conn.Open();
                 Assert.That(conn.ExecuteScalar("SHOW search_path"), Is.Not.Contains("pg_temp"));
-                var backendId = conn.Connector.BackendProcessId;
+                var backendId = conn.Connector!.BackendProcessId;
                 conn.ExecuteNonQuery("SET search_path=pg_temp");
                 conn.Close();
 
@@ -254,8 +200,8 @@ namespace Npgsql.Tests
             }
         }
 
-        //[Test, NonParallelizable]
-        //[Explicit("Flaky, based on timing")]
+        [Test, NonParallelizable]
+        [Explicit("Flaky, based on timing")]
         public void PruneIdleConnectors()
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
@@ -273,16 +219,16 @@ namespace Npgsql.Tests
 
                 conn1.Close();
                 conn2.Close();
+                AssertPoolState(pool!, 2, 1);
+
+                Thread.Sleep(1500);
+
+                // ConnectionIdleLifetime not yet reached.
                 AssertPoolState(pool, 2, 1);
 
                 Thread.Sleep(1500);
 
-                // Pruning attempted, but ConnectionIdleLifetime not yet reached
-                AssertPoolState(pool, 2, 1);
-
-                Thread.Sleep(1500);
-
-                // ConnectionIdleLifetime reached, but only one idle connection should be pruned (MinPoolSize=2)
+                // ConnectionIdleLifetime reached, one idle connection should be pruned (MinPoolSize=2)
                 AssertPoolState(pool, 1, 1);
             }
         }
@@ -330,6 +276,41 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        public void ReleaseWaiterOnConnectionFailure()
+        {
+            var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Port = 9999,
+                MaxPoolSize = 1
+            }.ToString();
+
+            try
+            {
+                var tasks = Enumerable.Range(0, 2).Select(i => Task.Run(async () =>
+                {
+                    using var conn = new NpgsqlConnection(connectionString);
+                    await conn.OpenAsync();
+                })).ToArray();
+
+                try
+                {
+                    Task.WaitAll(tasks);
+                }
+                catch (AggregateException e)
+                {
+                    foreach (var inner in e.InnerExceptions)
+                        Assert.That(inner, Is.TypeOf<NpgsqlException>());
+                    return;
+                }
+                Assert.Fail();
+            }
+            finally
+            {
+                NpgsqlConnection.ClearPool(new NpgsqlConnection(connectionString));
+            }
+        }
+
+        [Test]
         public void ClearPool()
         {
             NpgsqlConnection conn;
@@ -345,7 +326,7 @@ namespace Npgsql.Tests
         [Test]
         public void ClearWithBusy()
         {
-            ConnectorPool pool;
+            ConnectorPool? pool;
             using (var conn = OpenConnection())
             {
                 NpgsqlConnection.ClearPool(conn);
@@ -380,7 +361,9 @@ namespace Npgsql.Tests
             using (var conn = new NpgsqlConnection(connString))
             {
                 for (var i = 0; i < 1; i++)
-                    Assert.That(() => conn.Open(), Throws.Exception.TypeOf<SocketException>());
+                    Assert.That(() => conn.Open(), Throws.Exception
+                        .TypeOf<NpgsqlException>()
+                        .With.InnerException.TypeOf<SocketException>());
                 Assert.True(PoolManager.TryGetValue(connString, out var pool));
                 AssertPoolState(pool, 0, 0);
             }
@@ -422,12 +405,15 @@ namespace Npgsql.Tests
 
         volatile int StopFlag;
 
-        void AssertPoolState(ConnectorPool pool, int idle, int busy, int waiting=0)
+        void AssertPoolState(ConnectorPool? pool, int idle, int busy, int waiting=0)
         {
+            if (pool == null)
+                throw new ArgumentNullException(nameof(pool));
+
             var state = pool.State;
             Assert.That(state.Idle, Is.EqualTo(idle), $"Idle should be {idle} but is {state.Idle}");
-            Assert.That(state.Busy, Is.EqualTo(busy), $"Busy should be {busy} but is {state.Busy}");
-            Assert.That(state.Waiting, Is.EqualTo(waiting), $"Waiting should be {waiting} but is {state.Waiting}");
+            var stateBusy = state.Open - state.Idle;
+            Assert.That(stateBusy, Is.EqualTo(busy), $"Busy should be {busy} but is {stateBusy}");
         }
     }
 }

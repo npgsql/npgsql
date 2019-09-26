@@ -1,29 +1,6 @@
-﻿#region License
-// The PostgreSQL License
-//
-// Copyright (C) 2018 The Npgsql Development Team
-//
-// Permission to use, copy, modify, and distribute this software and its
-// documentation for any purpose, without fee, and without a written
-// agreement is hereby granted, provided that the above copyright notice
-// and this paragraph and the following two paragraphs appear in all copies.
-//
-// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
-// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
-// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
-// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
-// THE POSSIBILITY OF SUCH DAMAGE.
-//
-// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
-// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
-// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-#endregion
-
-using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Npgsql.Logging;
+using Npgsql.Util;
 
 namespace Npgsql.BackendMessages
 {
@@ -155,30 +132,41 @@ namespace Npgsql.BackendMessages
 
         internal string Nonce { get; }
         internal string Salt { get; }
-        internal int Iteration { get; } = -1;
+        internal int Iteration { get; }
 
-        internal AuthenticationSCRAMServerFirstMessage(byte[] bytes)
+        internal static AuthenticationSCRAMServerFirstMessage Load(byte[] bytes)
         {
             var data = PGUtil.UTF8Encoding.GetString(bytes);
+            string? nonce = null, salt = null;
+            var iteration = -1;
 
             foreach (var part in data.Split(','))
             {
                 if (part.StartsWith("r="))
-                    Nonce = part.Substring(2);
+                    nonce = part.Substring(2);
                 else if (part.StartsWith("s="))
-                    Salt = part.Substring(2);
+                    salt = part.Substring(2);
                 else if (part.StartsWith("i="))
-                    Iteration = int.Parse(part.Substring(2));
+                    iteration = int.Parse(part.Substring(2));
                 else
                     Log.Debug("Unknown part in SCRAM server-first message:" + part);
             }
 
-            if (Nonce == null)
+            if (nonce == null)
                 throw new NpgsqlException("Server nonce not received in SCRAM server-first message");
-            if (Salt == null)
+            if (salt == null)
                 throw new NpgsqlException("Server salt not received in SCRAM server-first message");
-            if (Iteration == -1)
+            if (iteration == -1)
                 throw new NpgsqlException("Server iterations not received in SCRAM server-first message");
+
+            return new AuthenticationSCRAMServerFirstMessage(nonce, salt, iteration);
+        }
+
+        AuthenticationSCRAMServerFirstMessage(string nonce, string salt, int iteration)
+        {
+            Nonce = nonce;
+            Salt = salt;
+            Iteration = iteration;
         }
     }
 
@@ -200,21 +188,27 @@ namespace Npgsql.BackendMessages
 
         internal string ServerSignature { get; }
 
-        internal AuthenticationSCRAMServerFinalMessage(byte[] bytes)
+        internal static AuthenticationSCRAMServerFinalMessage Load(byte[] bytes)
         {
             var data = PGUtil.UTF8Encoding.GetString(bytes);
+            string? serverSignature = null;
 
             foreach (var part in data.Split(','))
             {
                 if (part.StartsWith("v="))
-                    ServerSignature = part.Substring(2);
+                    serverSignature = part.Substring(2);
                 else
                     Log.Debug("Unknown part in SCRAM server-first message:" + part);
             }
 
-            if (ServerSignature == null)
+            if (serverSignature == null)
                 throw new NpgsqlException("Server signature not received in SCRAM server-final message");
+
+            return new AuthenticationSCRAMServerFinalMessage(serverSignature);
         }
+
+        internal AuthenticationSCRAMServerFinalMessage(string serverSignature)
+            => ServerSignature = serverSignature;
     }
 
     #endregion SASL

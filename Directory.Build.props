@@ -1,0 +1,42 @@
+﻿<Project>
+  <!-- Package configuration -->
+  <PropertyGroup>
+    <Copyright>Copyright 2019 © The Npgsql Development Team</Copyright>
+    <Company>Npgsql</Company>
+    <VersionPrefix>4.1.0</VersionPrefix>
+
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>git://github.com/npgsql/npgsql</RepositoryUrl>
+
+    <PackageLicenseExpression>PostgreSQL</PackageLicenseExpression>
+    <PackageProjectUrl>https://www.npgsql.org</PackageProjectUrl>
+    <PackageIcon>postgresql.png</PackageIcon>
+
+    <SuppressNETCoreSdkPreviewMessage>true</SuppressNETCoreSdkPreviewMessage>
+    <NoWarn>NU5105</NoWarn>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)postgresql.png" Pack="true" PackagePath="" />
+  </ItemGroup>
+
+  <!-- Language configuration -->
+  <PropertyGroup>
+    <LangVersion>8.0</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <!-- Siging configuration -->
+  <PropertyGroup>
+    <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)Npgsql.snk</AssemblyOriginatorKeyFile>
+    <SignAssembly>true</SignAssembly>
+  </PropertyGroup>
+
+  <!-- Reference .NET Framework reference assemblies, allows building on environments without .NET Framework installed
+       (e.g. Linux). Gets ignored on non-framework TFMs. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" PrivateAssets="All" />
+  </ItemGroup>
+
+</Project>
