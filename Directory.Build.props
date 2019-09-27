@@ -27,7 +27,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <!-- Siging configuration -->
+  <!-- Signing configuration -->
   <PropertyGroup>
     <AssemblyOriginatorKeyFile>$(MSBuildThisFileDirectory)Npgsql.snk</AssemblyOriginatorKeyFile>
     <SignAssembly>true</SignAssembly>
