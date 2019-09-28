@@ -12,7 +12,7 @@
     <PackageReference Update="NetTopologySuite.IO.PostGIS" Version="2.0.0" />
     <PackageReference Update="NodaTime" Version="2.4.7" />
     <PackageReference Update="GeoJSON.Net" Version="1.1.73" />
-    <PackageReference Update="Newtonsoft.Json" Version="12.0.2" />
+    <PackageReference Update="Newtonsoft.Json" Version="11.0.2" />
 
     <!-- Tests -->
     <PackageReference Update="NUnit" Version="3.12.0" />
