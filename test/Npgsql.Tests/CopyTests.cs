@@ -696,6 +696,35 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2347")]
+        public void Write_ColumnOutOfBounds_ThrowsInvalidOperationException()
+        {
+            using var conn = OpenConnection();
+            conn.ExecuteNonQuery("CREATE TEMP TABLE data (field_text TEXT, field_int2 INTEGER)");
+
+            using var writer = conn.BeginBinaryImport("COPY data (field_text, field_int2) FROM STDIN BINARY");
+            StateAssertions(conn);
+
+            writer.StartRow();
+            writer.Write("Hello");
+            writer.Write(8, NpgsqlDbType.Smallint);
+
+            Assert.Throws<InvalidOperationException>(() => writer.Write("I should not be here"));
+
+            writer.StartRow();
+            writer.Write("Hello");
+            writer.Write(8, NpgsqlDbType.Smallint);
+
+            Assert.Throws<InvalidOperationException>(() => writer.Write("I should not be here", NpgsqlDbType.Text));
+
+            writer.StartRow();
+            writer.Write("Hello");
+            writer.Write(8, NpgsqlDbType.Smallint);
+
+            Assert.Throws<InvalidOperationException>(() => writer.Write("I should not be here", "text"));
+            Assert.Throws<InvalidOperationException>(() => writer.WriteRow("Hello", 8, "I should not be here"));
+        }
+
         #endregion
 
         #region Text

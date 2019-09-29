@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
@@ -114,7 +114,7 @@ namespace Npgsql
             CheckReady();
 
             if (_column != -1 && _column != NumColumns)
-                throw new InvalidOperationException("Row has already been started and must be finished");
+                ThrowHelper.ThrowInvalidOperationException_BinaryImportParametersMismatch(NumColumns, _column);
 
             if (_buf.WriteSpaceLeft < 2)
                 await _buf.Flush(async);
@@ -154,6 +154,8 @@ namespace Npgsql
 
         Task Write<T>([AllowNull] T value, bool async)
         {
+            CheckColumnIndex();
+
             var p = _params[_column];
             if (p == null)
             {
@@ -202,6 +204,8 @@ namespace Npgsql
 
         Task Write<T>([AllowNull] T value, NpgsqlDbType npgsqlDbType, bool async)
         {
+            CheckColumnIndex();
+
             var p = _params[_column];
             if (p == null)
             {
@@ -250,6 +254,8 @@ namespace Npgsql
 
         Task Write<T>([AllowNull] T value, string dataTypeName, bool async)
         {
+            CheckColumnIndex();
+
             var p = _params[_column];
             if (p == null)
             {
@@ -356,6 +362,12 @@ namespace Npgsql
             await StartRow(async);
             foreach (var value in values)
                 await Write(value, async);
+        }
+
+        void CheckColumnIndex()
+        {
+            if (_column >= NumColumns)
+                ThrowHelper.ThrowInvalidOperationException_BinaryImportParametersMismatch(NumColumns, _column + 1);
         }
 
         #endregion
