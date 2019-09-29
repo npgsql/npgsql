@@ -32,8 +32,7 @@ build_script:
   - dotnet build "test\Npgsql.Specification.Tests" -c Debug
   - dotnet build "src\Npgsql" -c Release
   - msbuild src\VSIX\VSIX.csproj /p:Configuration=Release /v:Minimal
-# WIX hasn't been released yet for VS 2019
-#  - msbuild src\MSI\MSI.wixproj /p:Configuration=Release /v:Minimal
+  - msbuild src\MSI\MSI.wixproj /p:Configuration=Release /v:Minimal
 after_build:
   - dotnet pack src\Npgsql\Npgsql.csproj -c Release
   - dotnet pack src\Npgsql.Json.NET\Npgsql.Json.NET.csproj -c Release
