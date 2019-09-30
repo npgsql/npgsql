@@ -262,7 +262,7 @@ namespace Npgsql
             Settings = settings;
             ConnectionString = connectionString;
             PostgresParameters = new Dictionary<string, string>();
-            SqlParser = new SqlQueryParser(UseConformantStrings);
+            SqlParser = new SqlQueryParser();
             Transaction = new NpgsqlTransaction(this);
 
             CancelLock = new object();
@@ -1880,7 +1880,7 @@ namespace Npgsql
 
         #region Supported features and PostgreSQL settings
 
-        internal bool UseConformantStrings { get; private set; }
+        internal bool UseConformingStrings { get; private set; }
 
         /// <summary>
         /// The connection's timezone as reported by PostgreSQL, in the IANA/Olson database format.
@@ -1951,7 +1951,8 @@ namespace Npgsql
             switch (name)
             {
             case "standard_conforming_strings":
-                UseConformantStrings = (value == "on");
+                UseConformingStrings = value == "on";
+                SqlParser.StandardConformingStrings = UseConformingStrings;
                 return;
 
             case "TimeZone":
