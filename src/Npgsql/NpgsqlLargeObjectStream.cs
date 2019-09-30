@@ -188,8 +188,13 @@ namespace Npgsql
         /// <summary>
         /// Gets the length of the large object. This internally seeks to the end of the stream to retrieve the length, and then back again.
         /// </summary>
+        public Task<long> GetLengthAsync() => GetLengthAsync(CancellationToken.None);
+
+        /// <summary>
+        /// Gets the length of the large object. This internally seeks to the end of the stream to retrieve the length, and then back again.
+        /// </summary>
         /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
-        public Task<long> GetLengthAsync(CancellationToken cancellationToken = default)
+        public Task<long> GetLengthAsync(CancellationToken cancellationToken)
         {
             using (NoSynchronizationContextScope.Enter())
                 return GetLength(true);

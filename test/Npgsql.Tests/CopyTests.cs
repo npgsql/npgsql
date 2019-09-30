@@ -253,8 +253,7 @@ namespace Npgsql.Tests
                     writer.Write(longString, "text");
                     writer.WriteNull();
 
-                    var rowsWritten = writer.Complete();
-                    Assert.That(rowsWritten, Is.EqualTo(3));
+                    writer.Complete();
                 }
 
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
@@ -314,8 +313,7 @@ namespace Npgsql.Tests
                 {
                     writer.StartRow();
                     writer.Write(data, NpgsqlDbType.Bytea);
-                    var rowsWritten = writer.Complete();
-                    Assert.That(rowsWritten, Is.EqualTo(1));
+                    writer.Complete();
                 }
 
                 Assert.That(conn.ExecuteScalar("SELECT field FROM data"), Is.EqualTo(data));
@@ -334,8 +332,7 @@ namespace Npgsql.Tests
                 {
                     writer.StartRow();
                     writer.Write(data, NpgsqlDbType.Array | NpgsqlDbType.Text);
-                    var rowsWritten = writer.Complete();
-                    Assert.That(rowsWritten, Is.EqualTo(1));
+                    writer.Complete();
                 }
 
                 Assert.That(conn.ExecuteScalar("SELECT field FROM data"), Is.EqualTo(data));
@@ -354,8 +351,7 @@ namespace Npgsql.Tests
                 {
                     writer.StartRow();
                     writer.Write(data, NpgsqlDbType.Text);
-                    var rowsWritten = writer.Complete();
-                    Assert.That(rowsWritten, Is.EqualTo(1));
+                    writer.Complete();
                 }
                 Assert.That(conn.ExecuteScalar("SELECT field FROM data"), Is.EqualTo(data));
             }
@@ -540,8 +536,7 @@ namespace Npgsql.Tests
                 {
                     writer.StartRow();
                     writer.Write(expected);
-                    var rowsWritten = writer.Complete();
-                    Assert.That(rowsWritten, Is.EqualTo(1));
+                    writer.Complete();
                 }
 
                 using (var reader = conn.BeginBinaryExport("COPY data (arr) TO STDIN BINARY"))
@@ -569,8 +564,7 @@ namespace Npgsql.Tests
                 {
                     writer.StartRow();
                     writer.Write(expected);
-                    var rowsWritten = writer.Complete();
-                    Assert.That(rowsWritten, Is.EqualTo(1));
+                    writer.Complete();
                 }
 
                 using (var reader = conn.BeginBinaryExport("COPY data (mymood) TO STDIN BINARY"))
@@ -635,8 +629,7 @@ namespace Npgsql.Tests
                     {
                         writer.StartRow();
                         writer.Write(8);
-                        var rowsWritten = writer.Complete();
-                        Assert.That(rowsWritten, Is.EqualTo(1));
+                        writer.Complete();
                         writer.StartRow();
                         Assert.Fail("StartRow should have thrown");
                     }
@@ -917,8 +910,7 @@ namespace Npgsql.Tests
                     writer.Write((string?)null, NpgsqlDbType.Uuid);
                     writer.Write(DBNull.Value);
                     writer.Write((string?)null);
-                    var rowsWritten = writer.Complete();
-                    Assert.That(rowsWritten, Is.EqualTo(1));
+                    writer.Complete();
                 }
                 using (var cmd = new NpgsqlCommand("SELECT foo1,foo2,foo3,foo4 FROM data", conn))
                 using (var reader = cmd.ExecuteReader())
@@ -945,8 +937,7 @@ namespace Npgsql.Tests
                     writer.StartRow();
                     writer.Write(3, NpgsqlDbType.Integer);
                     writer.Write((object)new List<int> { 4, 5, 6 });
-                    var rowsWritten = writer.Complete();
-                    Assert.That(rowsWritten, Is.EqualTo(2));
+                    writer.Complete();
                 }
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(2));
             }

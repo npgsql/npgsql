@@ -365,7 +365,7 @@ namespace Npgsql
         /// <summary>
         /// Completes the import operation. The writer is unusable after this operation.
         /// </summary>
-        public ulong Complete() => Complete(false).GetAwaiter().GetResult();
+        public void Complete() => Complete(false).GetAwaiter().GetResult();
 
         /// <summary>
         /// Completes the import operation. The writer is unusable after this operation.
