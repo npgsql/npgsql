@@ -12,8 +12,6 @@ Some other asynchronous message types are notices (e.g. database shutdown immine
 
 Note that despite the word "asynchronous", this page has nothing to do with ADO.NET async operations (e.g. ExecuteReaderAsync).
 
----
-
 ## Processing of Notifications
 
 Npgsql exposes notification messages via the `Notification` event on NpgsqlConnection.

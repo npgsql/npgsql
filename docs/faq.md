@@ -38,8 +38,6 @@ using (var cmd = new NpgsqlCommand(...)) {
 }
 ```
 
----
-
 ### <a name="jsonb">I'm trying to write a JSONB type and am getting 'column "XXX" is of type jsonb but expression is of type text'</a>
 
 When sending a JSONB parameter, you must explicitly specify its type to be JSONB with NpgsqlDbType:
@@ -49,8 +47,6 @@ using (var cmd = new NpgsqlCommand("INSERT INTO foo (col) VALUES (@p)", conn)) {
   cmd.Parameters.AddWithValue("p", NpgsqlDbType.Jsonb, jsonText);
 }
 ```
-
----
 
 ### I'm trying to apply an Entity Framework 6 migration and I get `Type is not resolved for member 'Npgsql.NpgsqlException,Npgsql'`!
 
