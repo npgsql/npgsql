@@ -1196,9 +1196,17 @@ namespace Npgsql
         /// arrives, and exits immediately. The asynchronous message is delivered via the normal events
         /// (<see cref="Notification"/>, <see cref="Notice"/>).
         /// </summary>
+        [PublicAPI]
+        public Task WaitAsync() => WaitAsync(CancellationToken.None);
+
+        /// <summary>
+        /// Waits asynchronously until an asynchronous PostgreSQL messages (e.g. a notification)
+        /// arrives, and exits immediately. The asynchronous message is delivered via the normal events
+        /// (<see cref="Notification"/>, <see cref="Notice"/>).
+        /// </summary>
         /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
         [PublicAPI]
-        public Task WaitAsync(CancellationToken cancellationToken = default)
+        public Task WaitAsync(CancellationToken cancellationToken)
         {
             if (cancellationToken.IsCancellationRequested)
                 return Task.FromCanceled(cancellationToken);

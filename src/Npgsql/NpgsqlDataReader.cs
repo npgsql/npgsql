@@ -1075,9 +1075,17 @@ namespace Npgsql
         /// Retrieves data as a <see cref="Stream"/>.
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
+        /// <returns>The returned object.</returns>
+        public Task<Stream> GetStreamAsync(int ordinal)
+            => GetStreamAsync(ordinal, CancellationToken.None);
+
+        /// <summary>
+        /// Retrieves data as a <see cref="Stream"/>.
+        /// </summary>
+        /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
         /// <returns>The returned object.</returns>
-        public Task<Stream> GetStreamAsync(int ordinal, CancellationToken cancellationToken = default)
+        public Task<Stream> GetStreamAsync(int ordinal, CancellationToken cancellationToken)
         {
             if (cancellationToken.IsCancellationRequested)
                 return Task.FromCanceled<Stream>(cancellationToken);
@@ -1246,9 +1254,17 @@ namespace Npgsql
         /// Retrieves data as a <see cref="TextReader"/>.
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
+        /// <returns>The returned object.</returns>
+        public Task<TextReader> GetTextReaderAsync(int ordinal)
+            => GetTextReaderAsync(ordinal, CancellationToken.None);
+
+        /// <summary>
+        /// Retrieves data as a <see cref="TextReader"/>.
+        /// </summary>
+        /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
         /// <returns>The returned object.</returns>
-        public Task<TextReader> GetTextReaderAsync(int ordinal, CancellationToken cancellationToken = default)
+        public Task<TextReader> GetTextReaderAsync(int ordinal, CancellationToken cancellationToken)
         {
             if (cancellationToken.IsCancellationRequested)
                 return Task.FromCanceled<TextReader>(cancellationToken);

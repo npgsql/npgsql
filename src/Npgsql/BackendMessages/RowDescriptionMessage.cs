@@ -136,8 +136,14 @@ namespace Npgsql.BackendMessages
     /// </summary>
     public sealed class FieldDescription
     {
+        /// <summary>
+        /// Creates a new instance.
+        /// </summary>
+        /// <remarks>
+        /// Exists for backwards compat with 4.0, has been removed for 5.0.
+        /// </remarks>
 #pragma warning disable CS8618  // Lazy-initialized type
-        internal FieldDescription() {}
+        public FieldDescription() {}
 #pragma warning restore CS8618
 
         internal FieldDescription(FieldDescription source)

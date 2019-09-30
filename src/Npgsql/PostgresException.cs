@@ -31,6 +31,15 @@ namespace Npgsql
         /// <summary>
         /// Creates a new instance.
         /// </summary>
+        /// <remarks>
+        /// Exists for backwards compat with 4.0, has been removed for 5.0.
+        /// </remarks>
+        [Obsolete]
+        public PostgresException() : this(string.Empty, string.Empty, string.Empty, string.Empty) {}
+
+        /// <summary>
+        /// Creates a new instance.
+        /// </summary>
         public PostgresException(string messageText, string severity, string invariantSeverity, string sqlState)
         {
             MessageText = messageText;
