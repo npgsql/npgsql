@@ -13,14 +13,11 @@ namespace Npgsql
     {
         readonly Dictionary<string, int> _paramIndexMap = new Dictionary<string, int>();
         readonly StringBuilder _rewrittenSql = new StringBuilder();
-        readonly bool _standardConformantStrings;
+        internal bool StandardConformingStrings { get; set; } = true;
 
         List<NpgsqlStatement> _statements = default!;
         NpgsqlStatement _statement = default!;
         int _statementIndex;
-
-        internal SqlQueryParser(bool standardConformantStrings)
-            => _standardConformantStrings = standardConformantStrings;
 
         /// <summary>
         /// Receives a raw SQL query as passed in by the user, and performs some processing necessary
@@ -68,7 +65,7 @@ namespace Npgsql
                 case '-':
                     goto LineCommentBegin;
                 case '\'':
-                    if (_standardConformantStrings)
+                    if (StandardConformingStrings)
                         goto Quoted;
                     else
                         goto Escaped;
