@@ -436,7 +436,7 @@ namespace Npgsql
                 ["user"] = username,
                 ["client_encoding"] =
                     Settings.ClientEncoding ??
-                    Environment.GetEnvironmentVariable("PGCLIENTENCODING") ??
+                    PostgresEnvironment.ClientEncoding ??
                     "UTF8"
             };
 
@@ -448,7 +448,7 @@ namespace Npgsql
             if (Settings.SearchPath?.Length > 0)
                 startupParams["search_path"] = Settings.SearchPath;
 
-            var timezone = Settings.Timezone ?? Environment.GetEnvironmentVariable("PGTZ");
+            var timezone = Settings.Timezone ?? PostgresEnvironment.TimeZone;
             if (timezone != null)
                 startupParams["TimeZone"] = timezone;
 
@@ -536,16 +536,18 @@ namespace Npgsql
                         break;
                     case 'S':
                         var clientCertificates = new X509CertificateCollection();
-                        if (Settings.ClientCertificate != null)
-                            clientCertificates.Add(new X509Certificate(Settings.ClientCertificate));
-                        else if (Environment.GetEnvironmentVariable("PGSSLCERT") is string envCertPath)
-                            clientCertificates.Add(new X509Certificate(envCertPath));
-                        else if (Environment.GetEnvironmentVariable(PGUtil.IsWindows ? "APPDATA" : "HOME") is string homeDir)
+                        var certPath = Settings.ClientCertificate ?? PostgresEnvironment.SslCert;
+                        var certPathExists = true;
+
+                        if (certPath is null)
                         {
-                            var certPath = Path.Combine(homeDir, "postgresql", "postgresql.crt");
-                            if (File.Exists(certPath))
-                                clientCertificates.Add(new X509Certificate(certPath));
+                            certPath = PostgresEnvironment.SslCertDefault;
+                            certPathExists = File.Exists(certPath);
                         }
+
+                        if (certPathExists)
+                            clientCertificates.Add(new X509Certificate(certPath));
+
                         ProvideClientCertificatesCallback?.Invoke(clientCertificates);
 
                         RemoteCertificateValidationCallback certificateValidationCallback;

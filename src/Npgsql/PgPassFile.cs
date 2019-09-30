@@ -27,16 +27,8 @@ namespace Npgsql
         /// Initializes a new instance of the <see cref="PgPassFile"/> class
         /// </summary>
         /// <param name="fileName"></param>
-        PgPassFile(string fileName)
-        {
-            FileName = fileName;
-        }
-
-        internal static PgPassFile? Load(string? pgPassFile)
-        {
-            var path = pgPassFile ?? GetSystemPgPassFilePath();
-            return path == null || !File.Exists(path) ? null : new PgPassFile(path);
-        }
+        public PgPassFile(string fileName)
+            => FileName = fileName;
 
         #endregion
 
@@ -59,19 +51,6 @@ namespace Npgsql
         /// <returns>Matching <see cref="Entry"/> if match was found. Otherwise, returns null.</returns>
         internal Entry? GetFirstMatchingEntry(string? host = null, int? port = null, string? database = null, string? username = null)
             => Entries.FirstOrDefault(entry => entry.IsMatch(host, port, database, username));
-
-        /// <summary>
-        /// Retrieves the full system path to the pgpass file. Does not check whether the
-        /// file actually exist.
-        /// </summary>
-        /// <remarks>
-        /// See https://www.postgresql.org/docs/current/static/libpq-pgpass.html
-        /// </remarks>
-        /// <returns>Path to the pgpass file</returns>
-        internal static string? GetSystemPgPassFilePath()
-            => Environment.GetEnvironmentVariable("PGPASSFILE") ?? (PGUtil.IsWindows
-                ? Environment.GetEnvironmentVariable("APPDATA") is string appData ? Path.Combine(appData, "postgresql", "pgpass.conf") : null
-                : Environment.GetEnvironmentVariable("HOME") is string home ? Path.Combine(home, "postgresql", ".pgpass") : null);
 
         /// <summary>
         /// Represents a hostname, port, database, username, and password combination that has been retrieved from a .pgpass file
