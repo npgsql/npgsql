@@ -461,6 +461,10 @@ namespace Npgsql
             if (username?.Length > 0)
                 return username;
 
+            username = PostgresEnvironment.User;
+            if (username?.Length > 0)
+                return username;
+
 #if NET461
             if (PGUtil.IsWindows && Type.GetType("Mono.Runtime") == null)
             {
@@ -481,14 +485,7 @@ namespace Npgsql
             if (username?.Length > 0)
                 return username;
 
-            username = Environment.GetEnvironmentVariable("USERNAME") ?? Environment.GetEnvironmentVariable("USER");
-            if (username?.Length > 0)
-                return username;
-
-            if (username is null)
-                throw new NpgsqlException("No username could be found, please specify one explicitly");
-
-            return username;
+            throw new NpgsqlException("No username could be found, please specify one explicitly");
         }
 
         async Task RawOpen(NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
@@ -544,7 +541,7 @@ namespace Npgsql
                             certPath = PostgresEnvironment.SslCertDefault;
                             certPathExists = File.Exists(certPath);
                         }
-
+ 
                         if (certPathExists)
                             clientCertificates.Add(new X509Certificate(certPath));
 

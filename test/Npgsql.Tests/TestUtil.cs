@@ -74,7 +74,7 @@ namespace Npgsql.Tests
             return hex.ToString();
         }
 
-        internal static IDisposable SetEnvironmentVariable(string name, string value)
+        internal static IDisposable SetEnvironmentVariable(string name, string? value)
         {
             var resetter = new EnvironmentVariableResetter(name, Environment.GetEnvironmentVariable(name));
             Environment.SetEnvironmentVariable(name, value);

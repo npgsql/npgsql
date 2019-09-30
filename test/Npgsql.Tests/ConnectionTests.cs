@@ -190,9 +190,10 @@ namespace Npgsql.Tests
                 Pooling = false //testing opening of connections, pooling will return an existing connection
             };
             var goodPassword = connString.Password;
+            var getPasswordDelegateWasCalled = false;
             connString.Password = null;
 
-            bool getPasswordDelegateWasCalled = false;
+            Assume.That(goodPassword, Is.Not.Null);
 
             using (var conn = new NpgsqlConnection(connString.ToString()) { ProvidePasswordCallback = ProvidePasswordCallback })
             {
@@ -203,7 +204,7 @@ namespace Npgsql.Tests
             string ProvidePasswordCallback(string host, int port, string database, string username)
             {
                 getPasswordDelegateWasCalled = true;
-                return goodPassword;
+                return goodPassword!;
             }
         }
 
@@ -256,6 +257,8 @@ namespace Npgsql.Tests
             var goodPassword = connString.Password;
             connString.Password = null;
 
+            Assume.That(goodPassword, Is.Not.Null);
+
             string? receivedHost = null;
             int? receivedPort = null;
             string? receivedDatabase = null;
@@ -277,7 +280,7 @@ namespace Npgsql.Tests
                 receivedDatabase = database;
                 receivedUsername = username;
 
-                return goodPassword;
+                return goodPassword!;
             }
         }
         #endregion
@@ -1285,9 +1288,44 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test]
+        [NonParallelizable]
+        public void Connect_UserNameFromEnvironment_Succeeds()
+        {
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Pooling = false,
+                IntegratedSecurity = false
+            };
+
+            using (TestUtil.SetEnvironmentVariable("PGUSER", builder.Username))
+            {
+                builder.Username = null;
+                using (OpenConnection(builder)) { }
+            }
+        }
+
+        [Test]
+        [NonParallelizable]
+        public void Connect_PasswordFromEnvironment_Succeeds()
+        {
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Pooling = false,
+                IntegratedSecurity = false
+            };
+
+            using (TestUtil.SetEnvironmentVariable("PGPASSWORD", builder.Password))
+            {
+                builder.Password = null;
+                using (OpenConnection(builder)) { }
+            }
+        }
+
         #region pgpass
 
         [Test]
+        [NonParallelizable]
         public void UsePgPassFile()
         {
             var file = SetupTestData();
@@ -1310,12 +1348,6 @@ namespace Npgsql.Tests
             var pgpassFile = Path.GetTempFileName();
             File.WriteAllText(pgpassFile, content);
             return pgpassFile;
-        }
-
-        public void RestorePriorConfiguration(string fileName, string environmentVariableValue)
-        {
-            if (File.Exists(fileName))
-                File.Delete(fileName);
         }
 
         #endregion

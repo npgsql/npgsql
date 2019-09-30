@@ -362,9 +362,9 @@ namespace Npgsql
 
         string? GetPassword(string username)
         {
-            var passwd = Settings.Password;
-            if (passwd != null)
-                return passwd;
+            var password = Settings.Password;
+            if (password != null)
+                return password;
 
             // No password was provided. Attempt to pull the password from the pgpass file.
             var passFilePath = Settings.Passfile ?? PostgresEnvironment.PassFile ?? PostgresEnvironment.PassFileDefault;
@@ -379,20 +379,18 @@ namespace Npgsql
                 }
             }
 
-            if (ProvidePasswordCallback != null)
-            {
-                Log.Trace($"Taking password from {nameof(ProvidePasswordCallback)} delegate");
-                try
-                {
-                    return ProvidePasswordCallback(Host, Port, Settings.Database!, username);
-                }
-                catch (Exception e)
-                {
-                    throw new NpgsqlException($"Obtaining password using {nameof(NpgsqlConnection)}.{nameof(ProvidePasswordCallback)} delegate failed", e);
-                }
-            }
+            if (ProvidePasswordCallback is null)
+                return PostgresEnvironment.Password;
 
-            return null;
+            Log.Trace($"Taking password from {nameof(ProvidePasswordCallback)} delegate");
+            try
+            {
+                return ProvidePasswordCallback(Host, Port, Settings.Database!, username);
+            }
+            catch (Exception e)
+            {
+                throw new NpgsqlException($"Obtaining password using {nameof(NpgsqlConnection)}.{nameof(ProvidePasswordCallback)} delegate failed", e);
+            }
         }
     }
 }

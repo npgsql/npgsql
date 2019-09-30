@@ -6,9 +6,13 @@ namespace Npgsql
 {
     static class PostgresEnvironment
     {
+        public static string? User => Environment.GetEnvironmentVariable("PGUSER");
+
+        public static string? Password => Environment.GetEnvironmentVariable("PGPASSWORD");
+
         public static string? PassFile => Environment.GetEnvironmentVariable("PGPASSFILE");
 
-        public static string? PassFileDefault => GetDefaultFilePath("pgpass.conf");
+        public static string? PassFileDefault => GetDefaultFilePath(PGUtil.IsWindows ? "pgpass.conf" : ".pgpass");
 
         public static string? SslCert => Environment.GetEnvironmentVariable("PGSSLCERT");
 
