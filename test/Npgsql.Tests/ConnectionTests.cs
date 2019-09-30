@@ -165,8 +165,6 @@ namespace Npgsql.Tests
         [Test, Description("Connects with a bad password to ensure the proper error is thrown")]
         public void AuthenticationFailure()
         {
-            if (Environment.GetEnvironmentVariable("TRAVIS") != null)
-                Assert.Ignore("Test mysteriously fails on Travis only");
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 Password = "bad",
@@ -857,8 +855,6 @@ namespace Npgsql.Tests
         [Test, Description("Makes sure notices are probably received and emitted as events")]
         public void Notice()
         {
-            if (Environment.GetEnvironmentVariable("TRAVIS") != null)
-                Assert.Ignore("Test mysteriously fails on Travis only");
             using (var conn = OpenConnection())
             {
                 // Make sure messages are in English
