@@ -5,6 +5,7 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests
 {
+    [Parallelizable(ParallelScope.None)]
     public class AutoPrepareTests : TestBase
     {
         [Test]
@@ -346,6 +347,27 @@ namespace Npgsql.Tests
 
                 conn.UnprepareAll();
             }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2644")]
+        public void RowDescriptionProperlyCloned()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                MaxAutoPrepare = 10,
+                AutoPrepareMinUsages = 2
+            };
+            using var conn = OpenConnection(csb);
+            using var cmd1 = new NpgsqlCommand("SELECT 1 AS foo", conn);
+            using var cmd2 = new NpgsqlCommand("SELECT 1 AS bar", conn);
+
+            cmd1.ExecuteNonQuery();
+            cmd1.ExecuteNonQuery();  // Query is now auto-prepared
+            cmd2.ExecuteNonQuery();
+            using (var reader = cmd1.ExecuteReader())
+                Assert.That(reader.GetName(0), Is.EqualTo("foo"));
+
+            conn.UnprepareAll();
         }
 
         // Exclude some internal Npgsql queries which include pg_type as well as the count statement itself

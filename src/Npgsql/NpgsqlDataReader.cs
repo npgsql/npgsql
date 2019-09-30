@@ -422,16 +422,23 @@ namespace Npgsql
                         throw;
                     }
 
-                    pStatement?.CompletePrepare();
-
                     Expect<BindCompleteMessage>(await Connector.ReadMessage(async), Connector);
                     msg = await Connector.ReadMessage(async);
+
                     RowDescription = statement.Description = msg.Code switch
                     {
-                        BackendMessageCode.NoData         => null,
-                        BackendMessageCode.RowDescription => (RowDescriptionMessage)msg,  // We have a resultset
+                        BackendMessageCode.NoData => null,
+
+                        // RowDescription messages are cached on the connector, but if we're auto-preparing, we need to
+                        // clone our own copy which will last beyond the lifetime of this invocation.
+                        BackendMessageCode.RowDescription => pStatement == null
+                            ? (RowDescriptionMessage)msg
+                            : ((RowDescriptionMessage)msg).Clone(),
+
                         _ => throw Connector.UnexpectedMessageReceived(msg.Code)
                     };
+
+                    pStatement?.CompletePrepare();
                 }
 
                 if (RowDescription == null)
