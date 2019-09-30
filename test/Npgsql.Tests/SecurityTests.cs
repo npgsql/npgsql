@@ -65,8 +65,7 @@ namespace Npgsql.Tests
         [Test, Explicit("Needs to be set up (and run with with Kerberos credentials on Linux)")]
         public void IntegratedSecurityWithUsername()
         {
-            var username = Environment.GetEnvironmentVariable("USERNAME") ??
-                           Environment.GetEnvironmentVariable("USER");
+            var username = Environment.UserName;
             if (username == null)
                 throw new Exception("Could find username");
 
