@@ -534,8 +534,7 @@ namespace Npgsql
                 if (connector.InTransaction)
                     throw new InvalidOperationException("A transaction is already in progress; nested/concurrent transactions aren't supported.");
 
-                connector.Transaction.Init(level);
-                return connector.Transaction;
+                return new NpgsqlTransaction(this, level);
             }
         }
 
