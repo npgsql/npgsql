@@ -1,21 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Linq;
 using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Columns;
-using BenchmarkDotNet.Configs;
 using NpgsqlTypes;
 
 namespace Npgsql.Benchmarks.Types
 {
     public class WriteVaryingNumberOfParameters
     {
-        NpgsqlConnection _conn;
-        NpgsqlCommand _cmd;
+        NpgsqlConnection _conn = default!;
+        NpgsqlCommand _cmd = default!;
 
-        //[Params(0, 1, 10, 100)]
         [Params(10)]
         public int NumParams { get; set; }
 

@@ -1,37 +1,9 @@
-﻿#region License
-// The PostgreSQL License
-//
-// Copyright (C) 2018 The Npgsql Development Team
-//
-// Permission to use, copy, modify, and distribute this software and its
-// documentation for any purpose, without fee, and without a written
-// agreement is hereby granted, provided that the above copyright notice
-// and this paragraph and the following two paragraphs appear in all copies.
-//
-// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
-// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
-// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
-// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
-// THE POSSIBILITY OF SUCH DAMAGE.
-//
-// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
-// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
-// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-#endregion
-
-using NUnit.Framework;
-using System;
-using System.CodeDom;
-using System.Collections.Generic;
+﻿using System;
 using System.Data;
 using System.Dynamic;
-using System.Linq;
-using System.Text;
-using Npgsql;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
+using NUnit.Framework;
 
 namespace Npgsql.Tests.Types
 {
@@ -40,6 +12,7 @@ namespace Npgsql.Tests.Types
     {
         #region Test Types
 
+#pragma warning disable CS8618
         class SomeComposite
         {
             public int X { get; set; }
@@ -57,6 +30,7 @@ namespace Npgsql.Tests.Types
             public int X { get; set; }
             public string SomeText { get; set; }
         }
+#pragma warning restore CS8618
 
         #endregion
 
@@ -610,8 +584,8 @@ CREATE TYPE address AS
 
         public class Address
         {
-            public string Street { get; set; }
-            public string PostalCode { get; set; }
+            public string Street { get; set; } = default!;
+            public string PostalCode { get; set; } = default!;
         }
 
         class TableAsCompositeType
@@ -679,21 +653,21 @@ CREATE TYPE address AS
         #endregion Table as Composite
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1125")]
-        public void NullableProperty()
+        public void NullablePropertyInClassComposite()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 Pooling = false,
-                ApplicationName = nameof(NullableProperty)
+                ApplicationName = nameof(NullablePropertyInClassComposite)
             };
             using (var conn = OpenConnection(csb))
             {
                 conn.ExecuteNonQuery("CREATE TYPE pg_temp.nullable_property_type AS (foo INT)");
                 conn.ReloadTypes();
-                conn.TypeMapper.MapComposite<NullablePropertyType>();
+                conn.TypeMapper.MapComposite<ClassWithNullableProperty>("nullable_property_type");
 
-                var expected1 = new NullablePropertyType { Foo = 8 };
-                var expected2 = new NullablePropertyType { Foo = null };
+                var expected1 = new ClassWithNullableProperty { Foo = 8 };
+                var expected2 = new ClassWithNullableProperty { Foo = null };
                 using (var cmd = new NpgsqlCommand(@"SELECT @p1, @p2", conn))
                 {
                     cmd.Parameters.AddWithValue("p1", expected1);
@@ -702,14 +676,50 @@ CREATE TYPE address AS
                     using (var reader = cmd.ExecuteReader())
                     {
                         reader.Read();
-                        Assert.That(reader.GetFieldValue<NullablePropertyType>(0).Foo, Is.EqualTo(8));
-                        Assert.That(reader.GetFieldValue<NullablePropertyType>(1).Foo, Is.Null);
+                        Assert.That(reader.GetFieldValue<ClassWithNullableProperty>(0).Foo, Is.EqualTo(8));
+                        Assert.That(reader.GetFieldValue<ClassWithNullableProperty>(1).Foo, Is.Null);
                     }
                 }
             }
         }
 
-        class NullablePropertyType
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1125")]
+        public void NullablePropertyInStructComposite()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Pooling = false,
+                ApplicationName = nameof(NullablePropertyInStructComposite)
+            };
+            using (var conn = OpenConnection(csb))
+            {
+                conn.ExecuteNonQuery("CREATE TYPE pg_temp.nullable_property_type AS (foo INT)");
+                conn.ReloadTypes();
+                conn.TypeMapper.MapComposite<StructWithNullableProperty>("nullable_property_type");
+
+                var expected1 = new StructWithNullableProperty { Foo = 8 };
+                var expected2 = new StructWithNullableProperty { Foo = null };
+                using (var cmd = new NpgsqlCommand(@"SELECT @p1, @p2", conn))
+                {
+                    cmd.Parameters.AddWithValue("p1", expected1);
+                    cmd.Parameters.AddWithValue("p2", expected2);
+
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        reader.Read();
+                        Assert.That(reader.GetFieldValue<StructWithNullableProperty>(0).Foo, Is.EqualTo(8));
+                        Assert.That(reader.GetFieldValue<StructWithNullableProperty>(1).Foo, Is.Null);
+                    }
+                }
+            }
+        }
+
+        class ClassWithNullableProperty
+        {
+            public int? Foo { get; set; }
+        }
+
+        struct StructWithNullableProperty
         {
             public int? Foo { get; set; }
         }

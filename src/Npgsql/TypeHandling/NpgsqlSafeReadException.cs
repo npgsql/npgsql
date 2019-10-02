@@ -13,11 +13,17 @@ namespace Npgsql.TypeHandling
         /// <summary>
         /// Creates an instance of <see cref="NpgsqlSafeReadException"/>.
         /// </summary>
-        /// <param name="innerException"></param>
-        public NpgsqlSafeReadException(Exception innerException) : base("", innerException)
-        {
-            if (innerException == null)
-                throw new ArgumentNullException(nameof(innerException));
-        }
+        /// <param name="originalException"></param>
+        public NpgsqlSafeReadException(Exception originalException) : base(string.Empty)
+            => OriginalException = originalException ?? throw new ArgumentNullException(nameof(originalException));
+
+        /// <summary>
+        /// Gets the Exception instance that caused the current exception.
+        /// </summary>
+        public Exception OriginalException { get; }
+
+        /// <inheritdocs />
+        public override Exception GetBaseException()
+            => OriginalException;
     }
 }

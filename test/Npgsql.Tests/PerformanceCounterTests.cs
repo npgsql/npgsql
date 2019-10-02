@@ -1,27 +1,4 @@
-﻿#region License
-// The PostgreSQL License
-//
-// Copyright (C) 2018 The Npgsql Development Team
-//
-// Permission to use, copy, modify, and distribute this software and its
-// documentation for any purpose, without fee, and without a written
-// agreement is hereby granted, provided that the above copyright notice
-// and this paragraph and the following two paragraphs appear in all copies.
-//
-// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
-// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
-// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
-// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
-// THE POSSIBILITY OF SUCH DAMAGE.
-//
-// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
-// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
-// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-#endregion
-
-#if NET451
+﻿#if NET461
 using System;
 using System.Diagnostics;
 using System.Threading;
@@ -49,10 +26,10 @@ namespace Npgsql.Tests
             using (var nonPooledConn = new NpgsqlConnection(nonPooledConnString))
             {
                 Thread.Sleep(2000);  // Let the counter reset
-                Assert.That(hardConnectCounter.RawValue, Is.Zero);
-                Assert.That(hardDisconnectCounter.RawValue, Is.Zero);
-                Assert.That(softConnectCounter.RawValue, Is.Zero);
-                Assert.That(softDisconnectCounter.RawValue, Is.Zero);
+                Assert.That(hardConnectCounter!.RawValue, Is.Zero);
+                Assert.That(hardDisconnectCounter!.RawValue, Is.Zero);
+                Assert.That(softConnectCounter!.RawValue, Is.Zero);
+                Assert.That(softDisconnectCounter!.RawValue, Is.Zero);
                 pooledConn.Open();   // Pool is empty so this is a hard connect
                 nonPooledConn.Open();
                 Assert.That(hardConnectCounter.RawValue, Is.EqualTo(2));
@@ -91,7 +68,7 @@ namespace Npgsql.Tests
             using (var pooledConn = new NpgsqlConnection(ConnectionString))
             using (var nonPooledConn = new NpgsqlConnection(nonPooledConnString))
             {
-                Assert.That(counter.RawValue, Is.Zero);
+                Assert.That(counter!.RawValue, Is.Zero);
                 nonPooledConn.Open();
                 Assert.That(counter.RawValue, Is.EqualTo(1));
                 pooledConn.Open();
@@ -117,9 +94,9 @@ namespace Npgsql.Tests
             using (var pooledConn = new NpgsqlConnection(ConnectionString))
             using (var nonPooledConn = new NpgsqlConnection(nonPooledConnString))
             {
-                Assert.That(totalCounter.RawValue, Is.Zero);
-                Assert.That(activeCounter.RawValue, Is.Zero);
-                Assert.That(freeCounter.RawValue, Is.Zero);
+                Assert.That(totalCounter!.RawValue, Is.Zero);
+                Assert.That(activeCounter!.RawValue, Is.Zero);
+                Assert.That(freeCounter!.RawValue, Is.Zero);
                 nonPooledConn.Open();
                 Assert.That(totalCounter.RawValue, Is.Zero);
                 Assert.That(activeCounter.RawValue, Is.Zero);

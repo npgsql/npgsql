@@ -1,34 +1,8 @@
-﻿#region License
-// The PostgreSQL License
-//
-// Copyright (C) 2018 The Npgsql Development Team
-//
-// Permission to use, copy, modify, and distribute this software and its
-// documentation for any purpose, without fee, and without a written
-// agreement is hereby granted, provided that the above copyright notice
-// and this paragraph and the following two paragraphs appear in all copies.
-//
-// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
-// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
-// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
-// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
-// THE POSSIBILITY OF SUCH DAMAGE.
-//
-// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
-// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
-// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-#endregion
-
-using System;
-using System.Collections.Generic;
+﻿using System;
 using System.Data;
 using System.Data.Common;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
-using Npgsql;
+using Npgsql.Util;
 using NUnit.Framework;
 
 namespace Npgsql.Tests
@@ -162,33 +136,27 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Tests that the isolation levels are properly supported")]
-        public void IsolationLevels()
+        [TestCase(IsolationLevel.ReadCommitted,   "read committed")]
+        [TestCase(IsolationLevel.ReadUncommitted, "read uncommitted")]
+        [TestCase(IsolationLevel.RepeatableRead,  "repeatable read")]
+        [TestCase(IsolationLevel.Serializable,    "serializable")]
+        [TestCase(IsolationLevel.Snapshot,        "repeatable read")]
+        [TestCase(IsolationLevel.Unspecified,     "read committed")]
+        public void IsolationLevels(IsolationLevel level, string expectedName)
         {
             using (var conn = OpenConnection())
             {
-                foreach (var level in new[]
-                {
-                    IsolationLevel.Unspecified,
-                    IsolationLevel.ReadCommitted,
-                    IsolationLevel.ReadUncommitted,
-                    IsolationLevel.RepeatableRead,
-                    IsolationLevel.Serializable,
-                    IsolationLevel.Snapshot,
-                })
-                {
-                    var tx = conn.BeginTransaction(level);
-                    tx.Commit();
-                }
-
-                foreach (var level in new[]
-                {
-                    IsolationLevel.Chaos,
-                })
-                {
-                    var level2 = level;
-                    Assert.That(() => conn.BeginTransaction(level2), Throws.Exception.TypeOf<NotSupportedException>());
-                }
+                var tx = conn.BeginTransaction(level);
+                Assert.That(conn.ExecuteScalar("SHOW TRANSACTION ISOLATION LEVEL"), Is.EqualTo(expectedName));
+                tx.Commit();
             }
+        }
+
+        [Test]
+        public void IsolationLevelChaosUnsupported()
+        {
+            using (var conn = OpenConnection())
+                Assert.That(() => conn.BeginTransaction(IsolationLevel.Chaos), Throws.Exception.TypeOf<NotSupportedException>());
         }
 
         [Test, Description("Rollback of an already rolled back transaction")]
@@ -238,7 +206,7 @@ namespace Npgsql.Tests
             using (var conn = OpenConnection())
             {
                 conn.BeginTransaction();
-                Assert.That(() => conn.BeginTransaction(), Throws.TypeOf<NotSupportedException>());
+                Assert.That(() => conn.BeginTransaction(), Throws.TypeOf<InvalidOperationException>());
             }
         }
 
@@ -333,7 +301,7 @@ namespace Npgsql.Tests
             using (var conn = new NpgsqlConnection(ConnectionString + $";Application Name={TestUtil.GetUniqueIdentifier(nameof(TransactionOnRecycledConnection))}"))
             {
                 conn.Open();
-                var prevConnectorId = conn.Connector.Id;
+                var prevConnectorId = conn.Connector!.Id;
                 conn.Close();
                 conn.Open();
                 Assert.That(conn.Connector.Id, Is.EqualTo(prevConnectorId), "Connection pool returned a different connector, can't test");
@@ -362,6 +330,32 @@ namespace Npgsql.Tests
                     Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data", tx: tx), Is.EqualTo(0));
                     conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('savepointtest')", tx: tx);
                     tx.Release(name);
+                    Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data", tx: tx), Is.EqualTo(1));
+
+                    tx.Commit();
+                }
+                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(1));
+            }
+        }
+
+        [Test]
+        public async Task SavepointAsync()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
+                const string name = "theSavePoint";
+
+                using (var tx = conn.BeginTransaction())
+                {
+                    await tx.SaveAsync(name);
+
+                    conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('savepointtest')", tx: tx);
+                    Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data", tx: tx), Is.EqualTo(1));
+                    await tx.RollbackAsync(name);
+                    Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data", tx: tx), Is.EqualTo(0));
+                    conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('savepointtest')", tx: tx);
+                    await tx.ReleaseAsync(name);
                     Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data", tx: tx), Is.EqualTo(1));
 
                     tx.Commit();
@@ -472,9 +466,9 @@ namespace Npgsql.Tests
 
         class NoTransactionDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
         {
-            public async Task<NpgsqlDatabaseInfo> Load(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
+            public async Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
             {
-                var db = new NoTransactionDatabaseInfo();
+                var db = new NoTransactionDatabaseInfo(conn);
                 await db.LoadPostgresInfo(conn, timeout, async);
                 return db;
             }
@@ -483,6 +477,8 @@ namespace Npgsql.Tests
         class NoTransactionDatabaseInfo : PostgresDatabaseInfo
         {
             public override bool SupportsTransactions => false;
+
+            internal NoTransactionDatabaseInfo(NpgsqlConnection conn) : base(conn) {}
         }
 
         // Older tests

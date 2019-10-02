@@ -1,27 +1,3 @@
-#region License
-// The PostgreSQL License
-//
-// Copyright (C) 2018 The Npgsql Development Team
-//
-// Permission to use, copy, modify, and distribute this software and its
-// documentation for any purpose, without fee, and without a written
-// agreement is hereby granted, provided that the above copyright notice
-// and this paragraph and the following two paragraphs appear in all copies.
-//
-// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
-// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
-// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
-// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
-// THE POSSIBILITY OF SUCH DAMAGE.
-//
-// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
-// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
-// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-#endregion
-
-using System;
 using System.Data;
 using System.Data.Common;
 using JetBrains.Annotations;
@@ -33,14 +9,14 @@ namespace Npgsql
     /// </summary>
     /// <param name="sender">The source of the event.</param>
     /// <param name="e">A <see cref="NpgsqlRowUpdatedEventArgs">NpgsqlRowUpdatedEventArgs</see> that contains the event data.</param>
-    public delegate void NpgsqlRowUpdatedEventHandler(Object sender, NpgsqlRowUpdatedEventArgs e);
+    public delegate void NpgsqlRowUpdatedEventHandler(object sender, NpgsqlRowUpdatedEventArgs e);
 
     /// <summary>
     /// Represents the method that handles the <see cref="NpgsqlDataAdapter.RowUpdating">RowUpdating</see> events.
     /// </summary>
     /// <param name="sender">The source of the event.</param>
     /// <param name="e">A <see cref="NpgsqlRowUpdatingEventArgs">NpgsqlRowUpdatingEventArgs</see> that contains the event data.</param>
-    public delegate void NpgsqlRowUpdatingEventHandler(Object sender, NpgsqlRowUpdatingEventArgs e);
+    public delegate void NpgsqlRowUpdatingEventHandler(object sender, NpgsqlRowUpdatingEventArgs e);
 
     /// <summary>
     /// This class represents an adapter from many commands: select, update, insert and delete to fill <see cref="System.Data.DataSet">Datasets.</see>
@@ -52,12 +28,12 @@ namespace Npgsql
         /// Row updated event.
         /// </summary>
         [PublicAPI]
-        public event NpgsqlRowUpdatedEventHandler RowUpdated;
+        public event NpgsqlRowUpdatedEventHandler? RowUpdated;
 
         /// <summary>
         /// Row updating event.
         /// </summary>
-        public event NpgsqlRowUpdatingEventHandler RowUpdating;
+        public event NpgsqlRowUpdatingEventHandler? RowUpdating;
 
         /// <summary>
         /// Default constructor.
@@ -69,9 +45,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="selectCommand"></param>
         public NpgsqlDataAdapter(NpgsqlCommand selectCommand)
-        {
-            SelectCommand = selectCommand;
-        }
+            => SelectCommand = selectCommand;
 
         /// <summary>
         /// Constructor.
@@ -92,42 +66,40 @@ namespace Npgsql
         /// <summary>
         /// Create row updated event.
         /// </summary>
-        protected override RowUpdatedEventArgs CreateRowUpdatedEvent([NotNull] DataRow dataRow, [NotNull] IDbCommand command,
+        protected override RowUpdatedEventArgs CreateRowUpdatedEvent(DataRow dataRow, IDbCommand command,
                                                                      System.Data.StatementType statementType,
-                                                                     [NotNull] DataTableMapping tableMapping)
-        {
-            return new NpgsqlRowUpdatedEventArgs(dataRow, command, statementType, tableMapping);
-        }
+                                                                     DataTableMapping tableMapping)
+            => new NpgsqlRowUpdatedEventArgs(dataRow, command, statementType, tableMapping);
 
         /// <summary>
         /// Create row updating event.
         /// </summary>
-        protected override RowUpdatingEventArgs CreateRowUpdatingEvent([NotNull] DataRow dataRow, [NotNull] IDbCommand command,
+        protected override RowUpdatingEventArgs CreateRowUpdatingEvent(DataRow dataRow, IDbCommand command,
                                                                        System.Data.StatementType statementType,
-                                                                       [NotNull] DataTableMapping tableMapping)
-        {
-            return new NpgsqlRowUpdatingEventArgs(dataRow, command, statementType, tableMapping);
-        }
+                                                                       DataTableMapping tableMapping)
+            => new NpgsqlRowUpdatingEventArgs(dataRow, command, statementType, tableMapping);
 
         /// <summary>
         /// Raise the RowUpdated event.
         /// </summary>
         /// <param name="value"></param>
-        protected override void OnRowUpdated([NotNull] RowUpdatedEventArgs value)
+        protected override void OnRowUpdated(RowUpdatedEventArgs value)
         {
             //base.OnRowUpdated(value);
-            if (RowUpdated != null && value is NpgsqlRowUpdatedEventArgs)
-                RowUpdated(this, (NpgsqlRowUpdatedEventArgs)value);
+            if (value is NpgsqlRowUpdatedEventArgs args)
+                RowUpdated?.Invoke(this, args);
+            //if (RowUpdated != null && value is NpgsqlRowUpdatedEventArgs args)
+            //    RowUpdated(this, args);
         }
 
         /// <summary>
         /// Raise the RowUpdating event.
         /// </summary>
         /// <param name="value"></param>
-        protected override void OnRowUpdating([NotNull] RowUpdatingEventArgs value)
+        protected override void OnRowUpdating(RowUpdatingEventArgs value)
         {
-            if (RowUpdating != null && value is NpgsqlRowUpdatingEventArgs)
-                RowUpdating(this, (NpgsqlRowUpdatingEventArgs) value);
+            if (value is NpgsqlRowUpdatingEventArgs args)
+                RowUpdating?.Invoke(this, args);
         }
 
         /// <summary>
@@ -135,8 +107,8 @@ namespace Npgsql
         /// </summary>
         public new NpgsqlCommand DeleteCommand
         {
-            get { return (NpgsqlCommand)base.DeleteCommand; }
-            set { base.DeleteCommand = value; }
+            get => (NpgsqlCommand)base.DeleteCommand;
+            set => base.DeleteCommand = value;
         }
 
         /// <summary>
@@ -144,8 +116,8 @@ namespace Npgsql
         /// </summary>
         public new NpgsqlCommand SelectCommand
         {
-            get { return (NpgsqlCommand)base.SelectCommand; }
-            set { base.SelectCommand = value; }
+            get => (NpgsqlCommand)base.SelectCommand;
+            set => base.SelectCommand = value;
         }
 
         /// <summary>
@@ -153,8 +125,8 @@ namespace Npgsql
         /// </summary>
         public new NpgsqlCommand UpdateCommand
         {
-            get { return (NpgsqlCommand)base.UpdateCommand; }
-            set { base.UpdateCommand = value; }
+            get => (NpgsqlCommand)base.UpdateCommand;
+            set => base.UpdateCommand = value;
         }
 
         /// <summary>
@@ -162,8 +134,8 @@ namespace Npgsql
         /// </summary>
         public new NpgsqlCommand InsertCommand
         {
-            get { return (NpgsqlCommand)base.InsertCommand; }
-            set { base.InsertCommand = value; }
+            get => (NpgsqlCommand)base.InsertCommand;
+            set => base.InsertCommand = value;
         }
     }
 

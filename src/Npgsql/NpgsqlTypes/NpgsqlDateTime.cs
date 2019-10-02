@@ -1,31 +1,8 @@
-﻿#region License
-// The PostgreSQL License
-//
-// Copyright (C) 2018 The Npgsql Development Team
-//
-// Permission to use, copy, modify, and distribute this software and its
-// documentation for any purpose, without fee, and without a written
-// agreement is hereby granted, provided that the above copyright notice
-// and this paragraph and the following two paragraphs appear in all copies.
-//
-// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
-// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
-// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
-// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
-// THE POSSIBILITY OF SUCH DAMAGE.
-//
-// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
-// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
-// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-#endregion
-
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using JetBrains.Annotations;
-using Npgsql;
+using Npgsql.Util;
+
 #pragma warning disable 1591
 
 // ReSharper disable once CheckNamespace
@@ -60,7 +37,7 @@ namespace NpgsqlTypes
             new NpgsqlDateTime(InternalType.NegativeInfinity, NpgsqlDate.Era, TimeSpan.Zero);
 
         // 9999-12-31
-        private const int MaxDateTimeDay = 3652058;
+        const int MaxDateTimeDay = 3652058;
 
         #endregion
 
@@ -119,42 +96,26 @@ namespace NpgsqlTypes
         public bool IsNegativeInfinity => _type == InternalType.NegativeInfinity;
 
         public bool IsFinite
-        {
-            get
+            => _type switch
             {
-                switch (_type) {
-                case InternalType.FiniteUnspecified:
-                case InternalType.FiniteUtc:
-                case InternalType.FiniteLocal:
-                    return true;
-                case InternalType.Infinity:
-                case InternalType.NegativeInfinity:
-                    return false;
-                default:
-                    throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {_type} of enum {nameof(NpgsqlDateTime)}.{nameof(InternalType)}. Please file a bug.");
-                }
-            }
-        }
+                InternalType.FiniteUnspecified => true,
+                InternalType.FiniteUtc         => true,
+                InternalType.FiniteLocal       => true,
+                InternalType.Infinity          => false,
+                InternalType.NegativeInfinity  => false,
+                _ => throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {_type} of enum {nameof(NpgsqlDateTime)}.{nameof(InternalType)}. Please file a bug.")
+            };
 
         public DateTimeKind Kind
-        {
-            get
+            => _type switch
             {
-                switch (_type)
-                {
-                case InternalType.FiniteUtc:
-                    return DateTimeKind.Utc;
-                case InternalType.FiniteLocal:
-                    return DateTimeKind.Local;
-                case InternalType.FiniteUnspecified:
-                case InternalType.Infinity:
-                case InternalType.NegativeInfinity:
-                    return DateTimeKind.Unspecified;
-                default:
-                    throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {_type} of enum {nameof(DateTimeKind)}. Please file a bug.");
-                }
-            }
-        }
+                InternalType.FiniteUtc         => DateTimeKind.Utc,
+                InternalType.FiniteLocal       => DateTimeKind.Local,
+                InternalType.FiniteUnspecified => DateTimeKind.Unspecified,
+                InternalType.Infinity          => DateTimeKind.Unspecified,
+                InternalType.NegativeInfinity  => DateTimeKind.Unspecified,
+                _ => throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {_type} of enum {nameof(DateTimeKind)}. Please file a bug.")
+            };
 
         /// <summary>
         /// Cast of an <see cref="NpgsqlDateTime"/> to a <see cref="DateTime"/>.
@@ -241,16 +202,12 @@ namespace NpgsqlTypes
         #region String Conversions
 
         public override string ToString()
-        {
-            switch (_type) {
-            case InternalType.Infinity:
-                return "infinity";
-            case InternalType.NegativeInfinity:
-                return "-infinity";
-            default:
-                return $"{_date} {_time}";
-            }
-        }
+            => _type switch
+            {
+                InternalType.Infinity         => "infinity",
+                InternalType.NegativeInfinity => "-infinity",
+                _                             => $"{_date} {_time}"
+            };
 
         public static NpgsqlDateTime Parse(string str)
         {
@@ -288,31 +245,23 @@ namespace NpgsqlTypes
         #region Comparisons
 
         public bool Equals(NpgsqlDateTime other)
-        {
-            switch (_type) {
-            case InternalType.Infinity:
-                return other._type == InternalType.Infinity;
-            case InternalType.NegativeInfinity:
-                return other._type == InternalType.NegativeInfinity;
-            default:
-                return other._type == _type && _date.Equals(other._date) && _time.Equals(other._time);
-            }
-        }
+            => _type switch
+            {
+                InternalType.Infinity         => other._type == InternalType.Infinity,
+                InternalType.NegativeInfinity => other._type == InternalType.NegativeInfinity,
+                _                             => other._type == _type && _date.Equals(other._date) && _time.Equals(other._time)
+            };
 
-        public override bool Equals([CanBeNull] object obj)
-            => obj is NpgsqlDateTime && Equals((NpgsqlDateTime)obj);
+        public override bool Equals(object? obj)
+            => obj is NpgsqlDateTime time && Equals(time);
 
         public override int GetHashCode()
-        {
-            switch (_type) {
-            case InternalType.Infinity:
-                return int.MaxValue;
-            case InternalType.NegativeInfinity:
-                return int.MinValue;
-            default:
-                return _date.GetHashCode() ^ PGUtil.RotateShift(_time.GetHashCode(), 16);
-            }
-        }
+            => _type switch
+            {
+                InternalType.Infinity         => int.MaxValue,
+                InternalType.NegativeInfinity => int.MinValue,
+                _ => _date.GetHashCode() ^ PGUtil.RotateShift(_time.GetHashCode(), 16)
+            };
 
         public int CompareTo(NpgsqlDateTime other)
         {
@@ -334,18 +283,16 @@ namespace NpgsqlTypes
             }
         }
 
-        public int CompareTo([CanBeNull] object o)
-        {
-            if (o == null)
-                return 1;
-            if (o is NpgsqlDateTime)
-                return CompareTo((NpgsqlDateTime)o);
-            throw new ArgumentException();
-        }
+        public int CompareTo(object? o)
+            => o == null
+                ? 1
+                : o is NpgsqlDateTime npgsqlDateTime
+                    ? CompareTo(npgsqlDateTime)
+                    : throw new ArgumentException();
 
         public int Compare(NpgsqlDateTime x, NpgsqlDateTime y) => x.CompareTo(y);
 
-        public int Compare([CanBeNull] object x, [CanBeNull] object y)
+        public int Compare(object? x, object? y)
         {
             if (x == null)
                 return y == null ? 0 : -1;
@@ -380,15 +327,12 @@ namespace NpgsqlTypes
         /// <param name="value">A number of years. The value parameter can be negative or positive.</param>
         /// <returns>An object whose value is the sum of the date and time represented by this instance and the number of years represented by value.</returns>
         public NpgsqlDateTime AddYears(int value)
-        {
-            switch (_type) {
-            case InternalType.Infinity:
-            case InternalType.NegativeInfinity:
-                return this;
-            default:
-                return new NpgsqlDateTime(_type, _date.AddYears(value), _time);
-            }
-        }
+            => _type switch
+            {
+                InternalType.Infinity         => this,
+                InternalType.NegativeInfinity => this,
+                _                             => new NpgsqlDateTime(_type, _date.AddYears(value), _time)
+            };
 
         /// <summary>
         /// Returns a new <see cref="NpgsqlDateTime"/> that adds the specified number of months to the value of this instance.
@@ -396,50 +340,47 @@ namespace NpgsqlTypes
         /// <param name="value">A number of months. The months parameter can be negative or positive.</param>
         /// <returns>An object whose value is the sum of the date and time represented by this instance and months.</returns>
         public NpgsqlDateTime AddMonths(int value)
-        {
-            switch (_type) {
-            case InternalType.Infinity:
-            case InternalType.NegativeInfinity:
-                return this;
-            default:
-                return new NpgsqlDateTime(_type, _date.AddMonths(value), _time);
-            }
-        }
+            => _type switch
+            {
+                InternalType.Infinity         => this,
+                InternalType.NegativeInfinity => this,
+                _                             => new NpgsqlDateTime(_type, _date.AddMonths(value), _time)
+            };
 
         /// <summary>
         /// Returns a new <see cref="NpgsqlDateTime"/> that adds the specified number of days to the value of this instance.
         /// </summary>
         /// <param name="value">A number of whole and fractional days. The value parameter can be negative or positive.</param>
         /// <returns>An object whose value is the sum of the date and time represented by this instance and the number of days represented by value.</returns>
-        public NpgsqlDateTime AddDays(double value) { return Add(TimeSpan.FromDays(value)); }
+        public NpgsqlDateTime AddDays(double value) => Add(TimeSpan.FromDays(value));
 
         /// <summary>
         /// Returns a new <see cref="NpgsqlDateTime"/> that adds the specified number of hours to the value of this instance.
         /// </summary>
         /// <param name="value">A number of whole and fractional hours. The value parameter can be negative or positive.</param>
         /// <returns>An object whose value is the sum of the date and time represented by this instance and the number of hours represented by value.</returns>
-        public NpgsqlDateTime AddHours(double value) { return Add(TimeSpan.FromHours(value)); }
+        public NpgsqlDateTime AddHours(double value) => Add(TimeSpan.FromHours(value));
 
         /// <summary>
         /// Returns a new <see cref="NpgsqlDateTime"/> that adds the specified number of minutes to the value of this instance.
         /// </summary>
         /// <param name="value">A number of whole and fractional minutes. The value parameter can be negative or positive.</param>
         /// <returns>An object whose value is the sum of the date and time represented by this instance and the number of minutes represented by value.</returns>
-        public NpgsqlDateTime AddMinutes(double value) { return Add(TimeSpan.FromMinutes(value)); }
+        public NpgsqlDateTime AddMinutes(double value) => Add(TimeSpan.FromMinutes(value));
 
         /// <summary>
         /// Returns a new <see cref="NpgsqlDateTime"/> that adds the specified number of minutes to the value of this instance.
         /// </summary>
         /// <param name="value">A number of whole and fractional minutes. The value parameter can be negative or positive.</param>
         /// <returns>An object whose value is the sum of the date and time represented by this instance and the number of minutes represented by value.</returns>
-        public NpgsqlDateTime AddSeconds(double value) { return Add(TimeSpan.FromSeconds(value)); }
+        public NpgsqlDateTime AddSeconds(double value) => Add(TimeSpan.FromSeconds(value));
 
         /// <summary>
         /// Returns a new <see cref="NpgsqlDateTime"/> that adds the specified number of milliseconds to the value of this instance.
         /// </summary>
         /// <param name="value">A number of whole and fractional milliseconds. The value parameter can be negative or positive. Note that this value is rounded to the nearest integer.</param>
         /// <returns>An object whose value is the sum of the date and time represented by this instance and the number of milliseconds represented by value.</returns>
-        public NpgsqlDateTime AddMilliseconds(double value) { return Add(TimeSpan.FromMilliseconds(value)); }
+        public NpgsqlDateTime AddMilliseconds(double value) => Add(TimeSpan.FromMilliseconds(value));
 
         /// <summary>
         /// Returns a new <see cref="NpgsqlDateTime"/> that adds the specified number of ticks to the value of this instance.
@@ -447,20 +388,14 @@ namespace NpgsqlTypes
         /// <param name="value">A number of 100-nanosecond ticks. The value parameter can be positive or negative.</param>
         /// <returns>An object whose value is the sum of the date and time represented by this instance and the time represented by value.</returns>
         public NpgsqlDateTime AddTicks(long value)
-        {
-            switch (_type) {
-            case InternalType.Infinity:
-            case InternalType.NegativeInfinity:
-                return this;
-            default:
-                return new NpgsqlDateTime(Ticks + value, Kind);
-            }
-        }
+            => _type switch
+            {
+                InternalType.Infinity         => this,
+                InternalType.NegativeInfinity => this,
+                _                             => new NpgsqlDateTime(Ticks + value, Kind),
+            };
 
-        public NpgsqlDateTime Subtract(NpgsqlTimeSpan interval)
-        {
-            return Add(-interval);
-        }
+        public NpgsqlDateTime Subtract(NpgsqlTimeSpan interval) =>  Add(-interval);
 
         public NpgsqlTimeSpan Subtract(NpgsqlDateTime timestamp)
         {
@@ -523,18 +458,13 @@ namespace NpgsqlTypes
         public NpgsqlDateTime Normalize() => Add(NpgsqlTimeSpan.Zero);
 
         static InternalType KindToInternalType(DateTimeKind kind)
-        {
-            switch (kind) {
-            case DateTimeKind.Unspecified:
-                return InternalType.FiniteUnspecified;
-            case DateTimeKind.Utc:
-                return InternalType.FiniteUtc;
-            case DateTimeKind.Local:
-                return InternalType.FiniteLocal;
-            default:
-                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {kind} of enum {nameof(NpgsqlDateTime)}.{nameof(InternalType)}. Please file a bug.");
-            }
-        }
+            => kind switch
+            {
+                DateTimeKind.Unspecified => InternalType.FiniteUnspecified,
+                DateTimeKind.Utc         => InternalType.FiniteUtc,
+                DateTimeKind.Local       => InternalType.FiniteLocal,
+                _ => throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {kind} of enum {nameof(NpgsqlDateTime)}.{nameof(InternalType)}. Please file a bug.")
+            };
 
         enum InternalType
         {

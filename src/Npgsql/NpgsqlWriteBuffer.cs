@@ -1,37 +1,13 @@
-﻿#region License
-// The PostgreSQL License
-//
-// Copyright (C) 2018 The Npgsql Development Team
-//
-// Permission to use, copy, modify, and distribute this software and its
-// documentation for any purpose, without fee, and without a written
-// agreement is hereby granted, provided that the above copyright notice
-// and this paragraph and the following two paragraphs appear in all copies.
-//
-// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
-// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
-// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
-// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
-// THE POSSIBILITY OF SUCH DAMAGE.
-//
-// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
-// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
-// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-#endregion
-
-using System;
+﻿using System;
+using System.Buffers.Binary;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
-using JetBrains.Annotations;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
-
 namespace Npgsql
 {
     /// <summary>
@@ -49,8 +25,7 @@ namespace Npgsql
         /// <summary>
         /// Wraps SocketAsyncEventArgs for better async I/O as long as we're not doing SSL.
         /// </summary>
-        [CanBeNull]
-        internal AwaitableSocket AwaitableSocket { get; set; }
+        internal AwaitableSocket? AwaitableSocket { get; set; }
 
         /// <summary>
         /// The total byte length of the buffer.
@@ -67,8 +42,7 @@ namespace Npgsql
 
         internal int WritePosition;
 
-        [CanBeNull]
-        ParameterStream _parameterStream;
+        ParameterStream? _parameterStream;
 
         /// <summary>
         /// The minimum buffer size possible.
@@ -80,7 +54,7 @@ namespace Npgsql
 
         #region Constructors
 
-        internal NpgsqlWriteBuffer([CanBeNull] NpgsqlConnector connector, Stream stream, int size, Encoding textEncoding)
+        internal NpgsqlWriteBuffer(NpgsqlConnector connector, Stream stream, int size, Encoding textEncoding)
         {
             if (size < MinimumSize)
                 throw new ArgumentOutOfRangeException(nameof(size), size, "Buffer size must be at least " + MinimumSize);
@@ -147,6 +121,9 @@ namespace Npgsql
                 throw new NpgsqlException("Exception while flushing stream", e);
             }
 
+            NpgsqlEventSource.Log.BytesWritten(WritePosition);
+            //NpgsqlEventSource.Log.RequestFailed();
+
             WritePosition = 0;
             if (CurrentCommand != null)
             {
@@ -159,30 +136,39 @@ namespace Npgsql
 
         internal void Flush() => Flush(false).GetAwaiter().GetResult();
 
-        [CanBeNull]
-        internal NpgsqlCommand CurrentCommand { get; set; }
+        internal NpgsqlCommand? CurrentCommand { get; set; }
 
-        internal void DirectWrite(byte[] buffer, int offset, int count)
+        #endregion
+
+        #region Direct write
+
+        internal async Task DirectWrite(byte[] buffer, int offset, int count, bool async)
         {
+            await Flush(async);
+
             if (_copyMode)
             {
-                // Flush has already written the CopyData header, need to update the length
+                // Flush has already written the CopyData header for us, but write the CopyData
+                // header to the socket with the write length before we can start writing the data directly.
                 Debug.Assert(WritePosition == 5);
 
                 WritePosition = 1;
                 WriteInt32(count + 4);
                 WritePosition = 5;
                 _copyMode = false;
-                Flush();
+                await Flush(async);
                 _copyMode = true;
-                WriteCopyDataHeader();
+                WriteCopyDataHeader();  // And ready the buffer after the direct write completes
             }
             else
                 Debug.Assert(WritePosition == 0);
 
             try
             {
-                Underlying.Write(buffer, offset, count);
+                if (async)
+                    await Underlying.WriteAsync(buffer, offset, count);
+                else
+                    Underlying.Write(buffer, offset, count);
             }
             catch (Exception e)
             {
@@ -191,7 +177,45 @@ namespace Npgsql
             }
         }
 
-        #endregion
+#if !NETSTANDARD2_0 && !NET461
+        internal async Task DirectWrite(ReadOnlyMemory<byte> memory, bool async)
+        {
+            await Flush(async);
+
+            if (_copyMode)
+            {
+                // Flush has already written the CopyData header for us, but write the CopyData
+                // header to the socket with the write length before we can start writing the data directly.
+                Debug.Assert(WritePosition == 5);
+
+                WritePosition = 1;
+                WriteInt32(memory.Length + 4);
+                WritePosition = 5;
+                _copyMode = false;
+                await Flush(async);
+                _copyMode = true;
+                WriteCopyDataHeader();  // And ready the buffer after the direct write completes
+            }
+            else
+                Debug.Assert(WritePosition == 0);
+
+
+            try
+            {
+                if (async)
+                    await Underlying.WriteAsync(memory);
+                else
+                    Underlying.Write(memory.Span);
+            }
+            catch (Exception e)
+            {
+                Connector.Break();
+                throw new NpgsqlException("Exception while writing to stream", e);
+            }
+        }
+#endif
+
+        #endregion Direct write
 
         #region Write Simple
 
@@ -211,7 +235,7 @@ namespace Npgsql
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteInt16(short value, bool littleEndian)
-            => Write(littleEndian == BitConverter.IsLittleEndian ? value : PGUtil.ReverseEndianness(value));
+            => Write(littleEndian == BitConverter.IsLittleEndian ? value : BinaryPrimitives.ReverseEndianness(value));
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteUInt16(ushort value)
@@ -219,7 +243,7 @@ namespace Npgsql
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteUInt16(ushort value, bool littleEndian)
-            => Write(littleEndian == BitConverter.IsLittleEndian ? value : PGUtil.ReverseEndianness(value));
+            => Write(littleEndian == BitConverter.IsLittleEndian ? value : BinaryPrimitives.ReverseEndianness(value));
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteInt32(int value)
@@ -227,7 +251,7 @@ namespace Npgsql
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteInt32(int value, bool littleEndian)
-            => Write(littleEndian == BitConverter.IsLittleEndian ? value : PGUtil.ReverseEndianness(value));
+            => Write(littleEndian == BitConverter.IsLittleEndian ? value : BinaryPrimitives.ReverseEndianness(value));
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteUInt32(uint value)
@@ -235,7 +259,7 @@ namespace Npgsql
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteUInt32(uint value, bool littleEndian)
-            => Write(littleEndian == BitConverter.IsLittleEndian ? value : PGUtil.ReverseEndianness(value));
+            => Write(littleEndian == BitConverter.IsLittleEndian ? value : BinaryPrimitives.ReverseEndianness(value));
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteInt64(long value)
@@ -243,7 +267,7 @@ namespace Npgsql
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteInt64(long value, bool littleEndian)
-            => Write(littleEndian == BitConverter.IsLittleEndian ? value : PGUtil.ReverseEndianness(value));
+            => Write(littleEndian == BitConverter.IsLittleEndian ? value : BinaryPrimitives.ReverseEndianness(value));
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteUInt64(ulong value)
@@ -251,7 +275,7 @@ namespace Npgsql
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteUInt64(ulong value, bool littleEndian)
-            => Write(littleEndian == BitConverter.IsLittleEndian ? value : PGUtil.ReverseEndianness(value));
+            => Write(littleEndian == BitConverter.IsLittleEndian ? value : BinaryPrimitives.ReverseEndianness(value));
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void WriteSingle(float value)
@@ -291,7 +315,7 @@ namespace Npgsql
             if (byteLen <= WriteSpaceLeft)
             {
                 WriteString(s, charLen);
-                return PGUtil.CompletedTask;
+                return Task.CompletedTask;
             }
             return WriteStringLong();
 
@@ -325,7 +349,7 @@ namespace Npgsql
             if (byteLen <= WriteSpaceLeft)
             {
                 WriteChars(chars, offset, charLen);
-                return PGUtil.CompletedTask;
+                return Task.CompletedTask;
             }
             return WriteCharsLong();
 
@@ -345,9 +369,7 @@ namespace Npgsql
 
                     while (true)
                     {
-                        int charsUsed;
-                        bool completed;
-                        WriteStringChunked(chars, charPos + offset, charLen - charPos, true, out charsUsed, out completed);
+                        WriteStringChunked(chars, charPos + offset, charLen - charPos, true, out var charsUsed, out var completed);
                         if (completed)
                             break;
                         await Flush(async);
@@ -385,7 +407,7 @@ namespace Npgsql
             if (bytes.Length <= WriteSpaceLeft)
             {
                 WriteBytes(bytes);
-                return PGUtil.CompletedTask;
+                return Task.CompletedTask;
             }
             return WriteBytesLong();
 
@@ -513,7 +535,7 @@ namespace Npgsql
 
         /// <summary>
         /// Returns all contents currently written to the buffer (but not flushed).
-        /// Useful for pregenerating messages.
+        /// Useful for pre-generating messages.
         /// </summary>
         internal byte[] GetContents()
         {

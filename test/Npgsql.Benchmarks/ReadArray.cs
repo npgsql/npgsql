@@ -1,21 +1,21 @@
-﻿using BenchmarkDotNet.Attributes;
-using BenchmarkDotNet.Columns;
-using BenchmarkDotNet.Configs;
-using BenchmarkDotNet.Diagnosers;
-using NpgsqlTypes;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Runtime.CompilerServices;
+using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Columns;
+using BenchmarkDotNet.Configs;
+using BenchmarkDotNet.Diagnosers;
 
 namespace Npgsql.Benchmarks
 {
     [Config(typeof(ReadArrayConfig))]
     public class ReadArray
     {
-        NpgsqlConnection _conn;
-        NpgsqlCommand _cmd;
-        NpgsqlDataReader _reader;
+        NpgsqlConnection _conn = default!;
+        NpgsqlCommand _cmd = default!;
+        NpgsqlDataReader _reader = default!;
 
         [GlobalSetup(Target = nameof(ReadIntArray) + "," + nameof(ReadListOfInt))]
         public void GlobalSetupForInt()
@@ -67,7 +67,7 @@ namespace Npgsql.Benchmarks
 
         [Benchmark]
         public void ReadNpgsqlInetArray() // PSV for IPAddress
-            => ReadArrayImpl<NpgsqlInet>();
+            => ReadArrayImpl<ValueTuple<IPAddress, int>>();
 
         [Benchmark]
         public void ReadListOfInt()
@@ -84,7 +84,7 @@ namespace Npgsql.Benchmarks
 
         [Benchmark]
         public void ReadListOfNpgsqlInet() // PSV for IPAddress
-            => ReadListImpl<NpgsqlInet>();
+            => ReadListImpl<ValueTuple<IPAddress, int>>();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void ReadArrayImpl<T>()
@@ -96,11 +96,7 @@ namespace Npgsql.Benchmarks
 
         class ReadArrayConfig : ManualConfig
         {
-            public ReadArrayConfig()
-            {
-                Add(StatisticColumn.OperationsPerSecond);
-                Add(MemoryDiagnoser.Default);
-            }
+            public ReadArrayConfig() => Add(StatisticColumn.OperationsPerSecond);
         }
     }
 }

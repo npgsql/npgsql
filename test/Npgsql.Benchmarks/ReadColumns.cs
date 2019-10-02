@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Linq;
 using System.Reflection;
 using System.Text;
 using BenchmarkDotNet.Attributes;
@@ -9,8 +7,8 @@ namespace Npgsql.Benchmarks
 {
     public class ReadColumns
     {
-        NpgsqlConnection _conn;
-        NpgsqlCommand _cmd;
+        NpgsqlConnection _conn = default!;
+        NpgsqlCommand _cmd = default!;
 
         [Params(1, 10, 100, 1000)]
         public int NumColumns { get; set; } = 100;
@@ -66,8 +64,8 @@ namespace Npgsql.Benchmarks
         }
 
         static readonly int[] NumColumnsValues = typeof(ReadColumns)
-            .GetProperty(nameof(NumColumns))
-            .GetCustomAttribute<ParamsAttribute>()
+            .GetProperty(nameof(NumColumns))!
+            .GetCustomAttribute<ParamsAttribute>()!
             .Values
             .Cast<int>()
             .ToArray();

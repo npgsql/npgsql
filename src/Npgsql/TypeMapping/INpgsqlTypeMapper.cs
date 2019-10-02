@@ -1,28 +1,4 @@
-﻿#region License
-
-// The PostgreSQL License
-//
-// Copyright (C) 2018 The Npgsql Development Team
-//
-// Permission to use, copy, modify, and distribute this software and its
-// documentation for any purpose, without fee, and without a written
-// agreement is hereby granted, provided that the above copyright notice
-// and this paragraph and the following two paragraphs appear in all copies.
-//
-// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
-// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
-// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
-// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
-// THE POSSIBILITY OF SUCH DAMAGE.
-//
-// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
-// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
-// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-
-#endregion
-
+﻿using System;
 using System.Collections.Generic;
 using JetBrains.Annotations;
 using Npgsql.NameTranslation;
@@ -87,7 +63,11 @@ namespace Npgsql.TypeMapping
         /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
         /// <typeparam name="TEnum">The .NET enum type to be mapped</typeparam>
-        INpgsqlTypeMapper MapEnum<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null) where TEnum : struct;
+        [NotNull]
+        INpgsqlTypeMapper MapEnum<TEnum>(
+            string? pgName = null,
+            INpgsqlNameTranslator? nameTranslator = null)
+            where TEnum : struct, Enum;
 
         /// <summary>
         /// Removes an existing enum mapping.
@@ -100,7 +80,10 @@ namespace Npgsql.TypeMapping
         /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
         /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
-        bool UnmapEnum<TEnum>(string pgName = null, INpgsqlNameTranslator nameTranslator = null) where TEnum : struct;
+        bool UnmapEnum<TEnum>(
+            string? pgName = null,
+            INpgsqlNameTranslator? nameTranslator = null)
+            where TEnum : struct, Enum;
 
         /// <summary>
         /// Maps a CLR type to a PostgreSQL composite type.
@@ -124,8 +107,8 @@ namespace Npgsql.TypeMapping
         /// <typeparam name="T">The .NET type to be mapped</typeparam>
         [NotNull]
         INpgsqlTypeMapper MapComposite<T>(
-            [CanBeNull] string pgName = null,
-            [CanBeNull] INpgsqlNameTranslator nameTranslator = null) where T : new();
+            string? pgName = null,
+            INpgsqlNameTranslator? nameTranslator = null);
 
         /// <summary>
         /// Removes an existing enum mapping.
@@ -139,8 +122,8 @@ namespace Npgsql.TypeMapping
         /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
         bool UnmapComposite<T>(
-            [CanBeNull] string pgName = null,
-            [CanBeNull] INpgsqlNameTranslator nameTranslator = null) where T : new();
+            string? pgName = null,
+            INpgsqlNameTranslator? nameTranslator = null);
 
         /// <summary>
         /// Resets all mapping changes performed on this type mapper and reverts it to its original, starting state.

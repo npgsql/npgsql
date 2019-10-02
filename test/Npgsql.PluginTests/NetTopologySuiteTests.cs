@@ -1,37 +1,11 @@
-﻿#region License
-// The PostgreSQL License
-//
-// Copyright (C) 2018 The Npgsql Development Team
-//
-// Permission to use, copy, modify, and distribute this software and its
-// documentation for any purpose, without fee, and without a written
-// agreement is hereby granted, provided that the above copyright notice
-// and this paragraph and the following two paragraphs appear in all copies.
-//
-// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
-// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
-// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
-// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
-// THE POSSIBILITY OF SUCH DAMAGE.
-//
-// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
-// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
-// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-#endregion
-
-using GeoAPI;
-using GeoAPI.Geometries;
+﻿using System;
+using System.Collections;
+using System.Diagnostics;
+using System.Text.RegularExpressions;
 using NetTopologySuite.Geometries;
 using NetTopologySuite.Geometries.Implementation;
 using Npgsql.Tests;
 using NUnit.Framework;
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Text.RegularExpressions;
 
 namespace Npgsql.PluginTests
 {
@@ -64,15 +38,14 @@ namespace Npgsql.PluginTests
             }
         }
 
-        protected override NpgsqlConnection OpenConnection(string connectionString = null)
+        protected override NpgsqlConnection OpenConnection(string? connectionString = null)
             => OpenConnection(connectionString);
 
-        protected NpgsqlConnection OpenConnection(string connectionString = null, Ordinates handleOrdinates = Ordinates.None)
+        protected NpgsqlConnection OpenConnection(string? connectionString = null, Ordinates handleOrdinates = Ordinates.None)
         {
             if (handleOrdinates == Ordinates.None)
                 handleOrdinates = Ordinates.XY;
 
-            NetTopologySuiteBootstrapper.Bootstrap();
             var conn = base.OpenConnection(connectionString);
             conn.TypeMapper.UseNetTopologySuite(
                 new DotSpatialAffineCoordinateSequenceFactory(handleOrdinates),
@@ -83,7 +56,7 @@ namespace Npgsql.PluginTests
         public struct TestData
         {
             public Ordinates Ordinates;
-            public IGeometry Geometry;
+            public Geometry Geometry;
             public string CommandText;
         }
 
@@ -157,7 +130,7 @@ namespace Npgsql.PluginTests
 
                 yield return new TestCaseData(
                     Ordinates.None,
-                    new GeometryCollection(new IGeometry[]
+                    new GeometryCollection(new Geometry[]
                     {
                         new Point(new Coordinate(1d, 1d)),
                         new MultiPolygon(new[]
@@ -178,10 +151,10 @@ namespace Npgsql.PluginTests
 
                 yield return new TestCaseData(
                     Ordinates.None,
-                    new GeometryCollection(new IGeometry[]
+                    new GeometryCollection(new Geometry[]
                     {
                         new Point(new Coordinate(1d, 1d)),
-                        new GeometryCollection(new IGeometry[]
+                        new GeometryCollection(new Geometry[]
                         {
                             new Point(new Coordinate(1d, 1d)),
                             new MultiPolygon(new[]
@@ -214,7 +187,7 @@ namespace Npgsql.PluginTests
         }
 
         [Test, TestCaseSource(nameof(TestCases))]
-        public void TestRead(Ordinates ordinates, IGeometry geometry, string sqlRepresentation)
+        public void TestRead(Ordinates ordinates, Geometry geometry, string sqlRepresentation)
         {
             using (var conn = OpenConnection())
             using (var cmd = conn.CreateCommand())
@@ -225,7 +198,7 @@ namespace Npgsql.PluginTests
         }
 
         [Test, TestCaseSource(nameof(TestCases))]
-        public void TestWrite(Ordinates ordinates, IGeometry geometry, string sqlRepresentation)
+        public void TestWrite(Ordinates ordinates, Geometry geometry, string sqlRepresentation)
         {
             using (var conn = OpenConnection(handleOrdinates: ordinates))
             using (var cmd = conn.CreateCommand())
@@ -244,7 +217,7 @@ namespace Npgsql.PluginTests
             {
                 cmd.CommandText = "SELECT ARRAY(SELECT st_makepoint(1,1))";
                 var result = cmd.ExecuteScalar();
-                Assert.That(result, Is.InstanceOf<IGeometry[]>());
+                Assert.That(result, Is.InstanceOf<Geometry[]>());
                 Assert.That(result, Is.EquivalentTo(new[] { new Point(new Coordinate(1d, 1d)) }));
             }
         }

@@ -3,7 +3,7 @@ using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 
-#if NETSTANDARD2_0
+#if !NET461
 using System.Data.Common;
 #endif
 
@@ -24,6 +24,8 @@ namespace Npgsql.Schema
     {
         public NpgsqlDbColumn()
         {
+            PostgresType = UnknownBackendType.Instance;
+
             // Not supported in PostgreSQL
             IsExpression = false;
             IsAliased = false;
@@ -32,7 +34,7 @@ namespace Npgsql.Schema
         }
 
         #region Standard fields
-
+#nullable disable
         // ReSharper disable once InconsistentNaming
         public new bool? AllowDBNull
         {
@@ -147,7 +149,7 @@ namespace Npgsql.Schema
             get => base.DataTypeName;
             protected internal set => base.DataTypeName = value;
         }
-
+#nullable restore
         #endregion Standard fields
 
         #region Npgsql-specific fields
@@ -161,34 +163,21 @@ namespace Npgsql.Schema
         [PublicAPI]
         public short? ColumnAttributeNumber { get; internal set; }
         [PublicAPI]
-        public string DefaultValue { get; internal set; }
+        public string? DefaultValue { get; internal set; }
         [PublicAPI]
         public NpgsqlDbType? NpgsqlDbType { get; internal set; }
 
-        [CanBeNull]
-        public override object this[string propertyName]
-        {
-            get
+        public override object? this[string propertyName]
+            => propertyName switch
             {
-                switch (propertyName)
-                {
-                case nameof(PostgresType):
-                    return PostgresType;
-                case nameof(TypeOID):
-                    return TypeOID;
-                case nameof(TableOID):
-                    return TableOID;
-                case nameof(ColumnAttributeNumber):
-                    return ColumnAttributeNumber;
-                case nameof(DefaultValue):
-                    return DefaultValue;
-                case nameof(NpgsqlDbType):
-                    return NpgsqlDbType;
-                }
-
-                return base[propertyName];
-            }
-        }
+                nameof(PostgresType)          => PostgresType,
+                nameof(TypeOID)               => TypeOID,
+                nameof(TableOID)              => TableOID,
+                nameof(ColumnAttributeNumber) => ColumnAttributeNumber,
+                nameof(DefaultValue)          => DefaultValue,
+                nameof(NpgsqlDbType)          => NpgsqlDbType,
+                _                             => base[propertyName]
+            };
 
         #endregion Npgsql-specific fields
     }

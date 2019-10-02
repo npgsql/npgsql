@@ -1,34 +1,10 @@
-﻿#region License
-// The PostgreSQL License
-//
-// Copyright (C) 2018 The Npgsql Development Team
-//
-// Permission to use, copy, modify, and distribute this software and its
-// documentation for any purpose, without fee, and without a written
-// agreement is hereby granted, provided that the above copyright notice
-// and this paragraph and the following two paragraphs appear in all copies.
-//
-// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
-// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
-// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
-// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
-// THE POSSIBILITY OF SUCH DAMAGE.
-//
-// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
-// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
-// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-#endregion
-
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Text;
-using JetBrains.Annotations;
 
 #pragma warning disable CA1040, CA1034
-
+// ReSharper disable once CheckNamespace
 namespace NpgsqlTypes
 {
     /// <summary>
@@ -36,27 +12,16 @@ namespace NpgsqlTypes
     /// </summary>
     public sealed class NpgsqlTsVector : IEnumerable<NpgsqlTsVector.Lexeme>
     {
-        List<Lexeme> _lexemes;
+        readonly List<Lexeme> _lexemes;
 
-        internal NpgsqlTsVector(List<Lexeme> lexemes, bool noCheck)
+        internal NpgsqlTsVector(List<Lexeme> lexemes, bool noCheck = false)
         {
             if (noCheck)
+            {
                 _lexemes = lexemes;
-            else
-                Load(lexemes);
-        }
+                return;
+            }
 
-        /// <summary>
-        /// Constructs an NpgsqlTsVector from a list of lexemes. This also sorts and remove duplicates.
-        /// </summary>
-        /// <param name="lexemes"></param>
-        public NpgsqlTsVector(List<Lexeme> lexemes)
-        {
-            Load(lexemes);
-        }
-
-        void Load(List<Lexeme> lexemes)
-        {
             _lexemes = new List<Lexeme>(lexemes);
 
             if (_lexemes.Count == 0)
@@ -73,7 +38,7 @@ namespace NpgsqlTypes
                 if (_lexemes[pos].Text != _lexemes[res].Text)
                 {
                     // We're done with this lexeme. First make sure the word pos list is sorted and contains unique elements.
-                    _lexemes[res] = new Lexeme(_lexemes[res].Text, Lexeme.UniquePos(_lexemes[res]._wordEntryPositions), true);
+                    _lexemes[res] = new Lexeme(_lexemes[res].Text, Lexeme.UniquePos(_lexemes[res].WordEntryPositions), true);
                     res++;
                     if (res != pos)
                         _lexemes[res] = _lexemes[pos];
@@ -81,10 +46,12 @@ namespace NpgsqlTypes
                 else
                 {
                     // Just concatenate the word pos lists
-                    if (_lexemes[res]._wordEntryPositions != null)
+                    var wordEntryPositions = _lexemes[res].WordEntryPositions;
+                    if (wordEntryPositions != null)
                     {
-                        if (_lexemes[pos].Count > 0)
-                            _lexemes[res]._wordEntryPositions.AddRange(_lexemes[pos]._wordEntryPositions);
+                        var lexeme = _lexemes[pos];
+                        if (lexeme.WordEntryPositions != null)
+                            wordEntryPositions.AddRange(lexeme.WordEntryPositions);
                     }
                     else
                     {
@@ -95,7 +62,7 @@ namespace NpgsqlTypes
             }
 
             // Last element
-            _lexemes[res] = new Lexeme(_lexemes[res].Text, Lexeme.UniquePos(_lexemes[res]._wordEntryPositions), true);
+            _lexemes[res] = new Lexeme(_lexemes[res].Text, Lexeme.UniquePos(_lexemes[res].WordEntryPositions), true);
             if (res != pos - 1)
             {
                 _lexemes.RemoveRange(res, pos - 1 - res);
@@ -144,7 +111,6 @@ namespace NpgsqlTypes
             if (pos >= value.Length)
                 throw new FormatException("Missing escaped character after \\ at end of value");
             sb.Append(value[pos++]);
-            goto WaitEndWord;
 
             WaitEndWord:
             if (pos >= value.Length || char.IsWhiteSpace(value[pos]))
@@ -202,7 +168,6 @@ namespace NpgsqlTypes
 
             StartPosInfo:
             wordEntryPositions = new List<Lexeme.WordEntryPos>();
-            goto InPosInfo;
 
             InPosInfo:
             var digitPos = pos;
@@ -211,10 +176,8 @@ namespace NpgsqlTypes
             if (digitPos == pos)
                 throw new FormatException("Missing length after :");
             wordPos = int.Parse(value.Substring(digitPos, pos - digitPos));
-            goto WaitPosWeightOrDelim;
 
             // Note: PostgreSQL backend parser matches also for example 1DD2A, which is parsed into 1A, but not 1AA2D ...
-            WaitPosWeightOrDelim:
             if (pos < value.Length)
             {
                 if (value[pos] == 'A' || value[pos] == 'a' || value[pos] == '*') // Why * ?
@@ -234,7 +197,6 @@ namespace NpgsqlTypes
                 }
             }
             wordEntryPositions.Add(new Lexeme.WordEntryPos(wordPos));
-            goto WaitPosDelim;
 
             WaitPosDelim:
             if (pos >= value.Length || char.IsWhiteSpace(value[pos]))
@@ -304,8 +266,7 @@ namespace NpgsqlTypes
             /// </summary>
             public string Text { get; set; }
 
-            [CanBeNull]
-            internal List<WordEntryPos> _wordEntryPositions;
+            internal readonly List<WordEntryPos>? WordEntryPositions;
 
             /// <summary>
             /// Creates a lexeme with no word entry positions.
@@ -314,7 +275,7 @@ namespace NpgsqlTypes
             public Lexeme(string text)
             {
                 Text = text;
-                _wordEntryPositions = null;
+                WordEntryPositions = null;
             }
 
             /// <summary>
@@ -322,20 +283,19 @@ namespace NpgsqlTypes
             /// </summary>
             /// <param name="text"></param>
             /// <param name="wordEntryPositions"></param>
-            public Lexeme(string text, [CanBeNull]List<WordEntryPos> wordEntryPositions)
+            public Lexeme(string text, List<WordEntryPos>? wordEntryPositions)
                 : this(text, wordEntryPositions, false) {}
 
-            internal Lexeme(string text, [CanBeNull] List<WordEntryPos> wordEntryPositions, bool noCopy)
+            internal Lexeme(string text, List<WordEntryPos>? wordEntryPositions, bool noCopy)
             {
                 Text = text;
                 if (wordEntryPositions != null)
-                    _wordEntryPositions = noCopy ? wordEntryPositions : new List<WordEntryPos>(wordEntryPositions);
+                    WordEntryPositions = noCopy ? wordEntryPositions : new List<WordEntryPos>(wordEntryPositions);
                 else
-                    _wordEntryPositions = null;
+                    WordEntryPositions = null;
             }
 
-            [CanBeNull]
-            internal static List<WordEntryPos> UniquePos([CanBeNull] List<WordEntryPos> list)
+            internal static List<WordEntryPos>? UniquePos(List<WordEntryPos>? list)
             {
                 if (list == null)
                     return null;
@@ -384,24 +344,24 @@ namespace NpgsqlTypes
             {
                 get
                 {
-                    if (index < 0 || _wordEntryPositions == null || index >= _wordEntryPositions.Count)
+                    if (index < 0 || WordEntryPositions == null || index >= WordEntryPositions.Count)
                         throw new ArgumentException(nameof(index));
 
-                    return _wordEntryPositions[index];
+                    return WordEntryPositions[index];
                 }
                 internal set
                 {
-                    if (index < 0 || _wordEntryPositions == null || index >= _wordEntryPositions.Count)
+                    if (index < 0 || WordEntryPositions == null || index >= WordEntryPositions.Count)
                         throw new ArgumentOutOfRangeException(nameof(index));
 
-                    _wordEntryPositions[index] = value;
+                    WordEntryPositions[index] = value;
                 }
             }
 
             /// <summary>
             /// Gets the number of word entry positions.
             /// </summary>
-            public int Count => _wordEntryPositions?.Count ?? 0;
+            public int Count => WordEntryPositions?.Count ?? 0;
 
             /// <summary>
             /// Creates a string representation in PostgreSQL's format.
@@ -411,7 +371,7 @@ namespace NpgsqlTypes
             {
                 var str = '\'' + (Text ?? "").Replace(@"\", @"\\").Replace("'", "''") + '\'';
                 if (Count > 0)
-                    str += ":" + string.Join(",", _wordEntryPositions);
+                    str += ":" + string.Join(",", WordEntryPositions!);
                 return str;
             }
 
@@ -475,8 +435,7 @@ namespace NpgsqlTypes
                 /// <summary>
                 /// Determines whether the specified object is equal to the current object.
                 /// </summary>
-                public override bool Equals([CanBeNull] object o)
-                    => o is WordEntryPos && Equals((WordEntryPos)o);
+                public override bool Equals(object? o) => o is WordEntryPos pos && Equals(pos);
 
                 /// <summary>
                 /// Gets a hash code for the current object.
@@ -525,14 +484,13 @@ namespace NpgsqlTypes
             /// </summary>
             public bool Equals(Lexeme o)
                 => Text == o.Text &&
-                    ((_wordEntryPositions == null && o._wordEntryPositions == null) ||
-                    (_wordEntryPositions != null && _wordEntryPositions.Equals(o._wordEntryPositions)));
+                    ((WordEntryPositions == null && o.WordEntryPositions == null) ||
+                    (WordEntryPositions != null && WordEntryPositions.Equals(o.WordEntryPositions)));
 
             /// <summary>
             /// Determines whether the specified object is equal to the current object.
             /// </summary>
-            public override bool Equals([CanBeNull] object o)
-                => o is Lexeme && Equals((Lexeme)o);
+            public override bool Equals(object? o) => o is Lexeme lexeme && Equals(lexeme);
 
             /// <summary>
             /// Gets a hash code for the current object.

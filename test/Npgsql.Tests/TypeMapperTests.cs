@@ -1,9 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Data;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandlers;
@@ -145,7 +141,7 @@ CHECK
 
         class DummyTypeHandlerFactory : NpgsqlTypeHandlerFactory<int>
         {
-            protected override NpgsqlTypeHandler<int> Create(NpgsqlConnection conn)
+            public override NpgsqlTypeHandler<int> Create(PostgresType postgresType, NpgsqlConnection conn)
                 => throw new Exception();
         }
 
@@ -161,6 +157,8 @@ CHECK
         {
             using (var conn = OpenLocalConnection())
             {
+                TestUtil.EnsureExtension(conn, "citext");
+
                 conn.TypeMapper.RemoveMapping("text");
                 conn.TypeMapper.AddMapping(new NpgsqlTypeMappingBuilder
                 {
@@ -213,26 +211,27 @@ CHECK
         {
             internal int Reads, Writes;
 
-            protected override NpgsqlTypeHandler<int> Create(NpgsqlConnection conn)
-                => new MyInt32Handler(this);
+            public override NpgsqlTypeHandler<int> Create(PostgresType postgresType, NpgsqlConnection conn)
+                => new MyInt32Handler(postgresType, this);
         }
 
         class MyInt32Handler : Int32Handler
         {
             readonly MyInt32HandlerFactory _factory;
 
-            public MyInt32Handler(MyInt32HandlerFactory factory)
+            public MyInt32Handler(PostgresType postgresType, MyInt32HandlerFactory factory)
+                : base(postgresType)
             {
                 _factory = factory;
             }
 
-            public override int Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+            public override int Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             {
                 _factory.Reads++;
                 return base.Read(buf, len, fieldDescription);
             }
 
-            public override void Write(int value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            public override void Write(int value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             {
                 _factory.Writes++;
                 base.Write(value, buf, parameter);

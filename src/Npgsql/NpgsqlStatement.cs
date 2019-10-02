@@ -1,6 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Diagnostics;
-using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 
 namespace Npgsql
@@ -51,10 +49,9 @@ namespace Npgsql
         /// <summary>
         /// The RowDescription message for this query. If null, the query does not return rows (e.g. INSERT)
         /// </summary>
-        [CanBeNull]
-        internal RowDescriptionMessage Description
+        internal RowDescriptionMessage? Description
         {
-            get { return PreparedStatement == null ? _description : PreparedStatement.Description; }
+            get => PreparedStatement == null ? _description : PreparedStatement.Description;
             set
             {
                 if (PreparedStatement == null)
@@ -64,27 +61,21 @@ namespace Npgsql
             }
         }
 
-        [CanBeNull]
-        RowDescriptionMessage _description;
+        RowDescriptionMessage? _description;
 
         /// <summary>
         /// If this statement has been automatically prepared, references the <see cref="PreparedStatement"/>.
         /// Null otherwise.
         /// </summary>
-        [CanBeNull]
-        internal PreparedStatement PreparedStatement
+        internal PreparedStatement? PreparedStatement
         {
-            get
-            {
-                if (_preparedStatement != null && _preparedStatement.State == PreparedState.Unprepared)
-                    _preparedStatement = null;
-                return _preparedStatement;
-            }
+            get => _preparedStatement != null && _preparedStatement.State == PreparedState.Unprepared
+                ? _preparedStatement = null
+                : _preparedStatement;
             set => _preparedStatement = value;
         }
 
-        [CanBeNull]
-        PreparedStatement _preparedStatement;
+        PreparedStatement? _preparedStatement;
 
         /// <summary>
         /// Holds the server-side (prepared) statement name. Empty string for non-prepared statements.
@@ -110,7 +101,8 @@ namespace Npgsql
         internal void ApplyCommandComplete(CommandCompleteMessage msg)
         {
             StatementType = msg.StatementType;
-            Rows = msg.Rows;
+            // Downcast to uint for backwards compat with 4.0
+            Rows = (uint)msg.Rows;
             OID = msg.OID;
         }
 

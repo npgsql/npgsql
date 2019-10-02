@@ -1,31 +1,7 @@
-﻿#region License
-// The PostgreSQL License
-//
-// Copyright (C) 2018 The Npgsql Development Team
-//
-// Permission to use, copy, modify, and distribute this software and its
-// documentation for any purpose, without fee, and without a written
-// agreement is hereby granted, provided that the above copyright notice
-// and this paragraph and the following two paragraphs appear in all copies.
-//
-// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
-// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
-// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
-// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
-// THE POSSIBILITY OF SUCH DAMAGE.
-//
-// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
-// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
-// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-#endregion
-
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Text;
-using JetBrains.Annotations;
 using Npgsql;
 
 // ReSharper disable once CheckNamespace
@@ -604,9 +580,7 @@ namespace NpgsqlTypes
         /// <returns>true if the two <see cref="NpgsqlTimeSpan"/> instances are exactly the same,
         /// false otherwise.</returns>
         public bool Equals(NpgsqlTimeSpan other)
-        {
-            return Ticks == other.Ticks && Days == other.Days && Months == other.Months;
-        }
+            => Ticks == other.Ticks && Days == other.Days && Months == other.Months;
 
         /// <summary>
         /// Returns true if another object is an <see cref="NpgsqlTimeSpan"/>, that is exactly the same as
@@ -615,8 +589,7 @@ namespace NpgsqlTypes
         /// <param name="obj">An <see cref="object"/> for comparison.</param>
         /// <returns>true if the argument is an <see cref="NpgsqlTimeSpan"/> and is exactly the same
         /// as this one, false otherwise.</returns>
-        public override bool Equals([CanBeNull] object obj)
-            => obj is NpgsqlTimeSpan && Equals((NpgsqlTimeSpan)obj);
+        public override bool Equals(object? obj) => obj is NpgsqlTimeSpan span && Equals(span);
 
         /// <summary>
         /// Compares two <see cref="NpgsqlTimeSpan"/> instances.
@@ -625,17 +598,11 @@ namespace NpgsqlTypes
         /// <param name="y">The second <see cref="NpgsqlTimeSpan"/>.</param>
         /// <returns>0 if the two are equal or equivalent. A value greater than zero if x is greater than y,
         /// a value less than zero if x is less than y.</returns>
-        public static int Compare(NpgsqlTimeSpan x, NpgsqlTimeSpan y)
-        {
-            return x.CompareTo(y);
-        }
+        public static int Compare(NpgsqlTimeSpan x, NpgsqlTimeSpan y) => x.CompareTo(y);
 
-        int IComparer<NpgsqlTimeSpan>.Compare(NpgsqlTimeSpan x, NpgsqlTimeSpan y)
-        {
-            return x.CompareTo(y);
-        }
+        int IComparer<NpgsqlTimeSpan>.Compare(NpgsqlTimeSpan x, NpgsqlTimeSpan y) => x.CompareTo(y);
 
-        int IComparer.Compare([CanBeNull] object x, [CanBeNull] object y)
+        int IComparer.Compare(object? x, object? y)
         {
             if (x == null)
                 return y == null ? 0 : 1;
@@ -652,10 +619,7 @@ namespace NpgsqlTypes
         /// A hash code suitable for uses with hashing algorithms.
         /// </summary>
         /// <returns>An signed integer.</returns>
-        public override int GetHashCode()
-        {
-            return UnjustifyInterval().Ticks.GetHashCode();
-        }
+        public override int GetHashCode() => UnjustifyInterval().Ticks.GetHashCode();
 
         /// <summary>
         /// Compares this instance with another/
@@ -665,9 +629,7 @@ namespace NpgsqlTypes
         /// this instance is less than the argument. A value greater than zero if this instance
         /// is greater than the instance.</returns>
         public int CompareTo(NpgsqlTimeSpan other)
-        {
-            return UnjustifyInterval().Ticks.CompareTo(other.UnjustifyInterval().Ticks);
-        }
+            => UnjustifyInterval().Ticks.CompareTo(other.UnjustifyInterval().Ticks);
 
         /// <summary>
         /// Compares this instance with another/
@@ -680,7 +642,7 @@ namespace NpgsqlTypes
         /// is greater than the instance.</returns>
         /// A value greater than zero if the argument is null.
         /// <exception cref="ArgumentException">The argument is not an <see cref="NpgsqlTimeSpan"/>.</exception>
-        public int CompareTo([CanBeNull] object other)
+        public int CompareTo(object? other)
         {
             if (other == null)
                 return 1;
@@ -715,17 +677,17 @@ namespace NpgsqlTypes
                 var hours = 0;
                 var minutes = 0;
                 var seconds = 0m;
-                var idx = str.IndexOf("year");
+                var idx = str.IndexOf("year", StringComparison.Ordinal);
                 if (idx > 0) {
                     years = int.Parse(str.Substring(0, idx));
                     str = SafeSubstring(str, idx + 5);
                 }
-                idx = str.IndexOf("mon");
+                idx = str.IndexOf("mon", StringComparison.Ordinal);
                 if (idx > 0) {
                     months = int.Parse(str.Substring(0, idx));
                     str = SafeSubstring(str, idx + 4);
                 }
-                idx = str.IndexOf("day");
+                idx = str.IndexOf("day", StringComparison.Ordinal);
                 if (idx > 0) {
                     days = int.Parse(str.Substring(0, idx));
                     str = SafeSubstring(str, idx + 4).Trim();

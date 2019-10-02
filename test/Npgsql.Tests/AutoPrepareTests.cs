@@ -1,14 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
 
 namespace Npgsql.Tests
 {
+    [Parallelizable(ParallelScope.None)]
     public class AutoPrepareTests : TestBase
     {
         [Test]
@@ -155,7 +152,7 @@ namespace Npgsql.Tests
                 cmd1.ExecuteNonQuery(); cmd1.ExecuteNonQuery();
                 // cmd1 is now autoprepared
                 Assert.That(checkCmd.ExecuteScalar(), Is.EqualTo(1));
-                Assert.That(conn.Connector.PreparedStatementManager.NumPrepared, Is.EqualTo(2));
+                Assert.That(conn.Connector!.PreparedStatementManager.NumPrepared, Is.EqualTo(2));
 
                 // Promote (replace) the autoprepared statement with an explicit one.
                 cmd2.Prepare();
@@ -334,7 +331,7 @@ namespace Npgsql.Tests
                 cmd.Parameters.AddWithValue("@p", NpgsqlDbType.Integer, answer);
                 cmd.ExecuteNonQuery(); cmd.ExecuteNonQuery(); // cmd1 is now autoprepared
                 Assert.That(checkCmd.ExecuteScalar(), Is.EqualTo(1));
-                Assert.That(conn.Connector.PreparedStatementManager.NumPrepared, Is.EqualTo(2));
+                Assert.That(conn.Connector!.PreparedStatementManager.NumPrepared, Is.EqualTo(2));
 
                 // Derive parameters for the already autoprepared statement
                 NpgsqlCommandBuilder.DeriveParameters(cmd);
@@ -350,6 +347,27 @@ namespace Npgsql.Tests
 
                 conn.UnprepareAll();
             }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2644")]
+        public void RowDescriptionProperlyCloned()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                MaxAutoPrepare = 10,
+                AutoPrepareMinUsages = 2
+            };
+            using var conn = OpenConnection(csb);
+            using var cmd1 = new NpgsqlCommand("SELECT 1 AS foo", conn);
+            using var cmd2 = new NpgsqlCommand("SELECT 1 AS bar", conn);
+
+            cmd1.ExecuteNonQuery();
+            cmd1.ExecuteNonQuery();  // Query is now auto-prepared
+            cmd2.ExecuteNonQuery();
+            using (var reader = cmd1.ExecuteReader())
+                Assert.That(reader.GetName(0), Is.EqualTo("foo"));
+
+            conn.UnprepareAll();
         }
 
         // Exclude some internal Npgsql queries which include pg_type as well as the count statement itself

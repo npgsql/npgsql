@@ -164,7 +164,7 @@ namespace JetBrains.Annotations
     sealed class PublicAPIAttribute : Attribute
 #pragma warning restore CA1018
     {
-        public PublicAPIAttribute() { }
+        public PublicAPIAttribute() : this("") { }
         public PublicAPIAttribute([NotNull] string comment)
         {
             Comment = comment;

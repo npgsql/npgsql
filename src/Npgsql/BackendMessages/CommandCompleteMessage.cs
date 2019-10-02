@@ -1,31 +1,4 @@
-﻿#region License
-// The PostgreSQL License
-//
-// Copyright (C) 2018 The Npgsql Development Team
-//
-// Permission to use, copy, modify, and distribute this software and its
-// documentation for any purpose, without fee, and without a written
-// agreement is hereby granted, provided that the above copyright notice
-// and this paragraph and the following two paragraphs appear in all copies.
-//
-// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
-// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
-// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
-// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
-// THE POSSIBILITY OF SUCH DAMAGE.
-//
-// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
-// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
-// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-#endregion
-
-using System;
-using System.Diagnostics;
-using System.Security.Cryptography;
-using System.Text;
-using Npgsql.Logging;
+﻿using System.Diagnostics;
 
 namespace Npgsql.BackendMessages
 {
@@ -33,7 +6,7 @@ namespace Npgsql.BackendMessages
     {
         internal StatementType StatementType { get; private set; }
         internal uint OID { get; private set; }
-        internal uint Rows { get; private set; }
+        internal ulong Rows { get; private set; }
 
         internal CommandCompleteMessage Load(NpgsqlReadBuffer buf, int len)
         {
@@ -50,7 +23,7 @@ namespace Npgsql.BackendMessages
                     goto default;
                 StatementType = StatementType.Insert;
                 i += 7;
-                OID = ParseNumber(bytes, ref i);
+                OID = (uint) ParseNumber(bytes, ref i);
                 i++;
                 Rows = ParseNumber(bytes, ref i);
                 return this;
@@ -95,6 +68,14 @@ namespace Npgsql.BackendMessages
                 Rows = ParseNumber(bytes, ref i);
                 return this;
 
+            case (byte)'C':
+                if (!AreEqual(bytes, i, "COPY "))
+                    goto default;
+                StatementType = StatementType.Copy;
+                i += 5;
+                Rows = ParseNumber(bytes, ref i);
+                return this;
+
             default:
                 StatementType = StatementType.Other;
                 return this;
@@ -111,7 +92,7 @@ namespace Npgsql.BackendMessages
             return true;
         }
 
-        static uint ParseNumber(byte[] bytes, ref int pos)
+        static ulong ParseNumber(byte[] bytes, ref int pos)
         {
             Debug.Assert(bytes[pos] >= '0' && bytes[pos] <= '9');
             uint result = 0;

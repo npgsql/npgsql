@@ -1,26 +1,3 @@
-#region License
-// The PostgreSQL License
-//
-// Copyright (C) 2018 The Npgsql Development Team
-//
-// Permission to use, copy, modify, and distribute this software and its
-// documentation for any purpose, without fee, and without a written
-// agreement is hereby granted, provided that the above copyright notice
-// and this paragraph and the following two paragraphs appear in all copies.
-//
-// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
-// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
-// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
-// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
-// THE POSSIBILITY OF SUCH DAMAGE.
-//
-// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
-// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
-// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-#endregion
-
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -90,7 +67,7 @@ namespace NpgsqlTypes
             _daysSinceEra = days;
         }
 
-        public NpgsqlDate(DateTime dateTime) : this((int) (dateTime.Ticks/TimeSpan.TicksPerDay)) {}
+        public NpgsqlDate(DateTime dateTime) : this((int)(dateTime.Ticks / TimeSpan.TicksPerDay)) {}
 
         public NpgsqlDate(NpgsqlDate copyFrom) : this(copyFrom._daysSinceEra) {}
 
@@ -111,20 +88,16 @@ namespace NpgsqlTypes
         #region String Conversions
 
         public override string ToString()
-        {
-            switch (_type)
+            => _type switch
             {
-            case InternalType.Infinity:
-                return "infinity";
-            case InternalType.NegativeInfinity:
-                return "-infinity";
-            default:
+                InternalType.Infinity         => "infinity",
+                InternalType.NegativeInfinity => "-infinity",
                 //Format of yyyy-MM-dd with " BC" for BCE and optional " AD" for CE which we omit here.
-                return
-                    new StringBuilder(Math.Abs(Year).ToString("D4")).Append('-').Append(Month.ToString("D2")).Append('-').Append(
-                        Day.ToString("D2")).Append(_daysSinceEra < 0 ? " BC" : "").ToString();
-            }
-        }
+                _ => new StringBuilder(Math.Abs(Year).ToString("D4"))
+                    .Append('-').Append(Month.ToString("D2"))
+                    .Append('-').Append(Day.ToString("D2"))
+                    .Append(_daysSinceEra < 0 ? " BC" : "").ToString()
+            };
 
         public static NpgsqlDate Parse(string str)
         {
@@ -228,20 +201,12 @@ namespace NpgsqlTypes
         [PublicAPI] public bool IsNegativeInfinity => _type == InternalType.NegativeInfinity;
 
         [PublicAPI] public bool IsFinite
-        {
-            get
-            {
-                switch (_type) {
-                case InternalType.Finite:
-                    return true;
-                case InternalType.Infinity:
-                case InternalType.NegativeInfinity:
-                    return false;
-                default:
-                    throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {_type} of enum {nameof(NpgsqlDate)}.{nameof(InternalType)}. Please file a bug.");
-                }
-            }
-        }
+            => _type switch {
+                InternalType.Finite           => true,
+                InternalType.Infinity         => false,
+                InternalType.NegativeInfinity => false,
+                _ => throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {_type} of enum {nameof(NpgsqlDate)}.{nameof(InternalType)}. Please file a bug.")
+            };
 
         #endregion
 
@@ -277,19 +242,13 @@ namespace NpgsqlTypes
 
         [PublicAPI]
         public NpgsqlDate AddDays(int days)
+            => _type switch
         {
-            switch (_type)
-            {
-            case InternalType.Infinity:
-                return Infinity;
-            case InternalType.NegativeInfinity:
-                return NegativeInfinity;
-            case InternalType.Finite:
-                return new NpgsqlDate(_daysSinceEra + days);
-            default:
-                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {_type} of enum {nameof(NpgsqlDate)}.{nameof(InternalType)}. Please file a bug.");
-            }
-        }
+            InternalType.Infinity         => Infinity,
+            InternalType.NegativeInfinity => NegativeInfinity,
+            InternalType.Finite           => new NpgsqlDate(_daysSinceEra + days),
+            _ => throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {_type} of enum {nameof(NpgsqlDate)}.{nameof(InternalType)}. Please file a bug.")
+        };
 
         [PublicAPI]
         public NpgsqlDate AddYears(int years)
@@ -388,12 +347,9 @@ namespace NpgsqlTypes
 
         #region Comparison
 
-        public int Compare(NpgsqlDate x, NpgsqlDate y)
-        {
-            return x.CompareTo(y);
-        }
+        public int Compare(NpgsqlDate x, NpgsqlDate y) => x.CompareTo(y);
 
-        public int Compare([CanBeNull] object x, [CanBeNull] object y)
+        public int Compare(object? x, object? y)
         {
             if (x == null)
             {
@@ -411,94 +367,48 @@ namespace NpgsqlTypes
         }
 
         public bool Equals(NpgsqlDate other)
-        {
-            switch (_type) {
-            case InternalType.Infinity:
-                return other._type == InternalType.Infinity;
-            case InternalType.NegativeInfinity:
-                return other._type == InternalType.NegativeInfinity;
-            case InternalType.Finite:
-                return other._type == InternalType.Finite && _daysSinceEra == other._daysSinceEra;
-            default:
-                return false;
-            }
-        }
+            => _type switch
+            {
+                InternalType.Infinity         => other._type == InternalType.Infinity,
+                InternalType.NegativeInfinity => other._type == InternalType.NegativeInfinity,
+                InternalType.Finite           => other._type == InternalType.Finite && _daysSinceEra == other._daysSinceEra,
+                _ => false
+            };
 
-        public override bool Equals([CanBeNull] object obj)
-        {
-            return obj is NpgsqlDate && Equals((NpgsqlDate) obj);
-        }
+        public override bool Equals(object? obj) => obj is NpgsqlDate date && Equals(date);
 
         public int CompareTo(NpgsqlDate other)
-        {
-            switch (_type) {
-            case InternalType.Infinity:
-                return other._type == InternalType.Infinity ? 0 : 1;
-            case InternalType.NegativeInfinity:
-                return other._type == InternalType.NegativeInfinity ? 0 : -1;
-            default:
-                switch (other._type) {
-                case InternalType.Infinity:
-                    return -1;
-                case InternalType.NegativeInfinity:
-                    return 1;
-                default:
-                    return _daysSinceEra.CompareTo(other._daysSinceEra);
+            => _type switch
+            {
+                InternalType.Infinity         => other._type == InternalType.Infinity ? 0 : 1,
+                InternalType.NegativeInfinity => other._type == InternalType.NegativeInfinity ? 0 : -1,
+                _ => other._type switch
+                {
+                    InternalType.Infinity         => -1,
+                    InternalType.NegativeInfinity => 1,
+                    _                             => _daysSinceEra.CompareTo(other._daysSinceEra)
                 }
-            }
-        }
+            };
 
-        public int CompareTo([CanBeNull] object o)
-        {
-            if (o == null)
-            {
-                return 1;
-            }
-            if (o is NpgsqlDate)
-            {
-                return CompareTo((NpgsqlDate) o);
-            }
-            throw new ArgumentException();
-        }
+        public int CompareTo(object? o)
+            => o == null
+                ? 1
+                : o is NpgsqlDate npgsqlDate
+                    ? CompareTo(npgsqlDate)
+                    : throw new ArgumentException();
 
-        public override int GetHashCode()
-        {
-            return _daysSinceEra;
-        }
+        public override int GetHashCode() => _daysSinceEra;
 
         #endregion
 
         #region Operators
 
-        public static bool operator ==(NpgsqlDate x, NpgsqlDate y)
-        {
-            return x.Equals(y);
-        }
-
-        public static bool operator !=(NpgsqlDate x, NpgsqlDate y)
-        {
-            return !(x == y);
-        }
-
-        public static bool operator <(NpgsqlDate x, NpgsqlDate y)
-        {
-            return x.CompareTo(y) < 0;
-        }
-
-        public static bool operator >(NpgsqlDate x, NpgsqlDate y)
-        {
-            return x.CompareTo(y) > 0;
-        }
-
-        public static bool operator <=(NpgsqlDate x, NpgsqlDate y)
-        {
-            return x.CompareTo(y) <= 0;
-        }
-
-        public static bool operator >=(NpgsqlDate x, NpgsqlDate y)
-        {
-            return x.CompareTo(y) >= 0;
-        }
+        public static bool operator ==(NpgsqlDate x, NpgsqlDate y) => x.Equals(y);
+        public static bool operator !=(NpgsqlDate x, NpgsqlDate y) => !(x == y);
+        public static bool operator <(NpgsqlDate x, NpgsqlDate y)  => x.CompareTo(y) < 0;
+        public static bool operator >(NpgsqlDate x, NpgsqlDate y)  => x.CompareTo(y) > 0;
+        public static bool operator <=(NpgsqlDate x, NpgsqlDate y) => x.CompareTo(y) <= 0;
+        public static bool operator >=(NpgsqlDate x, NpgsqlDate y) => x.CompareTo(y) >= 0;
 
         public static DateTime ToDateTime(NpgsqlDate date)
         {

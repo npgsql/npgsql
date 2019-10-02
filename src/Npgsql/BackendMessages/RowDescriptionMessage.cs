@@ -1,35 +1,11 @@
-﻿#region License
-// The PostgreSQL License
-//
-// Copyright (C) 2018 The Npgsql Development Team
-//
-// Permission to use, copy, modify, and distribute this software and its
-// documentation for any purpose, without fee, and without a written
-// agreement is hereby granted, provided that the above copyright notice
-// and this paragraph and the following two paragraphs appear in all copies.
-//
-// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
-// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
-// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
-// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
-// THE POSSIBILITY OF SUCH DAMAGE.
-//
-// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
-// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
-// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-#endregion
-
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Globalization;
-using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandlers;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
+using Npgsql.Util;
 
 namespace Npgsql.BackendMessages
 {
@@ -43,9 +19,7 @@ namespace Npgsql.BackendMessages
     {
         public List<FieldDescription> Fields { get; }
         readonly Dictionary<string, int> _nameIndex;
-        [CanBeNull]
-        Dictionary<string, int> _insensitiveIndex;
-        bool _isInsensitiveIndexInitialized;
+        Dictionary<string, int>? _insensitiveIndex;
 
         internal RowDescriptionMessage()
         {
@@ -53,22 +27,34 @@ namespace Npgsql.BackendMessages
             _nameIndex = new Dictionary<string, int>();
         }
 
+        RowDescriptionMessage(RowDescriptionMessage source)
+        {
+            Fields = new List<FieldDescription>(source.Fields.Count);
+            foreach (var f in source.Fields)
+                Fields.Add(f.Clone());
+            _nameIndex = new Dictionary<string, int>(source._nameIndex);
+            if (source._insensitiveIndex?.Count > 0)
+                _insensitiveIndex = new Dictionary<string, int>(source._insensitiveIndex);
+        }
+
         internal RowDescriptionMessage Load(NpgsqlReadBuffer buf, ConnectorTypeMapper typeMapper)
         {
             Fields.Clear();
             _nameIndex.Clear();
-            if (_isInsensitiveIndexInitialized)
-            {
-                Debug.Assert(_insensitiveIndex != null);
-                _insensitiveIndex.Clear();
-                _isInsensitiveIndexInitialized = false;
-            }
+            _insensitiveIndex?.Clear();
 
             var numFields = buf.ReadInt16();
             for (var i = 0; i != numFields; ++i)
             {
-                // TODO: Recycle
-                var field = new FieldDescription();
+                FieldDescription field;
+                if (i >= Fields.Count)
+                {
+                    field = new FieldDescription();
+                    Fields.Add(field);
+                }
+                else
+                    field = Fields[i];
+
                 field.Populate(
                     typeMapper,
                     buf.ReadNullTerminatedString(), // Name
@@ -80,7 +66,6 @@ namespace Npgsql.BackendMessages
                     (FormatCode)buf.ReadInt16() // FormatCode
                 );
 
-                Fields.Add(field);
                 if (!_nameIndex.ContainsKey(field.Name))
                     _nameIndex.Add(field.Name, i);
             }
@@ -108,7 +93,7 @@ namespace Npgsql.BackendMessages
             if (_nameIndex.TryGetValue(name, out fieldIndex))
                 return true;
 
-            if (!_isInsensitiveIndexInitialized)
+            if (_insensitiveIndex is null || _insensitiveIndex.Count == 0)
             {
                 if (_insensitiveIndex == null)
                     _insensitiveIndex = new Dictionary<string, int>(InsensitiveComparer.Instance);
@@ -116,15 +101,14 @@ namespace Npgsql.BackendMessages
                 foreach (var kv in _nameIndex)
                     if (!_insensitiveIndex.ContainsKey(kv.Key))
                         _insensitiveIndex[kv.Key] = kv.Value;
-
-                _isInsensitiveIndexInitialized = true;
             }
 
-            Debug.Assert(_insensitiveIndex != null);
             return _insensitiveIndex.TryGetValue(name, out fieldIndex);
         }
 
         public BackendMessageCode Code => BackendMessageCode.RowDescription;
+
+        internal RowDescriptionMessage Clone() => new RowDescriptionMessage(this);
 
         /// <summary>
         /// Comparer that's case-insensitive and Kana width-insensitive
@@ -138,10 +122,10 @@ namespace Npgsql.BackendMessages
 
             // We should really have CompareOptions.IgnoreKanaType here, but see
             // https://github.com/dotnet/corefx/issues/12518#issuecomment-389658716
-            public bool Equals([NotNull] string x, [NotNull] string y)
+            public bool Equals(string x, string y)
                 => CompareInfo.Compare(x, y, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase | CompareOptions.IgnoreKanaType) == 0;
 
-            public int GetHashCode([NotNull] string o)
+            public int GetHashCode(string o)
                 => CompareInfo.GetSortKey(o, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase | CompareOptions.IgnoreKanaType).GetHashCode();
         }
     }
@@ -152,6 +136,29 @@ namespace Npgsql.BackendMessages
     /// </summary>
     public sealed class FieldDescription
     {
+        /// <summary>
+        /// Creates a new instance.
+        /// </summary>
+        /// <remarks>
+        /// Exists for backwards compat with 4.0, has been removed for 5.0.
+        /// </remarks>
+#pragma warning disable CS8618  // Lazy-initialized type
+        public FieldDescription() {}
+#pragma warning restore CS8618
+
+        internal FieldDescription(FieldDescription source)
+        {
+            _typeMapper = source._typeMapper;
+            Name = source.Name;
+            TableOID = source.TableOID;
+            ColumnAttributeNumber = source.ColumnAttributeNumber;
+            TypeOID = source.TypeOID;
+            TypeSize = source.TypeSize;
+            TypeModifier = source.TypeModifier;
+            FormatCode = source.FormatCode;
+            Handler = source.Handler;
+        }
+
         internal void Populate(
             ConnectorTypeMapper typeMapper, string name, uint tableOID, short columnAttributeNumber,
             uint oid, short typeSize, int typeModifier, FormatCode formatCode
@@ -166,7 +173,6 @@ namespace Npgsql.BackendMessages
             TypeModifier = typeModifier;
             FormatCode = formatCode;
 
-            RealHandler = typeMapper.GetByOID(TypeOID);
             ResolveHandler();
         }
 
@@ -225,11 +231,6 @@ namespace Npgsql.BackendMessages
         /// </summary>
         internal NpgsqlTypeHandler Handler { get; private set; }
 
-        /// <summary>
-        /// The type handler resolved for this field, regardless of whether it's binary or text.
-        /// </summary>
-        internal NpgsqlTypeHandler RealHandler { get; private set; }
-
         internal PostgresType PostgresType
             => _typeMapper.DatabaseInfo.ByOID.TryGetValue(TypeOID, out var postgresType)
                 ? postgresType
@@ -248,6 +249,8 @@ namespace Npgsql.BackendMessages
 
         internal bool IsBinaryFormat => FormatCode == FormatCode.Binary;
         internal bool IsTextFormat => FormatCode == FormatCode.Text;
+
+        internal FieldDescription Clone() => new FieldDescription(this);
 
         /// <summary>
         /// Returns a string that represents the current object.

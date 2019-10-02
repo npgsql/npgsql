@@ -1,33 +1,8 @@
-﻿#region License
-
-// The PostgreSQL License
-//
-// Copyright (C) 2018 The Npgsql Development Team
-//
-// Permission to use, copy, modify, and distribute this software and its
-// documentation for any purpose, without fee, and without a written
-// agreement is hereby granted, provided that the above copyright notice
-// and this paragraph and the following two paragraphs appear in all copies.
-//
-// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
-// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
-// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
-// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
-// THE POSSIBILITY OF SUCH DAMAGE.
-//
-// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
-// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
-// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-
-#endregion
-
-using System;
+﻿using System;
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text;
-using JetBrains.Annotations;
 
 // ReSharper disable once CheckNamespace
 namespace NpgsqlTypes
@@ -39,7 +14,6 @@ namespace NpgsqlTypes
     /// <remarks>
     /// See: https://www.postgresql.org/docs/current/static/rangetypes.html
     /// </remarks>
-    [PublicAPI]
     public readonly struct NpgsqlRange<T> : IEquatable<NpgsqlRange<T>>
     {
         // -----------------------------------------------------------------------------------------------
@@ -121,13 +95,13 @@ namespace NpgsqlTypes
         /// <summary>
         /// The lower bound of the range. Only valid when <see cref="LowerBoundInfinite"/> is false.
         /// </summary>
-        [CanBeNull]
+        [MaybeNull, AllowNull]
         public T LowerBound { get; }
 
         /// <summary>
         /// The upper bound of the range. Only valid when <see cref="UpperBoundInfinite"/> is false.
         /// </summary>
-        [CanBeNull]
+        [MaybeNull, AllowNull]
         public T UpperBound { get; }
 
         /// <summary>
@@ -204,7 +178,7 @@ namespace NpgsqlTypes
         /// <param name="lowerBound">The lower bound of the range.</param>
         /// <param name="upperBound">The upper bound of the range.</param>
         /// <param name="flags">The characteristics of the range boundaries.</param>
-        internal NpgsqlRange([CanBeNull] T lowerBound, [CanBeNull] T upperBound, RangeFlags flags) : this()
+        internal NpgsqlRange([AllowNull] T lowerBound, [AllowNull] T upperBound, RangeFlags flags) : this()
         {
             // TODO: We need to check if the bounds are implicitly empty. E.g. '(1,1)' or '(0,0]'.
             // See: https://github.com/npgsql/npgsql/issues/1943.
@@ -215,8 +189,8 @@ namespace NpgsqlTypes
 
             if (IsEmptyRange(LowerBound, UpperBound, Flags))
             {
-                LowerBound = default;
-                UpperBound = default;
+                LowerBound = default!;
+                UpperBound = default!;
                 Flags = RangeFlags.Empty;
             }
         }
@@ -230,7 +204,7 @@ namespace NpgsqlTypes
         /// <returns>
         /// True if the range is implicitly empty; otherwise, false.
         /// </returns>
-        static bool IsEmptyRange([CanBeNull] T lowerBound, [CanBeNull] T upperBound, RangeFlags flags)
+        static bool IsEmptyRange(T lowerBound, T upperBound, RangeFlags flags)
         {
             // ---------------------------------------------------------------------------------
             // We only want to check for those conditions that are unambiguously erroneous:
@@ -256,13 +230,12 @@ namespace NpgsqlTypes
             if (!HasEquatableBounds)
                 return lowerBound?.Equals(upperBound) ?? false;
 
-            var lower = (IEquatable<T>)lowerBound;
-            var upper = (IEquatable<T>)upperBound;
+            var lower = (IEquatable<T>?)lowerBound;
+            var upper = (IEquatable<T>?)upperBound;
 
-            return
-                !(lower?.Equals(default) ?? true) &&
-                !(upper?.Equals(default) ?? true) &&
-                lower.Equals(upperBound);
+            return lower != null && !lower.Equals(default!) &&
+                   upper != null && !upper.Equals(default!) &&
+                   lower.Equals(upperBound);
         }
 
         /// <summary>
@@ -321,7 +294,7 @@ namespace NpgsqlTypes
         public static bool operator !=(NpgsqlRange<T> x, NpgsqlRange<T> y) => !x.Equals(y);
 
         /// <inheritdoc />
-        public override bool Equals(object o) => o is NpgsqlRange<T> range && Equals(range);
+        public override bool Equals(object? o) => o is NpgsqlRange<T> range && Equals(range);
 
         /// <inheritdoc />
         public bool Equals(NpgsqlRange<T> other)
@@ -331,8 +304,8 @@ namespace NpgsqlTypes
 
             if (HasEquatableBounds)
                 return
-                    (((IEquatable<T>)LowerBound)?.Equals(other.LowerBound) ?? other.LowerBound == null) &&
-                    (((IEquatable<T>)UpperBound)?.Equals(other.UpperBound) ?? other.UpperBound == null);
+                    (LowerBound == null ? other.LowerBound == null : ((IEquatable<T>)LowerBound).Equals(other.LowerBound)) &&
+                    (UpperBound == null ? other.UpperBound == null : ((IEquatable<T>)UpperBound).Equals(other.UpperBound));
 
             return
                 (LowerBound?.Equals(other.LowerBound) ?? other.LowerBound == null) &&
@@ -389,12 +362,10 @@ namespace NpgsqlTypes
         /// <remarks>
         /// See: https://www.postgresql.org/docs/current/static/rangetypes.html
         /// </remarks>
-        public static NpgsqlRange<T> Parse([NotNull] string value)
+        public static NpgsqlRange<T> Parse(string value)
         {
             if (value is null)
-            {
                 throw new ArgumentNullException(nameof(value));
-            }
 
             value = value.Trim();
 
@@ -416,7 +387,7 @@ namespace NpgsqlTypes
             if (!upperInclusive && !upperExclusive)
                 throw new FormatException("Malformed range literal. Missing right parenthesis or bracket.");
 
-            int separator = value.IndexOf(BoundSeparator);
+            var separator = value.IndexOf(BoundSeparator);
 
             if (separator == -1)
                 throw new FormatException("Malformed range literal. Missing comma after lower bound.");
@@ -451,7 +422,6 @@ namespace NpgsqlTypes
             return new NpgsqlRange<T>(lower, lowerInclusive, lowerInfinite, upper, upperInclusive, upperInfinite);
         }
 
-        /// <inheritdoc />
         /// <summary>
         /// Represents a type converter for <see cref="NpgsqlRange{T}" />.
         /// </summary>
@@ -479,7 +449,9 @@ namespace NpgsqlTypes
 
             /// <inheritdoc />
             public override object ConvertTo(ITypeDescriptorContext context, CultureInfo culture, object value, Type destinationType)
+#nullable disable
                 => value.ToString();
+#nullable restore
         }
     }
 

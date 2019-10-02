@@ -16,7 +16,7 @@ It is no longer necessary or recommended to have Npgsql in your GAC, or to have 
 
 ## Features
 
-The provider isn't feature comlete - please let us know of missing features or bugs by opening issues.
+The provider isn't feature complete - please let us know of missing features or bugs by opening issues.
 
 ### Server Explorer
 

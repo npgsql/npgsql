@@ -1,51 +1,40 @@
-﻿#region License
-// The PostgreSQL License
-//
-// Copyright (C) 2018 The Npgsql Development Team
-//
-// Permission to use, copy, modify, and distribute this software and its
-// documentation for any purpose, without fee, and without a written
-// agreement is hereby granted, provided that the above copyright notice
-// and this paragraph and the following two paragraphs appear in all copies.
-//
-// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
-// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
-// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
-// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
-// THE POSSIBILITY OF SUCH DAMAGE.
-//
-// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
-// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
-// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-#endregion
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using NpgsqlTypes;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
+using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers.FullTextSearchHandlers
 {
     /// <summary>
-    /// http://www.postgresql.org/docs/current/static/datatype-textsearch.html
+    /// A type handler for the PostgreSQL tsvector data type.
     /// </summary>
+    /// <remarks>
+    /// See http://www.postgresql.org/docs/current/static/datatype-textsearch.html.
+    ///
+    /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
+    /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
+    /// Use it at your own risk.
+    /// </remarks>
     [TypeMapping("tsvector", NpgsqlDbType.TsVector, typeof(NpgsqlTsVector))]
-    class TsVectorHandler : NpgsqlTypeHandler<NpgsqlTsVector>
+    public class TsVectorHandler : NpgsqlTypeHandler<NpgsqlTsVector>
     {
         // 2561 = 2046 (max length lexeme string) + (1) null terminator +
         // 2 (num_pos) + sizeof(int16) * 256 (max_num_pos (positions/wegihts))
         const int MaxSingleLexemeBytes = 2561;
 
+        /// <inheritdoc />
+        public TsVectorHandler(PostgresType postgresType) : base(postgresType) {}
+
         #region Read
 
-        public override async ValueTask<NpgsqlTsVector> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
+        /// <inheritdoc />
+        public override async ValueTask<NpgsqlTsVector> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
             await buf.Ensure(4, async);
             var numLexemes = buf.ReadInt32();
@@ -57,7 +46,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
                 await buf.Ensure(Math.Min(len, MaxSingleLexemeBytes), async);
                 var posBefore = buf.ReadPosition;
 
-                List<NpgsqlTsVector.Lexeme.WordEntryPos> positions = null;
+                List<NpgsqlTsVector.Lexeme.WordEntryPos>? positions = null;
 
                 var lexemeString = buf.ReadNullTerminatedString();
                 int numPositions = buf.ReadInt16();
@@ -82,10 +71,12 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
         #region Write
 
         // TODO: Implement length cache
-        public override int ValidateAndGetLength(NpgsqlTsVector value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        /// <inheritdoc />
+        public override int ValidateAndGetLength(NpgsqlTsVector value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => 4 + value.Sum(l => Encoding.UTF8.GetByteCount(l.Text) + 1 + 2 + l.Count * 2);
 
-        public override async Task Write(NpgsqlTsVector vector, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        /// <inheritdoc />
+        public override async Task Write(NpgsqlTsVector vector, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
             if (buf.WriteSpaceLeft < 4)
                 await buf.Flush(async);

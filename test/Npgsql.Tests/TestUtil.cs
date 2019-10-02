@@ -1,34 +1,9 @@
-﻿#region License
-// The PostgreSQL License
-//
-// Copyright (C) 2018 The Npgsql Development Team
-//
-// Permission to use, copy, modify, and distribute this software and its
-// documentation for any purpose, without fee, and without a written
-// agreement is hereby granted, provided that the above copyright notice
-// and this paragraph and the following two paragraphs appear in all copies.
-//
-// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
-// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
-// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
-// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
-// THE POSSIBILITY OF SUCH DAMAGE.
-//
-// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
-// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
-// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-#endregion
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using JetBrains.Annotations;
 using NUnit.Framework;
 using NUnit.Framework.Interfaces;
 
@@ -54,7 +29,7 @@ namespace Npgsql.Tests
         public static void IgnoreExceptOnBuildServer(string message, params object[] args)
             => IgnoreExceptOnBuildServer(string.Format(message, args));
 
-        public static void MinimumPgVersion(NpgsqlConnection conn, string minVersion, string ignoreText=null)
+        public static void MinimumPgVersion(NpgsqlConnection conn, string minVersion, string? ignoreText = null)
         {
             var min = new Version(minVersion);
             if (conn.PostgreSqlVersion < min)
@@ -64,6 +39,20 @@ namespace Npgsql.Tests
                     msg += ": " + ignoreText;
                 Assert.Ignore(msg);
             }
+        }
+
+        static readonly Version MinCreateExtensionVersion = new Version(9, 1);
+        public static void EnsureExtension(NpgsqlConnection conn, string extension, string? minVersion = null)
+        {
+            if (minVersion != null)
+                MinimumPgVersion(conn, minVersion,
+                    $"The extension '{extension}' only works for PostgreSQL {minVersion} and higher.");
+
+            if (conn.PostgreSqlVersion < MinCreateExtensionVersion)
+                Assert.Ignore($"The 'CREATE EXTENSION' command only works for PostgreSQL {MinCreateExtensionVersion} and higher.");
+
+            conn.ExecuteNonQuery($"CREATE EXTENSION IF NOT EXISTS {extension}");
+            conn.ReloadTypes();
         }
 
         public static string GetUniqueIdentifier(string prefix)
@@ -93,9 +82,10 @@ namespace Npgsql.Tests
 
         class EnvironmentVariableResetter : IDisposable
         {
-            readonly string _name, _value;
+            readonly string _name;
+            readonly string? _value;
 
-            internal EnvironmentVariableResetter(string name, string value)
+            internal EnvironmentVariableResetter(string name, string? value)
             {
                 _name = name;
                 _value = value;
@@ -110,30 +100,28 @@ namespace Npgsql.Tests
 
     public static class NpgsqlConnectionExtensions
     {
-        public static int ExecuteNonQuery(this NpgsqlConnection conn, string sql, NpgsqlTransaction tx = null)
+        public static int ExecuteNonQuery(this NpgsqlConnection conn, string sql, NpgsqlTransaction? tx = null)
         {
             var cmd = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
             using (cmd)
                 return cmd.ExecuteNonQuery();
         }
 
-        [CanBeNull]
-        public static object ExecuteScalar(this NpgsqlConnection conn, string sql, NpgsqlTransaction tx = null)
+        public static object ExecuteScalar(this NpgsqlConnection conn, string sql, NpgsqlTransaction? tx = null)
         {
             var cmd = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
             using (cmd)
                 return cmd.ExecuteScalar();
         }
 
-        public static async Task<int> ExecuteNonQueryAsync(this NpgsqlConnection conn, string sql, NpgsqlTransaction tx = null)
+        public static async Task<int> ExecuteNonQueryAsync(this NpgsqlConnection conn, string sql, NpgsqlTransaction? tx = null)
         {
             var cmd = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
             using (cmd)
                 return await cmd.ExecuteNonQueryAsync();
         }
 
-        [CanBeNull]
-        public static async Task<object> ExecuteScalarAsync(this NpgsqlConnection conn, string sql, NpgsqlTransaction tx = null)
+        public static async Task<object> ExecuteScalarAsync(this NpgsqlConnection conn, string sql, NpgsqlTransaction? tx = null)
         {
             var cmd = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
             using (cmd)
@@ -183,11 +171,11 @@ namespace Npgsql.Tests
     [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class | AttributeTargets.Assembly, AllowMultiple = false)]
     public class MonoIgnore : Attribute, ITestAction
     {
-        readonly string _ignoreText;
+        readonly string? _ignoreText;
 
-        public MonoIgnore(string ignoreText = null) { _ignoreText = ignoreText; }
+        public MonoIgnore(string? ignoreText = null) { _ignoreText = ignoreText; }
 
-        public void BeforeTest([NotNull] ITest test)
+        public void BeforeTest(ITest test)
         {
             if (Type.GetType("Mono.Runtime") != null)
             {
@@ -198,7 +186,7 @@ namespace Npgsql.Tests
             }
         }
 
-        public void AfterTest([NotNull] ITest test) { }
+        public void AfterTest(ITest test) { }
         public ActionTargets Targets => ActionTargets.Test;
     }
 
@@ -208,11 +196,11 @@ namespace Npgsql.Tests
     [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class | AttributeTargets.Assembly, AllowMultiple = false)]
     public class LinuxIgnore : Attribute, ITestAction
     {
-        readonly string _ignoreText;
+        readonly string? _ignoreText;
 
-        public LinuxIgnore(string ignoreText = null) { _ignoreText = ignoreText; }
+        public LinuxIgnore(string? ignoreText = null) { _ignoreText = ignoreText; }
 
-        public void BeforeTest([NotNull] ITest test)
+        public void BeforeTest(ITest test)
         {
             var osEnvVar = Environment.GetEnvironmentVariable("OS");
             if (osEnvVar == null || osEnvVar != "Windows_NT")
@@ -224,7 +212,7 @@ namespace Npgsql.Tests
             }
         }
 
-        public void AfterTest([NotNull] ITest test) { }
+        public void AfterTest(ITest test) { }
         public ActionTargets Targets => ActionTargets.Test;
     }
 
@@ -234,11 +222,11 @@ namespace Npgsql.Tests
     [AttributeUsage(AttributeTargets.Method | AttributeTargets.Class | AttributeTargets.Assembly, AllowMultiple = false)]
     public class WindowsIgnore : Attribute, ITestAction
     {
-        readonly string _ignoreText;
+        readonly string? _ignoreText;
 
-        public WindowsIgnore(string ignoreText = null) { _ignoreText = ignoreText; }
+        public WindowsIgnore(string? ignoreText = null) { _ignoreText = ignoreText; }
 
-        public void BeforeTest([NotNull] ITest test)
+        public void BeforeTest(ITest test)
         {
             var osEnvVar = Environment.GetEnvironmentVariable("OS");
             if (osEnvVar == "Windows_NT")
@@ -250,7 +238,7 @@ namespace Npgsql.Tests
             }
         }
 
-        public void AfterTest([NotNull] ITest test) { }
+        public void AfterTest(ITest test) { }
         public ActionTargets Targets => ActionTargets.Test;
     }
 
@@ -260,10 +248,11 @@ namespace Npgsql.Tests
         NotPrepared
     }
 
-#if !(NET45 || NET451)
+#if !NET461
     // When using netcoreapp, we use NUnit's portable library which doesn't include TimeoutAttribute
     // (probably because it can't enforce it). So we define it here to allow us to compile, once there's
     // proper support for netcoreapp this should be removed.
+    // https://github.com/nunit/nunit/issues/1638
     [AttributeUsage(AttributeTargets.Assembly | AttributeTargets.Class | AttributeTargets.Method, Inherited = false)]
     class TimeoutAttribute : Attribute
     {

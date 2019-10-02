@@ -1,21 +1,31 @@
 ﻿using System;
 using System.Data;
-using JetBrains.Annotations;
 using Npgsql.BackendMessages;
+using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers.NumericHandlers
 {
+    /// <summary>
+    /// A type handler for the PostgreSQL numeric data type.
+    /// </summary>
     /// <remarks>
-    /// http://www.postgresql.org/docs/current/static/datatype-numeric.html
+    /// See http://www.postgresql.org/docs/current/static/datatype-numeric.html.
+    ///
+    /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
+    /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
+    /// Use it at your own risk.
     /// </remarks>
     [TypeMapping("numeric", NpgsqlDbType.Numeric, new[] { DbType.Decimal, DbType.VarNumeric }, typeof(decimal), DbType.Decimal)]
-    class NumericHandler : NpgsqlSimpleTypeHandler<decimal>,
+    public class NumericHandler : NpgsqlSimpleTypeHandler<decimal>,
         INpgsqlSimpleTypeHandler<byte>, INpgsqlSimpleTypeHandler<short>, INpgsqlSimpleTypeHandler<int>, INpgsqlSimpleTypeHandler<long>,
         INpgsqlSimpleTypeHandler<float>, INpgsqlSimpleTypeHandler<double>
     {
+        /// <inheritdoc />
+        public NumericHandler(PostgresType postgresType) : base(postgresType) {}
+
         const int MaxDecimalScale = 28;
 
         const int SignPositive = 0x0000;
@@ -29,7 +39,8 @@ namespace Npgsql.TypeHandlers.NumericHandlers
 
         #region Read
 
-        public override decimal Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+        /// <inheritdoc />
+        public override decimal Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
             var result = new DecimalRaw();
             var groups = buf.ReadInt16();
@@ -38,7 +49,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
 
             if (sign == SignNan)
                 throw new NpgsqlSafeReadException(new InvalidCastException("Numeric NaN not supported by System.Decimal"));
-            else if (sign == SignNegative)
+            if (sign == SignNegative)
                 DecimalRaw.Negate(ref result);
 
             var scale = buf.ReadInt16();
@@ -93,29 +104,30 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             return result.Value;
         }
 
-        byte INpgsqlSimpleTypeHandler<byte>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        byte INpgsqlSimpleTypeHandler<byte>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
             => (byte)Read(buf, len, fieldDescription);
 
-        short INpgsqlSimpleTypeHandler<short>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        short INpgsqlSimpleTypeHandler<short>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
             => (short)Read(buf, len, fieldDescription);
 
-        int INpgsqlSimpleTypeHandler<int>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        int INpgsqlSimpleTypeHandler<int>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
             => (int)Read(buf, len, fieldDescription);
 
-        long INpgsqlSimpleTypeHandler<long>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        long INpgsqlSimpleTypeHandler<long>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
             => (long)Read(buf, len, fieldDescription);
 
-        float INpgsqlSimpleTypeHandler<float>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        float INpgsqlSimpleTypeHandler<float>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
             => (float)Read(buf, len, fieldDescription);
 
-        double INpgsqlSimpleTypeHandler<double>.Read(NpgsqlReadBuffer buf, int len, [CanBeNull] FieldDescription fieldDescription)
+        double INpgsqlSimpleTypeHandler<double>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
             => (double)Read(buf, len, fieldDescription);
 
-        #endregion Read
+        #endregion
 
         #region Write
 
-        public override int ValidateAndGetLength(decimal value, NpgsqlParameter parameter)
+        /// <inheritdoc />
+        public override int ValidateAndGetLength(decimal value, NpgsqlParameter? parameter)
         {
             var groupCount = 0;
             var raw = new DecimalRaw(value);
@@ -145,25 +157,21 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             return 4 * sizeof(short) + groupCount * sizeof(short);
         }
 
-        public int ValidateAndGetLength(short value, NpgsqlParameter parameter)
-            => ValidateAndGetLength((decimal)value, parameter);
+        /// <inheritdoc />
+        public int ValidateAndGetLength(short value, NpgsqlParameter? parameter)  => ValidateAndGetLength((decimal)value, parameter);
+        /// <inheritdoc />
+        public int ValidateAndGetLength(int value, NpgsqlParameter? parameter)    => ValidateAndGetLength((decimal)value, parameter);
+        /// <inheritdoc />
+        public int ValidateAndGetLength(long value, NpgsqlParameter? parameter)   => ValidateAndGetLength((decimal)value, parameter);
+        /// <inheritdoc />
+        public int ValidateAndGetLength(float value, NpgsqlParameter? parameter)  => ValidateAndGetLength((decimal)value, parameter);
+        /// <inheritdoc />
+        public int ValidateAndGetLength(double value, NpgsqlParameter? parameter) => ValidateAndGetLength((decimal)value, parameter);
+        /// <inheritdoc />
+        public int ValidateAndGetLength(byte value, NpgsqlParameter? parameter)   => ValidateAndGetLength((decimal)value, parameter);
 
-        public int ValidateAndGetLength(int value, NpgsqlParameter parameter)
-            => ValidateAndGetLength((decimal)value, parameter);
-
-        public int ValidateAndGetLength(long value, NpgsqlParameter parameter)
-            => ValidateAndGetLength((decimal)value, parameter);
-
-        public int ValidateAndGetLength(float value, NpgsqlParameter parameter)
-            => ValidateAndGetLength((decimal)value, parameter);
-
-        public int ValidateAndGetLength(double value, NpgsqlParameter parameter)
-            => ValidateAndGetLength((decimal)value, parameter);
-
-        public int ValidateAndGetLength(byte value, NpgsqlParameter parameter)
-            => ValidateAndGetLength((decimal)value, parameter);
-
-        public override void Write(decimal value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        /// <inheritdoc />
+        public override void Write(decimal value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
             var weight = 0;
             var groupCount = 0;
@@ -175,7 +183,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
                 var scale = raw.Scale;
                 weight = -scale / MaxGroupScale - 1;
 
-                uint remainder = default;
+                uint remainder;
                 var scaleChunk = scale % MaxGroupScale;
                 if (scaleChunk > 0)
                 {
@@ -209,24 +217,19 @@ namespace Npgsql.TypeHandlers.NumericHandlers
                 buf.WriteInt16(groups[--groupCount]);
         }
 
-        public void Write(short value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
-            => Write((decimal)value, buf, parameter);
+        /// <inheritdoc />
+        public void Write(short value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)  => Write((decimal)value, buf, parameter);
+        /// <inheritdoc />
+        public void Write(int value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)    => Write((decimal)value, buf, parameter);
+        /// <inheritdoc />
+        public void Write(long value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)   => Write((decimal)value, buf, parameter);
+        /// <inheritdoc />
+        public void Write(byte value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)   => Write((decimal)value, buf, parameter);
+        /// <inheritdoc />
+        public void Write(float value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)  => Write((decimal)value, buf, parameter);
+        /// <inheritdoc />
+        public void Write(double value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter) => Write((decimal)value, buf, parameter);
 
-        public void Write(int value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
-            => Write((decimal)value, buf, parameter);
-
-        public void Write(long value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
-            => Write((decimal)value, buf, parameter);
-
-        public void Write(byte value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
-            => Write((decimal)value, buf, parameter);
-
-        public void Write(float value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
-            => Write((decimal)value, buf, parameter);
-
-        public void Write(double value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
-            => Write((decimal)value, buf, parameter);
-
-        #endregion Write
+        #endregion
     }
 }

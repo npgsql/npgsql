@@ -1,6 +1,6 @@
-﻿using NpgsqlTypes;
+﻿using System.Data;
+using NpgsqlTypes;
 using NUnit.Framework;
-using System.Data;
 
 namespace Npgsql.Tests.Types
 {
@@ -51,6 +51,9 @@ namespace Npgsql.Tests.Types
             new object[] { "-1.5::numeric(10,0)", -2M },
             new object[] { "-2.4::numeric(10,0)", -2M },
             new object[] { "-2.5::numeric(10,0)", -3M },
+
+            // Bug 2033
+            new object[] { "0.0036882500000000000000000000", 0.0036882500000000000000000000M },
         };
 
         [Test]

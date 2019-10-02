@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Data;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using Npgsql.Logging;
 using NUnit.Framework;
 
 namespace Npgsql.Tests
@@ -186,7 +184,7 @@ namespace Npgsql.Tests
                         conn2.ExecuteNonQuery($"SELECT pg_terminate_backend({conn.ProcessID})");
                 });
 
-                Assert.That(() => conn.Wait(), Throws.Exception.TypeOf<NpgsqlException>());
+                Assert.That(() => conn.Wait(), Throws.Exception.TypeOf<PostgresException>());
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
             }
         }

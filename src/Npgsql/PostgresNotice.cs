@@ -1,30 +1,4 @@
-﻿#region License
-// The PostgreSQL License
-//
-// Copyright (C) 2018 The Npgsql Development Team
-//
-// Permission to use, copy, modify, and distribute this software and its
-// documentation for any purpose, without fee, and without a written
-// agreement is hereby granted, provided that the above copyright notice
-// and this paragraph and the following two paragraphs appear in all copies.
-//
-// IN NO EVENT SHALL THE NPGSQL DEVELOPMENT TEAM BE LIABLE TO ANY PARTY
-// FOR DIRECT, INDIRECT, SPECIAL, INCIDENTAL, OR CONSEQUENTIAL DAMAGES,
-// INCLUDING LOST PROFITS, ARISING OUT OF THE USE OF THIS SOFTWARE AND ITS
-// DOCUMENTATION, EVEN IF THE NPGSQL DEVELOPMENT TEAM HAS BEEN ADVISED OF
-// THE POSSIBILITY OF SUCH DAMAGE.
-//
-// THE NPGSQL DEVELOPMENT TEAM SPECIFICALLY DISCLAIMS ANY WARRANTIES,
-// INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY
-// AND FITNESS FOR A PARTICULAR PURPOSE. THE SOFTWARE PROVIDED HEREUNDER IS
-// ON AN "AS IS" BASIS, AND THE NPGSQL DEVELOPMENT TEAM HAS NO OBLIGATIONS
-// TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
-#endregion
-
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using System;
 using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 
@@ -48,6 +22,13 @@ namespace Npgsql
         /// </summary>
         [PublicAPI]
         public string Severity { get; set; }
+
+        /// <summary>
+        /// Severity of the error or notice, not localized.
+        /// Always present since PostgreSQL 9.6.
+        /// </summary>
+        [PublicAPI]
+        public string InvariantSeverity { get; }
 
         /// <summary>
         /// The SQLSTATE code for the error.
@@ -83,7 +64,7 @@ namespace Npgsql
         /// May run to multiple lines.
         /// </summary>
         [PublicAPI]
-        public string Detail { get; set; }
+        public string? Detail { get; set; }
 
         /// <summary>
         /// An optional suggestion what to do about the problem.
@@ -91,7 +72,7 @@ namespace Npgsql
         /// May run to multiple lines.
         /// </summary>
         [PublicAPI]
-        public string Hint { get; set; }
+        public string? Hint { get; set; }
 
         /// <summary>
         /// The field value is a decimal ASCII integer, indicating an error cursor position as an index into the original query string.
@@ -114,7 +95,7 @@ namespace Npgsql
         /// This could be, for example, a SQL query issued by a PL/pgSQL function.
         /// </summary>
         [PublicAPI]
-        public string InternalQuery { get; set; }
+        public string? InternalQuery { get; set; }
 
         /// <summary>
         /// An indication of the context in which the error occurred.
@@ -122,14 +103,14 @@ namespace Npgsql
         /// The trace is one entry per line, most recent first.
         /// </summary>
         [PublicAPI]
-        public string Where { get; set; }
+        public string? Where { get; set; }
 
         /// <summary>
         /// If the error was associated with a specific database object, the name of the schema containing that object, if any.
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
         [PublicAPI]
-        public string SchemaName { get; set; }
+        public string? SchemaName { get; set; }
 
         /// <summary>
         /// Table name: if the error was associated with a specific table, the name of the table.
@@ -137,7 +118,7 @@ namespace Npgsql
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
         [PublicAPI]
-        public string TableName { get; set; }
+        public string? TableName { get; set; }
 
         /// <summary>
         /// If the error was associated with a specific table column, the name of the column.
@@ -145,7 +126,7 @@ namespace Npgsql
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
         [PublicAPI]
-        public string ColumnName { get; set; }
+        public string? ColumnName { get; set; }
 
         /// <summary>
         /// If the error was associated with a specific data type, the name of the data type.
@@ -153,7 +134,7 @@ namespace Npgsql
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
         [PublicAPI]
-        public string DataTypeName { get; set; }
+        public string? DataTypeName { get; set; }
 
         /// <summary>
         /// If the error was associated with a specific constraint, the name of the constraint.
@@ -162,38 +143,53 @@ namespace Npgsql
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
         [PublicAPI]
-        public string ConstraintName { get; set; }
+        public string? ConstraintName { get; set; }
 
         /// <summary>
         /// The file name of the source-code location where the error was reported.
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
         [PublicAPI]
-        public string File { get; set; }
+        public string? File { get; set; }
 
         /// <summary>
         /// The line number of the source-code location where the error was reported.
         /// </summary>
         [PublicAPI]
-        public string Line { get; set; }
+        public string? Line { get; set; }
 
         /// <summary>
         /// The name of the source-code routine reporting the error.
         /// </summary>
         [PublicAPI]
-        public string Routine { get; set; }
+        public string? Routine { get; set; }
 
         #endregion
 
         /// <summary>
         /// Creates a new instance.
         /// </summary>
-        public PostgresNotice() { }
+        /// <remarks>
+        /// Exists for backwards compat with 4.0, has been removed for 5.0.
+        /// </remarks>
+        [Obsolete]
+        public PostgresNotice() : this(string.Empty, string.Empty, string.Empty, string.Empty) {}
 
-        internal PostgresNotice(NpgsqlReadBuffer buf)
+        /// <summary>
+        /// Creates a new instance.
+        /// </summary>
+        public PostgresNotice(string severity, string invariantSeverity, string sqlState, string messageText)
         {
-            var msg = new ErrorOrNoticeMessage(buf);
+            Severity = severity;
+            InvariantSeverity = invariantSeverity;
+            SqlState = sqlState;
+            MessageText = messageText;
+        }
+
+        PostgresNotice(ErrorOrNoticeMessage msg)
+        {
             Severity = msg.Severity;
+            InvariantSeverity = msg.InvariantSeverity;
             SqlState = msg.Code;
             MessageText = msg.Message;
             Detail = msg.Detail;
@@ -211,6 +207,9 @@ namespace Npgsql
             Line = msg.Line;
             Routine = msg.Routine;
         }
+
+        internal static PostgresNotice Load(NpgsqlReadBuffer buf)
+            => new PostgresNotice(ErrorOrNoticeMessage.Load(buf));
     }
 
     /// <summary>

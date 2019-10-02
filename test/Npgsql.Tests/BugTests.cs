@@ -462,6 +462,23 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2660")]
+        public void StandardConformingStrings()
+        {
+            using var conn = OpenConnection();
+
+            var sql = @"
+SELECT table_name
+FROM information_schema.views
+WHERE table_name LIKE @p0 escape '\' AND (is_updatable = 'NO') = @p1";
+
+            using var cmd = new NpgsqlCommand(sql, conn);
+            cmd.Parameters.AddWithValue("@p0", "%trig%");
+            cmd.Parameters.AddWithValue("@p1", true);
+            using var reader = cmd.ExecuteReader();
+            reader.Read();
+        }
+
         #region Bug1285
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1285")]

@@ -1,0 +1,32 @@
+﻿<Project>
+  <ItemGroup>
+    <PackageReference Update="System.Runtime.CompilerServices.Unsafe" Version="4.6.0" />
+    <PackageReference Update="System.Threading.Tasks.Extensions" Version="4.5.3" />
+    <PackageReference Update="System.Memory" Version="4.5.3" />
+    <PackageReference Update="System.ValueTuple" Version="4.5.0" />
+    <PackageReference Update="System.Text.Json" Version="4.6.0" />
+    <PackageReference Update="SourceLink.Create.CommandLine" Version="2.8.3" />
+    <PackageReference Update="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.0-preview.2" />
+
+    <!-- Plugins -->
+    <PackageReference Update="NetTopologySuite.IO.PostGIS" Version="2.0.0" />
+    <PackageReference Update="NodaTime" Version="2.4.7" />
+    <PackageReference Update="GeoJSON.Net" Version="1.1.73" />
+    <PackageReference Update="Newtonsoft.Json" Version="11.0.2" />
+
+    <!-- Tests -->
+    <PackageReference Update="NUnit" Version="3.12.0" />
+    <PackageReference Update="NLog" Version="4.6.7" />
+    <PackageReference Update="Microsoft.CSharp" Version="4.6.0" />
+    <PackageReference Update="Microsoft.NET.Test.Sdk" Version="16.3.0" />
+    <PackageReference Update="NUnit3TestAdapter" Version="3.15.1" />
+    <PackageReference Update="xunit" Version="2.4.1" />
+    <PackageReference Update="xunit.runner.visualstudio" Version="2.4.1" />
+    <PackageReference Update="AdoNet.Specification.Tests" Version="2.0.0-alpha3" />
+
+    <!-- Benchmarks -->
+    <PackageReference Update="BenchmarkDotNet" Version="0.11.5" />
+    <PackageReference Update="Microsoft.Data.SqlClient" Version="1.0.19249.1" />
+    <PackageReference Update="BenchmarkDotNet.Diagnostics.Windows" Version="0.11.5" />
+  </ItemGroup>
+</Project>

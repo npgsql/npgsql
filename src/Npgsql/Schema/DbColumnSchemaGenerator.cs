@@ -1,16 +1,13 @@
 ﻿using System;
-using System.CodeDom;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Data;
-using System.Data.Common;
 using System.Diagnostics;
 using System.Linq;
-using Npgsql.BackendMessages;
-using Npgsql.PostgresTypes;
-using Npgsql.TypeHandlers;
 using System.Transactions;
+using Npgsql.BackendMessages;
+using Npgsql.TypeHandlers;
+using Npgsql.TypeHandlers.CompositeHandlers;
+using Npgsql.Util;
 
 namespace Npgsql.Schema
 {
@@ -99,11 +96,8 @@ ORDER BY attnum";
 
         internal ReadOnlyCollection<NpgsqlDbColumn> GetColumnSchema()
         {
-            var fields = _rowDescription?.Fields;
-            if ((fields?.Count ?? 0) == 0)
-                return new List<NpgsqlDbColumn>().AsReadOnly();
-
-            var result = new List<NpgsqlDbColumn>(fields.Count);
+            var fields = _rowDescription.Fields;
+            var result = new List<NpgsqlDbColumn?>(fields.Count);
             for (var i = 0; i < fields.Count; i++)
                 result.Add(null);
             var populatedColumns = 0;
@@ -126,21 +120,17 @@ ORDER BY attnum";
                 {
                     connection.Open();
 
-                    using (var cmd = new NpgsqlCommand(query, connection))
-                    using (var reader = cmd.ExecuteReader())
+                    using var cmd = new NpgsqlCommand(query, connection);
+                    using var reader = cmd.ExecuteReader();
+                    for (; reader.Read(); populatedColumns++)
                     {
-                        for (; reader.Read(); populatedColumns++)
-                        {
-                            var column = LoadColumnDefinition(reader, _connection.Connector.TypeMapper.DatabaseInfo);
+                        var column = LoadColumnDefinition(reader, _connection.Connector!.TypeMapper.DatabaseInfo);
+                        var ordinal = fields.FindIndex(f => f.TableOID == column.TableOID && f.ColumnAttributeNumber - 1 == column.ColumnAttributeNumber);
+                        Debug.Assert(ordinal >= 0);
 
-                            var ordinal = fields.FindIndex(f => f.TableOID == column.TableOID && f.ColumnAttributeNumber - 1 == column.ColumnAttributeNumber);
-                            Debug.Assert(ordinal >= 0);
-
-                            // The column's ordinal is with respect to the resultset, not its table
-                            column.ColumnOrdinal = ordinal;
-
-                            result[ordinal] = column;
-                        }
+                        // The column's ordinal is with respect to the resultset, not its table
+                        column.ColumnOrdinal = ordinal;
+                        result[ordinal] = column;
                     }
                 }
             }
@@ -149,21 +139,24 @@ ORDER BY attnum";
             // Fill in whatever info we have from the RowDescription itself
             for (var i = 0; i < fields.Count; i++)
             {
+                NpgsqlDbColumn column;
                 var field = fields[i];
+
                 if (result[i] == null)
                 {
-                    var column = SetUpNonColumnField(field);
+                    column = SetUpNonColumnField(field);
                     column.ColumnOrdinal = i;
                     result[i] = column;
                     populatedColumns++;
                 }
-                result[i].ColumnName = result[i].BaseColumnName = field.Name.StartsWith("?column?") ? null : field.Name;
+
+                result[i]!.ColumnName = result[i]!.BaseColumnName = field.Name.StartsWith("?column?") ? null : field.Name;
             }
 
             if (populatedColumns != fields.Count)
                 throw new NpgsqlException("Could not load all columns for the resultset");
 
-            return result.AsReadOnly();
+            return result.AsReadOnly()!;
         }
 
         NpgsqlDbColumn LoadColumnDefinition(NpgsqlDataReader reader, NpgsqlDatabaseInfo databaseInfo)
@@ -174,9 +167,9 @@ ORDER BY attnum";
             var column = new NpgsqlDbColumn
             {
                 AllowDBNull = !reader.GetBoolean(reader.GetOrdinal("attnotnull")),
-                BaseCatalogName = _connection.Database,
+                BaseCatalogName = _connection.Database!,
                 BaseSchemaName = reader.GetString(reader.GetOrdinal("nspname")),
-                BaseServerName = _connection.Host,
+                BaseServerName = _connection.Host!,
                 BaseTableName = reader.GetString(reader.GetOrdinal("relname")),
                 ColumnOrdinal = reader.GetInt32(reader.GetOrdinal("attnum")) - 1,
                 ColumnAttributeNumber = (short)(reader.GetInt16(reader.GetOrdinal("attnum")) - 1),
@@ -207,8 +200,8 @@ ORDER BY attnum";
             // ColumnName and BaseColumnName will be set later
             var column = new NpgsqlDbColumn
             {
-                BaseCatalogName = _connection.Database,
-                BaseServerName = _connection.Host,
+                BaseCatalogName = _connection.Database!,
+                BaseServerName = _connection.Host!,
                 IsReadOnly = true,
                 DataTypeName = field.PostgresType.DisplayName,
                 TypeOID = field.TypeOID,
@@ -227,7 +220,7 @@ ORDER BY attnum";
         /// </summary>
         void ColumnPostConfig(NpgsqlDbColumn column, int typeModifier)
         {
-            var typeMapper = _connection.Connector.TypeMapper;
+            var typeMapper = _connection.Connector!.TypeMapper;
 
             if (typeMapper.Mappings.TryGetValue(column.PostgresType.Name, out var mapping))
                 column.NpgsqlDbType = mapping.NpgsqlDbType;

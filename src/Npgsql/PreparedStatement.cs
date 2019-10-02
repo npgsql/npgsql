@@ -1,10 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using JetBrains.Annotations;
 using Npgsql.BackendMessages;
-using NpgsqlTypes;
 
 namespace Npgsql
 {
@@ -18,10 +15,9 @@ namespace Npgsql
 
         internal string Sql { get; }
 
-        internal string Name;
+        internal string? Name;
 
-        [CanBeNull]
-        internal RowDescriptionMessage Description;
+        internal RowDescriptionMessage? Description;
 
         internal int Usages;
 
@@ -33,14 +29,13 @@ namespace Npgsql
         /// If true, the user explicitly requested this statement be prepared. It does not get closed as part of
         /// the automatic preparation LRU mechanism.
         /// </summary>
-        internal bool IsExplicit { get; private set; }
+        internal bool IsExplicit { get; }
 
         /// <summary>
         /// If this statement is about to be prepared, but replaces a previous statement which needs to be closed,
         /// this holds the name of the previous statement. Otherwise null.
         /// </summary>
-        [CanBeNull]
-        internal PreparedStatement StatementBeingReplaced;
+        internal PreparedStatement? StatementBeingReplaced;
 
         internal DateTime LastUsed { get; set; }
 
@@ -48,8 +43,7 @@ namespace Npgsql
         /// Contains the handler types for a prepared statement's parameters, for overloaded cases (same SQL, different param types)
         /// Only populated after the statement has been prepared (i.e. null for candidates).
         /// </summary>
-        [CanBeNull]
-        internal Type[] HandlerParamTypes { get; private set; }
+        internal Type[]? HandlerParamTypes { get; private set; }
 
         static readonly Type[] EmptyParamTypes = Type.EmptyTypes;
 
@@ -58,7 +52,7 @@ namespace Npgsql
             string sql,
             string name,
             List<NpgsqlParameter> parameters,
-            [CanBeNull] PreparedStatement statementBeingReplaced)
+            PreparedStatement? statementBeingReplaced)
         {
             var pStatement = new PreparedStatement(manager, sql, true)
             {
@@ -91,23 +85,17 @@ namespace Npgsql
 
             HandlerParamTypes = new Type[parameters.Count];
             for (var i = 0; i < parameters.Count; i++)
-            {
-                Debug.Assert(parameters[i].Handler != null, "Parameter handler type not set when creating prepared statement");
-                HandlerParamTypes[i] = parameters[i].Handler.GetType();
-            }
+                HandlerParamTypes[i] = parameters[i].Handler!.GetType();
         }
 
         internal bool DoParametersMatch(List<NpgsqlParameter> parameters)
         {
-            Debug.Assert(HandlerParamTypes != null);
-            if (HandlerParamTypes.Length != parameters.Count)
+            if (HandlerParamTypes!.Length != parameters.Count)
                 return false;
+
             for (var i = 0; i < HandlerParamTypes.Length; i++)
-            {
-                Debug.Assert(parameters[i].Handler != null, "Parameter handler type not set when creating prepared statement");
-                if (HandlerParamTypes[i] != parameters[i].Handler.GetType())
+                if (HandlerParamTypes[i] != parameters[i].Handler!.GetType())
                     return false;
-            }
 
             return true;
         }
@@ -163,7 +151,7 @@ namespace Npgsql
 
         /// <summary>
         /// The statement is in the process of being unprepared. This is a temporary state that only occurs during
-        /// unpreparation. Specifically, it means that a Close message for the statement has already been written
+        /// unprepare. Specifically, it means that a Close message for the statement has already been written
         /// to the write buffer.
         /// </summary>
         BeingUnprepared,

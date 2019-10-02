@@ -1,6 +1,6 @@
 ﻿using NUnit.Framework;
 
-#if NET451 || NET45
+#if NET461
 // ReSharper disable once CheckNamespace
 [SetUpFixture]
 public class PluginsDebugAssertSetupFixture : DebugAssertSetupFixture {}
