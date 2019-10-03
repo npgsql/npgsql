@@ -1,0 +1,24 @@
+# This workflow triggers a rebuild of the Npgsql documentation site whenever changes are made to master, which represents our latest released version.
+# This pulls in the newest source code for API doc generation.
+
+name: Trigger Documentation Build
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+
+    runs-on: ubuntu-18.04
+
+    steps:
+    - name: Trigger documentation build
+      run: |
+        curl -X POST \
+             -H "Authorization: token ${{ secrets.DOC_MGMT_TOKEN }}" \
+             -H "Accept: application/vnd.github.everest-preview+json" \
+             -H "Content-Type: application/json" \
+             --data '{ "event_type": "Npgsql push to master" }' \
+             https://api.github.com/repos/npgsql/doc/dispatches
