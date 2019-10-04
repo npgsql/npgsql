@@ -280,6 +280,11 @@
       <Install>false</Install>
     </BootstrapperPackage>
   </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="System.Text.Json">
+      <Version>4.6.0</Version>
+    </PackageReference>
+  </ItemGroup>
   <!-- The following makes sure Npgsql is built before the VSIX - but there's still a manual, additional library reference to Npgsql.dll
        (since the ProjectReference must have Private=false
        This is currently disabled because the VSIX builds with msbuild, which uses an older dotnet SDK which comes VS. -->
