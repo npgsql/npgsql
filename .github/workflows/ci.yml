@@ -1,0 +1,208 @@
+name: Npgsql CI
+
+on: push
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, windows-latest ]
+        dotnet: [ '3.0.100' ]
+        pg_major: [ 11, 10 ]
+        include:
+          - pg_major: 11
+            edb_version: '11.4-2'
+            postgis_version: '2.5.3'
+          - pg_major: 10
+            edb_version: '10.9-2'
+            postgis_version: '2.5.3'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+
+      - name: Start PostgreSQL ${{ matrix.pg_major }} (docker)
+        if: startsWith(matrix.os, 'ubuntu')
+        env:
+          IMAGE: npgsql/postgres:${{ matrix.pg_major }}
+        run: docker run --detach --name postgresql -p 5432:5432 $IMAGE
+        shell: bash
+
+      - name: Start PostgreSQL ${{ matrix.pg_major }} (install)
+        if: startsWith(matrix.os, 'windows')
+        env:
+          PG_MAJOR: ${{ matrix.pg_major }}
+          EDB_VERSION: ${{ matrix.edb_version }}
+          POSTGIS_VERSION: ${{ matrix.postgis_version }}
+        run: |
+          # Install PostgreSQL
+          curl -o pgsql.zip -L https://get.enterprisedb.com/postgresql/postgresql-${EDB_VERSION}-windows-x64-binaries.zip
+          unzip pgsql.zip -x 'pgsql/include/**' 'pgsql/doc/**' 'pgsql/pgAdmin 4/**' 'pgsql/StackBuilder/**'
+
+          # Match Npgsql CI Docker image and stash one level up
+          cp {$GITHUB_WORKSPACE/.build,pgsql}/server.crt
+          cp {$GITHUB_WORKSPACE/.build,pgsql}/server.key
+
+          # Install PostGIS
+          POSTGIS_FILE="postgis-bundle-pg${PG_MAJOR}-${POSTGIS_VERSION}x64"
+          curl -o postgis.zip -L https://download.osgeo.org/postgis/windows/pg${PG_MAJOR}/${POSTGIS_FILE}.zip
+          unzip postgis.zip -d postgis
+          cp -a postgis/$POSTGIS_FILE/. pgsql/
+
+          # Start PostgreSQL
+          pgsql/bin/initdb -D pgsql/PGDATA -E UTF8 -U postgres
+          pgsql/bin/pg_ctl -D pgsql/PGDATA -l logfile -o '-c max_prepared_transactions=10 -c ssl=true -c ssl_cert_file=../server.crt -c ssl_key_file=../server.key' start
+
+          # Configure test account
+          pgsql/bin/psql -U postgres -c "CREATE ROLE npgsql_tests SUPERUSER LOGIN PASSWORD 'npgsql_tests'"
+          pgsql/bin/psql -U postgres -c "CREATE DATABASE npgsql_tests OWNER npgsql_tests"
+        shell: bash
+
+      - name: Setup .NET Core SDK
+        uses: actions/setup-dotnet@v1.0.2 # Issues with DOTNET_ROOT
+        with:
+          dotnet-version: ${{ matrix.dotnet }}
+
+      - name: Test (Npgsql.Tests)
+        run: dotnet test test/Npgsql.Tests --configuration Debug
+        shell: bash
+
+      - name: Test (Npgsql.PluginTests)
+        run: dotnet test test/Npgsql.PluginTests --configuration Debug
+        shell: bash
+
+      - name: Test (Npgsql.Specification.Tests)
+        run: dotnet test test/Npgsql.Specification.Tests --configuration Debug
+        shell: bash
+
+      - name: Pack NuGet packages (CI versions)
+        env:
+          GITHUB_SHA: ${{ github.sha }}
+        run: |
+          VERSION_SUFFIX="ci.$(date -u +%Y%m%dT%H%M%S)+sha.${GITHUB_SHA:0:9}"
+          dotnet pack src/Npgsql                  --configuration Release --output nupkgs/ci --version-suffix $VERSION_SUFFIX
+          dotnet pack src/Npgsql                  --configuration Release --output nupkgs/ci --version-suffix $VERSION_SUFFIX --include-symbols
+          dotnet pack src/Npgsql.Json.NET         --configuration Release --output nupkgs/ci --version-suffix $VERSION_SUFFIX
+          dotnet pack src/Npgsql.Json.NET         --configuration Release --output nupkgs/ci --version-suffix $VERSION_SUFFIX --include-symbols
+          dotnet pack src/Npgsql.NodaTime         --configuration Release --output nupkgs/ci --version-suffix $VERSION_SUFFIX
+          dotnet pack src/Npgsql.NodaTime         --configuration Release --output nupkgs/ci --version-suffix $VERSION_SUFFIX --include-symbols
+          dotnet pack src/Npgsql.LegacyPostgis    --configuration Release --output nupkgs/ci --version-suffix $VERSION_SUFFIX
+          dotnet pack src/Npgsql.LegacyPostgis    --configuration Release --output nupkgs/ci --version-suffix $VERSION_SUFFIX --include-symbols
+          dotnet pack src/Npgsql.RawPostgis       --configuration Release --output nupkgs/ci --version-suffix $VERSION_SUFFIX
+          dotnet pack src/Npgsql.RawPostgis       --configuration Release --output nupkgs/ci --version-suffix $VERSION_SUFFIX --include-symbols
+          dotnet pack src/Npgsql.NetTopologySuite --configuration Release --output nupkgs/ci --version-suffix $VERSION_SUFFIX
+          dotnet pack src/Npgsql.NetTopologySuite --configuration Release --output nupkgs/ci --version-suffix $VERSION_SUFFIX --include-symbols
+          dotnet pack src/Npgsql.GeoJSON          --configuration Release --output nupkgs/ci --version-suffix $VERSION_SUFFIX
+          dotnet pack src/Npgsql.GeoJSON          --configuration Release --output nupkgs/ci --version-suffix $VERSION_SUFFIX --include-symbols
+        shell: bash
+
+      - name: Pack NuGet packages (Release versions)
+        run: |
+          dotnet pack src/Npgsql                  --configuration Release --output nupkgs/release
+          dotnet pack src/Npgsql                  --configuration Release --output nupkgs/release --include-symbols
+          dotnet pack src/Npgsql.Json.NET         --configuration Release --output nupkgs/release
+          dotnet pack src/Npgsql.Json.NET         --configuration Release --output nupkgs/release --include-symbols
+          dotnet pack src/Npgsql.NodaTime         --configuration Release --output nupkgs/release
+          dotnet pack src/Npgsql.NodaTime         --configuration Release --output nupkgs/release --include-symbols
+          dotnet pack src/Npgsql.LegacyPostgis    --configuration Release --output nupkgs/release
+          dotnet pack src/Npgsql.LegacyPostgis    --configuration Release --output nupkgs/release --include-symbols
+          dotnet pack src/Npgsql.RawPostgis       --configuration Release --output nupkgs/release
+          dotnet pack src/Npgsql.RawPostgis       --configuration Release --output nupkgs/release --include-symbols
+          dotnet pack src/Npgsql.NetTopologySuite --configuration Release --output nupkgs/release
+          dotnet pack src/Npgsql.NetTopologySuite --configuration Release --output nupkgs/release --include-symbols
+          dotnet pack src/Npgsql.GeoJSON          --configuration Release --output nupkgs/release
+          dotnet pack src/Npgsql.GeoJSON          --configuration Release --output nupkgs/release --include-symbols
+        shell: bash
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v1
+        with:
+          name: ${{ matrix.os }}_dotnet${{ matrix.dotnet }}_pg${{ matrix.pg_major }}+sha.${{ github.sha }}
+          path: nupkgs
+
+  publish:
+    needs: build
+
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: true
+      matrix:
+        os: [ windows-latest ]
+        dotnet: [ '3.0.100' ]
+        pg_major: [ 11 ]
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v1
+        with:
+          name: ${{ matrix.os }}_dotnet${{ matrix.dotnet }}_pg${{ matrix.pg_major }}+sha.${{ github.sha }}
+          path: nupkgs
+
+      - name: Publish packages to MyGet (unstable)
+        if: startsWith(github.ref, 'refs/heads/hotfix/') == false
+        env:
+          TOKEN: ${{ secrets.myget_npgsql_unstable }}
+          SOURCE: https://www.myget.org/F/npgsql-unstable/api/v2/package
+          SYMBOL: https://www.myget.org/F/npgsql-unstable/symbols/api/v2/package
+        run: |
+          dotnet nuget push nupkgs/ci/Npgsql.*.nupkg                  --api-key $TOKEN --source $SOURCE --symbol-source $SYMBOL
+          dotnet nuget push nupkgs/ci/Npgsql.Json.NET.*.nupkg         --api-key $TOKEN --source $SOURCE --symbol-source $SYMBOL
+          dotnet nuget push nupkgs/ci/Npgsql.NodaTime.*.nupkg         --api-key $TOKEN --source $SOURCE --symbol-source $SYMBOL
+          dotnet nuget push nupkgs/ci/Npgsql.LegacyPostgis.*.nupkg    --api-key $TOKEN --source $SOURCE --symbol-source $SYMBOL
+          dotnet nuget push nupkgs/ci/Npgsql.RawPostgis.*.nupkg       --api-key $TOKEN --source $SOURCE --symbol-source $SYMBOL
+          dotnet nuget push nupkgs/ci/Npgsql.NetTopologySuite.*.nupkg --api-key $TOKEN --source $SOURCE --symbol-source $SYMBOL
+          dotnet nuget push nupkgs/ci/Npgsql.GeoJSON.*.nupkg          --api-key $TOKEN --source $SOURCE --symbol-source $SYMBOL
+        shell: bash
+
+      - name: Publish packages to MyGet (stable)
+        if: startsWith(github.ref, 'refs/heads/hotfix/') == true
+        env:
+          TOKEN: ${{ secrets.myget_npgsql }}
+          SOURCE: https://www.myget.org/F/npgsql/api/v2/package
+          SYMBOL: https://www.myget.org/F/npgsql/symbols/api/v2/package
+        run: |
+          dotnet nuget push nupkgs/ci/Npgsql.*.nupkg                  --api-key $TOKEN --source $SOURCE --symbol-source $SYMBOL
+          dotnet nuget push nupkgs/ci/Npgsql.Json.NET.*.nupkg         --api-key $TOKEN --source $SOURCE --symbol-source $SYMBOL
+          dotnet nuget push nupkgs/ci/Npgsql.NodaTime.*.nupkg         --api-key $TOKEN --source $SOURCE --symbol-source $SYMBOL
+          dotnet nuget push nupkgs/ci/Npgsql.LegacyPostgis.*.nupkg    --api-key $TOKEN --source $SOURCE --symbol-source $SYMBOL
+          dotnet nuget push nupkgs/ci/Npgsql.RawPostgis.*.nupkg       --api-key $TOKEN --source $SOURCE --symbol-source $SYMBOL
+          dotnet nuget push nupkgs/ci/Npgsql.NetTopologySuite.*.nupkg --api-key $TOKEN --source $SOURCE --symbol-source $SYMBOL
+          dotnet nuget push nupkgs/ci/Npgsql.GeoJSON.*.nupkg          --api-key $TOKEN --source $SOURCE --symbol-source $SYMBOL
+        shell: bash
+
+      - name: Publish packages to GitHub Package Registry
+        if: always() # TODO: ignore MyGet secret failure
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SOURCE: https://nuget.pkg.github.com/npgsql/index.json
+        run: |
+          # dotnet nuget push nupkgs/ci/Npgsql.*.nupkg                  --api-key $TOKEN --source $SOURCE --symbol-source $SOURCE
+          # dotnet nuget push nupkgs/ci/Npgsql.Json.NET.*.nupkg         --api-key $TOKEN --source $SOURCE --symbol-source $SOURCE
+          # dotnet nuget push nupkgs/ci/Npgsql.NodaTime.*.nupkg         --api-key $TOKEN --source $SOURCE --symbol-source $SOURCE
+          # dotnet nuget push nupkgs/ci/Npgsql.LegacyPostgis.*.nupkg    --api-key $TOKEN --source $SOURCE --symbol-source $SOURCE
+          # dotnet nuget push nupkgs/ci/Npgsql.RawPostgis.*.nupkg       --api-key $TOKEN --source $SOURCE --symbol-source $SOURCE
+          # dotnet nuget push nupkgs/ci/Npgsql.NetTopologySuite.*.nupkg --api-key $TOKEN --source $SOURCE --symbol-source $SOURCE
+          # dotnet nuget push nupkgs/ci/Npgsql.GeoJSON.*.nupkg          --api-key $TOKEN --source $SOURCE --symbol-source $SOURCE
+
+          # GPR has issues with API keys and `dotnet nuget` doesn't support `sources`...
+          # See: https://github.com/NuGet/Home/issues/8580
+          cd nupkgs/ci
+          curl -o nuget -L https://dist.nuget.org/win-x86-commandline/latest/nuget.exe
+          ./nuget sources add -Name "GitHub" -Source $SOURCE -UserName npgsql -Password $TOKEN
+          ./nuget push "Npgsql.*.nupkg"                  -Source "GitHub"
+          ./nuget push "Npgsql.Json.NET.*.nupkg"         -Source "GitHub"
+          ./nuget push "Npgsql.NodaTime.*.nupkg"         -Source "GitHub"
+          ./nuget push "Npgsql.LegacyPostgis.*.nupkg"    -Source "GitHub"
+          ./nuget push "Npgsql.RawPostgis.*.nupkg"       -Source "GitHub"
+          ./nuget push "Npgsql.NetTopologySuite.*.nupkg" -Source "GitHub"
+          ./nuget push "Npgsql.GeoJSON.*.nupkg"          -Source "GitHub"
+        shell: bash
+
+      # - name: Publish packages (NuGet)
+      #   if: startsWith(github.ref, 'refs/heads/master/')
+      #   run: dotnet nuget push nupkgs/ci/*.nupkg
+      #   shell: bash
