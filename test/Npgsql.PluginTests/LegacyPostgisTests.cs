@@ -400,6 +400,7 @@ namespace Npgsql.PluginTests
         protected override NpgsqlConnection OpenConnection(string? connectionString = null)
         {
             var conn = base.OpenConnection(connectionString);
+            TestUtil.EnsureExtension(conn, "postgis");
             conn.TypeMapper.UseLegacyPostgis();
             return conn;
         }

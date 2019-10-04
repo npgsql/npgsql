@@ -1,0 +1,136 @@
+name: Build
+
+on: push
+
+env:
+  dotnet_version: '3.0.100'
+  postgis_version: 3
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ ubuntu-latest, windows-latest ]
+        pg_major: [ 12, 11, 10 ]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+
+      - name: Start PostgreSQL ${{ matrix.pg_major }} (Linux)
+        if: startsWith(matrix.os, 'ubuntu')
+        run: docker run --detach --name postgresql -p 5432:5432 npgsql/postgres:${{ matrix.pg_major }}-postgis-${{ env.postgis_version }}
+        shell: bash
+
+      - name: Start PostgreSQL ${{ matrix.pg_major }} (Windows)
+        if: startsWith(matrix.os, 'windows')
+        run: |
+          # Find EnterpriseDB version number
+          EDB_VERSION=$(\
+            curl -Ls 'http://sbp.enterprisedb.com/applications.xml' |
+            sed -n '\#<id>postgresql_${{ matrix.pg_major }}</id>#{n;p;n;p;}' |
+            sed -n '\#<platform>windows-x64</platform>#{n;p;}' |
+            sed -E 's#.*<version>([^<]+)</version>#\1#')
+
+          # Install PostgreSQL
+          echo "Installing PostgreSQL (version: ${EDB_VERSION})"
+          curl -o pgsql.zip -L https://get.enterprisedb.com/postgresql/postgresql-${EDB_VERSION}-windows-x64-binaries.zip
+          unzip pgsql.zip -x 'pgsql/include/**' 'pgsql/doc/**' 'pgsql/pgAdmin 4/**' 'pgsql/StackBuilder/**'
+
+          # Match Npgsql CI Docker image and stash one level up
+          cp {$GITHUB_WORKSPACE/.build,pgsql}/server.crt
+          cp {$GITHUB_WORKSPACE/.build,pgsql}/server.key
+
+          # Find OSGEO version number
+          OSGEO_VERSION=$(\
+            curl -Ls https://download.osgeo.org/postgis/windows/pg${{ matrix.pg_major }} |
+            sed -n 's/.*>postgis-bundle-pg${{ matrix.pg_major }}-\(${{ env.postgis_version }}.[0-9]*.[0-9]*\)x64.zip<.*/\1/p')
+
+          # Install PostGIS
+          echo "Installing PostGIS (version: ${OSGEO_VERSION})"
+          POSTGIS_FILE="postgis-bundle-pg${{ matrix.pg_major }}-${OSGEO_VERSION}x64"
+          curl -o postgis.zip -L https://download.osgeo.org/postgis/windows/pg${{ matrix.pg_major }}/${POSTGIS_FILE}.zip
+          unzip postgis.zip -d postgis
+          cp -a postgis/$POSTGIS_FILE/. pgsql/
+
+          # Start PostgreSQL
+          pgsql/bin/initdb -D pgsql/PGDATA -E UTF8 -U postgres
+          pgsql/bin/pg_ctl -D pgsql/PGDATA -l logfile -o '-c max_prepared_transactions=10 -c ssl=true -c ssl_cert_file=../server.crt -c ssl_key_file=../server.key' start
+
+          # Configure test account
+          pgsql/bin/psql -U postgres -c "CREATE ROLE npgsql_tests SUPERUSER LOGIN PASSWORD 'npgsql_tests'"
+          pgsql/bin/psql -U postgres -c "CREATE DATABASE npgsql_tests OWNER npgsql_tests"
+
+          # Disable trust authentication
+          echo "host all all all md5" > pgsql/PGDATA/pg_hba.conf
+        shell: bash
+
+      - name: Setup .NET Core SDK
+        uses: actions/setup-dotnet@v1.0.2 # Issues with DOTNET_ROOT
+        with:
+          dotnet-version: ${{ env.dotnet_version }}
+
+      - name: Test
+        run: dotnet test Npgsql.sln --configuration Debug
+        shell: bash
+
+  publish:
+    needs: build
+
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+
+      - name: Setup MSBuild
+        uses: warrenbuckley/Setup-MSBuild@v1
+
+      - name: Pack NuGet packages (CI versions)
+        if: startsWith(github.ref, 'refs/heads/')
+        run: dotnet pack --configuration Release --output nupkgs --version-suffix "ci.$(date -u +%Y%m%dT%H%M%S)+sha.${GITHUB_SHA:0:9}"
+        shell: bash
+
+      - name: Pack NuGet packages (Release versions)
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: dotnet pack --configuration Release --output nupkgs
+        shell: bash
+
+      - name: Create VSIX
+        run: msbuild src/VSIX/VSIX.csproj /p:Configuration=Release /v:Minimal
+        shell: bash
+
+      - name: Create MSI
+        run: msbuild src/MSI/MSI.wixproj /p:Configuration=Release /v:Minimal
+        shell: bash
+
+      - name: Upload artifacts (nupkg)
+        uses: actions/upload-artifact@v1
+        with:
+          name: Npgsql+sha.${{ github.sha }}
+          path: nupkgs
+
+      - name: Upload artifacts (vsix)
+        uses: actions/upload-artifact@v1
+        with:
+          name: Npgsql-vsix+sha.${{ github.sha }}
+          path: 'src/VSIX/bin/**/*.vsix'
+
+      - name: Upload artifacts (msi)
+        uses: actions/upload-artifact@v1
+        with:
+          name: Npgsql-msi+sha.${{ github.sha }}
+          path: 'src/MSI/bin/**/*.msi'
+
+      - name: Publish packages to MyGet (vnext)
+        if: startsWith(github.ref, 'refs/heads/') && startsWith(github.ref, 'refs/heads/hotfix/') == false
+        run: dotnet nuget push nupkgs/*.nupkg --api-key ${{ secrets.MYGET_FEED_VNEXT }} --source https://www.myget.org/F/npgsql-unstable/api/v3/index.json
+        shell: bash
+
+      - name: Publish packages to MyGet (patch)
+        if: startsWith(github.ref, 'refs/heads/hotfix/')
+        run: dotnet nuget push nupkgs/*.nupkg --api-key ${{ secrets.MYGET_FEED_PATCH }} --source https://www.myget.org/F/npgsql/api/v3/index.json
+        shell: bash

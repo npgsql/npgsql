@@ -47,6 +47,7 @@ namespace Npgsql.PluginTests
         protected NpgsqlConnection OpenConnection(string? connectionString = null, GeoJSONOptions option = GeoJSONOptions.None)
         {
             var conn = base.OpenConnection(connectionString);
+            TestUtil.EnsureExtension(conn, "postgis");
             conn.TypeMapper.UseGeoJson(option);
             return conn;
         }
