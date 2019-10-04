@@ -9,13 +9,13 @@
     <RepositoryUrl>git://github.com/npgsql/npgsql</RepositoryUrl>
 
     <PackageLicenseExpression>PostgreSQL</PackageLicenseExpression>
-    <PackageProjectUrl>https://www.npgsql.org</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/npgsql/npgsql</PackageProjectUrl>
     <PackageIcon>postgresql.png</PackageIcon>
 
     <SuppressNETCoreSdkPreviewMessage>true</SuppressNETCoreSdkPreviewMessage>
     <NoWarn>NU5105</NoWarn>
   </PropertyGroup>
-  
+
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)postgresql.png" Pack="true" PackagePath="" />
   </ItemGroup>
