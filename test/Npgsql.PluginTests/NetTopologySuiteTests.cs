@@ -47,6 +47,7 @@ namespace Npgsql.PluginTests
                 handleOrdinates = Ordinates.XY;
 
             var conn = base.OpenConnection(connectionString);
+            TestUtil.EnsureExtension(conn, "postgis");
             conn.TypeMapper.UseNetTopologySuite(
                 new DotSpatialAffineCoordinateSequenceFactory(handleOrdinates),
                 handleOrdinates: handleOrdinates);

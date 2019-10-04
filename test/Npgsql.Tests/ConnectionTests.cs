@@ -634,7 +634,7 @@ namespace Npgsql.Tests
                 else
                 {
                     Assert.That(conn.ProcessID, Is.EqualTo(connectorId));
-                    Assert.That(() => conn.ExecuteScalar("SELECT 1"), Throws.Exception.TypeOf<NpgsqlException>());
+                    Assert.That(() => conn.ExecuteScalar("SELECT 1"), Throws.Exception.AssignableTo<NpgsqlException>());
                 }
             }
         }
