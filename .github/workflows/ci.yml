@@ -145,7 +145,7 @@ jobs:
       - name: Publish packages to MyGet (unstable)
         if: startsWith(github.ref, 'refs/heads/hotfix/') == false
         env:
-          TOKEN: ${{ secrets.myget_npgsql_unstable }}
+          TOKEN: ${{ secrets.MYGET_FEED_VNEXT }}
           SOURCE: https://www.myget.org/F/npgsql-unstable/api/v2/package
           SYMBOL: https://www.myget.org/F/npgsql-unstable/symbols/api/v2/package
         run: |
@@ -161,7 +161,7 @@ jobs:
       - name: Publish packages to MyGet (stable)
         if: startsWith(github.ref, 'refs/heads/hotfix/') == true
         env:
-          TOKEN: ${{ secrets.myget_npgsql }}
+          TOKEN: ${{ secrets.MYGET_FEED_PATCH }}
           SOURCE: https://www.myget.org/F/npgsql/api/v2/package
           SYMBOL: https://www.myget.org/F/npgsql/symbols/api/v2/package
         run: |
@@ -175,7 +175,6 @@ jobs:
         shell: bash
 
       - name: Publish packages to GitHub Package Registry
-        if: always() # TODO: ignore MyGet secret failure
         env:
           TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SOURCE: https://nuget.pkg.github.com/npgsql/index.json
