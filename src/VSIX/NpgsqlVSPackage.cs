@@ -58,12 +58,12 @@ namespace Npgsql.VSIX
         /// </summary>
         protected override Task InitializeAsync(CancellationToken cancellationToken, IProgress<ServiceProgressData> progress)
         {
-            AddService(typeof(NpgsqlProviderObjectFactory), CreateService, true);
+            AddService(typeof(NpgsqlProviderObjectFactory), CreateServiceAsync, true);
             SetupNpgsqlProviderFactory();
             return base.InitializeAsync(cancellationToken, progress);
         }
 
-        Task<object> CreateService(IAsyncServiceContainer container, CancellationToken cancellationtoken, Type servicetype)
+        Task<object> CreateServiceAsync(IAsyncServiceContainer container, CancellationToken cancellationtoken, Type servicetype)
             => servicetype == typeof(NpgsqlProviderObjectFactory)
                 ? Task.FromResult<object>(new NpgsqlProviderObjectFactory())
                 : throw new ArgumentException($"Can't create service of type '{servicetype.Name}'");
