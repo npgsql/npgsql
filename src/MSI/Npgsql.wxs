@@ -40,10 +40,15 @@
              AllowAdvertise="no"
              Display="expand" >
       <ComponentRef Id="Npgsql" />
+      <ComponentRef Id="Microsoft.Bcl.AsyncInterfaces" />
+      <ComponentRef Id="System.Buffers" />
+      <ComponentRef Id="System.Memory" />
+      <ComponentRef Id="System.Numerics.Vectors" />
+      <ComponentRef Id="System.Runtime.CompilerServices.Unsafe" />
+      <ComponentRef Id="System.Text.Encodings.Web" />
+      <ComponentRef Id="System.Text.Json" />
       <ComponentRef Id="System.Threading.Tasks.Extensions" />
       <ComponentRef Id="System.ValueTuple" />
-      <ComponentRef Id="System.Runtime.CompilerServices.Unsafe" />
-      <ComponentRef Id="System.Memory" />
       <ComponentRef Id="MachineConfig_x86" />
       <ComponentRef Id="MachineConfig_x64" />
 
@@ -98,8 +103,7 @@
       </Component>
     </DirectoryRef>
 
-
-        <!-- ICE Reference
+    <!-- ICE Reference
           http://technet.microsoft.com/ja-jp/events/aa369206
           -->
     <!-- http://blogs.msdn.com/b/heaths/archive/2006/09/20/installing-assemblies-for-runtime-and-design_2d00_time-use.aspx -->
@@ -108,36 +112,61 @@
       <Directory Id="Npgsql" Name="GAC">
         <Component Id="Npgsql" Guid="f842fa5e-5623-41aa-80aa-6d2e5bf97435">
           <File Id="Npgsql"
-                Name="Npgsql.dll"
                 Source="..\npgsql\bin\$(var.Configuration)\net461\Npgsql.dll"
+                KeyPath="yes"
+                Assembly=".net" />
+        </Component>
+        <Component Id="Microsoft.Bcl.AsyncInterfaces" Guid="de717d1e-221e-45a1-9231-8d410dea481b">
+          <File Id="Microsoft.Bcl.AsyncInterfaces"
+                Source="..\npgsql\bin\$(var.Configuration)\net461\Microsoft.Bcl.AsyncInterfaces.dll"
+                KeyPath="yes"
+                Assembly=".net" />
+        </Component>
+        <Component Id="System.Buffers" Guid="81e79b96-8ef2-4d9a-88a0-ef8eb7810841">
+          <File Id="System.Buffers"
+                Source="..\npgsql\bin\$(var.Configuration)\net461\System.Buffers.dll"
+                KeyPath="yes"
+                Assembly=".net" />
+        </Component>
+        <Component Id="System.Memory" Guid="3cf4b30c-ccf9-4c65-b2ba-cf00684e35cb">
+          <File Id="System.Memory"
+                Source="..\npgsql\bin\$(var.Configuration)\net461\System.Memory.dll"
+                KeyPath="yes"
+                Assembly=".net" />
+        </Component>
+        <Component Id="System.Numerics.Vectors" Guid="3214273f-d93c-46a8-a35e-90c224239866">
+          <File Id="System.Numerics.Vectors"
+                Source="..\npgsql\bin\$(var.Configuration)\net461\System.Numerics.Vectors.dll"
+                KeyPath="yes"
+                Assembly=".net" />
+        </Component>
+        <Component Id="System.Runtime.CompilerServices.Unsafe" Guid="36194b8d-d2af-4dd6-a9a0-fb6942502e53">
+          <File Id="System.Runtime.CompilerServices.Unsafe"
+                Source="..\npgsql\bin\$(var.Configuration)\net461\System.Runtime.CompilerServices.Unsafe.dll"
+                KeyPath="yes"
+                Assembly=".net" />
+        </Component>
+        <Component Id="System.Text.Encodings.Web" Guid="f7b5d32f-a068-4488-ac32-06ae083e502e">
+          <File Id="System.Text.Encodings.Web"
+                Source="..\npgsql\bin\$(var.Configuration)\net461\System.Text.Encodings.Web.dll"
+                KeyPath="yes"
+                Assembly=".net" />
+        </Component>
+        <Component Id="System.Text.Json" Guid="9532800b-3e60-48f4-8236-5ccb1e7f13bb">
+          <File Id="System.Text.Json"
+                Source="..\npgsql\bin\$(var.Configuration)\net461\System.Text.Json.dll"
                 KeyPath="yes"
                 Assembly=".net" />
         </Component>
         <Component Id="System.Threading.Tasks.Extensions" Guid="d978c06f-7e7f-4865-858e-b9eee77d7470">
           <File Id="System.Threading.Tasks.Extensions"
-                Name="System.Threading.Tasks.Extensions.dll"
                 Source="..\npgsql\bin\$(var.Configuration)\net461\System.Threading.Tasks.Extensions.dll"
                 KeyPath="yes"
                 Assembly=".net" />
         </Component>
         <Component Id="System.ValueTuple" Guid="07cfe929-4a0c-4b90-87df-37cceaa970b8">
           <File Id="System.ValueTuple"
-                Name="System.ValueTuple.dll"
                 Source="..\npgsql\bin\$(var.Configuration)\net461\System.ValueTuple.dll"
-                KeyPath="yes"
-                Assembly=".net" />
-        </Component>
-        <Component Id="System.Runtime.CompilerServices.Unsafe" Guid="36194b8d-d2af-4dd6-a9a0-fb6942502e53">
-          <File Id="System.Runtime.CompilerServices.Unsafe"
-                Name="System.Runtime.CompilerServices.Unsafe.dll"
-                Source="..\npgsql\bin\$(var.Configuration)\net461\System.Runtime.CompilerServices.Unsafe.dll"
-                KeyPath="yes"
-                Assembly=".net" />
-        </Component>
-        <Component Id="System.Memory" Guid="3cf4b30c-ccf9-4c65-b2ba-cf00684e35cb">
-          <File Id="System.Memory"
-                Name="System.Memory.dll"
-                Source="..\npgsql\bin\$(var.Configuration)\net461\System.Memory.dll"
                 KeyPath="yes"
                 Assembly=".net" />
         </Component>
