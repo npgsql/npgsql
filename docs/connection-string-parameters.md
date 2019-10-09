@@ -35,8 +35,8 @@ Below are the connection string parameters which Npgsql understands.
 | Pooling                     | Whether connection pooling should be used. | true                         |
 | Minimum Pool Size           | The minimum connection pool size.          | 1                            |
 | Maximum Pool Size           | The maximum connection pool size.          | 100 since 3.1, 20 previously |
-| Connection Idle Lifetime    | The time (in seconds) to wait before closing idle connections in the pool if the count of all connections exceeds MinPoolSize. Since 3.1 only. | 300 |
-| Connection Pruning Interval | How many seconds the pool waits before attempting to prune idle connections that are beyond idle lifetime (see `ConnectionIdleLifetime`). Since 3.1 only. | 10 |
+| Connection Idle Lifetime    | The time (in seconds) to wait before closing idle connections in the pool if the count of all connections exceeds `Minimum Pool Size`. Since 3.1 only. | 300 |
+| Connection Pruning Interval | How many seconds the pool waits before attempting to prune idle connections that are beyond idle lifetime (see `Connection Idle Lifetime`). Since 3.1 only. | 10 |
 
 ## Timeouts and Keepalive
 
@@ -48,7 +48,7 @@ Below are the connection string parameters which Npgsql understands.
 | Keepalive                | The number of seconds of connection inactivity before Npgsql sends a keepalive query. | disabled |
 | Tcp Keepalive            | Whether to use TCP keepalive with system defaults if overrides isn't specified. | disabled |
 | Tcp Keepalive Time       | The number of milliseconds of connection inactivity before a TCP keepalive query is sent. Use of this option is discouraged, use KeepAlive instead if possible. Supported only on Windows. | disabled |
-| Tcp Keepalive Interval   | The interval, in milliseconds, between when successive keep-alive packets are sent if no acknowledgement is received. TcpKeepAliveTime must be non-zero as well. Supported only on Windows. | value of TcpKeepAliveTime |
+| Tcp Keepalive Interval   | The interval, in milliseconds, between when successive keep-alive packets are sent if no acknowledgement is received. `Tcp KeepAlive Time` must be non-zero as well. Supported only on Windows. | value of `Tcp Keepalive Time` |
 
 ## Performance
 
