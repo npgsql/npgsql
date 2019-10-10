@@ -52,6 +52,8 @@ test:
 artifacts:
   - path: 'src\**\*.nupkg'
     name: Nuget
+  - path: 'src\**\*.snupkg'
+    name: Nuget symbol packages
   - path: 'src\VSIX\bin\**\*.vsix'
     name: Visual Studio Extension
   - path: 'src\MSI\bin\**\*.msi'
