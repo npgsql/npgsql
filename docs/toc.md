@@ -5,8 +5,8 @@
 ## [3.2](release-notes/3.2.md)
 ## [3.1](release-notes/3.1.md)
 ## [3.0](release-notes/3.0.md)
-# [FAQ](faq.md)
 # [Compatibility Notes](compatibility.md)
+# [Installation](installation.md)
 # [Basic Usage](basic-usage.md)
 # [Connection String Parameters](connection-string-parameters.md)
 # [Security and Encryption](security.md)
@@ -28,6 +28,7 @@
 # [Bulk Copy](copy.md)
 # [Logging](logging.md)
 # [Visual Studio Integration](ddex.md)
+# [FAQ](faq.md)
 # [API Reference](../../obj/api/Npgsql/)
 # Developer Notes
 ## [Tests](dev/tests.md)
