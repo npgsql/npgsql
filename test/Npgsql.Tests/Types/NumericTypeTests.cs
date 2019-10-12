@@ -323,7 +323,7 @@ namespace Npgsql.Tests.Types
         {
             using (var conn = OpenConnection())
             using (var cmd = new NpgsqlCommand("select :p1", conn))
-            using (new CultureSetter(new CultureInfo("es-ES")))
+            using (TestUtil.SetCurrentCulture(new CultureInfo("es-ES")))
             {
                 var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Double) { Value = 5.5 };
                 cmd.Parameters.Add(parameter);

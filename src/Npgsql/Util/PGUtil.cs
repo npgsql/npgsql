@@ -124,28 +124,4 @@ namespace Npgsql.Util
 
         internal TimeSpan TimeLeft => IsSet ? Expiration - DateTime.UtcNow : Timeout.InfiniteTimeSpan;
     }
-
-    sealed class CultureSetter : IDisposable
-    {
-        readonly CultureInfo _oldCulture;
-
-        internal CultureSetter(CultureInfo newCulture)
-        {
-            _oldCulture = CultureInfo.CurrentCulture;
-#if NET461
-            Thread.CurrentThread.CurrentCulture = newCulture;
-#else
-            CultureInfo.CurrentCulture = newCulture;
-#endif
-        }
-
-        public void Dispose()
-        {
-#if NET461
-            Thread.CurrentThread.CurrentCulture = _oldCulture;
-#else
-            CultureInfo.CurrentCulture = _oldCulture;
-#endif
-        }
-    }
 }

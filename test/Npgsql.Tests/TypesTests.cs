@@ -105,7 +105,7 @@ namespace Npgsql.Tests
 
             var testCulture = new CultureInfo("fr-FR");
             Assert.AreEqual(",", testCulture.NumberFormat.NumberDecimalSeparator, "decimal seperator");
-            using (new CultureSetter(testCulture))
+            using (TestUtil.SetCurrentCulture(testCulture))
             {
                 input = "1 day 2:3:4.005";
                 test = NpgsqlTimeSpan.Parse(input);
@@ -221,7 +221,7 @@ namespace Npgsql.Tests
 
             var testCulture = new CultureInfo("fr-FR");
             Assert.AreEqual(",", testCulture.NumberFormat.NumberDecimalSeparator, "decimal seperator");
-            using (new CultureSetter(testCulture))
+            using (TestUtil.SetCurrentCulture(testCulture))
             {
                 Assert.AreEqual("14 mons 3 days 04:05:06.007", new NpgsqlTimeSpan(1, 2, 3, 4, 5, 6, 7).ToString());
             }
@@ -282,7 +282,7 @@ namespace Npgsql.Tests
 
             var testCulture = new CultureInfo("fr-FR");
             Assert.AreEqual(",", testCulture.NumberFormat.NumberDecimalSeparator, "decimal seperator");
-            using (new CultureSetter(testCulture))
+            using (TestUtil.SetCurrentCulture(testCulture))
                 Assert.AreEqual("2009-05-31", new NpgsqlDate(2009, 5, 31).ToString());
         }
 
