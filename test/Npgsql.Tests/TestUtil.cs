@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Globalization;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -80,6 +81,9 @@ namespace Npgsql.Tests
             return resetter;
         }
 
+        internal static IDisposable SetCurrentCulture(CultureInfo culture) =>
+            new CultureSetter(culture);
+
         class EnvironmentVariableResetter : IDisposable
         {
             readonly string _name;
@@ -91,10 +95,22 @@ namespace Npgsql.Tests
                 _value = value;
             }
 
-            public void Dispose()
-            {
+            public void Dispose() =>
                 Environment.SetEnvironmentVariable(_name, _value);
+        }
+
+        class CultureSetter : IDisposable
+        {
+            readonly CultureInfo _oldCulture;
+
+            internal CultureSetter(CultureInfo newCulture)
+            {
+                _oldCulture = CultureInfo.CurrentCulture;
+                CultureInfo.CurrentCulture = newCulture;
             }
+
+            public void Dispose() =>
+                CultureInfo.CurrentCulture = _oldCulture;
         }
     }
 
