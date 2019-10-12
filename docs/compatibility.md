@@ -14,7 +14,7 @@ Please let us know if you notice any non-standard behavior.
 
 ## .NET Framework/.NET Core/mono
 
-Npgsql currently targets .NET Framework 4.5 and 4.5.1, as well as the [.NET Standard 2.0](https://docs.microsoft.com/en-us/dotnet/standard/net-standard) which allows it to run on .NET Core. It is also tested and runs well on mono.
+Npgsql currently targets .NET Framework 4.6.1, as well as the [.NET Standard 2.0](https://docs.microsoft.com/en-us/dotnet/standard/net-standard) which allows it to run on .NET Core. It is also tested and runs well on mono.
 
 ## Amazon Redshift
 
