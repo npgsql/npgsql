@@ -117,7 +117,7 @@ TsQuery                       |                     | tsquery                  |
 TsVector                      |                     | tsvector                 | NpgsqlTsVector
 Date                          | Date                | date                     | DateTime, NpgsqlDate
 Interval                      |                     | interval                 | TimeSpan, NpgsqlTimeSpan
-Timestamp                     | DateTime, DateTime2 | timestamp                | DateTime, DateTimeOffset, NpgsqlDateTime
+Timestamp                     | DateTime, DateTime2 | timestamp                | DateTime, NpgsqlDateTime
 TimestampTz                   | DateTimeOffset      | timestamp with time zone | DateTime, DateTimeOffset, NpgsqlDateTime
 Time                          | Time                | time                     | TimeSpan
 TimeTz                        |                     | time with time zone      | DateTimeOffset, DateTime, TimeSpan
