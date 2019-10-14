@@ -16,25 +16,21 @@ Here's a basic code snippet to get you started.
 ```c#
 var connString = "Host=myserver;Username=mylogin;Password=mypass;Database=mydatabase";
 
-using (var conn = new NpgsqlConnection(connString))
+await using var conn = new NpgsqlConnection(connString);
+await conn.OpenAsync();
+
+// Insert some data
+await using (var cmd = new NpgsqlCommand("INSERT INTO data (some_field) VALUES (@p)", conn))
 {
-    conn.Open();
-
-    // Insert some data
-    using (var cmd = new NpgsqlCommand())
-    {
-        cmd.Connection = conn;
-        cmd.CommandText = "INSERT INTO data (some_field) VALUES (@p)";
-        cmd.Parameters.AddWithValue("p", "Hello world");
-        cmd.ExecuteNonQuery();
-    }
-
-    // Retrieve all rows
-    using (var cmd = new NpgsqlCommand("SELECT some_field FROM data", conn))
-    using (var reader = cmd.ExecuteReader())
-        while (reader.Read())
-            Console.WriteLine(reader.GetString(0));
+    cmd.Parameters.AddWithValue("p", "Hello world");
+    await cmd.ExecuteNonQueryAsync();
 }
+
+// Retrieve all rows
+await using (var cmd = new NpgsqlCommand("SELECT some_field FROM data", conn))
+await using (var reader = await cmd.ExecuteReaderAsync())
+    while (await reader.ReadAsync())
+        Console.WriteLine(reader.GetString(0));
 ```
 
 You can find more info about the ADO.NET API in the [MSDN docs](https://msdn.microsoft.com/en-us/library/h43ks021(v=vs.110).aspx)
