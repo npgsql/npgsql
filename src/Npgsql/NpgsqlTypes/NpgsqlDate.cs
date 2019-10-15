@@ -69,7 +69,7 @@ namespace NpgsqlTypes
 
         public NpgsqlDate(DateTime dateTime) : this((int)(dateTime.Ticks / TimeSpan.TicksPerDay)) {}
 
-        public NpgsqlDate(NpgsqlDate copyFrom) : this(copyFrom._daysSinceEra) {}
+        public NpgsqlDate(in NpgsqlDate copyFrom) : this(copyFrom._daysSinceEra) {}
 
         public NpgsqlDate(int year, int month, int day)
         {
@@ -310,7 +310,7 @@ namespace NpgsqlTypes
         }
 
         [PublicAPI]
-        public NpgsqlDate Add(NpgsqlTimeSpan interval)
+        public NpgsqlDate Add(in NpgsqlTimeSpan interval)
         {
             switch (_type) {
             case InternalType.Infinity:
@@ -327,7 +327,7 @@ namespace NpgsqlTypes
         }
 
         [PublicAPI]
-        internal NpgsqlDate Add(NpgsqlTimeSpan interval, int carriedOverflow)
+        internal NpgsqlDate Add(in NpgsqlTimeSpan interval, int carriedOverflow)
         {
             switch (_type) {
             case InternalType.Infinity:
@@ -410,7 +410,7 @@ namespace NpgsqlTypes
         public static bool operator <=(NpgsqlDate x, NpgsqlDate y) => x.CompareTo(y) <= 0;
         public static bool operator >=(NpgsqlDate x, NpgsqlDate y) => x.CompareTo(y) >= 0;
 
-        public static DateTime ToDateTime(NpgsqlDate date)
+        public static DateTime ToDateTime(in NpgsqlDate date)
         {
             switch (date._type)
             {
@@ -425,7 +425,7 @@ namespace NpgsqlTypes
             }
         }
 
-        public static explicit operator DateTime(NpgsqlDate date) => ToDateTime(date);
+        public static explicit operator DateTime(in NpgsqlDate date) => ToDateTime(date);
 
         public static NpgsqlDate ToNpgsqlDate(DateTime date)
             => new NpgsqlDate((int)(date.Ticks / NpgsqlTimeSpan.TicksPerDay));
@@ -441,7 +441,7 @@ namespace NpgsqlTypes
         public static NpgsqlDate operator -(NpgsqlDate date, NpgsqlTimeSpan interval)
             => date.Subtract(interval);
 
-        public NpgsqlDate Subtract(NpgsqlTimeSpan interval) => Add(-interval);
+        public NpgsqlDate Subtract(in NpgsqlTimeSpan interval) => Add(-interval);
 
         public static NpgsqlTimeSpan operator -(NpgsqlDate dateX, NpgsqlDate dateY)
         {
