@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
@@ -154,7 +154,7 @@ namespace Npgsql
 
         Task Write<T>([AllowNull] T value, bool async)
         {
-            CheckColumnInTable(_column, NumColumns);
+            CheckColumnIndex();
 
             var p = _params[_column];
             if (p == null)
@@ -204,7 +204,7 @@ namespace Npgsql
 
         Task Write<T>([AllowNull] T value, NpgsqlDbType npgsqlDbType, bool async)
         {
-            CheckColumnInTable(_column, NumColumns);
+            CheckColumnIndex();
 
             var p = _params[_column];
             if (p == null)
@@ -254,7 +254,7 @@ namespace Npgsql
 
         Task Write<T>([AllowNull] T value, string dataTypeName, bool async)
         {
-            CheckColumnInTable(_column, NumColumns);
+            CheckColumnIndex();
 
             var p = _params[_column];
             if (p == null)
@@ -364,14 +364,9 @@ namespace Npgsql
                 await Write(value, async);
         }
 
-        /// <summary>
-        /// Checks if the column to be written belongs to the allowed columns for this importer
-        /// </summary>
-        /// <param name="targetColumnIndex">The target column index to be written. <see cref="_column"/></param>
-        /// <param name="currentNumColumns">The number of columns for this binary importer. <see cref="NumColumns"/></param>
-        void CheckColumnInTable(short targetColumnIndex, int currentNumColumns)
+        void CheckColumnIndex()
         {
-            if (targetColumnIndex >= currentNumColumns)
+            if (_column >= NumColumns)
             {
                 throw new InvalidOperationException($"Could not write value. The target table does not contain a column at index {_column}");
             }
