@@ -369,7 +369,7 @@ namespace Npgsql
             {
                 if (_dataTypeName != null)
                     return _dataTypeName;
-                throw new NotImplementedException("Infer from others");
+                return NpgsqlDbType.ToString();
             }
             set
             {
