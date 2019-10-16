@@ -604,7 +604,7 @@ namespace Npgsql
             }
         }
 
-        void Connect(in NpgsqlTimeout timeout)
+        void Connect(NpgsqlTimeout timeout)
         {
             EndPoint[] endpoints;
             if (!string.IsNullOrEmpty(Host) && Host[0] == '/')
