@@ -114,7 +114,7 @@ namespace Npgsql
             CheckReady();
 
             if (_column != -1 && _column != NumColumns)
-                throw new InvalidOperationException("Row has already been started and must be finished");
+                ThrowHelper.ThrowInvalidOperationException_BinaryImportParametersMismatch(NumColumns, _column);
 
             if (_buf.WriteSpaceLeft < 2)
                 await _buf.Flush(async);
@@ -367,9 +367,7 @@ namespace Npgsql
         void CheckColumnIndex()
         {
             if (_column >= NumColumns)
-            {
-                throw new InvalidOperationException($"Could not write value. The target table does not contain a column at index {_column}");
-            }
+                ThrowHelper.ThrowInvalidOperationException_BinaryImportParametersMismatch(NumColumns, _column + 1);
         }
 
         #endregion
