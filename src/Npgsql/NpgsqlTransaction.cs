@@ -319,11 +319,14 @@ namespace Npgsql
             IsDisposed = true;
         }
 
-#if !NET461 && !NETSTANDARD2_0
         /// <summary>
         /// Disposes the transaction, rolling it back if it is still pending.
         /// </summary>
+#if !NET461 && !NETSTANDARD2_0
         public override async ValueTask DisposeAsync()
+#else
+        public async ValueTask DisposeAsync()
+#endif
         {
             if (IsDisposed)
                 return;
@@ -339,7 +342,6 @@ namespace Npgsql
 
             IsDisposed = true;
         }
-#endif
 
         /// <summary>
         /// Disposes the transaction, without rolling back. Used only in special circumstances, e.g. when
