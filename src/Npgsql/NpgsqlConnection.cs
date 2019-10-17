@@ -675,18 +675,20 @@ namespace Npgsql
             _disposed = true;
         }
 
-#if !NET461 && !NETSTANDARD2_0
         /// <summary>
         /// Releases all resources used by the <see cref="NpgsqlConnection">NpgsqlConnection</see>.
         /// </summary>
-        public override async ValueTask DisposeAsync()
+#if !NET461 && !NETSTANDARD2_0
+        public async override ValueTask DisposeAsync()
+#else
+        public async ValueTask DisposeAsync()
+#endif
         {
             if (_disposed)
                 return;
             await CloseAsync();
             _disposed = true;
         }
-#endif
 
         #endregion
 

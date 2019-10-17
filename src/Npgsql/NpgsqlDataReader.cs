@@ -761,16 +761,18 @@ namespace Npgsql
         /// </summary>
         protected override void Dispose(bool disposing) => Close();
 
-#if !NET461 && !NETSTANDARD2_0
         /// <summary>
         /// Releases the resources used by the <see cref="NpgsqlDataReader">NpgsqlDataReader</see>.
         /// </summary>
+#if !NET461 && !NETSTANDARD2_0
         public override ValueTask DisposeAsync()
+#else
+        public ValueTask DisposeAsync()
+#endif
         {
             using (NoSynchronizationContextScope.Enter())
                 return new ValueTask(Close(connectionClosing: false, async: true));
         }
-#endif
 
         /// <summary>
         /// Closes the <see cref="NpgsqlDataReader"/> reader, allowing a new command to be executed.
