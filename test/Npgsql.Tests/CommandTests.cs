@@ -904,30 +904,32 @@ namespace Npgsql.Tests
         [Test, Description("Bypasses PostgreSQL's int16 limitation on the number of parameters")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/831")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/858")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/2703")]
         public void TooManyParameters()
         {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand { Connection = conn })
+            using var conn = OpenConnection();
+            using var cmd = new NpgsqlCommand { Connection = conn };
+            var sb = new StringBuilder("SOME RANDOM SQL ");
+            for (var i = 0; i < short.MaxValue + 1; i++)
             {
-                var sb = new StringBuilder("SELECT ");
-                for (var i = 0; i < 65536; i++)
-                {
-                    var paramName = "p" + i;
-                    cmd.Parameters.Add(new NpgsqlParameter(paramName, 8));
-                    if (i > 0)
-                        sb.Append(", ");
-                    sb.Append('@');
-                    sb.Append(paramName);
-                }
-                cmd.CommandText = sb.ToString();
-                Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception
-                    .InstanceOf<Exception>()
-                    .With.Message.EqualTo("A statement cannot have more than 65535 parameters")
-                    );
+                var paramName = "p" + i;
+                cmd.Parameters.Add(new NpgsqlParameter(paramName, 8));
+                if (i > 0)
+                    sb.Append(", ");
+                sb.Append('@');
+                sb.Append(paramName);
             }
+            cmd.CommandText = sb.ToString();
+
+            Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception
+                .InstanceOf<NpgsqlException>()
+                .With.Message.EqualTo("A statement cannot have more than 32767 parameters"));
+            Assert.That(() => cmd.Prepare(), Throws.Exception
+                .InstanceOf<NpgsqlException>()
+                .With.Message.EqualTo("A statement cannot have more than 32767 parameters"));
         }
 
-        [Test, Description("An individual statement cannot have more than 65535 parameters, but a command can (across multiple statements).")]
+        [Test, Description("An individual statement cannot have more than 32767 parameters, but a command can (across multiple statements).")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/1199")]
         public void ManyParametersAcrossStatements()
         {
