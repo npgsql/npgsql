@@ -362,14 +362,14 @@ namespace Npgsql
         public int Port => Settings.Port;
 
         /// <summary>
-        /// Gets the time to wait while trying to establish a connection
+        /// Gets the time (in seconds) to wait while trying to establish a connection
         /// before terminating the attempt and generating an error.
         /// </summary>
         /// <value>The time (in seconds) to wait for a connection to open. The default value is 15 seconds.</value>
         public override int ConnectionTimeout => Settings.Timeout;
 
         /// <summary>
-        /// Gets the time to wait while trying to execute a command
+        /// Gets the time (in seconds) to wait while trying to execute a command
         /// before terminating the attempt and generating an error.
         /// </summary>
         /// <value>The time (in seconds) to wait for a command to complete. The default value is 20 seconds.</value>
