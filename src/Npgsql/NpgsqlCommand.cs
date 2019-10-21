@@ -136,7 +136,7 @@ namespace Npgsql
 #nullable restore
 
         /// <summary>
-        /// Gets or sets the wait time before terminating the attempt  to execute a command and generating an error.
+        /// Gets or sets the wait time (in seconds) before terminating the attempt  to execute a command and generating an error.
         /// </summary>
         /// <value>The time (in seconds) to wait for the command to execute. The default value is 30 seconds.</value>
         [DefaultValue(DefaultTimeout)]
