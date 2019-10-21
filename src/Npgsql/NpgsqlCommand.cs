@@ -780,8 +780,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             }
 
             foreach (var s in _statements)
-                if (s.InputParameters.Count > 65535)
-                    throw new Exception("A statement cannot have more than 65535 parameters");
+                if (s.InputParameters.Count > short.MaxValue)
+                    throw new NpgsqlException($"A statement cannot have more than {short.MaxValue} parameters");
         }
 
         #endregion
