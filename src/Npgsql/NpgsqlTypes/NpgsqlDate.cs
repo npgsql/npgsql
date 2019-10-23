@@ -69,7 +69,7 @@ namespace NpgsqlTypes
 
         public NpgsqlDate(DateTime dateTime) : this((int)(dateTime.Ticks / TimeSpan.TicksPerDay)) {}
 
-        public NpgsqlDate(in NpgsqlDate copyFrom) : this(copyFrom._daysSinceEra) {}
+        public NpgsqlDate(NpgsqlDate copyFrom) : this(copyFrom._daysSinceEra) {}
 
         public NpgsqlDate(int year, int month, int day)
         {
@@ -410,7 +410,7 @@ namespace NpgsqlTypes
         public static bool operator <=(NpgsqlDate x, NpgsqlDate y) => x.CompareTo(y) <= 0;
         public static bool operator >=(NpgsqlDate x, NpgsqlDate y) => x.CompareTo(y) >= 0;
 
-        public static DateTime ToDateTime(in NpgsqlDate date)
+        public static DateTime ToDateTime(NpgsqlDate date)
         {
             switch (date._type)
             {
@@ -425,7 +425,7 @@ namespace NpgsqlTypes
             }
         }
 
-        public static explicit operator DateTime(in NpgsqlDate date) => ToDateTime(date);
+        public static explicit operator DateTime(NpgsqlDate date) => ToDateTime(date);
 
         public static NpgsqlDate ToNpgsqlDate(DateTime date)
             => new NpgsqlDate((int)(date.Ticks / NpgsqlTimeSpan.TicksPerDay));

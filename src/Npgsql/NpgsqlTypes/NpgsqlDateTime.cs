@@ -397,7 +397,7 @@ namespace NpgsqlTypes
 
         public NpgsqlDateTime Subtract(in NpgsqlTimeSpan interval) =>  Add(-interval);
 
-        public NpgsqlTimeSpan Subtract(in NpgsqlDateTime timestamp)
+        public NpgsqlTimeSpan Subtract(NpgsqlDateTime timestamp)
         {
             switch (_type) {
             case InternalType.Infinity:
