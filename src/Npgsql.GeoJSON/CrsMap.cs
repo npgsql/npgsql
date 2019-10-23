@@ -27,7 +27,7 @@ namespace Npgsql.GeoJSON
         int _overridenIndex;
         int _wellKnownIndex;
 
-        internal void Add(CrsMapEntry entry)
+        internal void Add(in CrsMapEntry entry)
         {
             var wellKnown = CrsMap.WellKnown[_wellKnownIndex];
             if (wellKnown.MinSrid == entry.MinSrid &&
@@ -50,7 +50,7 @@ namespace Npgsql.GeoJSON
             AddCore(entry);
         }
 
-        void AddCore(CrsMapEntry entry)
+        void AddCore(in CrsMapEntry entry)
         {
             var index = _overridenIndex + 1;
             if (_overrides == null)

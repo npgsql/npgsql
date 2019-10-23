@@ -426,7 +426,7 @@ namespace NpgsqlTypes
         /// </summary>
         /// <param name="interval">An <see cref="NpgsqlTimeSpan"/> to add to this instance.</param>
         /// <returns>An <see cref="NpgsqlTimeSpan"></see> whose values are the sums of the two instances.</returns>
-        public NpgsqlTimeSpan Add(NpgsqlTimeSpan interval)
+        public NpgsqlTimeSpan Add(in NpgsqlTimeSpan interval)
             => new NpgsqlTimeSpan(Months + interval.Months, Days + interval.Days, Ticks + interval.Ticks);
 
         /// <summary>
@@ -434,7 +434,7 @@ namespace NpgsqlTypes
         /// </summary>
         /// <param name="interval">An <see cref="NpgsqlTimeSpan"/> to subtract from this instance.</param>
         /// <returns>An <see cref="NpgsqlTimeSpan"></see> whose values are the differences of the two instances.</returns>
-        public NpgsqlTimeSpan Subtract(NpgsqlTimeSpan interval)
+        public NpgsqlTimeSpan Subtract(in NpgsqlTimeSpan interval)
             => new NpgsqlTimeSpan(Months - interval.Months, Days - interval.Days, Ticks - interval.Ticks);
 
         /// <summary>
@@ -566,7 +566,7 @@ namespace NpgsqlTypes
         /// <summary>
         /// Casts an <see cref="NpgsqlTimeSpan"/> to a <see cref="TimeSpan"/>.
         /// </summary>
-        public static TimeSpan ToTimeSpan(NpgsqlTimeSpan interval)
+        public static TimeSpan ToTimeSpan(in NpgsqlTimeSpan interval)
             => new TimeSpan(interval.Ticks + interval.Days * TicksPerDay + interval.Months * DaysPerMonth * TicksPerDay);
 
         #endregion
@@ -891,7 +891,7 @@ namespace NpgsqlTypes
         /// <summary>
         /// Returns the instance.
         /// </summary>
-        public static NpgsqlTimeSpan Plus(NpgsqlTimeSpan x) => x;
+        public static NpgsqlTimeSpan Plus(in NpgsqlTimeSpan x) => x;
 
         /// <summary>
         /// Negates an <see cref="NpgsqlTimeSpan"/> instance.

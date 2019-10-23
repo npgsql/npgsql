@@ -310,7 +310,7 @@ namespace NpgsqlTypes
         }
 
         [PublicAPI]
-        public NpgsqlDate Add(NpgsqlTimeSpan interval)
+        public NpgsqlDate Add(in NpgsqlTimeSpan interval)
         {
             switch (_type) {
             case InternalType.Infinity:
@@ -327,7 +327,7 @@ namespace NpgsqlTypes
         }
 
         [PublicAPI]
-        internal NpgsqlDate Add(NpgsqlTimeSpan interval, int carriedOverflow)
+        internal NpgsqlDate Add(in NpgsqlTimeSpan interval, int carriedOverflow)
         {
             switch (_type) {
             case InternalType.Infinity:
@@ -441,7 +441,7 @@ namespace NpgsqlTypes
         public static NpgsqlDate operator -(NpgsqlDate date, NpgsqlTimeSpan interval)
             => date.Subtract(interval);
 
-        public NpgsqlDate Subtract(NpgsqlTimeSpan interval) => Add(-interval);
+        public NpgsqlDate Subtract(in NpgsqlTimeSpan interval) => Add(-interval);
 
         public static NpgsqlTimeSpan operator -(NpgsqlDate dateX, NpgsqlDate dateY)
         {

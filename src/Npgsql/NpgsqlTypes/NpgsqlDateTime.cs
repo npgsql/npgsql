@@ -312,7 +312,7 @@ namespace NpgsqlTypes
         /// </summary>
         /// <param name="value">A positive or negative time interval.</param>
         /// <returns>An object whose value is the sum of the date and time represented by this instance and the time interval represented by value.</returns>
-        public NpgsqlDateTime Add(NpgsqlTimeSpan value) { return AddTicks(value.Ticks); }
+        public NpgsqlDateTime Add(in NpgsqlTimeSpan value) { return AddTicks(value.Ticks); }
 
         /// <summary>
         /// Returns a new <see cref="NpgsqlDateTime"/> that adds the value of the specified <see cref="NpgsqlTimeSpan"/> to the value of this instance.
@@ -395,7 +395,7 @@ namespace NpgsqlTypes
                 _                             => new NpgsqlDateTime(Ticks + value, Kind),
             };
 
-        public NpgsqlDateTime Subtract(NpgsqlTimeSpan interval) =>  Add(-interval);
+        public NpgsqlDateTime Subtract(in NpgsqlTimeSpan interval) =>  Add(-interval);
 
         public NpgsqlTimeSpan Subtract(NpgsqlDateTime timestamp)
         {
