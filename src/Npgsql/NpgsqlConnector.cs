@@ -228,7 +228,7 @@ namespace Npgsql
 
         #endregion
 
-        internal NpgsqlDataReader DataReader { get; }
+        internal NpgsqlStandardDataReader DataReader { get; }
 
         #region Constructors
 
@@ -274,7 +274,7 @@ namespace Npgsql
                 _keepAliveTimer = new Timer(PerformKeepAlive, null, Timeout.Infinite, Timeout.Infinite);
             }
 
-            DataReader = new NpgsqlDataReader(this);
+            DataReader = new NpgsqlStandardDataReader(this);
 
             // TODO: Not just for automatic preparation anymore...
             PreparedStatementManager = new PreparedStatementManager(this);
