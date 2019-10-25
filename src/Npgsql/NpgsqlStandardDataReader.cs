@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Data;
@@ -19,23 +18,15 @@ using Npgsql.Schema;
 using Npgsql.TypeHandlers;
 using Npgsql.TypeHandling;
 using Npgsql.Util;
-using NpgsqlTypes;
 using static Npgsql.Util.Statics;
 
-#pragma warning disable CA2222 // Do not decrease inherited member visibility
 namespace Npgsql
 {
     /// <summary>
     /// Reads a forward-only stream of rows from a data source.
     /// </summary>
-#pragma warning disable CA1010
-    public abstract class NpgsqlDataReader : DbDataReader
-#pragma warning restore CA1010
-#if !NET461
-        , IDbColumnSchemaGenerator
-#endif
+    public sealed class NpgsqlStandardDataReader : NpgsqlDataReader
     {
-        internal NpgsqlCommand Command { get; private set; } = default!;
         NpgsqlConnector Connector { get; }
         NpgsqlConnection _connection = default!;
 
@@ -109,7 +100,7 @@ namespace Npgsql
         /// <summary>
         /// Is raised whenever Close() is called.
         /// </summary>
-        public event EventHandler? ReaderClosed;
+        public override event EventHandler? ReaderClosed;
 
         bool _isSchemaOnly;
         bool _isSequential;
@@ -124,9 +115,9 @@ namespace Npgsql
         /// </summary>
         char[]? _tempCharBuf;
 
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlDataReader));
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlStandardDataReader));
 
-        internal NpgsqlDataReader(NpgsqlConnector connector)
+        internal NpgsqlStandardDataReader(NpgsqlConnector connector)
         {
             Connector = connector;
         }
@@ -677,11 +668,6 @@ namespace Npgsql
         #endregion
 
         /// <summary>
-        /// Gets a value indicating the depth of nesting for the current row.  Always returns zero.
-        /// </summary>
-        public override int Depth => 0;
-
-        /// <summary>
         /// Gets a value indicating whether the data reader is closed.
         /// </summary>
         public override bool IsClosed => State == ReaderState.Closed;
@@ -699,10 +685,10 @@ namespace Npgsql
         /// traverses the result.
         ///
         /// For commands with multiple queries, this exposes the number of rows affected on
-        /// a statement-by-statement basis, unlike <see cref="NpgsqlDataReader.RecordsAffected"/>
+        /// a statement-by-statement basis, unlike <see cref="DbDataReader.RecordsAffected"/>
         /// which exposes an aggregation across all statements.
         /// </remarks>
-        public IReadOnlyList<NpgsqlStatement> Statements => _statements.AsReadOnly();
+        public override IReadOnlyList<NpgsqlStatement> Statements => _statements.AsReadOnly();
 
         /// <summary>
         /// Gets a value that indicates whether this DbDataReader contains one or more rows.
@@ -719,7 +705,7 @@ namespace Npgsql
         /// has been called
         /// </summary>
         [PublicAPI]
-        public bool IsOnRow => State == ReaderState.InResult;
+        public override bool IsOnRow => State == ReaderState.InResult;
 
         /// <summary>
         /// Gets the name of the column, given the zero-based column ordinal.
@@ -756,40 +742,7 @@ namespace Npgsql
                 while (await NextResult(async, true)) {}
         }
 
-        /// <summary>
-        /// Releases the resources used by the <see cref="NpgsqlDataReader">NpgsqlDataReader</see>.
-        /// </summary>
-        protected override void Dispose(bool disposing) => Close();
-
-        /// <summary>
-        /// Releases the resources used by the <see cref="NpgsqlDataReader">NpgsqlDataReader</see>.
-        /// </summary>
-#if !NET461 && !NETSTANDARD2_0
-        public override ValueTask DisposeAsync()
-#else
-        public ValueTask DisposeAsync()
-#endif
-        {
-            using (NoSynchronizationContextScope.Enter())
-                return new ValueTask(Close(connectionClosing: false, async: true));
-        }
-
-        /// <summary>
-        /// Closes the <see cref="NpgsqlDataReader"/> reader, allowing a new command to be executed.
-        /// </summary>
-        public override void Close() => Close(connectionClosing: false, async: false).GetAwaiter().GetResult();
-
-        /// <summary>
-        /// Closes the <see cref="NpgsqlDataReader"/> reader, allowing a new command to be executed.
-        /// </summary>
-#if !NET461 && !NETSTANDARD2_0
-        public override Task CloseAsync()
-#else
-        public Task CloseAsync()
-#endif
-            => Close(connectionClosing: false, async: true);
-
-        internal async Task Close(bool connectionClosing, bool async)
+        internal override async Task Close(bool connectionClosing, bool async)
         {
             if (State == ReaderState.Closed)
                 return;
@@ -813,7 +766,7 @@ namespace Npgsql
             await Cleanup(async, connectionClosing);
         }
 
-        internal async Task Cleanup(bool async, bool connectionClosing=false)
+        internal override async Task Cleanup(bool async, bool connectionClosing=false)
         {
             Log.Trace("Cleaning up reader", Connector.Id);
 
@@ -847,90 +800,6 @@ namespace Npgsql
         #region Simple value getters
 
         /// <summary>
-        /// Gets the value of the specified column as a Boolean.
-        /// </summary>
-        /// <param name="ordinal">The zero-based column ordinal.</param>
-        /// <returns>The value of the specified column.</returns>
-        public override bool GetBoolean(int ordinal) => GetFieldValue<bool>(ordinal);
-
-        /// <summary>
-        /// Gets the value of the specified column as a byte.
-        /// </summary>
-        /// <param name="ordinal">The zero-based column ordinal.</param>
-        /// <returns>The value of the specified column.</returns>
-        public override byte GetByte(int ordinal) => GetFieldValue<byte>(ordinal);
-
-        /// <summary>
-        /// Gets the value of the specified column as a single character.
-        /// </summary>
-        /// <param name="ordinal">The zero-based column ordinal.</param>
-        /// <returns>The value of the specified column.</returns>
-        public override char GetChar(int ordinal) => GetFieldValue<char>(ordinal);
-
-        /// <summary>
-        /// Gets the value of the specified column as a 16-bit signed integer.
-        /// </summary>
-        /// <param name="ordinal">The zero-based column ordinal.</param>
-        /// <returns>The value of the specified column.</returns>
-        public override short GetInt16(int ordinal) => GetFieldValue<short>(ordinal);
-
-        /// <summary>
-        /// Gets the value of the specified column as a 32-bit signed integer.
-        /// </summary>
-        /// <param name="ordinal">The zero-based column ordinal.</param>
-        /// <returns>The value of the specified column.</returns>
-        public override int GetInt32(int ordinal) => GetFieldValue<int>(ordinal);
-
-        /// <summary>
-        /// Gets the value of the specified column as a 64-bit signed integer.
-        /// </summary>
-        /// <param name="ordinal">The zero-based column ordinal.</param>
-        /// <returns>The value of the specified column.</returns>
-        public override long GetInt64(int ordinal) => GetFieldValue<long>(ordinal);
-
-        /// <summary>
-        /// Gets the value of the specified column as a <see cref="DateTime"/> object.
-        /// </summary>
-        /// <param name="ordinal">The zero-based column ordinal.</param>
-        /// <returns>The value of the specified column.</returns>
-        public override DateTime GetDateTime(int ordinal) => GetFieldValue<DateTime>(ordinal);
-
-        /// <summary>
-        /// Gets the value of the specified column as an instance of <see cref="string"/>.
-        /// </summary>
-        /// <param name="ordinal">The zero-based column ordinal.</param>
-        /// <returns>The value of the specified column.</returns>
-        public override string GetString(int ordinal) => GetFieldValue<string>(ordinal);
-
-        /// <summary>
-        /// Gets the value of the specified column as a <see cref="decimal"/> object.
-        /// </summary>
-        /// <param name="ordinal">The zero-based column ordinal.</param>
-        /// <returns>The value of the specified column.</returns>
-        public override decimal GetDecimal(int ordinal) => GetFieldValue<decimal>(ordinal);
-
-        /// <summary>
-        /// Gets the value of the specified column as a double-precision floating point number.
-        /// </summary>
-        /// <param name="ordinal">The zero-based column ordinal.</param>
-        /// <returns>The value of the specified column.</returns>
-        public override double GetDouble(int ordinal) => GetFieldValue<double>(ordinal);
-
-        /// <summary>
-        /// Gets the value of the specified column as a single-precision floating point number.
-        /// </summary>
-        /// <param name="ordinal">The zero-based column ordinal.</param>
-        /// <returns>The value of the specified column.</returns>
-        public override float GetFloat(int ordinal) => GetFieldValue<float>(ordinal);
-
-        /// <summary>
-        /// Gets the value of the specified column as a globally-unique identifier (GUID).
-        /// </summary>
-        /// <param name="ordinal">The zero-based column ordinal.</param>
-        /// <returns>The value of the specified column.</returns>
-        public override Guid GetGuid(int ordinal) => GetFieldValue<Guid>(ordinal);
-
-        /// <summary>
         /// Populates an array of objects with the column values of the current row.
         /// </summary>
         /// <param name="values">An array of Object into which to copy the attribute columns.</param>
@@ -946,79 +815,6 @@ namespace Npgsql
                 values[i] = GetValue(i);
             return count;
         }
-
-        /// <summary>
-        /// Gets the value of the specified column as an instance of <see cref="object"/>.
-        /// </summary>
-        /// <param name="ordinal">The zero-based column ordinal.</param>
-        /// <returns>The value of the specified column.</returns>
-        public override object this[int ordinal] => GetValue(ordinal);
-
-        #endregion
-
-        #region Provider-specific simple type getters
-
-        /// <summary>
-        /// Gets the value of the specified column as an <see cref="NpgsqlDate"/>,
-        /// Npgsql's provider-specific type for dates.
-        /// </summary>
-        /// <remarks>
-        /// PostgreSQL's date type represents dates from 4713 BC to 5874897 AD, while .NET's DateTime
-        /// only supports years from 1 to 1999. If you require years outside this range use this accessor.
-        /// The standard <see cref="DbDataReader.GetProviderSpecificValue"/> method will also return this type, but has
-        /// the disadvantage of boxing the value.
-        /// See http://www.postgresql.org/docs/current/static/datatype-datetime.html
-        /// </remarks>
-        /// <param name="ordinal">The zero-based column ordinal.</param>
-        /// <returns>The value of the specified column.</returns>
-        public NpgsqlDate GetDate(int ordinal) => GetFieldValue<NpgsqlDate>(ordinal);
-
-        /// <summary>
-        /// Gets the value of the specified column as a TimeSpan,
-        /// </summary>
-        /// <remarks>
-        /// PostgreSQL's interval type has has a resolution of 1 microsecond and ranges from
-        /// -178000000 to 178000000 years, while .NET's TimeSpan has a resolution of 100 nanoseconds
-        /// and ranges from roughly -29247 to 29247 years.
-        /// See http://www.postgresql.org/docs/current/static/datatype-datetime.html
-        /// </remarks>
-        /// <param name="ordinal">The zero-based column ordinal.</param>
-        /// <returns>The value of the specified column.</returns>
-        public TimeSpan GetTimeSpan(int ordinal) => GetFieldValue<TimeSpan>(ordinal);
-
-        /// <summary>
-        /// Gets the value of the specified column as an <see cref="NpgsqlTimeSpan"/>,
-        /// Npgsql's provider-specific type for time spans.
-        /// </summary>
-        /// <remarks>
-        /// PostgreSQL's interval type has has a resolution of 1 microsecond and ranges from
-        /// -178000000 to 178000000 years, while .NET's TimeSpan has a resolution of 100 nanoseconds
-        /// and ranges from roughly -29247 to 29247 years. If you require values from outside TimeSpan's
-        /// range use this accessor.
-        /// The standard ADO.NET <see cref="DbDataReader.GetProviderSpecificValue"/> method will also return this
-        /// type, but has the disadvantage of boxing the value.
-        /// See http://www.postgresql.org/docs/current/static/datatype-datetime.html
-        /// </remarks>
-        /// <param name="ordinal">The zero-based column ordinal.</param>
-        /// <returns>The value of the specified column.</returns>
-        public NpgsqlTimeSpan GetInterval(int ordinal) => GetFieldValue<NpgsqlTimeSpan>(ordinal);
-
-        /// <summary>
-        /// Gets the value of the specified column as an <see cref="NpgsqlDateTime"/>,
-        /// Npgsql's provider-specific type for date/time timestamps. Note that this type covers
-        /// both PostgreSQL's "timestamp with time zone" and "timestamp without time zone" types,
-        /// which differ only in how they are converted upon input/output.
-        /// </summary>
-        /// <remarks>
-        /// PostgreSQL's timestamp type represents dates from 4713 BC to 5874897 AD, while .NET's DateTime
-        /// only supports years from 1 to 1999. If you require years outside this range use this accessor.
-        /// The standard <see cref="DbDataReader.GetProviderSpecificValue"/> method will also return this type, but has
-        /// the disadvantage of boxing the value.
-        /// See http://www.postgresql.org/docs/current/static/datatype-datetime.html
-        /// </remarks>
-        /// <param name="ordinal">The zero-based column ordinal.</param>
-        /// <returns>The value of the specified column.</returns>
-        public NpgsqlDateTime GetTimeStamp(int ordinal) => GetFieldValue<NpgsqlDateTime>(ordinal);
 
         #endregion
 
@@ -1086,7 +882,7 @@ namespace Npgsql
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
         /// <returns>The returned object.</returns>
-        public Task<Stream> GetStreamAsync(int ordinal, CancellationToken cancellationToken = default)
+        public override Task<Stream> GetStreamAsync(int ordinal, CancellationToken cancellationToken = default)
         {
             if (cancellationToken.IsCancellationRequested)
                 return Task.FromCanceled<Stream>(cancellationToken);
@@ -1257,7 +1053,7 @@ namespace Npgsql
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
         /// <returns>The returned object.</returns>
-        public Task<TextReader> GetTextReaderAsync(int ordinal, CancellationToken cancellationToken = default)
+        public override Task<TextReader> GetTextReaderAsync(int ordinal, CancellationToken cancellationToken = default)
         {
             if (cancellationToken.IsCancellationRequested)
                 return Task.FromCanceled<TextReader>(cancellationToken);
@@ -1496,13 +1292,6 @@ namespace Npgsql
             }
         }
 
-        /// <summary>
-        /// Gets the value of the specified column as an instance of <see cref="object"/>.
-        /// </summary>
-        /// <param name="name">The name of the column.</param>
-        /// <returns>The value of the specified column.</returns>
-        public override object this[string name] => GetValue(GetOrdinal(name));
-
         #endregion
 
         #region IsDBNull
@@ -1572,7 +1361,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="ordinal">The zero-based column index.</param>
         [PublicAPI]
-        public PostgresType GetPostgresType(int ordinal) => CheckRowDescriptionAndGetField(ordinal).PostgresType;
+        public override PostgresType GetPostgresType(int ordinal) => CheckRowDescriptionAndGetField(ordinal).PostgresType;
 
         /// <summary>
         /// Gets the data type information for the specified field.
@@ -1590,7 +1379,7 @@ namespace Npgsql
         /// debugging purposes.
         /// </remarks>
         /// <param name="ordinal">The zero-based column index.</param>
-        public uint GetDataTypeOID(int ordinal) => CheckRowDescriptionAndGetField(ordinal).TypeOID;
+        public override uint GetDataTypeOID(int ordinal) => CheckRowDescriptionAndGetField(ordinal).TypeOID;
 
         /// <summary>
         /// Gets the data type of the specified column.
@@ -1631,107 +1420,16 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Returns an <see cref="IEnumerator"/> that can be used to iterate through the rows in the data reader.
-        /// </summary>
-        /// <returns>An <see cref="IEnumerator"/> that can be used to iterate through the rows in the data reader.</returns>
-        public override IEnumerator GetEnumerator()
-            => new DbEnumerator(this);
-
-        /// <summary>
         /// Returns schema information for the columns in the current resultset.
         /// </summary>
         /// <returns></returns>
-        public ReadOnlyCollection<NpgsqlDbColumn> GetColumnSchema()
+        public override ReadOnlyCollection<NpgsqlDbColumn> GetColumnSchema()
             => RowDescription == null || RowDescription.Fields.Count == 0
                 ? new List<NpgsqlDbColumn>().AsReadOnly()
                 : new DbColumnSchemaGenerator(_connection, RowDescription, _behavior.HasFlag(CommandBehavior.KeyInfo))
                     .GetColumnSchema();
 
-#if !NET461
-        ReadOnlyCollection<DbColumn> IDbColumnSchemaGenerator.GetColumnSchema()
-            => new ReadOnlyCollection<DbColumn>(GetColumnSchema().Cast<DbColumn>().ToList());
-#endif
-
         #endregion
-
-        #region Schema metadata table
-
-
-        /// <summary>
-        /// Returns a System.Data.DataTable that describes the column metadata of the DataReader.
-        /// </summary>
-#nullable disable
-        public override DataTable GetSchemaTable()
-#nullable restore
-        {
-            if (FieldCount == 0) // No resultset
-                return null;
-
-            var table = new DataTable("SchemaTable");
-
-            // Note: column order is important to match SqlClient's, some ADO.NET users appear
-            // to assume ordering (see #1671)
-            table.Columns.Add("ColumnName", typeof(string));
-            table.Columns.Add("ColumnOrdinal", typeof(int));
-            table.Columns.Add("ColumnSize", typeof(int));
-            table.Columns.Add("NumericPrecision", typeof(int));
-            table.Columns.Add("NumericScale", typeof(int));
-            table.Columns.Add("IsUnique", typeof(bool));
-            table.Columns.Add("IsKey", typeof(bool));
-            table.Columns.Add("BaseServerName", typeof(string));
-            table.Columns.Add("BaseCatalogName", typeof(string));
-            table.Columns.Add("BaseColumnName", typeof(string));
-            table.Columns.Add("BaseSchemaName", typeof(string));
-            table.Columns.Add("BaseTableName", typeof(string));
-            table.Columns.Add("DataType", typeof(Type));
-            table.Columns.Add("AllowDBNull", typeof(bool));
-            table.Columns.Add("ProviderType", typeof(int));
-            table.Columns.Add("IsAliased", typeof(bool));
-            table.Columns.Add("IsExpression", typeof(bool));
-            table.Columns.Add("IsIdentity", typeof(bool));
-            table.Columns.Add("IsAutoIncrement", typeof(bool));
-            table.Columns.Add("IsRowVersion", typeof(bool));
-            table.Columns.Add("IsHidden", typeof(bool));
-            table.Columns.Add("IsLong", typeof(bool));
-            table.Columns.Add("IsReadOnly", typeof(bool));
-            table.Columns.Add("ProviderSpecificDataType", typeof(Type));
-            table.Columns.Add("DataTypeName", typeof(string));
-
-            foreach (var column in GetColumnSchema())
-            {
-                var row = table.NewRow();
-
-                row["ColumnName"] = column.ColumnName;
-                row["ColumnOrdinal"] = column.ColumnOrdinal ?? -1;
-                row["ColumnSize"] = column.ColumnSize ?? -1;
-                row["NumericPrecision"] = column.NumericPrecision ?? 0;
-                row["NumericScale"] = column.NumericScale ?? 0;
-                row["IsUnique"] = column.IsUnique == true;
-                row["IsKey"] = column.IsKey == true;
-                row["BaseServerName"] = "";
-                row["BaseCatalogName"] = column.BaseCatalogName;
-                row["BaseColumnName"] = column.BaseColumnName;
-                row["BaseSchemaName"] = column.BaseSchemaName;
-                row["BaseTableName"] = column.BaseTableName;
-                row["DataType"] = column.DataType;
-                row["AllowDBNull"] = (object?)column.AllowDBNull ?? DBNull.Value;
-                row["ProviderType"] = column.NpgsqlDbType ?? NpgsqlDbType.Unknown;
-                row["IsAliased"] = column.IsAliased == true;
-                row["IsExpression"] = column.IsExpression == true;
-                row["IsIdentity"] = column.IsIdentity == true;
-                row["IsAutoIncrement"] = column.IsAutoIncrement == true;
-                row["IsRowVersion"] = false;
-                row["IsHidden"] = column.IsHidden == true;
-                row["IsLong"] = column.IsLong == true;
-                row["DataTypeName"] = column.DataTypeName;
-
-                table.Rows.Add(row);
-            }
-
-            return table;
-        }
-
-        #endregion Schema metadata table
 
         #region Seeking
 
@@ -1968,14 +1666,5 @@ namespace Npgsql
         }
 
         #endregion
-    }
-
-    enum ReaderState
-    {
-        BeforeResult,
-        InResult,
-        BetweenResults,
-        Consumed,
-        Closed,
     }
 }
