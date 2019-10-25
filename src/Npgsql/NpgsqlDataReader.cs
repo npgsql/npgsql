@@ -29,14 +29,14 @@ namespace Npgsql
     /// Reads a forward-only stream of rows from a data source.
     /// </summary>
 #pragma warning disable CA1010
-    public sealed class NpgsqlDataReader : DbDataReader
+    public abstract class NpgsqlDataReader : DbDataReader
 #pragma warning restore CA1010
 #if !NET461
         , IDbColumnSchemaGenerator
 #endif
     {
         internal NpgsqlCommand Command { get; private set; } = default!;
-        internal NpgsqlConnector Connector { get; }
+        NpgsqlConnector Connector { get; }
         NpgsqlConnection _connection = default!;
 
         /// <summary>
@@ -46,9 +46,9 @@ namespace Npgsql
 
         Task _sendTask = default!;
 
-        internal ReaderState State;
+        ReaderState State;
 
-        internal NpgsqlReadBuffer Buffer = default!;
+        NpgsqlReadBuffer Buffer = default!;
 
         /// <summary>
         /// Holds the list of statements being executed by this reader.
@@ -58,7 +58,7 @@ namespace Npgsql
         /// <summary>
         /// The index of the current query resultset we're processing (within a multiquery)
         /// </summary>
-        internal int StatementIndex { get; private set; }
+        int StatementIndex;
 
         /// <summary>
         /// The number of columns in the current row
@@ -82,9 +82,9 @@ namespace Npgsql
         /// For streaming types (e.g. bytea), holds the byte length of the column.
         /// Does not include the length prefix.
         /// </summary>
-        internal int ColumnLen;
+        int ColumnLen;
 
-        internal int PosInColumn;
+        int PosInColumn;
 
         /// <summary>
         /// The position in the buffer at which the current data row message ends.
@@ -97,7 +97,7 @@ namespace Npgsql
         /// <summary>
         /// The RowDescription message for the current resultset being processed
         /// </summary>
-        internal RowDescriptionMessage? RowDescription;
+        RowDescriptionMessage? RowDescription;
 
         ulong? _recordsAffected;
 
@@ -588,7 +588,7 @@ namespace Npgsql
 
         #region ProcessMessage
 
-        internal void ProcessMessage(IBackendMessage msg)
+        void ProcessMessage(IBackendMessage msg)
         {
             switch (msg.Code)
             {
@@ -1228,7 +1228,7 @@ namespace Npgsql
             return (bytesRead, charsRead);
         }
 
-        internal (int BytesSkipped, int CharsSkipped) SkipChars(Decoder decoder, int charCount, int byteCount)
+        (int BytesSkipped, int CharsSkipped) SkipChars(Decoder decoder, int charCount, int byteCount)
         {
             // TODO: Allocate on the stack with Span
             if (_tempCharBuf == null)
