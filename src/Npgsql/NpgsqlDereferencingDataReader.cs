@@ -40,10 +40,8 @@ namespace Npgsql
     public sealed class NpgsqlDereferencingDataReader : NpgsqlDataReader
     {
         private NpgsqlDataReader _wrappedReader = default!;
-
-        private NpgsqlDataReader _originalReader;
+        private NpgsqlDataReader _originalReader = default!;
         private CommandBehavior _behavior;
-        NpgsqlConnector _connector;
 
         // internally to this class, <= 0 will FETCH ALL; externally in settings > 0 or -1 are the legal values
         ////private int _fetchSize;
@@ -95,20 +93,22 @@ namespace Npgsql
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlDereferencingDataReader));
 
+        internal NpgsqlDereferencingDataReader(NpgsqlConnector connector) : base(connector) { }
+
         /// <summary>
-        /// Create a safe, sensible dereferencing reader; <see cref="CanDereference"/> has already been called to check
-        /// that there are at least some cursors to dereference before this constructor is called.
+        /// Initialise the reader
         /// </summary>
-        /// <param name="reader">The original reader for the undereferenced query.</param>
-        /// <param name="behavior">The required <see cref="CommandBehavior"/></param>
-        /// <param name="connector">The connector to use</param>
-        internal NpgsqlDereferencingDataReader(NpgsqlDataReader reader, CommandBehavior behavior, NpgsqlConnector connector)
+        /// <returns></returns>
+#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
+        internal async Task Init(NpgsqlDataReader reader, CommandBehavior behavior, bool async, CancellationToken cancellationToken)
+#pragma warning restore CS1998
         {
             _originalReader = reader;
             _behavior = behavior;
-            _connector = connector;
             ////_fetchSize = connector.Settings.DereferenceFetchSize;
-            
+
+            _wrappedReader = _originalReader;
+            Command = _originalReader.Command;
             _originalReader.ReaderClosed += (sender, args) => ReaderClosed?.Invoke(sender, args);
         }
 
@@ -121,17 +121,6 @@ namespace Npgsql
         public static bool CanDereference(DbDataReader reader)
         {
             return true;
-        }
-
-        /// <summary>
-        /// Initialise the reader
-        /// </summary>
-        /// <returns></returns>
-#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
-        internal async Task Init(bool async, CancellationToken cancellationToken)
-#pragma warning restore CS1998
-        {
-            _wrappedReader = _originalReader;
         }
 
         #region Read

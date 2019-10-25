@@ -29,6 +29,7 @@ namespace Npgsql
 #endif
     {
         internal NpgsqlCommand Command { get; private protected set; } = default!;
+        private protected readonly NpgsqlConnector Connector;
 
         /// <summary>
         /// Is raised whenever Close() is called.
@@ -62,6 +63,11 @@ namespace Npgsql
         /// </summary>
         [PublicAPI]
         public abstract bool IsOnRow { get; }
+
+        internal NpgsqlDataReader(NpgsqlConnector connector)
+        {
+            Connector = connector;
+        }
 
         #region Cleanup / Dispose
 

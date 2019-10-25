@@ -27,7 +27,6 @@ namespace Npgsql
     /// </summary>
     public sealed class NpgsqlStandardDataReader : NpgsqlDataReader
     {
-        NpgsqlConnector Connector { get; }
         NpgsqlConnection _connection = default!;
 
         /// <summary>
@@ -117,10 +116,7 @@ namespace Npgsql
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlStandardDataReader));
 
-        internal NpgsqlStandardDataReader(NpgsqlConnector connector)
-        {
-            Connector = connector;
-        }
+        internal NpgsqlStandardDataReader(NpgsqlConnector connector) : base (connector) { }
 
         internal void Init(NpgsqlCommand command, CommandBehavior behavior, List<NpgsqlStatement> statements, Task sendTask)
         {

@@ -1166,10 +1166,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                     if (connector.Settings.DereferenceCursors && NpgsqlDereferencingDataReader.CanDereference(reader))
                     {
-                        var dereferencingReader = new NpgsqlDereferencingDataReader(reader, behavior, connector);
-                        await dereferencingReader.Init(async, cancellationToken);
-
-                        // CurrentReader stays fixed from here, but unlike with standard reader CurrentReader.Command varies
+                        var dereferencingReader = connector.DereferencingDataReader;
+                        await dereferencingReader.Init(reader, behavior, async, cancellationToken);
+                        // while this is being used CurrentReader stays fixed, but CurrentReader.Command changes
                         connector.CurrentReader = dereferencingReader;
 
                         return dereferencingReader;
