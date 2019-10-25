@@ -160,11 +160,8 @@ namespace Npgsql
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <remarks>Note: the <paramref name="cancellationToken"/> parameter need not be and is not ignored in this variant.</remarks>
         /// <returns>A task representing the asynchronous operation.</returns>
-        public override Task<bool> NextResultAsync(CancellationToken cancellationToken)
-        {
-            using (NoSynchronizationContextScope.Enter())
-                return _wrappedReader.NextResultAsync(cancellationToken);
-        }
+        public override Task<bool> NextResultAsync(CancellationToken cancellationToken) =>
+            _wrappedReader.NextResultAsync(cancellationToken);
 
         #endregion
 
