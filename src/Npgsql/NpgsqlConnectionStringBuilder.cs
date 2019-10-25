@@ -878,6 +878,60 @@ namespace Npgsql
 
         #endregion
 
+        #region Properties - Cursor Dereferencing
+
+        /// <summary>
+        /// Whether to automatically dereference cursor result sets. If enabled the data reader returns the results which the
+        /// cursors refer to instead of the cursors themselves.
+        /// </summary>
+        [Category("Cursor Dereferencing")]
+        [Description("Whether to automatically dereference cursor result sets. If enabled the data reader returns the results which the cursors refer to instead of the cursors themselves.")]
+        [DisplayName("Dereference Cursors")]
+        [NpgsqlConnectionStringProperty]
+        [DefaultValue(true)] ///////////// - false !
+        public bool DereferenceCursors
+        {
+            get => _dereferenceCursors;
+            set
+            {
+                _dereferenceCursors = value;
+                SetValue(nameof(DereferenceCursors), value);
+            }
+        }
+        bool _dereferenceCursors;
+
+        /// <summary>
+        /// The number of rows to retrieve per fetch call when dereferencing cursors. -1 means fetch all (slightly more
+        /// efficient than the default value for small and medium result sets, but highly inefficient on PostgreSQL for
+        /// very large datasets).
+        /// </summary>
+        /// <remarks>
+        /// http://stackoverflow.com/q/42292341
+        /// https://github.com/npgsql/npgsql/issues/1785
+        /// https://github.com/npgsql/npgsql/issues/438
+        /// </remarks>
+        [Category("Cursor Dereferencing")]
+        [Description("The number of rows to retrieve per fetch call when dereferencing cursors. -1 means fetch all (slightly more efficient than the default value for small and medium result sets, but highly inefficient on PostgreSQL for very large datasets).")]
+        [DisplayName("Dereference Fetch Size")]
+        [NpgsqlConnectionStringProperty]
+        [DefaultValue(10000)]
+        public int DereferenceFetchSize
+        {
+            get => _dereferenceFetchSize;
+            set
+            {
+                if (value <= 0 && value != -1)
+                    throw new ArgumentOutOfRangeException(nameof(value), value,
+                        $"DereferenceFetchSize must be > 0 or -1 (fetch all)");
+
+                _dereferenceFetchSize = value;
+                SetValue(nameof(DereferenceFetchSize), value);
+            }
+        }
+        int _dereferenceFetchSize;
+
+        #endregion
+
         #region Properties - Advanced
 
         /// <summary>
