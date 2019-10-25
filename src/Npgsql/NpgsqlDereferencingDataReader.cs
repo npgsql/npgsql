@@ -108,6 +108,8 @@ namespace Npgsql
             _behavior = behavior;
             _connector = connector;
             ////_fetchSize = connector.Settings.DereferenceFetchSize;
+            
+            _originalReader.ReaderClosed += (sender, args) => ReaderClosed?.Invoke(sender, args);
         }
 
         /// <summary>
@@ -393,7 +395,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="values">An array of Object into which to copy the attribute columns.</param>
         /// <returns>The number of instances of <see cref="object"/> in the array.</returns>
-        public override int GetProviderSpecificValues(object[] values) => GetProviderSpecificValues(values);
+        public override int GetProviderSpecificValues(object[] values) => _wrappedReader.GetProviderSpecificValues(values);
 
         /// <summary>
         /// Returns schema information for the columns in the current resultset.
