@@ -14,34 +14,18 @@ using System.Threading.Tasks;
 namespace Npgsql
 {
     /// <summary>
-    /// Cursor dereferencing data reader derived originally from removed Npgsql v2 code (see
-    /// https://github.com/npgsql/npgsql/issues/438); but now with safer, more consistent behaviour.
+    /// Wraps another data reader.
     /// </summary>
     /// <remarks>
-    /// Does not aim to do the actual reading work, rather, it wraps the creation of as many real instances
-    /// of <see cref="NpgsqlDataReader"/> as are required to read from the cursors in the original
-    /// result set.
-    ///
-    /// No longer FETCH ALL by default as this is dangerous for large result sets (http://stackoverflow.com/q/42292341/);
-    /// FETCH ALL can be enabled with DereferenceFetchSize=-1 and will be more efficient (less round trips) for small to
-    /// medium result sets.
-    /// 
-    /// Works for multiple cursors in any arrangement in the original result set (n x 1; 1 x m; n x m).
-    /// 
-    /// c.f. Oracle:
-    ///  - Oracle always does the equivalent of this automatic dereferencing in its ADO.NET driver
-    ///  - Since it's always on in Oracle, you can never read a cursor from a result set directly; however you can
-    ///    still code additonal SQL with output parameters in order to get at the original cursors if you need to
-    ///  - In Oracle, if just some values are cursors then these are dereferenced and other data is ignored
-    ///  - The rest of Oracle's pattern is to only ever try to dereference on Query and Scalar, never on Execute
-    ///  - We copy these latter behaviours since presumably: a) they work in practice, and b) this will be the most
-    ///    useful thing to do for any cross-DB developers
+    /// The code to correctly wrap another reader is kept separate from <see cref="NpgsqlDereferencingDataReader"/>
+    /// so that we can check that the entire Npgsql test suite passes using the wrapping technique, independently
+    /// of then overriding a few methods of this to produce a cursor dereferencing reader.
     /// </remarks>
-    public sealed class NpgsqlDereferencingDataReader : NpgsqlDataReader
+    public class NpgsqlWrappingReader : NpgsqlDataReader
     {
-        private NpgsqlDataReader _wrappedReader = default!;
-        private NpgsqlDataReader _originalReader = default!;
-        private CommandBehavior _behavior;
+        internal const bool wrapEverything = true;
+
+        private protected NpgsqlDataReader _wrappedReader = default!;
 
         // internally to this class, <= 0 will FETCH ALL; externally in settings > 0 or -1 are the legal values
         ////private int _fetchSize;
@@ -91,36 +75,19 @@ namespace Npgsql
         public override event EventHandler? ReaderClosed;
 #pragma warning restore CS0067
 
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlDereferencingDataReader));
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlWrappingReader));
 
-        internal NpgsqlDereferencingDataReader(NpgsqlConnector connector) : base(connector) { }
+        internal NpgsqlWrappingReader(NpgsqlConnector connector) : base(connector) { }
 
         /// <summary>
-        /// Initialise the reader
+        /// Initialise <see cref="NpgsqlWrappingReader"/> Do not call for <see cref="NpgsqlDereferencingDataReader"/>
         /// </summary>
         /// <returns></returns>
-#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
-        internal async Task Init(NpgsqlDataReader reader, CommandBehavior behavior, bool async, CancellationToken cancellationToken)
-#pragma warning restore CS1998
+        internal void Init(NpgsqlDataReader originalReader)
         {
-            _originalReader = reader;
-            _behavior = behavior;
-            ////_fetchSize = connector.Settings.DereferenceFetchSize;
-
-            _wrappedReader = _originalReader;
-            Command = _originalReader.Command;
-            _originalReader.ReaderClosed += (sender, args) => ReaderClosed?.Invoke(sender, args);
-        }
-
-        /// <summary>
-        /// True iff current reader has cursors in its output types.
-        /// </summary>
-        /// <param name="reader">The reader to check</param>
-        /// <returns>Are there cursors?</returns>
-        /// <remarks>Really a part of NpgsqlDereferencingReader</remarks>
-        public static bool CanDereference(DbDataReader reader)
-        {
-            return true;
+            _wrappedReader = originalReader;
+            Command = originalReader.Command;
+            originalReader.ReaderClosed += (sender, args) => ReaderClosed?.Invoke(sender, args);
         }
 
         #region Read
