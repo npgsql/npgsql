@@ -156,7 +156,7 @@ namespace Npgsql.Tests
             // See also CommandTests.Statements()
             using (var conn = OpenConnection())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT) WITH OIDS");
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
                 using (var cmd = new NpgsqlCommand(
                     "INSERT INTO data (name) VALUES ('a');" +
                     "UPDATE data SET name='b' WHERE name='doesnt_exist'",
@@ -168,12 +168,10 @@ namespace Npgsql.Tests
                     Assert.That(reader.Statements[0].SQL, Is.EqualTo("INSERT INTO data (name) VALUES ('a')"));
                     Assert.That(reader.Statements[0].StatementType, Is.EqualTo(StatementType.Insert));
                     Assert.That(reader.Statements[0].Rows, Is.EqualTo(1));
-                    Assert.That(reader.Statements[0].OID, Is.Not.EqualTo(0));
                     Assert.That(reader.Statements[1].SQL,
                         Is.EqualTo("UPDATE data SET name='b' WHERE name='doesnt_exist'"));
                     Assert.That(reader.Statements[1].StatementType, Is.EqualTo(StatementType.Update));
                     Assert.That(reader.Statements[1].Rows, Is.EqualTo(0));
-                    Assert.That(reader.Statements[1].OID, Is.EqualTo(0));
                 }
 
                 using (var cmd = new NpgsqlCommand("SELECT name FROM data; DELETE FROM data", conn))
@@ -184,12 +182,42 @@ namespace Npgsql.Tests
                     Assert.That(reader.Statements[0].SQL, Is.EqualTo("SELECT name FROM data"));
                     Assert.That(reader.Statements[0].StatementType, Is.EqualTo(StatementType.Select));
                     Assert.That(reader.Statements[0].Rows, Is.EqualTo(1));
-                    Assert.That(reader.Statements[0].OID, Is.EqualTo(0));
                     Assert.That(reader.Statements[1].SQL, Is.EqualTo("DELETE FROM data"));
                     Assert.That(reader.Statements[1].StatementType, Is.EqualTo(StatementType.Delete));
                     Assert.That(reader.Statements[1].Rows, Is.EqualTo(1));
-                    Assert.That(reader.Statements[1].OID, Is.EqualTo(0));
                 }
+            }
+        }
+
+        [Test]
+        public void StatementOID()
+        {
+            using var conn = OpenConnection();
+
+            TestUtil.MaximumPgVersionExclusive(conn, "12.0",
+"Support for 'CREATE TABLE ... WITH OIDS' has been removed in 12.0. See https://www.postgresql.org/docs/12/release-12.html#id-1.11.6.5.4");
+
+            conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT) WITH OIDS");
+
+            using (var cmd = new NpgsqlCommand(
+                "INSERT INTO data (name) VALUES ('a');" +
+                "UPDATE data SET name='b' WHERE name='doesnt_exist'",
+                conn)
+                )
+            {
+                using var reader = cmd.ExecuteReader(Behavior);
+
+                Assert.That(reader.Statements[0].OID, Is.Not.EqualTo(0));
+                Assert.That(reader.Statements[1].OID, Is.EqualTo(0));
+            }
+
+            using (var cmd = new NpgsqlCommand("SELECT name FROM data; DELETE FROM data", conn))
+            {
+                using var reader = cmd.ExecuteReader(Behavior);
+
+                reader.NextResult(); // Consume SELECT result set
+                Assert.That(reader.Statements[0].OID, Is.EqualTo(0));
+                Assert.That(reader.Statements[1].OID, Is.EqualTo(0));
             }
         }
 

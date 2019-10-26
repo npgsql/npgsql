@@ -22,7 +22,7 @@ namespace Npgsql.Tests
                                 field_pk2                      INT2 NOT NULL,
                                 field_serial                   SERIAL,
                                 CONSTRAINT data2_pkey PRIMARY KEY (field_pk1, field_pk2)
-                                ) WITH OIDS");
+                                )");
 
                 using (var command = new NpgsqlCommand("SELECT * FROM DATA2", conn))
                 using (var dr = command.ExecuteReader(CommandBehavior.KeyInfo))
