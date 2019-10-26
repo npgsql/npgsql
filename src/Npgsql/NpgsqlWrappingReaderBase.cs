@@ -28,12 +28,12 @@ namespace Npgsql
         /// <summary>
         /// Gets a value indicating whether the data reader is closed.
         /// </summary>
-        public sealed override bool IsClosed => _wrappedReader.IsClosed;
+        public override bool IsClosed => _wrappedReader.IsClosed;
 
         /// <summary>
         /// Gets the number of rows changed, inserted, or deleted by execution of the SQL statement.
         /// </summary>
-        public sealed override int RecordsAffected => _wrappedReader.RecordsAffected;
+        public override int RecordsAffected => _wrappedReader.RecordsAffected;
 
         /// <summary>
         /// Returns details about each statement that this reader will or has executed.
@@ -46,12 +46,12 @@ namespace Npgsql
         /// a statement-by-statement basis, unlike <see cref="DbDataReader.RecordsAffected"/>
         /// which exposes an aggregation across all statements.
         /// </remarks>
-        public sealed override IReadOnlyList<NpgsqlStatement> Statements => _wrappedReader.Statements;
+        public override IReadOnlyList<NpgsqlStatement> Statements => _wrappedReader.Statements;
 
         /// <summary>
         /// Gets a value that indicates whether this DbDataReader contains one or more rows.
         /// </summary>
-        public sealed override bool HasRows => _wrappedReader.HasRows;
+        public override bool HasRows => _wrappedReader.HasRows;
 
         /// <summary>
         /// Indicates whether the reader is currently positioned on a row, i.e. whether reading a
@@ -61,7 +61,7 @@ namespace Npgsql
         /// has been called
         /// </summary>
         [PublicAPI]
-        public sealed override bool IsOnRow => _wrappedReader.IsOnRow;
+        public override bool IsOnRow => _wrappedReader.IsOnRow;
 
         internal NpgsqlWrappingReaderBase(NpgsqlConnector connector) : base(connector) { }
 
@@ -70,12 +70,12 @@ namespace Npgsql
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The name of the specified column.</returns>
-        public sealed override string GetName(int ordinal) => _wrappedReader.GetName(ordinal);
+        public override string GetName(int ordinal) => _wrappedReader.GetName(ordinal);
 
         /// <summary>
         /// Gets the number of columns in the current row.
         /// </summary>
-        public sealed override int FieldCount => _wrappedReader.FieldCount;
+        public override int FieldCount => _wrappedReader.FieldCount;
 
         #region Simple value getters
 
@@ -84,7 +84,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="values">An array of Object into which to copy the attribute columns.</param>
         /// <returns>The number of instances of <see cref="object"/> in the array.</returns>
-        public sealed override int GetValues(object[] values) => _wrappedReader.GetValues(values);
+        public override int GetValues(object[] values) => _wrappedReader.GetValues(values);
 
         #endregion
 
@@ -99,7 +99,7 @@ namespace Npgsql
         /// <param name="bufferOffset">The index with the buffer to which the data will be copied.</param>
         /// <param name="length">The maximum number of characters to read.</param>
         /// <returns>The actual number of bytes read.</returns>
-        public sealed override long GetBytes(int ordinal, long dataOffset, byte[]? buffer, int bufferOffset, int length) =>
+        public override long GetBytes(int ordinal, long dataOffset, byte[]? buffer, int bufferOffset, int length) =>
             _wrappedReader.GetBytes(ordinal, dataOffset, buffer, bufferOffset, length);
 
         /// <summary>
@@ -107,7 +107,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The returned object.</returns>
-        public sealed override Stream GetStream(int ordinal) => _wrappedReader.GetStream(ordinal);
+        public override Stream GetStream(int ordinal) => _wrappedReader.GetStream(ordinal);
 
         /// <summary>
         /// Retrieves data as a <see cref="Stream"/>.
@@ -115,7 +115,7 @@ namespace Npgsql
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
         /// <returns>The returned object.</returns>
-        public sealed override Task<Stream> GetStreamAsync(int ordinal, CancellationToken cancellationToken = default) =>
+        public override Task<Stream> GetStreamAsync(int ordinal, CancellationToken cancellationToken = default) =>
             _wrappedReader.GetStreamAsync(ordinal, cancellationToken);
 
         #endregion
@@ -131,7 +131,7 @@ namespace Npgsql
         /// <param name="bufferOffset">The index with the buffer to which the data will be copied.</param>
         /// <param name="length">The maximum number of characters to read.</param>
         /// <returns>The actual number of characters read.</returns>
-        public sealed override long GetChars(int ordinal, long dataOffset, char[]? buffer, int bufferOffset, int length) =>
+        public override long GetChars(int ordinal, long dataOffset, char[]? buffer, int bufferOffset, int length) =>
             _wrappedReader.GetChars(ordinal, dataOffset, buffer, bufferOffset, length);
 
         /// <summary>
@@ -139,7 +139,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The returned object.</returns>
-        public sealed override TextReader GetTextReader(int ordinal) => _wrappedReader.GetTextReader(ordinal);
+        public override TextReader GetTextReader(int ordinal) => _wrappedReader.GetTextReader(ordinal);
 
         /// <summary>
         /// Retrieves data as a <see cref="TextReader"/>.
@@ -147,7 +147,7 @@ namespace Npgsql
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
         /// <returns>The returned object.</returns>
-        public sealed override Task<TextReader> GetTextReaderAsync(int ordinal, CancellationToken cancellationToken = default) =>
+        public override Task<TextReader> GetTextReaderAsync(int ordinal, CancellationToken cancellationToken = default) =>
             _wrappedReader.GetTextReaderAsync(ordinal, cancellationToken);
 
         #endregion
@@ -161,7 +161,7 @@ namespace Npgsql
         /// <param name="ordinal">The type of the value to be returned.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <returns></returns>
-        public sealed override Task<T> GetFieldValueAsync<T>(int ordinal, CancellationToken cancellationToken) =>
+        public override Task<T> GetFieldValueAsync<T>(int ordinal, CancellationToken cancellationToken) =>
             _wrappedReader.GetFieldValueAsync<T>(ordinal, cancellationToken);
 
         /// <summary>
@@ -170,7 +170,7 @@ namespace Npgsql
         /// <typeparam name="T">Synchronously gets the value of the specified column as a type.</typeparam>
         /// <param name="ordinal">The column to be retrieved.</param>
         /// <returns>The column to be retrieved.</returns>
-        public sealed override T GetFieldValue<T>(int ordinal) =>
+        public override T GetFieldValue<T>(int ordinal) =>
             _wrappedReader.GetFieldValue<T>(ordinal);
 
         #endregion
@@ -182,7 +182,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public sealed override object GetValue(int ordinal) =>
+        public override object GetValue(int ordinal) =>
             _wrappedReader.GetValue(ordinal);
 
         /// <summary>
@@ -190,7 +190,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public sealed override object GetProviderSpecificValue(int ordinal) =>
+        public override object GetProviderSpecificValue(int ordinal) =>
             _wrappedReader.GetProviderSpecificValue(ordinal);
 
         #endregion
@@ -202,7 +202,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns><b>true</b> if the specified column is equivalent to <see cref="DBNull"/>; otherwise <b>false</b>.</returns>
-        public sealed override bool IsDBNull(int ordinal) =>
+        public override bool IsDBNull(int ordinal) =>
             _wrappedReader.IsDBNull(ordinal);
 
         /// <summary>
@@ -212,7 +212,7 @@ namespace Npgsql
         /// <param name="ordinal">The zero-based column to be retrieved.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <returns><b>true</b> if the specified column value is equivalent to <see cref="DBNull"/> otherwise <b>false</b>.</returns>
-        public sealed override Task<bool> IsDBNullAsync(int ordinal, CancellationToken cancellationToken) =>
+        public override Task<bool> IsDBNullAsync(int ordinal, CancellationToken cancellationToken) =>
             _wrappedReader.IsDBNullAsync(ordinal, cancellationToken);
 
         #endregion
@@ -224,7 +224,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="name">The name of the column.</param>
         /// <returns>The zero-based column ordinal.</returns>
-        public sealed override int GetOrdinal(string name) => _wrappedReader.GetOrdinal(name);
+        public override int GetOrdinal(string name) => _wrappedReader.GetOrdinal(name);
 
         /// <summary>
         /// Gets a representation of the PostgreSQL data type for the specified field.
@@ -232,7 +232,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="ordinal">The zero-based column index.</param>
         [PublicAPI]
-        public sealed override PostgresType GetPostgresType(int ordinal) => _wrappedReader.GetPostgresType(ordinal);
+        public override PostgresType GetPostgresType(int ordinal) => _wrappedReader.GetPostgresType(ordinal);
 
         /// <summary>
         /// Gets the data type information for the specified field.
@@ -240,7 +240,7 @@ namespace Npgsql
         /// (see <see cref="GetFieldType"/> for that).
         /// </summary>
         /// <param name="ordinal">The zero-based column index.</param>
-        public sealed override string GetDataTypeName(int ordinal) => _wrappedReader.GetDataTypeName(ordinal);
+        public override string GetDataTypeName(int ordinal) => _wrappedReader.GetDataTypeName(ordinal);
 
         /// <summary>
         /// Gets the OID for the PostgreSQL type for the specified field, as it appears in the pg_type table.
@@ -250,34 +250,34 @@ namespace Npgsql
         /// debugging purposes.
         /// </remarks>
         /// <param name="ordinal">The zero-based column index.</param>
-        public sealed override uint GetDataTypeOID(int ordinal) => _wrappedReader.GetDataTypeOID(ordinal);
+        public override uint GetDataTypeOID(int ordinal) => _wrappedReader.GetDataTypeOID(ordinal);
 
         /// <summary>
         /// Gets the data type of the specified column.
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The data type of the specified column.</returns>
-        public sealed override Type GetFieldType(int ordinal) => _wrappedReader.GetFieldType(ordinal);
+        public override Type GetFieldType(int ordinal) => _wrappedReader.GetFieldType(ordinal);
 
         /// <summary>
         /// Returns the provider-specific field type of the specified column.
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The Type object that describes the data type of the specified column.</returns>
-        public sealed override Type GetProviderSpecificFieldType(int ordinal) => _wrappedReader.GetProviderSpecificFieldType(ordinal);
+        public override Type GetProviderSpecificFieldType(int ordinal) => _wrappedReader.GetProviderSpecificFieldType(ordinal);
 
         /// <summary>
         /// Gets all provider-specific attribute columns in the collection for the current row.
         /// </summary>
         /// <param name="values">An array of Object into which to copy the attribute columns.</param>
         /// <returns>The number of instances of <see cref="object"/> in the array.</returns>
-        public sealed override int GetProviderSpecificValues(object[] values) => _wrappedReader.GetProviderSpecificValues(values);
+        public override int GetProviderSpecificValues(object[] values) => _wrappedReader.GetProviderSpecificValues(values);
 
         /// <summary>
         /// Returns schema information for the columns in the current resultset.
         /// </summary>
         /// <returns></returns>
-        public sealed override ReadOnlyCollection<NpgsqlDbColumn> GetColumnSchema() => _wrappedReader.GetColumnSchema();
+        public override ReadOnlyCollection<NpgsqlDbColumn> GetColumnSchema() => _wrappedReader.GetColumnSchema();
 
         #endregion
     }

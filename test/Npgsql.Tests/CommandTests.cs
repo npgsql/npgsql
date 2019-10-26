@@ -374,6 +374,30 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test]
+        public void MultipleRefCursorSupport()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION testmultcurfunc() RETURNS SETOF refcursor AS 'DECLARE ref1 refcursor; ref2 refcursor; BEGIN OPEN ref1 FOR SELECT 1; RETURN NEXT ref1; OPEN ref2 FOR SELECT 2; RETURN next ref2; RETURN; END;' LANGUAGE 'plpgsql';");
+                using (conn.BeginTransaction())
+                {
+                    var command = new NpgsqlCommand("testmultcurfunc", conn);
+                    command.CommandType = CommandType.StoredProcedure;
+                    using (var dr = command.ExecuteReader())
+                    {
+                        dr.Read();
+                        var one = dr.GetInt32(0);
+                        dr.NextResult();
+                        dr.Read();
+                        var two = dr.GetInt32(0);
+                        Assert.AreEqual(1, one);
+                        Assert.AreEqual(2, two);
+                    }
+                }
+            }
+        }
+
         #endregion
 
         #region CommandBehavior.CloseConnection

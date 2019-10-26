@@ -28,6 +28,11 @@ namespace Npgsql.TypeMapping
         internal NpgsqlDatabaseInfo DatabaseInfo
             => _databaseInfo ?? throw new InvalidOperationException("Internal error: this type mapper hasn't yet been bound to a database info object");
 
+        /// <summary>
+        /// Is the type mapper ready?
+        /// </summary>
+        internal bool Bound { get; private set; } = false;
+
         internal NpgsqlTypeHandler UnrecognizedTypeHandler { get; }
 
         readonly Dictionary<uint, NpgsqlTypeHandler> _byOID = new Dictionary<uint, NpgsqlTypeHandler>();
@@ -221,6 +226,7 @@ namespace Npgsql.TypeMapping
         {
             _databaseInfo = databaseInfo;
             BindTypes();
+            Bound = true;
         }
 
         void BindTypes()

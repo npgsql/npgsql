@@ -75,7 +75,7 @@ namespace Npgsql
         public static bool CanDereference(DbDataReader reader)
         {
             var hasCursors = false;
-#if false
+#if true
             for (var i = 0; i < reader.FieldCount; i++)
             {
                 if (reader.GetDataTypeName(i) == "refcursor")

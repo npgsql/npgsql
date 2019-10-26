@@ -16,7 +16,7 @@ namespace Npgsql
     /// </remarks>
     public sealed class NpgsqlWrappingReader : NpgsqlWrappingReaderBase
     {
-        internal const bool TestWrapEverything = true;
+        internal const bool TestWrapEverything = false;
 
         /// <summary>
         /// Is raised whenever Close() is called.
