@@ -1190,9 +1190,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 #pragma warning restore CS0162
                 }
             }
-#pragma warning disable CS0168 // Variable is declared but never used
-            catch (Exception ex)
-#pragma warning restore CS0168
+            catch
             {
                 State = CommandState.Idle;
                 _connection!.Connector?.EndUserAction();

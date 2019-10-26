@@ -21,9 +21,7 @@ namespace Npgsql
         /// <summary>
         /// Is raised whenever Close() is called.
         /// </summary>
-#pragma warning disable CS0067 // The event 'NpgsqlDereferencingDataReader.ReaderClosed' is never used
         public override event EventHandler? ReaderClosed;
-#pragma warning restore CS0067
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlWrappingReader));
 
