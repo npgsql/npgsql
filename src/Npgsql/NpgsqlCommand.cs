@@ -1164,17 +1164,27 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     else
                         reader.NextResult();
 
-                    if (connector.Settings.DereferenceCursors && NpgsqlDereferencingDataReader.CanDereference(reader))
+                    if (connector.Settings.DereferenceCursors && NpgsqlDereferencingReader.CanDereference(reader))
                     {
                         var dereferencingReader = connector.DereferencingDataReader;
                         await dereferencingReader.Init(reader, behavior, async, cancellationToken);
                         // while this is being used CurrentReader stays fixed, but CurrentReader.Command changes
                         connector.CurrentReader = dereferencingReader;
-
                         return dereferencingReader;
                     }
 
-                    return reader;
+#pragma warning disable CS0162 // Unreachable code detected
+                    if (NpgsqlWrappingReader.TestWrapEverything)
+                    {
+                        var wrappingReader = new NpgsqlWrappingReader(connector);
+                        wrappingReader.Init(reader);
+                        return wrappingReader;
+                    }
+                    else
+                    {
+                        return reader;
+                    }
+#pragma warning restore CS0162
                 }
             }
             catch

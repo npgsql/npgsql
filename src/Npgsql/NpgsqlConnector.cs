@@ -229,7 +229,7 @@ namespace Npgsql
         #endregion
 
         internal NpgsqlStandardDataReader DataReader { get; }
-        internal NpgsqlDereferencingDataReader DereferencingDataReader { get; }
+        internal NpgsqlDereferencingReader DereferencingDataReader { get; }
 
         #region Constructors
 
@@ -276,7 +276,7 @@ namespace Npgsql
             }
 
             DataReader = new NpgsqlStandardDataReader(this);
-            DereferencingDataReader = Settings.DereferenceCursors ? new NpgsqlDereferencingDataReader(this) : default!;
+            DereferencingDataReader = Settings.DereferenceCursors ? new NpgsqlDereferencingReader(this) : default!;
 
             // TODO: Not just for automatic preparation anymore...
             PreparedStatementManager = new PreparedStatementManager(this);

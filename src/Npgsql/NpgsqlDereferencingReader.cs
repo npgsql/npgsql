@@ -36,7 +36,7 @@ namespace Npgsql
     ///  - We copy these latter two behaviours since presumably: a) they work in practice, and b) this will be the most
     ///    useful thing to do for any cross-DB developers
     /// </remarks>
-    public sealed class NpgsqlDereferencingDataReader : NpgsqlWrappingReader
+    public sealed class NpgsqlDereferencingReader : NpgsqlWrappingReaderBase
     {
         // internally to this class, zero or any negative value will FETCH ALL; externally in settings, -1 is the currently chosen trigger value
         int _fetchSize;
@@ -53,9 +53,16 @@ namespace Npgsql
         // name of current cursor
         string? _cursor;
 
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlDereferencingDataReader));
+        /// <summary>
+        /// Is raised whenever Close() is called.
+        /// </summary>
+#pragma warning disable CS0067 // The event 'NpgsqlDereferencingDataReader.ReaderClosed' is never used
+        public override event EventHandler? ReaderClosed;
+#pragma warning restore CS0067
 
-        internal NpgsqlDereferencingDataReader(NpgsqlConnector connector) : base(connector)
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlDereferencingReader));
+
+        internal NpgsqlDereferencingReader(NpgsqlConnector connector) : base(connector)
         {
             _fetchSize = connector.Settings.DereferenceFetchSize;
         }
@@ -68,6 +75,7 @@ namespace Npgsql
         public static bool CanDereference(DbDataReader reader)
         {
             var hasCursors = false;
+#if false
             for (var i = 0; i < reader.FieldCount; i++)
             {
                 if (reader.GetDataTypeName(i) == "refcursor")
@@ -76,11 +84,12 @@ namespace Npgsql
                     break;
                 }
             }
+#endif
             return hasCursors;
         }
 
         /// <summary>
-        /// Initialise <see cref="NpgsqlDereferencingDataReader"/> Do not call <see cref="NpgsqlWrappingReader.Init"/>
+        /// Initialise <see cref="NpgsqlDereferencingReader"/> Do not call <see cref="NpgsqlWrappingReader.Init"/>
         /// </summary>
         /// <returns></returns>
         internal async Task Init(NpgsqlDataReader originalReader, CommandBehavior behavior, bool async, CancellationToken cancellationToken)
@@ -122,27 +131,114 @@ namespace Npgsql
                 NextResult();
         }
 
-        #region Cursor SQL
+        #region Read
+
         /// <summary>
-        /// SQL to fetch required count from current cursor
+        /// Advances the reader to the next record in a result set.
         /// </summary>
-        /// <returns>SQL</returns>
-        string FetchSQL()
+        /// <returns><b>true</b> if there are more rows; otherwise <b>false</b>.</returns>
+        /// <remarks>
+        /// The default position of a data reader is before the first record. Therefore, you must call Read to begin accessing data.
+        /// </remarks>
+        public override bool Read() =>
+               Read(false, CancellationToken.None).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// This is the asynchronous version of <see cref="Read()"/>.
+        /// </summary>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        public override Task<bool> ReadAsync(CancellationToken cancellationToken)
         {
-            return string.Format(@"FETCH {0} FROM ""{1}"";", (_fetchSize <= 0 ? "ALL" : _fetchSize.ToString()), _cursor);
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled<bool>(cancellationToken);
+
+            using (NoSynchronizationContextScope.Enter())
+                return Read(true, cancellationToken);
+        }
+
+        async Task<bool> Read(bool async, CancellationToken cancellationToken)
+        {
+            if (_wrappedReader != null)
+            {
+                var cursorHasNextRow = async ? await _wrappedReader.ReadAsync(cancellationToken) : _wrappedReader.Read();
+                if (cursorHasNextRow)
+                {
+                    _rowsRead++;
+                    return true;
+                }
+
+                // if we did FETCH ALL or if rows ended before requested count, there is nothing more to fetch on this cursor
+                if (_fetchSize <= 0 || _rowsRead < _fetchSize)
+                {
+                    return false;
+                }
+            }
+
+            // if rows ended exactly at requested count, there may or may not be more rows
+            await FetchNextNFromCursor(string.Empty, async, cancellationToken);
+            // recursive self-call
+            return await Read(async, cancellationToken);
+        }
+
+        #endregion
+
+        #region NextResult
+
+        /// <summary>
+        /// Advances the reader to the next result when reading the results of a batch of statements.
+        /// </summary>
+        /// <returns></returns>
+        public override bool NextResult() =>
+            NextResult(false, CancellationToken.None)
+                .GetAwaiter().GetResult();
+
+        /// <summary>
+        /// This is the asynchronous version of NextResult.
+        /// </summary>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        public override Task<bool> NextResultAsync(CancellationToken cancellationToken)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled<bool>(cancellationToken);
+
+            using (NoSynchronizationContextScope.Enter())
+                return NextResult(true, cancellationToken);
         }
 
         /// <summary>
-        /// SQL to close current cursor
+        /// Internal implementation of NextResult
         /// </summary>
-        /// <returns>SQL</returns>
-        string CloseSQL()
+        async Task<bool> NextResult(bool async, CancellationToken cancellationToken)
         {
-            return string.Format(@"CLOSE ""{0}"";", _cursor);
+            var closeImmediately = _cursorIndex >= _cursors.Count;
+            var closeSql = async ?
+                await CloseCursor(true, cancellationToken, closeImmediately) :
+                CloseCursor(false, CancellationToken.None, closeImmediately).GetAwaiter().GetResult();
+            if (closeImmediately)
+            {
+                return false;
+            }
+            _cursor = _cursors[_cursorIndex++];
+            await FetchNextNFromCursor(closeSql, async, cancellationToken);
+            return true;
         }
+
+        #endregion
+
+        #region Cleanup / Dispose
+
+        internal override async Task Close(bool connectionClosing, bool async) =>
+            await CloseCursor(async, CancellationToken.None, true);
+
+        internal override Task Cleanup(bool async, bool connectionClosing = false) =>
+            Task.CompletedTask;
+
         #endregion
 
         #region Private fetch methods
+
         /// <summary>
         /// Fetch next N rows from current cursor.
         /// </summary>
@@ -211,9 +307,11 @@ namespace Npgsql
             }
             return "";
         }
+
         #endregion
 
         #region Create command
+
         NpgsqlCommand CreateCommand(string sql)
         {
             var command = Connector.Connection!.CreateCommand();
@@ -227,102 +325,26 @@ namespace Npgsql
 
         #endregion
 
-        #region NextResult
+        #region Cursor SQL
 
         /// <summary>
-        /// Advances the reader to the next result when reading the results of a batch of statements.
+        /// SQL to fetch required count from current cursor
         /// </summary>
-        /// <returns></returns>
-        public override bool NextResult() =>
-            NextResult(false, CancellationToken.None)
-                .GetAwaiter().GetResult();
-
-        /// <summary>
-        /// This is the asynchronous version of NextResult.
-        /// </summary>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
-        public override Task<bool> NextResultAsync(CancellationToken cancellationToken)
+        /// <returns>SQL</returns>
+        string FetchSQL()
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled<bool>(cancellationToken);
-
-            using (NoSynchronizationContextScope.Enter())
-                return NextResult(true, cancellationToken);
+            return string.Format(@"FETCH {0} FROM ""{1}"";", (_fetchSize <= 0 ? "ALL" : _fetchSize.ToString()), _cursor);
         }
 
         /// <summary>
-        /// Internal implementation of NextResult
+        /// SQL to close current cursor
         /// </summary>
-        async Task<bool> NextResult(bool async, CancellationToken cancellationToken)
+        /// <returns>SQL</returns>
+        string CloseSQL()
         {
-            var closeImmediately = _cursorIndex >= _cursors.Count;
-            var closeSql = async ?
-                await CloseCursor(true, cancellationToken, closeImmediately) :
-                CloseCursor(false, CancellationToken.None, closeImmediately).GetAwaiter().GetResult();
-            if (closeImmediately)
-            {
-                return false;
-            }
-            _cursor = _cursors[_cursorIndex++];
-            await FetchNextNFromCursor(closeSql, async, cancellationToken);
-            return true;
-        }
-        #endregion
-
-        #region Read
-
-        /// <summary>
-        /// Advances the reader to the next record in a result set.
-        /// </summary>
-        /// <returns><b>true</b> if there are more rows; otherwise <b>false</b>.</returns>
-        /// <remarks>
-        /// The default position of a data reader is before the first record. Therefore, you must call Read to begin accessing data.
-        /// </remarks>
-        public override bool Read() =>
-               Read(false, CancellationToken.None).GetAwaiter().GetResult();
-
-        /// <summary>
-        /// This is the asynchronous version of <see cref="Read()"/>.
-        /// </summary>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
-        /// <returns>A task representing the asynchronous operation.</returns>
-        public override Task<bool> ReadAsync(CancellationToken cancellationToken)
-        {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled<bool>(cancellationToken);
-
-            using (NoSynchronizationContextScope.Enter())
-                return Read(true, cancellationToken);
+            return string.Format(@"CLOSE ""{0}"";", _cursor);
         }
 
-        async Task<bool> Read(bool async, CancellationToken cancellationToken)
-        {
-            if (_wrappedReader != null)
-            {
-                var cursorHasNextRow = async ? await _wrappedReader.ReadAsync(cancellationToken) : _wrappedReader.Read();
-                if (cursorHasNextRow)
-                {
-                    _rowsRead++;
-                    return true;
-                }
-
-                // if we did FETCH ALL or if rows ended before requested count, there is nothing more to fetch on this cursor
-                if (_fetchSize <= 0 || _rowsRead < _fetchSize)
-                {
-                    return false;
-                }
-            }
-
-            // if rows ended exactly at requested count, there may or may not be more rows
-            await FetchNextNFromCursor(string.Empty, async, cancellationToken);
-            // recursive self-call
-            return await Read(async, cancellationToken);
-        }
-        #endregion
-
-        #region Cleanup / Dispose
-        // TO DO!
         #endregion
     }
 }
