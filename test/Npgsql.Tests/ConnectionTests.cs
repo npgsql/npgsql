@@ -98,7 +98,7 @@ namespace Npgsql.Tests
                 // Allow some time for the pg_terminate to kill our connection
                 using (var cmd = CreateSleepCommand(conn, 10))
                     Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception
-                        .TypeOf<PostgresException>()
+                        .AssignableTo<NpgsqlException>()
                     );
 
                 Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
