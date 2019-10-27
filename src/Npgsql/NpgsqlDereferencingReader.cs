@@ -56,9 +56,7 @@ namespace Npgsql
         /// <summary>
         /// Is raised whenever Close() is called.
         /// </summary>
-#pragma warning disable CS0067 // The event 'NpgsqlDereferencingDataReader.ReaderClosed' is never used
         public override event EventHandler? ReaderClosed;
-#pragma warning restore CS0067
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlDereferencingReader));
 
@@ -267,8 +265,7 @@ namespace Npgsql
                     _wrappedReader = fetchCmd.ExecuteReader(CommandBehavior.SingleResult);
 
                 // if fetch reader is force closed, execute any user closed events on this wrapping reader
-                // TO DO: Fix (needs new base class)
-                //_wrappedReader.ReaderClosed += (sender, args) => ReaderClosed?.Invoke(sender, args);
+                _wrappedReader.ReaderClosed += (sender, args) => ReaderClosed?.Invoke(sender, args);
             }
 
             _rowsRead = 0;

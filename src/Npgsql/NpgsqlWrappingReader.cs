@@ -30,8 +30,9 @@ namespace Npgsql
         internal void Init(NpgsqlDataReader originalReader)
         {
             _wrappedReader = originalReader;
-            Command = originalReader.Command;
-            originalReader.ReaderClosed += (sender, args) => ReaderClosed?.Invoke(sender, args);
+            Command = _wrappedReader.Command;
+            // if wrapped reader is force closed, execute any user closed events on this wrapping reader
+            _wrappedReader.ReaderClosed += (sender, args) => ReaderClosed?.Invoke(sender, args);
         }
 
         #region Read
