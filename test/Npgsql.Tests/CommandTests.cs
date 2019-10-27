@@ -637,9 +637,9 @@ $BODY$
         }
 #endif
 
-#endregion
+        #endregion
 
-#region CommandBehavior.CloseConnection
+        #region CommandBehavior.CloseConnection
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/693")]
         public void CloseConnection()
@@ -678,7 +678,7 @@ $BODY$
             }
         }
 
-#endregion
+        #endregion
 
         [Test]
         public void SingleRow([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
