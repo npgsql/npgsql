@@ -569,76 +569,67 @@ $BODY$
         [TestCase(false, true)]
         [TestCase(true, false)]
         [TestCase(true, true)]
-        public async Task ExpectedFetchStatementsBreakEarly(bool async, bool exception)
-        {
-            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { DereferenceCursors = true, DereferenceFetchSize = 3 };
-            using (var conn = OpenConnection(csb))
-            {
-                if (async) await conn.ExecuteNonQueryAsync(defineCTest);
-                else conn.ExecuteNonQuery(defineCTest);
-                using (conn.BeginTransaction())
-                {
-                    var command = new NpgsqlCommand("ctest", conn);
-                    command.CommandType = CommandType.StoredProcedure;
-                    var reader = async ? await command.ExecuteReaderAsync() : command.ExecuteReader();
-                    try
-                    {
-                        using (var dr = reader)
-                        {
-                            var set = 0;
-                            do
-                            {
-                                var row = 0;
-                                while (async ? await dr.ReadAsync() : dr.Read())
-                                {
-                                    row++;
-                                    if (row == (set + 1) * 4)
-                                    {
-                                        if (exception) throw new ApplicationException();
-                                        else break;
-                                    }
-                                }
-                                set++;
-                            }
-                            while (async ? await dr.NextResultAsync() : dr.NextResult());
-                        }
-                    }
-                    catch (ApplicationException)
-                    {
-                        // ignore
-                    }
-                    Assert.That(reader.Statements.Count, Is.EqualTo(exception ? 3 : 7));
-                    Assert.That(reader.Statements[0].SQL.StartsWith("FETCH 3 FROM"));
-                    Assert.That(reader.Statements[2].SQL.StartsWith("CLOSE"));
-                    if (!exception) Assert.That(reader.Statements[6].SQL.StartsWith("CLOSE"));
-                }
-            }
-        }
-
-        [Test]
-        [TestCase(false)]
-        [TestCase(true)]
-        public void CancelEarlyClosesCleanly(bool async)
-        {
-            // Actual Close is called, RowsAffected is correct, ReaderClosed is called...
-            throw new NotImplementedException();
-        }
-
-        [Test]
-#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
-        public async Task DereferencingRespondsToCancellationAsync()
-#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
+        [TestCase(true, true, true)]
+        public async Task ExpectedFetchStatementsBreakEarly(bool async, bool exception, bool token = false)
         {
             using (var cts = new CancellationTokenSource())
             {
-                ///
-                cts.Cancel();
+                var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { DereferenceCursors = true, DereferenceFetchSize = 3 };
+                using (var conn = OpenConnection(csb))
+                {
+                    if (async) await conn.ExecuteNonQueryAsync(defineCTest);
+                    else conn.ExecuteNonQuery(defineCTest);
+                    using (conn.BeginTransaction())
+                    {
+                        var command = new NpgsqlCommand("ctest", conn);
+                        command.CommandType = CommandType.StoredProcedure;
+                        var reader = async ? await command.ExecuteReaderAsync(cts.Token) : command.ExecuteReader();
+                        var closeCount = 0;
+                        reader.ReaderClosed += (object? sender, EventArgs e) => closeCount++;
+                        try
+                        {
+                            using (var dr = reader)
+                            {
+                                var set = 0;
+                                do
+                                {
+                                    var row = 0;
+                                    while (async ? await dr.ReadAsync(cts.Token) : dr.Read())
+                                    {
+                                        row++;
+                                        if (row == (set + 1) * 4)
+                                        {
+                                            if (token) cts.Cancel();
+                                            else if (exception) throw new ApplicationException();
+                                            else break;
+                                        }
+                                    }
+                                    set++;
+                                }
+                                while (async ? await dr.NextResultAsync(cts.Token) : dr.NextResult());
+                            }
+                        }
+                        catch (ApplicationException)
+                        {
+                            // ignore
+                        }
+                        catch (TaskCanceledException)
+                        {
+                            Assert.IsTrue(async);
+                        }
+                        ////Assert.AreEqual(1, closeCount); // TO DO!
+                        Assert.That(reader.Statements.Count, Is.EqualTo(exception ? 3 : 7));
+                        Assert.That(reader.Statements[0].SQL.StartsWith("FETCH 3 FROM"));
+                        Assert.That(reader.Statements[2].SQL.StartsWith("CLOSE"));
+                        if (!exception) Assert.That(reader.Statements[6].SQL.StartsWith("CLOSE"));
+                    }
+                }
             }
         }
 
 #if DEBUG
         [Test]
-        public void TestWrappingIsOff()
+        public void TestWrapEverythingIsOff()
         {
             // We want this test to fail when test wrapping is enabled, so that we definitely notice when it is switched on
             Assert.That(NpgsqlWrappingReader.TestWrapEverything, Is.False);
