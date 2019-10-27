@@ -19,6 +19,8 @@ namespace Npgsql
     /// Does not aim to do the actual reading work, rather, it wraps the creation of as many real instances
     /// of <see cref="NpgsqlDataReader"/> as required to read from the cursors in the original result set.
     ///
+    /// NOTE:
+    /// 
     /// No longer FETCH ALL by default as this is dangerous for large result sets (http://stackoverflow.com/q/42292341/);
     /// FETCH ALL can be enabled with DereferenceFetchSize=-1 and will be more efficient (less round trips) for small to
     /// medium result sets. Not being FETCH ALL by default means we don't know in advance how many FETCH commands we're going
@@ -87,7 +89,7 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Initialise <see cref="NpgsqlDereferencingReader"/> Do not call <see cref="NpgsqlWrappingReader.Init"/>
+        /// Initialise <see cref="NpgsqlDereferencingReader"/>
         /// </summary>
         /// <returns></returns>
         internal async Task Init(NpgsqlDataReader originalReader, CommandBehavior behavior, bool async, CancellationToken cancellationToken)

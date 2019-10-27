@@ -1,4 +1,5 @@
-﻿using Npgsql.Logging;
+﻿#if DEBUG
+using Npgsql.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,6 +17,10 @@ namespace Npgsql
     /// </remarks>
     public sealed class NpgsqlWrappingReader : NpgsqlWrappingReaderBase
     {
+        /// <summary>
+        /// Switch to <c>true</c> to test the wrapping. When enabled, 3 tests should fail:
+        /// ReaderIsReused x 2 and TestWrappingIsOff.
+        /// </summary>
         internal const bool TestWrapEverything = false;
 
         /// <summary>
@@ -33,6 +38,13 @@ namespace Npgsql
             Command = _wrappedReader.Command;
             // if wrapped reader is force closed, execute any user closed events on this wrapping reader
             _wrappedReader.ReaderClosed += (sender, args) => ReaderClosed?.Invoke(sender, args);
+        }
+
+        internal static NpgsqlWrappingReader Wrap(NpgsqlConnector connector, NpgsqlDataReader reader)
+        {
+            var wrappingReader = new NpgsqlWrappingReader(connector);
+            wrappingReader.Init(reader);
+            return wrappingReader;
         }
 
         #region Read
@@ -89,3 +101,4 @@ namespace Npgsql
 
     }
 }
+#endif

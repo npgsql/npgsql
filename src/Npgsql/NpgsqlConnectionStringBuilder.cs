@@ -888,7 +888,7 @@ namespace Npgsql
         [Description("Whether to automatically dereference cursor result sets. If enabled the data reader returns the results which the cursors refer to instead of the cursors themselves.")]
         [DisplayName("Dereference Cursors")]
         [NpgsqlConnectionStringProperty]
-        [DefaultValue(true)] ///////////// - false !
+        [DefaultValue(false)]
         public bool DereferenceCursors
         {
             get => _dereferenceCursors;

@@ -1176,18 +1176,21 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         return dereferencingReader;
                     }
 
+#if DEBUG
 #pragma warning disable CS0162 // Unreachable code detected
                     if (NpgsqlWrappingReader.TestWrapEverything)
                     {
-                        var wrappingReader = new NpgsqlWrappingReader(connector);
-                        wrappingReader.Init(reader);
-                        return wrappingReader;
+                        // confirm that wrapping approach is not broken; wrapping multiple times also works
+                        return NpgsqlWrappingReader.Wrap(connector, reader);
                     }
                     else
                     {
                         return reader;
                     }
 #pragma warning restore CS0162
+#else
+                    return reader;
+#endif
                 }
             }
             catch

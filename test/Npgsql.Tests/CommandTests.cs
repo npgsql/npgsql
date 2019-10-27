@@ -374,10 +374,17 @@ namespace Npgsql.Tests
             }
         }
 
+        #endregion
+
+        #region Cursor dereferencing
+
         [Test]
         public void MultipleRefCursorSupport()
         {
-            using (var conn = OpenConnection())
+            // this is the original npgsql v2 deref test
+            // https://github.com/npgsql/npgsql/issues/438#issuecomment-68093947
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { DereferenceCursors = true };
+            using (var conn = OpenConnection(csb))
             {
                 conn.ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION testmultcurfunc() RETURNS SETOF refcursor AS 'DECLARE ref1 refcursor; ref2 refcursor; BEGIN OPEN ref1 FOR SELECT 1; RETURN NEXT ref1; OPEN ref2 FOR SELECT 2; RETURN next ref2; RETURN; END;' LANGUAGE 'plpgsql';");
                 using (conn.BeginTransaction())
@@ -398,9 +405,42 @@ namespace Npgsql.Tests
             }
         }
 
-        #endregion
+        /// <summary>
+        /// Read the same result set as <see cref="MultipleRefCursorSupport"/> without dereferencing
+        /// </summary>
+        [Test]
+        public void CursorDereferencingOffByDefault()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION testmultcurfunc() RETURNS SETOF refcursor AS 'DECLARE ref1 refcursor; ref2 refcursor; BEGIN OPEN ref1 FOR SELECT 1; RETURN NEXT ref1; OPEN ref2 FOR SELECT 2; RETURN next ref2; RETURN; END;' LANGUAGE 'plpgsql';");
+                using (conn.BeginTransaction())
+                {
+                    var command = new NpgsqlCommand("testmultcurfunc", conn);
+                    command.CommandType = CommandType.StoredProcedure;
+                    using (var dr = command.ExecuteReader())
+                    {
+                        Assert.That(dr.GetDataTypeName(0), Is.EqualTo("refcursor"));
+                        dr.Read(); // first cursor
+                        Assert.That(dr.Read(), Is.True); // second cursor
+                        Assert.That(dr.Read(), Is.False);
+                    }
+                }
+            }
+        }
 
-        #region CommandBehavior.CloseConnection
+#if DEBUG
+        [Test]
+        public void TestWrappingIsOff()
+        {
+            // We want this test to fail when test wrapping is enabled, so that we definitely notice when it is switched on
+            Assert.That(NpgsqlWrappingReader.TestWrapEverything, Is.False);
+        }
+#endif
+
+#endregion
+
+#region CommandBehavior.CloseConnection
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/693")]
         public void CloseConnection()
@@ -439,7 +479,7 @@ namespace Npgsql.Tests
             }
         }
 
-        #endregion
+#endregion
 
         [Test]
         public void SingleRow([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)

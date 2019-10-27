@@ -21,7 +21,7 @@ namespace Npgsql
     /// <remarks>
     /// Useful shared overrides of <see cref="DbDataReader"/> along with the additional public and internal
     /// API contracts of <see cref="NpgsqlDataReader"/>.
-    /// I _think_ everything public abstract in here could be marked with <see cref="PublicAPIAttribute"/>?
+    /// NOTE: Possibly everything public abstract in here could be marked with <see cref="PublicAPIAttribute"/>?
     /// </remarks>
     public abstract class NpgsqlDataReader : DbDataReader
 #if !NET461
