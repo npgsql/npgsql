@@ -1,13 +1,10 @@
-﻿using Npgsql.Logging;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Npgsql.Logging;
 
 namespace Npgsql
 {
@@ -56,6 +53,20 @@ namespace Npgsql
         string? _cursor;
 
         /// <summary>
+        /// Holds the list of statements being executed by this reader.
+        /// </summary>
+        List<NpgsqlStatement> _statements = default!;
+
+        /// <summary>
+        /// Returns details about each statement that this reader will or has executed.
+        /// </summary>
+        /// <remarks>
+        /// Unlike a standard reader, the statements in here must be added to as the reader progresses and works
+        /// out what it needs to do.
+        /// </remarks>
+        public override IReadOnlyList<NpgsqlStatement> Statements => _statements.AsReadOnly();
+
+        /// <summary>
         /// Is raised whenever Close() is called.
         /// </summary>
         public override event EventHandler? ReaderClosed;
@@ -98,6 +109,8 @@ namespace Npgsql
             _cursors.Clear();
             _cursorIndex = 0;
             _cursor = null;
+
+            _statements = new List<NpgsqlStatement>();
 
             // Behavior is not required outside this Init method; we don't need to check or enforce it again
             // elsewhere since the read logic below is already enforcing it.
@@ -266,6 +279,8 @@ namespace Npgsql
                 else
                     _wrappedReader = fetchCmd.ExecuteReader(CommandBehavior.SingleResult);
 
+                _statements.AddRange(fetchCmd.Statements);
+
                 // if fetch reader is force closed, execute any user closed events on this wrapping reader
                 _wrappedReader.ReaderClosed += (sender, args) => ReaderClosed?.Invoke(sender, args);
             }
@@ -301,6 +316,8 @@ namespace Npgsql
                         await closeCmd.ExecuteNonQueryAsync(cancellationToken);
                     else
                         closeCmd.ExecuteNonQuery();
+
+                    _statements.AddRange(closeCmd.Statements);
                 }
                 _cursor = null;
             }

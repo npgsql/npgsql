@@ -381,24 +381,27 @@ namespace Npgsql.Tests
         const string defineTestMultCurFunc = @"CREATE OR REPLACE FUNCTION testmultcurfunc() RETURNS SETOF refcursor AS 'DECLARE ref1 refcursor; ref2 refcursor; BEGIN OPEN ref1 FOR SELECT 1; RETURN NEXT ref1; OPEN ref2 FOR SELECT 2; RETURN next ref2; RETURN; END;' LANGUAGE 'plpgsql';";
 
         [Test]
-        public void MultipleRefCursorSupport()
+        [TestCase(true)]
+        [TestCase(false)]
+        public async Task MultipleRefCursorSupport(bool async)
         {
-            // this is the original npgsql v2 deref test
+            // this is the original npgsql v2 deref test (but now in sync and async)
             // https://github.com/npgsql/npgsql/issues/438#issuecomment-68093947
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { DereferenceCursors = true };
             using (var conn = OpenConnection(csb))
             {
-                conn.ExecuteNonQuery(defineTestMultCurFunc);
+                if (async) await conn.ExecuteNonQueryAsync(defineTestMultCurFunc);
+                else conn.ExecuteNonQuery(defineTestMultCurFunc);
                 using (conn.BeginTransaction())
                 {
                     var command = new NpgsqlCommand("testmultcurfunc", conn);
                     command.CommandType = CommandType.StoredProcedure;
-                    using (var dr = command.ExecuteReader())
+                    using (var dr = async ? await command.ExecuteReaderAsync() : command.ExecuteReader())
                     {
-                        dr.Read();
+                        if (async) await dr.ReadAsync(); else dr.Read();
                         var one = dr.GetInt32(0);
-                        dr.NextResult();
-                        dr.Read();
+                        if (async) await dr.NextResultAsync(); else dr.NextResult();
+                        if (async) await dr.ReadAsync(); else dr.Read();
                         var two = dr.GetInt32(0);
                         Assert.AreEqual(1, one);
                         Assert.AreEqual(2, two);
@@ -408,25 +411,50 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task MultipleRefCursorSupportAsync()
+        [TestCase(true)]
+        [TestCase(false)]
+        public async Task CursorNByOne(bool async)
         {
+            // the multi-ref cursor above tests 1 x n, this tests n x 1
+            const string defineCursorNByOne =
+@"CREATE OR REPLACE FUNCTION public.cursornbyone(
+    OUT mycursor1 refcursor,
+    OUT mycursor2 refcursor)
+  RETURNS SETOF record AS
+$BODY$
+DECLARE ref1 refcursor; ref2 refcursor;
+BEGIN
+    OPEN ref1 FOR SELECT 'my' as a, 7 as b;
+    OPEN ref2 FOR SELECT 5 as c, 'test' as d;
+    
+    RETURN QUERY
+    SELECT ref1, ref2;
+END;
+$BODY$
+  LANGUAGE plpgsql
+";
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { DereferenceCursors = true };
             using (var conn = OpenConnection(csb))
             {
-                await conn.ExecuteNonQueryAsync(defineTestMultCurFunc);
+                if (async) await conn.ExecuteNonQueryAsync(defineCursorNByOne);
+                else conn.ExecuteNonQuery(defineCursorNByOne);
                 using (conn.BeginTransaction())
                 {
-                    var command = new NpgsqlCommand("testmultcurfunc", conn);
+                    var command = new NpgsqlCommand("cursornbyone", conn);
                     command.CommandType = CommandType.StoredProcedure;
-                    using (var dr = await command.ExecuteReaderAsync())
+                    using (var dr = async ? await command.ExecuteReaderAsync() : command.ExecuteReader())
                     {
-                        await dr.ReadAsync();
-                        var one = dr.GetInt32(0);
-                        await dr.NextResultAsync();
-                        await dr.ReadAsync();
-                        var two = dr.GetInt32(0);
-                        Assert.AreEqual(1, one);
-                        Assert.AreEqual(2, two);
+                        if (async) await dr.ReadAsync(); else dr.Read();
+                        var a = dr.GetString(0);
+                        var b = dr.GetInt32(1);
+                        if (async) await dr.NextResultAsync(); else dr.NextResult();
+                        if (async) await dr.ReadAsync(); else dr.Read();
+                        var c = dr.GetInt32(0);
+                        var d = dr.GetString(1);
+                        Assert.That(a, Is.EqualTo("my"));
+                        Assert.That(b, Is.EqualTo(7));
+                        Assert.That(c, Is.EqualTo(5));
+                        Assert.That(d, Is.EqualTo("test"));
                     }
                 }
             }
@@ -435,6 +463,7 @@ namespace Npgsql.Tests
         [Test]
         public void CursorDereferencingOffByDefault()
         {
+            // step through testmultcurfunc resultset as it is without dereferencing
             using (var conn = OpenConnection())
             {
                 conn.ExecuteNonQuery(defineTestMultCurFunc);
@@ -453,30 +482,158 @@ namespace Npgsql.Tests
             }
         }
 
+        const string defineCTest =
+@"CREATE OR REPLACE FUNCTION public.ctest()
+  RETURNS SETOF refcursor AS
+$BODY$
+DECLARE ref1 refcursor; ref2 refcursor;
+BEGIN
+OPEN ref1 FOR SELECT a, 'hello' FROM generate_series(1, 8) a;
+RETURN NEXT ref1;
+OPEN ref2 FOR SELECT b, 'goodbye' FROM generate_series(100, 108) b;
+RETURN next ref2;
+RETURN;
+END;
+$BODY$
+  LANGUAGE plpgsql
+";
+
         [Test]
-        public void SmallFetchSizeExpectedStatementsAndRowsAffected()
+        [TestCase(null, false)]
+        [TestCase(null, true)]
+        [TestCase(-1, false)]
+        [TestCase(-1, true)]
+        [TestCase(3, false)]
+        [TestCase(3, true)]
+        public async Task ExpectedFetchStatements(int? fetchSize, bool async)
         {
-            throw new NotImplementedException();
+            var csb = fetchSize == null ?
+                new NpgsqlConnectionStringBuilder(ConnectionString) { DereferenceCursors = true } :
+                new NpgsqlConnectionStringBuilder(ConnectionString) { DereferenceCursors = true, DereferenceFetchSize = (int)fetchSize };
+            using (var conn = OpenConnection(csb))
+            {
+                if (async) await conn.ExecuteNonQueryAsync(defineCTest);
+                else conn.ExecuteNonQuery(defineCTest);
+                using (conn.BeginTransaction())
+                {
+                    var command = new NpgsqlCommand("ctest", conn);
+                    command.CommandType = CommandType.StoredProcedure;
+                    var reader = async ? await command.ExecuteReaderAsync() : command.ExecuteReader();
+                    using (var dr = reader)
+                    {
+                        var set = 0;
+                        do
+                        {
+                            var row = 0;
+                            while (async ? await dr.ReadAsync() : dr.Read())
+                            {
+                                var n = dr.GetInt32(0);
+                                var s = dr.GetString(1);
+                                Assert.That(n, Is.EqualTo((set == 0 ? 1 : 100) + row));
+                                Assert.That(s, Is.EqualTo(set == 0 ? "hello" : "goodbye"));
+                                row++;
+                            }
+                            Assert.That(row, Is.EqualTo(8 + set));
+                            set++;
+                        }
+                        while (async ? await dr.NextResultAsync() : dr.NextResult());
+                        Assert.That(set, Is.EqualTo(2));
+                    }
+                    switch (fetchSize)
+                    {
+                        case -1:
+                            Assert.That(reader.Statements.Count, Is.EqualTo(4));
+                            Assert.That(reader.Statements[0].SQL.StartsWith("FETCH ALL FROM"));
+                            break;
+
+                        case null:
+                            Assert.That(reader.Statements.Count, Is.EqualTo(4));
+                            Assert.That(reader.Statements[0].SQL.StartsWith("FETCH 10000 FROM"));
+                            break;
+
+                        case 3:
+                            Assert.That(reader.Statements.Count, Is.EqualTo(9));
+                            Assert.That(reader.Statements[0].SQL.StartsWith("FETCH 3 FROM"));
+                            Assert.That(reader.Statements[3].SQL.StartsWith("CLOSE"));
+                            Assert.That(reader.Statements[8].SQL.StartsWith("CLOSE"));
+                            break;
+                        default:
+                            throw new InvalidOperationException($"Illegal {nameof(fetchSize)}");
+                    }
+                }
+            }
         }
 
         [Test]
-        public void FetchAllExpectedStatementsAndRowsAffected()
+        [TestCase(false, false)]
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        [TestCase(true, true)]
+        public async Task ExpectedFetchStatementsBreakEarly(bool async, bool exception)
         {
-            throw new NotImplementedException();
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { DereferenceCursors = true, DereferenceFetchSize = 3 };
+            using (var conn = OpenConnection(csb))
+            {
+                if (async) await conn.ExecuteNonQueryAsync(defineCTest);
+                else conn.ExecuteNonQuery(defineCTest);
+                using (conn.BeginTransaction())
+                {
+                    var command = new NpgsqlCommand("ctest", conn);
+                    command.CommandType = CommandType.StoredProcedure;
+                    var reader = async ? await command.ExecuteReaderAsync() : command.ExecuteReader();
+                    try
+                    {
+                        using (var dr = reader)
+                        {
+                            var set = 0;
+                            do
+                            {
+                                var row = 0;
+                                while (async ? await dr.ReadAsync() : dr.Read())
+                                {
+                                    row++;
+                                    if (row == (set + 1) * 4)
+                                    {
+                                        if (exception) throw new ApplicationException();
+                                        else break;
+                                    }
+                                }
+                                set++;
+                            }
+                            while (async ? await dr.NextResultAsync() : dr.NextResult());
+                        }
+                    }
+                    catch (ApplicationException)
+                    {
+                        // ignore
+                    }
+                    Assert.That(reader.Statements.Count, Is.EqualTo(exception ? 3 : 7));
+                    Assert.That(reader.Statements[0].SQL.StartsWith("FETCH 3 FROM"));
+                    Assert.That(reader.Statements[2].SQL.StartsWith("CLOSE"));
+                    if (!exception) Assert.That(reader.Statements[6].SQL.StartsWith("CLOSE"));
+                }
+            }
         }
 
         [Test]
-        public void CancelEarlyClosesCleanly()
+        [TestCase(false)]
+        [TestCase(true)]
+        public void CancelEarlyClosesCleanly(bool async)
         {
             // Actual Close is called, RowsAffected is correct, ReaderClosed is called...
             throw new NotImplementedException();
         }
 
         [Test]
-        public void CancelEarlyClosesCleanlyAsync()
+#pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
+        public async Task DereferencingRespondsToCancellationAsync()
+#pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
         {
-            // Actual Close is called, RowsAffected is correct, ReaderClosed is called...
-            throw new NotImplementedException();
+            using (var cts = new CancellationTokenSource())
+            {
+                ///
+                cts.Cancel();
+            }
         }
 
 #if DEBUG
