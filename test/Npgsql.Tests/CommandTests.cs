@@ -618,7 +618,7 @@ $BODY$
                         {
                             Assert.IsTrue(async);
                         }
-                        Assert.AreEqual(1, closeCount); // TO DO!
+                        Assert.AreEqual(1, closeCount);
                         Assert.That(reader.Statements.Count, Is.EqualTo(exception ? 3 : 7));
                         Assert.That(reader.Statements[0].SQL.StartsWith("FETCH 3 FROM"));
                         Assert.That(reader.Statements[2].SQL.StartsWith("CLOSE"));
