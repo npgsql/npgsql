@@ -93,32 +93,43 @@ namespace Npgsql.Tests.Types
         [Test, Description("Roundtrips a simple, one-dimensional array of int? values")]
         public void NullableInts()
         {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", conn))
-            {
-                var expected = new int?[] { 1, 5, null, 9 };
-                var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Array | NpgsqlDbType.Integer);
-                var p2 = new NpgsqlParameter { ParameterName = "p2", Value = expected };
-                var p3 = new NpgsqlParameter<int?[]>("p3", expected);
-                cmd.Parameters.Add(p1);
-                cmd.Parameters.Add(p2);
-                cmd.Parameters.Add(p3);
-                p1.Value = expected;
-                var reader = cmd.ExecuteReader();
-                reader.Read();
+            using var conn = OpenConnection();
+            using var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", conn);
 
-                for (var i = 0; i < cmd.Parameters.Count; i++)
-                {
-                    Assert.That(reader.GetValue(i), Is.EqualTo(expected));
-                    Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(expected));
-                    Assert.That(reader.GetFieldValue<int?[]>(i), Is.EqualTo(expected));
-                    Assert.That(reader.GetFieldValue<List<int?>>(i), Is.EqualTo(expected.ToList()));
-                    Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(Array)));
-                    Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof(Array)));
-                }
+            var expected = new int?[] { 1, 5, null, 9 };
+            var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Array | NpgsqlDbType.Integer);
+            var p2 = new NpgsqlParameter { ParameterName = "p2", Value = expected };
+            var p3 = new NpgsqlParameter<int?[]>("p3", expected);
+            cmd.Parameters.Add(p1);
+            cmd.Parameters.Add(p2);
+            cmd.Parameters.Add(p3);
+            p1.Value = expected;
+            var reader = cmd.ExecuteReader();
+            reader.Read();
+
+            for (var i = 0; i < cmd.Parameters.Count; i++)
+            {
+                Assert.That(reader.GetValue(i), Is.EqualTo(expected));
+                Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(expected));
+                Assert.That(reader.GetFieldValue<int?[]>(i), Is.EqualTo(expected));
+                Assert.That(reader.GetFieldValue<List<int?>>(i), Is.EqualTo(expected.ToList()));
+                Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(Array)));
+                Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof(Array)));
             }
         }
 
+        [Test]
+        public void EmptyArray()
+        {
+            using var conn = OpenConnection();
+            using var cmd = new NpgsqlCommand("SELECT @p", conn);
+
+            cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Array | NpgsqlDbType.Integer) { Value = new int[0] });
+            var reader = cmd.ExecuteReader();
+            reader.Read();
+
+            Assert.That(reader.GetFieldValue<int[]>(0), Is.SameAs(Array.Empty<int>()));
+        }
 
         [Test, Description("Verifies that the array type returned from NpgsqlDataReader.GetValue() is always compatible with null values.")]
         public void GetValueArrayTypeForValueTypesDependsOnActualValue()

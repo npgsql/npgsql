@@ -278,27 +278,27 @@ namespace Npgsql.TypeHandlers
             : base(postgresType, elementHandler) {}
 
         /// <inheritdoc />
-        protected internal override async ValueTask<TAny> Read<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
+        protected internal override async ValueTask<TRequestedArray> Read<TRequestedArray>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
-            if (RequestedType<TAny>.IsArrayOf<BitArray>.Value)
-                return (TAny)(object)await ReadArray<BitArray>(buf, async);
+            if (ArrayTypeInfo<TRequestedArray>.ElementType == typeof(BitArray))
+            {
+                if (ArrayTypeInfo<TRequestedArray>.IsArray)
+                    return (TRequestedArray)(object)await ReadArray<BitArray>(buf, async);
 
-            if (RequestedType<TAny>.IsArrayOf<bool>.Value)
-                return (TAny)(object)await ReadArray<bool>(buf, async, false);
+                if (ArrayTypeInfo<TRequestedArray>.IsList)
+                    return (TRequestedArray)(object)await ReadList<BitArray>(buf, async);
+            }
 
-            if (RequestedType<TAny>.IsNullableArrayOf<bool>.Value)
-                return (TAny)(object)await ReadArray<bool>(buf, async);
+            if (ArrayTypeInfo<TRequestedArray>.ElementType == typeof(bool))
+            {
+                if (ArrayTypeInfo<TRequestedArray>.IsArray)
+                    return (TRequestedArray)(object)await ReadArray<bool>(buf, async);
 
-            if (RequestedType<TAny>.IsListOf<BitArray>.Value)
-                return (TAny)(object)await ReadList<BitArray>(buf, async);
+                if (ArrayTypeInfo<TRequestedArray>.IsList)
+                    return (TRequestedArray)(object)await ReadList<bool>(buf, async);
+            }
 
-            if (RequestedType<TAny>.IsListOf<bool>.Value)
-                return (TAny)(object)await ReadList<bool>(buf, async);
-
-            if (RequestedType<TAny>.IsNullableListOf<bool>.Value)
-                return (TAny)await ReadNullableList<bool>(buf, async);
-
-            return await base.Read<TAny>(buf, len, async, fieldDescription);
+            return await base.Read<TRequestedArray>(buf, len, async, fieldDescription);
         }
 
         internal override object ReadAsObject(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
