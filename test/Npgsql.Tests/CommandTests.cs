@@ -597,6 +597,7 @@ $BODY$
                                     while (async ? await dr.ReadAsync(cts.Token) : dr.Read())
                                     {
                                         row++;
+                                        Assert.AreEqual(0, closeCount); // not fired at the wrong time
                                         if (row == (set + 1) * 4)
                                         {
                                             if (token) cts.Cancel();
@@ -617,7 +618,7 @@ $BODY$
                         {
                             Assert.IsTrue(async);
                         }
-                        ////Assert.AreEqual(1, closeCount); // TO DO!
+                        Assert.AreEqual(1, closeCount); // TO DO!
                         Assert.That(reader.Statements.Count, Is.EqualTo(exception ? 3 : 7));
                         Assert.That(reader.Statements[0].SQL.StartsWith("FETCH 3 FROM"));
                         Assert.That(reader.Statements[2].SQL.StartsWith("CLOSE"));

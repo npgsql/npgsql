@@ -242,11 +242,23 @@ namespace Npgsql
 
         #region Cleanup / Dispose
 
-        internal override async Task Close(bool connectionClosing, bool async) =>
+        internal override async Task Close(bool connectionClosing, bool async)
+        {
             await CloseCursor(async, CancellationToken.None, true);
 
-        internal override Task Cleanup(bool async, bool connectionClosing = false) =>
-            Task.CompletedTask;
+            ReaderClosed?.Invoke(this, EventArgs.Empty);
+        }
+
+        internal override Task Cleanup(bool async, bool connectionClosing = false)
+        {
+            if (ReaderClosed != null)
+            {
+                ReaderClosed(this, EventArgs.Empty);
+                ReaderClosed = null;
+            }
+
+            return Task.CompletedTask;
+        }
 
         #endregion
 
@@ -280,9 +292,6 @@ namespace Npgsql
                     _wrappedReader = fetchCmd.ExecuteReader(CommandBehavior.SingleResult);
 
                 _statements.AddRange(fetchCmd.Statements);
-
-                // if fetch reader is force closed, execute any user closed events on this wrapping reader
-                _wrappedReader.ReaderClosed += (sender, args) => ReaderClosed?.Invoke(sender, args);
             }
 
             _rowsRead = 0;
