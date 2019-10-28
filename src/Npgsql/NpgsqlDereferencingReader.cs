@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Logging;
@@ -102,7 +103,10 @@ namespace Npgsql
         /// <summary>
         /// Initialise <see cref="NpgsqlDereferencingReader"/>
         /// </summary>
-        /// <returns></returns>
+        /// <remarks>
+        /// Can't safely throw within the initialiser of this wrapping reader until after closing original reader, to avoid
+        /// triggering the <see cref="Debug.Assert(bool)"/> in <see cref="NpgsqlConnector.EndUserAction"/>.
+        /// </remarks>
         internal async Task Init(NpgsqlDataReader originalReader, CommandBehavior behavior, bool async, CancellationToken cancellationToken)
         {
             // reset vars
@@ -136,6 +140,10 @@ namespace Npgsql
                     if (earlyQuit) break;
                 }
             }
+
+            // see remarks above
+            if (!Connector.InTransaction)
+                throw new InvalidOperationException("Cursor dereferencing requires a transaction. Please add one, or consider using TABLE return values where possible as these are generally more efficient than cursors.");
 
             // initialize
             if (async)

@@ -467,18 +467,34 @@ $BODY$
             using (var conn = OpenConnection())
             {
                 conn.ExecuteNonQuery(defineTestMultCurFunc);
-                using (conn.BeginTransaction())
+                var command = new NpgsqlCommand("testmultcurfunc", conn);
+                command.CommandType = CommandType.StoredProcedure;
+                using (var dr = command.ExecuteReader())
                 {
-                    var command = new NpgsqlCommand("testmultcurfunc", conn);
-                    command.CommandType = CommandType.StoredProcedure;
-                    using (var dr = command.ExecuteReader())
-                    {
-                        Assert.That(dr.GetDataTypeName(0), Is.EqualTo("refcursor"));
-                        dr.Read(); // first cursor
-                        Assert.That(dr.Read(), Is.True); // second cursor
-                        Assert.That(dr.Read(), Is.False);
-                    }
+                    Assert.That(dr.GetDataTypeName(0), Is.EqualTo("refcursor"));
+                    dr.Read(); // first cursor
+                    Assert.That(dr.Read(), Is.True); // second cursor
+                    Assert.That(dr.Read(), Is.False);
                 }
+            }
+        }
+
+        [Test]
+        [TestCase(false)]
+        [TestCase(true)]
+        public async Task DereferencingRequiresTransaction(bool async)
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { DereferenceCursors = true };
+            using (var conn = OpenConnection(csb))
+            {
+                if (async) await conn.ExecuteNonQueryAsync(defineTestMultCurFunc);
+                else conn.ExecuteNonQuery(defineTestMultCurFunc);
+                var command = new NpgsqlCommand("testmultcurfunc", conn);
+                command.CommandType = CommandType.StoredProcedure;
+                InvalidOperationException ex;
+                if (async) ex = Assert.ThrowsAsync<InvalidOperationException>(async () => await command.ExecuteReaderAsync());
+                else ex = Assert.Throws<InvalidOperationException>(() => command.ExecuteReader());
+                Assert.True(ex.Message.StartsWith("Cursor dereferencing requires a transaction."));
             }
         }
 
