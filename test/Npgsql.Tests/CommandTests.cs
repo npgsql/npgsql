@@ -637,9 +637,16 @@ $BODY$
                         {
                             Assert.IsTrue(async);
                         }
+
                         Assert.AreEqual(1, closeCount);
+
+                        var commands = ((NpgsqlDereferencingReader)reader).Commands;
+                        Assert.That(commands.Count, Is.EqualTo(exception ? 3 : 6));
+                        Assert.That(commands[2].Statements[0].SQL.StartsWith("CLOSE"));
+                        Assert.That(commands[2].Statements.Count, Is.EqualTo(exception ? 1 : 2));
+                        if (!exception) Assert.That(commands[2].Statements[1].SQL.StartsWith("FETCH 3 FROM"));
+
                         Assert.That(reader.Statements.Count, Is.EqualTo(exception ? 3 : 7));
-                        Assert.That(((NpgsqlDereferencingReader)reader).Commands.Count, Is.EqualTo(exception ? 3 : 6));
                         Assert.That(reader.Statements[0].SQL.StartsWith("FETCH 3 FROM"));
                         Assert.That(reader.Statements[2].SQL.StartsWith("CLOSE"));
                         if (!exception) Assert.That(reader.Statements[6].SQL.StartsWith("CLOSE"));
