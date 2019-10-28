@@ -366,11 +366,18 @@ namespace Npgsql
             if (password != null)
                 return password;
 
-            // No password was provided. Attempt to pull the password from the pgpass file.
-            var passFilePath = Settings.Passfile ?? PostgresEnvironment.PassFile ?? PostgresEnvironment.PassFileDefault;
-            if (passFilePath != null && File.Exists(passFilePath))
+            var passFile = Settings.Passfile ?? PostgresEnvironment.PassFile;
+            var passFileExists = true;
+
+            if (passFile is null)
             {
-                var matchingEntry = new PgPassFile(passFilePath)
+                passFile = PostgresEnvironment.PassFileDefault;
+                passFileExists = File.Exists(passFile);
+            }
+
+            if (passFileExists)
+            {
+                var matchingEntry = new PgPassFile(passFile!)
                     .GetFirstMatchingEntry(Host, Port, Settings.Database!, username);
                 if (matchingEntry != null)
                 {
