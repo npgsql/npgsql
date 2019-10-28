@@ -558,16 +558,19 @@ $BODY$
                     switch (fetchSize)
                     {
                         case -1:
+                            Assert.That(((NpgsqlDereferencingReader)reader).Commands.Count, Is.EqualTo(2));
                             Assert.That(reader.Statements.Count, Is.EqualTo(4));
                             Assert.That(reader.Statements[0].SQL.StartsWith("FETCH ALL FROM"));
                             break;
 
                         case null:
+                            Assert.That(((NpgsqlDereferencingReader)reader).Commands.Count, Is.EqualTo(3));
                             Assert.That(reader.Statements.Count, Is.EqualTo(4));
                             Assert.That(reader.Statements[0].SQL.StartsWith("FETCH 10000 FROM"));
                             break;
 
                         case 3:
+                            Assert.That(((NpgsqlDereferencingReader)reader).Commands.Count, Is.EqualTo(8));
                             Assert.That(reader.Statements.Count, Is.EqualTo(9));
                             Assert.That(reader.Statements[0].SQL.StartsWith("FETCH 3 FROM"));
                             Assert.That(reader.Statements[3].SQL.StartsWith("CLOSE"));
@@ -636,6 +639,7 @@ $BODY$
                         }
                         Assert.AreEqual(1, closeCount);
                         Assert.That(reader.Statements.Count, Is.EqualTo(exception ? 3 : 7));
+                        Assert.That(((NpgsqlDereferencingReader)reader).Commands.Count, Is.EqualTo(exception ? 3 : 6));
                         Assert.That(reader.Statements[0].SQL.StartsWith("FETCH 3 FROM"));
                         Assert.That(reader.Statements[2].SQL.StartsWith("CLOSE"));
                         if (!exception) Assert.That(reader.Statements[6].SQL.StartsWith("CLOSE"));

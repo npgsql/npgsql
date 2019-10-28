@@ -68,6 +68,19 @@ namespace Npgsql
         public override IReadOnlyList<NpgsqlStatement> Statements => _statements.AsReadOnly();
 
         /// <summary>
+        /// Holds the list of commands executed by this reader.
+        /// </summary>
+        List<NpgsqlCommand> _commands = default!;
+
+        /// <summary>
+        /// Returns details about each command that this reader will or has executed.
+        /// </summary>
+        /// <remarks>
+        /// Surface the commands not just the statements, to expose the round trips which dereferencing is doing.
+        /// </remarks>
+        public IReadOnlyList<NpgsqlCommand> Commands => _commands.AsReadOnly();
+
+        /// <summary>
         /// Is raised whenever Close() is called.
         /// </summary>
         public override event EventHandler? ReaderClosed;
@@ -115,6 +128,7 @@ namespace Npgsql
             _cursor = null;
 
             _statements = new List<NpgsqlStatement>();
+            _commands = new List<NpgsqlCommand>();
 
             // Behavior is not required outside this Init method; we don't need to check or enforce it again
             // elsewhere since the read logic below is already enforcing it.
@@ -352,6 +366,8 @@ namespace Npgsql
 
             // make this dereferencing reader expose its current command to the connector
             Command = command;
+
+            _commands.Add(command);
 
             return command;
         }
