@@ -55,6 +55,7 @@ jobs:
 
           # Start PostgreSQL
           pgsql/bin/initdb -D pgsql/PGDATA -E UTF8 -U postgres
+          echo "host all all all md5" > pgsql/PGDATA/pg_hba.conf
           pgsql/bin/pg_ctl -D pgsql/PGDATA -l logfile -o '-c max_prepared_transactions=10 -c ssl=true -c ssl_cert_file=../server.crt -c ssl_key_file=../server.key' start
 
           # Configure test account
