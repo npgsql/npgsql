@@ -74,30 +74,57 @@ jobs:
   publish:
     needs: build
 
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v1
 
+      - name: Setup MSBuild
+        uses: warrenbuckley/Setup-MSBuild@v1
+
       - name: Pack NuGet packages (CI versions)
         if: startsWith(github.ref, 'refs/heads/')
         run: dotnet pack --configuration Release --output nupkgs --version-suffix "ci.$(date -u +%Y%m%dT%H%M%S)+sha.${GITHUB_SHA:0:9}"
+        shell: bash
 
       - name: Pack NuGet packages (Release versions)
         if: startsWith(github.ref, 'refs/tags/v')
         run: dotnet pack --configuration Release --output nupkgs
+        shell: bash
 
-      - name: Upload artifacts
+      - name: Create VSIX
+        run: msbuild src/VSIX/VSIX.csproj /p:Configuration=Release /v:Minimal
+        shell: bash
+
+      - name: Create MSI
+        run: msbuild src/MSI/MSI.wixproj /p:Configuration=Release /v:Minimal
+        shell: bash
+
+      - name: Upload artifacts (nupkg)
         uses: actions/upload-artifact@v1
         with:
           name: Npgsql+sha.${{ github.sha }}
           path: nupkgs
 
+      - name: Upload artifacts (vsix)
+        uses: actions/upload-artifact@v1
+        with:
+          name: Npgsql-vsix+sha.${{ github.sha }}
+          path: 'src/VSIX/bin/**/*.vsix'
+
+      - name: Upload artifacts (msi)
+        uses: actions/upload-artifact@v1
+        with:
+          name: Npgsql-msi+sha.${{ github.sha }}
+          path: 'src/MSI/bin/**/*.msi'
+
       - name: Publish packages to MyGet (vnext)
         if: startsWith(github.ref, 'refs/heads/') && startsWith(github.ref, 'refs/heads/hotfix/') == false
         run: dotnet nuget push nupkgs/*.nupkg --api-key ${{ secrets.MYGET_FEED_VNEXT }} --source https://www.myget.org/F/npgsql-unstable/api/v3/index.json
+        shell: bash
 
       - name: Publish packages to MyGet (patch)
         if: startsWith(github.ref, 'refs/heads/hotfix/')
         run: dotnet nuget push nupkgs/*.nupkg --api-key ${{ secrets.MYGET_FEED_PATCH }} --source https://www.myget.org/F/npgsql/api/v3/index.json
+        shell: bash
