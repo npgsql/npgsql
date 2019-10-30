@@ -173,7 +173,7 @@ namespace Npgsql.Tests.Types
                 Assert.That(
                     () => reader.GetFieldValue<int[]>(0),
                     Throws.Exception.TypeOf<InvalidOperationException>()
-                        .With.Message.EqualTo("Can't read a non-nullable array of 'Int32' if the database array field contains null values."));
+                        .With.Message.EqualTo("Cannot read a non-nullable collection of elements because the returned array contains nulls"));
             }
         }
 
@@ -193,7 +193,7 @@ namespace Npgsql.Tests.Types
                 Assert.That(
                     () => reader.GetFieldValue<List<int>>(0),
                     Throws.Exception.TypeOf<InvalidOperationException>()
-                        .With.Message.EqualTo("Can't read a non-nullable List<Int32> if the database array field contains null values. Use List<Int32?> instead."));
+                        .With.Message.EqualTo("Cannot read a non-nullable collection of elements because the returned array contains nulls"));
             }
         }
 

@@ -58,8 +58,6 @@ namespace Npgsql.TypeHandlers
         /// <inheritdoc />
         protected internal override async ValueTask<TRequestedArray> Read<TRequestedArray>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
-            Debug.Assert(ArrayTypeInfo<TRequestedArray>.IsArrayOrList);
-
             if (ArrayTypeInfo<TRequestedArray>.IsArray)
                 return (TRequestedArray)(object)await ArrayTypeInfo<TRequestedArray>.ReadArrayFunc(this, buf, async);
 
@@ -83,8 +81,8 @@ namespace Npgsql.TypeHandlers
             var containsNulls = buf.ReadInt32() == 1;
             buf.ReadUInt32(); // Element OID. Ignored.
 
-            if (!ElementTypeInfo<TRequestedElement>.IsReferenceOrNullable && containsNulls)
-                throw new InvalidOperationException($"Can't read a non-nullable array of '{typeof(TRequestedElement).Name}' if the database array field contains null values.");
+            if (ElementTypeInfo<TRequestedElement>.IsNonNullable && containsNulls)
+                throw new InvalidOperationException(ReadNonNullableCollectionWithNullsExceptionMessage);
 
             if (dimensions == 0)
                 return Array.Empty<TRequestedElement>();
@@ -148,9 +146,8 @@ namespace Npgsql.TypeHandlers
                 throw new NotSupportedException($"Can't read multidimensional array as List<{typeof(TRequestedElement).Name}>");
 
             var containsNulls = buf.ReadInt32() == 1;
-            if (!ElementTypeInfo<TRequestedElement>.IsReferenceOrNullable && containsNulls)
-                throw new InvalidOperationException(
-                    $"Can't read a non-nullable List<{typeof(TRequestedElement).Name}> if the database array field contains null values. Use List<{typeof(TRequestedElement).Name}?> instead.");
+            if (ElementTypeInfo<TRequestedElement>.IsNonNullable && containsNulls)
+                throw new InvalidOperationException(ReadNonNullableCollectionWithNullsExceptionMessage);
 
             buf.ReadUInt32(); // Element OID. Ignored.
 
@@ -164,15 +161,16 @@ namespace Npgsql.TypeHandlers
             return list;
         }
 
+        const string ReadNonNullableCollectionWithNullsExceptionMessage = "Cannot read a non-nullable collection of elements because the returned array contains nulls";
+
         #endregion Read
 
         #region Static generic caching helpers
 
         internal static class ElementTypeInfo<TElement>
         {
-            public static readonly bool IsReferenceOrNullable =
-                !typeof(TElement).IsValueType ||
-                typeof(TElement).IsGenericType && typeof(TElement).GetGenericTypeDefinition() == typeof(Nullable<>);
+            public static readonly bool IsNonNullable =
+                typeof(TElement).IsValueType && Nullable.GetUnderlyingType(typeof(TElement)) is null;
 
             public static readonly List<TElement> EmptyList = new List<TElement>(0);
             // ReSharper disable StaticMemberInGenericType
@@ -181,14 +179,15 @@ namespace Npgsql.TypeHandlers
 
             static ElementTypeInfo()
             {
-                if (IsReferenceOrNullable)
+                if (!IsNonNullable)
                     return;
 
                 var arrayHandlerParam = Expression.Parameter(typeof(ArrayHandler), "arrayHandler");
                 var bufferParam = Expression.Parameter(typeof(NpgsqlReadBuffer), "buf");
                 var asyncParam = Expression.Parameter(typeof(bool), "async");
 
-                ReadNullableArrayFunc = Expression.Lambda<Func<ArrayHandler, NpgsqlReadBuffer, bool, ValueTask<Array>>>(
+                ReadNullableArrayFunc = Expression
+                    .Lambda<Func<ArrayHandler, NpgsqlReadBuffer, bool, ValueTask<Array>>>(
                         Expression.Call(
                             arrayHandlerParam,
                             ReadArrayMethod.MakeGenericMethod(
@@ -234,7 +233,8 @@ namespace Npgsql.TypeHandlers
 
                 if (IsArray)
                 {
-                    ReadArrayFunc = Expression.Lambda<Func<ArrayHandler, NpgsqlReadBuffer, bool, ValueTask<Array>>>(
+                    ReadArrayFunc = Expression
+                        .Lambda<Func<ArrayHandler, NpgsqlReadBuffer, bool, ValueTask<Array>>>(
                             Expression.Call(
                                 arrayHandlerParam,
                                 ReadArrayMethod.MakeGenericMethod(ElementType),
