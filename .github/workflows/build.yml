@@ -2,6 +2,10 @@ name: Build
 
 on: push
 
+env:
+  dotnet_version: '3.0.100'
+  postgis_version: 3
+
 jobs:
   build:
     runs-on: ${{ matrix.os }}
@@ -11,7 +15,6 @@ jobs:
       matrix:
         os: [ ubuntu-latest, windows-latest ]
         pg_major: [ 12, 11, 10 ]
-        postgis_version: [ 3 ]
 
     steps:
       - name: Checkout
@@ -19,7 +22,7 @@ jobs:
 
       - name: Start PostgreSQL ${{ matrix.pg_major }} (Linux)
         if: startsWith(matrix.os, 'ubuntu')
-        run: docker run --detach --name postgresql -p 5432:5432 npgsql/postgres:${{ matrix.pg_major }}-postgis-${{ matrix.postgis_version }}
+        run: docker run --detach --name postgresql -p 5432:5432 npgsql/postgres:${{ matrix.pg_major }}-postgis-${{ env.postgis_version }}
         shell: bash
 
       - name: Start PostgreSQL ${{ matrix.pg_major }} (Windows)
@@ -44,7 +47,7 @@ jobs:
           # Find OSGEO version number
           OSGEO_VERSION=$(\
             curl -Ls https://download.osgeo.org/postgis/windows/pg${{ matrix.pg_major }} |
-            sed -n 's/.*>postgis-bundle-pg${{ matrix.pg_major }}-\(${{ matrix.postgis_version }}.[0-9]*.[0-9]*\)x64.zip<.*/\1/p')
+            sed -n 's/.*>postgis-bundle-pg${{ matrix.pg_major }}-\(${{ env.postgis_version }}.[0-9]*.[0-9]*\)x64.zip<.*/\1/p')
 
           # Install PostGIS
           echo "Installing PostGIS (version: ${OSGEO_VERSION})"
@@ -55,18 +58,20 @@ jobs:
 
           # Start PostgreSQL
           pgsql/bin/initdb -D pgsql/PGDATA -E UTF8 -U postgres
-          echo "host all all all md5" > pgsql/PGDATA/pg_hba.conf
           pgsql/bin/pg_ctl -D pgsql/PGDATA -l logfile -o '-c max_prepared_transactions=10 -c ssl=true -c ssl_cert_file=../server.crt -c ssl_key_file=../server.key' start
 
           # Configure test account
           pgsql/bin/psql -U postgres -c "CREATE ROLE npgsql_tests SUPERUSER LOGIN PASSWORD 'npgsql_tests'"
           pgsql/bin/psql -U postgres -c "CREATE DATABASE npgsql_tests OWNER npgsql_tests"
+
+          # Disable trust authentication
+          echo "host all all all md5" > pgsql/PGDATA/pg_hba.conf
         shell: bash
 
       - name: Setup .NET Core SDK
         uses: actions/setup-dotnet@v1.0.2 # Issues with DOTNET_ROOT
         with:
-          dotnet-version: '3.0.100'
+          dotnet-version: ${{ env.dotnet_version }}
 
       - name: Test
         run: dotnet test Npgsql.sln --configuration Debug
