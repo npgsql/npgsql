@@ -129,16 +129,19 @@ namespace Npgsql.TypeMapping
         {
             var typeInfo = type.GetTypeInfo();
             if (typeInfo.IsArray)
-                return type.GetElementType();
+                return GetUnderlyingType(type.GetElementType()!); // The use of bang operator is justified here as Type.GetElementType() only returns null for the Array base class which can't be mapped in a useful way.
 
             var ilist = typeInfo.ImplementedInterfaces.FirstOrDefault(x => x.GetTypeInfo().IsGenericType && x.GetGenericTypeDefinition() == typeof(IList<>));
             if (ilist != null)
-                return ilist.GetGenericArguments()[0];
+                return GetUnderlyingType(ilist.GetGenericArguments()[0]);
 
             if (typeof(IList).IsAssignableFrom(type))
                 throw new NotSupportedException("Non-generic IList is a supported parameter, but the NpgsqlDbType parameter must be set on the parameter");
 
             return null;
+
+            Type GetUnderlyingType(Type t)
+                => Nullable.GetUnderlyingType(t) ?? t;
         }
 
         #endregion Type handler lookup

@@ -278,21 +278,27 @@ namespace Npgsql.TypeHandlers
             : base(postgresType, elementHandler) {}
 
         /// <inheritdoc />
-        protected internal override async ValueTask<TAny> Read<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
+        protected internal override async ValueTask<TRequestedArray> Read<TRequestedArray>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
-            if (IsArrayOf<TAny, BitArray>.Value)
-                return (TAny)(object)await ReadArray<BitArray>(buf, async);
+            if (ArrayTypeInfo<TRequestedArray>.ElementType == typeof(BitArray))
+            {
+                if (ArrayTypeInfo<TRequestedArray>.IsArray)
+                    return (TRequestedArray)(object)await ReadArray<BitArray>(buf, async);
 
-            if (IsArrayOf<TAny, bool>.Value)
-                return (TAny)(object)await ReadArray<bool>(buf, async);
+                if (ArrayTypeInfo<TRequestedArray>.IsList)
+                    return (TRequestedArray)(object)await ReadList<BitArray>(buf, async);
+            }
 
-            if (typeof(TAny) == typeof(List<BitArray>))
-                return (TAny)(object)await ReadList<BitArray>(buf, async);
+            if (ArrayTypeInfo<TRequestedArray>.ElementType == typeof(bool))
+            {
+                if (ArrayTypeInfo<TRequestedArray>.IsArray)
+                    return (TRequestedArray)(object)await ReadArray<bool>(buf, async);
 
-            if (typeof(TAny) == typeof(List<bool>))
-                return (TAny)(object)await ReadList<bool>(buf, async);
+                if (ArrayTypeInfo<TRequestedArray>.IsList)
+                    return (TRequestedArray)(object)await ReadList<bool>(buf, async);
+            }
 
-            return await base.Read<TAny>(buf, len, async, fieldDescription);
+            return await base.Read<TRequestedArray>(buf, len, async, fieldDescription);
         }
 
         internal override object ReadAsObject(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)

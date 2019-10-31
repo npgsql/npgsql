@@ -80,10 +80,6 @@ namespace Npgsql.TypeHandling
         internal virtual ValueTask<object> ReadPsvAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
             => ReadAsObject(buf, len, async, fieldDescription);
 
-// The following function is used by array and range to read their elements, including their length - which means null
-// handling. Only arrays can actually get nulls here (in ranges infinite bounds are indicated via header flags).
-// We can't mix generics and nullability, hence the warning suppression - but we have an effort to support
-// nullable arrays which may take care of this.
         /// <summary>
         /// Reads a value from the buffer, assuming our read position is at the value's preceding length.
         /// If the length is -1 (null), this method will return the default value.
@@ -92,9 +88,11 @@ namespace Npgsql.TypeHandling
         {
             await buf.Ensure(4, async);
             var len = buf.ReadInt32();
-            if (len == -1)
-                return default!;
-            return await Read<TAny>(buf, len, async, fieldDescription);
+            return len == -1
+               ? default!
+               : NullableHandler<TAny>.Exists
+                   ? await NullableHandler<TAny>.ReadAsync(this, buf, len, async, fieldDescription)
+                   : await Read<TAny>(buf, len, async, fieldDescription);
         }
 
         #endregion

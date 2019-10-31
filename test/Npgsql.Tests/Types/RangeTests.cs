@@ -127,7 +127,7 @@ namespace Npgsql.Tests.Types
                 cmd.CommandText = "select array['[2,10)'::int4range, '[3,9)'::int4range]";
                 cmd.Prepare();
                 obj = cmd.ExecuteScalar();
-                Assert.AreEqual(new NpgsqlRange<int>(3, true, false, 9, false, false), ((NpgsqlRange<int>[])obj)[1]);
+                Assert.AreEqual(new NpgsqlRange<int>(3, true, false, 9, false, false), ((NpgsqlRange<int>?[])obj)[1]!.Value);
             }
         }
 

@@ -404,11 +404,11 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 if (rdr.Read())
                 {
                     if (!rdr.IsDBNull(0))
-                        names = rdr.GetValue(0) as string[];
+                        names = rdr.GetFieldValue<string[]>(0);
                     if (!rdr.IsDBNull(2))
-                        types = rdr.GetValue(2) as uint[];
+                        types = rdr.GetFieldValue<uint[]>(2);
                     if (!rdr.IsDBNull(3))
-                        modes = rdr.GetValue(3) as char[];
+                        modes = rdr.GetFieldValue<char[]>(3);
                     if (types == null)
                     {
                         if (rdr.IsDBNull(1) || rdr.GetFieldValue<uint[]>(1).Length == 0)

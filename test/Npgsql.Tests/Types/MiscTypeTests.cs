@@ -591,8 +591,8 @@ namespace Npgsql.Tests.Types
                 using (var rdr = cmd.ExecuteReader())
                 {
                     rdr.Read();
-                    Assert.AreEqual(typeof(uint[]), rdr.GetValue(0).GetType());
-                    Assert.AreEqual(typeof(uint[]), rdr.GetValue(1).GetType());
+                    Assert.AreEqual(typeof(uint?[]), rdr.GetValue(0).GetType());
+                    Assert.AreEqual(typeof(uint?[]), rdr.GetValue(1).GetType());
                     Assert.IsTrue(rdr.GetFieldValue<uint[]>(0).SequenceEqual(new uint[] { 1, 2, 3 }));
                     Assert.IsTrue(rdr.GetFieldValue<uint[]>(1).SequenceEqual(new uint[] { 4, 5, 6 }));
                 }
