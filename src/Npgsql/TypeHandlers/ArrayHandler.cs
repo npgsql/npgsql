@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
@@ -279,14 +280,21 @@ namespace Npgsql.TypeHandlers
         #region Read
 
         internal override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
-            => typeof(TElement).IsValueType
+            => ReadAsNullable(fieldDescription)
                 ? await ElementTypeInfo<TElement>.ReadNullableArrayFunc(this, buf, async)
                 : await ReadArray<TElement>(buf, async);
 
         internal override object ReadAsObject(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-            => typeof(TElement).IsValueType
+            => ReadAsNullable(fieldDescription)
                 ? ElementTypeInfo<TElement>.ReadNullableArrayFunc(this, buf, false).GetAwaiter().GetResult()
                 : ReadArray<TElement>(buf, false).GetAwaiter().GetResult();
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
+        static bool ReadAsNullable(FieldDescription? fieldDescription)
+            => typeof(TElement).IsValueType &&
+               !(fieldDescription?.PostgresType is PostgresArrayType arrayType &&
+                 arrayType.Element is PostgresDomainType domainType &&
+                 domainType.NotNull);
 
         #endregion
 

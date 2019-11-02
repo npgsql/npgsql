@@ -132,7 +132,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, Description("Verifies that the array type returned from NpgsqlDataReader.GetValue() is always compatible with null values.")]
-        public void GetValueArrayTypeForValueTypesDependsOnActualValue()
+        public void GetValueArrayTypeForValueTypesIsNullable()
         {
             using (var conn = OpenConnection())
             using (var cmd = new NpgsqlCommand(@"
@@ -157,6 +157,25 @@ namespace Npgsql.Tests.Types
             }
         }
 
+        [Test, Description("Verifies that the array type returned from NpgsqlDataReader.GetValue() handles NOT NULL constraints on domains correctly.")]
+        public void GetValueRespectsNotNullConstraintsOnDomainsInArrays()
+        {
+            using var conn = OpenConnection();
+            conn.ExecuteNonQuery("CREATE DOMAIN pg_temp.int_not_null AS integer NOT NULL;");
+            conn.ExecuteNonQuery("CREATE DOMAIN pg_temp.int_null AS integer;");
+            conn.ReloadTypes();
+
+            using var cmd = new NpgsqlCommand(@"SELECT '{1,2,3,4}'::pg_temp.int_not_null[], '{1,2,3,4}'::pg_temp.int_null[];", conn);
+            var reader = cmd.ExecuteReader();
+            reader.Read();
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
+            Assert.That(reader.GetValue(0), Is.TypeOf<int[]>());
+            Assert.That(reader.GetFieldValue<int?[]>(0), Is.TypeOf<int?[]>());
+
+            Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(Array)));
+            Assert.That(reader.GetValue(1), Is.TypeOf<int?[]>());
+            Assert.That(reader.GetFieldValue<int[]>(1), Is.TypeOf<int[]>());
+        }
 
         [Test, Description("Verifies that an attempt to read an Array of value types that contains null values as array of a non-nullable type fails.")]
         public void GetFieldValueNonNullableValueTypeArrayFailsOnArrayContainingNull()
