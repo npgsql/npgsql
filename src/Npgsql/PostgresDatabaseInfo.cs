@@ -113,7 +113,7 @@ namespace Npgsql
         static string GenerateTypesQuery(bool withRange, bool withEnum, bool withEnumSortOrder, bool loadTableComposites, bool withTypeCategory)
             => $@"
 /*** Load all supported types ***/
-SELECT ns.nspname, a.typname, a.oid, a.typbasetype,
+SELECT ns.nspname, a.typname, a.oid, a.typbasetype, a.typnotnull,
 CASE WHEN pg_proc.proname='array_recv' THEN 'a' ELSE a.typtype END AS typtype,
 CASE
   WHEN pg_proc.proname='array_recv' THEN a.typelem
@@ -264,7 +264,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
                             Log.Trace($"Domain type '{internalName}' refers to unknown base type with OID {baseTypeOID}, skipping", conn.ProcessID);
                             continue;
                         }
-                        var domainType = new PostgresDomainType(ns, internalName, oid, basePostgresType);
+                        var domainType = new PostgresDomainType(ns, internalName, oid, basePostgresType, reader.GetString("typnotnull") == "t");
                         byOID[domainType.OID] = domainType;
                         continue;
 
