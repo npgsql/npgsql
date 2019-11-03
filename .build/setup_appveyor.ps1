@@ -1,3 +1,5 @@
+# Make sure we've got Set-AppveyorBuildVariable
+Import-Module 'C:\Program Files\AppVeyor\BuildAgent\Modules\build-worker-api'
 
 ###################
 ## Setup PostgreSQL
