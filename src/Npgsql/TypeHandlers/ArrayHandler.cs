@@ -289,7 +289,7 @@ namespace Npgsql.TypeHandlers
                 ? ElementTypeInfo<TElement>.ReadNullableArrayFunc(this, buf, false).GetAwaiter().GetResult()
                 : ReadArray<TElement>(buf, false).GetAwaiter().GetResult();
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         static bool ReadAsNullable(FieldDescription? fieldDescription)
             => typeof(TElement).IsValueType &&
                !(fieldDescription?.PostgresType is PostgresArrayType arrayType &&
