@@ -495,10 +495,7 @@ namespace Npgsql
         /// Currently the IsolationLevel ReadCommitted and Serializable are supported by the PostgreSQL backend.
         /// There's no support for nested transactions.
         /// </remarks>
-        protected override DbTransaction BeginDbTransaction(IsolationLevel isolationLevel)
-        {
-            return BeginTransaction(isolationLevel);
-        }
+        protected override DbTransaction BeginDbTransaction(IsolationLevel isolationLevel) => BeginTransaction(isolationLevel);
 
         /// <summary>
         /// Begins a database transaction.
@@ -537,6 +534,44 @@ namespace Npgsql
                 return new NpgsqlTransaction(this, level);
             }
         }
+
+#if !NET461 && !NETSTANDARD2_0
+        /// <summary>
+        /// Asynchronously begins a database transaction.
+        /// </summary>
+        /// <param name="cancellationToken">An optional token to cancel the asynchronous operation. The default value is None.</param>
+        /// <returns>A task whose Result property is an object representing the new transaction.</returns>
+        /// <remarks>
+        /// Currently there's no support for nested transactions. Transactions created by this method will have Read Committed isolation level.
+        /// </remarks>
+        public new ValueTask<NpgsqlTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default)
+            => BeginTransactionAsync(IsolationLevel.Unspecified, cancellationToken);
+
+        /// <summary>
+        /// Asynchronously begins a database transaction.
+        /// </summary>
+        /// <param name="level">The <see cref="System.Data.IsolationLevel">isolation level</see> under which the transaction should run.</param>
+        /// <param name="cancellationToken">An optional token to cancel the asynchronous operation. The default value is None.</param>
+        /// <returns>A task whose Result property is an object representing the new transaction.</returns>
+        /// <remarks>
+        /// Currently the IsolationLevel ReadCommitted and Serializable are supported by the PostgreSQL backend.
+        /// There's no support for nested transactions.
+        /// </remarks>
+        public new ValueTask<NpgsqlTransaction> BeginTransactionAsync(IsolationLevel level, CancellationToken cancellationToken = default)
+        {
+            if (cancellationToken.IsCancellationRequested)
+		        return new ValueTask<NpgsqlTransaction>(Task.FromCanceled<NpgsqlTransaction>(cancellationToken));
+
+            try
+            {
+                return new ValueTask<NpgsqlTransaction>(BeginTransaction(level));
+            }
+            catch (Exception exception)
+            {
+                return new ValueTask<NpgsqlTransaction>(Task.FromException<NpgsqlTransaction>(exception));
+            }
+        }
+#endif
 
         /// <summary>
         /// Enlist transaction.
