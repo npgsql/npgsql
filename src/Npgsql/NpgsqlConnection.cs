@@ -1307,6 +1307,8 @@ namespace Npgsql
             var csb = new NpgsqlConnectionStringBuilder(connectionString);
             if (csb.Password == null && Password != null)
                 csb.Password = Password;
+            if (csb.PersistSecurityInfo && !Settings.PersistSecurityInfo)
+                csb.PersistSecurityInfo = false;
             return new NpgsqlConnection(csb.ToString()) {
                 ProvideClientCertificatesCallback = ProvideClientCertificatesCallback,
                 UserCertificateValidationCallback = UserCertificateValidationCallback,
