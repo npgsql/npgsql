@@ -211,17 +211,50 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test, NonParallelizable]
-        [Explicit("Flaky, based on timing")]
-        public void PruneIdleConnectors()
+        [Test]
+        public void ArgumentExceptionOnZeroPruningInterval()
+        {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ApplicationName = nameof(ArgumentExceptionOnZeroPruningInterval),
+                ConnectionPruningInterval = 0
+            }.ToString();
+
+            Assert.Throws<ArgumentException>(() => OpenConnection(connString));
+        }
+
+        [Test]
+        public void ArgumentExceptionOnPruningIntervalLargerThanIdleLifetime()
+        {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ApplicationName = nameof(ArgumentExceptionOnPruningIntervalLargerThanIdleLifetime),
+                ConnectionIdleLifetime = 1,
+                ConnectionPruningInterval = 2
+            }.ToString();
+
+            Assert.Throws<ArgumentException>(() => OpenConnection(connString));
+        }
+
+        [Theory, Explicit("Slow, and flaky under pressure, based on timing")]
+        [TestCase(0, 2, 1, 2)] // min pool size 0, sample twice
+        [TestCase(1, 2, 1, 2)] // min pool size 1, sample twice
+        [TestCase(2, 2, 1, 2)] // min pool size 2, sample twice
+        [TestCase(2, 3, 2, 2)] // test rounding up, should sample twice.
+        [TestCase(2, 1, 1, 1)] // test sample once.
+        [TestCase(2, 20, 3, 7)] // test high samples.
+        public void PruneIdleConnectors(int minPoolSize, int connectionIdleLifeTime, int connectionPruningInterval, int samples)
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 ApplicationName = nameof(PruneIdleConnectors),
-                MinPoolSize = 2,
-                ConnectionIdleLifetime = 2,
-                ConnectionPruningInterval = 1
+                MinPoolSize = minPoolSize,
+                ConnectionIdleLifetime = connectionIdleLifeTime,
+                ConnectionPruningInterval = connectionPruningInterval
             }.ToString();
+
+            var connectionPruningIntervalMs = connectionPruningInterval * 1000;
+
             using (var conn1 = OpenConnection(connString))
             using (var conn2 = OpenConnection(connString))
             using (var conn3 = OpenConnection(connString))
@@ -232,15 +265,24 @@ namespace Npgsql.Tests
                 conn2.Close();
                 AssertPoolState(pool!, 3, 2);
 
-                Thread.Sleep(1500);
+                var paddingMs = 100; // 100ms
+                var sleepInterval = connectionPruningIntervalMs + paddingMs;
+                var total = 0;
 
-                // ConnectionIdleLifetime not yet reached.
-                AssertPoolState(pool, 3, 2);
+                for (var i = 0; i < samples; i++)
+                {
+                    total += sleepInterval;
+                    Thread.Sleep(sleepInterval);
+                    // ConnectionIdleLifetime not yet reached.
+                    AssertPoolState(pool, 3, 2);
+                }
 
-                Thread.Sleep(1500);
+                // final cycle to do pruning.
+                Thread.Sleep(Math.Max(sleepInterval, (connectionIdleLifeTime * 1000) - total));
 
-                // ConnectionIdleLifetime reached, one idle connection should be pruned (MinPoolSize=2)
-                AssertPoolState(pool, 2, 1);
+                // ConnectionIdleLifetime reached, we still have one connection open minimum,
+                // and as a result we have minPoolSize - 1 idle connections.
+                AssertPoolState(pool, Math.Max(1, minPoolSize), Math.Max(0, minPoolSize - 1));
             }
         }
 

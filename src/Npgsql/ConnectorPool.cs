@@ -98,9 +98,9 @@ namespace Npgsql
         readonly TimeSpan _pruningSamplingInterval;
         readonly int _pruningSampleSize;
         readonly int[] _pruningSamples;
-        int _pruningSampleIndex;
-        int _pruningMedianIndex;
+        readonly int _pruningMedianIndex;
         volatile bool _pruningTimerEnabled;
+        int _pruningSampleIndex;
 
         /// <summary>
         /// Maximum number of possible connections in any pool.
@@ -130,12 +130,14 @@ namespace Npgsql
 
             var connectionIdleLifetime = TimeSpan.FromSeconds(Settings.ConnectionIdleLifetime);
             _pruningSamplingInterval = TimeSpan.FromSeconds(Settings.ConnectionPruningInterval);
+            if (Settings.ConnectionPruningInterval == 0)
+                throw new ArgumentException("ConnectionPruningInterval can't be 0.");
             if (connectionIdleLifetime < _pruningSamplingInterval)
                 throw new ArgumentException($"Connection can't have ConnectionIdleLifetime {connectionIdleLifetime} under ConnectionPruningInterval {_pruningSamplingInterval}");
 
-            _pruningMedianIndex = Divide(_pruningSampleSize, 2);
             _pruningTimer = new Timer(PruningTimerCallback, this, Timeout.Infinite, Timeout.Infinite);
-            _pruningSampleSize = Divide(Settings.ConnectionIdleLifetime, Settings.ConnectionPruningInterval);
+            _pruningSampleSize = DivideRoundingUp(Settings.ConnectionIdleLifetime, Settings.ConnectionPruningInterval);
+            _pruningMedianIndex = DivideRoundingUp(_pruningSampleSize, 2) - 1; // - 1 to go from length to index
             _pruningSamples = new int[_pruningSampleSize];
             _pruningTimerEnabled = false;
             _idle = new NpgsqlConnector[_max];
@@ -228,7 +230,6 @@ namespace Npgsql
                     }
                     // Restart the outer loop if we're at max opens.
                     if (prevOpenCount == _max) continue;
-                    openCount = prevOpenCount + 1;
 
                     try
                     {
@@ -257,8 +258,8 @@ namespace Npgsql
                     }
                     Debug.Assert(connector.PoolIndex != int.MaxValue);
 
-                    // Only when we are the ones that incremented openCount past _min Change the timer.
-                    if (openCount == _min)
+                    // Only start pruning if it was this thread that incremented open count past _min.
+                    if (prevOpenCount == _min)
                         EnablePruning();
                     Counters.NumberOfPooledConnections.Increment();
                     Counters.NumberOfActiveConnections.Increment();
@@ -604,7 +605,7 @@ namespace Npgsql
 
         #region Misc
 
-        static int Divide(int value, int divisor) => 1 + (value - 1) / divisor;
+        static int DivideRoundingUp(int value, int divisor) => 1 + (value - 1) / divisor;
 
         [Conditional("DEBUG")]
         void CheckInvariants(PoolState state)
