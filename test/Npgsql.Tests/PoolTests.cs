@@ -7,7 +7,6 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests
 {
-    [NonParallelizable]
     class PoolTests : TestBase
     {
         [Test]
@@ -15,6 +14,7 @@ namespace Npgsql.Tests
         {
             using (var conn = new NpgsqlConnection(new NpgsqlConnectionStringBuilder(ConnectionString)
             {
+                ApplicationName = nameof(MinPoolSizeEqualsMaxPoolSize),
                 MinPoolSize = 30,
                 MaxPoolSize = 30
             }.ToString()))
@@ -28,6 +28,7 @@ namespace Npgsql.Tests
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
+                ApplicationName = nameof(MinPoolSizeLargerThanMaxPoolSize),
                 MinPoolSize = 2,
                 MaxPoolSize = 1
             }.ToString();
@@ -45,7 +46,12 @@ namespace Npgsql.Tests
         [Test]
         public void ReuseConnectorBeforeCreatingNew()
         {
-            using (var conn = new NpgsqlConnection(ConnectionString))
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ApplicationName = nameof(ReuseConnectorBeforeCreatingNew),
+            }.ToString();
+
+            using (var conn = new NpgsqlConnection(connString))
             {
                 conn.Open();
                 var backendId = conn.Connector!.BackendProcessId;
@@ -60,6 +66,7 @@ namespace Npgsql.Tests
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
+                ApplicationName = nameof(GetConnectorFromExhaustedPool),
                 MaxPoolSize = 1,
                 Timeout = 0
             }.ToString();
@@ -82,6 +89,7 @@ namespace Npgsql.Tests
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
+                ApplicationName = nameof(GetConnectorFromExhaustedPoolAsync),
                 MaxPoolSize = 1,
                 Timeout = 0
             }.ToString();
@@ -102,6 +110,7 @@ namespace Npgsql.Tests
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
+                ApplicationName = nameof(TimeoutGettingConnectorFromExhaustedPool),
                 MaxPoolSize = 1,
                 Timeout = 2
             }.ToString();
@@ -123,6 +132,7 @@ namespace Npgsql.Tests
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
+                ApplicationName = nameof(TimeoutGettingConnectorFromExhaustedPoolAsync),
                 MaxPoolSize = 1,
                 Timeout = 2
             }.ToString();
@@ -140,7 +150,7 @@ namespace Npgsql.Tests
                 conn3.Open();
         }
 
-        //[Test, Timeout(10000)]
+        [Test, Timeout(10000)]
         //[Explicit("Timing-based")]
         public async Task CancelOpenAsync()
         {
@@ -155,27 +165,27 @@ namespace Npgsql.Tests
                 await conn1.OpenAsync();
 
                 Assert.True(PoolManager.TryGetValue(connString, out var pool));
-                AssertPoolState(pool, 0, 1, 0);
+                AssertPoolState(pool, 1, 0);
 
                 // Pool is exhausted
                 using (var conn2 = new NpgsqlConnection(connString))
                 {
                     var cts = new CancellationTokenSource(1000);
                     var openTask = conn2.OpenAsync(cts.Token);
-                    AssertPoolState(pool, 0, 1, 1);
-                    Assert.That(async () => await openTask, Throws.Exception.TypeOf<TaskCanceledException>());
+                    AssertPoolState(pool, 1, 0);
+                    Assert.That(async () => await openTask, Throws.Exception.TypeOf<OperationCanceledException>());
                 }
 
                 // The cancelled open attempt should have left a cancelled task completion source
                 // in the pool's wait queue. Close our busy connection and make sure everything work as planned.
-                AssertPoolState(pool, 0, 1, 0);
+                AssertPoolState(pool, 1, 0);
                 using (var conn2 = new NpgsqlConnection(connString))
                 using (new Timer(o => conn1.Close(), null, 1000, Timeout.Infinite))
                 {
                     await conn2.OpenAsync();
-                    AssertPoolState(pool, 0, 1, 0);
+                    AssertPoolState(pool, 1, 0);
                 }
-                AssertPoolState(pool, 1, 0, 0);
+                AssertPoolState(pool, 1, 1);
             }
         }
 
@@ -184,6 +194,7 @@ namespace Npgsql.Tests
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
+                ApplicationName = nameof(ResetOnClose),
                 SearchPath = "public"
             }.ToString();
             using (var conn = new NpgsqlConnection(connString))
@@ -219,17 +230,17 @@ namespace Npgsql.Tests
 
                 conn1.Close();
                 conn2.Close();
-                AssertPoolState(pool!, 2, 1);
+                AssertPoolState(pool!, 3, 2);
 
                 Thread.Sleep(1500);
 
                 // ConnectionIdleLifetime not yet reached.
-                AssertPoolState(pool, 2, 1);
+                AssertPoolState(pool, 3, 2);
 
                 Thread.Sleep(1500);
 
                 // ConnectionIdleLifetime reached, one idle connection should be pruned (MinPoolSize=2)
-                AssertPoolState(pool, 1, 1);
+                AssertPoolState(pool, 2, 1);
             }
         }
 
@@ -247,24 +258,24 @@ namespace Npgsql.Tests
                 conn1.Open();   // Pool is now exhausted
 
                 Assert.True(PoolManager.TryGetValue(connString, out var pool));
-                AssertPoolState(pool, 0, 1, 0);
+                AssertPoolState(pool, 1, 0);
 
                 Func<Task<int>> asyncOpener = async () =>
                 {
                     using (var conn2 = new NpgsqlConnection(connString))
                     {
                         await conn2.OpenAsync();
-                        AssertPoolState(pool, 0, 1, 0);
+                        AssertPoolState(pool, 1, 0);
                         return Thread.CurrentThread.ManagedThreadId;
                     }
                 };
 
                 // Start an async open which will not complete as the pool is exhausted.
                 var asyncOpenerTask = asyncOpener();
-                AssertPoolState(pool, 0, 1, 1);
+                AssertPoolState(pool, 1, 0);
                 conn1.Close();  // Complete the async open by closing conn1
                 var asyncOpenerThreadId = asyncOpenerTask.Result;
-                AssertPoolState(pool, 1, 0, 0);
+                AssertPoolState(pool, 1, 1);
 
                 Assert.That(asyncOpenerThreadId, Is.Not.EqualTo(Thread.CurrentThread.ManagedThreadId));
             }
@@ -280,6 +291,7 @@ namespace Npgsql.Tests
         {
             var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
+                ApplicationName = nameof(ReleaseWaiterOnConnectionFailure),
                 Port = 9999,
                 MaxPoolSize = 1
             }.ToString();
@@ -313,11 +325,16 @@ namespace Npgsql.Tests
         [Test]
         public void ClearPool()
         {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ApplicationName = nameof(ClearPool)
+            }.ToString();
+
             NpgsqlConnection conn;
-            using (conn = OpenConnection()) {}
+            using (conn = OpenConnection(connString)) {}
             // Now have one connection in the pool
-            Assert.True(PoolManager.TryGetValue(ConnectionString, out var pool));
-            AssertPoolState(pool, 1, 0);
+            Assert.True(PoolManager.TryGetValue(connString, out var pool));
+            AssertPoolState(pool, 1, 1);
 
             NpgsqlConnection.ClearPool(conn);
             AssertPoolState(pool, 0, 0);
@@ -326,14 +343,19 @@ namespace Npgsql.Tests
         [Test]
         public void ClearWithBusy()
         {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ApplicationName = nameof(ClearWithBusy)
+            }.ToString();
+
             ConnectorPool? pool;
-            using (var conn = OpenConnection())
+            using (var conn = OpenConnection(connString))
             {
                 NpgsqlConnection.ClearPool(conn);
                 // conn is still busy but should get closed when returned to the pool
 
-                Assert.True(PoolManager.TryGetValue(ConnectionString, out pool));
-                AssertPoolState(pool, 0, 1);
+                Assert.True(PoolManager.TryGetValue(connString, out pool));
+                AssertPoolState(pool, 1, 0);
             }
             AssertPoolState(pool, 0, 0);
         }
@@ -405,15 +427,14 @@ namespace Npgsql.Tests
 
         volatile int StopFlag;
 
-        void AssertPoolState(ConnectorPool? pool, int idle, int busy, int waiting=0)
+        void AssertPoolState(ConnectorPool? pool, int open, int idle)
         {
             if (pool == null)
                 throw new ArgumentNullException(nameof(pool));
 
             var state = pool.State;
+            Assert.That(state.Open, Is.EqualTo(open), $"Open should be {open} but is {state.Open}");
             Assert.That(state.Idle, Is.EqualTo(idle), $"Idle should be {idle} but is {state.Idle}");
-            var stateBusy = state.Open - state.Idle;
-            Assert.That(stateBusy, Is.EqualTo(busy), $"Busy should be {busy} but is {stateBusy}");
         }
     }
 }
