@@ -1351,5 +1351,37 @@ namespace Npgsql.Tests
         }
 
         #endregion
+
+        #region Connection URI
+
+        [Category("ConnectionUri")]
+        [Test]
+        public void ConnectionUri()
+        {
+            var builder1 = new NpgsqlConnection("postgresql://");
+
+            Assert.That(builder1.Host, Is.EqualTo("localhost"));
+            Assert.That(builder1.Port, Is.EqualTo(5432));
+            Assert.That(builder1.Database, Is.Null);
+            Assert.That(builder1.UserName, Is.Null);
+            Assert.That(builder1.Password, Is.Null);
+
+            var builder2 = new NpgsqlConnection("postgresql://other:pass@testhost:4321/otherdb?connect_timeout=10&application_name=myapp&keepalives=0");
+
+            Assert.That(builder2.Host, Is.EqualTo("testhost"));
+            Assert.That(builder2.Port, Is.EqualTo(4321));
+            Assert.That(builder2.UserName, Is.EqualTo("other"));
+            Assert.That(builder2.Password, Is.EqualTo("pass"));
+            Assert.That(builder2.Database, Is.EqualTo("otherdb"));
+            Assert.That(builder2.Settings.ApplicationName, Is.EqualTo("myapp"));
+            Assert.That(builder2.ConnectionTimeout, Is.EqualTo(10));
+            Assert.That(builder2.Settings.SslMode, Is.EqualTo(SslMode.Prefer));
+            Assert.That(builder2.Settings.TcpKeepAlive, Is.EqualTo(false));
+
+            Assert.That(() => new NpgsqlConnection("http://localhost/mydb"),
+                Throws.InstanceOf(typeof(UriFormatException)));
+        }
+
+        #endregion
     }
 }

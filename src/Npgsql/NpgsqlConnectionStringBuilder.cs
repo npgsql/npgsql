@@ -148,7 +148,7 @@ namespace Npgsql
                 try
                 {
                     var convertedValue = p.PropertyType.GetTypeInfo().IsEnum && value is string str
-                        ? Enum.Parse(p.PropertyType, str)
+                        ? Enum.Parse(p.PropertyType, str, true)
                         : Convert.ChangeType(value, p.PropertyType);
                     p.SetValue(this, convertedValue);
                 }
@@ -273,6 +273,7 @@ namespace Npgsql
         [Description("The hostname or IP address of the PostgreSQL server to connect to.")]
         [DisplayName("Host")]
         [NpgsqlConnectionStringProperty("Server")]
+        [NpgsqlConnectionURIParameter("host", "hostaddr")]
         public string? Host
         {
             get => _host;
@@ -292,6 +293,7 @@ namespace Npgsql
         [Description("The TCP port of the PostgreSQL server.")]
         [DisplayName("Port")]
         [NpgsqlConnectionStringProperty]
+        [NpgsqlConnectionURIParameter("port")]
         [DefaultValue(NpgsqlConnection.DefaultPort)]
         public int Port
         {
@@ -315,6 +317,7 @@ namespace Npgsql
         [Description("The PostgreSQL database to connect to.")]
         [DisplayName("Database")]
         [NpgsqlConnectionStringProperty("DB")]
+        [NpgsqlConnectionURIParameter("dbname", "database", "db")]
         public string? Database
         {
             get => _database;
@@ -333,6 +336,7 @@ namespace Npgsql
         [Description("The username to connect with. Not required if using IntegratedSecurity.")]
         [DisplayName("Username")]
         [NpgsqlConnectionStringProperty("User Name", "UserId", "User Id", "UID")]
+        [NpgsqlConnectionURIParameter("user", "username", "user_name", "user_id", "uid")]
         public string? Username
         {
             get => _username;
@@ -352,6 +356,7 @@ namespace Npgsql
         [PasswordPropertyText(true)]
         [DisplayName("Password")]
         [NpgsqlConnectionStringProperty("PSW", "PWD")]
+        [NpgsqlConnectionURIParameter("password", "psw", "pwd")]
         public string? Password
         {
             get => _password;
@@ -370,6 +375,7 @@ namespace Npgsql
         [Description("Path to a PostgreSQL password file (PGPASSFILE), from which the password would be taken.")]
         [DisplayName("Passfile")]
         [NpgsqlConnectionStringProperty]
+        [NpgsqlConnectionURIParameter("passfile")]
         public string? Passfile
         {
             get => _passfile;
@@ -389,6 +395,7 @@ namespace Npgsql
         [Description("The optional application name parameter to be sent to the backend during connection initiation")]
         [DisplayName("Application Name")]
         [NpgsqlConnectionStringProperty]
+        [NpgsqlConnectionURIParameter("application_name", "fallback_application_name")]
         public string? ApplicationName
         {
             get => _applicationName;
@@ -408,6 +415,7 @@ namespace Npgsql
         [DisplayName("Enlist")]
         [DefaultValue(true)]
         [NpgsqlConnectionStringProperty]
+        [NpgsqlConnectionURIParameter("enlist")]
         public bool Enlist
         {
             get => _enlist;
@@ -426,6 +434,7 @@ namespace Npgsql
         [Description("Gets or sets the schema search path.")]
         [DisplayName("Search Path")]
         [NpgsqlConnectionStringProperty]
+        [NpgsqlConnectionURIParameter("search_path")]
         public string? SearchPath
         {
             get => _searchPath;
@@ -444,6 +453,7 @@ namespace Npgsql
         [Description("Gets or sets the client_encoding parameter.")]
         [DisplayName("Client Encoding")]
         [NpgsqlConnectionStringProperty]
+        [NpgsqlConnectionURIParameter("client_encoding")]
         public string? ClientEncoding
         {
             get => _clientEncoding;
@@ -463,6 +473,7 @@ namespace Npgsql
         [DisplayName("Encoding")]
         [DefaultValue("UTF8")]
         [NpgsqlConnectionStringProperty]
+        [NpgsqlConnectionURIParameter("encoding")]
         public string Encoding
         {
             get => _encoding;
@@ -481,6 +492,7 @@ namespace Npgsql
         [Description("Gets or sets the PostgreSQL session timezone, in Olson/IANA database format.")]
         [DisplayName("Timezone")]
         [NpgsqlConnectionStringProperty]
+        [NpgsqlConnectionURIParameter("timezone")]
         public string? Timezone
         {
             get => _timezone;
@@ -503,6 +515,7 @@ namespace Npgsql
         [Description("Controls whether SSL is required, disabled or preferred, depending on server support.")]
         [DisplayName("SSL Mode")]
         [NpgsqlConnectionStringProperty]
+        [NpgsqlConnectionURIParameter("sslmode", "ssl")]
         public SslMode SslMode
         {
             get => _sslMode;
@@ -521,6 +534,7 @@ namespace Npgsql
         [Description("Whether to trust the server certificate without validating it.")]
         [DisplayName("Trust Server Certificate")]
         [NpgsqlConnectionStringProperty]
+        [NpgsqlConnectionURIParameter("trust_server_certificate")]
         public bool TrustServerCertificate
         {
             get => _trustServerCertificate;
@@ -539,6 +553,7 @@ namespace Npgsql
         [Description("Location of a client certificate to be sent to the server.")]
         [DisplayName("Client Certificate")]
         [NpgsqlConnectionStringProperty]
+        [NpgsqlConnectionURIParameter("sslcert", "client_certificate")]
         public string? ClientCertificate
         {
             get => _clientCertificate;
@@ -558,6 +573,7 @@ namespace Npgsql
         [Description("Whether to check the certificate revocation list during authentication.")]
         [DisplayName("Check Certificate Revocation")]
         [NpgsqlConnectionStringProperty]
+        [NpgsqlConnectionURIParameter("check_certificate_revocation")]
         public bool CheckCertificateRevocation
         {
             get => _checkCertificateRevocation;
@@ -576,6 +592,7 @@ namespace Npgsql
         [Description("Whether to use Windows integrated security to log in.")]
         [DisplayName("Integrated Security")]
         [NpgsqlConnectionStringProperty]
+        [NpgsqlConnectionURIParameter("integrated_security")]
         public bool IntegratedSecurity
         {
             get => _integratedSecurity;
@@ -598,6 +615,7 @@ namespace Npgsql
         [Description("The Kerberos service name to be used for authentication.")]
         [DisplayName("Kerberos Service Name")]
         [NpgsqlConnectionStringProperty("Krbsrvname")]
+        [NpgsqlConnectionURIParameter("krbsrvname")]
         [DefaultValue("postgres")]
         public string KerberosServiceName
         {
@@ -617,6 +635,7 @@ namespace Npgsql
         [Description("The Kerberos realm to be used for authentication.")]
         [DisplayName("Include Realm")]
         [NpgsqlConnectionStringProperty]
+        [NpgsqlConnectionURIParameter("include_realm")]
         public bool IncludeRealm
         {
             get => _includeRealm;
@@ -635,6 +654,7 @@ namespace Npgsql
         [Description("Gets or sets a Boolean value that indicates if security-sensitive information, such as the password, is not returned as part of the connection if the connection is open or has ever been in an open state.")]
         [DisplayName("Persist Security Info")]
         [NpgsqlConnectionStringProperty]
+        [NpgsqlConnectionURIParameter("persist_security_info")]
         public bool PersistSecurityInfo
         {
             get => _persistSecurityInfo;
@@ -657,6 +677,7 @@ namespace Npgsql
         [Description("Whether connection pooling should be used.")]
         [DisplayName("Pooling")]
         [NpgsqlConnectionStringProperty]
+        [NpgsqlConnectionURIParameter("pooling")]
         [DefaultValue(true)]
         public bool Pooling
         {
@@ -676,6 +697,7 @@ namespace Npgsql
         [Description("The minimum connection pool size.")]
         [DisplayName("Minimum Pool Size")]
         [NpgsqlConnectionStringProperty]
+        [NpgsqlConnectionURIParameter("minimum_pool_size")]
         [DefaultValue(0)]
         public int MinPoolSize
         {
@@ -698,6 +720,7 @@ namespace Npgsql
         [Description("The maximum connection pool size.")]
         [DisplayName("Maximum Pool Size")]
         [NpgsqlConnectionStringProperty]
+        [NpgsqlConnectionURIParameter("maximum_pool_size")]
         [DefaultValue(100)]
         public int MaxPoolSize
         {
@@ -722,6 +745,7 @@ namespace Npgsql
         [Description("The time to wait before closing unused connections in the pool if the count of all connections exceeds MinPoolSize.")]
         [DisplayName("Connection Idle Lifetime")]
         [NpgsqlConnectionStringProperty]
+        [NpgsqlConnectionURIParameter("connection_idle_lifetime")]
         [DefaultValue(300)]
         public int ConnectionIdleLifetime
         {
@@ -743,6 +767,7 @@ namespace Npgsql
         [Description("How many seconds the pool waits before attempting to prune idle connections that are beyond idle lifetime.")]
         [DisplayName("Connection Pruning Interval")]
         [NpgsqlConnectionStringProperty]
+        [NpgsqlConnectionURIParameter("connection_pruning_interval")]
         [DefaultValue(10)]
         public int ConnectionPruningInterval
         {
@@ -767,6 +792,7 @@ namespace Npgsql
         [Description("The time to wait (in seconds) while trying to establish a connection before terminating the attempt and generating an error.")]
         [DisplayName("Timeout")]
         [NpgsqlConnectionStringProperty]
+        [NpgsqlConnectionURIParameter("connect_timeout")]
         [DefaultValue(DefaultTimeout)]
         public int Timeout
         {
@@ -793,6 +819,7 @@ namespace Npgsql
         [DisplayName("Command Timeout")]
         [NpgsqlConnectionStringProperty]
         [DefaultValue(NpgsqlCommand.DefaultTimeout)]
+        [NpgsqlConnectionURIParameter("command_timeout")]
         public int CommandTimeout
         {
             get => _commandTimeout;
@@ -814,6 +841,7 @@ namespace Npgsql
         [Description("The time to wait (in seconds) while trying to execute a an internal command before terminating the attempt and generating an error. -1 uses CommandTimeout, 0 means no timeout.")]
         [DisplayName("Internal Command Timeout")]
         [NpgsqlConnectionStringProperty]
+        [NpgsqlConnectionURIParameter("internal_command_timeout")]
         [DefaultValue(-1)]
         public int InternalCommandTimeout
         {
@@ -845,6 +873,7 @@ namespace Npgsql
         [Description("The database template to specify when creating a database in Entity Framework. If not specified, PostgreSQL defaults to \"template1\".")]
         [DisplayName("EF Template Database")]
         [NpgsqlConnectionStringProperty]
+        [NpgsqlConnectionURIParameter("ef_template_database")]
         public string? EntityTemplateDatabase
         {
             get => _entityTemplateDatabase;
@@ -865,6 +894,7 @@ namespace Npgsql
         [Description("The database admin to specify when creating and dropping a database in Entity Framework. If not specified, defaults to \"template1\".")]
         [DisplayName("EF Admin Database")]
         [NpgsqlConnectionStringProperty]
+        [NpgsqlConnectionURIParameter("ef_admin_database")]
         public string? EntityAdminDatabase
         {
             get => _entityAdminDatabase;
@@ -888,6 +918,7 @@ namespace Npgsql
         [Description("The number of seconds of connection inactivity before Npgsql sends a keepalive query.")]
         [DisplayName("Keepalive")]
         [NpgsqlConnectionStringProperty]
+        [NpgsqlConnectionURIParameter("query_keepalives_time")]
         public int KeepAlive
         {
             get => _keepAlive;
@@ -909,6 +940,7 @@ namespace Npgsql
         [Description("Whether to use TCP keepalive with system defaults if overrides isn't specified.")]
         [DisplayName("TCP Keepalive")]
         [NpgsqlConnectionStringProperty]
+        [NpgsqlConnectionURIParameter("keepalives")]
         public bool TcpKeepAlive
         {
             get => _tcpKeepAlive;
@@ -921,7 +953,7 @@ namespace Npgsql
         bool _tcpKeepAlive;
 
         /// <summary>
-        /// The number of seconds of connection inactivity before a TCP keepalive query is sent.
+        /// The number of milliseconds of connection inactivity before a TCP keepalive query is sent.
         /// Use of this option is discouraged, use <see cref="KeepAlive"/> instead if possible.
         /// Set to 0 (the default) to disable. Supported only on Windows.
         /// </summary>
@@ -929,6 +961,7 @@ namespace Npgsql
         [Description("The number of milliseconds of connection inactivity before a TCP keepalive query is sent.")]
         [DisplayName("TCP Keepalive Time")]
         [NpgsqlConnectionStringProperty]
+        [NpgsqlConnectionURIParameter("keepalives_time")]
         public int TcpKeepAliveTime
         {
             get => _tcpKeepAliveTime;
@@ -952,6 +985,7 @@ namespace Npgsql
         [Description("The interval, in milliseconds, between when successive keep-alive packets are sent if no acknowledgement is received.")]
         [DisplayName("TCP Keepalive Interval")]
         [NpgsqlConnectionStringProperty]
+        [NpgsqlConnectionURIParameter("keepalives_interval")]
         public int TcpKeepAliveInterval
         {
             get => _tcpKeepAliveInterval;
@@ -973,6 +1007,7 @@ namespace Npgsql
         [Description("Determines the size of the internal buffer Npgsql uses when reading. Increasing may improve performance if transferring large values from the database.")]
         [DisplayName("Read Buffer Size")]
         [NpgsqlConnectionStringProperty]
+        [NpgsqlConnectionURIParameter("read_buffer_size")]
         [DefaultValue(NpgsqlReadBuffer.DefaultSize)]
         public int ReadBufferSize
         {
@@ -992,6 +1027,7 @@ namespace Npgsql
         [Description("Determines the size of the internal buffer Npgsql uses when writing. Increasing may improve performance if transferring large values to the database.")]
         [DisplayName("Write Buffer Size")]
         [NpgsqlConnectionStringProperty]
+        [NpgsqlConnectionURIParameter("write_buffer_size")]
         [DefaultValue(NpgsqlWriteBuffer.DefaultSize)]
         public int WriteBufferSize
         {
@@ -1011,6 +1047,7 @@ namespace Npgsql
         [Description("Determines the size of socket receive buffer.")]
         [DisplayName("Socket Receive Buffer Size")]
         [NpgsqlConnectionStringProperty]
+        [NpgsqlConnectionURIParameter("socket_receive_buffer_size")]
         public int SocketReceiveBufferSize
         {
             get => _socketReceiveBufferSize;
@@ -1029,6 +1066,7 @@ namespace Npgsql
         [Description("Determines the size of socket send buffer.")]
         [DisplayName("Socket Send Buffer Size")]
         [NpgsqlConnectionStringProperty]
+        [NpgsqlConnectionURIParameter("socket_send_buffer_size")]
         public int SocketSendBufferSize
         {
             get => _socketSendBufferSize;
@@ -1049,6 +1087,7 @@ namespace Npgsql
         [Description("The maximum number SQL statements that can be automatically prepared at any given point. Beyond this number the least-recently-used statement will be recycled. Zero (the default) disables automatic preparation.")]
         [DisplayName("Max Auto Prepare")]
         [NpgsqlConnectionStringProperty]
+        [NpgsqlConnectionURIParameter("max_auto_prepare")]
         public int MaxAutoPrepare
         {
             get => _maxAutoPrepare;
@@ -1071,6 +1110,7 @@ namespace Npgsql
         [Description("The minimum number of usages an SQL statement is used before it's automatically prepared. Defaults to 5.")]
         [DisplayName("Auto Prepare Min Usages")]
         [NpgsqlConnectionStringProperty]
+        [NpgsqlConnectionURIParameter("auto_prepare_min_usages")]
         [DefaultValue(5)]
         public int AutoPrepareMinUsages
         {
@@ -1093,6 +1133,7 @@ namespace Npgsql
         [Description("Writes connection performance information to performance counters.")]
         [DisplayName("Use Perf Counters")]
         [NpgsqlConnectionStringProperty]
+        [NpgsqlConnectionURIParameter("use_perf_counters")]
         public bool UsePerfCounters
         {
             get => _usePerfCounters;
@@ -1112,6 +1153,7 @@ namespace Npgsql
         [Description("If set to true, a pool connection's state won't be reset when it is closed (improves performance). Do not specify this unless you know what you're doing.")]
         [DisplayName("No Reset On Close")]
         [NpgsqlConnectionStringProperty]
+        [NpgsqlConnectionURIParameter("no_reset_on_close")]
         public bool NoResetOnClose
         {
             get => _noResetOnClose;
@@ -1130,6 +1172,7 @@ namespace Npgsql
         [Description("Load table composite type definitions, and not just free-standing composite types.")]
         [DisplayName("Load Table Composites")]
         [NpgsqlConnectionStringProperty]
+        [NpgsqlConnectionURIParameter("load_table_composites")]
         public bool LoadTableComposites
         {
             get => _loadTableComposites;
@@ -1152,6 +1195,7 @@ namespace Npgsql
         [Description("A compatibility mode for special PostgreSQL server types.")]
         [DisplayName("Server Compatibility Mode")]
         [NpgsqlConnectionStringProperty]
+        [NpgsqlConnectionURIParameter("server_compatibility_mode")]
         public ServerCompatibilityMode ServerCompatibilityMode
         {
             get => _serverCompatibilityMode;
@@ -1170,6 +1214,7 @@ namespace Npgsql
         [Description("Makes MaxValue and MinValue timestamps and dates readable as infinity and negative infinity.")]
         [DisplayName("Convert Infinity DateTime")]
         [NpgsqlConnectionStringProperty]
+        [NpgsqlConnectionURIParameter("convert_infinity_datetime")]
         public bool ConvertInfinityDateTime
         {
             get => _convertInfinityDateTime;
@@ -1390,6 +1435,27 @@ namespace Npgsql
         public NpgsqlConnectionStringPropertyAttribute(params string[] synonyms)
         {
             Synonyms = synonyms;
+        }
+    }
+
+    /// <summary>
+    /// Marks on <see cref="NpgsqlConnectionStringBuilder"/> which participate in the connection
+    /// URI. Optionally holds a set of synonyms for the property.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Property)]
+    public class NpgsqlConnectionURIParameterAttribute : Attribute
+    {
+        /// <summary>
+        /// Holds a list of synonyms for the property.
+        /// </summary>
+        public string[] Keywords { get; }
+
+        /// <summary>
+        /// Creates a <see cref="NpgsqlConnectionStringPropertyAttribute"/>.
+        /// </summary>
+        public NpgsqlConnectionURIParameterAttribute(string keyword, params string[] aliases)
+        {
+            Keywords = new[] { keyword }.Concat(aliases).ToArray();
         }
     }
 

@@ -9,6 +9,7 @@ using System.Net.Security;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography.X509Certificates;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Transactions;
@@ -106,9 +107,9 @@ namespace Npgsql
             => GC.SuppressFinalize(this);
 
         /// <summary>
-        /// Initializes a new instance of <see cref="NpgsqlConnection"/> with the given connection string.
+        /// Initializes a new instance of <see cref="NpgsqlConnection"/> with the given connection string or connection URI.
         /// </summary>
-        /// <param name="connectionString">The connection used to open the PostgreSQL database.</param>
+        /// <param name="connectionString">The connection string or connection URI used to open the PostgreSQL database.</param>
         public NpgsqlConnection(string connectionString) : this()
             => ConnectionString = connectionString;
 
@@ -141,7 +142,15 @@ namespace Npgsql
             }
 
             // Connection string hasn't been seen before. Parse it.
-            Settings = new NpgsqlConnectionStringBuilder(_connectionString);
+            if (Regex.IsMatch(_connectionString, @"^\w+://"))
+            {
+                var uri = new NpgsqlConnectionUri(_connectionString);
+                Settings = uri.ToSettings();
+            }
+            else
+            {
+                Settings = new NpgsqlConnectionStringBuilder(_connectionString);
+            }
 
             if (!_countersInitialized)
             {
