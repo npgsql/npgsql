@@ -3,7 +3,6 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests
 {
-    [Category("ConnectionUri")]
     public class ConnectionUriTests : TestBase
     {
         [Test]
