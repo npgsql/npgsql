@@ -74,16 +74,18 @@ namespace Npgsql
                 idle = copy.Idle;
                 busy = copy.Open - copy.Idle;
             }
-
-            public override string ToString()
-            {
-                var (open, idle, busy) = this;
-                return $"[{open} total, {idle} idle, {busy} busy]";
-            }
         }
 
         // Mutable struct, do not make this readonly.
-        internal PoolState State;
+        PoolState State;
+
+        internal (int Open, int Idle, int Busy, int Waiters) Statistics {
+            get
+            {
+                var (open, idle, busy) = State;
+                return (open, idle, busy, _waiting.Count);
+            }
+        }
 
         /// <summary>
         /// Incremented every time this pool is cleared via <see cref="NpgsqlConnection.ClearPool"/> or
@@ -119,30 +121,31 @@ namespace Npgsql
             if (settings.MaxPoolSize < settings.MinPoolSize)
                 throw new ArgumentException($"Connection can't have MaxPoolSize {settings.MaxPoolSize} under MinPoolSize {settings.MinPoolSize}");
 
-            Settings = settings;
+            if (settings.ConnectionPruningInterval == 0)
+                throw new ArgumentException("ConnectionPruningInterval can't be 0.");
+            var connectionIdleLifetime = TimeSpan.FromSeconds(settings.ConnectionIdleLifetime);
+            var pruningSamplingInterval = TimeSpan.FromSeconds(settings.ConnectionPruningInterval);
+            if (connectionIdleLifetime < pruningSamplingInterval)
+                throw new ArgumentException($"Connection can't have ConnectionIdleLifetime {connectionIdleLifetime} under ConnectionPruningInterval {_pruningSamplingInterval}");
+
+            _pruningTimer = new Timer(PruningTimerCallback, this, Timeout.Infinite, Timeout.Infinite);
+            _pruningSampleSize = DivideRoundingUp(connectionIdleLifetime.Seconds, pruningSamplingInterval.Seconds);
+            _pruningMedianIndex = DivideRoundingUp(_pruningSampleSize, 2) - 1; // - 1 to go from length to index
+            _pruningSamplingInterval = pruningSamplingInterval;
+            _pruningSamples = new int[_pruningSampleSize];
+            _pruningTimerEnabled = false;
 
             _max = settings.MaxPoolSize;
             _min = settings.MinPoolSize;
+            _idle = new NpgsqlConnector[_max];
+            _open = new NpgsqlConnector[_max];
+            _waiting = new ConcurrentQueue<(TaskCompletionSource<NpgsqlConnector?> TaskCompletionSource, bool IsAsync)>();
 
             UserFacingConnectionString = settings.PersistSecurityInfo
                 ? connString
                 : settings.ToStringWithoutPassword();
 
-            var connectionIdleLifetime = TimeSpan.FromSeconds(Settings.ConnectionIdleLifetime);
-            _pruningSamplingInterval = TimeSpan.FromSeconds(Settings.ConnectionPruningInterval);
-            if (Settings.ConnectionPruningInterval == 0)
-                throw new ArgumentException("ConnectionPruningInterval can't be 0.");
-            if (connectionIdleLifetime < _pruningSamplingInterval)
-                throw new ArgumentException($"Connection can't have ConnectionIdleLifetime {connectionIdleLifetime} under ConnectionPruningInterval {_pruningSamplingInterval}");
-
-            _pruningTimer = new Timer(PruningTimerCallback, this, Timeout.Infinite, Timeout.Infinite);
-            _pruningSampleSize = DivideRoundingUp(Settings.ConnectionIdleLifetime, Settings.ConnectionPruningInterval);
-            _pruningMedianIndex = DivideRoundingUp(_pruningSampleSize, 2) - 1; // - 1 to go from length to index
-            _pruningSamples = new int[_pruningSampleSize];
-            _pruningTimerEnabled = false;
-            _idle = new NpgsqlConnector[_max];
-            _open = new NpgsqlConnector[_max];
-            _waiting = new ConcurrentQueue<(TaskCompletionSource<NpgsqlConnector?> TaskCompletionSource, bool IsAsync)>();
+            Settings = settings;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -622,7 +625,11 @@ namespace Npgsql
 
         public void Dispose() => _pruningTimer?.Dispose();
 
-        public override string ToString() => State.ToString();
+        public override string ToString()
+        {
+            var (open, idle, busy, waiters) = Statistics;
+            return $"[{open} total, {idle} idle, {busy} busy, {waiters} waiters]";
+        }
 
         #endregion Misc
     }

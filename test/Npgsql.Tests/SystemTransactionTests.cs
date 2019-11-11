@@ -150,7 +150,7 @@ namespace Npgsql.Tests
             }
             AssertNumberOfRows(1);
             Assert.True(PoolManager.TryGetValue(connString, out var pool));
-            Assert.That(pool!.State.Idle, Is.EqualTo(1));
+            Assert.That(pool!.Statistics.Idle, Is.EqualTo(1));
 
             using (var conn = new NpgsqlConnection(connString))
                 NpgsqlConnection.ClearPool(conn);
