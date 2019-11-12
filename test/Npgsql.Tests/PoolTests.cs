@@ -8,6 +8,7 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests
 {
+    [NonParallelizable]
     class PoolTests : TestBase
     {
         [Test]
