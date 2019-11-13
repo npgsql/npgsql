@@ -83,7 +83,7 @@ namespace Npgsql
                 var pool = kv.Pool;
                 if (pool == null)
                     return sum;
-                sum += pool.State.Idle;
+                sum += pool.Statistics.Idle;
             }
             return sum;
         }
@@ -98,7 +98,7 @@ namespace Npgsql
                 var pool = kv.Pool;
                 if (pool == null)
                     return sum;
-                var (_, _, busy) = pool.State;
+                var (_, _, busy, _) = pool.Statistics;
                 sum += busy;
             }
             return sum;
