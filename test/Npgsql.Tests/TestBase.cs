@@ -19,11 +19,17 @@ namespace Npgsql.Tests
 
         #region Utilities for use by tests
 
-        protected virtual NpgsqlConnection OpenConnection(string? connectionString = null)
+        protected virtual NpgsqlConnection CreateConnection(string? connectionString = null)
         {
             if (connectionString == null)
                 connectionString = ConnectionString;
             var conn = new NpgsqlConnection(connectionString);
+            return conn;
+        }
+
+        protected virtual NpgsqlConnection OpenConnection(string? connectionString = null)
+        {
+            var conn = CreateConnection(connectionString);
             try
             {
                 conn.Open();
