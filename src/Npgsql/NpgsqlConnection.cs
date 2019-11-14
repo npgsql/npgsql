@@ -495,10 +495,7 @@ namespace Npgsql
         /// Currently the IsolationLevel ReadCommitted and Serializable are supported by the PostgreSQL backend.
         /// There's no support for nested transactions.
         /// </remarks>
-        protected override DbTransaction BeginDbTransaction(IsolationLevel isolationLevel)
-        {
-            return BeginTransaction(isolationLevel);
-        }
+        protected override DbTransaction BeginDbTransaction(IsolationLevel isolationLevel) => BeginTransaction(isolationLevel);
 
         /// <summary>
         /// Begins a database transaction.
@@ -537,6 +534,44 @@ namespace Npgsql
                 return new NpgsqlTransaction(this, level);
             }
         }
+
+#if !NET461 && !NETSTANDARD2_0
+        /// <summary>
+        /// Asynchronously begins a database transaction.
+        /// </summary>
+        /// <param name="cancellationToken">An optional token to cancel the asynchronous operation. The default value is None.</param>
+        /// <returns>A task whose Result property is an object representing the new transaction.</returns>
+        /// <remarks>
+        /// Currently there's no support for nested transactions. Transactions created by this method will have Read Committed isolation level.
+        /// </remarks>
+        public new ValueTask<NpgsqlTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default)
+            => BeginTransactionAsync(IsolationLevel.Unspecified, cancellationToken);
+
+        /// <summary>
+        /// Asynchronously begins a database transaction.
+        /// </summary>
+        /// <param name="level">The <see cref="System.Data.IsolationLevel">isolation level</see> under which the transaction should run.</param>
+        /// <param name="cancellationToken">An optional token to cancel the asynchronous operation. The default value is None.</param>
+        /// <returns>A task whose Result property is an object representing the new transaction.</returns>
+        /// <remarks>
+        /// Currently the IsolationLevel ReadCommitted and Serializable are supported by the PostgreSQL backend.
+        /// There's no support for nested transactions.
+        /// </remarks>
+        public new ValueTask<NpgsqlTransaction> BeginTransactionAsync(IsolationLevel level, CancellationToken cancellationToken = default)
+        {
+            if (cancellationToken.IsCancellationRequested)
+		        return new ValueTask<NpgsqlTransaction>(Task.FromCanceled<NpgsqlTransaction>(cancellationToken));
+
+            try
+            {
+                return new ValueTask<NpgsqlTransaction>(BeginTransaction(level));
+            }
+            catch (Exception exception)
+            {
+                return new ValueTask<NpgsqlTransaction>(Task.FromException<NpgsqlTransaction>(exception));
+            }
+        }
+#endif
 
         /// <summary>
         /// Enlist transaction.
@@ -604,60 +639,56 @@ namespace Npgsql
 
         internal Task Close(bool wasBroken, bool async)
         {
-            if (Connector == null)
+            // Even though NpgsqlConnection isn't thread safe we'll make sure this part is.
+            // Because we really don't want double returns to the pool.
+            var connector = Interlocked.Exchange(ref Connector, null);
+            if (connector == null)
                 return Task.CompletedTask;
-            var connectorId = Connector.Id;
-            Log.Trace("Closing connection...", connectorId);
+
             _wasBroken = wasBroken;
 
-            if (Connector.HasOngoingOperation)
-                return CloseOngoingOperationAndFinish();
+            Log.Trace("Closing connection...", connector.Id);
 
-            FinishClose();
+            if (connector.HasOngoingOperation)
+                return CloseOngoingOperationAndFinish(this, connector, async);
+
+            FinishClose(this, connector);
             return Task.CompletedTask;
 
-            async Task CloseOngoingOperationAndFinish()
+            static async Task CloseOngoingOperationAndFinish(NpgsqlConnection connection, NpgsqlConnector connector, bool async)
             {
-                await Connector!.CloseOngoingOperations(async);
+                // This method could re-enter connection.Close() due to an underlying connection failure.
+                await connector.CloseOngoingOperations(async);
 
-                // The connector has closed us during CloseOngoingOperations due to an underlying failure.
-                if (Connector == null)
-                    return;
-
-                FinishClose();
+                FinishClose(connection, connector);
             }
 
-            void FinishClose()
+            static void FinishClose(NpgsqlConnection connection, NpgsqlConnector connector)
             {
-                var connector = Connector!;
-                if (Settings.Pooling)
+                // A System.Transactions transaction is still in progress, we need to wait for it to complete.
+                if (connection.EnlistedTransaction != null)
                 {
-                    if (EnlistedTransaction == null)
-                        _pool!.Release(connector);
-                    else
-                    {
-                        // A System.Transactions transaction is still in progress, we need to wait for it to complete.
-                        // Close the connection and disconnect it from the resource manager but leave the connector
-                        // in a enlisted pending list in the pool.
-                        _pool!.AddPendingEnlistedConnector(connector, EnlistedTransaction);
-                        connector.Connection = null;
-                        EnlistedTransaction = null;
-                    }
-                }
-                else // Non-pooled connection
-                {
-                    if (EnlistedTransaction == null)
-                        connector.Close();
+                    // Close the connection and disconnect it from the resource manager but leave the connector
+                    // in a enlisted pending list in the pool.
+                    if (connection.Settings.Pooling)
+                        connection._pool!.AddPendingEnlistedConnector(connector, connection.EnlistedTransaction);
+
                     // If a non-pooled connection is being closed but is enlisted in an ongoing
                     // TransactionScope, simply detach the connector from the connection and leave
                     // it open. It will be closed when the TransactionScope is disposed.
                     connector.Connection = null;
-                    EnlistedTransaction = null;
+                    connection.EnlistedTransaction = null;
+                }
+                else
+                {
+                    if (connection.Settings.Pooling)
+                        connection._pool!.Release(connector);
+                    else
+                        connector.Close();
                 }
 
-                Log.Debug("Connection closed", connectorId);
-                Connector = null;
-                OnStateChange(OpenToClosedEventArgs);
+                Log.Debug("Connection closed", connector.Id);
+                connection.OnStateChange(OpenToClosedEventArgs);
             }
         }
 
@@ -675,18 +706,20 @@ namespace Npgsql
             _disposed = true;
         }
 
-#if !NET461 && !NETSTANDARD2_0
         /// <summary>
         /// Releases all resources used by the <see cref="NpgsqlConnection">NpgsqlConnection</see>.
         /// </summary>
-        public override async ValueTask DisposeAsync()
+#if !NET461 && !NETSTANDARD2_0
+        public async override ValueTask DisposeAsync()
+#else
+        public async ValueTask DisposeAsync()
+#endif
         {
             if (_disposed)
                 return;
             await CloseAsync();
             _disposed = true;
         }
-#endif
 
         #endregion
 
@@ -1316,6 +1349,8 @@ namespace Npgsql
             var csb = new NpgsqlConnectionStringBuilder(connectionString);
             if (csb.Password == null && Password != null)
                 csb.Password = Password;
+            if (csb.PersistSecurityInfo && !Settings.PersistSecurityInfo)
+                csb.PersistSecurityInfo = false;
             return new NpgsqlConnection(csb.ToString()) {
                 ProvideClientCertificatesCallback = ProvideClientCertificatesCallback,
                 UserCertificateValidationCallback = UserCertificateValidationCallback,

@@ -13,5 +13,9 @@ namespace Npgsql
         [DoesNotReturn]
         internal static void ThrowInvalidOperationException_NoPropertySetter(Type type, MemberInfo property) =>
             throw new InvalidOperationException($"Composite type {type} cannot be read because the {property} property has no setter.");
+
+        [DoesNotReturn]
+        internal static void ThrowInvalidOperationException_BinaryImportParametersMismatch(int columnCount, int valueCount) =>
+            throw new InvalidOperationException($"The binary import operation was started with {columnCount} column(s), but {valueCount} value(s) were provided.");
     }
 }

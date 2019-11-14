@@ -330,11 +330,14 @@ namespace Npgsql
             _isDisposed = true;
         }
 
-#if !NET461 && !NETSTANDARD2_0
         /// <summary>
         /// Disposes the transaction, rolling it back if it is still pending.
         /// </summary>
+#if !NET461 && !NETSTANDARD2_0
         public override async ValueTask DisposeAsync()
+#else
+        public async ValueTask DisposeAsync()
+#endif
         {
             if (_isDisposed)
                 return;
@@ -350,7 +353,6 @@ namespace Npgsql
 
             _isDisposed = true;
         }
-#endif
 
 #pragma warning disable CS8625
         internal void Clear()

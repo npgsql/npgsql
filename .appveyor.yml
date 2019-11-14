@@ -1,5 +1,5 @@
 image: Visual Studio 2019 Preview
-version: 4.1.1-{build}
+version: 4.1.2-{build}
 environment:
   global:
     DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
@@ -52,6 +52,8 @@ test:
 artifacts:
   - path: 'src\**\*.nupkg'
     name: Nuget
+  - path: 'src\**\*.snupkg'
+    name: Nuget symbol packages
   - path: 'src\VSIX\bin\**\*.vsix'
     name: Visual Studio Extension
   - path: 'src\MSI\bin\**\*.msi'

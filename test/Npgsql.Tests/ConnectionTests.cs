@@ -949,6 +949,33 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2725")]
+        public void CloneWithAndPersistSecurityInfo()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                PersistSecurityInfo = true,
+                Pooling = false
+            };
+
+            var connStringWithPersist = csb.ToString();
+            using var connWithPersist = new NpgsqlConnection(connStringWithPersist);
+
+            // First un-persist, should work
+            csb.PersistSecurityInfo = false;
+            var connStringWithoutPersist = csb.ToString();
+            using var clonedWithoutPersist = connWithPersist.CloneWith(connStringWithoutPersist);
+            clonedWithoutPersist.Open();
+
+            Assert.That(clonedWithoutPersist.ConnectionString, Does.Not.Contain("Password="));
+
+            // Then attempt to re-persist, should not work
+            using var clonedConn = clonedWithoutPersist.CloneWith(connStringWithPersist);
+            clonedConn.Open();
+
+            Assert.That(clonedConn.ConnectionString, Does.Not.Contain("Password="));
+        }
+
         [Test]
         [IssueLink("https://github.com/npgsql/npgsql/issues/743")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/783")]
