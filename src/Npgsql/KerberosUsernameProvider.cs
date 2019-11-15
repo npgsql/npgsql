@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using Npgsql.Logging;
 
 namespace Npgsql
@@ -15,6 +16,7 @@ namespace Npgsql
         static bool _performedDetection;
         static string? _principalWithRealm;
         static string? _principalWithoutRealm;
+        static readonly Regex _clientRegex = new Regex(".*Client:(.*)", RegexOptions.Multiline | RegexOptions.IgnoreCase);
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(KerberosUsernameProvider));
 
@@ -83,5 +85,14 @@ namespace Npgsql
             ?.Split(Path.PathSeparator)
             .SelectMany(p => Directory.GetFiles(p, "klist*"))
             .FirstOrDefault();
+
+        static string GetFullPrincipalFromFirstTicket(string klistOutput)
+        {
+            var firstMatch = _clientRegex.Match(klistOutput);
+
+            return firstMatch.Success
+                ? firstMatch.Groups[1].Value.Trim().Replace(" ", "")
+                : string.Empty;
+        }
     }
 }
