@@ -30,7 +30,7 @@ namespace Npgsql
 
         static void DetectUsername()
         {
-            var klistPath = FindInPath("klist");
+            var klistPath = FindKListInPath();
             if (klistPath == null)
             {
                 Log.Debug("klist not found in PATH, skipping Kerberos username detection");
@@ -79,9 +79,9 @@ namespace Npgsql
             _principalWithoutRealm = components[0];
         }
 
-        static string? FindInPath(string name) => Environment.GetEnvironmentVariable("PATH")
+        static string? FindKListInPath() => Environment.GetEnvironmentVariable("PATH")
             ?.Split(Path.PathSeparator)
-            .Select(p => Path.Combine(p, name))
-            .FirstOrDefault(File.Exists);
+            .SelectMany(p => Directory.GetFiles(p, "klist*"))
+            .FirstOrDefault();
     }
 }
