@@ -54,31 +54,16 @@ namespace Npgsql
                 return;
             }
 
-            var line = default(string);
-            for (var i = 0; i < 2; i++)
-                if ((line = process.StandardOutput.ReadLine()) == null)
-                {
-                    Log.Debug("Unexpected output from klist, aborting Kerberos username detection");
-                    return;
-                }
+            var fullPrincipal = GetFullPrincipalFromFirstTicket(process.StandardOutput.ReadToEnd());
 
-            var components = line!.Split(':');
-            if (components.Length != 2)
+            if (fullPrincipal == string.Empty)
             {
                 Log.Debug("Unexpected output from klist, aborting Kerberos username detection");
                 return;
             }
 
-            var principalWithRealm = components[1].Trim();
-            components = principalWithRealm.Split('@');
-            if (components.Length != 2)
-            {
-                Log.Debug($"Badly-formed default principal {principalWithRealm} from klist, aborting Kerberos username detection");
-                return;
-            }
-
-            _principalWithRealm = principalWithRealm;
-            _principalWithoutRealm = components[0];
+            _principalWithRealm = fullPrincipal;
+            _principalWithoutRealm = fullPrincipal.Split('@').FirstOrDefault();
         }
 
         static string? FindKListInPath() => Environment.GetEnvironmentVariable("PATH")
