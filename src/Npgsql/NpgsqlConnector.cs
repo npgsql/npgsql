@@ -474,12 +474,9 @@ namespace Npgsql
             }
 #endif
 
-            if (!PGUtil.IsWindows)
-            {
-                username = KerberosUsernameProvider.GetUsername(Settings.IncludeRealm);
-                if (username?.Length > 0)
-                    return username;
-            }
+            username = KerberosUsernameProvider.GetUsername(Settings.IncludeRealm);
+            if (username?.Length > 0)
+                return username;
 
             username = Environment.UserName;
             if (username?.Length > 0)
