@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Npgsql.Util;
+using System;
 using System.Collections.Generic;
 using System.DirectoryServices;
 using System.Security.Principal;
@@ -23,6 +24,11 @@ namespace Npgsql
 
         internal static string? GetUsername(bool includeRealm)
         {
+            if (!PGUtil.IsWindows || Type.GetType("Mono.Runtime") != null )
+            {
+                return null;
+            }
+
             // Side note: This maintains the hack fix mentioned before for https://github.com/npgsql/Npgsql/issues/133.
             // In a nutshell, starting with .NET 4.5 WindowsIdentity inherits from ClaimsIdentity
             // which doesn't exist in mono, and calling a WindowsIdentity method bombs.
