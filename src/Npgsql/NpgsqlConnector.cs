@@ -471,11 +471,9 @@ namespace Npgsql
             if (username?.Length > 0)
                 return username;
 
-            {
-                username = WindowsUsernameProvider.GetUsername(Settings.IncludeRealm);
-                if (username?.Length > 0)
-                    return username;
-            }
+            username = WindowsUsernameProvider.GetUsername(Settings.IncludeRealm);
+            if (username?.Length > 0)
+                return username;
 
             username = KerberosUsernameProvider.GetUsername(Settings.IncludeRealm);
             if (username?.Length > 0)
