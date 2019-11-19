@@ -1,5 +1,4 @@
-﻿#if NET461
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.DirectoryServices;
 using System.Security.Principal;
@@ -108,4 +107,4 @@ namespace Npgsql
         }
     }
 }
-#endif
+

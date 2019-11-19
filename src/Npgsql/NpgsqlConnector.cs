@@ -465,14 +465,12 @@ namespace Npgsql
             if (username?.Length > 0)
                 return username;
 
-#if NET461
             if (PGUtil.IsWindows && Type.GetType("Mono.Runtime") == null)
             {
                 username = WindowsUsernameProvider.GetUsername(Settings.IncludeRealm);
                 if (username?.Length > 0)
                     return username;
             }
-#endif
 
             username = KerberosUsernameProvider.GetUsername(Settings.IncludeRealm);
             if (username?.Length > 0)
