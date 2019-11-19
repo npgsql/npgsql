@@ -33,7 +33,7 @@ namespace Npgsql
             var identity = WindowsIdentity.GetCurrent();
             if (identity.User == null)
                 return null;
-            CachedUpn cachedUpn;
+            CachedUpn? cachedUpn = null;
             string? upn = null;
 
             // Check to see if we already have this UPN cached
