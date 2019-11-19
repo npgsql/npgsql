@@ -291,6 +291,7 @@ namespace Npgsql
         int ConnectionTimeout => Settings.Timeout;
         bool IntegratedSecurity => Settings.IntegratedSecurity;
         internal bool ConvertInfinityDateTime => Settings.ConvertInfinityDateTime;
+        internal string? Username;
 
         int InternalCommandTimeout
         {
@@ -457,6 +458,11 @@ namespace Npgsql
 
         string GetUsername()
         {
+            if (Username?.Length > 0)
+            {
+                return Username;
+            }
+
             var username = Settings.Username;
             if (username?.Length > 0)
                 return username;
