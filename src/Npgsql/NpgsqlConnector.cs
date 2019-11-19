@@ -456,6 +456,15 @@ namespace Npgsql
             WriteStartup(startupParams);
         }
 
+        string? SetUsername(string? username)
+        {
+            if (username?.Length > 0)
+            {
+                Username = username;
+            }
+            return Username;
+        }
+
         string GetUsername()
         {
             if (Username?.Length > 0)
@@ -463,27 +472,12 @@ namespace Npgsql
                 return Username;
             }
 
-            var username = Settings.Username;
-            if (username?.Length > 0)
-                return username;
-
-            username = PostgresEnvironment.User;
-            if (username?.Length > 0)
-                return username;
-
-            username = WindowsUsernameProvider.GetUsername(Settings.IncludeRealm);
-            if (username?.Length > 0)
-                return username;
-
-            username = KerberosUsernameProvider.GetUsername(Settings.IncludeRealm);
-            if (username?.Length > 0)
-                return username;
-
-            username = Environment.UserName;
-            if (username?.Length > 0)
-                return username;
-
-            throw new NpgsqlException("No username could be found, please specify one explicitly");
+            return  SetUsername(Settings.Username) ??
+                    SetUsername(PostgresEnvironment.User) ??
+                    SetUsername(WindowsUsernameProvider.GetUsername(Settings.IncludeRealm)) ??
+                    SetUsername(KerberosUsernameProvider.GetUsername(Settings.IncludeRealm)) ??
+                    SetUsername(Environment.UserName) ??
+                    throw new NpgsqlException("No username could be found, please specify one explicitly");
         }
 
         async Task RawOpen(NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
