@@ -17,19 +17,19 @@ namespace Npgsql
     /// </remarks>
     static class NoSynchronizationContextScope
     {
-        internal static Disposable Enter()
-        {
-            var sc = SynchronizationContext.Current;
-            SynchronizationContext.SetSynchronizationContext(null);
-            return new Disposable(sc);
-        }
+        internal static Disposable Enter() => new Disposable(SynchronizationContext.Current);
 
         internal struct Disposable : IDisposable
         {
             readonly SynchronizationContext? _synchronizationContext;
 
             internal Disposable(SynchronizationContext? synchronizationContext)
-                => _synchronizationContext = synchronizationContext;
+            {
+                if (synchronizationContext != null)
+                    SynchronizationContext.SetSynchronizationContext(null);
+
+                _synchronizationContext = synchronizationContext;
+            }
 
             public void Dispose()
                 => SynchronizationContext.SetSynchronizationContext(_synchronizationContext);
