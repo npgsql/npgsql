@@ -1328,7 +1328,7 @@ namespace Npgsql
             Log.Trace("Cleaning up connector", Id);
             try
             {
-                _stream.Dispose();
+                _stream?.Dispose();
             }
             catch
             {

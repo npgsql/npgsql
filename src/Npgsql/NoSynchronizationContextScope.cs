@@ -20,7 +20,12 @@ namespace Npgsql
         internal static Disposable Enter()
         {
             var sc = SynchronizationContext.Current;
-            SynchronizationContext.SetSynchronizationContext(null);
+            if (sc is null)
+            {
+                // Don't need to set SynchronizationContext or store current one if its already null
+                return default;
+            }
+
             return new Disposable(sc);
         }
 
@@ -28,8 +33,13 @@ namespace Npgsql
         {
             readonly SynchronizationContext? _synchronizationContext;
 
-            internal Disposable(SynchronizationContext? synchronizationContext)
-                => _synchronizationContext = synchronizationContext;
+            internal Disposable(SynchronizationContext synchronizationContext)
+            {
+                // Calling the constructor, this means we need to set current SynchronizationContext to null
+                // and store the passed in one so we can restore it.
+                SynchronizationContext.SetSynchronizationContext(null);
+                _synchronizationContext = synchronizationContext;
+            }
 
             public void Dispose()
                 => SynchronizationContext.SetSynchronizationContext(_synchronizationContext);
