@@ -23,7 +23,7 @@ namespace Npgsql
         {
             readonly SynchronizationContext? _synchronizationContext;
 
-            internal Disposable(SynchronizationContext synchronizationContext)
+            internal Disposable(SynchronizationContext? synchronizationContext)
             {
                 if (synchronizationContext != null)
                     SynchronizationContext.SetSynchronizationContext(null);
