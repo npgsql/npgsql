@@ -153,14 +153,13 @@ namespace Npgsql.TypeHandlers
         {
             await buf.Ensure(12, async);
             var dimensions = buf.ReadInt32();
+            var containsNulls = buf.ReadInt32() == 1;
+            buf.ReadUInt32(); // Element OID. Ignored.
 
             if (dimensions == 0)
                 return new List<T>();
             if (dimensions > 1)
                 throw new NotSupportedException($"Can't read multidimensional array as List<{typeof(T).Name}>");
-
-            buf.ReadInt32();  // Has nulls. Not populated by PG?
-            buf.ReadUInt32(); // Element OID. Ignored.
 
             await buf.Ensure(8, async);
             var length = buf.ReadInt32();
