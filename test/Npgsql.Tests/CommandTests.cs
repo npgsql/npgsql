@@ -376,6 +376,296 @@ namespace Npgsql.Tests
 
         #endregion
 
+        #region Cursor dereferencing
+
+        const string defineTestMultCurFunc = @"CREATE OR REPLACE FUNCTION testmultcurfunc() RETURNS SETOF refcursor AS 'DECLARE ref1 refcursor; ref2 refcursor; BEGIN OPEN ref1 FOR SELECT 1; RETURN NEXT ref1; OPEN ref2 FOR SELECT 2; RETURN next ref2; RETURN; END;' LANGUAGE 'plpgsql';";
+
+        [Test]
+        [TestCase(true)]
+        [TestCase(false)]
+        public async Task MultipleRefCursorSupport(bool async)
+        {
+            // this is the original npgsql v2 deref test (but now in sync and async)
+            // https://github.com/npgsql/npgsql/issues/438#issuecomment-68093947
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { DereferenceCursors = true };
+            using (var conn = OpenConnection(csb))
+            {
+                if (async) await conn.ExecuteNonQueryAsync(defineTestMultCurFunc);
+                else conn.ExecuteNonQuery(defineTestMultCurFunc);
+                using (conn.BeginTransaction())
+                {
+                    var command = new NpgsqlCommand("testmultcurfunc", conn);
+                    command.CommandType = CommandType.StoredProcedure;
+                    using (var dr = async ? await command.ExecuteReaderAsync() : command.ExecuteReader())
+                    {
+                        if (async) await dr.ReadAsync(); else dr.Read();
+                        var one = dr.GetInt32(0);
+                        if (async) await dr.NextResultAsync(); else dr.NextResult();
+                        if (async) await dr.ReadAsync(); else dr.Read();
+                        var two = dr.GetInt32(0);
+                        Assert.AreEqual(1, one);
+                        Assert.AreEqual(2, two);
+                    }
+                }
+            }
+        }
+
+        [Test]
+        [TestCase(true)]
+        [TestCase(false)]
+        public async Task CursorNByOne(bool async)
+        {
+            // the multi-ref cursor above tests 1 x n, this tests n x 1
+            const string defineCursorNByOne =
+@"CREATE OR REPLACE FUNCTION public.cursornbyone(
+    OUT mycursor1 refcursor,
+    OUT mycursor2 refcursor)
+  RETURNS SETOF record AS
+$BODY$
+DECLARE ref1 refcursor; ref2 refcursor;
+BEGIN
+    OPEN ref1 FOR SELECT 'my' as a, 7 as b;
+    OPEN ref2 FOR SELECT 5 as c, 'test' as d;
+    
+    RETURN QUERY
+    SELECT ref1, ref2;
+END;
+$BODY$
+  LANGUAGE plpgsql
+";
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { DereferenceCursors = true };
+            using (var conn = OpenConnection(csb))
+            {
+                if (async) await conn.ExecuteNonQueryAsync(defineCursorNByOne);
+                else conn.ExecuteNonQuery(defineCursorNByOne);
+                using (conn.BeginTransaction())
+                {
+                    var command = new NpgsqlCommand("cursornbyone", conn);
+                    command.CommandType = CommandType.StoredProcedure;
+                    using (var dr = async ? await command.ExecuteReaderAsync() : command.ExecuteReader())
+                    {
+                        if (async) await dr.ReadAsync(); else dr.Read();
+                        var a = dr.GetString(0);
+                        var b = dr.GetInt32(1);
+                        if (async) await dr.NextResultAsync(); else dr.NextResult();
+                        if (async) await dr.ReadAsync(); else dr.Read();
+                        var c = dr.GetInt32(0);
+                        var d = dr.GetString(1);
+                        Assert.That(a, Is.EqualTo("my"));
+                        Assert.That(b, Is.EqualTo(7));
+                        Assert.That(c, Is.EqualTo(5));
+                        Assert.That(d, Is.EqualTo("test"));
+                    }
+                }
+            }
+        }
+
+        [Test]
+        public void CursorDereferencingOffByDefault()
+        {
+            // step through testmultcurfunc resultset as it is without dereferencing
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery(defineTestMultCurFunc);
+                var command = new NpgsqlCommand("testmultcurfunc", conn);
+                command.CommandType = CommandType.StoredProcedure;
+                using (var dr = command.ExecuteReader())
+                {
+                    Assert.That(dr.GetDataTypeName(0), Is.EqualTo("refcursor"));
+                    dr.Read(); // first cursor
+                    Assert.That(dr.Read(), Is.True); // second cursor
+                    Assert.That(dr.Read(), Is.False);
+                }
+            }
+        }
+
+        [Test]
+        [TestCase(false)]
+        [TestCase(true)]
+        public async Task DereferencingRequiresTransaction(bool async)
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { DereferenceCursors = true };
+            using (var conn = OpenConnection(csb))
+            {
+                if (async) await conn.ExecuteNonQueryAsync(defineTestMultCurFunc);
+                else conn.ExecuteNonQuery(defineTestMultCurFunc);
+                var command = new NpgsqlCommand("testmultcurfunc", conn);
+                command.CommandType = CommandType.StoredProcedure;
+                InvalidOperationException ex;
+                if (async) ex = Assert.ThrowsAsync<InvalidOperationException>(async () => await command.ExecuteReaderAsync());
+                else ex = Assert.Throws<InvalidOperationException>(() => command.ExecuteReader());
+                Assert.True(ex.Message.StartsWith("Cursor dereferencing requires a transaction."));
+            }
+        }
+
+        const string defineCTest =
+@"CREATE OR REPLACE FUNCTION public.ctest()
+  RETURNS SETOF refcursor AS
+$BODY$
+DECLARE ref1 refcursor; ref2 refcursor;
+BEGIN
+OPEN ref1 FOR SELECT a, 'hello' FROM generate_series(1, 8) a;
+RETURN NEXT ref1;
+OPEN ref2 FOR SELECT b, 'goodbye' FROM generate_series(100, 108) b;
+RETURN next ref2;
+RETURN;
+END;
+$BODY$
+  LANGUAGE plpgsql
+";
+
+        [Test]
+        [TestCase(null, false)]
+        [TestCase(null, true)]
+        [TestCase(-1, false)]
+        [TestCase(-1, true)]
+        [TestCase(3, false)]
+        [TestCase(3, true)]
+        public async Task ExpectedFetchStatements(int? fetchSize, bool async)
+        {
+            var csb = fetchSize == null ?
+                new NpgsqlConnectionStringBuilder(ConnectionString) { DereferenceCursors = true } :
+                new NpgsqlConnectionStringBuilder(ConnectionString) { DereferenceCursors = true, DereferenceFetchSize = (int)fetchSize };
+            using (var conn = OpenConnection(csb))
+            {
+                if (async) await conn.ExecuteNonQueryAsync(defineCTest);
+                else conn.ExecuteNonQuery(defineCTest);
+                using (conn.BeginTransaction())
+                {
+                    var command = new NpgsqlCommand("ctest", conn);
+                    command.CommandType = CommandType.StoredProcedure;
+                    var reader = async ? await command.ExecuteReaderAsync() : command.ExecuteReader();
+                    using (var dr = reader)
+                    {
+                        var set = 0;
+                        do
+                        {
+                            var row = 0;
+                            while (async ? await dr.ReadAsync() : dr.Read())
+                            {
+                                var n = dr.GetInt32(0);
+                                var s = dr.GetString(1);
+                                Assert.That(n, Is.EqualTo((set == 0 ? 1 : 100) + row));
+                                Assert.That(s, Is.EqualTo(set == 0 ? "hello" : "goodbye"));
+                                row++;
+                            }
+                            Assert.That(row, Is.EqualTo(8 + set));
+                            set++;
+                        }
+                        while (async ? await dr.NextResultAsync() : dr.NextResult());
+                        Assert.That(set, Is.EqualTo(2));
+                    }
+                    switch (fetchSize)
+                    {
+                        case -1:
+                            Assert.That(((NpgsqlDereferencingReader)reader).Commands.Count, Is.EqualTo(2));
+                            Assert.That(reader.Statements.Count, Is.EqualTo(4));
+                            Assert.That(reader.Statements[0].SQL.StartsWith("FETCH ALL FROM"));
+                            break;
+
+                        case null:
+                            Assert.That(((NpgsqlDereferencingReader)reader).Commands.Count, Is.EqualTo(3));
+                            Assert.That(reader.Statements.Count, Is.EqualTo(4));
+                            Assert.That(reader.Statements[0].SQL.StartsWith("FETCH 10000 FROM"));
+                            break;
+
+                        case 3:
+                            Assert.That(((NpgsqlDereferencingReader)reader).Commands.Count, Is.EqualTo(8));
+                            Assert.That(reader.Statements.Count, Is.EqualTo(9));
+                            Assert.That(reader.Statements[0].SQL.StartsWith("FETCH 3 FROM"));
+                            Assert.That(reader.Statements[3].SQL.StartsWith("CLOSE"));
+                            Assert.That(reader.Statements[8].SQL.StartsWith("CLOSE"));
+                            break;
+                        default:
+                            throw new InvalidOperationException($"Illegal {nameof(fetchSize)}");
+                    }
+                }
+            }
+        }
+
+        [Test]
+        [TestCase(false, false)]
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        [TestCase(true, true)]
+        [TestCase(true, true, true)]
+        public async Task ExpectedFetchStatementsBreakEarly(bool async, bool exception, bool token = false)
+        {
+            using (var cts = new CancellationTokenSource())
+            {
+                var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { DereferenceCursors = true, DereferenceFetchSize = 3 };
+                using (var conn = OpenConnection(csb))
+                {
+                    if (async) await conn.ExecuteNonQueryAsync(defineCTest);
+                    else conn.ExecuteNonQuery(defineCTest);
+                    using (conn.BeginTransaction())
+                    {
+                        var command = new NpgsqlCommand("ctest", conn);
+                        command.CommandType = CommandType.StoredProcedure;
+                        var reader = async ? await command.ExecuteReaderAsync(cts.Token) : command.ExecuteReader();
+                        var closeCount = 0;
+                        reader.ReaderClosed += (object? sender, EventArgs e) => closeCount++;
+                        try
+                        {
+                            using (var dr = reader)
+                            {
+                                var set = 0;
+                                do
+                                {
+                                    var row = 0;
+                                    while (async ? await dr.ReadAsync(cts.Token) : dr.Read())
+                                    {
+                                        row++;
+                                        Assert.AreEqual(0, closeCount); // not fired at the wrong time
+                                        if (row == (set + 1) * 4)
+                                        {
+                                            if (token) cts.Cancel();
+                                            else if (exception) throw new ApplicationException();
+                                            else break;
+                                        }
+                                    }
+                                    set++;
+                                }
+                                while (async ? await dr.NextResultAsync(cts.Token) : dr.NextResult());
+                            }
+                        }
+                        catch (ApplicationException)
+                        {
+                            // ignore
+                        }
+                        catch (TaskCanceledException)
+                        {
+                            Assert.IsTrue(async);
+                        }
+
+                        Assert.AreEqual(1, closeCount);
+
+                        var commands = ((NpgsqlDereferencingReader)reader).Commands;
+                        Assert.That(commands.Count, Is.EqualTo(exception ? 3 : 6));
+                        Assert.That(commands[2].Statements[0].SQL.StartsWith("CLOSE"));
+                        Assert.That(commands[2].Statements.Count, Is.EqualTo(exception ? 1 : 2));
+                        if (!exception) Assert.That(commands[2].Statements[1].SQL.StartsWith("FETCH 3 FROM"));
+
+                        Assert.That(reader.Statements.Count, Is.EqualTo(exception ? 3 : 7));
+                        Assert.That(reader.Statements[0].SQL.StartsWith("FETCH 3 FROM"));
+                        Assert.That(reader.Statements[2].SQL.StartsWith("CLOSE"));
+                        if (!exception) Assert.That(reader.Statements[6].SQL.StartsWith("CLOSE"));
+                    }
+                }
+            }
+        }
+
+#if DEBUG
+        [Test]
+        public void TestWrapEverythingIsOff()
+        {
+            // We want this test to fail when test wrapping is enabled, so that we definitely notice when it is switched on
+            Assert.That(NpgsqlWrappingReader.TestWrapEverything, Is.False);
+        }
+#endif
+
+        #endregion
+
         #region CommandBehavior.CloseConnection
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/693")]

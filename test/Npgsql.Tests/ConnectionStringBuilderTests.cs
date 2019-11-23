@@ -104,6 +104,12 @@ namespace Npgsql.Tests
                 Throws.Exception.TypeOf<ArgumentException>());
         }
 
+        [Test]
+        public void CursorDereferencingOffByDefault()
+        {
+            Assert.That(Builder.DereferenceCursors, Is.False);
+        }
+
         #region Setup
 
         NpgsqlConnectionStringBuilder Builder { get; set; } = default!;
