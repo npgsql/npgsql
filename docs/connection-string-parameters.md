@@ -33,7 +33,7 @@ Below are the connection string parameters which Npgsql understands.
 | Parameter | Description                                                  | Default                      |
 |-----------|--------------------------------------------------------------|------------------------------|
 | Pooling                     | Whether connection pooling should be used. | true                         |
-| Minimum Pool Size           | The minimum connection pool size.          | 1                            |
+| Minimum Pool Size           | The minimum connection pool size.          | 0                            |
 | Maximum Pool Size           | The maximum connection pool size.          | 100 since 3.1, 20 previously |
 | Connection Idle Lifetime    | The time (in seconds) to wait before closing idle connections in the pool if the count of all connections exceeds `Minimum Pool Size`. Since 3.1 only. | 300 |
 | Connection Pruning Interval | How many seconds the pool waits before attempting to prune idle connections that are beyond idle lifetime (see `Connection Idle Lifetime`). Since 3.1 only. | 10 |
