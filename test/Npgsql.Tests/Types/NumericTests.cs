@@ -60,55 +60,47 @@ namespace Npgsql.Tests.Types
         [TestCaseSource(nameof(ReadWriteCases))]
         public void Read(string query, decimal expected)
         {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT " + query, conn))
-            {
-                Assert.That(decimal.GetBits(cmd.ExecuteScalar<decimal>()), Is.EqualTo(decimal.GetBits(expected)));
-            }
+            using var conn = OpenConnection();
+            using var cmd = new NpgsqlCommand("SELECT " + query, conn);
+            Assert.That(decimal.GetBits(cmd.ExecuteScalar<decimal>()), Is.EqualTo(decimal.GetBits(expected)));
         }
 
         [Test]
         [TestCaseSource(nameof(ReadWriteCases))]
         public void Write(string query, decimal expected)
         {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT @p, @p = " + query, conn))
-            {
-                cmd.Parameters.AddWithValue("p", expected);
-                using (var rdr = cmd.ExecuteRecord())
-                {
-                    Assert.That(decimal.GetBits(rdr.GetFieldValue<decimal>(0)), Is.EqualTo(decimal.GetBits(expected)));
-                    Assert.That(rdr.GetFieldValue<bool>(1));
-                }
-            }
+            using var conn = OpenConnection();
+            using var cmd = new NpgsqlCommand("SELECT @p, @p = " + query, conn);
+            cmd.Parameters.AddWithValue("p", expected);
+            using var rdr = cmd.ExecuteRecord();
+            Assert.That(decimal.GetBits(rdr.GetFieldValue<decimal>(0)), Is.EqualTo(decimal.GetBits(expected)));
+            Assert.That(rdr.GetFieldValue<bool>(1));
         }
 
         [Test]
         public void Mapping()
         {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4", conn))
-            {
-                cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.Numeric) { Value = 8M });
-                cmd.Parameters.Add(new NpgsqlParameter("p2", DbType.Decimal) { Value = 8M });
-                cmd.Parameters.Add(new NpgsqlParameter("p3", DbType.VarNumeric) { Value = 8M });
-                cmd.Parameters.Add(new NpgsqlParameter("p4", 8M));
+            using var conn = OpenConnection();
+            using var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4", conn);
+            cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.Numeric) { Value = 8M });
+            cmd.Parameters.Add(new NpgsqlParameter("p2", DbType.Decimal) { Value = 8M });
+            cmd.Parameters.Add(new NpgsqlParameter("p3", DbType.VarNumeric) { Value = 8M });
+            cmd.Parameters.Add(new NpgsqlParameter("p4", 8M));
 
-                using (var rdr = cmd.ExecuteRecord())
-                    for (var i = 0; i < cmd.Parameters.Count; i++)
-                    {
-                        Assert.That(rdr.GetFieldType(i), Is.EqualTo(typeof(decimal)));
-                        Assert.That(rdr.GetDataTypeName(i), Is.EqualTo("numeric"));
-                        Assert.That(rdr.GetValue(i), Is.EqualTo(8M));
-                        Assert.That(rdr.GetProviderSpecificValue(i), Is.EqualTo(8M));
-                        Assert.That(rdr.GetFieldValue<decimal>(i), Is.EqualTo(8M));
-                        Assert.That(rdr.GetFieldValue<byte>(i), Is.EqualTo(8));
-                        Assert.That(rdr.GetFieldValue<short>(i), Is.EqualTo(8));
-                        Assert.That(rdr.GetFieldValue<int>(i), Is.EqualTo(8));
-                        Assert.That(rdr.GetFieldValue<long>(i), Is.EqualTo(8));
-                        Assert.That(rdr.GetFieldValue<float>(i), Is.EqualTo(8.0f));
-                        Assert.That(rdr.GetFieldValue<double>(i), Is.EqualTo(8.0d));
-                    }
+            using var rdr = cmd.ExecuteRecord();
+            for (var i = 0; i < cmd.Parameters.Count; i++)
+            {
+                Assert.That(rdr.GetFieldType(i), Is.EqualTo(typeof(decimal)));
+                Assert.That(rdr.GetDataTypeName(i), Is.EqualTo("numeric"));
+                Assert.That(rdr.GetValue(i), Is.EqualTo(8M));
+                Assert.That(rdr.GetProviderSpecificValue(i), Is.EqualTo(8M));
+                Assert.That(rdr.GetFieldValue<decimal>(i), Is.EqualTo(8M));
+                Assert.That(rdr.GetFieldValue<byte>(i), Is.EqualTo(8));
+                Assert.That(rdr.GetFieldValue<short>(i), Is.EqualTo(8));
+                Assert.That(rdr.GetFieldValue<int>(i), Is.EqualTo(8));
+                Assert.That(rdr.GetFieldValue<long>(i), Is.EqualTo(8));
+                Assert.That(rdr.GetFieldValue<float>(i), Is.EqualTo(8.0f));
+                Assert.That(rdr.GetFieldValue<double>(i), Is.EqualTo(8.0d));
             }
         }
     }

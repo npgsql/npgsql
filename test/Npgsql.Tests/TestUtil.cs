@@ -161,8 +161,8 @@ namespace Npgsql.Tests
     {
         public static T ExecuteScalar<T>(this NpgsqlCommand cmd)
         {
-            using (var rdr = cmd.ExecuteReader())
-                return rdr.Read() ? rdr.GetFieldValue<T>(0) : default;
+            using var rdr = cmd.ExecuteReader();
+            return rdr.Read() ? rdr.GetFieldValue<T>(0) : default;
         }
 
         public static NpgsqlDataReader ExecuteRecord(this NpgsqlCommand cmd)

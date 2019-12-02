@@ -12,138 +12,124 @@ namespace Npgsql.Tests
         [Test, Description("Basic insert within a committed transaction")]
         public void Commit()
         {
-            using (var conn = OpenConnection())
-            {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
-                var tx = conn.BeginTransaction();
-                conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')", tx: tx);
-                tx.Commit();
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(1));
-                Assert.That(() => tx.Connection, Throws.Exception.TypeOf<InvalidOperationException>());
-                tx.Dispose();
-                Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
-            }
+            using var conn = OpenConnection();
+            conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
+            var tx = conn.BeginTransaction();
+            conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')", tx: tx);
+            tx.Commit();
+            Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(1));
+            Assert.That(() => tx.Connection, Throws.Exception.TypeOf<InvalidOperationException>());
+            tx.Dispose();
+            Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
         }
 
         [Test]
         public async Task CommitAsync()
         {
-            using (var conn = OpenConnection())
-            {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
-                var tx = conn.BeginTransaction();
-                conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')", tx: tx);
-                await tx.CommitAsync();
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(1));
-                Assert.That(() => tx.Connection, Throws.Exception.TypeOf<InvalidOperationException>());
-                tx.Dispose();
-                Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
-            }
+            using var conn = OpenConnection();
+            conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
+            var tx = conn.BeginTransaction();
+            conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')", tx: tx);
+            await tx.CommitAsync();
+            Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(1));
+            Assert.That(() => tx.Connection, Throws.Exception.TypeOf<InvalidOperationException>());
+            tx.Dispose();
+            Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
         }
 
         [Test, Description("Basic insert within a rolled back transaction")]
         public void Rollback([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
         {
-            using (var conn = OpenConnection())
-            {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
-                var tx = conn.BeginTransaction();
-                var cmd = new NpgsqlCommand("INSERT INTO data (name) VALUES ('X')", conn, tx);
-                if (prepare == PrepareOrNot.Prepared)
-                    cmd.Prepare();
-                cmd.ExecuteNonQuery();
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(1));
-                tx.Rollback();
-                Assert.That(tx.IsCompleted);
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
-                Assert.That(() => tx.Connection, Throws.Exception.TypeOf<InvalidOperationException>());
-                tx.Dispose();
-                Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
-            }
+            using var conn = OpenConnection();
+            conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
+            var tx = conn.BeginTransaction();
+            var cmd = new NpgsqlCommand("INSERT INTO data (name) VALUES ('X')", conn, tx);
+            if (prepare == PrepareOrNot.Prepared)
+                cmd.Prepare();
+            cmd.ExecuteNonQuery();
+            Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(1));
+            tx.Rollback();
+            Assert.That(tx.IsCompleted);
+            Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
+            Assert.That(() => tx.Connection, Throws.Exception.TypeOf<InvalidOperationException>());
+            tx.Dispose();
+            Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
         }
 
         [Test, Description("Basic insert within a rolled back transaction")]
         public async Task RollbackAsync([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
         {
-            using (var conn = OpenConnection())
-            {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
-                var tx = conn.BeginTransaction();
-                var cmd = new NpgsqlCommand("INSERT INTO data (name) VALUES ('X')", conn, tx);
-                if (prepare == PrepareOrNot.Prepared)
-                    cmd.Prepare();
-                cmd.ExecuteNonQuery();
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(1));
-                await tx.RollbackAsync();
-                Assert.That(tx.IsCompleted);
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
-                Assert.That(() => tx.Connection, Throws.Exception.TypeOf<InvalidOperationException>());
-                tx.Dispose();
-                Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
-            }
+            using var conn = OpenConnection();
+            conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
+            var tx = conn.BeginTransaction();
+            var cmd = new NpgsqlCommand("INSERT INTO data (name) VALUES ('X')", conn, tx);
+            if (prepare == PrepareOrNot.Prepared)
+                cmd.Prepare();
+            cmd.ExecuteNonQuery();
+            Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(1));
+            await tx.RollbackAsync();
+            Assert.That(tx.IsCompleted);
+            Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
+            Assert.That(() => tx.Connection, Throws.Exception.TypeOf<InvalidOperationException>());
+            tx.Dispose();
+            Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
         }
 
         [Test, Description("Dispose a transaction in progress, should roll back")]
         public void RollbackOnDispose()
         {
-            using (var conn = OpenConnection())
-            {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
-                var tx = conn.BeginTransaction();
-                conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')", tx: tx);
-                tx.Dispose();
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
-            }
+            using var conn = OpenConnection();
+            conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
+            var tx = conn.BeginTransaction();
+            conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')", tx: tx);
+            tx.Dispose();
+            Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
         }
 
         [Test]
         public void RollbackOnClose()
         {
             var tableName = nameof(RollbackOnClose);
-            using (var conn1 = OpenConnection())
-            {
-                conn1.ExecuteNonQuery($"DROP TABLE IF EXISTS {tableName}");
-                conn1.ExecuteNonQuery($"CREATE TABLE {tableName} (name TEXT)");
+            using var conn1 = OpenConnection();
+            conn1.ExecuteNonQuery($"DROP TABLE IF EXISTS {tableName}");
+            conn1.ExecuteNonQuery($"CREATE TABLE {tableName} (name TEXT)");
 
-                NpgsqlTransaction tx;
-                using (var conn2 = OpenConnection())
-                {
-                    tx = conn2.BeginTransaction();
-                    conn2.ExecuteNonQuery($"INSERT INTO {tableName} (name) VALUES ('X')", tx);
-                }
-                Assert.That(conn1.ExecuteScalar($"SELECT COUNT(*) FROM {tableName}"), Is.EqualTo(0));
-                Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
-                conn1.ExecuteNonQuery($"DROP TABLE {tableName}");
+            NpgsqlTransaction tx;
+            using (var conn2 = OpenConnection())
+            {
+                tx = conn2.BeginTransaction();
+                conn2.ExecuteNonQuery($"INSERT INTO {tableName} (name) VALUES ('X')", tx);
             }
+            Assert.That(conn1.ExecuteScalar($"SELECT COUNT(*) FROM {tableName}"), Is.EqualTo(0));
+            Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
+            conn1.ExecuteNonQuery($"DROP TABLE {tableName}");
         }
 
         [Test, Description("Intentionally generates an error, putting us in a failed transaction block. Rolls back.")]
         public void RollbackFailed()
         {
-            using (var conn = OpenConnection())
-            {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
-                var tx = conn.BeginTransaction();
-                conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')", tx: tx);
-                Assert.That(() => conn.ExecuteNonQuery("BAD QUERY"), Throws.Exception.TypeOf<PostgresException>());
-                tx.Rollback();
-                Assert.That(tx.IsCompleted);
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
-            }
+            using var conn = OpenConnection();
+            conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
+            var tx = conn.BeginTransaction();
+            conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')", tx: tx);
+            Assert.That(() => conn.ExecuteNonQuery("BAD QUERY"), Throws.Exception.TypeOf<PostgresException>());
+            tx.Rollback();
+            Assert.That(tx.IsCompleted);
+            Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
         }
 
         [Test, Description("Commits an empty transaction")]
         public void EmptyCommit()
         {
-            using (var conn = OpenConnection())
-                conn.BeginTransaction().Commit();
+            using var conn = OpenConnection();
+            conn.BeginTransaction().Commit();
         }
 
         [Test, Description("Rolls back an empty transaction")]
         public void EmptyRollback()
         {
-            using (var conn = OpenConnection())
-                conn.BeginTransaction().Rollback();
+            using var conn = OpenConnection();
+            conn.BeginTransaction().Rollback();
         }
 
         [Test, Description("Tests that the isolation levels are properly supported")]
@@ -155,101 +141,87 @@ namespace Npgsql.Tests
         [TestCase(IsolationLevel.Unspecified,     "read committed")]
         public void IsolationLevels(IsolationLevel level, string expectedName)
         {
-            using (var conn = OpenConnection())
-            {
-                var tx = conn.BeginTransaction(level);
-                Assert.That(conn.ExecuteScalar("SHOW TRANSACTION ISOLATION LEVEL"), Is.EqualTo(expectedName));
-                tx.Commit();
-            }
+            using var conn = OpenConnection();
+            var tx = conn.BeginTransaction(level);
+            Assert.That(conn.ExecuteScalar("SHOW TRANSACTION ISOLATION LEVEL"), Is.EqualTo(expectedName));
+            tx.Commit();
         }
 
         [Test]
         public void IsolationLevelChaosUnsupported()
         {
-            using (var conn = OpenConnection())
-                Assert.That(() => conn.BeginTransaction(IsolationLevel.Chaos), Throws.Exception.TypeOf<NotSupportedException>());
+            using var conn = OpenConnection();
+            Assert.That((TestDelegate)(() => conn.BeginTransaction(IsolationLevel.Chaos)), Throws.Exception.TypeOf<NotSupportedException>());
         }
 
         [Test, Description("Rollback of an already rolled back transaction")]
         public void RollbackTwice()
         {
-            using (var conn = OpenConnection())
-            {
-                var transaction = conn.BeginTransaction();
-                transaction.Rollback();
-                Assert.That(() => transaction.Rollback(), Throws.Exception.TypeOf<InvalidOperationException>());
-            }
+            using var conn = OpenConnection();
+            var transaction = conn.BeginTransaction();
+            transaction.Rollback();
+            Assert.That(() => transaction.Rollback(), Throws.Exception.TypeOf<InvalidOperationException>());
         }
 
         [Test, Description("Makes sure the creating a transaction via DbConnection sets the proper isolation level")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/559")]
         public void DbConnectionDefaultIsolation()
         {
-            using (var conn = OpenConnection())
-            {
-                var dbConn = (DbConnection)conn;
-                var tx = dbConn.BeginTransaction();
-                Assert.That(tx.IsolationLevel, Is.EqualTo(IsolationLevel.ReadCommitted));
-                tx.Rollback();
+            using var conn = OpenConnection();
+            var dbConn = (DbConnection)conn;
+            var tx = dbConn.BeginTransaction();
+            Assert.That(tx.IsolationLevel, Is.EqualTo(IsolationLevel.ReadCommitted));
+            tx.Rollback();
 
-                tx = dbConn.BeginTransaction(IsolationLevel.Unspecified);
-                Assert.That(tx.IsolationLevel, Is.EqualTo(IsolationLevel.ReadCommitted));
-                tx.Rollback();
-            }
+            tx = dbConn.BeginTransaction(IsolationLevel.Unspecified);
+            Assert.That(tx.IsolationLevel, Is.EqualTo(IsolationLevel.ReadCommitted));
+            tx.Rollback();
         }
 
         [Test, Description("Makes sure that transactions started in SQL work")]
         public void ViaSql()
         {
-            using (var conn = OpenConnection())
-            {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
-                conn.ExecuteNonQuery("BEGIN");
-                conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')");
-                conn.ExecuteNonQuery("ROLLBACK");
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
-            }
+            using var conn = OpenConnection();
+            conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
+            conn.ExecuteNonQuery("BEGIN");
+            conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')");
+            conn.ExecuteNonQuery("ROLLBACK");
+            Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
         }
 
         [Test]
         public void Nested()
         {
-            using (var conn = OpenConnection())
-            {
-                conn.BeginTransaction();
-                Assert.That(() => conn.BeginTransaction(), Throws.TypeOf<InvalidOperationException>());
-            }
+            using var conn = OpenConnection();
+            conn.BeginTransaction();
+            Assert.That(() => conn.BeginTransaction(), Throws.TypeOf<InvalidOperationException>());
         }
 
         [Test]
         public void BeginTransactionBeforeOpen()
         {
-            using (var conn = new NpgsqlConnection())
-                Assert.That(() => conn.BeginTransaction(), Throws.Exception.TypeOf<InvalidOperationException>());
+            using var conn = new NpgsqlConnection();
+            Assert.That((TestDelegate)(() => conn.BeginTransaction()), Throws.Exception.TypeOf<InvalidOperationException>());
         }
 
         [Test]
         public void RollbackFailedTransactionWithTimeout()
         {
-            using (var conn = OpenConnection())
+            using var conn = OpenConnection();
+            var tx = conn.BeginTransaction();
+            using var cmd = new NpgsqlCommand("BAD QUERY", conn, tx);
+            Assert.That(cmd.CommandTimeout != 1);
+            cmd.CommandTimeout = 1;
+            try
             {
-                var tx = conn.BeginTransaction();
-                using (var cmd = new NpgsqlCommand("BAD QUERY", conn, tx))
-                {
-                    Assert.That(cmd.CommandTimeout != 1);
-                    cmd.CommandTimeout = 1;
-                    try
-                    {
-                        cmd.ExecuteScalar();
-                        Assert.Fail();
-                    }
-                    catch (PostgresException)
-                    {
-                        // Timeout at the backend is now 1
-                        tx.Rollback();
-                        Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
-                    }
-                }
+                cmd.ExecuteScalar();
+                Assert.Fail();
+            }
+            catch (PostgresException)
+            {
+                // Timeout at the backend is now 1
+                tx.Rollback();
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
             }
         }
 
@@ -258,24 +230,20 @@ namespace Npgsql.Tests
         [IssueLink("https://github.com/npgsql/npgsql/issues/184")]
         public void FailedTransactionCantRollbackToSavepointWithCustomTimeout()
         {
-            using (var conn = OpenConnection())
-            {
-                var transaction = conn.BeginTransaction();
-                transaction.Save("TestSavePoint");
+            using var conn = OpenConnection();
+            var transaction = conn.BeginTransaction();
+            transaction.Save("TestSavePoint");
 
-                using (var cmd = new NpgsqlCommand("SELECT unknown_thing", conn))
-                {
-                    cmd.CommandTimeout = 1;
-                    try
-                    {
-                        cmd.ExecuteScalar();
-                    }
-                    catch (PostgresException)
-                    {
-                        transaction.Rollback("TestSavePoint");
-                        Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
-                    }
-                }
+            using var cmd = new NpgsqlCommand("SELECT unknown_thing", conn);
+            cmd.CommandTimeout = 1;
+            try
+            {
+                cmd.ExecuteScalar();
+            }
+            catch (PostgresException)
+            {
+                transaction.Rollback("TestSavePoint");
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
             }
         }
 
@@ -287,132 +255,120 @@ namespace Npgsql.Tests
             {
                 Pooling = true
             }.ToString();
-            using (var conn = new NpgsqlConnection(connString))
+            using var conn = new NpgsqlConnection(connString);
+            conn.Open();
+            var backendProcessId = conn.ProcessID;
+            conn.BeginTransaction();
+            using (var badCmd = new NpgsqlCommand("SEL", conn))
             {
-                conn.Open();
-                var backendProcessId = conn.ProcessID;
-                conn.BeginTransaction();
-                using (var badCmd = new NpgsqlCommand("SEL", conn))
-                {
-                    badCmd.CommandTimeout = NpgsqlCommand.DefaultTimeout + 1;
-                    Assert.That(() => badCmd.ExecuteNonQuery(), Throws.Exception.TypeOf<PostgresException>());
-                }
-                // Connection now in failed transaction state, and a custom timeout is in place
-                conn.Close();
-                conn.Open();
-                Assert.That(conn.ProcessID, Is.EqualTo(backendProcessId));
-                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+                badCmd.CommandTimeout = NpgsqlCommand.DefaultTimeout + 1;
+                Assert.That(() => badCmd.ExecuteNonQuery(), Throws.Exception.TypeOf<PostgresException>());
             }
+            // Connection now in failed transaction state, and a custom timeout is in place
+            conn.Close();
+            conn.Open();
+            Assert.That(conn.ProcessID, Is.EqualTo(backendProcessId));
+            Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/555")]
         public void TransactionOnRecycledConnection()
         {
             // Use application name to make sure we have our very own private connection pool
-            using (var conn = new NpgsqlConnection(ConnectionString + $";Application Name={TestUtil.GetUniqueIdentifier(nameof(TransactionOnRecycledConnection))}"))
-            {
-                conn.Open();
-                var prevConnectorId = conn.Connector!.Id;
-                conn.Close();
-                conn.Open();
-                Assert.That(conn.Connector.Id, Is.EqualTo(prevConnectorId), "Connection pool returned a different connector, can't test");
-                var tx = conn.BeginTransaction();
-                conn.ExecuteScalar("SELECT 1");
-                tx.Commit();
-                NpgsqlConnection.ClearPool(conn);
-            }
+            using var conn = new NpgsqlConnection(ConnectionString + $";Application Name={TestUtil.GetUniqueIdentifier(nameof(TransactionOnRecycledConnection))}");
+            conn.Open();
+            var prevConnectorId = conn.Connector!.Id;
+            conn.Close();
+            conn.Open();
+            Assert.That(conn.Connector.Id, Is.EqualTo(prevConnectorId), "Connection pool returned a different connector, can't test");
+            var tx = conn.BeginTransaction();
+            conn.ExecuteScalar("SELECT 1");
+            tx.Commit();
+            NpgsqlConnection.ClearPool(conn);
         }
 
         [Test]
         public void Savepoint()
         {
-            using (var conn = OpenConnection())
+            using var conn = OpenConnection();
+            conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
+            const string name = "theSavePoint";
+
+            using (var tx = conn.BeginTransaction())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
-                const string name = "theSavePoint";
+                tx.Save(name);
 
-                using (var tx = conn.BeginTransaction())
-                {
-                    tx.Save(name);
+                conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('savepointtest')", tx: tx);
+                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data", tx: tx), Is.EqualTo(1));
+                tx.Rollback(name);
+                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data", tx: tx), Is.EqualTo(0));
+                conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('savepointtest')", tx: tx);
+                tx.Release(name);
+                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data", tx: tx), Is.EqualTo(1));
 
-                    conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('savepointtest')", tx: tx);
-                    Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data", tx: tx), Is.EqualTo(1));
-                    tx.Rollback(name);
-                    Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data", tx: tx), Is.EqualTo(0));
-                    conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('savepointtest')", tx: tx);
-                    tx.Release(name);
-                    Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data", tx: tx), Is.EqualTo(1));
-
-                    tx.Commit();
-                }
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(1));
+                tx.Commit();
             }
+            Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(1));
         }
 
         [Test]
         public async Task SavepointAsync()
         {
-            using (var conn = OpenConnection())
+            using var conn = OpenConnection();
+            conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
+            const string name = "theSavePoint";
+
+            using (var tx = conn.BeginTransaction())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
-                const string name = "theSavePoint";
+                await tx.SaveAsync(name);
 
-                using (var tx = conn.BeginTransaction())
-                {
-                    await tx.SaveAsync(name);
+                conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('savepointtest')", tx: tx);
+                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data", tx: tx), Is.EqualTo(1));
+                await tx.RollbackAsync(name);
+                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data", tx: tx), Is.EqualTo(0));
+                conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('savepointtest')", tx: tx);
+                await tx.ReleaseAsync(name);
+                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data", tx: tx), Is.EqualTo(1));
 
-                    conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('savepointtest')", tx: tx);
-                    Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data", tx: tx), Is.EqualTo(1));
-                    await tx.RollbackAsync(name);
-                    Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data", tx: tx), Is.EqualTo(0));
-                    conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('savepointtest')", tx: tx);
-                    await tx.ReleaseAsync(name);
-                    Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data", tx: tx), Is.EqualTo(1));
-
-                    tx.Commit();
-                }
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(1));
+                tx.Commit();
             }
+            Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(1));
         }
 
         [Test]
         public void SavepointWithSemicolon()
         {
-            using (var conn = OpenConnection())
-            using (var tx = conn.BeginTransaction())
-                Assert.That(() => tx.Save("a;b"), Throws.Exception.TypeOf<ArgumentException>());
+            using var conn = OpenConnection();
+            using var tx = conn.BeginTransaction();
+            Assert.That(() => tx.Save("a;b"), Throws.Exception.TypeOf<ArgumentException>());
         }
 
         [Test, Description("Check IsCompleted before, during and after a normal committed transaction")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/985")]
         public void IsCompletedCommit()
         {
-            using (var conn = OpenConnection())
-            {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
-                var tx = conn.BeginTransaction();
-                Assert.That(!tx.IsCompleted);
-                conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')", tx: tx);
-                Assert.That(!tx.IsCompleted);
-                tx.Commit();
-                Assert.That(tx.IsCompleted);
-            }
+            using var conn = OpenConnection();
+            conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
+            var tx = conn.BeginTransaction();
+            Assert.That(!tx.IsCompleted);
+            conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')", tx: tx);
+            Assert.That(!tx.IsCompleted);
+            tx.Commit();
+            Assert.That(tx.IsCompleted);
         }
 
         [Test, Description("Check IsCompleted before, during, and after a successful but rolled back transaction")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/985")]
         public void IsCompletedRollback()
         {
-            using (var conn = OpenConnection())
-            {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
-                var tx = conn.BeginTransaction();
-                Assert.That(!tx.IsCompleted);
-                conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')", tx: tx);
-                Assert.That(!tx.IsCompleted);
-                tx.Rollback();
-                Assert.That(tx.IsCompleted);
-            }
+            using var conn = OpenConnection();
+            conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
+            var tx = conn.BeginTransaction();
+            Assert.That(!tx.IsCompleted);
+            conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')", tx: tx);
+            Assert.That(!tx.IsCompleted);
+            tx.Rollback();
+            Assert.That(tx.IsCompleted);
         }
 
 
@@ -420,19 +376,17 @@ namespace Npgsql.Tests
         [IssueLink("https://github.com/npgsql/npgsql/issues/985")]
         public void IsCompletedRollbackFailed()
         {
-            using (var conn = OpenConnection())
-            {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
-                var tx = conn.BeginTransaction();
-                Assert.That(!tx.IsCompleted);
-                conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')", tx: tx);
-                Assert.That(!tx.IsCompleted);
-                Assert.That(() => conn.ExecuteNonQuery("BAD QUERY"), Throws.Exception.TypeOf<PostgresException>());
-                Assert.That(!tx.IsCompleted);
-                tx.Rollback();
-                Assert.That(tx.IsCompleted);
-                Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
-            }
+            using var conn = OpenConnection();
+            conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
+            var tx = conn.BeginTransaction();
+            Assert.That(!tx.IsCompleted);
+            conn.ExecuteNonQuery("INSERT INTO data (name) VALUES ('X')", tx: tx);
+            Assert.That(!tx.IsCompleted);
+            Assert.That(() => conn.ExecuteNonQuery("BAD QUERY"), Throws.Exception.TypeOf<PostgresException>());
+            Assert.That(!tx.IsCompleted);
+            tx.Rollback();
+            Assert.That(tx.IsCompleted);
+            Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM data"), Is.EqualTo(0));
         }
 
         [Test, Description("Tests that a if a DatabaseInfoFactory is registered for a database that doesn't support transactions, no transactions are created")]
@@ -446,8 +400,8 @@ namespace Npgsql.Tests
 
             NpgsqlDatabaseInfo.RegisterFactory(new NoTransactionDatabaseInfoFactory());
             using (var conn = OpenConnection(connString))
-            using (var tx = conn.BeginTransaction())
             {
+                using var tx = conn.BeginTransaction();
                 // Detect that we're not really in a transaction
                 var prevTxId = conn.ExecuteScalar("SELECT txid_current()");
                 var nextTxId = conn.ExecuteScalar("SELECT txid_current()");
@@ -467,8 +421,8 @@ namespace Npgsql.Tests
 
             // Check that everything is back to normal
             using (var conn = OpenConnection(connString))
-            using (var tx = conn.BeginTransaction())
             {
+                using var tx = conn.BeginTransaction();
                 var prevTxId = conn.ExecuteScalar("SELECT txid_current()");
                 var nextTxId = conn.ExecuteScalar("SELECT txid_current()");
                 Assert.That(nextTxId, Is.EqualTo(prevTxId));
@@ -500,21 +454,18 @@ namespace Npgsql.Tests
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString);
             csb.CommandTimeout = 100000;
 
-            using (var connTimeoutChanged = new NpgsqlConnection(csb.ToString())) {
-                connTimeoutChanged.Open();
-                using (var t = connTimeoutChanged.BeginTransaction()) {
-                    try {
-                        var command = new NpgsqlCommand("select count(*) from dta", connTimeoutChanged);
-                        command.Transaction = t;
-                        var result = command.ExecuteScalar();
+            using var connTimeoutChanged = new NpgsqlConnection(csb.ToString());
+            connTimeoutChanged.Open();
+            using var t = connTimeoutChanged.BeginTransaction();
+            try {
+                var command = new NpgsqlCommand("select count(*) from dta", connTimeoutChanged);
+                command.Transaction = t;
+                var result = command.ExecuteScalar();
 
 
-                    } catch (Exception) {
+            } catch (Exception) {
 
-                        t.Rollback();
-                    }
-
-                }
+                t.Rollback();
             }
         }
     }

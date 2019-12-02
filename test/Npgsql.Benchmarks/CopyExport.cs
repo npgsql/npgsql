@@ -29,10 +29,10 @@ namespace Npgsql.Benchmarks
             var sum = 0;
             unchecked
             {
-                using (var exporter = _conn.BeginBinaryExport("COPY data TO STDOUT (FORMAT BINARY)"))
-                    while (exporter.StartRow() != -1)
-                        for (var col = 0; col < 10; col++)
-                            sum += exporter.Read<int>(NpgsqlDbType.Integer);
+                using var exporter = _conn.BeginBinaryExport("COPY data TO STDOUT (FORMAT BINARY)");
+                while (exporter.StartRow() != -1)
+                    for (var col = 0; col < 10; col++)
+                        sum += exporter.Read<int>(NpgsqlDbType.Integer);
             }
             return sum;
         }

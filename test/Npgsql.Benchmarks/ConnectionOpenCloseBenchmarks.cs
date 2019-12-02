@@ -96,25 +96,21 @@ namespace Npgsql.Benchmarks
         [Benchmark]
         public void OpenClose()
         {
-            using (var conn = new NpgsqlConnection(_openCloseConnString))
-            {
-                conn.Open();
-                _openCloseCmd.Connection = conn;
-                for (var i = 0; i < StatementsToSend; i++)
-                    _openCloseCmd.ExecuteNonQuery();
-            }
+            using var conn = new NpgsqlConnection(_openCloseConnString);
+            conn.Open();
+            _openCloseCmd.Connection = conn;
+            for (var i = 0; i < StatementsToSend; i++)
+                _openCloseCmd.ExecuteNonQuery();
         }
 
         [Benchmark(Baseline = true)]
         public void SqlClientOpenClose()
         {
-            using (var conn = new SqlConnection(SqlClientConnectionString))
-            {
-                conn.Open();
-                _sqlOpenCloseCmd.Connection = conn;
-                for (var i = 0; i < StatementsToSend; i++)
-                    _sqlOpenCloseCmd.ExecuteNonQuery();
-            }
+            using var conn = new SqlConnection(SqlClientConnectionString);
+            conn.Open();
+            _sqlOpenCloseCmd.Connection = conn;
+            for (var i = 0; i < StatementsToSend; i++)
+                _sqlOpenCloseCmd.ExecuteNonQuery();
         }
 
         [Benchmark]

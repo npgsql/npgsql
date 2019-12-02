@@ -29,14 +29,12 @@ namespace Npgsql.Benchmarks
         [Benchmark]
         public void Import()
         {
-            using (var importer = _conn.BeginBinaryImport("COPY data FROM STDIN (FORMAT BINARY)"))
+            using var importer = _conn.BeginBinaryImport("COPY data FROM STDIN (FORMAT BINARY)");
+            for (var row = 0; row < Rows; row++)
             {
-                for (var row = 0; row < Rows; row++)
-                {
-                    importer.StartRow();
-                    for (var col = 0; col < 10; col++)
-                        importer.Write(col, NpgsqlDbType.Integer);
-                }
+                importer.StartRow();
+                for (var col = 0; col < 10; col++)
+                    importer.Write(col, NpgsqlDbType.Integer);
             }
         }
     }

@@ -171,8 +171,10 @@ namespace Npgsql
             getDatabases.Append("SELECT d.datname AS database_name, u.usename AS owner, pg_catalog.pg_encoding_to_char(d.encoding) AS encoding FROM pg_catalog.pg_database d LEFT JOIN pg_catalog.pg_user u ON d.datdba = u.usesysid");
 
             using (var command = BuildCommand(conn, getDatabases, restrictions, "datname"))
-            using (var adapter = new NpgsqlDataAdapter(command))
+            {
+                using var adapter = new NpgsqlDataAdapter(command);
                 adapter.Fill(databases);
+            }
 
             return databases;
         }
@@ -199,8 +201,10 @@ namespace Npgsql
     ) tmp");
 
             using (var command = BuildCommand(conn, getSchemata, restrictions, "catalog_name", "schema_name", "schema_owner"))
-            using (var adapter = new NpgsqlDataAdapter(command))
+            {
+                using var adapter = new NpgsqlDataAdapter(command);
                 adapter.Fill(schemata);
+            }
 
             return schemata;
         }
@@ -231,8 +235,10 @@ FROM information_schema.tables
 WHERE table_type IN ('BASE TABLE', 'FOREIGN') AND table_schema NOT IN ('pg_catalog', 'information_schema')");
 
             using (var command = BuildCommand(conn, getTables, restrictions, false, "table_catalog", "table_schema", "table_name", "table_type"))
-            using (var adapter = new NpgsqlDataAdapter(command))
+            {
+                using var adapter = new NpgsqlDataAdapter(command);
                 adapter.Fill(tables);
+            }
 
             return tables;
         }
@@ -264,8 +270,10 @@ WHERE table_type IN ('BASE TABLE', 'FOREIGN') AND table_schema NOT IN ('pg_catal
                 "SELECT table_catalog, table_schema, table_name, column_name, ordinal_position, column_default, is_nullable, udt_name AS data_type, character_maximum_length, character_octet_length, numeric_precision, numeric_precision_radix, numeric_scale, datetime_precision, character_set_catalog, character_set_schema, character_set_name, collation_catalog FROM information_schema.columns");
 
             using (var command = BuildCommand(conn, getColumns, restrictions, "table_catalog", "table_schema", "table_name", "column_name"))
-            using (var adapter = new NpgsqlDataAdapter(command))
+            {
+                using var adapter = new NpgsqlDataAdapter(command);
                 adapter.Fill(columns);
+            }
 
             return columns;
         }
@@ -294,8 +302,10 @@ FROM information_schema.views
 WHERE table_schema NOT IN ('pg_catalog', 'information_schema')");
 
             using (var command = BuildCommand(conn, getViews, restrictions, false, "table_catalog", "table_schema", "table_name"))
-            using (var adapter = new NpgsqlDataAdapter(command))
+            {
+                using var adapter = new NpgsqlDataAdapter(command);
                 adapter.Fill(views);
+            }
 
             return views;
         }
@@ -317,8 +327,10 @@ WHERE table_schema NOT IN ('pg_catalog', 'information_schema')");
             getUsers.Append("SELECT usename as user_name, usesysid as user_sysid FROM pg_catalog.pg_user");
 
             using (var command = BuildCommand(conn, getUsers, restrictions, "usename"))
-            using (var adapter = new NpgsqlDataAdapter(command))
+            {
+                using var adapter = new NpgsqlDataAdapter(command);
                 adapter.Fill(users);
+            }
 
             return users;
         }
@@ -353,8 +365,10 @@ where
     and t.relkind = 'r'");
 
             using (var command = BuildCommand(conn, getIndexes, restrictions, false, "current_database()", "n.nspname", "t.relname", "i.relname"))
-            using (var adapter = new NpgsqlDataAdapter(command))
+            {
+                using var adapter = new NpgsqlDataAdapter(command);
                 adapter.Fill(indexes);
+            }
 
             return indexes;
         }
@@ -390,8 +404,10 @@ where
     and t.relkind = 'r'");
 
             using (var command = BuildCommand(conn, getIndexColumns, restrictions, false, "current_database()", "n.nspname", "t.relname", "i.relname", "a.attname"))
-            using (var adapter = new NpgsqlDataAdapter(command))
+            {
+                using var adapter = new NpgsqlDataAdapter(command);
                 adapter.Fill(indexColumns);
+            }
 
             return indexColumns;
         }

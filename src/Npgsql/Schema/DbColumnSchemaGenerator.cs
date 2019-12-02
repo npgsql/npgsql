@@ -116,8 +116,8 @@ ORDER BY attnum";
                 var query = GenerateColumnsQuery(_connection.PostgreSqlVersion, columnFieldFilter);
 
                 using (new TransactionScope(TransactionScopeOption.Suppress))
-                using (var connection = (NpgsqlConnection)((ICloneable)_connection).Clone())
                 {
+                    using var connection = (NpgsqlConnection)((ICloneable)_connection).Clone();
                     connection.Open();
 
                     using var cmd = new NpgsqlCommand(query, connection);

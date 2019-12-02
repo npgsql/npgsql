@@ -22,38 +22,36 @@ namespace Npgsql.Tests
             {
                 Pooling = false
             }.ToString();
-            using (var pooledConn = new NpgsqlConnection(ConnectionString))
-            using (var nonPooledConn = new NpgsqlConnection(nonPooledConnString))
-            {
-                Thread.Sleep(2000);  // Let the counter reset
-                Assert.That(hardConnectCounter!.RawValue, Is.Zero);
-                Assert.That(hardDisconnectCounter!.RawValue, Is.Zero);
-                Assert.That(softConnectCounter!.RawValue, Is.Zero);
-                Assert.That(softDisconnectCounter!.RawValue, Is.Zero);
-                pooledConn.Open();   // Pool is empty so this is a hard connect
-                nonPooledConn.Open();
-                Assert.That(hardConnectCounter.RawValue, Is.EqualTo(2));
-                Assert.That(hardDisconnectCounter.RawValue, Is.Zero);
-                Assert.That(softConnectCounter.RawValue, Is.EqualTo(1));
-                Assert.That(softDisconnectCounter.RawValue, Is.Zero);
-                pooledConn.Close();
-                nonPooledConn.Close();
-                // The non-pooled was a hard disconnect, the pooled was a soft
-                Assert.That(hardConnectCounter.RawValue, Is.EqualTo(2));
-                Assert.That(hardDisconnectCounter.RawValue, Is.EqualTo(1));
-                Assert.That(softConnectCounter.RawValue, Is.EqualTo(1));
-                Assert.That(softDisconnectCounter.RawValue, Is.EqualTo(1));
-                pooledConn.Open();
-                Assert.That(hardConnectCounter.RawValue, Is.EqualTo(2));
-                Assert.That(hardDisconnectCounter.RawValue, Is.EqualTo(1));
-                Assert.That(softConnectCounter.RawValue, Is.EqualTo(2));
-                Assert.That(softDisconnectCounter.RawValue, Is.EqualTo(1));
-                pooledConn.Close();
-                Assert.That(hardConnectCounter.RawValue, Is.EqualTo(2));
-                Assert.That(hardDisconnectCounter.RawValue, Is.EqualTo(1));
-                Assert.That(softConnectCounter.RawValue, Is.EqualTo(2));
-                Assert.That(softDisconnectCounter.RawValue, Is.EqualTo(2));
-            }
+            using var pooledConn = new NpgsqlConnection(ConnectionString);
+            using var nonPooledConn = new NpgsqlConnection(nonPooledConnString);
+            Thread.Sleep(2000);  // Let the counter reset
+            Assert.That(hardConnectCounter!.RawValue, Is.Zero);
+            Assert.That(hardDisconnectCounter!.RawValue, Is.Zero);
+            Assert.That(softConnectCounter!.RawValue, Is.Zero);
+            Assert.That(softDisconnectCounter!.RawValue, Is.Zero);
+            pooledConn.Open();   // Pool is empty so this is a hard connect
+            nonPooledConn.Open();
+            Assert.That(hardConnectCounter.RawValue, Is.EqualTo(2));
+            Assert.That(hardDisconnectCounter.RawValue, Is.Zero);
+            Assert.That(softConnectCounter.RawValue, Is.EqualTo(1));
+            Assert.That(softDisconnectCounter.RawValue, Is.Zero);
+            pooledConn.Close();
+            nonPooledConn.Close();
+            // The non-pooled was a hard disconnect, the pooled was a soft
+            Assert.That(hardConnectCounter.RawValue, Is.EqualTo(2));
+            Assert.That(hardDisconnectCounter.RawValue, Is.EqualTo(1));
+            Assert.That(softConnectCounter.RawValue, Is.EqualTo(1));
+            Assert.That(softDisconnectCounter.RawValue, Is.EqualTo(1));
+            pooledConn.Open();
+            Assert.That(hardConnectCounter.RawValue, Is.EqualTo(2));
+            Assert.That(hardDisconnectCounter.RawValue, Is.EqualTo(1));
+            Assert.That(softConnectCounter.RawValue, Is.EqualTo(2));
+            Assert.That(softDisconnectCounter.RawValue, Is.EqualTo(1));
+            pooledConn.Close();
+            Assert.That(hardConnectCounter.RawValue, Is.EqualTo(2));
+            Assert.That(hardDisconnectCounter.RawValue, Is.EqualTo(1));
+            Assert.That(softConnectCounter.RawValue, Is.EqualTo(2));
+            Assert.That(softDisconnectCounter.RawValue, Is.EqualTo(2));
         }
 
         [Test]
@@ -65,19 +63,17 @@ namespace Npgsql.Tests
             {
                 Pooling = false
             }.ToString();
-            using (var pooledConn = new NpgsqlConnection(ConnectionString))
-            using (var nonPooledConn = new NpgsqlConnection(nonPooledConnString))
-            {
-                Assert.That(counter!.RawValue, Is.Zero);
-                nonPooledConn.Open();
-                Assert.That(counter.RawValue, Is.EqualTo(1));
-                pooledConn.Open();
-                Assert.That(counter.RawValue, Is.EqualTo(1));
-                nonPooledConn.Close();
-                Assert.That(counter.RawValue, Is.Zero);
-                pooledConn.Close();
-                Assert.That(counter.RawValue, Is.Zero);
-            }
+            using var pooledConn = new NpgsqlConnection(ConnectionString);
+            using var nonPooledConn = new NpgsqlConnection(nonPooledConnString);
+            Assert.That(counter!.RawValue, Is.Zero);
+            nonPooledConn.Open();
+            Assert.That(counter.RawValue, Is.EqualTo(1));
+            pooledConn.Open();
+            Assert.That(counter.RawValue, Is.EqualTo(1));
+            nonPooledConn.Close();
+            Assert.That(counter.RawValue, Is.Zero);
+            pooledConn.Close();
+            Assert.That(counter.RawValue, Is.Zero);
         }
 
         [Test]
@@ -92,8 +88,8 @@ namespace Npgsql.Tests
                 Pooling = false
             }.ToString();
             using (var pooledConn = new NpgsqlConnection(ConnectionString))
-            using (var nonPooledConn = new NpgsqlConnection(nonPooledConnString))
             {
+                using var nonPooledConn = new NpgsqlConnection(nonPooledConnString);
                 Assert.That(totalCounter!.RawValue, Is.Zero);
                 Assert.That(activeCounter!.RawValue, Is.Zero);
                 Assert.That(freeCounter!.RawValue, Is.Zero);
@@ -114,6 +110,7 @@ namespace Npgsql.Tests
                 Assert.That(activeCounter.RawValue, Is.Zero);
                 Assert.That(freeCounter.RawValue, Is.EqualTo(1));
             }
+
             NpgsqlConnection.ClearAllPools();
             Assert.That(totalCounter.RawValue, Is.Zero);
             Assert.That(activeCounter.RawValue, Is.Zero);

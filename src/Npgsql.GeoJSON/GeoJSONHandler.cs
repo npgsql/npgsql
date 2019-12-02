@@ -41,7 +41,8 @@ namespace Npgsql.GeoJSON
                              "SELECT min(srid), max(srid), auth_name " +
                              "FROM(SELECT srid, auth_name, srid - rank() OVER(ORDER BY srid) AS range " +
                              "FROM spatial_ref_sys) AS s GROUP BY range, auth_name ORDER BY 1;", conn))
-                     using (var reader = cmd.ExecuteReader())
+                     {
+                         using var reader = cmd.ExecuteReader();
                          while (reader.Read())
                          {
                              builder.Add(new CrsMapEntry(
@@ -49,6 +50,8 @@ namespace Npgsql.GeoJSON
                                  reader.GetInt32(1),
                                  reader.GetString(2)));
                          }
+                     }
+
                      return builder.Build();
                  });
             return new GeoJsonHandler(postgresType, _options, crsMap);

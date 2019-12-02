@@ -18,19 +18,18 @@ namespace Npgsql.Tests
         public void TwoConnections()
         {
             using (var conn1 = OpenConnection(ConnectionStringEnlistOff))
-            using (var conn2 = OpenConnection(ConnectionStringEnlistOff))
             {
-                using (var scope = new TransactionScope())
-                {
-                    conn1.EnlistTransaction(Transaction.Current);
-                    conn2.EnlistTransaction(Transaction.Current);
+                using var conn2 = OpenConnection(ConnectionStringEnlistOff);
+                using var scope = new TransactionScope();
+                conn1.EnlistTransaction(Transaction.Current);
+                conn2.EnlistTransaction(Transaction.Current);
 
-                    Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1), "Unexpected first insert rowcount");
-                    Assert.That(conn2.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test2')"), Is.EqualTo(1), "Unexpected second insert rowcount");
+                Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1), "Unexpected first insert rowcount");
+                Assert.That(conn2.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test2')"), Is.EqualTo(1), "Unexpected second insert rowcount");
 
-                    scope.Complete();
-                }
+                scope.Complete();
             }
+
             // TODO: There may be a race condition here, where the prepared transaction above still hasn't committed.
             AssertNoDistributedIdentifier();
             AssertNoPreparedTransactions();
@@ -41,12 +40,13 @@ namespace Npgsql.Tests
         public void TwoConnectionsRollback()
         {
             using (new TransactionScope())
-            using (var conn1 = OpenConnection(ConnectionStringEnlistOn))
-            using (var conn2 = OpenConnection(ConnectionStringEnlistOn))
             {
+                using var conn1 = OpenConnection(ConnectionStringEnlistOn);
+                using var conn2 = OpenConnection(ConnectionStringEnlistOn);
                 Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1), "Unexpected first insert rowcount");
                 Assert.That(conn2.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test2')"), Is.EqualTo(1), "Unexpected second insert rowcount");
             }
+
             // TODO: There may be a race condition here, where the prepared transaction above still hasn't committed.
             AssertNoDistributedIdentifier();
             AssertNoPreparedTransactions();
@@ -92,8 +92,8 @@ namespace Npgsql.Tests
                 try
                 {
                     using (var tx = new TransactionScope())
-                    using (var conn1 = OpenConnection(ConnectionStringEnlistOn))
                     {
+                        using var conn1 = OpenConnection(ConnectionStringEnlistOn);
                         eventQueue.Enqueue(new TransactionEvent("Scope started, connection enlisted"));
                         Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1), "Unexpected first insert rowcount");
                         eventQueue.Enqueue(new TransactionEvent("Insert done"));
@@ -112,6 +112,7 @@ namespace Npgsql.Tests
                         tx.Complete();
                         eventQueue.Enqueue(new TransactionEvent("Scope completed"));
                     }
+
                     eventQueue.Enqueue(new TransactionEvent("Scope disposed"));
                     AssertNoDistributedIdentifier();
                     if (distributed)
@@ -153,28 +154,24 @@ Exception {2}",
         [Test]
         public void TwoConnectionsWithFailure()
         {
-            using (var conn1 = OpenConnection(ConnectionStringEnlistOff))
-            using (var conn2 = OpenConnection(ConnectionStringEnlistOff))
-            {
-                var scope = new TransactionScope();
-                conn1.EnlistTransaction(Transaction.Current);
-                conn2.EnlistTransaction(Transaction.Current);
+            using var conn1 = OpenConnection(ConnectionStringEnlistOff);
+            using var conn2 = OpenConnection(ConnectionStringEnlistOff);
+            var scope = new TransactionScope();
+            conn1.EnlistTransaction(Transaction.Current);
+            conn2.EnlistTransaction(Transaction.Current);
 
-                Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1), "Unexpected first insert rowcount");
-                Assert.That(conn2.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test2')"), Is.EqualTo(1), "Unexpected second insert rowcount");
+            Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1), "Unexpected first insert rowcount");
+            Assert.That(conn2.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test2')"), Is.EqualTo(1), "Unexpected second insert rowcount");
 
-                conn1.ExecuteNonQuery($"SELECT pg_terminate_backend({conn2.ProcessID})");
-                scope.Complete();
-                Assert.That(() => scope.Dispose(), Throws.Exception.TypeOf<TransactionAbortedException>());
+            conn1.ExecuteNonQuery($"SELECT pg_terminate_backend({conn2.ProcessID})");
+            scope.Complete();
+            Assert.That(() => scope.Dispose(), Throws.Exception.TypeOf<TransactionAbortedException>());
 
-                AssertNoDistributedIdentifier();
-                AssertNoPreparedTransactions();
-                using (var tx = conn1.BeginTransaction())
-                {
-                    Assert.That(conn1.ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(0), "Unexpected data count");
-                    tx.Rollback();
-                }
-            }
+            AssertNoDistributedIdentifier();
+            AssertNoPreparedTransactions();
+            using var tx = conn1.BeginTransaction();
+            Assert.That(conn1.ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(0), "Unexpected data count");
+            tx.Rollback();
         }
 
         [Test(Description = "Connection reuse race after transaction, bool distributed"), Explicit]
@@ -185,34 +182,32 @@ Exception {2}",
                 var eventQueue = new ConcurrentQueue<TransactionEvent>();
                 try
                 {
-                    using (var conn1 = OpenConnection(ConnectionStringEnlistOff))
+                    using var conn1 = OpenConnection(ConnectionStringEnlistOff);
+                    using (var scope = new TransactionScope())
                     {
-                        using (var scope = new TransactionScope())
+                        conn1.EnlistTransaction(Transaction.Current);
+                        eventQueue.Enqueue(new TransactionEvent("Scope started, connection enlisted"));
+
+                        if (distributed)
                         {
-                            conn1.EnlistTransaction(Transaction.Current);
-                            eventQueue.Enqueue(new TransactionEvent("Scope started, connection enlisted"));
-
-                            if (distributed)
-                            {
-                                EnlistResource.EscalateToDistributed(eventQueue);
-                                AssertHasDistributedIdentifier();
-                            }
-                            else
-                            {
-                                EnlistResource.EnlistVolatile(eventQueue);
-                                AssertNoDistributedIdentifier();
-                            }
-
-                            Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1), "Unexpected first insert rowcount");
-                            eventQueue.Enqueue(new TransactionEvent("Insert done"));
-
-                            scope.Complete();
-                            eventQueue.Enqueue(new TransactionEvent("Scope completed"));
+                            EnlistResource.EscalateToDistributed(eventQueue);
+                            AssertHasDistributedIdentifier();
                         }
-                        eventQueue.Enqueue(new TransactionEvent("Scope disposed"));
+                        else
+                        {
+                            EnlistResource.EnlistVolatile(eventQueue);
+                            AssertNoDistributedIdentifier();
+                        }
 
-                        Assert.DoesNotThrow(() => conn1.ExecuteScalar(@"SELECT COUNT(*) FROM data"));
+                        Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1), "Unexpected first insert rowcount");
+                        eventQueue.Enqueue(new TransactionEvent("Insert done"));
+
+                        scope.Complete();
+                        eventQueue.Enqueue(new TransactionEvent("Scope completed"));
                     }
+                    eventQueue.Enqueue(new TransactionEvent("Scope disposed"));
+
+                    Assert.DoesNotThrow(() => conn1.ExecuteScalar(@"SELECT COUNT(*) FROM data"));
                 }
                 catch (Exception ex)
                 {
@@ -234,34 +229,32 @@ Exception {2}",
                 var eventQueue = new ConcurrentQueue<TransactionEvent>();
                 try
                 {
-                    using (var conn1 = OpenConnection(ConnectionStringEnlistOff))
+                    using var conn1 = OpenConnection(ConnectionStringEnlistOff);
+                    using (new TransactionScope())
                     {
-                        using (new TransactionScope())
+                        conn1.EnlistTransaction(Transaction.Current);
+                        eventQueue.Enqueue(new TransactionEvent("Scope started, connection enlisted"));
+
+                        if (distributed)
                         {
-                            conn1.EnlistTransaction(Transaction.Current);
-                            eventQueue.Enqueue(new TransactionEvent("Scope started, connection enlisted"));
-
-                            if (distributed)
-                            {
-                                EnlistResource.EscalateToDistributed(eventQueue);
-                                AssertHasDistributedIdentifier();
-                            }
-                            else
-                            {
-                                EnlistResource.EnlistVolatile(eventQueue);
-                                AssertNoDistributedIdentifier();
-                            }
-
-                            Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1), "Unexpected first insert rowcount");
-                            eventQueue.Enqueue(new TransactionEvent("Insert done"));
-
-                            eventQueue.Enqueue(new TransactionEvent("Scope not completed"));
+                            EnlistResource.EscalateToDistributed(eventQueue);
+                            AssertHasDistributedIdentifier();
                         }
-                        eventQueue.Enqueue(new TransactionEvent("Scope disposed"));
-                        conn1.EnlistTransaction(null);
-                        eventQueue.Enqueue(new TransactionEvent("Connection enlisted with null"));
-                        Assert.DoesNotThrow(() => conn1.ExecuteScalar(@"SELECT COUNT(*) FROM data"));
+                        else
+                        {
+                            EnlistResource.EnlistVolatile(eventQueue);
+                            AssertNoDistributedIdentifier();
+                        }
+
+                        Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1), "Unexpected first insert rowcount");
+                        eventQueue.Enqueue(new TransactionEvent("Insert done"));
+
+                        eventQueue.Enqueue(new TransactionEvent("Scope not completed"));
                     }
+                    eventQueue.Enqueue(new TransactionEvent("Scope disposed"));
+                    conn1.EnlistTransaction(null);
+                    eventQueue.Enqueue(new TransactionEvent("Connection enlisted with null"));
+                    Assert.DoesNotThrow(() => conn1.ExecuteScalar(@"SELECT COUNT(*) FROM data"));
                 }
                 catch (Exception ex)
                 {
@@ -284,58 +277,56 @@ Exception {2}",
                 var eventQueue = new ConcurrentQueue<TransactionEvent>();
                 try
                 {
-                    using (var conn1 = OpenConnection(ConnectionStringEnlistOff))
+                    using var conn1 = OpenConnection(ConnectionStringEnlistOff);
+                    using (var scope = new TransactionScope())
                     {
-                        using (var scope = new TransactionScope())
+                        eventQueue.Enqueue(new TransactionEvent("First scope started"));
+                        conn1.EnlistTransaction(Transaction.Current);
+                        eventQueue.Enqueue(new TransactionEvent("First scope, connection enlisted"));
+
+                        if (distributed)
                         {
-                            eventQueue.Enqueue(new TransactionEvent("First scope started"));
-                            conn1.EnlistTransaction(Transaction.Current);
-                            eventQueue.Enqueue(new TransactionEvent("First scope, connection enlisted"));
-
-                            if (distributed)
-                            {
-                                EnlistResource.EscalateToDistributed(eventQueue);
-                                AssertHasDistributedIdentifier();
-                            }
-                            else
-                            {
-                                EnlistResource.EnlistVolatile(eventQueue);
-                                AssertNoDistributedIdentifier();
-                            }
-
-                            Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1), "Unexpected first insert rowcount");
-                            eventQueue.Enqueue(new TransactionEvent("First insert done"));
-
-                            scope.Complete();
-                            eventQueue.Enqueue(new TransactionEvent("First scope completed"));
+                            EnlistResource.EscalateToDistributed(eventQueue);
+                            AssertHasDistributedIdentifier();
                         }
-                        eventQueue.Enqueue(new TransactionEvent("First scope disposed"));
-
-                        using (var scope = new TransactionScope())
+                        else
                         {
-                            eventQueue.Enqueue(new TransactionEvent("Second scope started"));
-                            conn1.EnlistTransaction(Transaction.Current);
-                            eventQueue.Enqueue(new TransactionEvent("Second scope, connection enlisted"));
-
-                            if (distributed)
-                            {
-                                EnlistResource.EscalateToDistributed(eventQueue);
-                                AssertHasDistributedIdentifier();
-                            }
-                            else
-                            {
-                                EnlistResource.EnlistVolatile(eventQueue);
-                                AssertNoDistributedIdentifier();
-                            }
-
-                            Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1), "Unexpected second insert rowcount");
-                            eventQueue.Enqueue(new TransactionEvent("Second insert done"));
-
-                            scope.Complete();
-                            eventQueue.Enqueue(new TransactionEvent("Second scope completed"));
+                            EnlistResource.EnlistVolatile(eventQueue);
+                            AssertNoDistributedIdentifier();
                         }
-                        eventQueue.Enqueue(new TransactionEvent("Second scope disposed"));
+
+                        Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1), "Unexpected first insert rowcount");
+                        eventQueue.Enqueue(new TransactionEvent("First insert done"));
+
+                        scope.Complete();
+                        eventQueue.Enqueue(new TransactionEvent("First scope completed"));
                     }
+                    eventQueue.Enqueue(new TransactionEvent("First scope disposed"));
+
+                    using (var scope = new TransactionScope())
+                    {
+                        eventQueue.Enqueue(new TransactionEvent("Second scope started"));
+                        conn1.EnlistTransaction(Transaction.Current);
+                        eventQueue.Enqueue(new TransactionEvent("Second scope, connection enlisted"));
+
+                        if (distributed)
+                        {
+                            EnlistResource.EscalateToDistributed(eventQueue);
+                            AssertHasDistributedIdentifier();
+                        }
+                        else
+                        {
+                            EnlistResource.EnlistVolatile(eventQueue);
+                            AssertNoDistributedIdentifier();
+                        }
+
+                        Assert.That(conn1.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')"), Is.EqualTo(1), "Unexpected second insert rowcount");
+                        eventQueue.Enqueue(new TransactionEvent("Second insert done"));
+
+                        scope.Complete();
+                        eventQueue.Enqueue(new TransactionEvent("Second scope completed"));
+                    }
+                    eventQueue.Enqueue(new TransactionEvent("Second scope disposed"));
                 }
                 catch (Exception ex)
                 {
@@ -354,17 +345,15 @@ Exception {2}",
         {
             using (new TransactionScope())
             {
-                using (var conn1 = new NpgsqlConnection(ConnectionStringEnlistOn))
-                {
-                    conn1.Open();
-                    var processId = conn1.ProcessID;
-                    using (new NpgsqlConnection(ConnectionStringEnlistOn)) { }
-                    conn1.Close();
+                using var conn1 = new NpgsqlConnection(ConnectionStringEnlistOn);
+                conn1.Open();
+                var processId = conn1.ProcessID;
+                using (new NpgsqlConnection(ConnectionStringEnlistOn)) { }
+                conn1.Close();
 
-                    conn1.Open();
-                    Assert.That(conn1.ProcessID, Is.EqualTo(processId));
-                    conn1.Close();
-                }
+                conn1.Open();
+                Assert.That(conn1.ProcessID, Is.EqualTo(processId));
+                conn1.Close();
             }
         }
 
@@ -374,11 +363,12 @@ Exception {2}",
             using (new TransactionScope())
             {
                 using (var conn = OpenConnection(ConnectionStringEnlistOn))
-                using (var innerScope1 = new TransactionScope())
                 {
+                    using var innerScope1 = new TransactionScope();
                     conn.ExecuteNonQuery(@"INSERT INTO data (name) VALUES ('test1')");
                     innerScope1.Complete();
                 }
+
                 using (OpenConnection(ConnectionStringEnlistOn))
                 using (new TransactionScope())
                 {
@@ -394,12 +384,10 @@ Exception {2}",
 
         int GetNumberOfPreparedTransactions()
         {
-            using (var conn = OpenConnection(ConnectionStringEnlistOff))
-            using (var cmd = new NpgsqlCommand("SELECT COUNT(*) FROM pg_prepared_xacts WHERE database = @database", conn))
-            {
-                cmd.Parameters.Add(new NpgsqlParameter("database", conn.Database));
-                return (int)(long)cmd.ExecuteScalar();
-            }
+            using var conn = OpenConnection(ConnectionStringEnlistOff);
+            using var cmd = new NpgsqlCommand("SELECT COUNT(*) FROM pg_prepared_xacts WHERE database = @database", conn);
+            cmd.Parameters.Add(new NpgsqlParameter("database", conn.Database));
+            return (int)(long)cmd.ExecuteScalar();
         }
 
         void AssertNumberOfRows(int expected)
@@ -577,11 +565,9 @@ Start formatting event queue, going to sleep a bit for late events
             using (var cmd = new NpgsqlCommand("SELECT gid FROM pg_prepared_xacts WHERE database=@database", _controlConn))
             {
                 cmd.Parameters.AddWithValue("database", new NpgsqlConnectionStringBuilder(ConnectionString).Database);
-                using (var reader = cmd.ExecuteReader())
-                {
-                    while (reader.Read())
-                        lingeringTrqnsqctions.Add(reader.GetString(0));
-                }
+                using var reader = cmd.ExecuteReader();
+                while (reader.Read())
+                    lingeringTrqnsqctions.Add(reader.GetString(0));
             }
             foreach (var xactGid in lingeringTrqnsqctions)
                 _controlConn.ExecuteNonQuery($"ROLLBACK PREPARED '{xactGid}'");
