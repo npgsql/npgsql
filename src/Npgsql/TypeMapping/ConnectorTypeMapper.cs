@@ -423,7 +423,7 @@ namespace Npgsql.TypeMapping
             return (null, postgresType);
         }
 
-        bool TryGetMapping(PostgresType pgType, [MaybeNullWhen(false)] out NpgsqlTypeMapping? mapping)
+        bool TryGetMapping(PostgresType pgType, [NotNullWhen(true)] out NpgsqlTypeMapping? mapping)
             => Mappings.TryGetValue(pgType.Name, out mapping) ||
                Mappings.TryGetValue(pgType.FullName, out mapping) ||
                pgType is PostgresDomainType domain && (
