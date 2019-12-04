@@ -8,112 +8,105 @@ namespace Npgsql.Tests
         [Test]
         public void Basic()
         {
-            Assert.That(Builder.ConnectionString, Is.EqualTo(""));
-            Assert.That(Builder.Count, Is.EqualTo(0));
-            Assert.That(Builder.ContainsKey("server"), Is.True);
-            Builder.Host = "myhost";
-            Assert.That(Builder["host"], Is.EqualTo("myhost"));
-            Assert.That(Builder.Count, Is.EqualTo(1));
-            Assert.That(Builder.ConnectionString, Is.EqualTo("Host=myhost"));
-            Builder.Remove("HOST");
-            Assert.That(Builder["host"], Is.EqualTo(""));
-            Assert.That(Builder.Count, Is.EqualTo(0));
+            var builder = new NpgsqlConnectionStringBuilder();
+            Assert.That(builder.Count, Is.EqualTo(0));
+            Assert.That(builder.ContainsKey("server"), Is.True);
+            builder.Host = "myhost";
+            Assert.That(builder["host"], Is.EqualTo("myhost"));
+            Assert.That(builder.Count, Is.EqualTo(1));
+            Assert.That(builder.ConnectionString, Is.EqualTo("Host=myhost"));
+            builder.Remove("HOST");
+            Assert.That(builder["host"], Is.EqualTo(""));
+            Assert.That(builder.Count, Is.EqualTo(0));
         }
 
         [Test]
         public void FromString()
         {
-            Builder.ConnectionString = "Host=myhost;EF Template Database=foo";
-            Assert.That(Builder.Host, Is.EqualTo("myhost"));
-            Assert.That(Builder.EntityTemplateDatabase, Is.EqualTo("foo"));
+            var builder = new NpgsqlConnectionStringBuilder();
+            builder.ConnectionString = "Host=myhost;EF Template Database=foo";
+            Assert.That(builder.Host, Is.EqualTo("myhost"));
+            Assert.That(builder.EntityTemplateDatabase, Is.EqualTo("foo"));
         }
 
         [Test]
         public void TryGetValue()
         {
-            Builder.ConnectionString = "Host=myhost";
-
-            Assert.That(Builder.TryGetValue("Host", out var value), Is.True);
+            var builder = new NpgsqlConnectionStringBuilder();
+            builder.ConnectionString = "Host=myhost";
+            Assert.That(builder.TryGetValue("Host", out var value), Is.True);
             Assert.That(value, Is.EqualTo("myhost"));
-
-            Assert.That(Builder.TryGetValue("SomethingUnknown", out value), Is.False);
+            Assert.That(builder.TryGetValue("SomethingUnknown", out value), Is.False);
         }
 
         [Test]
         public void Remove()
         {
-            Assert.That(Builder.ConnectionString, Is.EqualTo(""));
-            Builder.SslMode = SslMode.Prefer;
-            Assert.That(Builder["SSL Mode"], Is.EqualTo(SslMode.Prefer));
-            Builder.Remove("SSL Mode");
-            Assert.That(Builder.ConnectionString, Is.EqualTo(""));
-            Builder.CommandTimeout = 120;
-            Assert.That(Builder["Command Timeout"], Is.EqualTo(120));
-            Builder.Remove("Command Timeout");
-            Assert.That(Builder.ConnectionString, Is.EqualTo(""));
+            var builder = new NpgsqlConnectionStringBuilder();
+            builder.SslMode = SslMode.Prefer;
+            Assert.That(builder["SSL Mode"], Is.EqualTo(SslMode.Prefer));
+            builder.Remove("SSL Mode");
+            Assert.That(builder.ConnectionString, Is.EqualTo(""));
+            builder.CommandTimeout = 120;
+            Assert.That(builder["Command Timeout"], Is.EqualTo(120));
+            builder.Remove("Command Timeout");
+            Assert.That(builder.ConnectionString, Is.EqualTo(""));
         }
 
         [Test]
         public void Clear()
         {
-            Builder.Host = "myhost";
-            Builder.Clear();
-            Assert.That(Builder.Count, Is.EqualTo(0));
-            Assert.That(Builder["host"], Is.EqualTo(""));
-            Assert.That(Builder.Host, Is.Null);
+            var builder = new NpgsqlConnectionStringBuilder { Host = "myhost" };
+            builder.Clear();
+            Assert.That(builder.Count, Is.EqualTo(0));
+            Assert.That(builder["host"], Is.EqualTo(""));
+            Assert.That(builder.Host, Is.Null);
         }
 
         [Test]
         public void Default()
         {
-            Assert.That(Builder.Port, Is.EqualTo(NpgsqlConnection.DefaultPort));
-            Builder.Port = 8;
-            Builder.Remove("Port");
-            Assert.That(Builder.Port, Is.EqualTo(NpgsqlConnection.DefaultPort));
+            var builder = new NpgsqlConnectionStringBuilder();
+            Assert.That(builder.Port, Is.EqualTo(NpgsqlConnection.DefaultPort));
+            builder.Port = 8;
+            builder.Remove("Port");
+            Assert.That(builder.Port, Is.EqualTo(NpgsqlConnection.DefaultPort));
         }
 
         [Test]
         public void Enum()
         {
-            Builder.ConnectionString = "SslMode=Prefer";
-            Assert.That(Builder.SslMode, Is.EqualTo(SslMode.Prefer));
-            Assert.That(Builder.Count, Is.EqualTo(1));
+            var builder = new NpgsqlConnectionStringBuilder();
+            builder.ConnectionString = "SslMode=Prefer";
+            Assert.That(builder.SslMode, Is.EqualTo(SslMode.Prefer));
+            Assert.That(builder.Count, Is.EqualTo(1));
         }
 
         [Test]
         public void Clone()
         {
-            Builder.Host = "myhost";
-            var builder2 = Builder.Clone();
+            var builder = new NpgsqlConnectionStringBuilder();
+            builder.Host = "myhost";
+            var builder2 = builder.Clone();
             Assert.That(builder2.Host, Is.EqualTo("myhost"));
             Assert.That(builder2["Host"], Is.EqualTo("myhost"));
-            Assert.That(Builder.Port, Is.EqualTo(NpgsqlConnection.DefaultPort));
+            Assert.That(builder.Port, Is.EqualTo(NpgsqlConnection.DefaultPort));
         }
 
         [Test]
         public void ConversionError()
         {
-            Assert.That(() => Builder["Port"] = "hello",
+            var builder = new NpgsqlConnectionStringBuilder();
+            Assert.That(() => builder["Port"] = "hello",
                 Throws.Exception.TypeOf<ArgumentException>().With.Message.Contains("Port"));
         }
 
         [Test]
         public void InvalidConnectionString()
         {
-            Assert.That(() => Builder.ConnectionString = "Server=127.0.0.1;User Id=npgsql_tests;Pooling:false",
+            var builder = new NpgsqlConnectionStringBuilder();
+            Assert.That(() => builder.ConnectionString = "Server=127.0.0.1;User Id=npgsql_tests;Pooling:false",
                 Throws.Exception.TypeOf<ArgumentException>());
         }
-
-        #region Setup
-
-        NpgsqlConnectionStringBuilder Builder { get; set; } = default!;
-
-        [SetUp]
-        public void SetUp()
-        {
-            Builder = new NpgsqlConnectionStringBuilder();
-        }
-
-        #endregion
     }
 }
