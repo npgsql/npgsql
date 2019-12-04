@@ -330,8 +330,17 @@ namespace Npgsql
                             }
                             else
                             {
-                                using (cancellationToken.Register(s => ((TaskCompletionSource<NpgsqlConnector?>)s!).SetCanceled(), tcs))
+                                CancellationTokenRegistration registration = default;
+                                if (cancellationToken.CanBeCanceled)
+                                    registration = cancellationToken.Register(s => ((TaskCompletionSource<NpgsqlConnector?>)s!).SetCanceled(), tcs);
+                                try
+                                {
                                     await tcs.Task;
+                                }
+                                finally
+                                {
+                                    registration.Dispose();
+                                }
                             }
                         }
                         else

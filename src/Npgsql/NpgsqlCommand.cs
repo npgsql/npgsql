@@ -1079,7 +1079,10 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             connector.StartUserAction(this);
             try
             {
-                using (cancellationToken.Register(cmd => ((NpgsqlCommand)cmd!).Cancel(), this))
+                CancellationTokenRegistration registration = default;
+                if (cancellationToken.CanBeCanceled)
+                    registration = cancellationToken.Register(cmd => ((NpgsqlCommand)cmd!).Cancel(), this);
+                try
                 {
                     ValidateParameters(connector.TypeMapper);
 
@@ -1095,6 +1098,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                             ResetExplicitPreparation();
                             goto case false;
                         }
+
                         NpgsqlEventSource.Log.CommandStartPrepared();
                         break;
 
@@ -1121,6 +1125,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                                     NpgsqlEventSource.Log.CommandStartPrepared();
                             }
                         }
+
                         break;
                     }
 
@@ -1164,6 +1169,10 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     else
                         reader.NextResult();
                     return reader;
+                }
+                finally
+                {
+                    registration.Dispose();
                 }
             }
             catch
