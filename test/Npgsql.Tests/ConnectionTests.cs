@@ -205,7 +205,7 @@ namespace Npgsql.Tests
             string ProvidePasswordCallback(string host, int port, string database, string username)
             {
                 getPasswordDelegateWasCalled = true;
-                return goodPassword;
+                return goodPassword!;
             }
         }
 
@@ -279,7 +279,7 @@ namespace Npgsql.Tests
                 receivedDatabase = database;
                 receivedUsername = username;
 
-                return goodPassword;
+                return goodPassword!;
             }
         }
         #endregion

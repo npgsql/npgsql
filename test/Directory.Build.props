@@ -3,6 +3,6 @@
 
   <!-- Build configuration -->
   <PropertyGroup>
-    <TargetFrameworks>net461;netcoreapp3.0</TargetFrameworks>
+    <TargetFrameworks>net461;netcoreapp3.1</TargetFrameworks>
   </PropertyGroup>
 </Project>
