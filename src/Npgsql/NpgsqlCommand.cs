@@ -125,7 +125,7 @@ namespace Npgsql
             set
             {
                 _commandText = State == CommandState.Idle
-                    ? value
+                    ? value ?? string.Empty
                     : throw new InvalidOperationException("An open data reader exists for this command.");
 
                 ResetExplicitPreparation();
