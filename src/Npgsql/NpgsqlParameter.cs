@@ -31,6 +31,7 @@ namespace Npgsql
         DbType? _cachedDbType;
         string _name = string.Empty;
         object? _value;
+        string _sourceColumn;
 
         internal string TrimmedName { get; private set; } = string.Empty;
 
@@ -55,7 +56,7 @@ namespace Npgsql
         /// </summary>
         public NpgsqlParameter()
         {
-            SourceColumn = string.Empty;
+            _sourceColumn = string.Empty;
             Direction = ParameterDirection.Input;
             SourceVersion = DataRowVersion.Current;
         }
@@ -75,7 +76,8 @@ namespace Npgsql
         /// This happens when calling this constructor passing an int 0 and the compiler thinks you are passing a value of DbType.
         /// Use <code> Convert.ToInt32(value) </code> for example to have compiler calling the correct constructor.</p>
         /// </remarks>
-        public NpgsqlParameter(string parameterName, object value) : this()
+        public NpgsqlParameter(string parameterName, object value)
+            : this()
         {
             ParameterName = parameterName;
             // ReSharper disable once VirtualMemberCallInConstructor
@@ -133,12 +135,13 @@ namespace Npgsql
         /// <param name="size">The length of the parameter.</param>
         /// <param name="sourceColumn">The name of the source column.</param>
         public NpgsqlParameter(string parameterName, NpgsqlDbType parameterType, int size, string sourceColumn)
-            : this()
         {
             ParameterName = parameterName;
             NpgsqlDbType = parameterType;
             _size = size;
             SourceColumn = sourceColumn;
+            Direction = ParameterDirection.Input;
+            SourceVersion = DataRowVersion.Current;
         }
 
         /// <summary>
@@ -149,12 +152,13 @@ namespace Npgsql
         /// <param name="size">The length of the parameter.</param>
         /// <param name="sourceColumn">The name of the source column.</param>
         public NpgsqlParameter(string parameterName, DbType parameterType, int size, string sourceColumn)
-            : this()
         {
             ParameterName = parameterName;
             DbType = parameterType;
             _size = size;
-            SourceColumn = sourceColumn;
+            _sourceColumn = sourceColumn;
+            Direction = ParameterDirection.Input;
+            SourceVersion = DataRowVersion.Current;
         }
 
         /// <summary>
@@ -176,11 +180,10 @@ namespace Npgsql
         public NpgsqlParameter(string parameterName, NpgsqlDbType parameterType, int size, string sourceColumn,
                                ParameterDirection direction, bool isNullable, byte precision, byte scale,
                                DataRowVersion sourceVersion, object value)
-            : this()
         {
             ParameterName = parameterName;
             Size = size;
-            SourceColumn = sourceColumn;
+            _sourceColumn = sourceColumn;
             Direction = direction;
             IsNullable = isNullable;
             Precision = precision;
@@ -211,11 +214,10 @@ namespace Npgsql
         public NpgsqlParameter(string parameterName, DbType parameterType, int size, string sourceColumn,
                                ParameterDirection direction, bool isNullable, byte precision, byte scale,
                                DataRowVersion sourceVersion, object value)
-            : this()
         {
             ParameterName = parameterName;
             Size = size;
-            SourceColumn = sourceColumn;
+            _sourceColumn = sourceColumn;
             Direction = direction;
             IsNullable = isNullable;
             Precision = precision;
@@ -449,7 +451,11 @@ namespace Npgsql
         /// <inheritdoc />
         [DefaultValue("")]
         [Category("Data")]
-        public sealed override string? SourceColumn { get; set; }
+        public sealed override string? SourceColumn
+        {
+            get => _sourceColumn;
+            set => _sourceColumn = value ?? string.Empty;
+        }
 
         /// <inheritdoc />
         [Category("Data"), DefaultValue(DataRowVersion.Current)]
