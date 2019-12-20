@@ -87,7 +87,7 @@ namespace Npgsql
         /// class with the parameter name and the data type.
         /// </summary>
         /// <param name="parameterName">The name of the parameter to map.</param>
-        /// <param name="parameterType">One of the <see cref="System.Data.DbType">DbType</see> values.</param>
+        /// <param name="parameterType">One of the <see cref="NpgsqlTypes.NpgsqlDbType">NpgsqlDbType</see> values.</param>
         public NpgsqlParameter(string parameterName, NpgsqlDbType parameterType)
             : this(parameterName, parameterType, 0, string.Empty)
         {
