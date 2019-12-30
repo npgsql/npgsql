@@ -284,6 +284,7 @@ namespace Npgsql
 
         #region Configuration settings
 
+        string? ConnectedHost;
         string Host => Settings.Host!;
         int Port => Settings.Port;
         string KerberosServiceName => Settings.KerberosServiceName;
@@ -349,6 +350,12 @@ namespace Npgsql
 
         bool _isConnecting;
 
+        /// <summary>
+        /// Whether this connector represents a primary or secondary server
+        /// </summary>
+        /// 
+        internal NpgsqlServerStatus.ServerType ServerType = NpgsqlServerStatus.ServerType.Unknown;
+
         #endregion
 
         #region Open
@@ -369,45 +376,76 @@ namespace Npgsql
             _isConnecting = true;
             State = ConnectorState.Connecting;
 
-            try {
-                await RawOpen(timeout, async, cancellationToken);
-                var username = GetUsername();
-                if (Settings.Database == null)
-                    Settings.Database = username;
-                WriteStartupMessage(username);
-                await Flush(async);
-                timeout.Check();
-
-                await Authenticate(username, timeout, async);
-
-                // We treat BackendKeyData as optional because some PostgreSQL-like database
-                // don't send it (CockroachDB, CrateDB)
-                var msg = await ReadMessage(async);
-                if (msg.Code == BackendMessageCode.BackendKeyData)
+            try 
+            {
+                var hosts = Host.Split(',');
+                foreach (var host in hosts)
                 {
-                    var keyDataMsg = (BackendKeyDataMessage)msg;
-                    BackendProcessId = keyDataMsg.BackendProcessId;
-                    _backendSecretKey = keyDataMsg.BackendSecretKey;
-                    msg = await ReadMessage(async);
+                    try
+                    {
+                        ConnectedHost = host;
+                        await RawOpen(timeout, async, cancellationToken);
+                        var username = GetUsername();
+                        if (Settings.Database == null)
+                            Settings.Database = username;
+                        WriteStartupMessage(username);
+                        await Flush(async);
+                        timeout.Check();
+
+                        await Authenticate(username, timeout, async);
+
+                        // We treat BackendKeyData as optional because some PostgreSQL-like database
+                        // don't send it (CockroachDB, CrateDB)
+                        var msg = await ReadMessage(async);
+                        if (msg.Code == BackendMessageCode.BackendKeyData)
+                        {
+                            var keyDataMsg = (BackendKeyDataMessage)msg;
+                            BackendProcessId = keyDataMsg.BackendProcessId;
+                            _backendSecretKey = keyDataMsg.BackendSecretKey;
+                            msg = await ReadMessage(async);
+                        }
+                        if (msg.Code != BackendMessageCode.ReadyForQuery)
+                            throw new NpgsqlException($"Received backend message {msg.Code} while expecting ReadyForQuery. Please file a bug.");
+
+                        State = ConnectorState.Ready;
+
+                        await LoadDatabaseInfo(timeout, async);
+                        await UpdateServerPrimaryStatus(timeout, async);
+
+                        var isTheDesiredType = Settings.TargetServerType == TargetServerType.Any;
+                        isTheDesiredType = isTheDesiredType || (Settings.TargetServerType == TargetServerType.Primary && ServerType == NpgsqlServerStatus.ServerType.Primary);
+                        isTheDesiredType = isTheDesiredType || (Settings.TargetServerType == TargetServerType.Secondary && ServerType == NpgsqlServerStatus.ServerType.Secondary);
+                        if (isTheDesiredType == false)
+                        {
+                            Break();
+                            continue;
+                        }
+                        if (Settings.Pooling && DatabaseInfo.SupportsDiscard)
+                            GenerateResetMessage();
+                        Counters.NumberOfNonPooledConnections.Increment();
+                        Counters.HardConnectsPerSecond.Increment();
+                        Log.Trace($"Opened connection to {ConnectedHost}:{Port}");
+
+                        // If an exception occurs during open, Break() below shouldn't close the connection, which would also
+                        // update pool state. Instead we let the exception propagate and get handled by the calling pool code.
+                        // We use an extra state flag because the connector's State varies during the type loading query
+                        // above (Executing, Fetching...). Note also that Break() gets called from ReadMessageLong().
+                        _isConnecting = false;
+                        break;
+                    }
+                    catch (SocketException)
+                    {
+                        if (hosts.Last() == host)
+                            throw;
+                        Break();
+                    }
+                    catch (NpgsqlException)
+                    {
+                        if (hosts.Last() == host)
+                            throw;
+                        Break();
+                    }
                 }
-                if (msg.Code != BackendMessageCode.ReadyForQuery)
-                    throw new NpgsqlException($"Received backend message {msg.Code} while expecting ReadyForQuery. Please file a bug.");
-
-                State = ConnectorState.Ready;
-
-                await LoadDatabaseInfo(timeout, async);
-
-                if (Settings.Pooling && DatabaseInfo.SupportsDiscard)
-                    GenerateResetMessage();
-                Counters.NumberOfNonPooledConnections.Increment();
-                Counters.HardConnectsPerSecond.Increment();
-                Log.Trace($"Opened connection to {Host}:{Port}");
-
-                // If an exception occurs during open, Break() below shouldn't close the connection, which would also
-                // update pool state. Instead we let the exception propagate and get handled by the calling pool code.
-                // We use an extra state flag because the connector's State varies during the type loading query
-                // above (Executing, Fetching...). Note also that Break() gets called from ReadMessageLong().
-                _isConnecting = false;
             }
             catch
             {
@@ -429,6 +467,11 @@ namespace Npgsql
             TypeMapper.Bind(DatabaseInfo);
         }
 
+
+        internal async Task UpdateServerPrimaryStatus(NpgsqlTimeout timeout, bool async)
+        {
+            NpgsqlServerStatus.Cache[ConnectedHost!] = ServerType = await NpgsqlServerStatus.Load(Connection!, timeout, async);
+        }
         void WriteStartupMessage(string username)
         {
             var startupParams = new Dictionary<string, string>
@@ -557,9 +600,9 @@ namespace Npgsql
 
                         var sslStream = new SslStream(_stream, leaveInnerStreamOpen: false, certificateValidationCallback);
                         if (async)
-                            await sslStream.AuthenticateAsClientAsync(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, Settings.CheckCertificateRevocation);
+                            await sslStream.AuthenticateAsClientAsync(ConnectedHost, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, Settings.CheckCertificateRevocation);
                         else
-                            sslStream.AuthenticateAsClient(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, Settings.CheckCertificateRevocation);
+                            sslStream.AuthenticateAsClient(ConnectedHost, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, Settings.CheckCertificateRevocation);
                         _stream = sslStream;
                         timeout.Check();
                         ReadBuffer.Clear();  // Reset to empty after reading single SSL char
@@ -577,7 +620,7 @@ namespace Npgsql
                     ReadBuffer.AwaitableSocket = new AwaitableSocket(new SocketAsyncEventArgs(), _socket);
                 }
 
-                Log.Trace($"Socket connected to {Host}:{Port}");
+                Log.Trace($"Socket connected to {ConnectedHost}:{Port}");
             }
             catch
             {
@@ -606,15 +649,15 @@ namespace Npgsql
         void Connect(NpgsqlTimeout timeout)
         {
             EndPoint[] endpoints;
-            if (!string.IsNullOrEmpty(Host) && Host[0] == '/')
+            if (!string.IsNullOrEmpty(ConnectedHost) && ConnectedHost![0] == '/')
             {
-                endpoints = new EndPoint[] { new UnixEndPoint(Path.Combine(Host, $".s.PGSQL.{Port}")) };
+                endpoints = new EndPoint[] { new UnixEndPoint(Path.Combine(ConnectedHost, $".s.PGSQL.{Port}")) };
             }
             else
             {
                 // Note that there aren't any timeout-able DNS methods, and we want to use sync-only
                 // methods (not to rely on any TP threads etc.)
-                endpoints = Dns.GetHostAddresses(Host).Select(a => new IPEndPoint(a, Port)).ToArray();
+                endpoints = Dns.GetHostAddresses(ConnectedHost).Select(a => new IPEndPoint(a, Port)).ToArray();
                 timeout.Check();
             }
 
@@ -681,14 +724,14 @@ namespace Npgsql
         async Task ConnectAsync(NpgsqlTimeout timeout, CancellationToken cancellationToken)
         {
             EndPoint[] endpoints;
-            if (!string.IsNullOrEmpty(Host) && Host[0] == '/')
+            if (!string.IsNullOrEmpty(ConnectedHost) && ConnectedHost![0] == '/')
             {
-                endpoints = new EndPoint[] { new UnixEndPoint(Path.Combine(Host, $".s.PGSQL.{Port}")) };
+                endpoints = new EndPoint[] { new UnixEndPoint(Path.Combine(ConnectedHost, $".s.PGSQL.{Port}")) };
             }
             else
             {
                 // Note that there aren't any timeoutable or cancellable DNS methods
-                endpoints = (await Dns.GetHostAddressesAsync(Host).WithCancellation(cancellationToken))
+                endpoints = (await Dns.GetHostAddressesAsync(ConnectedHost).WithCancellation(cancellationToken))
                     .Select(a => new IPEndPoint(a, Port)).ToArray();
             }
 

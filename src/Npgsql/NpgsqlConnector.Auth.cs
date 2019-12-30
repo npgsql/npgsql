@@ -228,7 +228,7 @@ namespace Npgsql
             {
                 try
                 {
-                    var targetName = $"{KerberosServiceName}/{Host}";
+                    var targetName = $"{KerberosServiceName}/{ConnectedHost}";
                     if (async)
                         await negotiateStream.AuthenticateAsClientAsync(CredentialCache.DefaultNetworkCredentials, targetName);
                     else
@@ -371,7 +371,7 @@ namespace Npgsql
             if (passFilePath != null && File.Exists(passFilePath))
             {
                 var matchingEntry = new PgPassFile(passFilePath)
-                    .GetFirstMatchingEntry(Host, Port, Settings.Database!, username);
+                    .GetFirstMatchingEntry(ConnectedHost, Port, Settings.Database!, username);
                 if (matchingEntry != null)
                 {
                     Log.Trace("Taking password from pgpass file");
@@ -385,7 +385,7 @@ namespace Npgsql
             Log.Trace($"Taking password from {nameof(ProvidePasswordCallback)} delegate");
             try
             {
-                return ProvidePasswordCallback(Host, Port, Settings.Database!, username);
+                return ProvidePasswordCallback(ConnectedHost!, Port, Settings.Database!, username);
             }
             catch (Exception e)
             {
