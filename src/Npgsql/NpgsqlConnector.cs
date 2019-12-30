@@ -420,6 +420,7 @@ namespace Npgsql
                             Break();
                             continue;
                         }
+
                         if (Settings.Pooling && DatabaseInfo.SupportsDiscard)
                             GenerateResetMessage();
                         Counters.NumberOfNonPooledConnections.Increment();

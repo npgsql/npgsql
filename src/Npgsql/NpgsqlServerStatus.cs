@@ -1,6 +1,8 @@
 ﻿using Npgsql.Util;
 using System.Collections.Concurrent;
+using System.Data;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Npgsql
@@ -22,10 +24,14 @@ namespace Npgsql
             var returnStatus = ServerType.Unknown;
             try
             {
-                var command = conn.CreateCommand();
-                command.CommandText = "SELECT pg_is_in_recovery();";
-                var recoveryStatus = (bool?)(await command.ExecuteScalarAsync());
-                returnStatus = recoveryStatus == false ? ServerType.Primary : ServerType.Secondary;
+                using (var command = conn.CreateCommand())
+                {
+                    command.CommandText = "SELECT pg_is_in_recovery();";
+                    command.AllResultTypesAreUnknown = true;
+                    var recoveryStatus = (string?)(await command.ExecuteScalarAsync());
+
+                    returnStatus = recoveryStatus == "f" ? ServerType.Primary : ServerType.Secondary;
+                }
             }
             catch (SocketException)
             {
