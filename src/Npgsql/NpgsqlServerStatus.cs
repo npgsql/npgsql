@@ -19,16 +19,16 @@ namespace Npgsql
             Secondary
         }
 
-        internal static async Task<ServerType> Load(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
+        internal static ServerType Load(NpgsqlConnection conn)
         {
             var returnStatus = ServerType.Unknown;
             try
             {
                 using (var command = conn.CreateCommand())
                 {
-                    command.CommandText = "SELECT pg_is_in_recovery();";
+                    command.CommandText = "SELECT pg_is_in_recovery()";
                     command.AllResultTypesAreUnknown = true;
-                    var recoveryStatus = (string?)(await command.ExecuteScalarAsync());
+                    var recoveryStatus = (string?)(command.ExecuteScalar());
 
                     returnStatus = recoveryStatus == "f" ? ServerType.Primary : ServerType.Secondary;
                 }

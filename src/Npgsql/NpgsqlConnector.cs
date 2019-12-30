@@ -284,7 +284,7 @@ namespace Npgsql
 
         #region Configuration settings
 
-        string? ConnectedHost;
+        internal string? ConnectedHost;
         string Host => Settings.Host!;
         int Port => Settings.Port;
         string KerberosServiceName => Settings.KerberosServiceName;
@@ -410,14 +410,18 @@ namespace Npgsql
                         State = ConnectorState.Ready;
 
                         await LoadDatabaseInfo(timeout, async);
-                        await UpdateServerPrimaryStatus(timeout, async);
+                        UpdateServerPrimaryStatus();
 
                         var isTheDesiredType = Settings.TargetServerType == TargetServerType.Any;
                         isTheDesiredType = isTheDesiredType || (Settings.TargetServerType == TargetServerType.Primary && ServerType == NpgsqlServerStatus.ServerType.Primary);
                         isTheDesiredType = isTheDesiredType || (Settings.TargetServerType == TargetServerType.Secondary && ServerType == NpgsqlServerStatus.ServerType.Secondary);
                         if (isTheDesiredType == false)
                         {
-                            Break();
+                            // Close() will cleanup everything, we only want the socket/server-side stuff cleaned up, as we're planning to
+                            // reuse the Connector in a moment anyway.
+                            var connection = Connection;
+                            Close();
+                            Connection = connection;
                             continue;
                         }
 
@@ -468,11 +472,11 @@ namespace Npgsql
             TypeMapper.Bind(DatabaseInfo);
         }
 
-
-        internal async Task UpdateServerPrimaryStatus(NpgsqlTimeout timeout, bool async)
+        internal void UpdateServerPrimaryStatus()
         {
-            NpgsqlServerStatus.Cache[ConnectedHost!] = ServerType = await NpgsqlServerStatus.Load(Connection!, timeout, async);
+            NpgsqlServerStatus.Cache[ConnectedHost!] = ServerType = NpgsqlServerStatus.Load(Connection!);
         }
+
         void WriteStartupMessage(string username)
         {
             var startupParams = new Dictionary<string, string>
@@ -1675,13 +1679,22 @@ namespace Npgsql
             try
             {
                 // There may already be a user action, or the connector may be closed etc.
+                UpdateServerPrimaryStatus();
+                /*
+                WriteQuery("SELECT pg_is_in_recovery()::text");
+                Flush();
+                
+                var columnMessage = ReadMessage();
+                var rowMessage = ReadMessage();
+                
+                */
+
                 if (!IsReady)
                     return;
 
                 Log.Trace("Performed keepalive", Id);
-                WritePregenerated(PregeneratedMessages.KeepAlive);
-                Flush();
-                SkipUntil(BackendMessageCode.ReadyForQuery);
+                
+
             }
             catch (Exception e)
             {
@@ -1806,8 +1819,11 @@ namespace Npgsql
                     if (keepaliveSent)
                         return;
                     keepaliveSent = true;
+                    /*
                     WritePregenerated(PregeneratedMessages.KeepAlive);
                     Flush();
+                    */
+                    UpdateServerPrimaryStatus();
                 }
                 finally
                 {
