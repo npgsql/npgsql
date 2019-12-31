@@ -28,21 +28,20 @@ namespace Npgsql
             {
                 npgsqlConnector.WriteQuery("SELECT pg_is_in_recovery()");
                 npgsqlConnector.Flush();
+                
+                var columnsMsg = npgsqlConnector.ReadMessage();
+                var rowMsg = (DataRowMessage)(npgsqlConnector.ReadMessage());
+                
+                var columnCount = npgsqlConnector.ReadBuffer.ReadInt16();
+                var lengthOfColumnValue = npgsqlConnector.ReadBuffer.ReadInt32();
+                var buffer = new byte[lengthOfColumnValue];
+                npgsqlConnector.ReadBuffer.ReadBytes(buffer, 0, lengthOfColumnValue);
+
+                returnStatus = buffer[0] == 'f' ? ServerType.Primary : ServerType.Secondary;
+                
                 npgsqlConnector.SkipUntil(BackendMessageCode.ReadyForQuery);
-                //var columnMessage = npgsqlConnector.ReadMessage();
-                //var rowMessage = npgsqlConnector.ReadMessage() as DataRowMessage;
-
-                /*
-                var reader = new NpgsqlDataReader(npgsqlConnector);
-                var x = reader.NextResult();
-                var recoveryStatus = reader.GetString(0);
-                */
-
-                //var recoveryStatus = (string?)(command.ExecuteScalar());
-
-                //
-                //returnStatus = "t" == "f" ? ServerType.Primary : ServerType.Secondary;
-                return ServerType.Primary;
+                
+                return returnStatus;
             }
             catch (SocketException)
             {
