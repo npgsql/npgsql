@@ -412,10 +412,7 @@ namespace Npgsql
                         await LoadDatabaseInfo(timeout, async);
                         UpdateServerPrimaryStatus();
 
-                        var isTheDesiredType = Settings.TargetServerType == TargetServerType.Any;
-                        isTheDesiredType = isTheDesiredType || (Settings.TargetServerType == TargetServerType.Primary && ServerType == NpgsqlServerStatus.ServerType.Primary);
-                        isTheDesiredType = isTheDesiredType || (Settings.TargetServerType == TargetServerType.Secondary && ServerType == NpgsqlServerStatus.ServerType.Secondary);
-                        if (isTheDesiredType == false)
+                        if (IsAppropriateFor(Settings.TargetServerType) == false)
                         {
                             // TODO: There needs to be some sort of soft cleanup here, Close() is too much and Break() is too little.
                             continue;
@@ -471,6 +468,23 @@ namespace Npgsql
         internal void UpdateServerPrimaryStatus()
         {
             NpgsqlServerStatus.Cache[ConnectedHost!] = ServerType = NpgsqlServerStatus.Load(this);
+        }
+
+        internal bool IsAppropriateFor(TargetServerType targetServerType)
+        {
+            if (ServerType == NpgsqlServerStatus.ServerType.Down)
+                return false;
+
+            if (targetServerType == TargetServerType.Any)
+                return true;
+
+            var connectorType = ServerType;
+            if (connectorType == NpgsqlServerStatus.ServerType.Primary && targetServerType == TargetServerType.Primary)
+                return true;
+            if (connectorType == NpgsqlServerStatus.ServerType.Secondary && targetServerType == TargetServerType.Secondary)
+                return true;
+
+            return false;
         }
 
         void WriteStartupMessage(string username)

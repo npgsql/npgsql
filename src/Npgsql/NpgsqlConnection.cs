@@ -199,8 +199,14 @@ namespace Npgsql
 
             Log.Trace("Opening connection...");
 
-            if (_pool == null || Settings.Enlist || !_pool.TryAllocateFast(this, out Connector))
+            if (_pool == null || Settings.Enlist)
                 return OpenLong();
+            if (!_pool.TryAllocateFast(this, out Connector))
+                return OpenLong();
+            else if (Connector.IsAppropriateFor(Settings.TargetServerType))
+                return OpenLong();
+
+            
 
             _userFacingConnectionString = _pool.UserFacingConnectionString;
 
