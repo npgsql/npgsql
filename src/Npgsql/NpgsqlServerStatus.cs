@@ -22,7 +22,7 @@ namespace Npgsql
             try
             {
                 npgsqlConnector.StartUserAction();
-                npgsqlConnector.WriteQuery("SELECT pg_is_in_recovery()");
+                npgsqlConnector.WritePregenerated(PregeneratedMessages.ServerIsSecondary);
                 npgsqlConnector.Flush();
                 
                 var columnsMsg = npgsqlConnector.ReadMessage();
