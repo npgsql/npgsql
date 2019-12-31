@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
 using System.Transactions;
+using Npgsql.Util;
 
 namespace Npgsql.Tests
 {
@@ -477,6 +478,244 @@ WHERE table_name LIKE @p0 escape '\' AND (is_updatable = 'NO') = @p1";
             cmd.Parameters.AddWithValue("@p1", true);
             using var reader = cmd.ExecuteReader();
             reader.Read();
+        }
+
+        [Test]
+        public void Foo()
+        {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading
+            }.ConnectionString;
+
+            using (var conn = new NpgsqlConnection(connString))
+            {
+                conn.Open();
+
+                using (var cmd = new NpgsqlCommand("SELECT 1", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetInt32(0), Is.EqualTo(1));
+                }
+
+                using (var cmd = new NpgsqlCommand("SELECT 1", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetInt32(0), Is.EqualTo(1));
+                }
+            }
+        }
+
+        [Test]
+        public void MultiplexingPilotTestSync()
+        {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                MaxPoolSize = 1,
+                MaxAutoPrepare = 20,
+                AutoPrepareMinUsages = 5
+            };
+
+            using (var conn = OpenConnection(connString))
+            {
+                conn.ExecuteNonQuery("DROP TABLE IF EXISTS data");
+                conn.ExecuteNonQuery("CREATE TABLE data (name TEXT)");
+                for (var i = 0; i < 2; i++)
+                    using (var cmd = new NpgsqlCommand("INSERT INTO data (name) VALUES ('John')", conn))
+                        Assert.That(cmd.ExecuteNonQuery(), Is.EqualTo(1));
+
+                for (var i = 0; i < 100; i++)
+                    using (var cmd2 = new NpgsqlCommand("SELECT * FROM data", conn))
+                    using (var reader = cmd2.ExecuteReader())
+                        while (reader.Read()) {}
+                            //Console.WriteLine("Row: " + reader.GetString(0));
+            }
+        }
+
+        [Test]
+        public async Task MultiplexingPilotTestAsync()
+        {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                MaxPoolSize = 10,
+                //MaxAutoPrepare = 20,
+                //AutoPrepareMinUsages = 5
+            };
+
+            using (var conn = OpenConnection(connString))
+            {
+                conn.ExecuteNonQuery("DROP TABLE IF EXISTS data");
+                conn.ExecuteNonQuery("CREATE TABLE data (name TEXT)");
+                for (var i = 0; i < 2; i++)
+                    using (var cmd = new NpgsqlCommand("INSERT INTO data (name) VALUES ('John')", conn))
+                        Assert.That(await cmd.ExecuteNonQueryAsync(), Is.EqualTo(1));
+
+                for (var i = 0; i < 100; i++)
+                    using (var cmd2 = new NpgsqlCommand("SELECT * FROM data", conn))
+                    using (var reader = await cmd2.ExecuteReaderAsync())
+                        while (await reader.ReadAsync()) {}
+                            //Console.WriteLine("Row: " + reader.GetString(0));
+            }
+        }
+
+        [Test]
+        public async Task MultiplexingPilotConcurrentTestSync()
+        {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                MaxPoolSize = 20,
+                //MaxAutoPrepare = 20,
+                //AutoPrepareMinUsages = 5
+            }.ToString();
+
+            using (var conn = OpenConnection(connString))
+            {
+                conn.ExecuteNonQuery("DROP TABLE IF EXISTS data");
+                conn.ExecuteNonQuery("CREATE TABLE data (name TEXT)");
+            }
+
+            await Task.WhenAll(Enumerable
+                .Range(0, 10)
+                .Select(t => Task.Run(() =>
+                {
+                    var sum = 0;
+                    for (var i = 0; i < 1000; i++)
+                    {
+                        using (var conn = new NpgsqlConnection(connString))
+                        {
+                            conn.Open();
+                            using (var cmd = new NpgsqlCommand("SELECT name FROM data", conn))
+                            {
+                                //CrappyLog.Write($"CMD{cmd.Id:00000}|CON?????: Command created, worker {t}");
+                                using (var reader = cmd.ExecuteReader())
+                                    while (reader.Read())
+                                        unchecked
+                                        {
+                                            sum += reader.GetString(0).Length;
+                                        }
+                            }
+                        }
+                    }
+                    //CrappyLog.Write("Worker done: " + t);
+                    return sum;
+                })));
+        }
+
+        [Test]
+        public async Task MultiplexingPilotConcurrentTestAsync()
+        {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                MaxPoolSize = 20,
+                //MaxAutoPrepare = 20,
+                //AutoPrepareMinUsages = 5
+            }.ToString();
+
+            using (var conn = OpenConnection(connString))
+            {
+                conn.ExecuteNonQuery("DROP TABLE IF EXISTS data");
+                conn.ExecuteNonQuery("CREATE TABLE data (name TEXT)");
+            }
+
+            await Task.WhenAll(Enumerable
+                .Range(0, 10)
+                .Select(t => Task.Run(async () =>
+                {
+                    var sum = 0;
+                    for (var i = 0; i < 10000; i++)
+                    {
+                        using (var conn = new NpgsqlConnection(connString))
+                        {
+                            await conn.OpenAsync();
+                            using (var cmd = new NpgsqlCommand("SELECT name FROM data", conn))
+                            using (var reader = await cmd.ExecuteReaderAsync())
+                                while (await reader.ReadAsync())
+                                    unchecked
+                                    {
+                                        sum += reader.GetString(0).Length;
+                                    }
+                        }
+                    }
+                    return sum;
+                })));
+
+            Assert.True(PoolManager.TryGetValue(connString, out var pool));
+
+            //Console.WriteLine($"Commands: Average commands per flush: {(double)pool!.NumCommandsSent / pool!.NumFlushes} " +
+            //                  $"({pool!.NumCommandsSent}/{pool!.NumFlushes})");
+        }
+
+        [Test]
+        public async Task TechEmpowerFortunes()
+        {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                MaxPoolSize = 256,
+                MaxAutoPrepare = 20,
+                AutoPrepareMinUsages = 5
+            }.ToString();
+
+            using (var conn = OpenConnection(connString))
+            {
+                conn.ExecuteNonQuery("DROP TABLE IF EXISTS fortunes");
+                conn.ExecuteNonQuery("CREATE TABLE fortunes (id INT PRIMARY KEY GENERATED BY DEFAULT AS IDENTITY, message TEXT)");
+                conn.ExecuteNonQuery(@"
+INSERT INTO fortunes (id, message) VALUES (1, 'fortune: No such file or directory');
+INSERT INTO fortunes (id, message) VALUES (2, 'A computer scientist is someone who fixes things that aren''t broken.');
+INSERT INTO fortunes (id, message) VALUES (3, 'After enough decimal places, nobody gives a damn.');
+INSERT INTO fortunes (id, message) VALUES (4, 'A bad random number generator: 1, 1, 1, 1, 1, 4.33e+67, 1, 1, 1');
+INSERT INTO fortunes (id, message) VALUES (5, 'A computer program does what you tell it to do, not what you want it to do.');
+INSERT INTO fortunes (id, message) VALUES (6, 'Emacs is a nice operating system, but I prefer UNIX. — Tom Christaensen');
+INSERT INTO fortunes (id, message) VALUES (7, 'Any program that runs right is obsolete.');
+INSERT INTO fortunes (id, message) VALUES (8, 'A list is only as strong as its weakest link. — Donald Knuth');
+INSERT INTO fortunes (id, message) VALUES (9, 'Feature: A bug with seniority.');
+INSERT INTO fortunes (id, message) VALUES (10, 'Computers make very fast, very accurate mistakes.');
+INSERT INTO fortunes (id, message) VALUES (11, '<script>alert(""This should not be displayed in a browser alert box."");</script>');
+INSERT INTO fortunes (id, message) VALUES (12, 'フレームワークのベンチマーク');");
+            }
+
+            await Task.WhenAll(Enumerable
+                .Range(0, 64)
+                .Select(t => Task.Run(async () =>
+                {
+                    for (var i = 0; i < 10000; i++)
+                    {
+                        var result = new List<Fortune>();
+                        using (var db = NpgsqlFactory.Instance.CreateConnection())
+                        using (var cmd = db.CreateCommand())
+                        {
+                            cmd.CommandText = "SELECT id, message FROM fortunes";
+
+                            db.ConnectionString = connString;
+                            await db.OpenAsync();
+
+                            using (var rdr = await cmd.ExecuteReaderAsync(CommandBehavior.CloseConnection))
+                            {
+                                while (await rdr.ReadAsync())
+                                {
+                                    result.Add(new Fortune
+                                    {
+                                        Id = rdr.GetInt32(0),
+                                        Message = rdr.GetString(1)
+                                    });
+                                }
+                            }
+                        }
+                    }
+                })));
+
+            Assert.True(PoolManager.TryGetValue(connString, out var pool));
+
+            // Console.WriteLine($"Commands: Average commands per flush: {(double)pool!.NumCommandsSent / pool!.NumFlushes} " +
+            //                   $"({pool!.NumCommandsSent}/{pool!.NumFlushes})");
+        }
+
+        public class Fortune
+        {
+            public int Id { get; set; }
+            public string? Message { get; set; }
         }
 
         #region Bug1285
