@@ -56,7 +56,7 @@ namespace Npgsql.TypeMapping
 
         #region Construction
 
-        internal ConnectorTypeMapper(NpgsqlConnector connector): base(GlobalTypeMapper.Instance.DefaultNameTranslator)
+        internal ConnectorTypeMapper(NpgsqlConnector connector) : base(GlobalTypeMapper.Instance.DefaultNameTranslator)
         {
             _connector = connector;
             UnrecognizedTypeHandler = new UnknownTypeHandler(_connector.Connection!);

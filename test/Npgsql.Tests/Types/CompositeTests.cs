@@ -9,7 +9,7 @@ using NUnit.Framework;
 namespace Npgsql.Tests.Types
 {
     [NonParallelizable]
-    class CompositeTests : TestBase
+    public class CompositeTests : TestBase
     {
         #region Test Types
 

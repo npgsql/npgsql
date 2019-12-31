@@ -92,8 +92,7 @@ namespace Npgsql
             }
             catch (Exception e)
             {
-                Connector.Break();
-                throw new NpgsqlException("Exception while writing to stream", e);
+                throw Connector.Break(new NpgsqlException("Exception while writing to stream", e));
             }
 
             try
@@ -105,8 +104,7 @@ namespace Npgsql
             }
             catch (Exception e)
             {
-                Connector.Break();
-                throw new NpgsqlException("Exception while flushing stream", e);
+                throw Connector.Break(new NpgsqlException("Exception while flushing stream", e));
             }
 
             NpgsqlEventSource.Log.BytesWritten(WritePosition);
@@ -157,8 +155,7 @@ namespace Npgsql
             }
             catch (Exception e)
             {
-                Connector.Break();
-                throw new NpgsqlException("Exception while writing to stream", e);
+                throw Connector.Break(new NpgsqlException("Exception while writing to stream", e));
             }
         }
 
@@ -192,8 +189,7 @@ namespace Npgsql
             }
             catch (Exception e)
             {
-                Connector.Break();
-                throw new NpgsqlException("Exception while writing to stream", e);
+                throw Connector.Break(new NpgsqlException("Exception while writing to stream", e));
             }
         }
 

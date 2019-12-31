@@ -133,9 +133,9 @@ namespace Npgsql
                 // Value is too big even after a flush - bypass the buffer and write directly.
                 _writeBuf.DirectWrite(buffer);
             }
-            catch
+            catch (Exception e)
             {
-                _connector.Break();
+                _connector.Break(e);
                 Cleanup();
                 throw;
             }
@@ -179,9 +179,9 @@ namespace Npgsql
                     // Value is too big even after a flush - bypass the buffer and write directly.
                     await _writeBuf.DirectWrite(buffer, true);
                 }
-                catch
+                catch (Exception e)
                 {
-                    _connector.Break();
+                    _connector.Break(e);
                     Cleanup();
                     throw;
                 }
@@ -334,7 +334,6 @@ namespace Npgsql
 
             if (CanWrite)
             {
-                _isDisposed = true;
                 _writeBuf.EndCopyMode();
                 _writeBuf.Clear();
                 await _connector.WriteCopyFail(async);
@@ -343,11 +342,15 @@ namespace Npgsql
                 {
                     var msg = await _connector.ReadMessage(async);
                     // The CopyFail should immediately trigger an exception from the read above.
-                    _connector.Break();
-                    throw new NpgsqlException("Expected ErrorResponse when cancelling COPY but got: " + msg.Code);
+                    throw _connector.Break(
+                        new NpgsqlException("Expected ErrorResponse when cancelling COPY but got: " + msg.Code));
                 }
                 catch (PostgresException e)
                 {
+                    var connector = _connector;
+                    Cleanup();
+                    connector.EndUserAction();
+
                     if (e.SqlState == PostgresErrorCodes.QueryCanceled)
                         return;
                     throw;
@@ -405,6 +408,7 @@ namespace Npgsql
         {
             Log.Debug("COPY operation ended", _connector.Id);
             _connector.CurrentCopyOperation = null;
+            _connector.Connection!.EndBindingScope(ConnectorBindingScope.Copy);
             _connector = null;
             _readBuf = null;
             _writeBuf = null;
@@ -471,19 +475,14 @@ namespace Npgsql
         internal NpgsqlCopyTextWriter(NpgsqlConnector connector, NpgsqlRawCopyStream underlying) : base(underlying)
         {
             if (underlying.IsBinary)
-            {
-                connector.Break();
-                throw new Exception("Can't use a binary copy stream for text writing");
-            }
+                throw connector.Break(new Exception("Can't use a binary copy stream for text writing"));
         }
 
         /// <summary>
         /// Cancels and terminates an ongoing import. Any data already written will be discarded.
         /// </summary>
         public void Cancel()
-        {
-            ((NpgsqlRawCopyStream)BaseStream).Cancel();
-        }
+            => ((NpgsqlRawCopyStream)BaseStream).Cancel();
 
         /// <summary>
         /// Cancels and terminates an ongoing import. Any data already written will be discarded.
@@ -506,19 +505,14 @@ namespace Npgsql
         internal NpgsqlCopyTextReader(NpgsqlConnector connector, NpgsqlRawCopyStream underlying) : base(underlying)
         {
             if (underlying.IsBinary)
-            {
-                connector.Break();
-                throw new Exception("Can't use a binary copy stream for text reading");
-            }
+                throw connector.Break(new Exception("Can't use a binary copy stream for text reading"));
         }
 
         /// <summary>
         /// Cancels and terminates an ongoing import.
         /// </summary>
         public void Cancel()
-        {
-            ((NpgsqlRawCopyStream)BaseStream).Cancel();
-        }
+            => ((NpgsqlRawCopyStream)BaseStream).Cancel();
 
         /// <summary>
         /// Cancels and terminates an ongoing import. Any data already written will be discarded.

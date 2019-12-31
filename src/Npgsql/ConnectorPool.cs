@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -9,11 +9,14 @@ using System.Threading.Tasks;
 using System.Transactions;
 using Npgsql.Logging;
 using Npgsql.Util;
+using static Npgsql.Util.Statics;
 
 namespace Npgsql
 {
-    sealed class ConnectorPool
+    sealed partial class ConnectorPool
     {
+        #region Fields and properties
+
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(ConnectorPool));
 
         internal NpgsqlConnectionStringBuilder Settings { get; }
@@ -24,9 +27,15 @@ namespace Npgsql
         /// </summary>
         internal string UserFacingConnectionString { get; }
 
+        readonly string _connectionString;
+
         readonly int _max;
         readonly int _min;
+        readonly bool _autoPrepare;
         volatile int _numConnectors;
+
+        public bool IsBootstrapped { get; set; }
+
 #if NET461 || NETSTANDARD2_0 || NETSTANDARD2_1 || NETCOREAPP3_0
         // .NET 5.0 adds ChannelReader<T>.Count, but for previous TFMs we need to do our own idle counting.
         volatile int _idleCount;
@@ -35,8 +44,16 @@ namespace Npgsql
         int IdleCount => _idleConnectorReader.Count;
 #endif
 
+        /// <summary>
+        /// Tracks all connectors currently managed by this pool, whether idle or busy.
+        /// Only updated rarely - when physical connections are opened/closed - but is read in perf-sensitive contexts.
+        /// </summary>
+        readonly NpgsqlConnector?[] _connectors;
+
+        readonly bool _multiplexing;
+
         readonly ChannelReader<NpgsqlConnector> _idleConnectorReader;
-        readonly ChannelWriter<NpgsqlConnector> _idleWriter;
+        internal ChannelWriter<NpgsqlConnector> IdleConnectorWriter { get; }
 
         /// <summary>
         /// Incremented every time this pool is cleared via <see cref="NpgsqlConnection.ClearPool"/> or
@@ -59,6 +76,13 @@ namespace Npgsql
         readonly Dictionary<Transaction, List<NpgsqlConnector>> _pendingEnlistedConnectors
             = new Dictionary<Transaction, List<NpgsqlConnector>>();
 
+        static readonly SingleThreadSynchronizationContext SingleThreadSynchronizationContext = new SingleThreadSynchronizationContext("NpgsqlRemainingAsyncSendWorker");
+
+        // TODO: Make this configurable
+        const int MultiexingCommandChannelBound = 4096;
+
+        #endregion
+
         internal (int Total, int Idle, int Busy) Statistics
         {
             get
@@ -74,10 +98,12 @@ namespace Npgsql
             if (settings.MaxPoolSize < settings.MinPoolSize)
                 throw new ArgumentException($"Connection can't have MaxPoolSize {settings.MaxPoolSize} under MinPoolSize {settings.MinPoolSize}");
 
-            // We enforce Max Pool Size, so need to to create a bounded channel (which is less efficient)
+            // We enforce Max Pool Size, so no need to to create a bounded channel (which is less efficient)
+            // On the consuming side, we have the multiplexing write loop but also non-multiplexing Rents
+            // On the producing side, we have connections being released back into the pool (both multiplexing and not)
             var idleChannel = Channel.CreateUnbounded<NpgsqlConnector>();
             _idleConnectorReader = idleChannel.Reader;
-            _idleWriter = idleChannel.Writer;
+            IdleConnectorWriter = idleChannel.Writer;
 
             _max = settings.MaxPoolSize;
             _min = settings.MinPoolSize;
@@ -101,56 +127,79 @@ namespace Npgsql
             _pruningSamplingInterval = pruningSamplingInterval;
             _pruningSamples = new int[_pruningSampleSize];
             _pruningTimerEnabled = false;
+
+            _max = settings.MaxPoolSize;
+            _min = settings.MinPoolSize;
+            _autoPrepare = settings.MaxAutoPrepare > 0;
+
+            _connectionString = connString;
+
+            UserFacingConnectionString = settings.PersistSecurityInfo
+                ? connString
+                : settings.ToStringWithoutPassword();
+
+            _connectors = new NpgsqlConnector[_max];
+
+            // TODO: Validate multiplexing options are set only when Multiplexing is on
+
+            if (Settings.Multiplexing)
+            {
+                _multiplexing = true;
+
+                // Translate microseconds to ticks for cancellation token
+                _writeCoalescingDelayTicks = Settings.WriteCoalescingDelayUs * 100;
+                _writeCoalescingBufferThresholdBytes = Settings.WriteCoalescingBufferThresholdBytes;
+
+                // TODO: Make this bounded
+                var multiplexCommandChannel = Channel.CreateBounded<NpgsqlCommand>(
+                    new BoundedChannelOptions(MultiexingCommandChannelBound)
+                    {
+                        FullMode = BoundedChannelFullMode.Wait,
+                        SingleReader = true
+                    });
+                _multiplexCommandReader = multiplexCommandChannel.Reader;
+                MultiplexCommandWriter = multiplexCommandChannel.Writer;
+
+                // TODO: Think about cleanup for this, e.g. completing the channel at application shutdown and/or
+                // pool clearing
+                _ = MultiplexingWriteLoopWrapper();
+            }
         }
 
-        internal ValueTask<NpgsqlConnector> Rent(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async,
-            CancellationToken cancellationToken)
+        internal ValueTask<NpgsqlConnector> Rent(
+            NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
         {
-            if (TryGetIdleConnector(out var connector))
+            NpgsqlConnector? connector;
+
+            while (true)
             {
-                connector.Connection = conn;
-                return new ValueTask<NpgsqlConnector>(connector);
+                if (TryGetIdleConnector(out connector))
+                {
+                    connector.Connection = conn;
+                    conn.Connector = connector;
+
+                    return new ValueTask<NpgsqlConnector>(connector);
+                }
+
+                return RentAsync();
             }
 
-            return RentAsync(conn, timeout, async, cancellationToken);
-
-            async ValueTask<NpgsqlConnector> RentAsync(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async,
-                CancellationToken cancellationToken)
+            async ValueTask<NpgsqlConnector> RentAsync()
             {
                 // TODO: If we're synchronous, use SingleThreadSynchronizationContext to not schedule completions
                 // on the thread pool (standard sync-over-async TP pseudo-deadlock)
-
-                // No idle connector was found in the pool.
-                // As long as we're under max capacity, attempt to increase the connector count and open a new connection.
-                for (var numConnectors = _numConnectors; numConnectors < _max; numConnectors = _numConnectors)
+                connector = await OpenNewConnector(conn, timeout, async, cancellationToken);
+                if (connector != null)
                 {
-                    // Note that we purposefully don't use SpinWait for this: https://github.com/dotnet/coreclr/pull/21437
-                    if (Interlocked.CompareExchange(ref _numConnectors, numConnectors + 1, numConnectors) !=
-                        numConnectors)
-                        continue;
-
-                    try
-                    {
-                        // We've managed to increase the open counter, open a physical connections.
-                        connector = new NpgsqlConnector(conn) { ClearCounter = _clearCounter };
-                        await connector.Open(timeout, async, cancellationToken);
-                    }
-                    catch
-                    {
-                        // Physical open failed, decrement the open and busy counter back down.
-                        conn.Connector = null;
-                        Interlocked.Decrement(ref _numConnectors);
-                        throw;
-                    }
-
-                    // Only start pruning if it was this thread that incremented open count past _min.
-                    if (numConnectors == _min)
-                        EnablePruning();
+                    connector.Connection = conn;
+                    conn.Connector = connector;
 
                     return connector;
                 }
 
-                // We're at max capacity. Asynchronously block on the idle channel with a timeout.
+                // We're at max capacity. Block on the idle channel with a timeout.
+                // Note that Channels guarantee fair FIFO behavior to callers of ReadAsync (first-come first-
+                // served), which is crucial to us.
 
                 // TODO: Potential issue: we only check to create new connections once above. In theory we could have
                 // many attempts waiting on the idle channel forever, since all connections were broken by some network
@@ -163,15 +212,42 @@ namespace Npgsql
 
                 try
                 {
+                    if (async)
+                    {
+                        while (true)
+                        {
+                            connector = await _idleConnectorReader.ReadAsync(timeoutToken);
+                            if (CheckIdleConnector(connector))
+                            {
+                                // TODO: Duplicated with above
+                                connector.Connection = conn;
+                                conn.Connector = connector;
+
+                                return connector;
+                            }
+                        }
+                    }
+
+                    // Channels don't have a sync API. To avoid sync-over-async issues, we use a special single-
+                    // thread synchronization context which ensures that callbacks are executed on a dedicated
+                    // thread.
+
+                    using var __ = SingleThreadSynchronizationContext.Enter();
+
                     while (true)
                     {
                         // Block until a connector is released.
                         // Note that Channels guarantee fair FIFO behavior to callers of ReadAsync (first-come first-
                         // served), which is crucial to us.
-                        connector = await _idleConnectorReader.ReadAsync(timeoutToken);
+
+                        connector = _idleConnectorReader.ReadAsync(timeoutToken)
+                            .AsTask().GetAwaiter().GetResult();
                         if (CheckIdleConnector(connector))
                         {
+                            // TODO: Duplicated with above
                             connector.Connection = conn;
+                            conn.Connector = connector;
+
                             return connector;
                         }
                     }
@@ -193,7 +269,7 @@ namespace Npgsql
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        bool TryGetIdleConnector([NotNullWhen(true)] out NpgsqlConnector connector)
+        bool TryGetIdleConnector([NotNullWhen(true)] out NpgsqlConnector? connector)
         {
             while (_idleConnectorReader.TryRead(out var nullableConnector))
             {
@@ -225,7 +301,53 @@ namespace Npgsql
                 return false;
             }
 
+            Debug.Assert(connector.CommandsInFlightCount == 0,
+                $"Got idle connector but {nameof(connector.CommandsInFlightCount)} is {connector.CommandsInFlightCount}");
+            Debug.Assert(connector.MultiplexAsyncWritingLock == 0,
+                $"Got idle connector but {nameof(connector.MultiplexAsyncWritingLock)} is 1");
+
             return true;
+        }
+
+        async ValueTask<NpgsqlConnector?> OpenNewConnector(
+            NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
+        {
+            // As long as we're under max capacity, attempt to increase the connector count and open a new connection.
+            for (var numConnectors = _numConnectors; numConnectors < _max; numConnectors = _numConnectors)
+            {
+                // Note that we purposefully don't use SpinWait for this: https://github.com/dotnet/coreclr/pull/21437
+                if (Interlocked.CompareExchange(ref _numConnectors, numConnectors + 1, numConnectors) != numConnectors)
+                    continue;
+
+                try
+                {
+                    // We've managed to increase the open counter, open a physical connections.
+                    var connector = new NpgsqlConnector(conn) { ClearCounter = _clearCounter };
+                    await connector.Open(timeout, async, cancellationToken);
+
+                    var i = 0;
+                    for (; i < _max; i++)
+                        if (Interlocked.CompareExchange(ref _connectors[i], connector, null) == null)
+                            break;
+                    if (i == _max)
+                        throw new Exception($"Could not find free slot in {_connectors} when opening. Please report a bug.");
+
+                    // Only start pruning if it was this thread that incremented open count past _min.
+                    if (numConnectors == _min)
+                        EnablePruning();
+
+                    return connector;
+                }
+                catch
+                {
+                    // Physical open failed, decrement the open and busy counter back down.
+                    conn.Connector = null;
+                    Interlocked.Decrement(ref _numConnectors);
+                    throw;
+                }
+            }
+
+            return null;
         }
 
         internal void Return(NpgsqlConnector connector)
@@ -239,13 +361,11 @@ namespace Npgsql
                 return;
             }
 
-            connector.Reset();
-
             // Statement order is important since we have synchronous completions on the channel.
 #if NET461 || NETSTANDARD2_0 || NETSTANDARD2_1 || NETCOREAPP3_0
             Interlocked.Increment(ref _idleCount);
 #endif
-            var written = _idleWriter.TryWrite(connector);
+            var written = IdleConnectorWriter.TryWrite(connector);
             Debug.Assert(written);
         }
 
@@ -255,7 +375,8 @@ namespace Npgsql
 
             var count = IdleCount;
             while (count-- > 0 && _idleConnectorReader.TryRead(out var connector))
-                CloseConnector(connector);
+                if (CheckIdleConnector(connector))
+                    CloseConnector(connector);
         }
         void CloseConnector(NpgsqlConnector connector)
         {
@@ -265,8 +386,15 @@ namespace Npgsql
             }
             catch (Exception e)
             {
-                Log.Warn("Exception while closing outdated connector", e, connector.Id);
+                Log.Warn("Exception while closing connector", e, connector.Id);
             }
+
+            var i = 0;
+            for (; i < _max; i++)
+                if (Interlocked.CompareExchange(ref _connectors[i], null, connector) == connector)
+                    break;
+            if (i == _max)
+                throw new Exception($"Could not find connector in {_connectors} when closing. Please report a bug.");
 
             var numConnectors = Interlocked.Decrement(ref _numConnectors);
             Debug.Assert(numConnectors >= 0);
@@ -299,10 +427,7 @@ namespace Npgsql
             }
         }
 
-        internal bool TryRentEnlistedPending(
-            NpgsqlConnection connection,
-            Transaction transaction,
-            [NotNullWhen(true)] out NpgsqlConnector? connector)
+        internal bool TryRentEnlistedPending(Transaction transaction, [NotNullWhen(true)] out NpgsqlConnector? connector)
         {
             lock (_pendingEnlistedConnectors)
             {
@@ -315,7 +440,6 @@ namespace Npgsql
                 list.RemoveAt(list.Count - 1);
                 if (list.Count == 0)
                     _pendingEnlistedConnectors.Remove(transaction);
-                connector.Connection = connection;
                 return true;
             }
         }

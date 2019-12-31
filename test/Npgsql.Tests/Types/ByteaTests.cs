@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Data;
 using System.Linq;
+using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
+using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests.Types
 {
@@ -12,12 +14,12 @@ namespace Npgsql.Tests.Types
     /// <summary>
     /// http://www.postgresql.org/docs/current/static/datatype-binary.html
     /// </summary>
-    class ByteaTests : TestBase
+    public class ByteaTests : MultiplexingTestBase
     {
         [Test, Description("Roundtrips a bytea")]
-        public void Roundtrip()
+        public async Task Roundtrip()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", conn))
             {
                 byte[] expected = { 1, 2, 3, 4, 5 };
@@ -30,7 +32,7 @@ namespace Npgsql.Tests.Types
                 cmd.Parameters.Add(p2);
                 cmd.Parameters.Add(p3);
                 p1.Value = p2.Value = expected;
-                using (var reader = cmd.ExecuteReader())
+                using (var reader = await cmd.ExecuteReaderAsync())
                 {
                     reader.Read();
 
@@ -45,16 +47,16 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public void RoundtripLarge()
+        public async Task RoundtripLarge()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = new NpgsqlCommand("SELECT @p::BYTEA", conn))
             {
                 var expected = new byte[conn.Settings.WriteBufferSize + 100];
                 for (var i = 0; i < expected.Length; i++)
                     expected[i] = 8;
                 cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Bytea) { Value = expected });
-                var reader = cmd.ExecuteReader();
+                var reader = await cmd.ExecuteReaderAsync();
                 reader.Read();
                 Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(byte[])));
                 Assert.That(reader.GetFieldValue<byte[]>(0), Is.EqualTo(expected));
@@ -62,18 +64,18 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public void Read([Values(CommandBehavior.Default, CommandBehavior.SequentialAccess)] CommandBehavior behavior)
+        public async Task Read([Values(CommandBehavior.Default, CommandBehavior.SequentialAccess)] CommandBehavior behavior)
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
+            await using (await CreateTempTable(conn, "bytes BYTEA", out var table))
             {
                 // TODO: This is too small to actually test any interesting sequential behavior
                 byte[] expected = {1, 2, 3, 4, 5};
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (bytes BYTEA)");
-                conn.ExecuteNonQuery($@"INSERT INTO data (bytes) VALUES ({TestUtil.EncodeByteaHex(expected)})");
+                await conn.ExecuteNonQueryAsync($"INSERT INTO {table} (bytes) VALUES ({EncodeByteaHex(expected)})");
 
-                const string queryText = @"SELECT bytes, 'foo', bytes, bytes, bytes FROM data";
+                string queryText = $"SELECT bytes, 'foo', bytes, bytes, bytes FROM {table}";
                 using (var cmd = new NpgsqlCommand(queryText, conn))
-                using (var reader = cmd.ExecuteReader(behavior))
+                using (var reader = await cmd.ExecuteReaderAsync(behavior))
                 {
                     reader.Read();
 
@@ -95,61 +97,55 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public void EmptyRoundtrip()
+        public async Task EmptyRoundtrip()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = new NpgsqlCommand("SELECT :val::BYTEA", conn))
             {
                 var expected = new byte[0];
                 cmd.Parameters.Add("val", NpgsqlDbType.Bytea);
                 cmd.Parameters["val"].Value = expected;
-                var result = (byte[])cmd.ExecuteScalar();
+                var result = (byte[])await cmd.ExecuteScalarAsync();
                 Assert.That(result, Is.EqualTo(expected));
             }
         }
 
         [Test, Description("Tests that bytea values are truncated when the NpgsqlParameter's Size is set")]
-        public void Truncate()
+        public async Task Truncate()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = new NpgsqlCommand("SELECT @p", conn))
             {
                 byte[] data = { 1, 2, 3, 4, 5, 6 };
                 var p = new NpgsqlParameter("p", data) { Size = 4 };
                 cmd.Parameters.Add(p);
-                Assert.That(cmd.ExecuteScalar(), Is.EqualTo(new byte[] { 1, 2, 3, 4 }));
+                Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(new byte[] { 1, 2, 3, 4 }));
 
                 // NpgsqlParameter.Size needs to persist when value is changed
                 byte[] data2 = { 11, 12, 13, 14, 15, 16 };
                 p.Value = data2;
-                Assert.That(cmd.ExecuteScalar(), Is.EqualTo(new byte[] { 11, 12, 13, 14 }));
+                Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(new byte[] { 11, 12, 13, 14 }));
 
                 // NpgsqlParameter.Size larger than the value size should mean the value size, as well as 0 and -1
                 p.Size = data2.Length + 10;
-                Assert.That(cmd.ExecuteScalar(), Is.EqualTo(data2));
+                Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(data2));
                 p.Size = 0;
-                Assert.That(cmd.ExecuteScalar(), Is.EqualTo(data2));
+                Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(data2));
                 p.Size = -1;
-                Assert.That(cmd.ExecuteScalar(), Is.EqualTo(data2));
+                Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(data2));
 
                 Assert.That(() => p.Size = -2, Throws.Exception.TypeOf<ArgumentException>());
             }
         }
 
         [Test]
-        public void ByteaOverArrayOfBytes()
+        public async Task ByteaOverArrayOfBytes()
         {
-            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-            {
-                ApplicationName = nameof(ByteaOverArrayOfBytes),  // Prevent backend type caching in TypeHandlerRegistry
-                Pooling = false
-            };
-
-            using (var conn = OpenConnection(csb))
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = new NpgsqlCommand("SELECT @p", conn))
             {
                 cmd.Parameters.AddWithValue("p", new byte[3]);
-                using (var reader = cmd.ExecuteReader())
+                using (var reader = await cmd.ExecuteReaderAsync())
                 {
                     reader.Read();
                     Assert.That(reader.GetDataTypeName(0), Is.EqualTo("bytea"));
@@ -158,15 +154,15 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public void ArrayOfBytea()
+        public async Task ArrayOfBytea()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = new NpgsqlCommand("SELECT :p1", conn))
             {
                 var bytes = new byte[] { 1, 2, 3, 4, 5, 34, 39, 48, 49, 50, 51, 52, 92, 127, 128, 255, 254, 253, 252, 251 };
                 var inVal = new[] { bytes, bytes };
                 cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Bytea | NpgsqlDbType.Array, inVal);
-                var retVal = (byte[][])cmd.ExecuteScalar();
+                var retVal = (byte[][])await cmd.ExecuteScalarAsync();
                 Assert.AreEqual(inVal.Length, retVal.Length);
                 Assert.AreEqual(inVal[0], retVal[0]);
                 Assert.AreEqual(inVal[1], retVal[1]);
@@ -175,15 +171,15 @@ namespace Npgsql.Tests.Types
 
 #if !NETSTANDARD2_0 && !NET461
         [Test]
-        public void Memory()
+        public async Task Memory()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn))
             {
                 var bytes = new byte[] { 1, 2, 3 };
                 cmd.Parameters.AddWithValue("p1", new ReadOnlyMemory<byte>(bytes));
                 cmd.Parameters.AddWithValue("p2", new Memory<byte>(bytes));
-                using (var reader = cmd.ExecuteReader())
+                using (var reader = await cmd.ExecuteReaderAsync())
                 {
                     reader.Read();
                     Assert.That(reader[0], Is.EqualTo(bytes));
@@ -198,42 +194,22 @@ namespace Npgsql.Tests.Types
         // Older tests from here
 
         [Test]
-        public void Prepared()
+        public async Task Insert1()
         {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("select :p1", conn))
-            {
-                var bytes = new byte[] { 1, 2, 3, 4, 5, 34, 39, 48, 49, 50, 51, 52, 92, 127, 128, 255, 254, 253, 252, 251 };
-                var inVal = new[] { bytes, bytes };
-                var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Bytea | NpgsqlDbType.Array);
-                parameter.Value = inVal;
-                cmd.Parameters.Add(parameter);
-                cmd.Prepare();
-
-                var retVal = (byte[][])cmd.ExecuteScalar();
-                Assert.AreEqual(inVal.Length, retVal.Length);
-                Assert.AreEqual(inVal[0], retVal[0]);
-                Assert.AreEqual(inVal[1], retVal[1]);
-            }
-        }
-
-        [Test]
-        public void Insert1()
-        {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = new NpgsqlCommand("SELECT @bytes", conn))
             {
                 byte[] toStore = { 0, 1, 255, 254 };
                 cmd.Parameters.AddWithValue("@bytes", toStore);
-                var result = (byte[])cmd.ExecuteScalar();
+                var result = (byte[])await cmd.ExecuteScalarAsync();
                 Assert.AreEqual(toStore, result);
             }
         }
 
         [Test]
-        public void ArraySegment()
+        public async Task ArraySegment()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
                 using (var cmd = new NpgsqlCommand("select :bytearr", conn))
                 {
@@ -246,21 +222,21 @@ namespace Npgsql.Tests.Types
                     // Big value, should go through "direct buffer"
                     var segment = new ArraySegment<byte>(arr, 17, 18000);
                     cmd.Parameters.Add(new NpgsqlParameter("bytearr", DbType.Binary) {Value = segment});
-                    var returned = (byte[]) cmd.ExecuteScalar();
+                    var returned = (byte[]) await cmd.ExecuteScalarAsync();
                     Assert.That(segment.SequenceEqual(returned));
 
                     cmd.Parameters[0].Size = 17000;
-                    returned = (byte[]) cmd.ExecuteScalar();
+                    returned = (byte[]) await cmd.ExecuteScalarAsync();
                     Assert.That(returned.SequenceEqual(new ArraySegment<byte>(segment.Array!, segment.Offset, 17000)));
 
                     // Small value, should be written normally through the NpgsqlBuffer
                     segment = new ArraySegment<byte>(arr, 6, 10);
                     cmd.Parameters[0].Value = segment;
-                    returned = (byte[]) cmd.ExecuteScalar();
+                    returned = (byte[]) await cmd.ExecuteScalarAsync();
                     Assert.That(segment.SequenceEqual(returned));
 
                     cmd.Parameters[0].Size = 2;
-                    returned = (byte[]) cmd.ExecuteScalar();
+                    returned = (byte[]) await cmd.ExecuteScalarAsync();
                     Assert.That(returned.SequenceEqual(new ArraySegment<byte>(segment.Array!, segment.Offset, 2)));
                 }
 
@@ -268,31 +244,32 @@ namespace Npgsql.Tests.Types
                 {
                     var segment = new ArraySegment<byte>(new byte[] {1, 2, 3}, 1, 2);
                     cmd.Parameters.AddWithValue("bytearr", segment);
-                    Assert.That(segment.SequenceEqual((byte[]) cmd.ExecuteScalar()));
+                    Assert.That(segment.SequenceEqual((byte[]) await cmd.ExecuteScalarAsync()));
                 }
             }
         }
 
         [Test, Description("Writes a bytea that doesn't fit in a partially-full buffer, but does fit in an empty buffer")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/654")]
-        public void WriteDoesntFitInitiallyButFitsLater()
+        public async Task WriteDoesntFitInitiallyButFitsLater()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
+            await using (await CreateTempTable(conn, "field BYTEA", out var table))
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (field BYTEA)");
-
                 var bytea = new byte[8180];
                 for (var i = 0; i < bytea.Length; i++)
                 {
                     bytea[i] = (byte) (i%256);
                 }
 
-                using (var cmd = new NpgsqlCommand("INSERT INTO data (field) VALUES (@p)", conn))
+                using (var cmd = new NpgsqlCommand($"INSERT INTO {table} (field) VALUES (@p)", conn))
                 {
                     cmd.Parameters.AddWithValue("@p", bytea);
-                    cmd.ExecuteNonQuery();
+                    await cmd.ExecuteNonQueryAsync();
                 }
             }
         }
+
+        public ByteaTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
     }
 }

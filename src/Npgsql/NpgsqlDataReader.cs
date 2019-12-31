@@ -45,7 +45,7 @@ namespace Npgsql
         /// </summary>
         CommandBehavior _behavior;
 
-        Task _sendTask = default!;
+        //Task _sendTask = default!;
 
         internal ReaderState State;
 
@@ -132,17 +132,17 @@ namespace Npgsql
             Connector = connector;
         }
 
-        internal void Init(NpgsqlCommand command, CommandBehavior behavior, List<NpgsqlStatement> statements, Task sendTask)
+        internal void Init(NpgsqlCommand command, CommandBehavior behavior, List<NpgsqlStatement> statements /*, Task sendTask */)
         {
             Command = command;
-            Debug.Assert(command.Connection != null && command.Connection == Connector.Connection);
+            //Debug.Assert(command.Connection != null && command.Connection == Connector.Connection);
             _connection = command.Connection!;
             _behavior = behavior;
             _isSchemaOnly = _behavior.HasFlag(CommandBehavior.SchemaOnly);
             _isSequential = _behavior.HasFlag(CommandBehavior.SequentialAccess);
             _statements = statements;
             StatementIndex = -1;
-            _sendTask = sendTask;
+            //_sendTask = sendTask;
             State = ReaderState.BetweenResults;
             _recordsAffected = null;
         }
@@ -848,33 +848,30 @@ namespace Npgsql
 
             switch (Connector.State)
             {
-            case ConnectorState.Broken:
+            case ConnectorState.Ready:
+            case ConnectorState.Fetching:
+            case ConnectorState.Executing:
+            case ConnectorState.Connecting:
+                if (State != ReaderState.Consumed)
+                    await Consume(async);
+                break;
             case ConnectorState.Closed:
-                // This may have happen because an I/O error while reading a value, or some non-safe
-                // exception thrown from a type handler. Or if the connection was closed while the reader
-                // was still open
-                State = ReaderState.Closed;
-                Command.State = CommandState.Idle;
-                ReaderClosed?.Invoke(this, EventArgs.Empty);
-                return;
+            case ConnectorState.Broken:
+                break;
+            case ConnectorState.Waiting:
+            case ConnectorState.Copy:
+                Debug.Fail("Bad connector state when closing reader: " + Connector.State);
+                break;
+            default:
+                throw new ArgumentOutOfRangeException();
             }
 
-            if (State != ReaderState.Consumed)
-                await Consume(async);
-
-            await Cleanup(async, connectionClosing);
+            Cleanup(async, connectionClosing);
         }
 
-        internal async Task Cleanup(bool async, bool connectionClosing=false)
+        internal void Cleanup(bool async, bool connectionClosing=false)
         {
             Log.Trace("Cleaning up reader", Connector.Id);
-
-            // Make sure the send task for this command, which may have executed asynchronously and in
-            // parallel with the reading, has completed, throwing any exceptions it generated.
-            if (async)
-                await _sendTask;
-            else
-                _sendTask.GetAwaiter().GetResult();
 
             State = ReaderState.Closed;
             Command.State = CommandState.Idle;
@@ -882,9 +879,21 @@ namespace Npgsql
             Connector.EndUserAction();
             NpgsqlEventSource.Log.CommandStop();
 
-            // If the reader is being closed as part of the connection closing, we don't apply
-            // the reader's CommandBehavior.CloseConnection
-            if (_behavior.HasFlag(CommandBehavior.CloseConnection) && !connectionClosing)
+            if (_connection.ConnectorBindingScope == ConnectorBindingScope.Reader)
+            {
+                // TODO: Refactor... Use proper scope
+                _connection.Connector = null;
+                Connector.Connection = null;
+                _connection.ConnectorBindingScope = ConnectorBindingScope.None;
+
+                // If the reader is being closed as part of the connection closing, we don't apply
+                // the reader's CommandBehavior.CloseConnection
+                if (_behavior.HasFlag(CommandBehavior.CloseConnection) && !connectionClosing)
+                    _connection.Close();
+
+                Connector.ReaderCompleted.SetResult(null);
+            }
+            else if (_behavior.HasFlag(CommandBehavior.CloseConnection) && !connectionClosing)
                 _connection.Close();
 
             if (ReaderClosed != null)

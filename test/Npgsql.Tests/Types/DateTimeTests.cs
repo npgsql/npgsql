@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Data;
 using System.Linq;
+using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
 
@@ -12,14 +13,14 @@ namespace Npgsql.Tests.Types
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-datetime.html
     /// </remarks>
-    class DateTimeTests : TestBase
+    public class DateTimeTests : MultiplexingTestBase
     {
         #region Date
 
         [Test]
-        public void Date()
+        public async Task Date()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
                 var dateTime = new DateTime(2002, 3, 4, 0, 0, 0, 0, DateTimeKind.Unspecified);
                 var npgsqlDate = new NpgsqlDate(dateTime);
@@ -32,7 +33,7 @@ namespace Npgsql.Tests.Types
                     Assert.That(p2.DbType, Is.EqualTo(DbType.Date));
                     cmd.Parameters.Add(p1);
                     cmd.Parameters.Add(p2);
-                    using (var reader = cmd.ExecuteReader())
+                    using (var reader = await cmd.ExecuteReaderAsync())
                     {
                         reader.Read();
 
@@ -63,22 +64,22 @@ namespace Npgsql.Tests.Types
         };
 
         [Test, TestCaseSource(nameof(DateSpecialCases))]
-        public void DateSpecial(NpgsqlDate value)
+        public async Task DateSpecial(NpgsqlDate value)
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = new NpgsqlCommand("SELECT @p", conn)) {
                 cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Value = value });
-                using (var reader = cmd.ExecuteReader()) {
+                using (var reader = await cmd.ExecuteReaderAsync()) {
                     reader.Read();
                     Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(value));
                     Assert.That(() => reader.GetDateTime(0), Throws.Exception.TypeOf<InvalidCastException>());
                 }
-                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+                Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
             }
         }
 
         [Test, Description("Makes sure that when ConvertInfinityDateTime is true, infinity values are properly converted")]
-        public void DateConvertInfinity()
+        public async Task DateConvertInfinity()
         {
             using (var conn = new NpgsqlConnection(ConnectionString + ";ConvertInfinityDateTime=true"))
             {
@@ -87,7 +88,7 @@ namespace Npgsql.Tests.Types
                 using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn)) {
                     cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Date, DateTime.MaxValue);
                     cmd.Parameters.AddWithValue("p2", NpgsqlDbType.Date, DateTime.MinValue);
-                    using (var reader = cmd.ExecuteReader()) {
+                    using (var reader = await cmd.ExecuteReaderAsync()) {
                         reader.Read();
                         Assert.That(reader.GetFieldValue<NpgsqlDate>(0), Is.EqualTo(NpgsqlDate.Infinity));
                         Assert.That(reader.GetFieldValue<NpgsqlDate>(1), Is.EqualTo(NpgsqlDate.NegativeInfinity));
@@ -103,9 +104,9 @@ namespace Npgsql.Tests.Types
         #region Time
 
         [Test]
-        public void Time()
+        public async Task Time()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
                 var expected = new TimeSpan(0, 10, 45, 34, 500);
 
@@ -113,7 +114,7 @@ namespace Npgsql.Tests.Types
                 {
                     cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.Time) {Value = expected});
                     cmd.Parameters.Add(new NpgsqlParameter("p2", DbType.Time) {Value = expected});
-                    using (var reader = cmd.ExecuteReader())
+                    using (var reader = await cmd.ExecuteReaderAsync())
                     {
                         reader.Read();
 
@@ -136,9 +137,9 @@ namespace Npgsql.Tests.Types
 
         [Test]
         [MonoIgnore]
-        public void TimeTz()
+        public async Task TimeTz()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
                 var tzOffset = TimeZoneInfo.Local.BaseUtcOffset;
                 if (tzOffset == TimeSpan.Zero)
@@ -160,7 +161,7 @@ namespace Npgsql.Tests.Types
                     cmd.Parameters.AddWithValue("p5", NpgsqlDbType.TimeTz, ts);
                     Assert.That(cmd.Parameters.All(p => p.DbType == DbType.Object));
 
-                    using (var reader = cmd.ExecuteReader())
+                    using (var reader = await cmd.ExecuteReaderAsync())
                     {
                         reader.Read();
 
@@ -180,11 +181,11 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public void TimeWithTimeZoneBeforeUtcZero()
+        public async Task TimeWithTimeZoneBeforeUtcZero()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = new NpgsqlCommand("SELECT TIME WITH TIME ZONE '01:00:00+02'", conn))
-            using (var reader = cmd.ExecuteReader())
+            using (var reader = await cmd.ExecuteReaderAsync())
             {
                 reader.Read();
                 Assert.That(reader.GetFieldValue<DateTimeOffset>(0), Is.EqualTo(new DateTimeOffset(1, 1, 2, 1, 0, 0, new TimeSpan(0, 2, 0, 0))));
@@ -202,9 +203,9 @@ namespace Npgsql.Tests.Types
         };
 
         [Test, TestCaseSource(nameof(TimeStampCases))]
-        public void Timestamp(DateTime dateTime)
+        public async Task Timestamp(DateTime dateTime)
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
                 var npgsqlDateTime = new NpgsqlDateTime(dateTime.Ticks);
 
@@ -227,7 +228,7 @@ namespace Npgsql.Tests.Types
                     cmd.Parameters.Add(p5);
                     cmd.Parameters.Add(p6);
                     p1.Value = p2.Value = p3.Value = npgsqlDateTime;
-                    using (var reader = cmd.ExecuteReader())
+                    using (var reader = await cmd.ExecuteReaderAsync())
                     {
                         reader.Read();
 
@@ -262,22 +263,22 @@ namespace Npgsql.Tests.Types
         };
 
         [Test, TestCaseSource(nameof(TimeStampSpecialCases))]
-        public void TimeStampSpecial(NpgsqlDateTime value)
+        public async Task TimeStampSpecial(NpgsqlDateTime value)
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = new NpgsqlCommand("SELECT @p", conn)) {
                 cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Value = value });
-                using (var reader = cmd.ExecuteReader()) {
+                using (var reader = await cmd.ExecuteReaderAsync()) {
                     reader.Read();
                     Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(value));
                     Assert.That(() => reader.GetDateTime(0), Throws.Exception.TypeOf<InvalidCastException>());
                 }
-                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+                Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
             }
         }
 
         [Test, Description("Makes sure that when ConvertInfinityDateTime is true, infinity values are properly converted")]
-        public void TimeStampConvertInfinity()
+        public async Task TimeStampConvertInfinity()
         {
             using (var conn = new NpgsqlConnection(ConnectionString + ";ConvertInfinityDateTime=true"))
             {
@@ -287,7 +288,7 @@ namespace Npgsql.Tests.Types
                 {
                     cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Timestamp, DateTime.MaxValue);
                     cmd.Parameters.AddWithValue("p2", NpgsqlDbType.Timestamp, DateTime.MinValue);
-                    using (var reader = cmd.ExecuteReader())
+                    using (var reader = await cmd.ExecuteReaderAsync())
                     {
                         reader.Read();
                         Assert.That(reader.GetFieldValue<NpgsqlDateTime>(0), Is.EqualTo(NpgsqlDateTime.Infinity));
@@ -304,9 +305,9 @@ namespace Npgsql.Tests.Types
         #region Timestamp with timezone
 
         [Test]
-        public void TimestampTz()
+        public async Task TimestampTz()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
                 var tzOffset = TimeZoneInfo.Local.BaseUtcOffset;
                 if (tzOffset == TimeSpan.Zero)
@@ -334,7 +335,7 @@ namespace Npgsql.Tests.Types
                     cmd.Parameters.AddWithValue("p7", dateTimeOffset);
                     Assert.That(cmd.Parameters["p7"].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.TimestampTz));
 
-                    using (var reader = cmd.ExecuteReader())
+                    using (var reader = await cmd.ExecuteReaderAsync())
                     {
                         reader.Read();
 
@@ -371,9 +372,9 @@ namespace Npgsql.Tests.Types
         #region Interval
 
         [Test]
-        public void Interval()
+        public async Task Interval()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
                 var expectedNpgsqlInterval = new NpgsqlTimeSpan(1, 2, 3, 4, 5);
                 var expectedTimeSpan = new TimeSpan(1, 2, 3, 4, 5);
@@ -392,7 +393,7 @@ namespace Npgsql.Tests.Types
                     cmd.Parameters.Add(p3);
                     p1.Value = expectedNpgsqlInterval;
 
-                    using (var reader = cmd.ExecuteReader())
+                    using (var reader = await cmd.ExecuteReaderAsync())
                     {
                         reader.Read();
 
@@ -414,5 +415,7 @@ namespace Npgsql.Tests.Types
         }
 
         #endregion
+
+        public DateTimeTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
     }
 }

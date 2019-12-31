@@ -1,38 +1,46 @@
 using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Npgsql.Tests
 {
     public abstract class TestBase
     {
         /// <summary>
-        /// The connection string that will be used when opening the connection to the tests database.
-        /// May be overridden in fixtures, e.g. to set special connection parameters
-        /// </summary>
-        public static string ConnectionString =>
-            Environment.GetEnvironmentVariable("NPGSQL_TEST_DB") ?? DefaultConnectionString;
-
-        /// <summary>
         /// Unless the NPGSQL_TEST_DB environment variable is defined, this is used as the connection string for the
         /// test database.
         /// </summary>
-        const string DefaultConnectionString = "Server=localhost;Username=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;Timeout=0;Command Timeout=0";
+        const string DefaultConnectionString = "Server=localhost;Username=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;Timeout=0;Command Timeout=0;Multiplexing=false";
+
+        /// <summary>
+        /// The connection string that will be used when opening the connection to the tests database.
+        /// May be overridden in fixtures, e.g. to set special connection parameters
+        /// </summary>
+        public virtual string ConnectionString { get; }
+            = Environment.GetEnvironmentVariable("NPGSQL_TEST_DB") ?? DefaultConnectionString;
 
         #region Utilities for use by tests
 
         protected virtual NpgsqlConnection CreateConnection(string? connectionString = null)
-        {
-            if (connectionString == null)
-                connectionString = ConnectionString;
-            var conn = new NpgsqlConnection(connectionString);
-            return conn;
-        }
+            => new NpgsqlConnection(connectionString ?? ConnectionString);
 
         protected virtual NpgsqlConnection OpenConnection(string? connectionString = null)
+            => OpenConnection(connectionString, async: false).GetAwaiter().GetResult();
+
+        protected virtual ValueTask<NpgsqlConnection> OpenConnectionAsync(string? connectionString = null)
+            => OpenConnection(connectionString, async: true);
+
+        async ValueTask<NpgsqlConnection> OpenConnection(string? connectionString, bool async)
         {
             var conn = CreateConnection(connectionString);
             try
             {
-                conn.Open();
+                if (async)
+                    await conn.OpenAsync();
+                else
+                    conn.Open();
             }
             catch (PostgresException e)
             {
@@ -49,6 +57,9 @@ namespace Npgsql.Tests
 
         protected NpgsqlConnection OpenConnection(NpgsqlConnectionStringBuilder csb)
             => OpenConnection(csb.ToString());
+
+        protected virtual ValueTask<NpgsqlConnection> OpenConnectionAsync(NpgsqlConnectionStringBuilder csb)
+            => OpenConnectionAsync(csb.ToString());
 
         // In PG under 9.1 you can't do SELECT pg_sleep(2) in binary because that function returns void and PG doesn't know
         // how to transfer that. So cast to text server-side.

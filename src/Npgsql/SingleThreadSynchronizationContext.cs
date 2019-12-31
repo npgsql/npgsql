@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Threading;
+using Npgsql.Logging;
 
 namespace Npgsql
 {
@@ -12,8 +13,12 @@ namespace Npgsql
         const int ThreadStayAliveMs = 10000;
         readonly string _threadName;
 
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(SingleThreadSynchronizationContext));
+
         internal SingleThreadSynchronizationContext(string threadName)
             => _threadName = threadName;
+
+        internal Disposable Enter() => new Disposable(this);
 
         public override void Post(SendOrPostCallback callback, object? state)
         {
@@ -54,6 +59,10 @@ namespace Npgsql
                     callbackAndState.Callback(callbackAndState.State);
                 }
             }
+            catch (Exception e)
+            {
+                Log.Error($"Exception caught in {nameof(SingleThreadSynchronizationContext)}", e);
+            }
             finally
             {
                 lock (this) { _thread = null; }
@@ -64,6 +73,20 @@ namespace Npgsql
         {
             internal SendOrPostCallback Callback;
             internal object? State;
+        }
+
+        internal struct Disposable : IDisposable
+        {
+            readonly SynchronizationContext? _synchronizationContext;
+
+            internal Disposable(SynchronizationContext synchronizationContext)
+            {
+                _synchronizationContext = Current;
+                SetSynchronizationContext(synchronizationContext);
+            }
+
+            public void Dispose()
+                => SetSynchronizationContext(_synchronizationContext);
         }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Net;
 using System.Net.NetworkInformation;
+using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
 
@@ -14,12 +15,12 @@ namespace Npgsql.Tests.Types
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-net-types.html
     /// </remarks>
-    class NetworkTypeTests : TestBase
+    class NetworkTypeTests : MultiplexingTestBase
     {
         [Test]
-        public void InetV4()
+        public async Task InetV4()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4, @p5, @p6", conn))
             {
                 var expectedIp = IPAddress.Parse("192.168.1.1");
@@ -32,7 +33,7 @@ namespace Npgsql.Tests.Types
                 cmd.Parameters.Add(new NpgsqlParameter("p5", NpgsqlDbType.Inet) { Value = expectedNpgsqlInet });
                 cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p6", Value = expectedNpgsqlInet });
 
-                using (var reader = cmd.ExecuteReader())
+                using (var reader = await cmd.ExecuteReaderAsync())
                 {
                     reader.Read();
 
@@ -72,9 +73,9 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public void InetV6()
+        public async Task InetV6()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4, @p5, @p6", conn))
             {
                 const string addr = "2001:1db8:85a3:1142:1000:8a2e:1370:7334";
@@ -88,7 +89,7 @@ namespace Npgsql.Tests.Types
                 cmd.Parameters.Add(new NpgsqlParameter("p5", NpgsqlDbType.Inet) { Value = expectedNpgsqlInet });
                 cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p6", Value = expectedNpgsqlInet });
 
-                using (var reader = cmd.ExecuteReader())
+                using (var reader = await cmd.ExecuteReaderAsync())
                 {
                     reader.Read();
 
@@ -128,15 +129,15 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, Description("Tests support for ReadOnlyIPAddress, see https://github.com/dotnet/corefx/issues/33373")]
-        public void IPAddressAny()
+        public async Task IPAddressAny()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", conn))
             {
                 cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.Inet) { Value = IPAddress.Any });
                 cmd.Parameters.Add(new NpgsqlParameter<IPAddress>("p2", NpgsqlDbType.Inet) { TypedValue = IPAddress.Any });
                 cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p3", Value = IPAddress.Any });
-                using (var reader = cmd.ExecuteReader())
+                using (var reader = await cmd.ExecuteReaderAsync())
                 {
                     reader.Read();
                     for (var i = 0; i < reader.FieldCount; i++)
@@ -146,13 +147,13 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public void Cidr()
+        public async Task Cidr()
         {
             var expected = (Address: IPAddress.Parse("192.168.1.0"), Subnet: 24);
             //var expectedInet = new NpgsqlInet("192.168.1.0/24");
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = new NpgsqlCommand("SELECT '192.168.1.0/24'::CIDR", conn))
-            using (var reader = cmd.ExecuteReader())
+            using (var reader = await cmd.ExecuteReaderAsync())
             {
                 reader.Read();
 
@@ -166,9 +167,9 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public void Macaddr()
+        public async Task Macaddr()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn))
             {
                 var expected = PhysicalAddress.Parse("08-00-2B-01-02-03");
@@ -176,7 +177,7 @@ namespace Npgsql.Tests.Types
                 var p2 = new NpgsqlParameter { ParameterName = "p2", Value = expected };
                 cmd.Parameters.Add(p1);
                 cmd.Parameters.Add(p2);
-                using (var reader = cmd.ExecuteReader())
+                using (var reader = await cmd.ExecuteReaderAsync())
                 {
                     reader.Read();
 
@@ -191,9 +192,9 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public void Macaddr8()
+        public async Task Macaddr8()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
                 if (conn.PostgreSqlVersion < new Version(10, 0))
                     Assert.Ignore("macaddr8 only supported on PostgreSQL 10 and above");
@@ -205,7 +206,7 @@ namespace Npgsql.Tests.Types
                     var expected8 = PhysicalAddress.Parse("08-00-2B-01-02-03-04-05");
                     cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.MacAddr8) { Value = send6 });
                     cmd.Parameters.Add(new NpgsqlParameter("p2", NpgsqlDbType.MacAddr8) { Value = expected8 });
-                    using (var reader = cmd.ExecuteReader())
+                    using (var reader = await cmd.ExecuteReaderAsync())
                     {
                         reader.Read();
 
@@ -222,11 +223,11 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/835")]
-        public void MacaddrMultiple()
+        public async Task MacaddrMultiple()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = new NpgsqlCommand("SELECT unnest(ARRAY['08-00-2B-01-02-03'::MACADDR, '08-00-2B-01-02-04'::MACADDR])", conn))
-            using (var r = cmd.ExecuteReader())
+            using (var r = await cmd.ExecuteReaderAsync())
             {
                 r.Read();
                 var p1 = (PhysicalAddress)r[0];
@@ -238,9 +239,9 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public void MacaddrValidation()
+        public async Task MacaddrValidation()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
                 if (conn.PostgreSqlVersion < new Version(10, 0))
                     Assert.Ignore("macaddr8 only supported on PostgreSQL 10 and above");
@@ -251,7 +252,7 @@ namespace Npgsql.Tests.Types
                     var send8 = PhysicalAddress.Parse("08-00-2B-01-02-03-04-05");
                     cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.MacAddr) { Value = send8 });
 
-                    PostgresException exception = Assert.Throws<PostgresException>(() => cmd.ExecuteReader());
+                    var exception = Assert.ThrowsAsync<PostgresException>(() => cmd.ExecuteReaderAsync());
                     Assert.That(exception.Message, Does.StartWith("22P03:").And.Contain("1"));
                 }
             }
@@ -260,21 +261,23 @@ namespace Npgsql.Tests.Types
         // Older tests from here
 
         [Test]
-        public void TestNpgsqlSpecificTypesCLRTypesNpgsqlInet()
+        public async Task TestNpgsqlSpecificTypesCLRTypesNpgsqlInet()
         {
             // Please, check http://pgfoundry.org/forum/message.php?msg_id=1005483
             // for a discussion where an NpgsqlInet type isn't shown in a datagrid
             // This test tries to check if the type returned is an IPAddress when using
             // the GetValue() of NpgsqlDataReader and NpgsqlInet when using GetProviderValue();
 
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var command = new NpgsqlCommand("select '192.168.10.10'::inet;", conn))
-            using (var dr = command.ExecuteReader())
+            using (var dr = await command.ExecuteReaderAsync())
             {
                 dr.Read();
                 var result = dr.GetValue(0);
                 Assert.AreEqual(typeof(IPAddress), result.GetType());
             }
         }
+
+        public NetworkTypeTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
     }
 }

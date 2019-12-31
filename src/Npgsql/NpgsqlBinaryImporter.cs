@@ -63,8 +63,9 @@ namespace Npgsql
                     copyInResponse = (CopyInResponseMessage)msg;
                     if (!copyInResponse.IsBinary)
                     {
-                        _connector.Break();
-                        throw new ArgumentException("copyFromCommand triggered a text transfer, only binary is allowed", nameof(copyFromCommand));
+                        throw _connector.Break(
+                            new ArgumentException("copyFromCommand triggered a text transfer, only binary is allowed",
+                                nameof(copyFromCommand)));
                     }
                     break;
                 case BackendMessageCode.CompletedResponse:
@@ -448,8 +449,8 @@ namespace Npgsql
             {
                 var msg = await _connector.ReadMessage(async);
                 // The CopyFail should immediately trigger an exception from the read above.
-                _connector.Break();
-                throw new NpgsqlException("Expected ErrorResponse when cancelling COPY but got: " + msg.Code);
+                throw _connector.Break(
+                    new NpgsqlException("Expected ErrorResponse when cancelling COPY but got: " + msg.Code));
             }
             catch (PostgresException e)
             {
@@ -508,6 +509,7 @@ namespace Npgsql
             if (connector != null)
             {
                 connector.CurrentCopyOperation = null;
+                _connector.Connection?.EndBindingScope(ConnectorBindingScope.Copy);
                 _connector = null;
             }
 

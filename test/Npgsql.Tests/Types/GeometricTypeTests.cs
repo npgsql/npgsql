@@ -1,4 +1,5 @@
-﻿using NpgsqlTypes;
+﻿using System.Threading.Tasks;
+using NpgsqlTypes;
 using NUnit.Framework;
 
 namespace Npgsql.Tests.Types
@@ -9,12 +10,12 @@ namespace Npgsql.Tests.Types
     /// <remarks>
     /// http://www.postgresql.org/docs/current/static/datatype-geometric.html
     /// </remarks>
-    class GeometricTypeTests : TestBase
+    class GeometricTypeTests : MultiplexingTestBase
     {
         [Test]
-        public void Point()
+        public async Task Point()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
                 var expected = new NpgsqlPoint(1.2, 3.4);
                 var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
@@ -23,7 +24,7 @@ namespace Npgsql.Tests.Types
                 Assert.That(p2.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Point));
                 cmd.Parameters.Add(p1);
                 cmd.Parameters.Add(p2);
-                using (var reader = cmd.ExecuteReader()) {
+                using (var reader = await cmd.ExecuteReaderAsync()) {
                     reader.Read();
 
                     for (var i = 0; i < cmd.Parameters.Count; i++)
@@ -37,9 +38,9 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public void LineSegment()
+        public async Task LineSegment()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
                 var expected = new NpgsqlLSeg(1, 2, 3, 4);
                 var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
@@ -48,7 +49,7 @@ namespace Npgsql.Tests.Types
                 Assert.That(p2.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.LSeg));
                 cmd.Parameters.Add(p1);
                 cmd.Parameters.Add(p2);
-                using (var reader = cmd.ExecuteReader())
+                using (var reader = await cmd.ExecuteReaderAsync())
                 {
                     reader.Read();
 
@@ -64,9 +65,9 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public void Box()
+        public async Task Box()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
                 var expected = new NpgsqlBox(2, 4, 1, 3);
                 var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
@@ -75,7 +76,7 @@ namespace Npgsql.Tests.Types
                 Assert.That(p2.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Box));
                 cmd.Parameters.Add(p1);
                 cmd.Parameters.Add(p2);
-                using (var reader = cmd.ExecuteReader())
+                using (var reader = await cmd.ExecuteReaderAsync())
                 {
                     reader.Read();
 
@@ -90,9 +91,9 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public void Path()
+        public async Task Path()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
                 var expectedOpen = new NpgsqlPath(new[] {new NpgsqlPoint(1, 2), new NpgsqlPoint(3, 4)}, true);
                 var expectedClosed = new NpgsqlPath(new[] {new NpgsqlPoint(1, 2), new NpgsqlPoint(3, 4)}, false);
@@ -104,7 +105,7 @@ namespace Npgsql.Tests.Types
                 cmd.Parameters.Add(p1);
                 cmd.Parameters.Add(p2);
                 cmd.Parameters.Add(p3);
-                using (var reader = cmd.ExecuteReader())
+                using (var reader = await cmd.ExecuteReaderAsync())
                 {
                     reader.Read();
 
@@ -123,9 +124,9 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public void Polygon()
+        public async Task Polygon()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
                 var expected = new NpgsqlPolygon(new NpgsqlPoint(1, 2), new NpgsqlPoint(3, 4));
                 var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
@@ -134,7 +135,7 @@ namespace Npgsql.Tests.Types
                 Assert.That(p2.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Polygon));
                 cmd.Parameters.Add(p1);
                 cmd.Parameters.Add(p2);
-                using (var reader = cmd.ExecuteReader())
+                using (var reader = await cmd.ExecuteReaderAsync())
                 {
                     reader.Read();
 
@@ -151,9 +152,9 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public void Circle()
+        public async Task Circle()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
                 var expected = new NpgsqlCircle(1, 2, 0.5);
                 var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
@@ -162,7 +163,7 @@ namespace Npgsql.Tests.Types
                 Assert.That(p2.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Circle));
                 cmd.Parameters.Add(p1);
                 cmd.Parameters.Add(p2);
-                using (var reader = cmd.ExecuteReader())
+                using (var reader = await cmd.ExecuteReaderAsync())
                 {
                     reader.Read();
 
@@ -183,5 +184,7 @@ namespace Npgsql.Tests.Types
             Assert.That(actual.X, Is.EqualTo(expected.X).Within(1).Ulps);
             Assert.That(actual.Y, Is.EqualTo(expected.Y).Within(1).Ulps);
         }
+
+        public GeometricTypeTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
     }
 }

@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Data;
 using System.Linq;
+using System.Threading.Tasks;
 using NUnit.Framework;
+using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests
 {
@@ -12,19 +14,21 @@ namespace Npgsql.Tests
     public class ReaderOldSchemaTests : TestBase
     {
         [Test]
-        public void PrimaryKeyFieldsMetadataSupport()
+        public async Task PrimaryKeyFieldsMetadataSupport()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("DROP TABLE IF EXISTS DATA2 CASCADE");
-                conn.ExecuteNonQuery(@"CREATE TEMP TABLE DATA2 (
-                                field_pk1                      INT2 NOT NULL,
-                                field_pk2                      INT2 NOT NULL,
-                                field_serial                   SERIAL,
-                                CONSTRAINT data2_pkey PRIMARY KEY (field_pk1, field_pk2)
-                                )");
+                await using var _ = await GetTempTableName(conn, out var table);
 
-                using (var command = new NpgsqlCommand("SELECT * FROM DATA2", conn))
+                await conn.ExecuteNonQueryAsync($@"
+CREATE TABLE {table} (
+    field_pk1 INT2 NOT NULL,
+    field_pk2 INT2 NOT NULL,
+    field_serial SERIAL,
+    CONSTRAINT data2_pkey PRIMARY KEY (field_pk1, field_pk2)
+)");
+
+                using (var command = new NpgsqlCommand($"SELECT * FROM {table}", conn))
                 using (var dr = command.ExecuteReader(CommandBehavior.KeyInfo))
                 {
                     dr.Read();
@@ -38,12 +42,13 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void PrimaryKeyFieldMetadataSupport()
+        public async Task PrimaryKeyFieldMetadataSupport()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (id SERIAL PRIMARY KEY, serial SERIAL)");
-                using (var command = new NpgsqlCommand("SELECT * FROM data", conn))
+                await using var _ = await CreateTempTable(conn, "id SERIAL PRIMARY KEY, serial SERIAL", out var table);
+
+                using (var command = new NpgsqlCommand($"SELECT * FROM {table}", conn))
                 {
                     using (var dr = command.ExecuteReader(CommandBehavior.KeyInfo))
                     {
@@ -57,12 +62,13 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void IsAutoIncrementMetadataSupport()
+        public async Task IsAutoIncrementMetadataSupport()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (id SERIAL PRIMARY KEY)");
-                var command = new NpgsqlCommand("SELECT * FROM data", conn);
+                await using var _ = await CreateTempTable(conn, "id SERIAL PRIMARY KEY", out var table);
+
+                var command = new NpgsqlCommand($"SELECT * FROM {table}", conn);
 
                 using (var dr = command.ExecuteReader(CommandBehavior.KeyInfo))
                 {
@@ -75,14 +81,18 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void IsReadOnlyMetadataSupport()
+        public async Task IsReadOnlyMetadataSupport()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (id SERIAL PRIMARY KEY, int2 SMALLINT)");
-                conn.ExecuteNonQuery("CREATE OR REPLACE TEMPORARY VIEW DataView (id, int2) AS SELECT id, int2 + int2 AS int2 FROM data");
+                await using var _ = await GetTempTableName(conn, out var table);
+                await using var __ = await GetTempViewName(conn, out var view);
 
-                var command = new NpgsqlCommand("SELECT * FROM DataView", conn);
+                await conn.ExecuteNonQueryAsync($@"
+CREATE TABLE {table} (id SERIAL PRIMARY KEY, int2 SMALLINT);
+CREATE OR REPLACE VIEW {view} (id, int2) AS SELECT id, int2 + int2 AS int2 FROM {table}");
+
+                var command = new NpgsqlCommand($"SELECT * FROM {view}", conn);
 
                 using (var dr = command.ExecuteReader())
                 {
@@ -115,14 +125,14 @@ namespace Npgsql.Tests
 
         // ReSharper disable once InconsistentNaming
         [Test]
-        public void AllowDBNull()
+        public async Task AllowDBNull()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (nullable INTEGER, non_nullable INTEGER NOT NULL)");
+                await using var _ = await CreateTempTable(conn, "nullable INTEGER, non_nullable INTEGER NOT NULL", out var table);
 
-                using (var cmd = new NpgsqlCommand("SELECT * FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
+                using (var cmd = new NpgsqlCommand($"SELECT * FROM {table}", conn))
+                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
                 using (var metadata = reader.GetSchemaTable())
                 {
                     foreach (var row in metadata.Rows.OfType<DataRow>())
@@ -143,11 +153,11 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1027")]
-        public void WithoutResult()
+        public async Task WithoutResult()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = new NpgsqlCommand("SELECT 1", conn))
-            using (var reader = cmd.ExecuteReader())
+            using (var reader = await cmd.ExecuteReaderAsync())
             {
                 reader.NextResult();
                 // We're no longer on a result
@@ -156,25 +166,12 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1093")]
-        public void WithoutPersistSecurityInfo()
-        {
-            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Pooling = false };
-            using (var conn = OpenConnection(csb))
-            {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (id INT)");
-                using (var cmd = new NpgsqlCommand("SELECT id FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.KeyInfo))
-                    reader.GetSchemaTable();
-            }
-        }
-
         [Test]
-        public void PrecisionAndScale()
+        public async Task PrecisionAndScale()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = new NpgsqlCommand("SELECT 1::NUMERIC AS result", conn))
-            using (var reader = cmd.ExecuteReader())
+            using (var reader = await cmd.ExecuteReaderAsync())
             {
                 var schemaTable = reader.GetSchemaTable();
                 foreach (var myField in schemaTable.Rows.OfType<DataRow>())
@@ -186,20 +183,25 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void SchemaOnly([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
+        public async Task SchemaOnly([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
         {
-            using (var conn = OpenConnection())
+            // if (prepare == PrepareOrNot.Prepared && IsMultiplexing)
+            //     return;
+
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
-                using (var cmd = new NpgsqlCommand(
-                    "SELECT 1 AS some_column;" +
-                    "UPDATE data SET name='yo' WHERE 1=0;" +
-                    "SELECT 1 AS some_other_column",
-                    conn))
+                await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
+
+                var query = $@"
+SELECT 1 AS some_column;
+UPDATE {table} SET name='yo' WHERE 1=0;
+SELECT 1 AS some_other_column";
+
+                using (var cmd = new NpgsqlCommand(query, conn))
                 {
                     if (prepare == PrepareOrNot.Prepared)
                         cmd.Prepare();
-                    using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                    using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly))
                     {
                         Assert.That(reader.Read(), Is.False);
                         var t = reader.GetSchemaTable();
@@ -212,7 +214,7 @@ namespace Npgsql.Tests
                     }
 
                     // Close reader in the middle
-                    using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                    using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly))
                         reader.Read();
                 }
             }

@@ -1,16 +1,18 @@
 using System;
 using System.Data;
+using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
+using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests
 {
     public class DataAdapterTests : TestBase
     {
         [Test]
-        public void UseDataAdapter()
+        public async Task UseDataAdapter()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var command = new NpgsqlCommand("SELECT 1", conn))
             {
                 var da = new NpgsqlDataAdapter();
@@ -22,9 +24,9 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void UseDataAdapterNpgsqlConnectionConstructor()
+        public async Task UseDataAdapterNpgsqlConnectionConstructor()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var command = new NpgsqlCommand("SELECT 1", conn))
             {
                 command.Connection = conn;
@@ -36,9 +38,9 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void UseDataAdapterStringNpgsqlConnectionConstructor()
+        public async Task UseDataAdapterStringNpgsqlConnectionConstructor()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
                 var da = new NpgsqlDataAdapter("SELECT 1", conn);
                 var ds = new DataSet();
@@ -67,15 +69,15 @@ namespace Npgsql.Tests
 
         [Test]
         [MonoIgnore("Bug in mono, submitted pull request: https://github.com/mono/mono/pull/1172")]
-        public void InsertWithDataSet()
+        public async Task InsertWithDataSet()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                Setup(conn);
+                await using var _ = await SetupTempTable(conn, out var table);
                 var ds = new DataSet();
-                var da = new NpgsqlDataAdapter("SELECT * FROM data", conn);
+                var da = new NpgsqlDataAdapter($"SELECT * FROM {table}", conn);
 
-                da.InsertCommand = new NpgsqlCommand("INSERT INTO data (field_int2, field_timestamp, field_numeric) VALUES (:a, :b, :c)", conn);
+                da.InsertCommand = new NpgsqlCommand($"INSERT INTO {table} (field_int2, field_timestamp, field_numeric) VALUES (:a, :b, :c)", conn);
 
                 da.InsertCommand.Parameters.Add(new NpgsqlParameter("a", DbType.Int16));
                 da.InsertCommand.Parameters.Add(new NpgsqlParameter("b", DbType.DateTime));
@@ -104,7 +106,7 @@ namespace Npgsql.Tests
                 ds.Merge(ds2);
                 ds.AcceptChanges();
 
-                var dr2 = new NpgsqlCommand("SELECT field_int2, field_numeric, field_timestamp FROM data", conn).ExecuteReader();
+                var dr2 = new NpgsqlCommand($"SELECT field_int2, field_numeric, field_timestamp FROM {table}", conn).ExecuteReader();
                 dr2.Read();
 
                 Assert.AreEqual(4, dr2[0]);
@@ -114,15 +116,15 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void DataAdapterUpdateReturnValue()
+        public async Task DataAdapterUpdateReturnValue()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                Setup(conn);
+                await using var _ = await SetupTempTable(conn, out var table);
                 var ds = new DataSet();
-                var da = new NpgsqlDataAdapter("SELECT * FROM data", conn);
+                var da = new NpgsqlDataAdapter($"SELECT * FROM {table}", conn);
 
-                da.InsertCommand = new NpgsqlCommand(@"INSERT INTO data (field_int2, field_timestamp, field_numeric) VALUES (:a, :b, :c)", conn);
+                da.InsertCommand = new NpgsqlCommand($@"INSERT INTO {table} (field_int2, field_timestamp, field_numeric) VALUES (:a, :b, :c)", conn);
 
                 da.InsertCommand.Parameters.Add(new NpgsqlParameter("a", DbType.Int16));
                 da.InsertCommand.Parameters.Add(new NpgsqlParameter("b", DbType.DateTime));
@@ -160,12 +162,14 @@ namespace Npgsql.Tests
 
         [Test]
         [Ignore("")]
-        public void DataAdapterUpdateReturnValue2()
+        public async Task DataAdapterUpdateReturnValue2()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
+                await using var _ = await SetupTempTable(conn, out var table);
+
                 var cmd = conn.CreateCommand();
-                var da = new NpgsqlDataAdapter("select * from tabled", conn);
+                var da = new NpgsqlDataAdapter($"select * from {table}", conn);
                 var cb = new NpgsqlCommandBuilder(da);
                 var ds = new DataSet();
                 da.Fill(ds);
@@ -175,7 +179,7 @@ namespace Npgsql.Tests
                 da.Update(ds);
 
                 //## change id from 1 to 2
-                cmd.CommandText = "update tabled set field_float4 = 0.8";
+                cmd.CommandText = $"update {table} set field_float4 = 0.8";
                 cmd.ExecuteNonQuery();
 
                 //## change value to newvalue
@@ -188,13 +192,14 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void FillWithEmptyResultset()
+        public async Task FillWithEmptyResultset()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                Setup(conn);
+                await using var _ = await SetupTempTable(conn, out var table);
+
                 var ds = new DataSet();
-                var da = new NpgsqlDataAdapter("SELECT field_serial, field_int2, field_timestamp, field_numeric FROM data WHERE field_serial = -1", conn);
+                var da = new NpgsqlDataAdapter($"SELECT field_serial, field_int2, field_timestamp, field_numeric FROM {table} WHERE field_serial = -1", conn);
 
                 da.Fill(ds);
 
@@ -209,13 +214,14 @@ namespace Npgsql.Tests
 
         [Test]
         [Ignore("")]
-        public void FillAddWithKey()
+        public async Task FillAddWithKey()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                Setup(conn);
+                await using var _ = await SetupTempTable(conn, out var table);
+
                 var ds = new DataSet();
-                var da = new NpgsqlDataAdapter("select field_serial, field_int2, field_timestamp, field_numeric from tableb", conn);
+                var da = new NpgsqlDataAdapter($"select field_serial, field_int2, field_timestamp, field_numeric from {table}", conn);
 
                 da.MissingSchemaAction = MissingSchemaAction.AddWithKey;
                 da.Fill(ds);
@@ -256,13 +262,14 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void FillAddColumns()
+        public async Task FillAddColumns()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                Setup(conn);
+                await using var _ = await SetupTempTable(conn, out var table);
+
                 var ds = new DataSet();
-                var da = new NpgsqlDataAdapter(@"SELECT field_serial, field_int2, field_timestamp, field_numeric FROM data", conn);
+                var da = new NpgsqlDataAdapter($"SELECT field_serial, field_int2, field_timestamp, field_numeric FROM {table}", conn);
 
                 da.MissingSchemaAction = MissingSchemaAction.Add;
                 da.Fill(ds);
@@ -292,19 +299,20 @@ namespace Npgsql.Tests
 
         [Test]
         [MonoIgnore("Bug in mono, submitted pull request: https://github.com/mono/mono/pull/1172")]
-        public void UpdateLettingNullFieldValue()
+        public async Task UpdateLettingNullFieldValue()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                Setup(conn);
-                var command = new NpgsqlCommand(@"INSERT INTO data (field_int2) VALUES (2)", conn);
+                await using var _ = await SetupTempTable(conn, out var table);
+
+                var command = new NpgsqlCommand($"INSERT INTO {table} (field_int2) VALUES (2)", conn);
                 command.ExecuteNonQuery();
 
                 var ds = new DataSet();
 
-                var da = new NpgsqlDataAdapter("SELECT * FROM data", conn);
+                var da = new NpgsqlDataAdapter($"SELECT * FROM {table}", conn);
                 da.InsertCommand = new NpgsqlCommand(";", conn);
-                da.UpdateCommand = new NpgsqlCommand("UPDATE data SET field_int2 = :a, field_timestamp = :b, field_numeric = :c WHERE field_serial = :d", conn);
+                da.UpdateCommand = new NpgsqlCommand($"UPDATE {table} SET field_int2 = :a, field_timestamp = :b, field_numeric = :c WHERE field_serial = :d", conn);
 
                 da.UpdateCommand.Parameters.Add(new NpgsqlParameter("a", DbType.Int16));
                 da.UpdateCommand.Parameters.Add(new NpgsqlParameter("b", DbType.DateTime));
@@ -334,7 +342,7 @@ namespace Npgsql.Tests
                 ds.Merge(ds2);
                 ds.AcceptChanges();
 
-                using (var dr2 = new NpgsqlCommand(@"SELECT field_int2 FROM data", conn).ExecuteReader())
+                using (var dr2 = new NpgsqlCommand($"SELECT field_int2 FROM {table}", conn).ExecuteReader())
                 {
                     dr2.Read();
                     Assert.AreEqual(4, dr2["field_int2"]);
@@ -343,33 +351,33 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void FillWithDuplicateColumnName()
+        public async Task FillWithDuplicateColumnName()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                Setup(conn);
+                await using var _ = await SetupTempTable(conn, out var table);
+
                 var ds = new DataSet();
-                var da = new NpgsqlDataAdapter("SELECT field_serial, field_serial FROM data", conn);
+                var da = new NpgsqlDataAdapter($"SELECT field_serial, field_serial FROM {table}", conn);
                 da.Fill(ds);
             }
         }
 
         [Test]
         [Ignore("")]
-        public void UpdateWithDataSet()
-        {
-            DoUpdateWithDataSet();
-        }
+        public Task UpdateWithDataSet() => DoUpdateWithDataSet();
 
-        public virtual void DoUpdateWithDataSet()
+        public async Task DoUpdateWithDataSet()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                var command = new NpgsqlCommand("insert into tableb(field_int2) values (2)", conn);
+                await using var _ = await SetupTempTable(conn, out var table);
+
+                var command = new NpgsqlCommand($"insert into {table} (field_int2) values (2)", conn);
                 command.ExecuteNonQuery();
 
                 var ds = new DataSet();
-                var da = new NpgsqlDataAdapter("select * from tableb", conn);
+                var da = new NpgsqlDataAdapter($"select * from {table}", conn);
                 var cb = new NpgsqlCommandBuilder(da);
                 Assert.IsNotNull(cb);
 
@@ -387,7 +395,7 @@ namespace Npgsql.Tests
                 ds.Merge(ds2);
                 ds.AcceptChanges();
 
-                using (var dr2 = new NpgsqlCommand("select * from tableb", conn).ExecuteReader())
+                using (var dr2 = new NpgsqlCommand($"select * from {table}", conn).ExecuteReader())
                 {
                     dr2.Read();
                     Assert.AreEqual(4, dr2["field_int2"]);
@@ -397,17 +405,17 @@ namespace Npgsql.Tests
 
         [Test]
         [Ignore("")]
-        public void InsertWithCommandBuilderCaseSensitive()
-        {
-            DoInsertWithCommandBuilderCaseSensitive();
-        }
+        public Task InsertWithCommandBuilderCaseSensitive()
+            => DoInsertWithCommandBuilderCaseSensitive();
 
-        public virtual void DoInsertWithCommandBuilderCaseSensitive()
+        public async Task DoInsertWithCommandBuilderCaseSensitive()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
+                await using var _ = await SetupTempTable(conn, out var table);
+
                 var ds = new DataSet();
-                var da = new NpgsqlDataAdapter("select * from tablei", conn);
+                var da = new NpgsqlDataAdapter($"select * from {table}", conn);
                 var builder = new NpgsqlCommandBuilder(da);
                 Assert.IsNotNull(builder);
 
@@ -423,7 +431,7 @@ namespace Npgsql.Tests
                 ds.Merge(ds2);
                 ds.AcceptChanges();
 
-                using (var dr2 = new NpgsqlCommand("select * from tablei", conn).ExecuteReader())
+                using (var dr2 = new NpgsqlCommand($"select * from {table}", conn).ExecuteReader())
                 {
                     dr2.Read();
                     Assert.AreEqual(4, dr2[1]);
@@ -432,21 +440,23 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void IntervalAsTimeSpan()
+        public async Task IntervalAsTimeSpan()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery(@"CREATE TEMP TABLE data (" +
-                                      "  pk SERIAL PRIMARY KEY, " +
-                                      "  interval INTERVAL" +
-                                      ")");
-                conn.ExecuteNonQuery(@"INSERT INTO data (interval) VALUES ('1 hour'::INTERVAL)");
+                await using var _ = await GetTempTableName(conn, out var table);
+                await conn.ExecuteNonQueryAsync($@"
+CREATE TABLE {table} (
+    pk SERIAL PRIMARY KEY,
+    interval INTERVAL
+);
+INSERT INTO {table} (interval) VALUES ('1 hour'::INTERVAL);");
 
                 var dt = new DataTable("data");
                 var command = new NpgsqlCommand
                 {
                     CommandType = CommandType.Text,
-                    CommandText = "SELECT interval FROM data",
+                    CommandText = $"SELECT interval FROM {table}",
                     Connection = conn
                 };
                 var da = new NpgsqlDataAdapter { SelectCommand = command };
@@ -455,15 +465,17 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void IntervalAsTimeSpan2()
+        public async Task IntervalAsTimeSpan2()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery(@"CREATE TEMP TABLE data (" +
-                                      "  pk SERIAL PRIMARY KEY, " +
-                                      "  interval INTERVAL" +
-                                      ")");
-                conn.ExecuteNonQuery(@"INSERT INTO data (interval) VALUES ('1 hour'::INTERVAL)");
+                await using var _ = await GetTempTableName(conn, out var table);
+                await conn.ExecuteNonQueryAsync($@"
+CREATE TABLE {table} (
+    pk SERIAL PRIMARY KEY,
+    interval INTERVAL
+);
+INSERT INTO {table} (interval) VALUES ('1 hour'::INTERVAL);");
 
                 var dt = new DataTable("data");
                 //DataColumn c = dt.Columns.Add("dauer", typeof(TimeSpan));
@@ -471,7 +483,7 @@ namespace Npgsql.Tests
                 //c.AllowDBNull = true;
                 var command = new NpgsqlCommand();
                 command.CommandType = CommandType.Text;
-                command.CommandText = "SELECT interval FROM data";
+                command.CommandText = $"SELECT interval FROM {table}";
                 command.Connection = conn;
                 var da = new NpgsqlDataAdapter();
                 da.SelectCommand = command;
@@ -480,12 +492,11 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void DbDataAdapterCommandAccess()
+        public async Task DbDataAdapterCommandAccess()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var command = new NpgsqlCommand("SELECT CAST('1 hour' AS interval) AS dauer", conn))
             {
-                Setup(conn);
                 var da = new NpgsqlDataAdapter();
                 da.SelectCommand = command;
                 System.Data.Common.DbDataAdapter common = da;
@@ -496,31 +507,32 @@ namespace Npgsql.Tests
         [Test, Description("Makes sure that the INSERT/UPDATE/DELETE commands are auto-populated on NpgsqlDataAdapter")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/179")]
         [Ignore("Somehow related to us using a temporary table???")]
-        public void AutoPopulateAdapterCommands()
+        public async Task AutoPopulateAdapterCommands()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                Setup(conn);
-                var da = new NpgsqlDataAdapter("SELECT field_pk,field_int4 FROM data", conn);
+                await using var _ = await SetupTempTable(conn, out var table);
+
+                var da = new NpgsqlDataAdapter($"SELECT field_pk,field_int4 FROM {table}", conn);
                 var builder = new NpgsqlCommandBuilder(da);
                 var ds = new DataSet();
                 da.Fill(ds);
 
-                var table = ds.Tables[0];
-                var row = table.NewRow();
+                var t = ds.Tables[0];
+                var row = t.NewRow();
                 row["field_pk"] = 1;
                 row["field_int4"] = 8;
-                table.Rows.Add(row);
+                t.Rows.Add(row);
                 da.Update(ds);
-                Assert.That(conn.ExecuteScalar(@"SELECT field_int4 FROM data"), Is.EqualTo(8));
+                Assert.That(await conn.ExecuteScalarAsync($"SELECT field_int4 FROM {table}"), Is.EqualTo(8));
 
                 row["field_int4"] = 9;
                 da.Update(ds);
-                Assert.That(conn.ExecuteScalar(@"SELECT field_int4 FROM data"), Is.EqualTo(9));
+                Assert.That(await conn.ExecuteScalarAsync($"SELECT field_int4 FROM {table}"), Is.EqualTo(9));
 
                 row.Delete();
                 da.Update(ds);
-                Assert.That(conn.ExecuteScalar(@"SELECT COUNT(*) FROM data"), Is.EqualTo(0));
+                Assert.That(await conn.ExecuteScalarAsync($"SELECT COUNT(*) FROM {table}"), Is.EqualTo(0));
             }
         }
 
@@ -537,12 +549,13 @@ namespace Npgsql.Tests
         [Test, Description("Makes sure a correct SQL string is built with GetUpdateCommand(true) using correct parameter names and placeholders")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/397")]
         [Ignore("Somehow related to us using a temporary table???")]
-        public void GetUpdateCommand()
+        public async Task GetUpdateCommand()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                Setup(conn);
-                using (var da = new NpgsqlDataAdapter("SELECT field_pk, field_int4 FROM data", conn))
+                await using var _ = await SetupTempTable(conn, out var table);
+
+                using (var da = new NpgsqlDataAdapter($"SELECT field_pk, field_int4 FROM {table}", conn))
                 {
                     using (var cb = new NpgsqlCommandBuilder(da))
                     {
@@ -552,8 +565,8 @@ namespace Npgsql.Tests
                         var ds = new DataSet();
                         da.Fill(ds);
 
-                        var table = ds.Tables[0];
-                        var row = table.Rows.Add();
+                        var t = ds.Tables[0];
+                        var row = t.Rows.Add();
                         row["field_pk"] = 1;
                         row["field_int4"] = 1;
                         da.Update(ds);
@@ -569,12 +582,12 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void LoadDataTable()
+        public async Task LoadDataTable()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (char5 CHAR(5), varchar5 VARCHAR(5))");
-                using (var command = new NpgsqlCommand("SELECT char5, varchar5 FROM data", conn))
+                await using var _ = await CreateTempTable(conn, "char5 CHAR(5), varchar5 VARCHAR(5)", out var table);
+                using (var command = new NpgsqlCommand($"SELECT char5, varchar5 FROM {table}", conn))
                 using (var dr = command.ExecuteReader())
                 {
                     var dt = new DataTable();
@@ -587,16 +600,13 @@ namespace Npgsql.Tests
             }
         }
 
-        public void Setup(NpgsqlConnection conn)
-        {
-            conn.ExecuteNonQuery("CREATE TEMP TABLE data (" +
-                                 "field_pk SERIAL PRIMARY KEY," +
-                                 "field_serial SERIAL," +
-                                 "field_int2 SMALLINT," +
-                                 "field_int4 INTEGER," +
-                                 "field_numeric NUMERIC," +
-                                 "field_timestamp TIMESTAMP" +
-                                 ")");
-        }
+        public Task<IAsyncDisposable> SetupTempTable(NpgsqlConnection conn, out string table)
+            => CreateTempTable(conn, @"
+field_pk SERIAL PRIMARY KEY,
+field_serial SERIAL,
+field_int2 SMALLINT,
+field_int4 INTEGER,
+field_numeric NUMERIC,
+field_timestamp TIMESTAMP", out table);
     }
 }

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
 
@@ -8,12 +9,12 @@ using System.Collections.Immutable;
 
 namespace Npgsql.Tests.Types
 {
-    public class HstoreTests : TestBase
+    public class HstoreTests : MultiplexingTestBase
     {
         [Test]
-        public void Basic()
+        public async Task Basic()
         {
-            using var conn = OpenConnection();
+            using var conn = await OpenConnectionAsync();
 
             var expected = new Dictionary<string, string?> {
                 {"a", "3"},
@@ -25,7 +26,7 @@ namespace Npgsql.Tests.Types
             cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Hstore, expected);
             cmd.Parameters.AddWithValue("p2", expected);
 
-            using var reader = cmd.ExecuteReader();
+            using var reader = await cmd.ExecuteReaderAsync();
             reader.Read();
             for (var i = 0; i < cmd.Parameters.Count; i++)
             {
@@ -36,9 +37,9 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public void Empty()
+        public async Task Empty()
         {
-            using var conn = OpenConnection();
+            using var conn = await OpenConnectionAsync();
 
             var expected = new Dictionary<string, string?>();
 
@@ -46,7 +47,7 @@ namespace Npgsql.Tests.Types
             cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Hstore, expected);
             cmd.Parameters.AddWithValue("p2", expected);
 
-            using var reader = cmd.ExecuteReader();
+            using var reader = await cmd.ExecuteReaderAsync();
             reader.Read();
             for (var i = 0; i < cmd.Parameters.Count; i++)
             {
@@ -58,9 +59,9 @@ namespace Npgsql.Tests.Types
 
 #if !NET461
         [Test]
-        public void ImmutableDictionary()
+        public async Task ImmutableDictionary()
         {
-            using var conn = OpenConnection();
+            using var conn = await OpenConnectionAsync();
 
             var builder = ImmutableDictionary<string, string?>.Empty;
             builder.Add("a", "3");
@@ -72,7 +73,7 @@ namespace Npgsql.Tests.Types
             cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Hstore, expected);
             cmd.Parameters.AddWithValue("p2", expected);
 
-            using var reader = cmd.ExecuteReader();
+            using var reader = await cmd.ExecuteReaderAsync();
             reader.Read();
             for (var i = 0; i < cmd.Parameters.Count; i++)
             {
@@ -84,11 +85,13 @@ namespace Npgsql.Tests.Types
 #endif
 
         [OneTimeSetUp]
-        public void SetUp()
+        public async Task SetUp()
         {
-            using var conn = OpenConnection();
+            using var conn = await OpenConnectionAsync();
             TestUtil.MinimumPgVersion(conn, "9.1", "Hstore introduced in PostgreSQL 9.1");
-            TestUtil.EnsureExtension(conn, "hstore", "9.1");
+            await TestUtil.EnsureExtensionAsync(conn, "hstore", "9.1");
         }
+
+        public HstoreTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
     }
 }

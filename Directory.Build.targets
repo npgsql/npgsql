@@ -6,6 +6,7 @@
     <PackageReference Update="System.ValueTuple" Version="4.5.0" />
     <PackageReference Update="System.Text.Json" Version="4.6.0" />
     <PackageReference Update="Microsoft.SourceLink.GitHub" Version="1.0.0" />
+    <PackageReference Update="Microsoft.Extensions.ObjectPool" Version="3.1.0" />
     <PackageReference Update="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.0" />
 
     <!-- Plugins -->

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Text;
@@ -607,6 +608,63 @@ namespace Npgsql.Tests
             }
         }
         */
+
+        [Test]
+        public void InvalidStatement()
+        {
+            using (var conn = OpenConnection())
+            {
+                var cmd = new NpgsqlCommand("sele", conn);
+                Assert.That(() => cmd.Prepare(), Throws.Exception.TypeOf<PostgresException>());
+            }
+        }
+
+        [Test]
+        public void PrepareMultipleCommandsWithParameters()
+        {
+            using (var conn = OpenConnection())
+            {
+                using (var cmd1 = new NpgsqlCommand("SELECT @p1;", conn))
+                using (var cmd2 = new NpgsqlCommand("SELECT @p1; SELECT @p2;", conn))
+                {
+                    var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Integer);
+                    var p21 = new NpgsqlParameter("p1", NpgsqlDbType.Text);
+                    var p22 = new NpgsqlParameter("p2", NpgsqlDbType.Text);
+                    cmd1.Parameters.Add(p1);
+                    cmd2.Parameters.Add(p21);
+                    cmd2.Parameters.Add(p22);
+                    cmd1.Prepare();
+                    cmd2.Prepare();
+                    p1.Value = 8;
+                    p21.Value = "foo";
+                    p22.Value = "bar";
+                    using (var reader1 = cmd1.ExecuteReader())
+                    {
+                        Assert.That(reader1.Read(), Is.True);
+                        Assert.That(reader1.GetInt32(0), Is.EqualTo(8));
+                    }
+                    using (var reader2 = cmd2.ExecuteReader())
+                    {
+                        Assert.That(reader2.Read(), Is.True);
+                        Assert.That(reader2.GetString(0), Is.EqualTo("foo"));
+                        Assert.That(reader2.NextResult(), Is.True);
+                        Assert.That(reader2.Read(), Is.True);
+                        Assert.That(reader2.GetString(0), Is.EqualTo("bar"));
+                    }
+                }
+            }
+        }
+
+        [Test]
+        public void MultiplexingNotSupported()
+        {
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString) { Multiplexing = true };
+            using var conn = OpenConnection(builder);
+            using var cmd = new NpgsqlCommand("SELECT 1", conn);
+
+            Assert.That(() => cmd.Prepare(), Throws.Exception.TypeOf<NotSupportedException>());
+            Assert.That(() => conn.UnprepareAll(), Throws.Exception.TypeOf<NotSupportedException>());
+        }
 
         NpgsqlConnection OpenConnectionAndUnprepare(string? connectionString = null)
         {
