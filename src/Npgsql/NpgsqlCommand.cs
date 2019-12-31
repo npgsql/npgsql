@@ -10,6 +10,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Globalization;
+using Microsoft.Extensions.ObjectPool;
 using Npgsql.BackendMessages;
 using Npgsql.Logging;
 using Npgsql.TypeMapping;
@@ -42,7 +43,7 @@ namespace Npgsql
         int? _timeout;
         readonly NpgsqlParameterCollection _parameters;
 
-        readonly List<NpgsqlStatement> _statements;
+        internal readonly List<NpgsqlStatement> _statements;
 
         /// <summary>
         /// Returns details about each statement that this command has executed.
@@ -53,6 +54,9 @@ namespace Npgsql
         UpdateRowSource _updateRowSource = UpdateRowSource.Both;
 
         bool IsExplicitlyPrepared => _connectorPreparedOn != null;
+
+        static readonly ObjectPool<SqlQueryParser> SqlParserPool
+            = new DefaultObjectPoolProvider().Create<SqlQueryParser>();
 
         static readonly List<NpgsqlParameter> EmptyParameters = new List<NpgsqlParameter>();
 
@@ -107,6 +111,7 @@ namespace Npgsql
             _connection = connection;
             Transaction = transaction;
             CommandType = CommandType.Text;
+            Id = Interlocked.Increment(ref _nextCommandId);
         }
 
         #endregion Constructors
@@ -459,6 +464,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         void DeriveParametersForQuery()
         {
+            throw new NotImplementedException();
+#if MULTIPLEXING
             var connector = CheckReadyAndGetConnector();
             using (connector.StartUserAction())
             {
@@ -518,6 +525,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 Expect<ReadyForQueryMessage>(connector.ReadMessage(), connector);
                 sendTask.GetAwaiter().GetResult();
             }
+#endif
         }
 
         #endregion
@@ -549,7 +557,11 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         Task Prepare(bool async)
         {
-            var connector = CheckReadyAndGetConnector();
+            var connection = CheckReadyAndGetConnection();
+            if (connection.Settings.Multiplexing)
+                throw new NotSupportedException("Explicit preparation not supported with multiplexing");
+            var connector = connection.Connector!;
+
             for (var i = 0; i < Parameters.Count; i++)
                 Parameters[i].Bind(connector.TypeMapper);
 
@@ -641,7 +653,11 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             if (_statements.All(s => !s.IsPrepared))
                 return;
 
-            var connector = CheckReadyAndGetConnector();
+            var connection = CheckReadyAndGetConnection();
+            if (connection.Settings.Multiplexing)
+                throw new NotSupportedException("Explicit preparation not supported with multiplexing");
+            var connector = connection.Connector!;
+
             Log.Debug("Closing command's prepared statements", connector.Id);
             using (connector.StartUserAction())
             {
@@ -662,7 +678,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         #region Query analysis
 
-        void ProcessRawQuery(bool deriveParameters = false)
+        internal void ProcessRawQuery(bool deriveParameters = false)
         {
             if (string.IsNullOrEmpty(CommandText))
                 throw new InvalidOperationException("CommandText property has not been initialized");
@@ -670,7 +686,16 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             NpgsqlStatement statement;
             switch (CommandType) {
             case CommandType.Text:
-                _connection!.Connector!.SqlParser.ParseRawQuery(CommandText, _parameters, _statements, deriveParameters);
+                var parser = SqlParserPool.Get();
+                try
+                {
+                    parser.ParseRawQuery(CommandText, _parameters, _statements, deriveParameters);
+                }
+                finally
+                {
+                    SqlParserPool.Return(parser);
+                }
+
                 if (_statements.Count > 1 && _parameters.HasOutputParameters)
                     throw new NotSupportedException("Commands with multiple queries cannot have out parameters");
                 break;
@@ -781,9 +806,11 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 SynchronizationContext.SetSynchronizationContext(null);
         }
 
-        async Task SendExecute(NpgsqlConnector connector, bool async)
+        internal async Task WriteExecute(NpgsqlConnector connector, bool async)
         {
-            BeginSend();
+            // TODO: Clean the sync/async thing. Consider just doing always async I/O, with sync-over-async for
+            // blocking the thread, continuations on some context
+            //BeginSend();
 
             for (var i = 0; i < _statements.Count; i++)
             {
@@ -820,9 +847,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             }
 
             await connector.WriteSync(async);
-            await connector.Flush(async);
+            //await connector.Flush(async);
 
-            CleanupSend();
+            //CleanupSend();
         }
 
         async Task SendExecuteSchemaOnly(NpgsqlConnector connector, bool async)
@@ -1073,14 +1100,24 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 return ExecuteReaderAsync(behavior, async: true, cancellationToken).AsTask();
         }
 
+        // TODO: Maybe pool these?
+        internal ManualResetValueTaskSource<NpgsqlConnector> ExecutionCompletion { get; }
+            = new ManualResetValueTaskSource<NpgsqlConnector>();
+
+        internal long Id;
+        static long _nextCommandId = 1;
+
         async ValueTask<NpgsqlDataReader> ExecuteReaderAsync(CommandBehavior behavior, bool async, CancellationToken cancellationToken)
         {
-            var connector = CheckReadyAndGetConnector();
-            connector.StartUserAction(this);
+            var conn = CheckReadyAndGetConnection();
+
             try
             {
-                using (cancellationToken.Register(cmd => ((NpgsqlCommand)cmd!).Cancel(), this))
+                if (conn.IsBound(out var connector))
                 {
+                    connector.StartUserAction(this);
+                    using var _ = cancellationToken.Register(cmd => ((NpgsqlCommand)cmd!).Cancel(), this);
+
                     ValidateParameters(connector.TypeMapper);
 
                     switch (IsExplicitlyPrepared)
@@ -1095,6 +1132,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                             ResetExplicitPreparation();
                             goto case false;
                         }
+
                         NpgsqlEventSource.Log.CommandStartPrepared();
                         break;
 
@@ -1109,7 +1147,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                                 // If this statement isn't prepared, see if it gets implicitly prepared.
                                 // Note that this may return null (not enough usages for automatic preparation).
                                 if (!statement.IsPrepared)
-                                    statement.PreparedStatement = connector.PreparedStatementManager.TryGetAutoPrepared(statement);
+                                    statement.PreparedStatement =
+                                        connector.PreparedStatementManager.TryGetAutoPrepared(statement);
                                 if (statement.PreparedStatement != null)
                                     numPrepared++;
                             }
@@ -1121,6 +1160,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                                     NpgsqlEventSource.Log.CommandStartPrepared();
                             }
                         }
+
                         break;
                     }
 
@@ -1129,10 +1169,11 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     if (Log.IsEnabled(NpgsqlLogLevel.Debug))
                         LogCommand(connector.Id);
                     NpgsqlEventSource.Log.CommandStart(CommandText);
-                    Task sendTask;
 
                     // If a cancellation is in progress, wait for it to "complete" before proceeding (#615)
-                    lock (connector.CancelLock) { }
+                    lock (connector.CancelLock)
+                    {
+                    }
 
                     connector.UserTimeout = CommandTimeout * 1000;
 
@@ -1146,23 +1187,55 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     // to prevents a dependency on the thread pool (which would also trigger deadlocks).
                     // The WriteBuffer notifies this command when the first buffer flush occurs, so that the
                     // send functions can switch to the special async mode when needed.
-                    sendTask = (behavior & CommandBehavior.SchemaOnly) == 0
-                        ? SendExecute(connector, async)
-                        : SendExecuteSchemaOnly(connector, async);
+
+                    // TODO: Just await the entire thing for now, think about exactly what to do
+                    // (sync deadlock avoidance)
+                    await ((behavior & CommandBehavior.SchemaOnly) == 0
+                        ? WriteExecute(connector, async)
+                        : throw new NotImplementedException());
+                        // TODO: : SendExecuteSchemaOnly(connector, async);
+
+                    await connector.Flush(async);
 
                     // The following is a hack. It raises an exception if one was thrown in the first phases
                     // of the send (i.e. in parts of the send that executed synchronously). Exceptions may
                     // still happen later and aren't properly handled. See #1323.
-                    if (sendTask.IsFaulted)
-                        sendTask.GetAwaiter().GetResult();
+                    // if (sendTask.IsFaulted)
+                    //     sendTask.GetAwaiter().GetResult();
 
+                    // TODO: DRY the following with multiplexing, but be careful with the cancellation registration...
                     var reader = connector.DataReader;
-                    reader.Init(this, behavior, _statements, sendTask);
+                    reader.Init(this, behavior, _statements);
                     connector.CurrentReader = reader;
                     if (async)
                         await reader.NextResultAsync(cancellationToken);
                     else
                         reader.NextResult();
+                    return reader;
+                }
+                else
+                {
+                    // The connection isn't bound to a connector - it's multiplexing time.
+
+                    // TODO: Need to validate parameters (with pool-wide type mapper...)
+                    ProcessRawQuery();
+
+                    // TODO: Experiment: do we want to wait on *writing* here, or on *reading*?
+                    // Previous behavior was to wait on reading, which throw the exception from ExecuteReader (and not from
+                    // the first read). But waiting on writing would allow us to do sync writing and async reading.
+                    ExecutionCompletion.Reset();
+                    var written = conn.Pool!.MultiplexCommandWriter!.TryWrite(this);
+                    Debug.Assert(written);
+                    connector = await new ValueTask<NpgsqlConnector>(ExecutionCompletion, ExecutionCompletion.Version);
+
+                    var reader = connector.DataReader;
+                    reader.Init(this, behavior, _statements);
+                    connector.CurrentReader = reader;
+                    if (async)
+                        await reader.NextResultAsync(cancellationToken);
+                    else
+                        reader.NextResult();
+
                     return reader;
                 }
             }
@@ -1171,9 +1244,10 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 State = CommandState.Idle;
                 _connection!.Connector?.EndUserAction();
 
+                // TODO
                 // Close connection if requested even when there is an error.
-                if ((behavior & CommandBehavior.CloseConnection) == CommandBehavior.CloseConnection)
-                    _connection.Close();
+                // if ((behavior & CommandBehavior.CloseConnection) == CommandBehavior.CloseConnection)
+                //     _connection.Close();
                 throw;
             }
         }
@@ -1293,13 +1367,14 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        NpgsqlConnector CheckReadyAndGetConnector()
+        NpgsqlConnection CheckReadyAndGetConnection()
         {
             if (State == CommandState.Disposed)
                 throw new ObjectDisposedException(GetType().FullName);
             if (_connection == null)
                 throw new InvalidOperationException("Connection property has not been initialized.");
-            return _connection.CheckReadyAndGetConnector();
+            _connection.CheckReady();
+            return _connection;
         }
 
         #endregion

@@ -79,7 +79,7 @@ namespace Npgsql.Tests
         [Test]
         public void NonConformingStrings()
         {
-            var parser = new SqlQueryParser() { StandardConformingStrings = false };
+            var parser = new SqlQueryParser();
             parser.ParseRawQuery(@"SELECT 'abc\':str''a:str'", _params, _queries);
             Assert.That(_queries.Single().SQL, Is.EqualTo(@"SELECT 'abc\':str''a:str'"));
             Assert.That(_queries.Single().InputParameters, Is.Empty);

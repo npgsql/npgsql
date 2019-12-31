@@ -4,7 +4,9 @@ using System.Data.Common;
 using System.Globalization;
 using System.Text;
 using Npgsql.PostgresTypes;
+using Npgsql.Util;
 using NpgsqlTypes;
+using static Npgsql.Util.PGUtil;
 
 namespace Npgsql
 {
@@ -528,7 +530,7 @@ and n.nspname not in ('pg_catalog', 'pg_toast')");
 
         static DataTable GetDataTypes(NpgsqlConnection conn)
         {
-            var connector = conn.CheckReadyAndGetConnector();
+            using var _ = conn.StartTemporaryBindingScope(out var connector);
 
             var table = new DataTable("DataTypes");
 

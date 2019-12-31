@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
@@ -18,6 +17,15 @@ namespace Npgsql.Util
 
             connector.Break();
             throw new NpgsqlException($"Received backend message {msg.Code} while expecting {typeof(T).Name}. Please file a bug.");
+        }
+
+        internal static DeferDisposable Defer(Action action) => new DeferDisposable(action);
+
+        internal readonly struct DeferDisposable : IDisposable
+        {
+            readonly Action _action;
+            public DeferDisposable(Action action) => _action = action;
+            public void Dispose() => _action();
         }
     }
 

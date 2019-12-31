@@ -533,6 +533,7 @@ namespace Npgsql.Tests
         }
 
         readonly List<NpgsqlConnection> _cleanup = new List<NpgsqlConnection>();
+
         [TearDown]
         public void Cleanup()
         {

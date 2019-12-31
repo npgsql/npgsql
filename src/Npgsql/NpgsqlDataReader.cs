@@ -44,7 +44,7 @@ namespace Npgsql
         /// </summary>
         CommandBehavior _behavior;
 
-        Task _sendTask = default!;
+        //Task _sendTask = default!;
 
         internal ReaderState State;
 
@@ -131,17 +131,17 @@ namespace Npgsql
             Connector = connector;
         }
 
-        internal void Init(NpgsqlCommand command, CommandBehavior behavior, List<NpgsqlStatement> statements, Task sendTask)
+        internal void Init(NpgsqlCommand command, CommandBehavior behavior, List<NpgsqlStatement> statements /*, Task sendTask */)
         {
             Command = command;
-            Debug.Assert(command.Connection != null && command.Connection == Connector.Connection);
+            //Debug.Assert(command.Connection != null && command.Connection == Connector.Connection);
             _connection = command.Connection!;
             _behavior = behavior;
             _isSchemaOnly = _behavior.HasFlag(CommandBehavior.SchemaOnly);
             _isSequential = _behavior.HasFlag(CommandBehavior.SequentialAccess);
             _statements = statements;
             StatementIndex = -1;
-            _sendTask = sendTask;
+            //_sendTask = sendTask;
             State = ReaderState.BetweenResults;
             _recordsAffected = null;
         }
@@ -810,19 +810,20 @@ namespace Npgsql
             if (State != ReaderState.Consumed)
                 await Consume(async);
 
-            await Cleanup(async, connectionClosing);
+            Cleanup(async, connectionClosing);
         }
 
-        internal async Task Cleanup(bool async, bool connectionClosing=false)
+        internal void Cleanup(bool async, bool connectionClosing=false)
         {
             Log.Trace("Cleaning up reader", Connector.Id);
 
             // Make sure the send task for this command, which may have executed asynchronously and in
             // parallel with the reading, has completed, throwing any exceptions it generated.
-            if (async)
-                await _sendTask;
-            else
-                _sendTask.GetAwaiter().GetResult();
+            // TODO: Not sure this is necessary
+            // if (async)
+            //     await _sendTask;
+            // else
+            //     _sendTask.GetAwaiter().GetResult();
 
             State = ReaderState.Closed;
             Command.State = CommandState.Idle;
@@ -830,10 +831,13 @@ namespace Npgsql
             Connector.EndUserAction();
             NpgsqlEventSource.Log.CommandStop();
 
+            if (!Connector.IsBound)
+                Connector.ReaderCompleted.SetResult(null);
+
             // If the reader is being closed as part of the connection closing, we don't apply
             // the reader's CommandBehavior.CloseConnection
-            if (_behavior.HasFlag(CommandBehavior.CloseConnection) && !connectionClosing)
-                _connection.Close();
+            // if (_behavior.HasFlag(CommandBehavior.CloseConnection) && !connectionClosing)
+            //     _connection.Close();
 
             if (ReaderClosed != null)
             {

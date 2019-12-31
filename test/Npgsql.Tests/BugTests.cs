@@ -540,8 +540,8 @@ WHERE table_name LIKE @p0 escape '\' AND (is_updatable = 'NO') = @p1";
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 MaxPoolSize = 10,
-                //MaxAutoPrepare = 20,
-                //AutoPrepareMinUsages = 5
+                MaxAutoPrepare = 20,
+                AutoPrepareMinUsages = 5
             };
 
             using (var conn = OpenConnection(connString))
@@ -609,8 +609,8 @@ WHERE table_name LIKE @p0 escape '\' AND (is_updatable = 'NO') = @p1";
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 MaxPoolSize = 20,
-                //MaxAutoPrepare = 20,
-                //AutoPrepareMinUsages = 5
+                MaxAutoPrepare = 20,
+                AutoPrepareMinUsages = 5
             }.ToString();
 
             using (var conn = OpenConnection(connString))
@@ -624,7 +624,7 @@ WHERE table_name LIKE @p0 escape '\' AND (is_updatable = 'NO') = @p1";
                 .Select(t => Task.Run(async () =>
                 {
                     var sum = 0;
-                    for (var i = 0; i < 10000; i++)
+                    for (var i = 0; i < 100; i++)
                     {
                         using (var conn = new NpgsqlConnection(connString))
                         {
