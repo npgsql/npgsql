@@ -26,6 +26,7 @@ namespace Npgsql
             var returnStatus = ServerType.Unknown;
             try
             {
+                npgsqlConnector.StartUserAction();
                 npgsqlConnector.WriteQuery("SELECT pg_is_in_recovery()");
                 npgsqlConnector.Flush();
                 
@@ -40,7 +41,8 @@ namespace Npgsql
                 returnStatus = buffer[0] == 'f' ? ServerType.Primary : ServerType.Secondary;
                 
                 npgsqlConnector.SkipUntil(BackendMessageCode.ReadyForQuery);
-                
+                npgsqlConnector.EndUserAction();
+
                 return returnStatus;
             }
             catch (SocketException)

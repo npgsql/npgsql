@@ -417,11 +417,7 @@ namespace Npgsql
                         isTheDesiredType = isTheDesiredType || (Settings.TargetServerType == TargetServerType.Secondary && ServerType == NpgsqlServerStatus.ServerType.Secondary);
                         if (isTheDesiredType == false)
                         {
-                            // Close() will cleanup everything, we only want the socket/server-side stuff cleaned up, as we're planning to
-                            // reuse the Connector in a moment anyway.
-                            var connection = Connection;
-                            Close();
-                            Connection = connection;
+                            // TODO: There needs to be some sort of soft cleanup here, Close() is too much and Break() is too little.
                             continue;
                         }
 
