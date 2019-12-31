@@ -1,11 +1,6 @@
 ﻿using Npgsql.BackendMessages;
-using Npgsql.Util;
-using System;
 using System.Collections.Concurrent;
-using System.Data;
 using System.Net.Sockets;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Npgsql
 {

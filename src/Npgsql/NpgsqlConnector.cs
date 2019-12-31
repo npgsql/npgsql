@@ -350,12 +350,6 @@ namespace Npgsql
 
         bool _isConnecting;
 
-        /// <summary>
-        /// Whether this connector represents a primary or secondary server
-        /// </summary>
-        /// 
-        internal NpgsqlServerStatus.ServerType ServerType = NpgsqlServerStatus.ServerType.Unknown;
-
         #endregion
 
         #region Open
@@ -467,21 +461,22 @@ namespace Npgsql
 
         internal void UpdateServerPrimaryStatus()
         {
-            NpgsqlServerStatus.Cache[ConnectedHost!] = ServerType = NpgsqlServerStatus.Load(this);
+            var stateCacheKey = ConnectedHost! + ":" + Port;
+            NpgsqlServerStatus.Cache[stateCacheKey] = NpgsqlServerStatus.Load(this);
         }
 
         internal bool IsAppropriateFor(TargetServerType targetServerType)
         {
-            if (ServerType == NpgsqlServerStatus.ServerType.Down)
+            var stateCacheKey = ConnectedHost! + ":" + Port;
+            if (NpgsqlServerStatus.Cache[stateCacheKey] == NpgsqlServerStatus.ServerType.Down)
                 return false;
 
             if (targetServerType == TargetServerType.Any)
                 return true;
 
-            var connectorType = ServerType;
-            if (connectorType == NpgsqlServerStatus.ServerType.Primary && targetServerType == TargetServerType.Primary)
+            if (NpgsqlServerStatus.Cache[stateCacheKey] == NpgsqlServerStatus.ServerType.Primary && targetServerType == TargetServerType.Primary)
                 return true;
-            if (connectorType == NpgsqlServerStatus.ServerType.Secondary && targetServerType == TargetServerType.Secondary)
+            if (NpgsqlServerStatus.Cache[stateCacheKey] == NpgsqlServerStatus.ServerType.Secondary && targetServerType == TargetServerType.Secondary)
                 return true;
 
             return false;

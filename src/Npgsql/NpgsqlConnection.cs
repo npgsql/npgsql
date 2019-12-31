@@ -203,7 +203,7 @@ namespace Npgsql
                 return OpenLong();
             if (!_pool.TryAllocateFast(this, out Connector))
                 return OpenLong();
-            else if (Connector.IsAppropriateFor(Settings.TargetServerType))
+            else if (Connector.IsAppropriateFor(Settings.TargetServerType) == false)
                 return OpenLong();
 
             
