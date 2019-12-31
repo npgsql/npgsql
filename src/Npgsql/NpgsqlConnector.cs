@@ -474,7 +474,7 @@ namespace Npgsql
 
         internal void UpdateServerPrimaryStatus()
         {
-            NpgsqlServerStatus.Cache[ConnectedHost!] = ServerType = NpgsqlServerStatus.Load(Connection!);
+            NpgsqlServerStatus.Cache[ConnectedHost!] = ServerType = NpgsqlServerStatus.Load(this);
         }
 
         void WriteStartupMessage(string username)

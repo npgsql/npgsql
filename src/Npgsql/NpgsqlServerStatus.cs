@@ -1,4 +1,6 @@
-﻿using Npgsql.Util;
+﻿using Npgsql.BackendMessages;
+using Npgsql.Util;
+using System;
 using System.Collections.Concurrent;
 using System.Data;
 using System.Net.Sockets;
@@ -19,19 +21,28 @@ namespace Npgsql
             Secondary
         }
 
-        internal static ServerType Load(NpgsqlConnection conn)
+        internal static ServerType Load(NpgsqlConnector npgsqlConnector)
         {
             var returnStatus = ServerType.Unknown;
             try
             {
-                using (var command = conn.CreateCommand())
-                {
-                    command.CommandText = "SELECT pg_is_in_recovery()";
-                    command.AllResultTypesAreUnknown = true;
-                    var recoveryStatus = (string?)(command.ExecuteScalar());
+                npgsqlConnector.WriteQuery("SELECT pg_is_in_recovery()");
+                npgsqlConnector.Flush();
+                npgsqlConnector.SkipUntil(BackendMessageCode.ReadyForQuery);
+                //var columnMessage = npgsqlConnector.ReadMessage();
+                //var rowMessage = npgsqlConnector.ReadMessage() as DataRowMessage;
 
-                    returnStatus = recoveryStatus == "f" ? ServerType.Primary : ServerType.Secondary;
-                }
+                /*
+                var reader = new NpgsqlDataReader(npgsqlConnector);
+                var x = reader.NextResult();
+                var recoveryStatus = reader.GetString(0);
+                */
+
+                //var recoveryStatus = (string?)(command.ExecuteScalar());
+
+                //
+                //returnStatus = "t" == "f" ? ServerType.Primary : ServerType.Secondary;
+                return ServerType.Primary;
             }
             catch (SocketException)
             {
@@ -44,6 +55,5 @@ namespace Npgsql
 
             return returnStatus;
         }
-
     }
 }
