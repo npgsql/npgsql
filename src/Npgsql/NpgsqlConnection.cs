@@ -134,7 +134,7 @@ namespace Npgsql
 
         void GetPoolAndSettings()
         {
-            if (PoolManager.TryGetValue(ConnectionStringToPoolKey(_connectionString), out _pool))
+            if (PoolManager.TryGetValue(_connectionString, out _pool))
             {
                 Settings = _pool.Settings;  // Great, we already have a pool
                 return;
@@ -158,11 +158,11 @@ namespace Npgsql
             // and recheck.
             var canonical = Settings.ConnectionString;
 
-            if (PoolManager.TryGetValue(ConnectionStringToPoolKey(canonical), out _pool))
+            if (PoolManager.TryGetValue(canonical, out _pool))
             {
                 // The pool was found, but only under the canonical key - we're using a different version
                 // for the first time. Map it via our own key for next time.
-                _pool = PoolManager.GetOrAdd(ConnectionStringToPoolKey(_connectionString), _pool);
+                _pool = PoolManager.GetOrAdd(_connectionString, _pool);
                 return;
             }
 
@@ -170,7 +170,7 @@ namespace Npgsql
             // The canonical pool is the 'base' pool so we need to set that up first. If someone beats us to it use what they put.
             // The connection string pool can either be added here or above, if it's added above we should just use that.
             var newPool = new ConnectorPool(Settings, canonical);
-            _pool = PoolManager.GetOrAdd(ConnectionStringToPoolKey(canonical), newPool);
+            _pool = PoolManager.GetOrAdd(canonical, newPool);
 
             if (_pool == newPool)
             {
@@ -180,14 +180,7 @@ namespace Npgsql
                 NpgsqlEventSource.Log.PoolCreated();
             }
 
-            _pool = PoolManager.GetOrAdd(ConnectionStringToPoolKey(_connectionString), _pool);
-        }
-
-        private string ConnectionStringToPoolKey(string connectionString)
-        {
-            if(Connector != null && Connector.ConnectedHost != null) 
-                return connectionString + ";ConnectedHost=" + Connector?.ConnectedHost??"";
-            return connectionString;
+            _pool = PoolManager.GetOrAdd(_connectionString, _pool);
         }
 
         Task Open(bool async, CancellationToken cancellationToken)
@@ -203,6 +196,9 @@ namespace Npgsql
                 return OpenLong();
             if (!_pool.TryAllocateFast(this, out Connector))
                 return OpenLong();
+            // originally this wasn't here, however it basically means that it'll reconnect if the connection type that it's got from
+            // the pool isn't Primary/Secondary as desired; I think this might end up basically meaning that in a failover scenario
+            // the connection pool isn't used after failover
             else if (Connector.IsAppropriateFor(Settings.TargetServerType) == false)
                 return OpenLong();
 
@@ -241,7 +237,7 @@ namespace Npgsql
                     var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
                     Transaction? transaction = null;
 
-                    if (_pool == null) // Unn-pooled connection (or user forgot to set connection string)
+                    if (_pool == null) // Un-pooled connection (or user forgot to set connection string)
                     {
                         if (string.IsNullOrEmpty(_connectionString))
                             throw new InvalidOperationException("The ConnectionString property has not been initialized.");
@@ -1395,7 +1391,7 @@ namespace Npgsql
         /// <summary>
         /// Clear connection pool.
         /// </summary>
-        public static void ClearPool(NpgsqlConnection connection) => PoolManager.Clear(connection.ConnectionStringToPoolKey(connection._connectionString));
+        public static void ClearPool(NpgsqlConnection connection) => PoolManager.Clear(connection._connectionString);
 
         /// <summary>
         /// Clear all connection pools.

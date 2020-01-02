@@ -408,7 +408,9 @@ namespace Npgsql
 
                         if (IsAppropriateFor(Settings.TargetServerType) == false)
                         {
-                            // TODO: There needs to be some sort of soft cleanup here, Close() is too much and Break() is too little.
+                            // TODO: There needs to be some sort of soft cleanup here, this.Close() is too much and this.Break() is too little.
+                            // I think just closing the socket is enough as all the buffers etc aren't used until a connection is allocated?
+                            _socket.Close();
                             continue;
                         }
 

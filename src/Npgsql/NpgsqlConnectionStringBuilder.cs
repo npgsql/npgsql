@@ -1465,11 +1465,11 @@ namespace Npgsql
         /// </summary>
         Any,
         /// <summary>
-        ///  Primary server is selected for the connection.
+        ///  Primary (writable) server is selected for the connection.
         /// </summary>
         Primary,
         /// <summary>
-        ///  Secondary server is selected for the connection.
+        ///  Secondary (readonly) server is selected for the connection.
         /// </summary>
         Secondary,
     }
