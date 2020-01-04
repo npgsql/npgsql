@@ -13,7 +13,7 @@
     <PackageIcon>postgresql.png</PackageIcon>
 
     <SuppressNETCoreSdkPreviewMessage>true</SuppressNETCoreSdkPreviewMessage>
-    <NoWarn>NU5105</NoWarn>
+    <NoWarn>$(NoWarn);NU5105</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -24,7 +24,19 @@
   <PropertyGroup>
     <LangVersion>8.0</LangVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <!--
+  We only turn on C# 8.0 nullable reference types for newer TFMs where the BCL is annotated, otherwise there are
+  issues (e.g. Debug.Assert(x != null) doesn't work).
+  This means we must ignore warnings of nullable reference type use in the older TFMs
+  -->
+  <PropertyGroup Condition=" '$(TargetFramework)' != 'net461' AND '$(TargetFramework)' != 'netstandard2.0' ">
     <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" $(Nullable) != 'enable' ">
+    <NoWarn>$(NoWarn);CS8632</NoWarn>
   </PropertyGroup>
 
   <!-- Signing configuration -->
