@@ -186,47 +186,6 @@ namespace Npgsql.Tests.Types
             }
         }
 
-        [Test]
-        public void Hstore()
-        {
-            using (var conn = OpenConnection())
-            {
-                TestUtil.EnsureExtension(conn, "hstore", "9.1");
-
-                var expected = new Dictionary<string, string?> {
-                    {"a", "3"},
-                    {"b", null},
-                    {"cd", "hello"}
-                };
-
-                var expected2 = new Dictionary<string, string?>();
-
-                using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4", conn))
-                {
-                    cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Hstore, expected);
-                    cmd.Parameters.AddWithValue("p2", expected);
-                    cmd.Parameters.AddWithValue("p3", NpgsqlDbType.Hstore, expected2);
-                    cmd.Parameters.AddWithValue("p4", expected2);
-                    using (var reader = cmd.ExecuteReader())
-                    {
-                        reader.Read();
-                        for (var i = 0; i < 2; i++)
-                        {
-                            Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(Dictionary<string, string>)));
-                            Assert.That(reader.GetFieldValue<Dictionary<string, string>>(i), Is.EqualTo(expected));
-                            Assert.That(reader.GetFieldValue<IDictionary<string, string>>(i), Is.EqualTo(expected));
-                        }
-                        for (var i = 2; i < 4; i++)
-                        {
-                            Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(Dictionary<string, string>)));
-                            Assert.That(reader.GetFieldValue<Dictionary<string, string>>(i), Is.EqualTo(expected2));
-                            Assert.That(reader.GetFieldValue<IDictionary<string, string>>(i), Is.EqualTo(expected2));
-                        }
-                    }
-                }
-            }
-        }
-
         [Test, Description("PostgreSQL records should be returned as arrays of objects")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/724")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/1980")]
