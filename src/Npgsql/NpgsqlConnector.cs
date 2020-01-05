@@ -284,7 +284,6 @@ namespace Npgsql
 
         #region Configuration settings
 
-        internal string? ConnectedHost;
         string Host => Settings.Host!;
         int Port => Settings.Port;
         string KerberosServiceName => Settings.KerberosServiceName;
@@ -349,6 +348,9 @@ namespace Npgsql
         internal bool IsBroken => State == ConnectorState.Broken;
 
         bool _isConnecting;
+
+        private string? ConnectedHost;
+        private NpgsqlServerStatus.ServerType ConnectedServerType;
 
         #endregion
 
@@ -463,22 +465,44 @@ namespace Npgsql
 
         internal void UpdateServerPrimaryStatus()
         {
-            var stateCacheKey = ConnectedHost! + ":" + Port;
-            NpgsqlServerStatus.Cache[stateCacheKey] = NpgsqlServerStatus.Load(this);
+            try
+            {
+                StartUserAction();
+                WritePregenerated(PregeneratedMessages.ServerIsSecondary);
+                Flush();
+
+                var columnsMsg = ReadMessage();
+                var rowMsg = (DataRowMessage)(ReadMessage());
+
+                var columnCount = ReadBuffer.ReadInt16();
+                var lengthOfColumnValue = ReadBuffer.ReadInt32();
+                var buffer = new byte[lengthOfColumnValue];
+                ReadBuffer.ReadBytes(buffer, 0, lengthOfColumnValue);
+
+                ConnectedServerType = buffer[0] == 'f' ? NpgsqlServerStatus.ServerType.Primary : NpgsqlServerStatus.ServerType.Secondary;
+
+                SkipUntil(BackendMessageCode.ReadyForQuery);
+                EndUserAction();
+            }
+            catch (SocketException)
+            {
+                ConnectedServerType = NpgsqlServerStatus.ServerType.Down;
+            }
+            catch (NpgsqlException)
+            {
+                ConnectedServerType = NpgsqlServerStatus.ServerType.Down;
+            }
         }
 
         internal bool IsAppropriateFor(TargetServerType targetServerType)
         {
-            var stateCacheKey = ConnectedHost! + ":" + Port;
-            if (NpgsqlServerStatus.Cache[stateCacheKey] == NpgsqlServerStatus.ServerType.Down)
+            if (ConnectedServerType == NpgsqlServerStatus.ServerType.Down)
                 return false;
-
             if (targetServerType == TargetServerType.Any)
                 return true;
-
-            if (NpgsqlServerStatus.Cache[stateCacheKey] == NpgsqlServerStatus.ServerType.Primary && targetServerType == TargetServerType.Primary)
+            if (ConnectedServerType == NpgsqlServerStatus.ServerType.Primary && targetServerType == TargetServerType.Primary)
                 return true;
-            if (NpgsqlServerStatus.Cache[stateCacheKey] == NpgsqlServerStatus.ServerType.Secondary && targetServerType == TargetServerType.Secondary)
+            if (ConnectedServerType == NpgsqlServerStatus.ServerType.Secondary && targetServerType == TargetServerType.Secondary)
                 return true;
 
             return false;
@@ -1686,22 +1710,11 @@ namespace Npgsql
             try
             {
                 // There may already be a user action, or the connector may be closed etc.
-                UpdateServerPrimaryStatus();
-                /*
-                WriteQuery("SELECT pg_is_in_recovery()::text");
-                Flush();
-                
-                var columnMessage = ReadMessage();
-                var rowMessage = ReadMessage();
-                
-                */
-
                 if (!IsReady)
                     return;
 
                 Log.Trace("Performed keepalive", Id);
-                
-
+                UpdateServerPrimaryStatus();
             }
             catch (Exception e)
             {
