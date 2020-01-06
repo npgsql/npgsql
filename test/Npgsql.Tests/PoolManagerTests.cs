@@ -47,7 +47,7 @@ namespace Npgsql.Tests
 
             NpgsqlConnection.ClearAllPools();
             Assert.That(pool.Statistics.Idle, Is.Zero);
-            Assert.That(pool.Statistics.Open, Is.Zero);
+            Assert.That(pool.Statistics.Total, Is.Zero);
         }
 
         [Test]
@@ -62,10 +62,10 @@ namespace Npgsql.Tests
                 NpgsqlConnection.ClearAllPools();
                 Assert.That(PoolManager.TryGetValue(ConnectionString, out pool), Is.True);
                 Assert.That(pool!.Statistics.Idle, Is.Zero);
-                Assert.That(pool.Statistics.Open, Is.EqualTo(1));
+                Assert.That(pool.Statistics.Total, Is.EqualTo(1));
             }
             Assert.That(pool.Statistics.Idle, Is.Zero);
-            Assert.That(pool.Statistics.Open, Is.Zero);
+            Assert.That(pool.Statistics.Total, Is.Zero);
         }
 
         [SetUp]
