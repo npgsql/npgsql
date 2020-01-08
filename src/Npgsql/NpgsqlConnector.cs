@@ -475,11 +475,12 @@ namespace Npgsql
                 var rowMsg = (DataRowMessage)(ReadMessage());
 
                 var columnCount = ReadBuffer.ReadInt16();
-                var lengthOfColumnValue = ReadBuffer.ReadInt32();
-                var buffer = new byte[lengthOfColumnValue];
-                ReadBuffer.ReadBytes(buffer, 0, lengthOfColumnValue);
+                var lengthOfBooleanColumn = ReadBuffer.ReadInt32();
+                var resultSetBuffer = new byte[lengthOfBooleanColumn];
+                ReadBuffer.ReadBytes(resultSetBuffer, 0, lengthOfBooleanColumn);
 
-                ConnectedServerType = buffer[0] == 'f' ? NpgsqlServerStatus.ServerType.Primary : NpgsqlServerStatus.ServerType.Secondary;
+                var serverIsPrimary = resultSetBuffer[0] == 'f';
+                ConnectedServerType = serverIsPrimary ? NpgsqlServerStatus.ServerType.Primary : NpgsqlServerStatus.ServerType.Secondary;
 
                 SkipUntil(BackendMessageCode.ReadyForQuery);
                 EndUserAction();
