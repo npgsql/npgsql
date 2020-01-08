@@ -78,7 +78,7 @@ namespace Npgsql.Tests.Types
             {
                 Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(Dictionary<string, string>)));
                 Assert.That(reader.GetFieldValue<ImmutableDictionary<string, string?>>(i), Is.EqualTo(expected));
-                Assert.That(reader.GetFieldValue<IReadOnlyDictionary<string, string>>(i), Is.EqualTo(expected));
+                Assert.That(reader.GetFieldValue<IReadOnlyDictionary<string, string?>>(i), Is.EqualTo(expected));
             }
         }
 #endif
