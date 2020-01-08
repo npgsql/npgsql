@@ -30,6 +30,7 @@ namespace Npgsql.TypeHandlers
         typeof(Dictionary<string, string?>),
         typeof(IDictionary<string, string?>),
 #if !NET461 && !NETSTANDARD2_0 && !NETSTANDARD2_1
+        typeof(IReadOnlyDictionary<string, string?>),
         typeof(ImmutableDictionary<string, string?>)
 #endif
     })]
@@ -56,6 +57,7 @@ namespace Npgsql.TypeHandlers
         NpgsqlTypeHandler<Dictionary<string, string?>>,
         INpgsqlTypeHandler<IDictionary<string, string?>>
 #if !NET461 && !NETSTANDARD2_0 && !NETSTANDARD2_1
+        , INpgsqlTypeHandler<IReadOnlyDictionary<string, string?>>
         , INpgsqlTypeHandler<ImmutableDictionary<string, string?>>
 #endif
     {
@@ -97,7 +99,7 @@ namespace Npgsql.TypeHandlers
 
         /// <inheritdoc />
         public override int ValidateAndGetLength(Dictionary<string, string?> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
-            => ValidateAndGetLength(value, ref lengthCache, parameter);
+            => ValidateAndGetLength((IDictionary<string, string?>)value, ref lengthCache, parameter);
 
         /// <inheritdoc />
         public async Task Write(IDictionary<string, string?> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
@@ -117,7 +119,7 @@ namespace Npgsql.TypeHandlers
 
         /// <inheritdoc />
         public override Task Write(Dictionary<string, string?> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
-            => Write(value, buf, lengthCache, parameter, async);
+            => Write((IDictionary<string, string?>)value, buf, lengthCache, parameter, async);
 
         #endregion
 
@@ -172,6 +174,29 @@ namespace Npgsql.TypeHandlers
             => Write((IDictionary<string, string?>)value, buf, lengthCache, parameter, async);
 
         async ValueTask<ImmutableDictionary<string, string?>> INpgsqlTypeHandler<ImmutableDictionary<string, string?>>.Read(
+            NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
+        {
+            await buf.Ensure(4, async);
+            var numElements = buf.ReadInt32();
+            return (await ReadInto(ImmutableDictionary<string, string?>.Empty.ToBuilder(), numElements, buf, async))
+                .ToImmutable();
+        }
+
+        #endregion
+
+        #region IReadOnlyDictionary
+
+        /// <inheritdoc />
+        public int ValidateAndGetLength(
+            IReadOnlyDictionary<string, string?> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+            => ValidateAndGetLength((IDictionary<string, string?>)value, ref lengthCache, parameter);
+
+        /// <inheritdoc />
+        public Task Write(IReadOnlyDictionary<string, string?> value,
+            NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+            => Write((IDictionary<string, string?>)value, buf, lengthCache, parameter, async);
+
+        async ValueTask<IReadOnlyDictionary<string, string?>> INpgsqlTypeHandler<IReadOnlyDictionary<string, string?>>.Read(
             NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
         {
             await buf.Ensure(4, async);
