@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading.Tasks;
@@ -30,8 +29,8 @@ namespace Npgsql.TypeHandlers
     {
         typeof(Dictionary<string, string?>),
         typeof(IDictionary<string, string?>),
-#if !NET461 && !NETSTANDARD2_0 && !NETSTANDARD2_1
         typeof(IReadOnlyDictionary<string, string?>),
+#if !NET461 && !NETSTANDARD2_0 && !NETSTANDARD2_1
         typeof(ImmutableDictionary<string, string?>)
 #endif
     })]
@@ -56,9 +55,9 @@ namespace Npgsql.TypeHandlers
 #pragma warning disable CA1061 // Do not hide base class methods
     public class HstoreHandler :
         NpgsqlTypeHandler<Dictionary<string, string?>>,
-        INpgsqlTypeHandler<IDictionary<string, string?>>
+        INpgsqlTypeHandler<IDictionary<string, string?>>,
+        INpgsqlTypeHandler<IReadOnlyDictionary<string, string?>>
 #if !NET461 && !NETSTANDARD2_0 && !NETSTANDARD2_1
-        , INpgsqlTypeHandler<IReadOnlyDictionary<string, string?>>
         , INpgsqlTypeHandler<ImmutableDictionary<string, string?>>
 #endif
     {
@@ -187,28 +186,20 @@ namespace Npgsql.TypeHandlers
         }
 
         #endregion
+#endif
 
         #region IReadOnlyDictionary
 
-        int INpgsqlTypeHandler<IReadOnlyDictionary<string, string?>>.ValidateAndGetLength(IReadOnlyDictionary<string, string?> value,
-            ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
+        int INpgsqlTypeHandler<IReadOnlyDictionary<string, string?>>.ValidateAndGetLength(IReadOnlyDictionary<string, string?> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLength(value, ref lengthCache, parameter);
 
-        Task INpgsqlTypeHandler<IReadOnlyDictionary<string, string?>>.Write(IReadOnlyDictionary<string, string?> value,
-            NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        Task INpgsqlTypeHandler<IReadOnlyDictionary<string, string?>>.Write(IReadOnlyDictionary<string, string?> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
             => Write(value, value.Count, buf, lengthCache, parameter, async);
 
-        async ValueTask<IReadOnlyDictionary<string, string?>> INpgsqlTypeHandler<IReadOnlyDictionary<string, string?>>.Read(
-            NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
-        {
-            await buf.Ensure(4, async);
-            var numElements = buf.ReadInt32();
-            return (await ReadInto(ImmutableDictionary<string, string?>.Empty.ToBuilder(), numElements, buf, async))
-                .ToImmutable();
-        }
+        ValueTask<IReadOnlyDictionary<string, string?>> INpgsqlTypeHandler<IReadOnlyDictionary<string, string?>>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
+            => new ValueTask<IReadOnlyDictionary<string, string?>>(Read(buf, len, async, fieldDescription).Result);
 
         #endregion
-#endif
     }
 #pragma warning restore CA1061 // Do not hide base class methods
 }
