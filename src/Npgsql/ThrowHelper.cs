@@ -9,10 +9,21 @@ namespace Npgsql
     static class ThrowHelper
     {
         [DoesNotReturn]
-        internal static void ThrowInvalidCastException_NotSupportedType(NpgsqlTypeHandler handler, NpgsqlParameter? parameter, Type type) =>
-            throw new InvalidCastException(parameter is null
+        internal static void ThrowInvalidCastException_NotSupportedType(NpgsqlTypeHandler handler, NpgsqlParameter? parameter, Type type)
+        {
+            string? parameterName;
+
+            if (parameter is null)
+                parameterName = null;
+            else
+                parameterName = parameter.TrimmedName == string.Empty
+                    ? $"${parameter.Collection!.IndexOf(parameter) + 1}"
+                    : parameter.TrimmedName;
+
+            throw new InvalidCastException(parameterName is null
                 ? $"Cannot write a value of CLR type '{type}' as database type '{handler.PgDisplayName}'."
-                : $"Cannot write a value of CLR type '{type}' as database type '{handler.PgDisplayName}' for parameter '{parameter.TrimmedName}'.");
+                : $"Cannot write a value of CLR type '{type}' as database type '{handler.PgDisplayName}' for parameter '{parameterName}'.");
+        }
 
         [DoesNotReturn]
         internal static void ThrowInvalidCastException_NoValue(FieldDescription field) =>
