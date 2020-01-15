@@ -11,12 +11,9 @@ namespace Npgsql
         [DoesNotReturn]
         internal static void ThrowInvalidCastException_NotSupportedType(NpgsqlTypeHandler handler, NpgsqlParameter? parameter, Type type)
         {
-            string? parameterName;
-
-            if (parameter is null)
-                parameterName = null;
-            else
-                parameterName = parameter.TrimmedName == string.Empty
+            var parameterName = parameter is null
+                ? null
+                : parameter.TrimmedName == string.Empty
                     ? $"${parameter.Collection!.IndexOf(parameter) + 1}"
                     : parameter.TrimmedName;
 
