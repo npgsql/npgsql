@@ -1,4 +1,5 @@
 ﻿using Npgsql.BackendMessages;
+using Npgsql.TypeHandling;
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
@@ -7,6 +8,20 @@ namespace Npgsql
 {
     static class ThrowHelper
     {
+        [DoesNotReturn]
+        internal static void ThrowInvalidCastException_NotSupportedType(NpgsqlTypeHandler handler, NpgsqlParameter? parameter, Type type)
+        {
+            var parameterName = parameter is null
+                ? null
+                : parameter.TrimmedName == string.Empty
+                    ? $"${parameter.Collection!.IndexOf(parameter) + 1}"
+                    : parameter.TrimmedName;
+
+            throw new InvalidCastException(parameterName is null
+                ? $"Cannot write a value of CLR type '{type}' as database type '{handler.PgDisplayName}'."
+                : $"Cannot write a value of CLR type '{type}' as database type '{handler.PgDisplayName}' for parameter '{parameterName}'.");
+        }
+
         [DoesNotReturn]
         internal static void ThrowInvalidCastException_NoValue(FieldDescription field) =>
             throw new InvalidCastException($"Column '{field.Name}' is null.");

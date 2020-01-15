@@ -117,9 +117,13 @@ namespace Npgsql.TypeHandling
         /// Checks that the current handler supports that type and throws an exception otherwise.
         /// </summary>
         protected internal override int ValidateAndGetLength<TAny>(TAny value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
-            => this is INpgsqlTypeHandler<TAny> typedHandler
-                ? typedHandler.ValidateAndGetLength(value, ref lengthCache, parameter)
-                : throw new InvalidCastException($"Can't write CLR type {typeof(TAny)} to database type {PgDisplayName}");
+        {
+            var typedHandler = this as INpgsqlTypeHandler<TAny>;
+            if (typedHandler is null)
+                ThrowHelper.ThrowInvalidCastException_NotSupportedType(this, parameter, typeof(TAny));
+
+            return typedHandler.ValidateAndGetLength(value, ref lengthCache, parameter);
+        }
 
         /// <summary>
         /// In the vast majority of cases writing a parameter to the buffer won't need to perform I/O.
