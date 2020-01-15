@@ -449,7 +449,7 @@ namespace Npgsql
             if (values is null)
                 throw new ArgumentNullException(nameof(values));
 
-            foreach (object? parameter in values)
+            foreach (var parameter in values)
                 Add(Cast(parameter) ?? throw new ArgumentException("Collection contains a null value.", nameof(values)));
         }
 
