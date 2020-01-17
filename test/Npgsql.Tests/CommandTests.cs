@@ -888,20 +888,34 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/831")]
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/831")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/2795")]
         [Timeout(10000)]
         public void ManyParameters()
         {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT 1", conn))
+            using var conn = OpenConnection();
+            using var cmd = new NpgsqlCommand { Connection = conn };
+            var sb = new StringBuilder();
+            for (var i = 0; i < ushort.MaxValue; i++)
             {
-                for (var i = 0; i < conn.Settings.WriteBufferSize; i++)
-                    cmd.Parameters.Add(new NpgsqlParameter("p" + i, 8));
-                cmd.ExecuteNonQuery();
+                var paramName = "p" + i;
+                cmd.Parameters.Add(new NpgsqlParameter(paramName, 8));
+                if (i > 0)
+                    sb.Append(", ");
+                sb.Append($"(@{paramName})");
             }
+
+            cmd.CommandText =
+                @$"
+CREATE TEMP TABLE data (some_column INT);
+INSERT INTO data (some_column) VALUES {sb};
+DROP TABLE data";
+
+            cmd.ExecuteNonQuery();
         }
 
-        [Test, Description("Bypasses PostgreSQL's int16 limitation on the number of parameters")]
+        [Test, Description("Bypasses PostgreSQL's uint16 limitation on the number of parameters")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/831")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/858")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/2703")]
@@ -910,7 +924,7 @@ namespace Npgsql.Tests
             using var conn = OpenConnection();
             using var cmd = new NpgsqlCommand { Connection = conn };
             var sb = new StringBuilder("SOME RANDOM SQL ");
-            for (var i = 0; i < short.MaxValue + 1; i++)
+            for (var i = 0; i < ushort.MaxValue + 1; i++)
             {
                 var paramName = "p" + i;
                 cmd.Parameters.Add(new NpgsqlParameter(paramName, 8));
@@ -923,13 +937,13 @@ namespace Npgsql.Tests
 
             Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception
                 .InstanceOf<NpgsqlException>()
-                .With.Message.EqualTo("A statement cannot have more than 32767 parameters"));
+                .With.Message.EqualTo("A statement cannot have more than 65535 parameters"));
             Assert.That(() => cmd.Prepare(), Throws.Exception
                 .InstanceOf<NpgsqlException>()
-                .With.Message.EqualTo("A statement cannot have more than 32767 parameters"));
+                .With.Message.EqualTo("A statement cannot have more than 65535 parameters"));
         }
 
-        [Test, Description("An individual statement cannot have more than 32767 parameters, but a command can (across multiple statements).")]
+        [Test, Description("An individual statement cannot have more than 65535 parameters, but a command can (across multiple statements).")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/1199")]
         public void ManyParametersAcrossStatements()
         {
