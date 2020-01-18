@@ -410,9 +410,7 @@ namespace Npgsql
 
                         if (IsAppropriateFor(Settings.TargetServerType) == false)
                         {
-                            // TODO: There needs to be some sort of soft cleanup here, this.Close() is too much and this.Break() is too little.
-                            // I think just closing the socket is enough as all the buffers etc aren't used until a connection is allocated?
-                            _socket.Close();
+                            SoftCleanup();
                             continue;
                         }
 
@@ -431,15 +429,15 @@ namespace Npgsql
                     }
                     catch (SocketException)
                     {
-                        if (hosts.Last() == host)
+                        if (hosts.Last() == host) 
                             throw;
-                        Break();
+                        SoftCleanup();
                     }
                     catch (NpgsqlException)
                     {
                         if (hosts.Last() == host)
                             throw;
-                        Break();
+                        SoftCleanup();
                     }
                 }
             }
@@ -1453,6 +1451,13 @@ namespace Npgsql
 #pragma warning restore CS8625
         }
 
+        private void SoftCleanup()
+        {
+            // TODO: There needs to be some sort of soft cleanup here, this.Close() is too much and this.Break() is too little.
+            // I think just closing the socket is enough as all the buffers etc aren't used until a connection is allocated?
+            if(_socket != null && _socket.Connected)
+                _socket.Close();
+        }
         void GenerateResetMessage()
         {
             var sb = new StringBuilder("SET SESSION AUTHORIZATION DEFAULT;RESET ALL;");
