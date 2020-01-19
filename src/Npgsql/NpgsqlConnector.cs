@@ -248,6 +248,7 @@ namespace Npgsql
             ProvideClientCertificatesCallback = connector.ProvideClientCertificatesCallback;
             UserCertificateValidationCallback = connector.UserCertificateValidationCallback;
             ProvidePasswordCallback = connector.ProvidePasswordCallback;
+            ConnectedHost = connector.ConnectedHost;
         }
 
         /// <summary>
