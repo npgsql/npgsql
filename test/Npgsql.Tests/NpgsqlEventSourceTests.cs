@@ -16,10 +16,10 @@ namespace Npgsql.Tests
                 conn.ExecuteScalar("SELECT 1");
             }
 
-            var commandStart = _events.Single(e => e.EventId == NpgsqlEventSource.CommandStartId);
+            var commandStart = _events.First(e => e.EventId == NpgsqlEventSource.CommandStartId);
             Assert.That(commandStart.EventName, Is.EqualTo("CommandStart"));
 
-            var commandStop = _events.Single(e => e.EventId == NpgsqlEventSource.CommandStopId);
+            var commandStop = _events.First(e => e.EventId == NpgsqlEventSource.CommandStopId);
             Assert.That(commandStop.EventName, Is.EqualTo("CommandStop"));
         }
 
