@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
@@ -55,7 +56,7 @@ namespace Npgsql.TypeHandlers
             var bytesLeft = len - 4;  // Remove leading number of bits
             var bitNo = 0;
 
-            do
+            while (true)
             {
                 var iterationEndPos = bytesLeft - Math.Min(bytesLeft, buf.ReadBytesLeft) + 1;
                 for (; bytesLeft > iterationEndPos; bytesLeft--)
@@ -71,7 +72,16 @@ namespace Npgsql.TypeHandlers
                     result[bitNo++] = (chunk & (1 << 1)) != 0;
                     result[bitNo++] = (chunk & (1 << 0)) != 0;
                 }
-            } while (bytesLeft > 1);
+
+                if (bytesLeft <= 1)
+                    break;
+
+                if (bytesLeft != 0)
+                {
+                    Debug.Assert(buf.ReadBytesLeft == 0);
+                    await buf.Ensure(Math.Min(bytesLeft, buf.Size), async);
+                }
+            }
 
             if (bitNo < result.Length)
             {
