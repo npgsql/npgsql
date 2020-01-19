@@ -199,6 +199,20 @@ namespace Npgsql.Tests.Types
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2766")]
+        [Timeout(1000)]
+        public void SequentialReadOfOversizedBitArray()
+        {
+            using var conn = OpenConnection();
+            using var cmd = new NpgsqlCommand("SELECT 1::bit(100000)", conn);
+            using var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess);
+
+            reader.Read();
+
+            var actual = reader.GetFieldValue<BitArray>(0);
+            Assert.That(actual, Has.Length.EqualTo(100000));
+        }
+
         // Older tests from here
 
         // TODO: Bring this test back
