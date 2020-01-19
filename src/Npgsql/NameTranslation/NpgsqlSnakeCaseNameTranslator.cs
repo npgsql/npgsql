@@ -74,6 +74,7 @@ namespace Npgsql.NameTranslation
                         if (previousCategory == UnicodeCategory.SpaceSeparator ||
                             previousCategory == UnicodeCategory.LowercaseLetter ||
                             previousCategory != UnicodeCategory.DecimalDigitNumber &&
+                            previousCategory != null &&
                             currentIndex > 0 &&
                             currentIndex + 1 < value.Length &&
                             char.IsLower(value[currentIndex + 1]))
