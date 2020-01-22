@@ -1483,6 +1483,60 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test,Explicit]
+        public void ConnectionToSecondaryIgnoresThePrimary()
+        {
+            var secondaryHost = Environment.GetEnvironmentVariable("NPGSQL_SECONDARY_HOST");
+            if (secondaryHost == null)
+                Assert.Ignore("NPGSQL_SECONDARY_HOST isn't defined and is required for connection failover tests");
+
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Pooling = false,
+                IntegratedSecurity = false,
+                TargetServerType = TargetServerType.Secondary
+            };
+            builder.Host = builder.Host + "," + secondaryHost;
+
+            using (TestUtil.SetEnvironmentVariable("PGPASSWORD", builder.Password))
+            {
+                builder.Password = null;
+
+                using (var conn = OpenConnection(builder))
+                {
+                    var pgIsInRecovery = (bool)conn.ExecuteScalar("SELECT pg_is_in_recovery();");
+                    Assert.That(pgIsInRecovery == true);
+                }
+            }
+        }
+        
+        [Test,Explicit]
+        public void ConnectionToPrimaryIgnoresTheSecondaryIfTheSecondaryIsFirst()
+        {
+            var secondaryHost = Environment.GetEnvironmentVariable("NPGSQL_SECONDARY_HOST");
+            if (secondaryHost == null)
+                Assert.Ignore("NPGSQL_SECONDARY_HOST isn't defined and is required for connection failover tests and must be in recovery");
+
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Pooling = false,
+                IntegratedSecurity = false,
+                TargetServerType = TargetServerType.Primary
+            };
+            builder.Host = secondaryHost + "," + builder.Host;
+
+            using (TestUtil.SetEnvironmentVariable("PGPASSWORD", builder.Password))
+            {
+                builder.Password = null;
+
+                using (var conn = OpenConnection(builder))
+                {
+                    var pgIsInRecovery = (bool)conn.ExecuteScalar("SELECT pg_is_in_recovery();");
+                    Assert.That(pgIsInRecovery == false);
+                }
+            }
+        }
+
         #endregion
     }
 }
