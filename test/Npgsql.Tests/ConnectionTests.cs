@@ -1420,6 +1420,23 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        public void ConnectionToAServerOfTypeAnyWorks()
+        {
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Pooling = false,
+                IntegratedSecurity = false,
+                TargetServerType = TargetServerType.Any
+            };
+
+            using (TestUtil.SetEnvironmentVariable("PGPASSWORD", builder.Password))
+            {
+                builder.Password = null;
+                using (OpenConnection(builder)) { }
+            }
+        }
+
+        [Test]
         public void FailoverFromANonExistantHostToPrimaryWorksWithinTheTimeout()
         {
             var unknownIp = Environment.GetEnvironmentVariable("NPGSQL_UNKNOWN_IP");
