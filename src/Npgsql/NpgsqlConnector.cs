@@ -415,7 +415,7 @@ namespace Npgsql
                         if (IsAppropriateFor(Settings.TargetServerType) == false)
                         {
                             SoftCleanup();
-                            continue;
+                            throw new NpgsqlException($"Host {ConnectedHost} was not of compatible type. Got: {ConnectedServerType} Expected: {Settings.TargetServerType}");
                         }
 
                         if (Settings.Pooling && DatabaseInfo.SupportsDiscard)
