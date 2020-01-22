@@ -107,6 +107,7 @@ namespace Npgsql.Util
 
         internal NpgsqlTimeout(TimeSpan expiration)
         {
+            Duration = expiration;
             _expiration = expiration == TimeSpan.Zero
                 ? DateTime.MaxValue
                 : DateTime.UtcNow + expiration;
@@ -123,5 +124,7 @@ namespace Npgsql.Util
         internal bool HasExpired => DateTime.UtcNow >= Expiration;
 
         internal TimeSpan TimeLeft => IsSet ? Expiration - DateTime.UtcNow : Timeout.InfiniteTimeSpan;
+
+        internal readonly TimeSpan Duration;
     }
 }

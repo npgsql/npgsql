@@ -362,7 +362,7 @@ namespace Npgsql
         /// </summary>
         /// <remarks>Usually called by the RequestConnector
         /// Method of the connection pool manager.</remarks>
-        internal async Task Open(NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
+        internal async Task Open(NpgsqlTimeout connectTimeout, bool async, CancellationToken cancellationToken)
         {
             Debug.Assert(Connection != null && Connection.Connector == this);
             Debug.Assert(State == ConnectorState.Closed);
@@ -380,6 +380,8 @@ namespace Npgsql
                 {
                     try
                     {
+                        var secondsPerHost = connectTimeout.Duration.TotalSeconds / hosts.Length;
+                        var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(secondsPerHost));
                         ConnectedHost = host;
                         await RawOpen(timeout, async, cancellationToken);
                         var username = GetUsername();
@@ -388,6 +390,7 @@ namespace Npgsql
                         WriteStartupMessage(username);
                         await Flush(async);
                         timeout.Check();
+                        connectTimeout.Check();
 
                         await Authenticate(username, timeout, async);
 

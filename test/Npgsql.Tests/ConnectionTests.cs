@@ -1400,5 +1400,48 @@ namespace Npgsql.Tests
         }
 
         #endregion
+
+        #region HostFailover
+        [Test]
+        public void ConnectionToAPrimaryServerWorks()
+        {
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Pooling = false,
+                IntegratedSecurity = false,
+                TargetServerType = TargetServerType.Primary
+            };
+
+            using (TestUtil.SetEnvironmentVariable("PGPASSWORD", builder.Password))
+            {
+                builder.Password = null;
+                using (OpenConnection(builder)) { }
+            }
+        }
+
+        [Test]
+        public void FailoverFromANonExistantHostToPrimaryWorksWithinTheTimeout()
+        {
+            var unknownIp = Environment.GetEnvironmentVariable("NPGSQL_UNKNOWN_IP");
+            if (unknownIp == null)
+                Assert.Ignore("NPGSQL_UNKNOWN_IP isn't defined and is required for connection failover tests");
+
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Pooling = false,
+                IntegratedSecurity = false,
+                TargetServerType = TargetServerType.Secondary
+            };
+
+            builder.Host = unknownIp + "," + builder.Host;
+
+            using (TestUtil.SetEnvironmentVariable("PGPASSWORD", builder.Password))
+            {
+                builder.Password = null;
+                using (OpenConnection(builder)) { }
+            }
+        }
+
+        #endregion
     }
 }
