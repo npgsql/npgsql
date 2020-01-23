@@ -883,11 +883,11 @@ namespace Npgsql.Tests
         [IssueLink("https://github.com/npgsql/npgsql/issues/831")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/2795")]
         [Timeout(10000)]
-        public void ManyParameters()
+        public void ManyParameters([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
         {
             using var conn = OpenConnection();
             using var cmd = new NpgsqlCommand { Connection = conn };
-            var sb = new StringBuilder();
+            var sb = new StringBuilder("INSERT INTO data (some_column) VALUES ");
             for (var i = 0; i < ushort.MaxValue; i++)
             {
                 var paramName = "p" + i;
@@ -897,13 +897,16 @@ namespace Npgsql.Tests
                 sb.Append($"(@{paramName})");
             }
 
-            cmd.CommandText =
-                @$"
-CREATE TEMP TABLE data (some_column INT);
-INSERT INTO data (some_column) VALUES {sb};
-DROP TABLE data";
+            conn.ExecuteNonQuery("CREATE TEMP TABLE data (some_column INT)");
+
+            cmd.CommandText = sb.ToString();
+
+            if (prepare == PrepareOrNot.Prepared)
+                cmd.Prepare();
 
             cmd.ExecuteNonQuery();
+
+            conn.ExecuteNonQuery("DROP TABLE data");
         }
 
         [Test, Description("Bypasses PostgreSQL's uint16 limitation on the number of parameters")]
