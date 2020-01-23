@@ -111,7 +111,7 @@ namespace Npgsql
                 statementName.Length        +         // Statement name
                 sizeof(byte)                +         // Null terminator for the statement name
                 queryByteLen + sizeof(byte) +         // SQL query length plus null terminator
-                sizeof(short)               +         // Number of parameters
+                sizeof(ushort)              +         // Number of parameters
                 inputParameters.Count * sizeof(int);  // Parameter OIDs
 
             WriteBuffer.WriteByte(FrontendMessageCode.Parse);
@@ -123,7 +123,7 @@ namespace Npgsql
             if (WriteBuffer.WriteSpaceLeft < 1 + 2)
                 await Flush(async);
             WriteBuffer.WriteByte(0); // Null terminator for the query
-            WriteBuffer.WriteInt16((short)inputParameters.Count);
+            WriteBuffer.WriteUInt16((ushort)inputParameters.Count);
 
             foreach (var p in inputParameters)
             {
@@ -150,7 +150,7 @@ namespace Npgsql
                 sizeof(int)                     +     // Message length
                 sizeof(byte)                    +     // Portal is always empty (only a null terminator)
                 statement.Length + sizeof(byte) +     // Statement name plus null terminator
-                sizeof(short);                        // Number of parameter format codes that follow
+                sizeof(ushort);                       // Number of parameter format codes that follow
 
             if (WriteBuffer.WriteSpaceLeft < headerLength)
             {
@@ -205,7 +205,7 @@ namespace Npgsql
             if (WriteBuffer.WriteSpaceLeft < 2)
                 await Flush(async);
 
-            WriteBuffer.WriteInt16(inputParameters.Count);
+            WriteBuffer.WriteUInt16((ushort)inputParameters.Count);
 
             foreach (var param in inputParameters)
             {
