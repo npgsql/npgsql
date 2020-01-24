@@ -498,6 +498,23 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2665")]
+        public void PreparedCommandFailure()
+        {
+            using var conn = OpenConnection();
+
+            using (var command = new NpgsqlCommand("INSERT INTO test_table (id) VALUES (1)", conn))
+                Assert.Throws<PostgresException>(() => command.Prepare());
+
+            conn.ExecuteNonQuery("CREATE TEMP TABLE test_table (id integer)");
+
+            using (var command = new NpgsqlCommand("INSERT INTO test_table (id) VALUES (1)", conn))
+            {
+                command.Prepare();
+                command.ExecuteNonQuery();
+            }
+        }
+
         /*
         [Test]
         public void Unpersist()
