@@ -79,8 +79,8 @@ namespace Npgsql.TypeHandlers
                 if (bytesLeft == 1)
                     break;
 
-                if (bytesLeft != 0)
-                    await buf.Ensure(Math.Min(bytesLeft, buf.Size), async);
+                Debug.Assert(buf.ReadBytesLeft == 0);
+                await buf.Ensure(Math.Min(bytesLeft, buf.Size), async);
             }
 
             if (bitNo < result.Length)
