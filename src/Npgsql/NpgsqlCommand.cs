@@ -585,11 +585,15 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                     // Loop over statements, skipping those that are already prepared (because they were persisted)
                     var isFirst = true;
-                    foreach (var statement in _statements)
+                    for (var i = 0; i < _statements.Count; i++)
                     {
-                        if (statement.PreparedStatement?.State == PreparedState.BeingPrepared)
+                        var statement = _statements[i];
+                        var pStatement = statement.PreparedStatement;
+                        if (pStatement?.State != PreparedState.BeingPrepared)
+                            continue;
+
+                        try
                         {
-                            var pStatement = statement.PreparedStatement;
                             if (pStatement.StatementBeingReplaced != null)
                             {
                                 Expect<CloseCompletedMessage>(await connector.ReadMessage(async), connector);
@@ -618,6 +622,19 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                             pStatement.CompletePrepare();
                             isFirst = false;
+                        }
+                        catch
+                        {
+                            // The statement wasn't prepared successfully, update the bookkeeping for it and
+                            // all following statements
+                            for (; i < _statements.Count; i++)
+                            {
+                                pStatement = _statements[i].PreparedStatement;
+                                if (pStatement?.State == PreparedState.BeingPrepared)
+                                    pStatement.CompleteUnprepare();
+                            }
+
+                            throw;
                         }
                     }
 
