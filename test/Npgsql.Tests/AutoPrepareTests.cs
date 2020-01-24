@@ -376,6 +376,36 @@ SELECT COUNT(*) FROM pg_prepared_statements
     WHERE statement NOT LIKE '%pg_prepared_statements%'
     AND statement NOT LIKE '%pg_type%'";
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2665")]
+        public void AutoPreparedCommandFailure()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                MaxAutoPrepare = 10,
+                AutoPrepareMinUsages = 2
+            };
+            using var conn = OpenConnection(csb);
+
+            conn.ExecuteNonQuery("CREATE TEMP TABLE test_table (id integer)");
+
+            using (var command = new NpgsqlCommand("INSERT INTO test_table (id) VALUES (1)", conn))
+            {
+                command.ExecuteNonQuery();
+                conn.ExecuteNonQuery("DROP TABLE test_table");
+                Assert.Throws<PostgresException>(() => command.ExecuteNonQuery());
+            }
+
+            conn.ExecuteNonQuery("CREATE TEMP TABLE test_table (id integer)");
+
+            using (var command = new NpgsqlCommand("INSERT INTO test_table (id) VALUES (1)", conn))
+            {
+                command.ExecuteNonQuery();
+                command.ExecuteNonQuery();
+            }
+
+            conn.UnprepareAll();
+        }
+
         void DumpPreparedStatements(NpgsqlConnection conn)
         {
             using (var cmd = new NpgsqlCommand("SELECT name,statement FROM pg_prepared_statements", conn))
