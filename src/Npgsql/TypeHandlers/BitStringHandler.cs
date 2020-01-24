@@ -54,8 +54,10 @@ namespace Npgsql.TypeHandlers
             var numBits = buf.ReadInt32();
             var result = new BitArray(numBits);
             var bytesLeft = len - 4;  // Remove leading number of bits
-            var bitNo = 0;
+            if (bytesLeft == 0)
+                return result;
 
+            var bitNo = 0;
             while (true)
             {
                 var iterationEndPos = bytesLeft > buf.ReadBytesLeft
