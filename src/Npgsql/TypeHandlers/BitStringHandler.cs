@@ -58,7 +58,10 @@ namespace Npgsql.TypeHandlers
 
             while (true)
             {
-                var iterationEndPos = bytesLeft - Math.Min(bytesLeft, buf.ReadBytesLeft) + 1;
+                var iterationEndPos = bytesLeft > buf.ReadBytesLeft
+                    ? bytesLeft - buf.ReadBytesLeft
+                    : 1;
+
                 for (; bytesLeft > iterationEndPos; bytesLeft--)
                 {
                     // ReSharper disable ShiftExpressionRealShiftCountIsZero
@@ -73,14 +76,11 @@ namespace Npgsql.TypeHandlers
                     result[bitNo++] = (chunk & (1 << 0)) != 0;
                 }
 
-                if (bytesLeft <= 1)
+                if (bytesLeft == 1)
                     break;
 
                 if (bytesLeft != 0)
-                {
-                    Debug.Assert(buf.ReadBytesLeft == 0);
                     await buf.Ensure(Math.Min(bytesLeft, buf.Size), async);
-                }
             }
 
             if (bitNo < result.Length)
