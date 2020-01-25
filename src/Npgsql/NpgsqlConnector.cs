@@ -376,8 +376,9 @@ namespace Npgsql
             try 
             {
                 var hosts = Host.Split(',');
-                foreach (var host in hosts)
+                for (var hostIndex = 0 ; hostIndex < hosts.Length ; hostIndex++)
                 {
+                    var host = hosts[hostIndex];
                     try
                     {
                         var secondsPerHost = connectTimeout.Duration.TotalSeconds / hosts.Length;
@@ -433,13 +434,13 @@ namespace Npgsql
                     }
                     catch (SocketException)
                     {
-                        if (hosts.Last() == host) 
+                        if (hostIndex == hosts.Length - 1)
                             throw;
                         SoftCleanup();
                     }
                     catch (NpgsqlException)
                     {
-                        if (hosts.Last() == host)
+                        if (hostIndex == hosts.Length - 1)
                             throw;
                         SoftCleanup();
                     }
