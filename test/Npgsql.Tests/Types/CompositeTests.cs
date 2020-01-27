@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Data;
 using System.Dynamic;
+using System.Linq;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 using NUnit.Framework;
@@ -528,6 +529,24 @@ CREATE TYPE address AS
                 var value = (TableAsCompositeType)conn.ExecuteScalar(@"SELECT t.*::table_as_composite2 FROM table_as_composite2 AS t");
                 Assert.That(value.Foo, Is.EqualTo(8));
             }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2668")]
+        public void TableCompositesNotLoadedIfNotRequested()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Pooling = false,
+                ApplicationName = nameof(TableCompositesNotLoadedIfNotRequested)
+            };
+
+            using var conn = OpenConnection(csb);
+            conn.ExecuteNonQuery("CREATE TEMP TABLE table_as_composite3 (foo int, bar int)");
+            conn.ReloadTypes();
+
+            Assert.Throws<ArgumentException>(() => conn.TypeMapper.MapComposite<TableAsCompositeType>("table_as_composite3"));
+            Assert.Null(conn.Connector!.DatabaseInfo.CompositeTypes.SingleOrDefault(c => c.Name.Contains("table_as_composite3")));
+            Assert.Null(conn.Connector!.DatabaseInfo.ArrayTypes.SingleOrDefault(c => c.Name.Contains("table_as_composite3")));
         }
 
         #endregion Table as Composite
