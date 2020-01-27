@@ -54,6 +54,5 @@ namespace Npgsql
         internal static readonly byte[] KeepAlive;
         internal static readonly byte[] DiscardAll;
         internal static readonly byte[] ServerIsSecondary;
-
     }
 }

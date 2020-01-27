@@ -350,8 +350,8 @@ namespace Npgsql
 
         bool _isConnecting;
 
-        private string? ConnectedHost;
-        private NpgsqlServerStatus.ServerType ConnectedServerType;
+        string? ConnectedHost;
+        ServerType ConnectedServerType;
 
         #endregion
 
@@ -475,7 +475,7 @@ namespace Npgsql
                 Flush();
 
                 var columnsMsg = ReadMessage();
-                var rowMsg = (DataRowMessage)(ReadMessage());
+                var rowMsg = Expect<DataRowMessage>(ReadMessage(), this);
 
                 var columnCount = ReadBuffer.ReadInt16();
                 var lengthOfBooleanColumn = ReadBuffer.ReadInt32();
@@ -483,30 +483,30 @@ namespace Npgsql
                 ReadBuffer.ReadBytes(resultSetBuffer, 0, lengthOfBooleanColumn);
 
                 var serverIsPrimary = resultSetBuffer[0] == 'f';
-                ConnectedServerType = serverIsPrimary ? NpgsqlServerStatus.ServerType.Primary : NpgsqlServerStatus.ServerType.Secondary;
+                ConnectedServerType = serverIsPrimary ? ServerType.Primary : ServerType.Secondary;
 
                 SkipUntil(BackendMessageCode.ReadyForQuery);
                 EndUserAction();
             }
             catch (SocketException)
             {
-                ConnectedServerType = NpgsqlServerStatus.ServerType.Down;
+                ConnectedServerType = ServerType.Down;
             }
             catch (NpgsqlException)
             {
-                ConnectedServerType = NpgsqlServerStatus.ServerType.Down;
+                ConnectedServerType = ServerType.Down;
             }
         }
 
         internal bool IsAppropriateFor(TargetServerType targetServerType)
         {
-            if (ConnectedServerType == NpgsqlServerStatus.ServerType.Down)
+            if (ConnectedServerType == ServerType.Down)
                 return false;
             if (targetServerType == TargetServerType.Any)
                 return true;
-            if (ConnectedServerType == NpgsqlServerStatus.ServerType.Primary && targetServerType == TargetServerType.Primary)
+            if (ConnectedServerType == ServerType.Primary && targetServerType == TargetServerType.Primary)
                 return true;
-            if (ConnectedServerType == NpgsqlServerStatus.ServerType.Secondary && targetServerType == TargetServerType.Secondary)
+            if (ConnectedServerType == ServerType.Secondary && targetServerType == TargetServerType.Secondary)
                 return true;
 
             return false;
@@ -2134,6 +2134,17 @@ namespace Npgsql
         /// Skip DataRow messages altogether
         /// </summary>
         Skip
+    }
+
+    /// <summary>
+    /// Represents what state the connected server is in
+    /// </summary>
+    internal enum ServerType
+    {
+        Unknown,
+        Down,
+        Primary,
+        Secondary
     }
 
     #endregion
