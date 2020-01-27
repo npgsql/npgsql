@@ -151,7 +151,7 @@ namespace Npgsql.TypeMapping
             CheckReady();
 
             base.AddMapping(mapping);
-            BindType(mapping, _connector, true);
+            BindType(mapping, _connector, externalCall: true);
             ChangeCounter = -1;
             return this;
         }
@@ -227,7 +227,7 @@ namespace Npgsql.TypeMapping
         void BindTypes()
         {
             foreach (var mapping in Mappings.Values)
-                BindType(mapping, _connector, false);
+                BindType(mapping, _connector, externalCall: false);
 
             // Enums
             var enumFactory = new UnmappedEnumTypeHandlerFactory(DefaultNameTranslator);
