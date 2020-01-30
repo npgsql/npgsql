@@ -153,7 +153,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Timeout(10000)]
-        //[Explicit("Timing-based")]
+        [Explicit("Timing-based")]
         public async Task CancelOpenAsync()
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
