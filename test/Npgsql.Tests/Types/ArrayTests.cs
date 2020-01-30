@@ -4,8 +4,10 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using NpgsqlTypes;
 using NUnit.Framework;
+using NUnit.Framework.Internal;
 
 namespace Npgsql.Tests.Types
 {
@@ -161,6 +163,7 @@ namespace Npgsql.Tests.Types
         public void GetValueRespectsNotNullConstraintsOnDomainsInArrays()
         {
             using var conn = OpenConnection();
+            TestUtil.MinimumPgVersion(conn, "11.0", "Arrays of domains were introduced in PostgreSQL 11");
             conn.ExecuteNonQuery("CREATE DOMAIN pg_temp.int_not_null AS integer NOT NULL;");
             conn.ExecuteNonQuery("CREATE DOMAIN pg_temp.int_null AS integer;");
             conn.ReloadTypes();

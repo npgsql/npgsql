@@ -81,8 +81,8 @@
     <CreateProperty Value="$(DefineConstants);AssemblyPublicKeyToken=%(AsmInfo.PublicKeyToken)">
       <Output TaskParameter="Value" PropertyName="DefineConstants" />
     </CreateProperty>
-    <!-- Name the .msi file after the solution platform and assembly version e.g TestService-x86-1.4.0.0.msi -->
-    <CreateProperty Value="Npgsql-$(Version)">
+    <!-- Name the .msi file -->
+    <CreateProperty Value="Npgsql">
       <Output TaskParameter="Value" PropertyName="TargetName" />
     </CreateProperty>
     <!-- Name the .wixpdb file after the solution platform and assembly version e.g TestService-x86-1.4.0.0.msi -->

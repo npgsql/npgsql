@@ -132,7 +132,7 @@ namespace Npgsql.Tests
             //Assert.That(TestLoggerSink.Records, Has.Some.With.Property("EventId").EqualTo(new EventId(NpgsqlEventId.Keepalive)));
         }
 
-        [Test]
+        [Test, Ignore("Flaky, see #2070")]
         public async Task WaitAsyncWithKeepalive()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)

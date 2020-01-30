@@ -541,7 +541,7 @@ namespace Npgsql
                             certPath = PostgresEnvironment.SslCertDefault;
                             certPathExists = File.Exists(certPath);
                         }
- 
+
                         if (certPathExists)
                             clientCertificates.Add(new X509Certificate(certPath));
 
@@ -1421,8 +1421,6 @@ namespace Npgsql
         /// </remarks>
         internal void Reset()
         {
-            Debug.Assert(State == ConnectorState.Ready);
-
             Connection = null;
 
             switch (State)
