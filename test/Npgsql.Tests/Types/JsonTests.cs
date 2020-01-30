@@ -166,6 +166,32 @@ namespace Npgsql.Tests.Types
             public string Summary { get; set; } = "";
         }
 
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/2811")]
+        [IssueLink("https://github.com/npgsql/efcore.pg/issues/1177")]
+        [IssueLink("https://github.com/npgsql/efcore.pg/issues/1082")]
+        public void CanReadTwoJsonDocuments()
+        {
+            using var conn = OpenConnection();
+
+            JsonDocument car;
+            using (var cmd = new NpgsqlCommand(@"SELECT '{""key"" : ""foo""}'::jsonb", conn))
+            using (var reader = cmd.ExecuteReader())
+            {
+                reader.Read();
+                car = reader.GetFieldValue<JsonDocument>(0);
+            }
+
+            using (var cmd = new NpgsqlCommand(@"SELECT '{""key"" : ""bar""}'::jsonb", conn))
+            using (var reader = cmd.ExecuteReader())
+            {
+                reader.Read();
+                reader.GetFieldValue<JsonDocument>(0);
+            }
+
+            Assert.That(car.RootElement.GetProperty("key").GetString(), Is.EqualTo("foo"));
+        }
+
         public JsonTests(NpgsqlDbType npgsqlDbType)
         {
             using (var conn = OpenConnection())
