@@ -149,8 +149,10 @@ namespace Npgsql.Tests
         {
             Assert.True(new NpgsqlException("", new IOException()).IsTransient);
             Assert.True(new NpgsqlException("", new SocketException()).IsTransient);
+            Assert.True(new NpgsqlException("", new TimeoutException()).IsTransient);
             Assert.False(new NpgsqlException().IsTransient);
             Assert.False(new NpgsqlException("", new Exception("Inner Exception")).IsTransient);
+            Assert.False(new NpgsqlException("", new NotSupportedException()).IsTransient);
         }
 
         [Test]
