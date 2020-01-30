@@ -4,5 +4,6 @@
   <!-- Build configuration -->
   <PropertyGroup>
     <TargetFrameworks>net461;netcoreapp3.1</TargetFrameworks>
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
 </Project>
