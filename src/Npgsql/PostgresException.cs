@@ -26,8 +26,6 @@ namespace Npgsql
     [Serializable]
     public sealed class PostgresException : NpgsqlException
     {
-        bool _dataInitialized;
-
         /// <summary>
         /// Creates a new instance.
         /// </summary>
@@ -68,6 +66,31 @@ namespace Npgsql
             File = msg.File;
             Line = msg.Line;
             Routine = msg.Routine;
+
+            AddData(nameof(Severity), Severity);
+            AddData(nameof(InvariantSeverity), InvariantSeverity);
+            AddData(nameof(SqlState), SqlState);
+            AddData(nameof(MessageText), MessageText);
+            AddData(nameof(Detail), Detail);
+            AddData(nameof(Hint), Hint);
+            AddData(nameof(Position), Position);
+            AddData(nameof(InternalPosition), InternalPosition);
+            AddData(nameof(InternalQuery), InternalQuery);
+            AddData(nameof(Where), Where);
+            AddData(nameof(SchemaName), SchemaName);
+            AddData(nameof(TableName), TableName);
+            AddData(nameof(ColumnName), ColumnName);
+            AddData(nameof(DataTypeName), DataTypeName);
+            AddData(nameof(ConstraintName), ConstraintName);
+            AddData(nameof(File), File);
+            AddData(nameof(Line), Line);
+            AddData(nameof(Routine), Routine);
+                    
+            void AddData<T>(string key, T value)
+            {
+                if (!EqualityComparer<T>.Default.Equals(value, default!))
+                    Data.Add(key, value);
+            }
         }
 
         internal static PostgresException Load(NpgsqlReadBuffer buf)
@@ -203,47 +226,6 @@ namespace Npgsql
         /// Returns the statement which triggered this exception.
         /// </summary>
         public NpgsqlStatement? Statement { get; internal set; }
-
-        /// <summary>
-        /// Gets a collection of key/value pairs that provide additional PostgreSQL fields about the exception.
-        /// </summary>
-        public override IDictionary Data
-        {
-            get
-            {
-                var data = base.Data;
-                if (_dataInitialized)
-                    return data;
-
-                AddData(nameof(Severity), Severity);
-                AddData(nameof(InvariantSeverity), InvariantSeverity);
-                AddData(nameof(SqlState), SqlState);
-                AddData(nameof(MessageText), MessageText);
-                AddData(nameof(Detail), Detail);
-                AddData(nameof(Hint), Hint);
-                AddData(nameof(Position), Position);
-                AddData(nameof(InternalPosition), InternalPosition);
-                AddData(nameof(InternalQuery), InternalQuery);
-                AddData(nameof(Where), Where);
-                AddData(nameof(SchemaName), SchemaName);
-                AddData(nameof(TableName), TableName);
-                AddData(nameof(ColumnName), ColumnName);
-                AddData(nameof(DataTypeName), DataTypeName);
-                AddData(nameof(ConstraintName), ConstraintName);
-                AddData(nameof(File), File);
-                AddData(nameof(Line), Line);
-                AddData(nameof(Routine), Routine);
-
-                _dataInitialized = true;
-                return data;
-
-                void AddData<T>(string key, T value)
-                {
-                    if (!EqualityComparer<T>.Default.Equals(value, default!))
-                        data.Add(key, value);
-                }
-            }
-        }
 
         #region Message Fields
 
