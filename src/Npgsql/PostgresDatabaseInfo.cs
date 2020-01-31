@@ -99,7 +99,6 @@ namespace Npgsql
         /// <param name="withEnum">True to load enum types.</param>
         /// <param name="withEnumSortOrder"></param>
         /// <param name="loadTableComposites">True to load table composites.</param>
-        /// <param name="withTypeCategory">True if the 'pg_type' table includes the 'typcategory' column</param>
         /// <returns>
         /// A raw SQL query string that selects type information.
         /// </returns>
@@ -110,42 +109,56 @@ namespace Npgsql
         /// For arrays and ranges, join in the element OID and type (to filter out arrays of unhandled
         /// types).
         /// </remarks>
-        static string GenerateTypesQuery(bool withRange, bool withEnum, bool withEnumSortOrder, bool loadTableComposites, bool withTypeCategory)
+        static string GenerateTypesQuery(bool withRange, bool withEnum, bool withEnumSortOrder,
+            bool loadTableComposites)
             => $@"
-/*** Load all supported types ***/
-SELECT ns.nspname, a.typname, a.oid, a.typbasetype,
-CASE WHEN pg_proc.proname='array_recv' THEN 'a' ELSE a.typtype END AS typtype,
-CASE
-  WHEN pg_proc.proname='array_recv' THEN a.typelem
-  {(withRange ? "WHEN a.typtype='r' THEN rngsubtype" : "")}
-  ELSE 0
-END AS typelem,
-CASE
-  {(withTypeCategory ? "WHEN a.typtype='d' AND a.typcategory='A' THEN 4 /* Domains over arrays last */" : "")}
-  WHEN pg_proc.proname IN ('array_recv','oidvectorrecv') THEN 3    /* Arrays before */
-  WHEN a.typtype='r' THEN 2                                        /* Ranges before */
-  WHEN a.typtype='d' THEN 1                                        /* Domains before */
-  ELSE 0                                                           /* Base types first */
-END AS ord
-FROM pg_type AS a
-JOIN pg_namespace AS ns ON (ns.oid = a.typnamespace)
-JOIN pg_proc ON pg_proc.oid = a.typreceive
-LEFT OUTER JOIN pg_class AS cls ON (cls.oid = a.typrelid)
-LEFT OUTER JOIN pg_type AS b ON (b.oid = a.typelem)
-LEFT OUTER JOIN pg_class AS elemcls ON (elemcls.oid = b.typrelid)
-{(withRange ? "LEFT OUTER JOIN pg_range ON (pg_range.rngtypid = a.oid) " : "")}
+SELECT ns.nspname, typ_and_elem_type.*,
+   CASE
+       WHEN typtype IN ('b', 'e', 'p') THEN 0           -- First base types, enums, pseudo-types
+       WHEN typtype = 'r' THEN 1                        -- Ranges after
+       WHEN typtype = 'c' THEN 2                        -- Composites after
+       WHEN typtype = 'd' AND elemtyptype <> 'a' THEN 3 -- Domains over non-arrays after
+       WHEN typtype = 'a' THEN 4                        -- Arrays before
+       WHEN typtype = 'd' AND elemtyptype = 'a' THEN 5  -- Domains over arrays last
+    END AS ord
+FROM (
+    -- Arrays have typtype=b - this subquery identifies them by their typreceive and converts their typtype to a
+    -- We first do this for the type (innerest-most subquery), and then for its element type
+    -- This also returns the array element, range subtype and domain base type as elemtypoid
+    SELECT
+        typ.oid, typ.typnamespace, typ.typname, typ.typtype, typ.typrelid, typ.typnotnull, typ.relkind,
+        elemtyp.oid AS elemtypoid, elemtyp.typname AS elemtypname, elemcls.relkind AS elemrelkind,
+        CASE WHEN elemproc.proname='array_recv' THEN 'a' ELSE elemtyp.typtype END AS elemtyptype
+    FROM (
+        SELECT typ.oid, typnamespace, typname, typrelid, typnotnull, relkind, typelem AS elemoid,
+            CASE WHEN proc.proname='array_recv' THEN 'a' ELSE typ.typtype END AS typtype,
+            CASE
+                WHEN proc.proname='array_recv' THEN typ.typelem
+                {(withRange ? "WHEN typ.typtype='r' THEN rngsubtype" : "")}
+                WHEN typ.typtype='d' THEN typ.typbasetype
+            END AS elemtypoid
+        FROM pg_type AS typ
+        LEFT JOIN pg_class AS cls ON (cls.oid = typ.typrelid)
+        LEFT JOIN pg_proc AS proc ON proc.oid = typ.typreceive
+        {(withRange ? "LEFT JOIN pg_range ON (pg_range.rngtypid = typ.oid)" : "")}
+    ) AS typ
+    LEFT JOIN pg_type AS elemtyp ON elemtyp.oid = elemtypoid
+    LEFT JOIN pg_class AS elemcls ON (elemcls.oid = elemtyp.typrelid)
+    LEFT JOIN pg_proc AS elemproc ON elemproc.oid = elemtyp.typreceive
+) AS typ_and_elem_type
+JOIN pg_namespace AS ns ON (ns.oid = typnamespace)
 WHERE
-  a.typtype IN ('b', 'r', 'e', 'd') OR         /* Base, range, enum, domain */
-  (a.typtype = 'c' AND {(loadTableComposites ? "ns.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')" : "cls.relkind='c'")}) OR /* User-defined free-standing composites (not table composites) by default */
-  (pg_proc.proname='array_recv' AND (
-    b.typtype IN ('b', 'r', 'e', 'd') OR       /* Array of base, range, enum, domain */
-    (b.typtype = 'p' AND b.typname IN ('record', 'void')) OR /* Arrays of special supported pseudo-types */
-    (b.typtype = 'c' AND elemcls.relkind='c')  /* Array of user-defined free-standing composites (not table composites) */
-  )) OR
-  (a.typtype = 'p' AND a.typname IN ('record', 'void'))  /* Some special supported pseudo-types */
+    typtype IN ('b', 'r', 'e', 'd') OR -- Base, range, enum, domain
+    (typtype = 'c' AND {(loadTableComposites ? "ns.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')" : "relkind='c'")}) OR -- User-defined free-standing composites (not table composites) by default
+    (typtype = 'p' AND typname IN ('record', 'void')) OR -- Some special supported pseudo-types
+    (typtype = 'a' AND (  -- Array of...
+        elemtyptype IN ('b', 'r', 'e', 'd') OR -- Array of base, range, enum, domain
+        (elemtyptype = 'p' AND elemtypname IN ('record', 'void')) OR -- Arrays of special supported pseudo-types
+        (elemtyptype = 'c' AND {(loadTableComposites ? "ns.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')" : "elemrelkind='c'")}) -- Array of user-defined free-standing composites (not table composites) by default
+    ))
 ORDER BY ord;
 
-/*** Load field definitions for (free-standing) composite types ***/
+-- Load field definitions for (free-standing) composite types
 SELECT typ.oid, att.attname, att.atttypid
 FROM pg_type AS typ
 JOIN pg_namespace AS ns ON (ns.oid = typ.typnamespace)
@@ -153,12 +166,12 @@ JOIN pg_class AS cls ON (cls.oid = typ.typrelid)
 JOIN pg_attribute AS att ON (att.attrelid = typ.typrelid)
 WHERE
   (typ.typtype = 'c' AND {(loadTableComposites ? "ns.nspname NOT IN ('pg_catalog', 'information_schema', 'pg_toast')" : "cls.relkind='c'")}) AND
-  attnum > 0 AND     /* Don't load system attributes */
+  attnum > 0 AND     -- Don't load system attributes
   NOT attisdropped
 ORDER BY typ.oid, att.attnum;
 
 {(withEnum ? $@"
-/*** Load enum fields ***/
+-- Load enum fields
 SELECT pg_type.oid, enumlabel
 FROM pg_enum
 JOIN pg_type ON pg_type.oid=enumtypid
@@ -186,7 +199,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
                     throw new TimeoutException();
             }
 
-            var typeLoadingQuery = GenerateTypesQuery(SupportsRangeTypes, SupportsEnumTypes, HasEnumSortOrder, conn.Settings.LoadTableComposites, HasTypeCategory);
+            var typeLoadingQuery = GenerateTypesQuery(SupportsRangeTypes, SupportsEnumTypes, HasEnumSortOrder, conn.Settings.LoadTableComposites);
             using var command = new NpgsqlCommand(typeLoadingQuery, conn)
             {
                 CommandTimeout = commandTimeout,
@@ -204,8 +217,11 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
                 var ns = reader.GetString("nspname");
                 var internalName = reader.GetString("typname");
                 var oid = uint.Parse(reader.GetString("oid"), NumberFormatInfo.InvariantInfo);
-
                 Debug.Assert(oid != 0);
+
+                var elementOID = reader.IsDBNull("elemtypoid")
+                    ? 0
+                    : uint.Parse(reader.GetString("elemtypoid"), NumberFormatInfo.InvariantInfo);
 
                 var typeChar = reader.GetChar("typtype");
                 switch (typeChar)
@@ -217,7 +233,6 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
 
                     case 'a': // Array
                     {
-                        var elementOID = uint.Parse(reader.GetString("typelem"), NumberFormatInfo.InvariantInfo);
                         Debug.Assert(elementOID > 0);
                         if (!byOID.TryGetValue(elementOID, out var elementPostgresType))
                         {
@@ -232,7 +247,6 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
 
                     case 'r': // Range
                     {
-                        var elementOID = uint.Parse(reader.GetString("typelem"), NumberFormatInfo.InvariantInfo);
                         Debug.Assert(elementOID > 0);
                         if (!byOID.TryGetValue(elementOID, out var subtypePostgresType))
                         {
@@ -251,17 +265,15 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
                         continue;
 
                     case 'c':   // Composite
-                                // Unlike other types, we don't
                         var compositeType = new PostgresCompositeType(ns, internalName, oid);
                         byOID[compositeType.OID] = compositeType;
                         continue;
 
                     case 'd':   // Domain
-                        var baseTypeOID = uint.Parse(reader.GetString("typbasetype"), NumberFormatInfo.InvariantInfo);
-                        Debug.Assert(baseTypeOID > 0);
-                        if (!byOID.TryGetValue(baseTypeOID, out var basePostgresType))
+                        Debug.Assert(elementOID > 0);
+                        if (!byOID.TryGetValue(elementOID, out var basePostgresType))
                         {
-                            Log.Trace($"Domain type '{internalName}' refers to unknown base type with OID {baseTypeOID}, skipping", conn.ProcessID);
+                            Log.Trace($"Domain type '{internalName}' refers to unknown base type with OID {elementOID}, skipping", conn.ProcessID);
                             continue;
                         }
                         var domainType = new PostgresDomainType(ns, internalName, oid, basePostgresType);
@@ -269,8 +281,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
                         continue;
 
                     case 'p':   // pseudo-type (record, void)
-                                // Hack this as a base type
-                        goto case 'b';
+                        goto case 'b';  // Hack this as a base type
 
                     default:
                         throw new ArgumentOutOfRangeException($"Unknown typtype for type '{internalName}' in pg_type: {typeChar}");

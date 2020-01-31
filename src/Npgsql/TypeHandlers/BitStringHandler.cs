@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
@@ -53,11 +54,16 @@ namespace Npgsql.TypeHandlers
             var numBits = buf.ReadInt32();
             var result = new BitArray(numBits);
             var bytesLeft = len - 4;  // Remove leading number of bits
-            var bitNo = 0;
+            if (bytesLeft == 0)
+                return result;
 
-            do
+            var bitNo = 0;
+            while (true)
             {
-                var iterationEndPos = bytesLeft - Math.Min(bytesLeft, buf.ReadBytesLeft) + 1;
+                var iterationEndPos = bytesLeft > buf.ReadBytesLeft
+                    ? bytesLeft - buf.ReadBytesLeft
+                    : 1;
+
                 for (; bytesLeft > iterationEndPos; bytesLeft--)
                 {
                     // ReSharper disable ShiftExpressionRealShiftCountIsZero
@@ -71,7 +77,13 @@ namespace Npgsql.TypeHandlers
                     result[bitNo++] = (chunk & (1 << 1)) != 0;
                     result[bitNo++] = (chunk & (1 << 0)) != 0;
                 }
-            } while (bytesLeft > 1);
+
+                if (bytesLeft == 1)
+                    break;
+
+                Debug.Assert(buf.ReadBytesLeft == 0);
+                await buf.Ensure(Math.Min(bytesLeft, buf.Size), async);
+            }
 
             if (bitNo < result.Length)
             {

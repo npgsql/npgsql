@@ -129,7 +129,7 @@ namespace Npgsql
                 throw new ArgumentException($"Connection can't have ConnectionIdleLifetime {connectionIdleLifetime} under ConnectionPruningInterval {_pruningSamplingInterval}");
 
             _pruningTimer = new Timer(PruningTimerCallback, this, Timeout.Infinite, Timeout.Infinite);
-            _pruningSampleSize = DivideRoundingUp(connectionIdleLifetime.Seconds, pruningSamplingInterval.Seconds);
+            _pruningSampleSize = DivideRoundingUp(settings.ConnectionIdleLifetime, settings.ConnectionPruningInterval);
             _pruningMedianIndex = DivideRoundingUp(_pruningSampleSize, 2) - 1; // - 1 to go from length to index
             _pruningSamplingInterval = pruningSamplingInterval;
             _pruningSamples = new int[_pruningSampleSize];
@@ -520,11 +520,13 @@ namespace Npgsql
                     return;
 
                 var sampleIndex = pool._pruningSampleIndex;
-                if (sampleIndex < pool._pruningSampleSize)
+                samples[sampleIndex] = pool.State.Idle;
+
+                if (sampleIndex != pool._pruningSampleSize - 1)
                 {
-                    samples[sampleIndex] = pool.State.Idle;
                     pool._pruningSampleIndex = sampleIndex + 1;
                     pool._pruningTimer.Change(pool._pruningSamplingInterval, Timeout.InfiniteTimeSpan);
+
                     return;
                 }
 

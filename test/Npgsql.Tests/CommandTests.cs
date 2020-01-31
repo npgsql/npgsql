@@ -879,20 +879,37 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/831")]
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/831")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/2795")]
         [Timeout(10000)]
-        public void ManyParameters()
+        public void ManyParameters([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
         {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT 1", conn))
+            using var conn = OpenConnection();
+            using var cmd = new NpgsqlCommand { Connection = conn };
+            var sb = new StringBuilder("INSERT INTO data (some_column) VALUES ");
+            for (var i = 0; i < ushort.MaxValue; i++)
             {
-                for (var i = 0; i < conn.Settings.WriteBufferSize; i++)
-                    cmd.Parameters.Add(new NpgsqlParameter("p" + i, 8));
-                cmd.ExecuteNonQuery();
+                var paramName = "p" + i;
+                cmd.Parameters.Add(new NpgsqlParameter(paramName, 8));
+                if (i > 0)
+                    sb.Append(", ");
+                sb.Append($"(@{paramName})");
             }
+
+            conn.ExecuteNonQuery("CREATE TEMP TABLE data (some_column INT)");
+
+            cmd.CommandText = sb.ToString();
+
+            if (prepare == PrepareOrNot.Prepared)
+                cmd.Prepare();
+
+            cmd.ExecuteNonQuery();
+
+            conn.ExecuteNonQuery("DROP TABLE data");
         }
 
-        [Test, Description("Bypasses PostgreSQL's int16 limitation on the number of parameters")]
+        [Test, Description("Bypasses PostgreSQL's uint16 limitation on the number of parameters")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/831")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/858")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/2703")]
@@ -901,7 +918,7 @@ namespace Npgsql.Tests
             using var conn = OpenConnection();
             using var cmd = new NpgsqlCommand { Connection = conn };
             var sb = new StringBuilder("SOME RANDOM SQL ");
-            for (var i = 0; i < short.MaxValue + 1; i++)
+            for (var i = 0; i < ushort.MaxValue + 1; i++)
             {
                 var paramName = "p" + i;
                 cmd.Parameters.Add(new NpgsqlParameter(paramName, 8));
@@ -914,13 +931,13 @@ namespace Npgsql.Tests
 
             Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception
                 .InstanceOf<NpgsqlException>()
-                .With.Message.EqualTo("A statement cannot have more than 32767 parameters"));
+                .With.Message.EqualTo("A statement cannot have more than 65535 parameters"));
             Assert.That(() => cmd.Prepare(), Throws.Exception
                 .InstanceOf<NpgsqlException>()
-                .With.Message.EqualTo("A statement cannot have more than 32767 parameters"));
+                .With.Message.EqualTo("A statement cannot have more than 65535 parameters"));
         }
 
-        [Test, Description("An individual statement cannot have more than 32767 parameters, but a command can (across multiple statements).")]
+        [Test, Description("An individual statement cannot have more than 65535 parameters, but a command can (across multiple statements).")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/1199")]
         public void ManyParametersAcrossStatements()
         {
@@ -987,7 +1004,7 @@ namespace Npgsql.Tests
             // See also ReaderTests.Statements()
             using (var conn = OpenConnection())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT) WITH OIDS");
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
                 using (var cmd = new NpgsqlCommand(
                     "INSERT INTO data (name) VALUES (@p1);" +
                     "UPDATE data SET name='b' WHERE name=@p2",
@@ -1004,15 +1021,36 @@ namespace Npgsql.Tests
                     Assert.That(cmd.Statements[0].InputParameters[0].Value, Is.EqualTo("foo"));
                     Assert.That(cmd.Statements[0].StatementType, Is.EqualTo(StatementType.Insert));
                     Assert.That(cmd.Statements[0].Rows, Is.EqualTo(1));
-                    Assert.That(cmd.Statements[0].OID, Is.Not.EqualTo(0));
                     Assert.That(cmd.Statements[1].SQL, Is.EqualTo("UPDATE data SET name='b' WHERE name=$1"));
                     Assert.That(cmd.Statements[1].InputParameters[0].ParameterName, Is.EqualTo("p2"));
                     Assert.That(cmd.Statements[1].InputParameters[0].Value, Is.EqualTo("bar"));
                     Assert.That(cmd.Statements[1].StatementType, Is.EqualTo(StatementType.Update));
                     Assert.That(cmd.Statements[1].Rows, Is.EqualTo(0));
-                    Assert.That(cmd.Statements[1].OID, Is.EqualTo(0));
                 }
             }
+        }
+
+
+        [Test]
+        public void StatementOID()
+        {
+            using var conn = OpenConnection();
+
+            TestUtil.MaximumPgVersionExclusive(conn, "12.0",
+                "Support for 'CREATE TABLE ... WITH OIDS' has been removed in 12.0. See https://www.postgresql.org/docs/12/release-12.html#id-1.11.6.5.4");
+            conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT) WITH OIDS");
+
+            using var cmd = new NpgsqlCommand(
+                "INSERT INTO data (name) VALUES (@p1);" +
+                "UPDATE data SET name='b' WHERE name=@p2",
+                conn);
+
+            cmd.Parameters.AddWithValue("p1", "foo");
+            cmd.Parameters.AddWithValue("p2", "bar");
+            cmd.ExecuteNonQuery();
+
+            Assert.That(cmd.Statements[0].OID, Is.Not.EqualTo(0));
+            Assert.That(cmd.Statements[1].OID, Is.EqualTo(0));
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1429")]

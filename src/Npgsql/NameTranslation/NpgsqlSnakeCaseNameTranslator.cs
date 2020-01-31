@@ -51,10 +51,9 @@ namespace Npgsql.NameTranslation
         public static string ConvertToSnakeCase(string value)
         {
             const char underscore = '_';
-            const UnicodeCategory noneCategory = UnicodeCategory.Control;
 
             var builder = new StringBuilder();
-            var previousCategory = noneCategory;
+            var previousCategory = default(UnicodeCategory?);
 
             for (var currentIndex = 0; currentIndex< value.Length; currentIndex++)
             {
@@ -62,7 +61,7 @@ namespace Npgsql.NameTranslation
                 if (currentChar == underscore)
                 {
                     builder.Append(underscore);
-                    previousCategory = noneCategory;
+                    previousCategory = null;
                     continue;
                 }
 
@@ -74,6 +73,7 @@ namespace Npgsql.NameTranslation
                         if (previousCategory == UnicodeCategory.SpaceSeparator ||
                             previousCategory == UnicodeCategory.LowercaseLetter ||
                             previousCategory != UnicodeCategory.DecimalDigitNumber &&
+                            previousCategory != null &&
                             currentIndex > 0 &&
                             currentIndex + 1 < value.Length &&
                             char.IsLower(value[currentIndex + 1]))
@@ -91,7 +91,7 @@ namespace Npgsql.NameTranslation
                         break;
 
                     default:
-                        if (previousCategory != noneCategory)
+                        if (previousCategory != null)
                             previousCategory = UnicodeCategory.SpaceSeparator;
                         continue;
                 }
