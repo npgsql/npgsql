@@ -26,8 +26,6 @@ namespace Npgsql
     [Serializable]
     public sealed class PostgresException : NpgsqlException
     {
-        bool _dataInitialized;
-
         /// <summary>
         /// Creates a new instance.
         /// </summary>
