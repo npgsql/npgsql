@@ -6,10 +6,6 @@
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
 
-  <PropertyGroup Condition=" '$(GITHUB_ACTIONS)' == 'true' ">
-    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
-  </PropertyGroup>
-
   <!-- Build configuration -->
   <PropertyGroup>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>

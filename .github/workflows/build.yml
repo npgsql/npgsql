@@ -122,7 +122,7 @@ jobs:
 
       - name: Pack NuGet packages (Release versions)
         if: startsWith(github.ref, 'refs/tags/v')
-        run: dotnet pack Npgsql.sln --configuration Release --output nupkgs
+        run: dotnet pack Npgsql.sln --configuration Release --output nupkgs -p:ContinuousIntegrationBuild=true
         shell: bash
 
       - name: Restore for VSIX
