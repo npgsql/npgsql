@@ -892,7 +892,13 @@ namespace Npgsql
                             {
                                 if (_origReadBuffer == null)
                                     _origReadBuffer = ReadBuffer;
+                                else
+                                    ReadBuffer.AwaitableSocket?.Dispose();
+
                                 ReadBuffer = ReadBuffer.AllocateOversize(len);
+
+                                if (_origReadBuffer.AwaitableSocket != null)
+                                    ReadBuffer.AwaitableSocket = new AwaitableSocket(new SocketAsyncEventArgs(), _socket);
                             }
 
                             await ReadBuffer.Ensure(len, async);
@@ -1355,6 +1361,8 @@ namespace Npgsql
 
             _stream = null;
             _baseStream = null;
+            _origReadBuffer?.AwaitableSocket?.Dispose();
+            _origReadBuffer = null;
             ReadBuffer?.AwaitableSocket?.Dispose();
             ReadBuffer = null;
             WriteBuffer?.AwaitableSocket?.Dispose();

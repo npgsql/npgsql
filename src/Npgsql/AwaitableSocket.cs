@@ -116,20 +116,6 @@ namespace Npgsql
             }
         }
 
-        public void Dispose()
-        {
-            if (_socket != null)
-            {
-                if (_socket.Connected)
-                {
-                    _socket.Shutdown(SocketShutdown.Both);
-                    _socket.Close();
-                }
-
-                _socket.Dispose();
-            }
-
-            _socketAsyncEventArgs?.Dispose();
-        }
+        public void Dispose() => _socketAsyncEventArgs?.Dispose();
     }
 }
