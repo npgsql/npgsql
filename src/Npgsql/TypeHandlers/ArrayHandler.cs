@@ -88,22 +88,27 @@ namespace Npgsql.TypeHandlers
             if (dimensions == 0)
                 return Array.Empty<TRequestedElement>();
 
-            var dimLengths = new int[dimensions];
+            if (dimensions == 1)
+            {
+                await buf.Ensure(8, async);
+                var arrayLength = buf.ReadInt32();
 
+                buf.ReadInt32(); // Lower bound
+
+                var oneDimensional = new TRequestedElement[arrayLength];
+                for (var i = 0; i < oneDimensional.Length; i++)
+                    oneDimensional[i] = await ElementHandler.ReadWithLength<TRequestedElement>(buf, async);
+
+                return oneDimensional;
+            }
+
+            var dimLengths = new int[dimensions];
             await buf.Ensure(dimensions * 8, async);
+
             for (var i = 0; i < dimensions; i++)
             {
                 dimLengths[i] = buf.ReadInt32();
-                buf.ReadInt32(); // We don't care about the lower bounds
-            }
-
-            // We can avoid boxing in this case
-            if (dimensions == 1)
-            {
-                var oneDimensional = new TRequestedElement[dimLengths[0]];
-                for (var i = 0; i < oneDimensional.Length; i++)
-                    oneDimensional[i] = await ElementHandler.ReadWithLength<TRequestedElement>(buf, async);
-                return oneDimensional;
+                buf.ReadInt32(); // Lower bound
             }
 
             var result = Array.CreateInstance(typeof(TRequestedElement), dimLengths);
