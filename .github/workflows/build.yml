@@ -93,7 +93,7 @@ jobs:
 
     runs-on: windows-latest
 
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' && github.repository == 'npgsql/npgsql'
 
     steps:
       - name: Checkout
