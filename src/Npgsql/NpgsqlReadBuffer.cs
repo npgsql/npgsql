@@ -49,12 +49,6 @@ namespace Npgsql
         internal Stream Underlying { private get; set; }
 
         /// <summary>
-        /// Wraps SocketAsyncEventArgs for better async I/O as long as we're not doing SSL.
-        /// </summary>
-        [CanBeNull]
-        internal AwaitableSocket AwaitableSocket { get; set; }
-
-        /// <summary>
         /// The total byte length of the buffer.
         /// </summary>
         internal int Size { get; }
@@ -138,20 +132,9 @@ namespace Npgsql
                     while (count > 0)
                     {
                         var toRead = Size - FilledBytes;
-
-                        int read;
-                        if (async)
-                        {
-                            if (AwaitableSocket == null)  // SSL
-                                read = await Underlying.ReadAsync(Buffer, FilledBytes, toRead);
-                            else  // Non-SSL async I/O, optimized
-                            {
-                                AwaitableSocket.SetBuffer(Buffer, FilledBytes, toRead);
-                                await AwaitableSocket.ReceiveAsync();
-                                read = AwaitableSocket.BytesTransferred;
-                            }
-                        } else  // Sync I/O
-                            read = Underlying.Read(Buffer, FilledBytes, toRead);
+                        var read = async
+                            ? await Underlying.ReadAsync(Buffer, FilledBytes, toRead)
+                            : Underlying.Read(Buffer, FilledBytes, toRead);
 
                         if (read == 0)
                             throw new EndOfStreamException();

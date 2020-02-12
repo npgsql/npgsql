@@ -619,12 +619,6 @@ namespace Npgsql
                     }
                 }
 
-                if (!IsSecure)
-                {
-                    WriteBuffer.AwaitableSocket = new AwaitableSocket(new SocketAsyncEventArgs(), _socket);
-                    ReadBuffer.AwaitableSocket = new AwaitableSocket(new SocketAsyncEventArgs(), _socket);
-                }
-
                 Log.Trace($"Socket connected to {Host}:{Port}");
             }
             catch
@@ -972,6 +966,7 @@ namespace Npgsql
                             {
                                 if (_origReadBuffer == null)
                                     _origReadBuffer = ReadBuffer;
+
                                 ReadBuffer = ReadBuffer.AllocateOversize(len);
                             }
 
@@ -1448,9 +1443,8 @@ namespace Npgsql
             ClearTransaction();
             _stream = null;
             _baseStream = null;
-            ReadBuffer?.AwaitableSocket?.Dispose();
+            _origReadBuffer = null;
             ReadBuffer = null;
-            WriteBuffer?.AwaitableSocket?.Dispose();
             WriteBuffer = null;
             Connection = null;
             PostgresParameters.Clear();
