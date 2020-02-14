@@ -1165,7 +1165,7 @@ CREATE TEMP TABLE ""OrganisatieQmo_Organisatie_QueryModelObjects_Imp""
                     // This string needs to be long enough to be eligible for chunking, and start with a unicode character that will
                     // get encoded to multiple bytes
                     var longStringStartingWithAforementionedUnicodeCharacter = unicodeCharacterThatEncodesToThreeBytesInUtf8 + new string('a', 10000);
-                    await binaryImporter.WriteAsync(longStringStartingWithAforementionedUnicodeCharacter, NpgsqlTypes.NpgsqlDbType.Text);
+                    await binaryImporter.WriteAsync(longStringStartingWithAforementionedUnicodeCharacter, NpgsqlDbType.Text);
 
                     await binaryImporter.CompleteAsync();
                 }
