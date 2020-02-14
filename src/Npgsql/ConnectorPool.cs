@@ -100,8 +100,6 @@ namespace Npgsql
         internal ValueTask<NpgsqlConnector> Rent(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async,
             CancellationToken cancellationToken)
         {
-            Counters.SoftConnectsPerSecond.Increment();
-
             if (TryGetIdleConnector(out var connector))
             {
                 connector.Connection = conn;
@@ -142,8 +140,6 @@ namespace Npgsql
                     // Only start pruning if it was this thread that incremented open count past _min.
                     if (numConnectors == _min)
                         EnablePruning();
-                    Counters.NumberOfPooledConnections.Increment();
-                    Counters.NumberOfActiveConnections.Increment();
 
                     return connector;
                 }
@@ -203,8 +199,6 @@ namespace Npgsql
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         bool IsIdleConnectorValid(NpgsqlConnector connector)
         {
-            Counters.NumberOfFreeConnections.Decrement();
-
             // An connector could be broken because of a keepalive that occurred while it was
             // idling in the pool
             // TODO: Consider removing the pool from the keepalive code. The following branch is simply irrelevant
@@ -215,15 +209,11 @@ namespace Npgsql
                 return false;
             }
 
-            Counters.NumberOfActiveConnections.Increment();
             return true;
         }
 
         internal void Return(NpgsqlConnector connector)
         {
-            Counters.SoftDisconnectsPerSecond.Increment();
-            Counters.NumberOfActiveConnections.Decrement();
-
             // If Clear/ClearAll has been been called since this connector was first opened,
             // throw it away. The same if it's broken (in which case CloseConnector is only
             // used to update state/perf counter).
@@ -258,8 +248,6 @@ namespace Npgsql
             {
                 Log.Warn("Exception while closing outdated connector", e, connector.Id);
             }
-
-            Counters.NumberOfPooledConnections.Decrement();
 
             var numConnectors = Interlocked.Decrement(ref _numConnectors);
             Debug.Assert(numConnectors >= 0);

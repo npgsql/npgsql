@@ -399,8 +399,6 @@ namespace Npgsql
 
                 if (Settings.Pooling && DatabaseInfo.SupportsDiscard)
                     GenerateResetMessage();
-                Counters.NumberOfNonPooledConnections.Increment();
-                Counters.HardConnectsPerSecond.Increment();
                 Log.Trace($"Opened connection to {Host}:{Port}");
 
                 // If an exception occurs during open, Break() below shouldn't close the connection, which would also
@@ -541,7 +539,7 @@ namespace Npgsql
                             certPath = PostgresEnvironment.SslCertDefault;
                             certPathExists = File.Exists(certPath);
                         }
- 
+
                         if (certPathExists)
                             clientCertificates.Add(new X509Certificate(certPath));
 
@@ -1264,8 +1262,6 @@ namespace Npgsql
                 }
 
                 State = ConnectorState.Closed;
-                Counters.NumberOfNonPooledConnections.Decrement();
-                Counters.HardDisconnectsPerSecond.Increment();
                 Cleanup();
             }
         }

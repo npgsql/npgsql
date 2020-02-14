@@ -89,8 +89,6 @@ namespace Npgsql
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlConnection));
 
-        static bool _countersInitialized;
-
         static readonly StateChangeEventArgs ClosedToOpenEventArgs = new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open);
         static readonly StateChangeEventArgs OpenToClosedEventArgs = new StateChangeEventArgs(ConnectionState.Open, ConnectionState.Closed);
 
@@ -143,12 +141,6 @@ namespace Npgsql
             // Connection string hasn't been seen before. Parse it.
             Settings = new NpgsqlConnectionStringBuilder(_connectionString);
 
-            if (!_countersInitialized)
-            {
-                Counters.Initialize(Settings.UsePerfCounters);
-                _countersInitialized = true;
-            }
-
             // Maybe pooling is off
             if (!Settings.Pooling)
                 return;
@@ -174,9 +166,8 @@ namespace Npgsql
 
             if (_pool == newPool)
             {
-                // If the pool we created was the one that ended up being stored we need to increment the appropriate counter.
+                // If the pool we created was the one that ended up being stored we need to log the event.
                 // Avoids a race condition where multiple threads will create a pool but only one will be stored.
-                Counters.NumberOfActiveConnectionPools.Increment();
                 NpgsqlEventSource.Log.PoolCreated();
             }
 
@@ -205,7 +196,6 @@ namespace Npgsql
 
                     Connector = new NpgsqlConnector(this);
                     await Connector.Open(timeout, async, cancellationToken);
-                    Counters.NumberOfNonPooledConnections.Increment();
                 }
                 else
                 {
