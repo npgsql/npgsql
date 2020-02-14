@@ -1146,7 +1146,11 @@ CREATE TEMP TABLE ""OrganisatieQmo_Organisatie_QueryModelObjects_Imp""
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2849")]
         public async Task ChunkedStringWriteBufferEncodingSpace()
         {
-            using var conn = OpenConnection();
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
+            // write buffer size must be 8192 for this test to work
+            // so guard against changes to the default / a change in the test harness
+            builder.WriteBufferSize = 8192;
+            using var conn = OpenConnection(builder.ConnectionString);
 
             try
             {
@@ -1179,7 +1183,11 @@ CREATE TEMP TABLE ""OrganisatieQmo_Organisatie_QueryModelObjects_Imp""
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2849")]
         public async Task ChunkedCharArrayWriteBufferEncodingSpace()
         {
-            using var conn = OpenConnection();
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
+            // write buffer size must be 8192 for this test to work
+            // so guard against changes to the default / a change in the test harness
+            builder.WriteBufferSize = 8192;
+            using var conn = OpenConnection(builder.ConnectionString);
 
             try
             {
