@@ -1175,5 +1175,38 @@ CREATE TEMP TABLE ""OrganisatieQmo_Organisatie_QueryModelObjects_Imp""
                 conn.ExecuteNonQuery("DROP TABLE IF EXISTS bug_2849");
             }
         }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2849")]
+        public async Task ChunkedCharArrayWriteBufferEncodingSpace()
+        {
+            using var conn = OpenConnection();
+
+            try
+            {
+                conn.ExecuteNonQuery("CREATE TABLE bug_2849 (col1 text, col2 text)");
+
+                using (var binaryImporter = conn.BeginBinaryImport("COPY bug_2849 FROM STDIN (FORMAT BINARY);"))
+                {
+                    // 8163 writespace left
+                    await binaryImporter.StartRowAsync();
+
+                    // we need to almost fill the write buffer - we need one byte left in the buffer before we chunk the string for the column after this one!
+                    var almostBufferFillingString = new string('a', 8152);
+                    await binaryImporter.WriteAsync(almostBufferFillingString, NpgsqlTypes.NpgsqlDbType.Text);
+
+                    var unicodeCharacterThatEncodesToThreeBytesInUtf8 = '\uD55C';
+                    // This string needs to be long enough to be eligible for chunking, and start with a unicode character that will
+                    // get encoded to multiple bytes
+                    var longStringStartingWithAforementionedUnicodeCharacter = unicodeCharacterThatEncodesToThreeBytesInUtf8 + new string('a', 10000);
+                    await binaryImporter.WriteAsync(longStringStartingWithAforementionedUnicodeCharacter.ToCharArray(), NpgsqlDbType.Text);
+
+                    await binaryImporter.CompleteAsync();
+                }
+            }
+            finally
+            {
+                conn.ExecuteNonQuery("DROP TABLE IF EXISTS bug_2849");
+            }
+        }
     }
 }
