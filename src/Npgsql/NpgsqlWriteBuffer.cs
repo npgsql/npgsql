@@ -448,7 +448,7 @@ namespace Npgsql
         internal void WriteStringChunked(char[] chars, int charIndex, int charCount,
                                          bool flush, out int charsUsed, out bool completed)
         {
-            if (WriteSpaceLeft < _textEncoder.GetByteCount(chars, charIndex, 1, true))
+            if (WriteSpaceLeft < _textEncoder.GetByteCount(chars, charIndex, 1, flush: false))
             {
                 charsUsed = 0;
                 completed = false;
@@ -468,7 +468,7 @@ namespace Npgsql
             fixed (char* sPtr = s)
             fixed (byte* bufPtr = Buffer)
             {
-                if (WriteSpaceLeft < _textEncoder.GetByteCount(sPtr + charIndex, 1, true))
+                if (WriteSpaceLeft < _textEncoder.GetByteCount(sPtr + charIndex, 1, flush: false))
                 {
                     charsUsed = 0;
                     completed = false;
