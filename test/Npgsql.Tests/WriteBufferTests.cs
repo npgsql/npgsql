@@ -23,6 +23,34 @@ namespace Npgsql.Tests
             Assert.That(completed, Is.False);
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2849")]
+        public void ChunkedStringEncodingFits()
+        {
+            WriteBuffer.WriteBytes(new byte[WriteBuffer.Size - 1], 0, WriteBuffer.Size - 1);
+            Assert.That(WriteBuffer.WriteSpaceLeft, Is.EqualTo(1));
+
+            var charsUsed = 1;
+            var completed = true;
+            // This unicode character is three bytes when encoded in UTF8
+            Assert.That(() => WriteBuffer.WriteStringChunked("\uD55C", 0, 1, true, out charsUsed, out completed), Throws.Nothing);
+            Assert.That(charsUsed, Is.EqualTo(0));
+            Assert.That(completed, Is.False);
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2849")]
+        public void ChunkedByteArrayEncodingFits()
+        {
+            WriteBuffer.WriteBytes(new byte[WriteBuffer.Size - 1], 0, WriteBuffer.Size - 1);
+            Assert.That(WriteBuffer.WriteSpaceLeft, Is.EqualTo(1));
+
+            var charsUsed = 1;
+            var completed = true;
+            // This unicode character is three bytes when encoded in UTF8
+            Assert.That(() => WriteBuffer.WriteStringChunked("\uD55C".ToCharArray(), 0, 1, true, out charsUsed, out completed), Throws.Nothing);
+            Assert.That(charsUsed, Is.EqualTo(0));
+            Assert.That(completed, Is.False);
+        }
+
 #pragma warning disable CS8625
         [SetUp]
         public void SetUp()
