@@ -23,11 +23,6 @@ namespace Npgsql
         internal Stream Underlying { private get; set; }
 
         /// <summary>
-        /// Wraps SocketAsyncEventArgs for better async I/O as long as we're not doing SSL.
-        /// </summary>
-        internal AwaitableSocket? AwaitableSocket { get; set; }
-
-        /// <summary>
         /// The total byte length of the buffer.
         /// </summary>
         internal int Size { get; private set; }
@@ -90,16 +85,8 @@ namespace Npgsql
             try
             {
                 if (async)
-                {
-                    if (AwaitableSocket == null)  // SSL
-                        await Underlying.WriteAsync(Buffer, 0, WritePosition);
-                    else  // Non-SSL async I/O, optimized
-                    {
-                        AwaitableSocket.SetBuffer(Buffer, 0, WritePosition);
-                        await AwaitableSocket.SendAsync();
-                    }
-                }
-                else  // Sync I/O
+                    await Underlying.WriteAsync(Buffer, 0, WritePosition);
+                else
                     Underlying.Write(Buffer, 0, WritePosition);
             }
             catch (Exception e)
@@ -461,7 +448,7 @@ namespace Npgsql
         internal void WriteStringChunked(char[] chars, int charIndex, int charCount,
                                          bool flush, out int charsUsed, out bool completed)
         {
-            if (WriteSpaceLeft == 0)
+            if (WriteSpaceLeft < _textEncoder.GetByteCount(chars, charIndex, 1, flush: false))
             {
                 charsUsed = 0;
                 completed = false;
@@ -476,18 +463,18 @@ namespace Npgsql
         internal unsafe void WriteStringChunked(string s, int charIndex, int charCount,
                                                 bool flush, out int charsUsed, out bool completed)
         {
-            if (WriteSpaceLeft == 0)
-            {
-                charsUsed = 0;
-                completed = false;
-                return;
-            }
-
             int bytesUsed;
 
             fixed (char* sPtr = s)
             fixed (byte* bufPtr = Buffer)
             {
+                if (WriteSpaceLeft < _textEncoder.GetByteCount(sPtr + charIndex, 1, flush: false))
+                {
+                    charsUsed = 0;
+                    completed = false;
+                    return;
+                }
+
                 _textEncoder.Convert(sPtr + charIndex, charCount, bufPtr + WritePosition, WriteSpaceLeft,
                                      flush, out charsUsed, out bytesUsed, out completed);
             }
