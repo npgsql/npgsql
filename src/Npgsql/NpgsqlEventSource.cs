@@ -147,12 +147,10 @@ namespace Npgsql
                     DisplayName = "Failed Commands"
                 };
 
-//                _preparedCommandsRatioCounter = new PollingCounter("prepared-commands-ratio", this, () => (double)_totalPreparedCommands / (double)_totalCommands)
-                _preparedCommandsRatioCounter = new PollingCounter("prepared-commands-ratio", this, () =>
-                {
-                    Console.WriteLine($"{(double)_totalPreparedCommands} / {(double)_totalCommands}");
-                    return (double)_totalPreparedCommands / (double)_totalCommands;
-                })
+                _preparedCommandsRatioCounter = new PollingCounter(
+                    "prepared-commands-ratio",
+                    this,
+                    () => (double)_totalPreparedCommands / (double)_totalCommands)
                 {
                     DisplayName = "Prepared Commands Ratio",
                     DisplayUnits = "%"
