@@ -188,12 +188,6 @@ namespace Npgsql.Tests
         [Test, Description("ProvidePasswordCallback is used when password is not supplied in connection string")]
         public void ProvidePasswordCallbackDelegateIsUsed()
         {
-            if (TestUtil.IsOnBuildServer && PGUtil.IsWindows)
-            {
-                Assert.Ignore("Somehow on Github Actions on Windows we log in successfully with this");
-                return;
-            }
-
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 Pooling = false
@@ -239,12 +233,6 @@ namespace Npgsql.Tests
         [Test, Description("Exceptions thrown from client application are wrapped when using ProvidePasswordCallback Delegate")]
         public void ProvidePasswordCallbackDelegateExceptionsAreWrapped()
         {
-            if (TestUtil.IsOnBuildServer && PGUtil.IsWindows)
-            {
-                Assert.Ignore("Somehow on Github Actions on Windows we log in successfully with this");
-                return;
-            }
-
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 Pooling = false,
@@ -268,12 +256,6 @@ namespace Npgsql.Tests
         [Test, Description("Parameters passed to ProvidePasswordCallback delegate are correct")]
         public void ProvidePasswordCallbackDelegateGetsCorrectArguments()
         {
-            if (TestUtil.IsOnBuildServer && PGUtil.IsWindows)
-            {
-                Assert.Ignore("Somehow on Github Actions on Windows we log in successfully with this");
-                return;
-            }
-
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString) { Pooling = false };
             var goodPassword = connString.Password;
             connString.Password = null;
