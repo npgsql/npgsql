@@ -5,8 +5,8 @@
     <PackageReference Update="System.Memory" Version="4.5.3" />
     <PackageReference Update="System.ValueTuple" Version="4.5.0" />
     <PackageReference Update="System.Text.Json" Version="4.6.0" />
-    <PackageReference Update="SourceLink.Create.CommandLine" Version="2.8.3" />
-    <PackageReference Update="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.0-preview.2" />
+    <PackageReference Update="Microsoft.SourceLink.GitHub" Version="1.0.0" />
+    <PackageReference Update="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.0" />
 
     <!-- Plugins -->
     <PackageReference Update="NetTopologySuite.IO.PostGIS" Version="2.0.0" />

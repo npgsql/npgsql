@@ -400,6 +400,7 @@ namespace Npgsql.PluginTests
         protected override NpgsqlConnection OpenConnection(string? connectionString = null)
         {
             var conn = base.OpenConnection(connectionString);
+            TestUtil.EnsureExtension(conn, "postgis");
             conn.TypeMapper.UseLegacyPostgis();
             return conn;
         }
@@ -407,28 +408,8 @@ namespace Npgsql.PluginTests
         [OneTimeSetUp]
         public void SetUp()
         {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT postgis_version()", conn))
-            {
-                try
-                {
-                    cmd.ExecuteNonQuery();
-                }
-                catch (PostgresException)
-                {
-                    cmd.CommandText = "SELECT version()";
-                    var versionString = (string)cmd.ExecuteScalar();
-                    Debug.Assert(versionString != null);
-                    var m = Regex.Match(versionString, @"^PostgreSQL ([0-9.]+(\w*)?)");
-                    if (!m.Success)
-                        throw new Exception("Couldn't parse PostgreSQL version string: " + versionString);
-                    var version = m.Groups[1].Value;
-                    var prerelease = m.Groups[2].Value;
-                    if (!string.IsNullOrWhiteSpace(prerelease))
-                        Assert.Ignore($"PostGIS not installed, ignoring because we're on a prerelease version of PostgreSQL ({version})");
-                    TestUtil.IgnoreExceptOnBuildServer("PostGIS extension not installed.");
-                }
-            }
+            using var conn = base.OpenConnection();
+            TestUtil.EnsureExtension(conn, "postgis");
         }
     }
 }
