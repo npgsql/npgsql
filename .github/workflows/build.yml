@@ -74,7 +74,11 @@ jobs:
           pgsql/bin/psql -U postgres -c "CREATE DATABASE npgsql_tests OWNER npgsql_tests"
 
           # Disable trust authentication, allow md5 auth from anywhere for any user
-          # This does not require a server restart, pg_reload_conf, or SIGHUP under Windows to take effect for new connections
+          # This does not require a server restart, pg_reload_conf, or SIGHUP under Windows to take effect for new connections on PostgreSQL 10, 11, and 12
+          # according to the notes in the documentation:
+          # - https://www.postgresql.org/docs/10/auth-pg-hba-conf.html
+          # - https://www.postgresql.org/docs/11/auth-pg-hba-conf.html
+          # - https://www.postgresql.org/docs/12/auth-pg-hba-conf.html
           echo "host all all all md5" > pgsql/PGDATA/pg_hba.conf
 
         shell: bash
