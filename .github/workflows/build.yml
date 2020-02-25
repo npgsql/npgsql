@@ -72,6 +72,11 @@ jobs:
           # Configure test account
           pgsql/bin/psql -U postgres -c "CREATE ROLE npgsql_tests SUPERUSER LOGIN PASSWORD 'npgsql_tests'"
           pgsql/bin/psql -U postgres -c "CREATE DATABASE npgsql_tests OWNER npgsql_tests"
+
+          # Disable trust authentication, allow md5 auth from anywhere for any user
+          # This does not require a server restart, pg_reload_conf, or SIGHUP under Windows to take effect for new connections
+          echo "host all all all md5" > pgsql/PGDATA/pg_hba.conf
+
         shell: bash
 
       - name: Setup .NET Core SDK
