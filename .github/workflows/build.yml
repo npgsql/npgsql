@@ -31,8 +31,20 @@ jobs:
 
       - name: Start PostgreSQL ${{ matrix.pg_major }} (Linux)
         if: startsWith(matrix.os, 'ubuntu')
-        run: docker run --detach --name postgresql -p 5432:5432 npgsql/postgres:${{ matrix.pg_major }}-postgis-${{ env.postgis_version }}
-        shell: bash
+        run: |
+          wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+          sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ bionic-pgdg main" >> /etc/apt/sources.list.d/pgdg.list'
+          sudo apt-get update -qq
+          sudo apt-get install -qq postgresql-${{ matrix.pg_major }} postgresql-${{ matrix.pg_major }}-postgis-${{ env.postgis_version }}
+          sudo -u postgres psql -c "CREATE USER npgsql_tests SUPERUSER PASSWORD 'npgsql_tests'"
+          sudo -u postgres psql -c "CREATE DATABASE npgsql_tests OWNER npgsql_tests"
+
+          export PGDATA=/etc/postgresql/${{ matrix.pg_major }}/main
+          sudo sed -i 's/#ssl = off/ssl = on/' $PGDATA/postgresql.conf
+          sudo sed -i 's/#max_prepared_transactions = 0/max_prepared_transactions = 10/' $PGDATA/postgresql.conf
+          # Disable trust authentication, requiring MD5 passwords - some tests must fail if a password isn't provided.
+          sudo sh -c "echo 'host all all all md5' > $PGDATA/pg_hba.conf"
+          sudo pg_ctlcluster ${{ matrix.pg_major }} main restart
 
       - name: Start PostgreSQL ${{ matrix.pg_major }} (Windows)
         if: startsWith(matrix.os, 'windows')
@@ -51,8 +63,8 @@ jobs:
           unzip pgsql.zip -x 'pgsql/include/**' 'pgsql/doc/**' 'pgsql/pgAdmin 4/**' 'pgsql/StackBuilder/**'
 
           # Match Npgsql CI Docker image and stash one level up
-          cp {$GITHUB_WORKSPACE/.build/docker,pgsql}/server.crt
-          cp {$GITHUB_WORKSPACE/.build/docker,pgsql}/server.key
+          cp {$GITHUB_WORKSPACE/.build,pgsql}/server.crt
+          cp {$GITHUB_WORKSPACE/.build,pgsql}/server.key
 
           # Find OSGEO version number
           OSGEO_VERSION=$(\
