@@ -1007,39 +1007,6 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1037")]
-        public void Statements()
-        {
-            // See also ReaderTests.Statements()
-            using (var conn = OpenConnection())
-            {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
-                using (var cmd = new NpgsqlCommand(
-                    "INSERT INTO data (name) VALUES (@p1);" +
-                    "UPDATE data SET name='b' WHERE name=@p2",
-                    conn)
-                )
-                {
-                    cmd.Parameters.AddWithValue("p1", "foo");
-                    cmd.Parameters.AddWithValue("p2", "bar");
-                    cmd.ExecuteNonQuery();
-
-                    Assert.That(cmd.Statements, Has.Count.EqualTo(2));
-                    Assert.That(cmd.Statements[0].SQL, Is.EqualTo("INSERT INTO data (name) VALUES ($1)"));
-                    Assert.That(cmd.Statements[0].InputParameters[0].ParameterName, Is.EqualTo("p1"));
-                    Assert.That(cmd.Statements[0].InputParameters[0].Value, Is.EqualTo("foo"));
-                    Assert.That(cmd.Statements[0].StatementType, Is.EqualTo(StatementType.Insert));
-                    Assert.That(cmd.Statements[0].Rows, Is.EqualTo(1));
-                    Assert.That(cmd.Statements[1].SQL, Is.EqualTo("UPDATE data SET name='b' WHERE name=$1"));
-                    Assert.That(cmd.Statements[1].InputParameters[0].ParameterName, Is.EqualTo("p2"));
-                    Assert.That(cmd.Statements[1].InputParameters[0].Value, Is.EqualTo("bar"));
-                    Assert.That(cmd.Statements[1].StatementType, Is.EqualTo(StatementType.Update));
-                    Assert.That(cmd.Statements[1].Rows, Is.EqualTo(0));
-                }
-            }
-        }
-
-
         [Test]
         public void StatementOID()
         {
