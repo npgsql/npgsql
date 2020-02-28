@@ -64,6 +64,7 @@ namespace Npgsql
     public enum StatementType
     {
 #pragma warning disable 1591
+        Unknown,
         Select,
         Insert,
         Delete,

@@ -150,43 +150,45 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test]
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1037")]
         public void Statements()
         {
-            // See also CommandTests.Statements()
-            using (var conn = OpenConnection())
-            {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
-                using (var cmd = new NpgsqlCommand(
-                    "INSERT INTO data (name) VALUES ('a');" +
-                    "UPDATE data SET name='b' WHERE name='doesnt_exist'",
-                    conn)
-                    )
-                using (var reader = cmd.ExecuteReader(Behavior))
-                {
-                    Assert.That(reader.Statements, Has.Count.EqualTo(2));
-                    Assert.That(reader.Statements[0].SQL, Is.EqualTo("INSERT INTO data (name) VALUES ('a')"));
-                    Assert.That(reader.Statements[0].StatementType, Is.EqualTo(StatementType.Insert));
-                    Assert.That(reader.Statements[0].Rows, Is.EqualTo(1));
-                    Assert.That(reader.Statements[1].SQL,
-                        Is.EqualTo("UPDATE data SET name='b' WHERE name='doesnt_exist'"));
-                    Assert.That(reader.Statements[1].StatementType, Is.EqualTo(StatementType.Update));
-                    Assert.That(reader.Statements[1].Rows, Is.EqualTo(0));
-                }
+            using var conn = OpenConnection();
+            conn.ExecuteNonQuery("CREATE TEMP TABLE data (name TEXT)");
+            using var cmd = new NpgsqlCommand(
+                "INSERT INTO data (name) VALUES ('a');" +
+                "UPDATE data SET name='b' WHERE name='doesnt_exist';" +
+                "UPDATE data SET name='b';" +
+                "BEGIN;" +
+                "SELECT name FROM data;" +
+                "DELETE FROM data;" +
+                "COMMIT;", conn);
+            using var reader = cmd.ExecuteReader(Behavior);
 
-                using (var cmd = new NpgsqlCommand("SELECT name FROM data; DELETE FROM data", conn))
-                using (var reader = cmd.ExecuteReader(Behavior))
-                {
-                    reader.NextResult(); // Consume SELECT result set
-                    Assert.That(reader.Statements, Has.Count.EqualTo(2));
-                    Assert.That(reader.Statements[0].SQL, Is.EqualTo("SELECT name FROM data"));
-                    Assert.That(reader.Statements[0].StatementType, Is.EqualTo(StatementType.Select));
-                    Assert.That(reader.Statements[0].Rows, Is.EqualTo(1));
-                    Assert.That(reader.Statements[1].SQL, Is.EqualTo("DELETE FROM data"));
-                    Assert.That(reader.Statements[1].StatementType, Is.EqualTo(StatementType.Delete));
-                    Assert.That(reader.Statements[1].Rows, Is.EqualTo(1));
-                }
-            }
+            var i = 0;
+            Assert.That(reader.Statements, Has.Count.EqualTo(7));
+            Assert.That(reader.Statements[i].SQL, Is.EqualTo("INSERT INTO data (name) VALUES ('a')"));
+            Assert.That(reader.Statements[i].StatementType, Is.EqualTo(StatementType.Insert));
+            Assert.That(reader.Statements[i].Rows, Is.EqualTo(1));
+            Assert.That(reader.Statements[++i].SQL, Is.EqualTo("UPDATE data SET name='b' WHERE name='doesnt_exist'"));
+            Assert.That(reader.Statements[i].StatementType, Is.EqualTo(StatementType.Update));
+            Assert.That(reader.Statements[i].Rows, Is.EqualTo(0));
+            Assert.That(reader.Statements[++i].SQL, Is.EqualTo("UPDATE data SET name='b'"));
+            Assert.That(reader.Statements[i].StatementType, Is.EqualTo(StatementType.Update));
+            Assert.That(reader.Statements[i].Rows, Is.EqualTo(1));
+            Assert.That(reader.Statements[++i].SQL, Is.EqualTo("BEGIN"));
+            Assert.That(reader.Statements[i].StatementType, Is.EqualTo(StatementType.Other));
+            Assert.That(reader.Statements[i].Rows, Is.EqualTo(0));
+            reader.NextResult(); // Consume SELECT result set to parse the CommandComplete
+            Assert.That(reader.Statements[++i].SQL, Is.EqualTo("SELECT name FROM data"));
+            Assert.That(reader.Statements[i].StatementType, Is.EqualTo(StatementType.Select));
+            Assert.That(reader.Statements[i].Rows, Is.EqualTo(1));
+            Assert.That(reader.Statements[++i].SQL, Is.EqualTo("DELETE FROM data"));
+            Assert.That(reader.Statements[i].StatementType, Is.EqualTo(StatementType.Delete));
+            Assert.That(reader.Statements[i].Rows, Is.EqualTo(1));
+            Assert.That(reader.Statements[++i].SQL, Is.EqualTo("COMMIT"));
+            Assert.That(reader.Statements[i].StatementType, Is.EqualTo(StatementType.Other));
+            Assert.That(reader.Statements[i].Rows, Is.EqualTo(0));
         }
 
         [Test]
