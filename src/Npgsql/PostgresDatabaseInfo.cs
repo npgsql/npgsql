@@ -293,7 +293,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
             else
                 reader.NextResult();
 
-            LoadCompositeFields(reader, byOID);
+            await LoadCompositeFields(reader, byOID, async);
 
             if (SupportsEnumTypes)
             {
@@ -302,7 +302,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
                 else
                     reader.NextResult();
 
-                LoadEnumLabels(reader, byOID);
+                await LoadEnumLabels(reader, byOID, async);
             }
 
             return byOID.Values.ToList();
@@ -313,13 +313,14 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
         /// </summary>
         /// <param name="reader">The reader from which to read composite fields.</param>
         /// <param name="byOID">The OID of the composite type for which fields are read.</param>
-        static void LoadCompositeFields(NpgsqlDataReader reader, Dictionary<uint, PostgresType> byOID)
+        /// <param name="async">Whether the read synchronously or asynchronously.</param>
+        static async Task LoadCompositeFields(NpgsqlDataReader reader, Dictionary<uint, PostgresType> byOID, bool async)
         {
             var currentOID = uint.MaxValue;
             PostgresCompositeType? currentComposite = null;
             var skipCurrent = false;
 
-            while (reader.Read())
+            while (async ? await reader.ReadAsync() : reader.Read())
             {
                 var oid = uint.Parse(reader.GetString("oid"), NumberFormatInfo.InvariantInfo);
                 if (oid != currentOID)
@@ -368,13 +369,14 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
         /// </summary>
         /// <param name="reader">The reader from which to read enum labels.</param>
         /// <param name="byOID">The OID of the enum type for which labels are read.</param>
-        static void LoadEnumLabels(NpgsqlDataReader reader, Dictionary<uint, PostgresType> byOID)
+        /// <param name="async">Whether the read synchronously or asynchronously.</param>
+        static async Task LoadEnumLabels(NpgsqlDataReader reader, Dictionary<uint, PostgresType> byOID, bool async)
         {
             var currentOID = uint.MaxValue;
             PostgresEnumType? currentEnum = null;
             var skipCurrent = false;
 
-            while (reader.Read())
+            while (async ? await reader.ReadAsync() : reader.Read())
             {
                 var oid = uint.Parse(reader.GetString("oid"), NumberFormatInfo.InvariantInfo);
                 if (oid != currentOID)
