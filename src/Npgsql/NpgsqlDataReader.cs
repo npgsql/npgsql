@@ -550,6 +550,19 @@ namespace Npgsql
 
             try
             {
+                switch (State)
+                {
+                case ReaderState.BeforeResult:
+                case ReaderState.InResult:
+                case ReaderState.BetweenResults:
+                    break;
+                case ReaderState.Consumed:
+                case ReaderState.Closed:
+                    return false;
+                default:
+                    throw new ArgumentOutOfRangeException();
+                }
+
                 for (StatementIndex++; StatementIndex < _statements.Count; StatementIndex++)
                 {
                     var statement = _statements[StatementIndex];
