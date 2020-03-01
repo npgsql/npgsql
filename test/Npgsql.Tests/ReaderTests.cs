@@ -702,6 +702,8 @@ namespace Npgsql.Tests
             }
         }
 
+        #region SchemaOnly
+
         [Test]
         public void SchemaOnlyReturnsNoData()
         {
@@ -727,6 +729,20 @@ namespace Npgsql.Tests
                 }
             }
         }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2827")]
+        public void SchemaOnlyNextResultBeyondEnd()
+        {
+            using var conn = OpenConnection();
+            conn.ExecuteNonQuery("CREATE TEMP TABLE data (id INT)");
+
+            using var cmd = new NpgsqlCommand("SELECT * FROM data", conn);
+            using var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly);
+            Assert.False(reader.NextResult());
+            Assert.False(reader.NextResult());
+        }
+
+        #endregion SchemaOnly
 
         #region GetOrdinal
 
