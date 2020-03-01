@@ -89,8 +89,6 @@ namespace Npgsql
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlConnection));
 
-        static bool _countersInitialized;
-
         static readonly StateChangeEventArgs ClosedToOpenEventArgs = new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open);
         static readonly StateChangeEventArgs OpenToClosedEventArgs = new StateChangeEventArgs(ConnectionState.Open, ConnectionState.Closed);
 
@@ -143,12 +141,6 @@ namespace Npgsql
             // Connection string hasn't been seen before. Parse it.
             Settings = new NpgsqlConnectionStringBuilder(_connectionString);
 
-            if (!_countersInitialized)
-            {
-                Counters.Initialize(Settings.UsePerfCounters);
-                _countersInitialized = true;
-            }
-
             // Maybe pooling is off
             if (!Settings.Pooling)
                 return;
@@ -172,13 +164,10 @@ namespace Npgsql
             var newPool = new ConnectorPool(Settings, canonical);
             _pool = PoolManager.GetOrAdd(canonical, newPool);
 
+            // If the pool we created was the one that ended up being stored we need to increment the appropriate counter.
+            // Avoids a race condition where multiple threads will create a pool but only one will be stored.
             if (_pool == newPool)
-            {
-                // If the pool we created was the one that ended up being stored we need to increment the appropriate counter.
-                // Avoids a race condition where multiple threads will create a pool but only one will be stored.
-                Counters.NumberOfActiveConnectionPools.Increment();
                 NpgsqlEventSource.Log.PoolCreated();
-            }
 
             _pool = PoolManager.GetOrAdd(_connectionString, _pool);
         }
@@ -196,8 +185,6 @@ namespace Npgsql
                 return OpenLong();
 
             _userFacingConnectionString = _pool.UserFacingConnectionString;
-
-            Counters.SoftConnectsPerSecond.Increment();
 
             // Since this pooled connector was opened, types may have been added (and ReloadTypes() called),
             // or global mappings may have changed. Bring this up to date if needed.
@@ -238,7 +225,6 @@ namespace Npgsql
 
                         Connector = new NpgsqlConnector(this);
                         await Connector.Open(timeout, async, cancellationToken);
-                        Counters.NumberOfNonPooledConnections.Increment();
                     }
                     else
                     {

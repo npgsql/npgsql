@@ -151,8 +151,6 @@ namespace Npgsql
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal bool TryAllocateFast(NpgsqlConnection conn, [NotNullWhen(true)] out NpgsqlConnector? connector)
         {
-            Counters.SoftConnectsPerSecond.Increment();
-
             // Idle may indicate that there are idle connectors, with the subsequent scan failing to find any.
             // This can happen because of race conditions with Release(), which updates Idle before actually putting
             // the connector in the list, or because of other allocation attempts, which remove the connector from
@@ -181,8 +179,6 @@ namespace Npgsql
                     continue;
                 }
 
-                Counters.NumberOfFreeConnections.Decrement();
-
                 // An connector could be broken because of a keepalive that occurred while it was
                 // idling in the pool
                 // TODO: Consider removing the pool from the keepalive code. The following branch is simply irrelevant
@@ -196,7 +192,6 @@ namespace Npgsql
                 connector.Connection = conn;
 
                 // We successfully extracted an idle connector, update state
-                Counters.NumberOfActiveConnections.Increment();
                 Interlocked.Decrement(ref State.Idle);
                 CheckInvariants(State);
                 return true;
@@ -264,8 +259,6 @@ namespace Npgsql
                     // Only start pruning if it was this thread that incremented open count past _min.
                     if (prevOpenCount == _min)
                         EnablePruning();
-                    Counters.NumberOfPooledConnections.Increment();
-                    Counters.NumberOfActiveConnections.Increment();
                     CheckInvariants(State);
 
                     return connector;
@@ -384,9 +377,6 @@ namespace Npgsql
 
         internal void Release(NpgsqlConnector connector)
         {
-            Counters.SoftDisconnectsPerSecond.Increment();
-            Counters.NumberOfActiveConnections.Decrement();
-
             // If Clear/ClearAll has been been called since this connector was first opened,
             // throw it away. The same if it's broken (in which case CloseConnector is only
             // used to update state/perf counter).
@@ -473,7 +463,6 @@ namespace Npgsql
             // Only turn off the timer one time, when it was this Close that brought Open back to _min.
             if (openCount == _min)
                 DisablePruning();
-            Counters.NumberOfPooledConnections.Decrement();
             CheckInvariants(State);
         }
 
