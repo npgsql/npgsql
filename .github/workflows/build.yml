@@ -3,7 +3,6 @@ name: Build
 on: [push, pull_request]
 
 env:
-  dotnet_sdk_version: '3.1.100'
   postgis_version: 3
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
 
@@ -90,9 +89,7 @@ jobs:
           echo "host all all all md5" > pgsql/PGDATA/pg_hba.conf
 
       - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@bb95ce727fd49ec1a65933419cc7c91747785302
-        with:
-          dotnet-version: ${{ env.dotnet_sdk_version }}
+        uses: actions/setup-dotnet@1.4.0
 
       # TODO: Once test/Npgsql.Specification.Tests work, switch to just testing on the solution
       - name: Test
@@ -126,9 +123,7 @@ jobs:
             ${{ runner.os }}-nuget-
 
       - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@bb95ce727fd49ec1a65933419cc7c91747785302
-        with:
-          dotnet-version: ${{ env.dotnet_sdk_version }}
+        uses: actions/setup-dotnet@1.4.0
 
       - name: Pack NuGet packages (CI versions)
         if: startsWith(github.ref, 'refs/heads/')
