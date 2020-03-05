@@ -4,7 +4,8 @@
     <Copyright>Copyright 2020 © The Npgsql Development Team</Copyright>
     <Company>Npgsql</Company>
     <VersionPrefix>5.0.0</VersionPrefix>
-    <NoWarn>NU5105</NoWarn>
+    <!-- We suppress NU1605 because of System.Text.Json on .NET Framework (see note in Directory.Build.targets) -->
+    <NoWarn>$(NoWarn);NU5105;NU1605</NoWarn>
     <SuppressNETCoreSdkPreviewMessage>true</SuppressNETCoreSdkPreviewMessage>
 
     <PublishRepositoryUrl>true</PublishRepositoryUrl>

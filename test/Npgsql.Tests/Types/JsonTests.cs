@@ -1,3 +1,5 @@
+// Using JSON support on .NET Framework requires some binding redirects (see comment in Directory.Build.targets)
+#if !NET461
 using System;
 using System.Text;
 using System.Text.Json;
@@ -204,3 +206,4 @@ namespace Npgsql.Tests.Types
         readonly NpgsqlDbType NpgsqlDbType;
     }
 }
+#endif
