@@ -212,6 +212,108 @@ namespace Npgsql.Tests
             }
         }
 
+        #region ProvidePasswordCallback Tests
+
+        [Test, Description("ProvidePasswordCallback is used when password is not supplied in connection string")]
+        public void ProvidePasswordCallbackDelegateIsUsed()
+        {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Pooling = false //testing opening of connections, pooling will return an existing connection
+            };
+            var goodPassword = connString.Password;
+            connString.Password = null;
+
+            bool getPasswordDelegateWasCalled = false;
+
+            using (var conn = new NpgsqlConnection(connString.ToString()) { ProvidePasswordCallback = ProvidePasswordCallback })
+            {
+                conn.Open();
+                Assert.True(getPasswordDelegateWasCalled, "ProvidePasswordCallback delegate not used");
+            }
+
+            string ProvidePasswordCallback(string host, int port, string database, string username)
+            {
+                getPasswordDelegateWasCalled = true;
+                return goodPassword;
+            }
+        }
+
+        [Test, Description("ProvidePasswordCallback is not used when password is supplied in connection string")]
+        public void ProvidePasswordCallbackDelegateIsNotUsed()
+        {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Pooling = false //testing opening of connections, pooling will return an existing connection
+            };
+
+            using (var conn = new NpgsqlConnection(connString.ToString()) { ProvidePasswordCallback = ProvidePasswordCallback })
+            {
+                Assert.DoesNotThrow(() => conn.Open());
+            }
+
+            string ProvidePasswordCallback(string host, int port, string database, string username)
+            {
+                throw new Exception("password should come from connection string, not delegate");
+            }
+        }
+
+        [Test, Description("Exceptions thrown from client application are wrapped when using ProvidePasswordCallback Delegate")]
+        public void ProvidePasswordCallbackDelegateExceptionsAreWrapped()
+        {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Pooling = false, //testing opening of connections, pooling will return an existing connection
+                Password = null
+            };
+
+            using (var conn = new NpgsqlConnection(connString.ToString()) { ProvidePasswordCallback = ProvidePasswordCallback })
+            {
+                Assert.That(() => conn.Open(), Throws.Exception
+                    .TypeOf<NpgsqlException>()
+                    .With.InnerException.Message.EqualTo("inner exception from ProvidePasswordCallback")
+                );
+            }
+
+            string ProvidePasswordCallback(string host, int port, string database, string username)
+            {
+                throw new Exception("inner exception from ProvidePasswordCallback");
+            }
+        }
+
+        [Test, Description("Parameters passed to ProvidePasswordCallback delegate are correct")]
+        public void ProvidePasswordCallbackDelegateGetsCorrectArguments()
+        {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString) { Pooling = false };
+            var goodPassword = connString.Password;
+            connString.Password = null;
+
+            string? receivedHost = null;
+            int? receivedPort = null;
+            string? receivedDatabase = null;
+            string? receivedUsername = null;
+
+            using (var conn = new NpgsqlConnection(connString.ToString()) { ProvidePasswordCallback = ProvidePasswordCallback })
+            {
+                conn.Open();
+                Assert.AreEqual(connString.Host, receivedHost);
+                Assert.AreEqual(connString.Port, receivedPort);
+                Assert.AreEqual(connString.Database, receivedDatabase);
+                Assert.AreEqual(connString.Username, receivedUsername);
+            }
+
+            string ProvidePasswordCallback(string host, int port, string database, string username)
+            {
+                receivedHost = host;
+                receivedPort = port;
+                receivedDatabase = database;
+                receivedUsername = username;
+
+                return goodPassword;
+            }
+        }
+        #endregion
+        
         [Test]
         public void BadDatabase()
         {

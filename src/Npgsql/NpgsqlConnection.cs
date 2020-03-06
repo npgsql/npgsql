@@ -360,6 +360,20 @@ namespace Npgsql
             }
         }
 
+        /// <summary>
+        /// Gets or sets the delegate used to generate a password for new database connections.
+        /// </summary>
+        /// <remarks>
+        /// This delegate is executed when a new database connection is opened that requires a password. 
+        /// <see cref="NpgsqlConnectionStringBuilder.Password">Password</see> and 
+        /// <see cref="NpgsqlConnectionStringBuilder.Passfile">Passfile</see> connection string 
+        /// properties have precedence over this delegate. It will not be executed if a password is 
+        /// specified, or the specified or default Passfile contains a valid entry.
+        /// Due to connection pooling this delegate is only executed when a new physical connection
+        /// is opened, not when reusing a connection that was previously opened from the pool.
+        /// </remarks>
+        public ProvidePasswordCallback? ProvidePasswordCallback { get; set; }
+
         #endregion Connection string management
 
         #region Configuration settings
@@ -1371,6 +1385,7 @@ namespace Npgsql
             var conn = new NpgsqlConnection(_connectionString) {
                 ProvideClientCertificatesCallback = ProvideClientCertificatesCallback,
                 UserCertificateValidationCallback = UserCertificateValidationCallback,
+                ProvidePasswordCallback = ProvidePasswordCallback,
                 _userFacingConnectionString = _userFacingConnectionString
             };
             return conn;
@@ -1391,7 +1406,8 @@ namespace Npgsql
                 csb.Password = Password;
             return new NpgsqlConnection(csb.ToString()) {
                 ProvideClientCertificatesCallback = ProvideClientCertificatesCallback,
-                UserCertificateValidationCallback = UserCertificateValidationCallback
+                UserCertificateValidationCallback = UserCertificateValidationCallback,
+                ProvidePasswordCallback = ProvidePasswordCallback,
             };
         }
 
@@ -1484,5 +1500,15 @@ namespace Npgsql
     /// <param name="certificates">A <see cref="System.Security.Cryptography.X509Certificates.X509CertificateCollection">X509CertificateCollection</see> to be filled with one or more client certificates.</param>
     public delegate void ProvideClientCertificatesCallback(X509CertificateCollection certificates);
 
+    /// <summary>
+    /// Represents the method that allows the application to provide a password at connection time in code rather than configuration
+    /// </summary>
+    /// <param name="host">Hostname</param>
+    /// <param name="port">Port</param>
+    /// <param name="database">Database Name</param>
+    /// <param name="username">User</param>
+    /// <returns>A valid password for connecting to the database</returns>
+    public delegate string ProvidePasswordCallback(string host, int port, string database, string username);
+    
     #endregion
 }

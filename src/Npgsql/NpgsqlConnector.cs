@@ -73,6 +73,7 @@ namespace Npgsql
 
         [CanBeNull] ProvideClientCertificatesCallback ProvideClientCertificatesCallback { get; }
         [CanBeNull] RemoteCertificateValidationCallback UserCertificateValidationCallback { get; }
+        [CanBeNull] ProvidePasswordCallback ProvidePasswordCallback { get; }
 
         internal Encoding TextEncoding { get; private set; }
 
@@ -272,6 +273,7 @@ namespace Npgsql
             Connection.Connector = this;
             ProvideClientCertificatesCallback = Connection.ProvideClientCertificatesCallback;
             UserCertificateValidationCallback = Connection.UserCertificateValidationCallback;
+            ProvidePasswordCallback = Connection.ProvidePasswordCallback;
         }
 
         NpgsqlConnector(NpgsqlConnector connector)
@@ -279,6 +281,7 @@ namespace Npgsql
         {
             ProvideClientCertificatesCallback = connector.ProvideClientCertificatesCallback;
             UserCertificateValidationCallback = connector.UserCertificateValidationCallback;
+            ProvidePasswordCallback = connector.ProvidePasswordCallback;
         }
 
         /// <summary>
