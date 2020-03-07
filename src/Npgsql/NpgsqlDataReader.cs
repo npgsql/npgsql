@@ -1706,9 +1706,6 @@ namespace Npgsql
         public override DataTable GetSchemaTable()
 #nullable restore
         {
-            if (FieldCount == 0) // No resultset
-                return null;
-
             var table = new DataTable("SchemaTable");
 
             // Note: column order is important to match SqlClient's, some ADO.NET users appear
