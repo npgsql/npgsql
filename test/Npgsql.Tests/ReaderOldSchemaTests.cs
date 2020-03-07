@@ -143,7 +143,7 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1027")]
-        public void GetSchemaTableWithoutResult()
+        public void WithoutResult()
         {
             using (var conn = OpenConnection())
             using (var cmd = new NpgsqlCommand("SELECT 1", conn))
@@ -151,7 +151,8 @@ namespace Npgsql.Tests
             {
                 reader.NextResult();
                 // We're no longer on a result
-                Assert.That(reader.GetSchemaTable(), Is.Null);
+                var table = reader.GetSchemaTable();
+                Assert.That(table.Rows, Is.Empty);
             }
         }
 
