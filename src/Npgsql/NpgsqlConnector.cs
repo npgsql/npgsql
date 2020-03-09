@@ -1751,7 +1751,7 @@ namespace Npgsql
 
         public bool Wait(int timeout)
         {
-            if ((timeout == 0 || timeout == -1) && IsSecure)
+            if ((timeout != 0 && timeout != -1) && IsSecure)
                 throw new NotSupportedException("Wait() with timeout isn't supported when SSL is used, see https://github.com/npgsql/npgsql/issues/1501");
 
             using (StartUserAction(ConnectorState.Waiting))
