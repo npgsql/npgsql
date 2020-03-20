@@ -226,8 +226,9 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
                 var typeMember = (
                     from m in type.GetMembers()
                     let attr = m.GetCustomAttribute<PgNameAttribute>()
-                    where attr != null && attr.PgName == member.PgName ||
-                          attr == null && _nameTranslator.TranslateMemberName(m.Name) == member.PgName
+                    where (attr != null && attr.PgName == member.PgName) ||
+                          (attr == null && _nameTranslator.TranslateMemberName(m.Name) == member.PgName) ||
+                          (attr == null && m.Name == member.PgName)
                     select m
                 ).SingleOrDefault();
 
