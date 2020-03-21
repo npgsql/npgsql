@@ -60,16 +60,24 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
 
         protected internal override async ValueTask<TAny> Read<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription fieldDescription = null)
         {
-            if (_resolvedType != typeof(TAny))
-                Map(typeof(TAny));
+            object result = null;
+
+            if (_resolvedType != typeof(TAny)) {
+                if (typeof(TAny) == typeof(object)) {
+                    result = new ExpandoObject();
+                    MapDynamicNew(result as IDictionary<string, object>);
+                } else {
+                    Map(typeof(TAny));
+                    // If TAny is a struct, we have to box it here to properly set its fields below
+                    result = Activator.CreateInstance<TAny>();
+                }
+            }
 
             await buf.Ensure(4, async);
             var fieldCount = buf.ReadInt32();
             if (fieldCount != _members.Count)  // PostgreSQL sanity check
                 throw new Exception($"pg_attributes contains {_members.Count} rows for type {PgDisplayName}, but {fieldCount} fields were received!");
 
-            // If TAny is a struct, we have to box it here to properly set its fields below
-            object result = Activator.CreateInstance<TAny>();
             foreach (var member in _members)
             {
                 await buf.Ensure(8, async);
@@ -266,6 +274,22 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
                 if (translatedName == null)
                     throw new Exception($"PostgreSQL composite type {PgDisplayName} contains field {member.PgName} which could not match any on provided dictionary");
                 member.Getter = composite => ((IDictionary<string, object>)composite)[translatedName];
+            }
+
+            _resolvedType = dict.GetType();
+        }
+
+        void MapDynamicNew(IDictionary<string, object> dict) {
+            Debug.Assert(_resolvedType != typeof(object));
+            if (_members == null)
+                ResolveFields();
+            Debug.Assert(_members != null);
+
+            foreach (var member in _members) {
+                var translatedName = _nameTranslator.TranslateMemberName(member.PgName);
+                dict.Add(translatedName, null);
+                member.Getter = composite => ((IDictionary<string, object>)composite)[translatedName];
+                member.Setter = (composite, v) => ((IDictionary<string, object>)composite)[translatedName] = v;
             }
 
             _resolvedType = dict.GetType();

@@ -194,7 +194,7 @@ namespace Npgsql.Tests
             var goodPassword = connString.Password;
             connString.Password = null;
 
-            bool getPasswordDelegateWasCalled = false;
+            var getPasswordDelegateWasCalled = false;
 
             using (var conn = new NpgsqlConnection(connString.ToString()) { ProvidePasswordCallback = ProvidePasswordCallback })
             {
@@ -205,7 +205,7 @@ namespace Npgsql.Tests
             string ProvidePasswordCallback(string host, int port, string database, string username)
             {
                 getPasswordDelegateWasCalled = true;
-                return goodPassword;
+                return goodPassword!;
             }
         }
 
@@ -279,7 +279,7 @@ namespace Npgsql.Tests
                 receivedDatabase = database;
                 receivedUsername = username;
 
-                return goodPassword;
+                return goodPassword!;
             }
         }
         #endregion

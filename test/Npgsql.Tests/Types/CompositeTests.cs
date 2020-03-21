@@ -155,6 +155,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1779")]
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0007:Use implicit type", Justification = "<Pending>")]
         public void CompositePostgresType()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
@@ -174,6 +175,10 @@ namespace Npgsql.Tests.Types
                     {
                         reader.Read();
                         var comp2Type = (PostgresCompositeType)reader.GetPostgresType(0);
+
+                        object[] vals = new object[100];
+                        reader.GetValues(vals);
+
                         Assert.That(comp2Type.Name, Is.EqualTo("comp2"));
                         Assert.That(comp2Type.FullName, Does.StartWith("pg_temp_") & Does.EndWith(".comp2"));
                         Assert.That(comp2Type.Fields, Has.Count.EqualTo(2));
