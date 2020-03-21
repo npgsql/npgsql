@@ -259,11 +259,11 @@ namespace Npgsql
 
                 if (_columnLen == -1)
                 {
-#pragma warning disable CS8653 // A default expression introduces a null value when 'T' is a non-nullable reference type.
+#pragma warning disable CS8603,CS8653
                     // When T is a Nullable<T>, we support returning null
                     if (NullableHandler<T>.Exists)
                         return default;
-#pragma warning restore CS8653
+#pragma warning restore CS8653,CS8603
                     throw new InvalidCastException("Column is null");
                 }
 

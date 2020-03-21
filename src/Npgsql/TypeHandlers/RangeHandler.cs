@@ -123,10 +123,10 @@ namespace Npgsql.TypeHandlers
             if (!value.IsEmpty)
             {
                 if (!value.LowerBoundInfinite)
-                    totalLen += 4 + _elementHandler.ValidateAndGetLength(value.LowerBound, ref lengthCache, null);
+                    totalLen += 4 + _elementHandler.ValidateAndGetLength(value.LowerBound!, ref lengthCache, null);
 
                 if (!value.UpperBoundInfinite)
-                    totalLen += 4 + _elementHandler.ValidateAndGetLength(value.UpperBound, ref lengthCache, null);
+                    totalLen += 4 + _elementHandler.ValidateAndGetLength(value.UpperBound!, ref lengthCache, null);
             }
 
             // If we're traversing an already-populated length cache, rewind to first element slot so that

@@ -161,8 +161,8 @@ namespace NpgsqlTypes
         /// <param name="upperBound">The upper bound of the range.</param>
         /// <param name="upperBoundIsInclusive">True if the upper bound is part of the range (i.e. inclusive); otherwise, false.</param>
         /// <param name="upperBoundInfinite">True if the upper bound is indefinite (i.e. infinite or unbounded); otherwise, false.</param>
-        public NpgsqlRange(T lowerBound, bool lowerBoundIsInclusive, bool lowerBoundInfinite,
-                           T upperBound, bool upperBoundIsInclusive, bool upperBoundInfinite)
+        public NpgsqlRange([AllowNull] T lowerBound, bool lowerBoundIsInclusive, bool lowerBoundInfinite,
+                           [AllowNull] T upperBound, bool upperBoundIsInclusive, bool upperBoundInfinite)
             : this(
                 lowerBound,
                 upperBound,
@@ -204,7 +204,7 @@ namespace NpgsqlTypes
         /// <returns>
         /// True if the range is implicitly empty; otherwise, false.
         /// </returns>
-        static bool IsEmptyRange(T lowerBound, T upperBound, RangeFlags flags)
+        static bool IsEmptyRange([AllowNull] T lowerBound, [AllowNull] T upperBound, RangeFlags flags)
         {
             // ---------------------------------------------------------------------------------
             // We only want to check for those conditions that are unambiguously erroneous:
@@ -235,7 +235,7 @@ namespace NpgsqlTypes
 
             return lower != null && !lower.Equals(default!) &&
                    upper != null && !upper.Equals(default!) &&
-                   lower.Equals(upperBound);
+                   lower.Equals(upper);
         }
 
         /// <summary>
@@ -304,8 +304,8 @@ namespace NpgsqlTypes
 
             if (HasEquatableBounds)
                 return
-                    (LowerBound == null ? other.LowerBound == null : ((IEquatable<T>)LowerBound).Equals(other.LowerBound)) &&
-                    (UpperBound == null ? other.UpperBound == null : ((IEquatable<T>)UpperBound).Equals(other.UpperBound));
+                    (LowerBound == null ? other.LowerBound == null : ((IEquatable<T>)LowerBound).Equals(other.LowerBound!)) &&
+                    (UpperBound == null ? other.UpperBound == null : ((IEquatable<T>)UpperBound).Equals(other.UpperBound!));
 
             return
                 (LowerBound?.Equals(other.LowerBound) ?? other.LowerBound == null) &&
