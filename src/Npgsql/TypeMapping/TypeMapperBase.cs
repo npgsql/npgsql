@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using Npgsql.TypeHandlers;
 using Npgsql.TypeHandlers.CompositeHandlers;
+using Npgsql.TypeHandling;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeMapping
@@ -93,6 +94,30 @@ namespace Npgsql.TypeMapping
                 PgTypeName = pgName,
                 ClrTypes = new[] { typeof(T) },
                 TypeHandlerFactory = new CompositeTypeHandlerFactory<T>(nameTranslator)
+            }.Build());
+        }
+
+        public INpgsqlTypeMapper MapComposite(Type compType, string pgName, INpgsqlNameTranslator? nameTranslator = null)
+        {
+            if (string.IsNullOrWhiteSpace(pgName))
+                throw new ArgumentException("pgName can't be empty", nameof(pgName));
+
+            if (nameTranslator == null)
+                nameTranslator = DefaultNameTranslator;
+
+            Type thfType = typeof(CompositeTypeHandlerFactory<>);
+
+            var thf = (NpgsqlTypeHandlerFactory)Activator.CreateInstance(
+                thfType.MakeGenericType(compType),
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                binder: null,
+                args: new object[] { nameTranslator },
+                culture: null)!;
+
+            return AddMapping(new NpgsqlTypeMappingBuilder {
+                PgTypeName = pgName,
+                ClrTypes = new[] { compType },
+                TypeHandlerFactory = thf,
             }.Build());
         }
 
