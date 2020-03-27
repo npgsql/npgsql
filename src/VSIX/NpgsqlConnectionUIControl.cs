@@ -54,6 +54,18 @@ namespace Npgsql.VSIX
                 Site["Password"] = passwordTextBox.Text;
             else if (sender == savePasswordCheckBox)
                 Site["Persist Security Info"] = savePasswordCheckBox.Checked;
+            else if (sender == windowsAuthCheckbox)
+            {
+                var integratedSecurity = windowsAuthCheckbox.Checked;
+                Site["Integrated Security"] = integratedSecurity;
+                usernameTextBox.Enabled = !integratedSecurity;
+                passwordTextBox.Enabled = !integratedSecurity;
+                if (integratedSecurity)
+                {
+                    usernameTextBox.Text = "";
+                    passwordTextBox.Text = "";
+                }
+            }
 
             // TODO: Authentication!
         }
