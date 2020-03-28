@@ -51,7 +51,7 @@ namespace Npgsql.TypeMapping
             if (nameTranslator == null)
                 nameTranslator = DefaultNameTranslator;
             if (pgName == null)
-                pgName = GetPgName<TEnum>(nameTranslator);
+                pgName = GetPgName(typeof(TEnum), nameTranslator);
 
             return AddMapping(new NpgsqlTypeMappingBuilder
             {
@@ -70,7 +70,7 @@ namespace Npgsql.TypeMapping
             if (nameTranslator == null)
                 nameTranslator = DefaultNameTranslator;
             if (pgName == null)
-                pgName = GetPgName<TEnum>(nameTranslator);
+                pgName = GetPgName(typeof(TEnum), nameTranslator);
 
             return RemoveMapping(pgName);
         }
@@ -126,10 +126,6 @@ namespace Npgsql.TypeMapping
         #region Misc
 
         // TODO: why does ReSharper think `GetCustomAttribute<T>` is non-nullable?
-        // ReSharper disable once ConstantConditionalAccessQualifier ConstantNullCoalescingCondition
-        static string GetPgName<T>(INpgsqlNameTranslator nameTranslator)
-            => GetPgName(typeof(T), nameTranslator);
-
         // ReSharper disable once ConstantConditionalAccessQualifier ConstantNullCoalescingCondition
         static string GetPgName(Type compType, INpgsqlNameTranslator nameTranslator)
             => compType.GetCustomAttribute<PgNameAttribute>()?.PgName

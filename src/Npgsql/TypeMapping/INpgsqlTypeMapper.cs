@@ -56,7 +56,7 @@ namespace Npgsql.TypeMapping
         /// </remarks>
         /// <param name="pgName">
         /// A PostgreSQL type name for the corresponding enum type in the database.
-        /// If null, the name translator given in <paramref name="nameTranslator"/>will be used.
+        /// If null, the name translator given in <paramref name="nameTranslator"/> will be used.
         /// </param>
         /// <param name="nameTranslator">
         /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
@@ -89,16 +89,16 @@ namespace Npgsql.TypeMapping
         /// Maps a CLR type to a PostgreSQL composite type.
         /// </summary>
         /// <remarks>
-        /// CLR fields and properties by string to PostgreSQL enum labels.
+        /// CLR fields and properties by string to PostgreSQL names.
         /// The translation strategy can be controlled by the <paramref name="nameTranslator"/> parameter,
         /// which defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>.
-        /// You can also use the <see cref="PgNameAttribute"/> on your members to manually specify a PostgreSQL enum label.
-        /// If there is a discrepancy between the .NET and database labels while a composite is read or written,
+        /// You can also use the <see cref="PgNameAttribute"/> on your members to manually specify a PostgreSQL name.
+        /// If there is a discrepancy between the .NET type and database type while a composite is read or written,
         /// an exception will be raised.
         /// </remarks>
         /// <param name="pgName">
-        /// A PostgreSQL type name for the corresponding enum type in the database.
-        /// If null, the name translator given in <paramref name="nameTranslator"/>will be used.
+        /// A PostgreSQL type name for the corresponding composite type in the database.
+        /// If null, the name translator given in <paramref name="nameTranslator"/> will be used.
         /// </param>
         /// <param name="nameTranslator">
         /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
@@ -111,11 +111,11 @@ namespace Npgsql.TypeMapping
             INpgsqlNameTranslator? nameTranslator = null);
 
         /// <summary>
-        /// Removes an existing enum mapping.
+        /// Removes an existing composite mapping.
         /// </summary>
         /// <param name="pgName">
         /// A PostgreSQL type name for the corresponding composite type in the database.
-        /// If null, the name translator given in <paramref name="nameTranslator"/>will be used.
+        /// If null, the name translator given in <paramref name="nameTranslator"/> will be used.
         /// </param>
         /// <param name="nameTranslator">
         /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
@@ -129,16 +129,16 @@ namespace Npgsql.TypeMapping
         /// Maps a CLR type to a composite type.
         /// </summary>
         /// <remarks>
-        /// Maps CLR fields and properties by string to PostgreSQL column names.
+        /// Maps CLR fields and properties by string to PostgreSQL names.
         /// The translation strategy can be controlled by the <paramref name="nameTranslator"/> parameter,
         /// which defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>.
-        /// If there is a discrepancy between the .NET and database column names while a composite is read or written,
+        /// If there is a discrepancy between the .NET type and database type while a composite is read or written,
         /// an exception will be raised.
         /// </remarks>
         /// <param name="compType">The .NET type to be mapped.</param>
         /// <param name="pgName">
         /// A PostgreSQL type name for the corresponding composite type in the database.
-        /// If null, the name translator given in <paramref name="nameTranslator"/>will be used.
+        /// If null, the name translator given in <paramref name="nameTranslator"/> will be used.
         /// </param>
         /// <param name="nameTranslator">
         /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
@@ -151,12 +151,12 @@ namespace Npgsql.TypeMapping
             INpgsqlNameTranslator? nameTranslator = null);
 
         /// <summary>
-        /// Removes an existing composite type.
+        /// Removes an existing composite mapping.
         /// </summary>
         /// <param name="compType">The .NET type to be unmapped.</param>
         /// <param name="pgName">
         /// A PostgreSQL type name for the corresponding composite type in the database.
-        /// If null, the name translator given in <paramref name="nameTranslator"/>will be used.
+        /// If null, the name translator given in <paramref name="nameTranslator"/> will be used.
         /// </param>
         /// <param name="nameTranslator">
         /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
