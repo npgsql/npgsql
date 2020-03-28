@@ -5,6 +5,7 @@ using System.IO;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Util;
 
@@ -86,7 +87,7 @@ namespace Npgsql
         /// Ensures that <paramref name="count"/> bytes are available in the buffer, and if
         /// not, reads from the socket until enough is available.
         /// </summary>
-        public Task Ensure(int count, bool async) => Ensure(count, async, dontBreakOnTimeouts: false);
+        public Task Ensure(int count, bool async, CancellationToken cancellationToken = default) => Ensure(count, async, dontBreakOnTimeouts: false, cancellationToken);
 
         internal void Ensure(int count)
         {
@@ -95,7 +96,7 @@ namespace Npgsql
             Ensure(count, false).GetAwaiter().GetResult();
         }
 
-        internal Task Ensure(int count, bool async, bool dontBreakOnTimeouts)
+        internal Task Ensure(int count, bool async, bool dontBreakOnTimeouts, CancellationToken cancellationToken = default)
         {
             return count <= ReadBytesLeft ? Task.CompletedTask : EnsureLong();
 
@@ -124,7 +125,7 @@ namespace Npgsql
                     {
                         var toRead = Size - FilledBytes;
                         var read = async
-                            ? await Underlying.ReadAsync(Buffer, FilledBytes, toRead)
+                            ? await Underlying.ReadAsync(Buffer, FilledBytes, toRead, cancellationToken)
                             : Underlying.Read(Buffer, FilledBytes, toRead);
 
                         if (read == 0)
@@ -148,6 +149,11 @@ namespace Npgsql
                 }
                 catch (Exception e)
                 {
+                    if (e is OperationCanceledException)
+                    {
+                        e = new TimeoutException("Timeout during reading attempt");
+                    }
+
                     throw Connector.Break(new NpgsqlException("Exception while reading from stream", e));
                 }
             }
@@ -179,7 +185,7 @@ namespace Npgsql
         /// <summary>
         /// Skip a given number of bytes.
         /// </summary>
-        public async Task Skip(long len, bool async)
+        public async Task Skip(long len, bool async, CancellationToken cancellationToken = default)
         {
             Debug.Assert(len >= 0);
 
@@ -189,11 +195,11 @@ namespace Npgsql
                 while (len > Size)
                 {
                     Clear();
-                    await Ensure(Size, async);
+                    await Ensure(Size, async, cancellationToken);
                     len -= Size;
                 }
                 Clear();
-                await Ensure((int)len, async);
+                await Ensure((int)len, async, cancellationToken);
             }
 
             ReadPosition += (int)len;
