@@ -80,33 +80,21 @@ namespace Npgsql.TypeMapping
         #region Composite mapping
 
         public INpgsqlTypeMapper MapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
-        {
+            => MapComposite(typeof(T), pgName, nameTranslator);
+
+        public bool UnmapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+            => UnmapComposite(typeof(T), pgName, nameTranslator);
+
+        public INpgsqlTypeMapper MapComposite(Type compType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null) {
             if (pgName != null && pgName.Trim() == "")
                 throw new ArgumentException("pgName can't be empty", nameof(pgName));
 
             if (nameTranslator == null)
                 nameTranslator = DefaultNameTranslator;
             if (pgName == null)
-                pgName = GetPgName<T>(nameTranslator);
+                pgName = GetPgName(compType, nameTranslator);
 
-            return AddMapping(new NpgsqlTypeMappingBuilder
-            {
-                PgTypeName = pgName,
-                ClrTypes = new[] { typeof(T) },
-                TypeHandlerFactory = new CompositeTypeHandlerFactory<T>(nameTranslator)
-            }.Build());
-        }
-
-        public INpgsqlTypeMapper MapComposite(Type compType, string pgName, INpgsqlNameTranslator? nameTranslator = null)
-        {
-            if (string.IsNullOrWhiteSpace(pgName))
-                throw new ArgumentException("pgName can't be empty", nameof(pgName));
-
-            if (nameTranslator == null)
-                nameTranslator = DefaultNameTranslator;
-
-            Type thfType = typeof(CompositeTypeHandlerFactory<>);
-
+            var thfType = typeof(CompositeTypeHandlerFactory<>);
             var thf = (NpgsqlTypeHandlerFactory)Activator.CreateInstance(
                 thfType.MakeGenericType(compType),
                 BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
@@ -121,15 +109,14 @@ namespace Npgsql.TypeMapping
             }.Build());
         }
 
-        public bool UnmapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
-        {
+        public bool UnmapComposite(Type compType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null) {
             if (pgName != null && pgName.Trim() == "")
                 throw new ArgumentException("pgName can't be empty", nameof(pgName));
 
             if (nameTranslator == null)
                 nameTranslator = DefaultNameTranslator;
             if (pgName == null)
-                pgName = GetPgName<T>(nameTranslator);
+                pgName = GetPgName(compType, nameTranslator);
 
             return RemoveMapping(pgName);
         }
@@ -141,8 +128,12 @@ namespace Npgsql.TypeMapping
         // TODO: why does ReSharper think `GetCustomAttribute<T>` is non-nullable?
         // ReSharper disable once ConstantConditionalAccessQualifier ConstantNullCoalescingCondition
         static string GetPgName<T>(INpgsqlNameTranslator nameTranslator)
-            => typeof(T).GetCustomAttribute<PgNameAttribute>()?.PgName
-               ?? nameTranslator.TranslateTypeName(typeof(T).Name);
+            => GetPgName(typeof(T), nameTranslator);
+
+        // ReSharper disable once ConstantConditionalAccessQualifier ConstantNullCoalescingCondition
+        static string GetPgName(Type compType, INpgsqlNameTranslator nameTranslator)
+            => compType.GetCustomAttribute<PgNameAttribute>()?.PgName
+               ?? nameTranslator.TranslateTypeName(compType.Name);
 
         #endregion Misc
     }

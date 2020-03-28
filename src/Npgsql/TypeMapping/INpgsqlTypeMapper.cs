@@ -111,31 +111,6 @@ namespace Npgsql.TypeMapping
             INpgsqlNameTranslator? nameTranslator = null);
 
         /// <summary>
-        /// Maps a CLR type to a PostgreSQL composite type.
-        /// </summary>
-        /// <remarks>
-        /// Maps CLR fields and properties by string to PostgreSQL column names.
-        /// The translation strategy can be controlled by the <paramref name="nameTranslator"/> parameter,
-        /// which defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>.
-        /// If there is a discrepancy between the .NET and database column names while a composite is read or written,
-        /// an exception will be raised.
-        /// </remarks>
-        /// <param name="compType">The .NET type to be mapped</param>
-        /// <param name="pgName">
-        /// A PostgreSQL type name for the corresponding type in the database. This type is required and must exist in the PostgreSQL database.
-        /// </param>
-        /// <param name="nameTranslator">
-        /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
-        /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
-        /// </param>
-        [NotNull]
-        INpgsqlTypeMapper MapComposite(
-            Type compType,
-            string pgName,
-            INpgsqlNameTranslator? nameTranslator = null);
-
-
-        /// <summary>
         /// Removes an existing enum mapping.
         /// </summary>
         /// <param name="pgName">
@@ -147,6 +122,48 @@ namespace Npgsql.TypeMapping
         /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
         bool UnmapComposite<T>(
+            string? pgName = null,
+            INpgsqlNameTranslator? nameTranslator = null);
+
+        /// <summary>
+        /// Maps a CLR type to a composite type.
+        /// </summary>
+        /// <remarks>
+        /// Maps CLR fields and properties by string to PostgreSQL column names.
+        /// The translation strategy can be controlled by the <paramref name="nameTranslator"/> parameter,
+        /// which defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>.
+        /// If there is a discrepancy between the .NET and database column names while a composite is read or written,
+        /// an exception will be raised.
+        /// </remarks>
+        /// <param name="compType">The .NET type to be mapped.</param>
+        /// <param name="pgName">
+        /// A PostgreSQL type name for the corresponding composite type in the database.
+        /// If null, the name translator given in <paramref name="nameTranslator"/>will be used.
+        /// </param>
+        /// <param name="nameTranslator">
+        /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
+        /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
+        /// </param>
+        [NotNull]
+        INpgsqlTypeMapper MapComposite(
+            Type compType,
+            string? pgName = null,
+            INpgsqlNameTranslator? nameTranslator = null);
+
+        /// <summary>
+        /// Removes an existing composite type.
+        /// </summary>
+        /// <param name="compType">The .NET type to be unmapped.</param>
+        /// <param name="pgName">
+        /// A PostgreSQL type name for the corresponding composite type in the database.
+        /// If null, the name translator given in <paramref name="nameTranslator"/>will be used.
+        /// </param>
+        /// <param name="nameTranslator">
+        /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
+        /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
+        /// </param>
+        bool UnmapComposite(
+            Type compType,
             string? pgName = null,
             INpgsqlNameTranslator? nameTranslator = null);
 
