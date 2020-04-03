@@ -148,6 +148,19 @@ namespace Npgsql.Tests.Types
             Assert.That(reader.GetFieldValue<int[,]>(0), Is.EqualTo(expected));
         }
 
+        [Test, Description("Verifies that an InvalidOperationException is thrown when the returned array has a different number of dimensions from what was requested.")]
+        public void WrongArrayDimensions()
+        {
+            using var conn = OpenConnection();
+            using var cmd = new NpgsqlCommand("SELECT ARRAY[[1], [2]]", conn);
+
+            var reader = cmd.ExecuteReader();
+            reader.Read();
+
+            var ex = Assert.Throws<InvalidOperationException>(() => reader.GetFieldValue<int[]>(0));
+            Assert.That(ex.Message, Is.EqualTo("Cannot read an array with 1 dimension(s) from an array with 2 dimension(s)"));
+        }
+
         [Test, Description("Verifies that the array type returned from NpgsqlDataReader.GetValue() is always compatible with null values.")]
         public void GetValueArrayTypeForValueTypesIsNullable()
         {
