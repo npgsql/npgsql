@@ -168,7 +168,9 @@ namespace Npgsql.TypeHandlers
             return list;
         }
 
-        const string ReadNonNullableCollectionWithNullsExceptionMessage = "Cannot read a non-nullable collection of elements because the returned array contains nulls";
+        internal const string ReadNonNullableCollectionWithNullsExceptionMessage =
+            "Cannot read a non-nullable collection of elements because the returned array contains nulls. " +
+            "Call GetFieldValue with a nullable array instead.";
 
         #endregion Read
 
@@ -180,29 +182,6 @@ namespace Npgsql.TypeHandlers
                 typeof(TElement).IsValueType && Nullable.GetUnderlyingType(typeof(TElement)) is null;
 
             public static readonly List<TElement> EmptyList = new List<TElement>(0);
-            // ReSharper disable StaticMemberInGenericType
-            public static readonly Func<ArrayHandler, NpgsqlReadBuffer, bool, ValueTask<Array>> ReadNullableArrayFunc = default!;
-            // ReSharper restore StaticMemberInGenericType
-
-            static ElementTypeInfo()
-            {
-                if (!IsNonNullable)
-                    return;
-
-                var arrayHandlerParam = Expression.Parameter(typeof(ArrayHandler), "arrayHandler");
-                var bufferParam = Expression.Parameter(typeof(NpgsqlReadBuffer), "buf");
-                var asyncParam = Expression.Parameter(typeof(bool), "async");
-
-                ReadNullableArrayFunc = Expression
-                    .Lambda<Func<ArrayHandler, NpgsqlReadBuffer, bool, ValueTask<Array>>>(
-                        Expression.Call(
-                            arrayHandlerParam,
-                            ReadArrayMethod.MakeGenericMethod(
-                                typeof(Nullable<>).MakeGenericType(typeof(TElement))),
-                            bufferParam, asyncParam, Expression.Constant(0)),
-                        arrayHandlerParam, bufferParam, asyncParam)
-                    .Compile();
-            }
         }
 
         internal static class ArrayTypeInfo<TArrayOrList>
@@ -286,21 +265,10 @@ namespace Npgsql.TypeHandlers
         #region Read
 
         internal override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
-            => ReadAsNullable(fieldDescription)
-                ? await ElementTypeInfo<TElement>.ReadNullableArrayFunc(this, buf, async)
-                : await ReadArray<TElement>(buf, async);
+            =>  await ReadArray<TElement>(buf, async);
 
         internal override object ReadAsObject(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-            => ReadAsNullable(fieldDescription)
-                ? ElementTypeInfo<TElement>.ReadNullableArrayFunc(this, buf, false).GetAwaiter().GetResult()
-                : ReadArray<TElement>(buf, false).GetAwaiter().GetResult();
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        static bool ReadAsNullable(FieldDescription? fieldDescription)
-            => typeof(TElement).IsValueType &&
-               !(fieldDescription?.PostgresType is PostgresArrayType arrayType &&
-                 arrayType.Element is PostgresDomainType domainType &&
-                 domainType.NotNull);
+            => ReadArray<TElement>(buf, false).GetAwaiter().GetResult();
 
         #endregion
 

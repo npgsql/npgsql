@@ -5,6 +5,7 @@ using System.Data;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using Npgsql.TypeHandlers;
 using NpgsqlTypes;
 using NUnit.Framework;
 using NUnit.Framework.Internal;
@@ -84,6 +85,7 @@ namespace Npgsql.Tests.Types
                 for (var i = 0; i < cmd.Parameters.Count; i++)
                 {
                     Assert.That(reader.GetValue(i), Is.EqualTo(expected));
+                    Assert.That(reader.GetValue(i), Is.TypeOf<int[]>());
                     Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(expected));
                     Assert.That(reader.GetFieldValue<int[]>(i), Is.EqualTo(expected));
                     Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(Array)));
@@ -111,13 +113,24 @@ namespace Npgsql.Tests.Types
 
             for (var i = 0; i < cmd.Parameters.Count; i++)
             {
-                Assert.That(reader.GetValue(i), Is.EqualTo(expected));
-                Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(expected));
                 Assert.That(reader.GetFieldValue<int?[]>(i), Is.EqualTo(expected));
                 Assert.That(reader.GetFieldValue<List<int?>>(i), Is.EqualTo(expected.ToList()));
                 Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(Array)));
                 Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof(Array)));
             }
+        }
+
+        [Test, Description("Checks that PG arrays containing nulls can't be read as CLR arrays of non-nullable value types.")]
+        public void NullableIntsCannotBeReadAsNonNullable()
+        {
+            using var conn = OpenConnection();
+            using var cmd = new NpgsqlCommand("SELECT '{1, NULL, 2}'::integer[]", conn);
+            using var reader = cmd.ExecuteReader();
+            reader.Read();
+
+            Assert.That(() => reader.GetFieldValue<int[]>(0), Throws.Exception.TypeOf<InvalidOperationException>());
+            Assert.That(() => reader.GetFieldValue<List<int>>(0), Throws.Exception.TypeOf<InvalidOperationException>());
+            Assert.That(() => reader.GetValue(0), Throws.Exception.TypeOf<InvalidOperationException>());
         }
 
         [Test]
@@ -160,91 +173,42 @@ namespace Npgsql.Tests.Types
             var ex = Assert.Throws<InvalidOperationException>(() => reader.GetFieldValue<int[]>(0));
             Assert.That(ex.Message, Is.EqualTo("Cannot read an array with 1 dimension(s) from an array with 2 dimension(s)"));
         }
-
-        [Test, Description("Verifies that the array type returned from NpgsqlDataReader.GetValue() is always compatible with null values.")]
-        public void GetValueArrayTypeForValueTypesIsNullable()
-        {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand(@"
-                CREATE TEMP TABLE GetValueArrayTypeForValueTypesDependsOnActualValue
-                (
-	                col1 integer[4] NOT NULL
-                );
-                INSERT into GetValueArrayTypeForValueTypesDependsOnActualValue VALUES
-                (ARRAY[1, 2, 3, 4]),
-                (ARRAY[null, 1, 2, 3]);
-                SELECT * FROM GetValueArrayTypeForValueTypesDependsOnActualValue;
-                ", conn))
-            {
-                var reader = cmd.ExecuteReader();
-                reader.Read();
-                Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
-                Assert.That(reader.GetValue(0), Is.TypeOf<int?[]>());
-
-                reader.Read();
-                Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
-                Assert.That(reader.GetValue(0), Is.TypeOf<int?[]>());
-            }
-        }
-
-        [Test, Description("Verifies that the array type returned from NpgsqlDataReader.GetValue() handles NOT NULL constraints on domains correctly.")]
-        public void GetValueRespectsNotNullConstraintsOnDomainsInArrays()
+        
+        [Test, Description("Verifies that an attempt to read an Array of value types that contains null values as array of a non-nullable type fails.")]
+        public void ReadNullAsNonNullableArrayFails()
         {
             using var conn = OpenConnection();
-            TestUtil.MinimumPgVersion(conn, "11.0", "Arrays of domains were introduced in PostgreSQL 11");
-            conn.ExecuteNonQuery("CREATE DOMAIN pg_temp.int_not_null AS integer NOT NULL;");
-            conn.ExecuteNonQuery("CREATE DOMAIN pg_temp.int_null AS integer;");
-            conn.ReloadTypes();
+            using var cmd = new NpgsqlCommand("SELECT @p1", conn);
 
-            using var cmd = new NpgsqlCommand(@"SELECT '{1,2,3,4}'::pg_temp.int_not_null[], '{1,2,3,4}'::pg_temp.int_null[];", conn);
+            var expected = new int?[] { 1, 5, null, 9 };
+            cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Array | NpgsqlDbType.Integer, expected);
+
             var reader = cmd.ExecuteReader();
             reader.Read();
-            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
-            Assert.That(reader.GetValue(0), Is.TypeOf<int[]>());
-            Assert.That(reader.GetFieldValue<int?[]>(0), Is.TypeOf<int?[]>());
 
-            Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(Array)));
-            Assert.That(reader.GetValue(1), Is.TypeOf<int?[]>());
-            Assert.That(reader.GetFieldValue<int[]>(1), Is.TypeOf<int[]>());
-        }
-
-        [Test, Description("Verifies that an attempt to read an Array of value types that contains null values as array of a non-nullable type fails.")]
-        public void GetFieldValueNonNullableValueTypeArrayFailsOnArrayContainingNull()
-        {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT @p1", conn))
-            {
-                var expected = new int?[] { 1, 5, null, 9 };
-                cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Array | NpgsqlDbType.Integer, expected);
-
-                var reader = cmd.ExecuteReader();
-                reader.Read();
-
-                Assert.That(
-                    () => reader.GetFieldValue<int[]>(0),
-                    Throws.Exception.TypeOf<InvalidOperationException>()
-                        .With.Message.EqualTo("Cannot read a non-nullable collection of elements because the returned array contains nulls"));
-            }
+            Assert.That(
+                () => reader.GetFieldValue<int[]>(0),
+                Throws.Exception.TypeOf<InvalidOperationException>()
+                    .With.Message.EqualTo(ArrayHandler.ReadNonNullableCollectionWithNullsExceptionMessage));
         }
 
 
         [Test, Description("Verifies that an attempt to read an Array of value types that contains null values as List of a non-nullable type fails.")]
-        public void GetFieldValueNonNullableValueTypeListFailsOnArrayContainingNull()
+        public void ReadNullAsNonNullableListFails()
         {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT @p1", conn))
-            {
-                var expected = new int?[] { 1, 5, null, 9 };
-                cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Array | NpgsqlDbType.Integer, expected);
+            using var conn = OpenConnection();
+            using var cmd = new NpgsqlCommand("SELECT @p1", conn);
 
-                var reader = cmd.ExecuteReader();
-                reader.Read();
+            var expected = new int?[] { 1, 5, null, 9 };
+            cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Array | NpgsqlDbType.Integer, expected);
 
-                Assert.That(
-                    () => reader.GetFieldValue<List<int>>(0),
-                    Throws.Exception.TypeOf<InvalidOperationException>()
-                        .With.Message.EqualTo("Cannot read a non-nullable collection of elements because the returned array contains nulls"));
-            }
+            var reader = cmd.ExecuteReader();
+            reader.Read();
+
+            Assert.That(
+                () => reader.GetFieldValue<List<int>>(0),
+                Throws.Exception.TypeOf<InvalidOperationException>()
+                    .With.Message.EqualTo(ArrayHandler.ReadNonNullableCollectionWithNullsExceptionMessage));
         }
 
         [Test, Description("Roundtrips a large, one-dimensional array of ints that will be chunked")]
