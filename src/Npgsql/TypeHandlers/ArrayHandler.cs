@@ -75,7 +75,7 @@ namespace Npgsql.TypeHandlers
         protected internal override async ValueTask<TAny> Read<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
             if (IsArrayOf<TAny, TElement>.Value)
-                return (TAny)(object)await ReadArray<TElement>(buf, async);
+                return (TAny)(object)await ReadArray<TElement>(buf, async, typeof(TAny).GetArrayRank());
 
             if (typeof(TAny) == typeof(List<TElement>))
                 return (TAny)(object)await ReadList<TElement>(buf, async);
@@ -96,7 +96,7 @@ namespace Npgsql.TypeHandlers
         /// <summary>
         /// Reads an array of element type <typeparamref name="TAnyElement"/> from the given buffer <paramref name="buf"/>.
         /// </summary>
-        protected async ValueTask<Array> ReadArray<TAnyElement>(NpgsqlReadBuffer buf, bool async)
+        protected async ValueTask<Array> ReadArray<TAnyElement>(NpgsqlReadBuffer buf, bool async, int expectedDimensions = 0)
         {
             await buf.Ensure(12, async);
             var dimensions = buf.ReadInt32();
@@ -113,7 +113,12 @@ namespace Npgsql.TypeHandlers
             }
 
             if (dimensions == 0)
-                return new TAnyElement[0];   // TODO: static instance
+                return expectedDimensions > 1
+                    ? Array.CreateInstance(typeof(TAnyElement), new int[expectedDimensions])
+                    : Array.Empty<TAnyElement>();
+
+            if (expectedDimensions > 0 && dimensions != expectedDimensions)
+                throw new InvalidOperationException($"Cannot read an array with {expectedDimensions} dimension(s) from an array with {dimensions} dimension(s)");
 
             var result = Array.CreateInstance(typeof(TAnyElement), dimLengths);
 
@@ -390,7 +395,7 @@ namespace Npgsql.TypeHandlers
         protected internal override async ValueTask<TAny> Read<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
             if (IsArrayOf<TAny, TElementPsv>.Value)
-                return (TAny)(object)await ReadArray<TElementPsv>(buf, async);
+                return (TAny)(object)await ReadArray<TElementPsv>(buf, async, typeof(TAny).GetArrayRank());
 
             if (typeof(TAny) == typeof(List<TElementPsv>))
                 return (TAny)(object)await ReadList<TElementPsv>(buf, async);
