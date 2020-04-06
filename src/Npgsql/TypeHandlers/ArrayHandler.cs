@@ -75,7 +75,7 @@ namespace Npgsql.TypeHandlers
         /// <summary>
         /// Reads an array of element type <typeparamref name="TRequestedElement"/> from the given buffer <paramref name="buf"/>.
         /// </summary>
-        protected async ValueTask<Array> ReadArray<TRequestedElement>(NpgsqlReadBuffer buf, bool async)
+        protected async ValueTask<Array> ReadArray<TRequestedElement>(NpgsqlReadBuffer buf, bool async, int expectedDimensions = 0)
         {
             await buf.Ensure(12, async);
             var dimensions = buf.ReadInt32();
@@ -86,7 +86,10 @@ namespace Npgsql.TypeHandlers
                 throw new InvalidOperationException(ReadNonNullableCollectionWithNullsExceptionMessage);
 
             if (dimensions == 0)
-                return Array.Empty<TRequestedElement>();
+                return expectedDimensions > 1 ? Array.CreateInstance(typeof(TRequestedElement), new int[expectedDimensions]) : Array.Empty<TRequestedElement>();
+
+            if (expectedDimensions > 0 && dimensions != expectedDimensions)
+                throw new InvalidOperationException($"Cannot read an array with {expectedDimensions} dimension(s) from an array with {dimensions} dimension(s)");
 
             if (dimensions == 1)
             {
@@ -221,7 +224,7 @@ namespace Npgsql.TypeHandlers
                             Expression.Call(
                                 arrayHandlerParam,
                                 ReadArrayMethod.MakeGenericMethod(ElementType),
-                                bufferParam, asyncParam),
+                                bufferParam, asyncParam, Expression.Constant(type.GetArrayRank())),
                             arrayHandlerParam, bufferParam, asyncParam)
                         .Compile();
                 }
@@ -485,7 +488,7 @@ namespace Npgsql.TypeHandlers
             if (ArrayTypeInfo<TRequestedArray>.ElementType == typeof(TElementPsv))
             {
                 if (ArrayTypeInfo<TRequestedArray>.IsArray)
-                    return (TRequestedArray)(object)await ReadArray<TElementPsv>(buf, async);
+                    return (TRequestedArray)(object)await ReadArray<TElementPsv>(buf, async, typeof(TRequestedArray).GetArrayRank());
 
                 if (ArrayTypeInfo<TRequestedArray>.IsList)
                     return (TRequestedArray)(object)await ReadList<TElementPsv>(buf, async);
