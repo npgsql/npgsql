@@ -78,11 +78,11 @@ jobs:
 
       # TODO: Once test/Npgsql.Specification.Tests work, switch to just testing on the solution
       - name: Test
-        run: dotnet test test/Npgsql.Tests --configuration Debug
+        run: dotnet test test/Npgsql.Tests --configuration Debug --logger GitHubActions
         shell: bash
 
       - name: Test Plugins
-        run: dotnet test test/Npgsql.PluginTests --configuration Debug
+        run: dotnet test test/Npgsql.PluginTests --configuration Debug --logger GitHubActions
         shell: bash
 
   publish:
