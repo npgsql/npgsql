@@ -238,7 +238,7 @@ namespace Npgsql
                                 // First, check to see if we have a connection enlisted to this transaction which has been closed.
                                 // If so, return that as an optimization rather than opening a new one and triggering escalation
                                 // to a distributed transaction.
-                                Connector = _pool.TryAllocateEnlistedPending(Transaction.Current);
+                                Connector = _pool.TryAllocateEnlistedPending(transaction);
                                 if (Connector != null)
                                 {
                                     Connector.Connection = this;

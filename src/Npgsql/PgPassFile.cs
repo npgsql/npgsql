@@ -79,7 +79,7 @@ namespace Npgsql
             /// <summary>
             /// Password parsed from the .pgpass file
             /// </summary>
-            internal string Password { get; }
+            internal string? Password { get; }
 
             #endregion
 
@@ -93,7 +93,7 @@ namespace Npgsql
             /// <param name="database">Database parsed from the .pgpass file</param>
             /// <param name="username">User name parsed from the .pgpass file</param>
             /// <param name="password">Password parsed from the .pgpass file</param>
-            Entry(string host, int? port, string database, string username, string password)
+            Entry(string? host, int? port, string? database, string? username, string? password)
             {
                 Host = host;
                 Port = port;
@@ -111,23 +111,23 @@ namespace Npgsql
             internal static Entry Parse(string serializedEntry)
             {
                 var parts = Regex.Split(serializedEntry, @"(?<!\\):"); // split on any colons that aren't preceded by a \ (\ indicates that the colon is part of the content and not a separator)
-                if (parts == null || parts.Length != 5)
+                if (parts is null || parts.Length != 5)
                     throw new FormatException("pgpass entry was not well-formed. Please ensure all non-comment entries are formatted as hostname:port:database:username:password. If colon is included, it must be escaped like \\:.");
 
-                parts = parts
+                var processedParts = parts
                     .Select(part => part.Replace("\\:", ":").Replace("\\\\", "\\")) // unescape any escaped characters
                     .Select(part => part == PgPassWildcard ? null : part)
                     .ToArray();
 
                 int? port = null;
-                if (parts[1] != null)
+                if (processedParts[1] != null)
                 {
-                    if (!int.TryParse(parts[1], out var tempPort))
+                    if (!int.TryParse(processedParts[1], out var tempPort))
                         throw new FormatException("pgpass entry was not formatted correctly. Port must be a valid integer.");
                     port = tempPort;
                 }
 
-                return new Entry(parts[0], port, parts[2], parts[3], parts[4]);
+                return new Entry(processedParts[0], port, processedParts[2], processedParts[3], processedParts[4]);
             }
 
             #endregion

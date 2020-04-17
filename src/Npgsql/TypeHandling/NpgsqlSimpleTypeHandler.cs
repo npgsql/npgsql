@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
+using Npgsql.Util;
 
 namespace Npgsql.TypeHandling
 {
@@ -268,7 +269,7 @@ namespace Npgsql.TypeHandling
                         resultVariable,
                         Expression.Call(
                             Expression.Convert(handlerParam, i),
-                            i.GetMethod(nameof(INpgsqlSimpleTypeHandler<TDefault>.ValidateAndGetLength)),
+                            i.GetMethod(nameof(INpgsqlSimpleTypeHandler<TDefault>.ValidateAndGetLength))!,
                             // Cast the value from object down to the interface's T
                             Expression.Convert(valueParam, handledType),
                             parameterParam
@@ -278,15 +279,15 @@ namespace Npgsql.TypeHandling
                     // Otherwise we stick the previous interface's IfThenElse in our else clause
                     ifElseExpression ?? Expression.Throw(
                         Expression.New(
-                            typeof(InvalidCastException).GetConstructor(new[] { typeof(string) }),
+                            MethodInfos.InvalidCastExceptionCtor,
                             Expression.Call(  // Call string.Format to generate a nice informative exception message
-                                typeof(string).GetMethod(nameof(string.Format), new[] { typeof(string), typeof(object) }),
+                                MethodInfos.StringFormat,
                                 new Expression[]
                                 {
                                     Expression.Constant($"Can't write CLR type {{0}} with handler type {handlerType.Name}"),
                                     Expression.Call(  // GetType() on the value
                                         valueParam,
-                                        typeof(object).GetMethod(nameof(GetType), new Type[0])
+                                        MethodInfos.ObjectGetType
                                     )
                                 }
                             )
@@ -295,11 +296,11 @@ namespace Npgsql.TypeHandling
                 );
             }
 
+            if (ifElseExpression is null)
+                throw new Exception($"Type handler {handlerType.GetType().Name} does not implement the proper interface");
+
             return Expression.Lambda<NonGenericValidateAndGetLength>(
-                Expression.Block(
-                    new[] { resultVariable },
-                    ifElseExpression, resultVariable
-                ),
+                Expression.Block(new[] { resultVariable }, ifElseExpression, resultVariable),
                 handlerParam, valueParam, lengthCacheParam, parameterParam
             ).Compile();
         }

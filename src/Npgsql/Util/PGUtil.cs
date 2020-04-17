@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
@@ -123,5 +124,17 @@ namespace Npgsql.Util
         internal bool HasExpired => DateTime.UtcNow >= Expiration;
 
         internal TimeSpan TimeLeft => IsSet ? Expiration - DateTime.UtcNow : Timeout.InfiniteTimeSpan;
+    }
+
+    static class MethodInfos
+    {
+        internal static readonly ConstructorInfo InvalidCastExceptionCtor =
+            typeof(InvalidCastException).GetConstructor(new[] { typeof(string) })!;
+
+        internal static readonly MethodInfo StringFormat =
+            typeof(string).GetMethod(nameof(string.Format), new[] { typeof(string), typeof(object) })!;
+
+        internal static readonly MethodInfo ObjectGetType =
+            typeof(object).GetMethod(nameof(GetType), new Type[0])!;
     }
 }

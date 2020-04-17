@@ -224,6 +224,9 @@ namespace Npgsql.TypeHandling
                 );
             }
 
+            if (ifElseExpression is null)
+                throw new Exception($"Type handler {handlerType.GetType().Name} does not implement the proper interface");
+
             return Expression.Lambda<NonGenericWriteWithLength>(
                 Expression.Block(
                     new[] { resultVariable },
