@@ -122,7 +122,7 @@ namespace Npgsql.BackendMessages
 
             // We should really have CompareOptions.IgnoreKanaType here, but see
             // https://github.com/dotnet/corefx/issues/12518#issuecomment-389658716
-            public bool Equals(string x, string y)
+            public bool Equals(string? x, string? y)
                 => CompareInfo.Compare(x, y, CompareOptions.IgnoreWidth | CompareOptions.IgnoreCase | CompareOptions.IgnoreKanaType) == 0;
 
             public int GetHashCode(string o)

@@ -3,7 +3,7 @@
 
   <!-- Build configuration -->
   <PropertyGroup>
-    <TargetFrameworks>net461;netcoreapp3.1</TargetFrameworks>
+    <TargetFrameworks>net461;netcoreapp5.0</TargetFrameworks>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
