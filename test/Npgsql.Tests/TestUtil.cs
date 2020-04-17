@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text;
 using System.Threading;
@@ -161,6 +162,7 @@ namespace Npgsql.Tests
 
     public static class NpgsqlCommandExtensions
     {
+        [return: MaybeNull]
         public static T ExecuteScalar<T>(this NpgsqlCommand cmd)
         {
             using (var rdr = cmd.ExecuteReader())
