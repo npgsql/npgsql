@@ -45,6 +45,12 @@ namespace Npgsql
                 UseShellExecute = false
             };
             var process = Process.Start(processStartInfo);
+            if (process is null)
+            {
+                Log.Debug($"klist process could not be started");
+                return;
+            }
+
             process.WaitForExit();
             if (process.ExitCode != 0)
             {

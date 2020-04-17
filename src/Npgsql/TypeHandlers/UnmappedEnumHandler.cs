@@ -123,7 +123,7 @@ namespace Npgsql.TypeHandlers
 
             foreach (var field in type.GetFields(BindingFlags.Static | BindingFlags.Public))
             {
-                var attribute = (PgNameAttribute)field.GetCustomAttributes(typeof(PgNameAttribute), false).FirstOrDefault();
+                var attribute = (PgNameAttribute?)field.GetCustomAttributes(typeof(PgNameAttribute), false).FirstOrDefault();
                 var enumName = attribute?.PgName ?? _nameTranslator.TranslateMemberName(field.Name);
                 var enumValue = (Enum)field.GetValue(null)!;
 

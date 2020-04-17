@@ -98,8 +98,8 @@ namespace Npgsql.TypeHandlers
 
             foreach (var field in typeof(TEnum).GetFields(BindingFlags.Static | BindingFlags.Public))
             {
-                var attribute = (PgNameAttribute)field.GetCustomAttributes(typeof(PgNameAttribute), false).FirstOrDefault();
-                var enumName = attribute == null
+                var attribute = (PgNameAttribute?)field.GetCustomAttributes(typeof(PgNameAttribute), false).FirstOrDefault();
+                var enumName = attribute is null
                     ? nameTranslator.TranslateMemberName(field.Name)
                     : attribute.PgName;
                 var enumValue = (TEnum)field.GetValue(null)!;

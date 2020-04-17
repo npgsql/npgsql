@@ -541,7 +541,7 @@ namespace Npgsql
                         }
 
                         if (certPathExists)
-                            clientCertificates.Add(new X509Certificate(certPath));
+                            clientCertificates.Add(new X509Certificate(certPath!));
 
                         ProvideClientCertificatesCallback?.Invoke(clientCertificates);
 
@@ -644,7 +644,7 @@ namespace Npgsql
                     var write = new List<Socket> { socket };
                     var error = new List<Socket> { socket };
                     Socket.Select(null, write, error, perEndpointTimeout);
-                    var errorCode = (int) socket.GetSocketOption(SocketOptionLevel.Socket, SocketOptionName.Error);
+                    var errorCode = (int) socket.GetSocketOption(SocketOptionLevel.Socket, SocketOptionName.Error)!;
                     if (errorCode != 0)
                         throw new SocketException(errorCode);
                     if (!write.Any())
@@ -1118,7 +1118,7 @@ namespace Npgsql
         internal bool IsSecure { get; private set; }
 
 #pragma warning disable CA1801 // Review unused parameters
-        static bool DefaultUserCertificateValidationCallback(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
+        static bool DefaultUserCertificateValidationCallback(object sender, X509Certificate? certificate, X509Chain? chain, SslPolicyErrors sslPolicyErrors)
             => sslPolicyErrors == SslPolicyErrors.None;
 #pragma warning restore CA1801 // Review unused parameters
 

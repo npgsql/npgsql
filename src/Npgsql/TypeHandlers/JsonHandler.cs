@@ -250,7 +250,7 @@ namespace Npgsql.TypeHandlers
                 var s = await _textHandler.Read(buf, byteLen, async, fieldDescription);
                 return typeof(T) == typeof(JsonDocument)
                     ? (T)(object)JsonDocument.Parse(s)
-                    : JsonSerializer.Deserialize<T>(s, _serializerOptions);
+                    : JsonSerializer.Deserialize<T>(s, _serializerOptions)!;
             }
             catch (Exception e)
             {
