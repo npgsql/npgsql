@@ -279,16 +279,4 @@ namespace Npgsql.Tests
         Prepared,
         NotPrepared
     }
-
-#if !NET461
-    // When using netcoreapp, we use NUnit's portable library which doesn't include TimeoutAttribute
-    // (probably because it can't enforce it). So we define it here to allow us to compile, once there's
-    // proper support for netcoreapp this should be removed.
-    // https://github.com/nunit/nunit/issues/1638
-    [AttributeUsage(AttributeTargets.Assembly | AttributeTargets.Class | AttributeTargets.Method, Inherited = false)]
-    class TimeoutAttribute : Attribute
-    {
-        public TimeoutAttribute(int timeout) {}
-    }
-#endif
 }
