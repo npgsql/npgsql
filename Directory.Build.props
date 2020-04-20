@@ -4,7 +4,7 @@
     <Copyright>Copyright 2020 © The Npgsql Development Team</Copyright>
     <Company>Npgsql</Company>
     <VersionPrefix>5.0.0</VersionPrefix>
-    <NoWarn>NU5105</NoWarn>
+    <NoWarn>$(NoWarn);NU5105</NoWarn>
     <SuppressNETCoreSdkPreviewMessage>true</SuppressNETCoreSdkPreviewMessage>
 
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
@@ -21,7 +21,14 @@
   <PropertyGroup>
     <LangVersion>8.0</LangVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(TargetFramework)' != 'net461' And '$(TargetFramework)' != 'netstandard2.0' ">
     <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" $(Nullable) != 'enable' ">
+    <NoWarn>$(NoWarn);CS8632</NoWarn>
   </PropertyGroup>
 
   <!-- Signing configuration -->
