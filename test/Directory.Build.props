@@ -3,7 +3,8 @@
 
   <!-- Build configuration -->
   <PropertyGroup>
-    <TargetFrameworks>net461;netcoreapp5.0</TargetFrameworks>
+    <TargetFrameworks>netcoreapp5.0</TargetFrameworks>
+    <TargetFrameworks Condition="'$(DeveloperBuild)' != 'True'">$(TargetFrameworks);net461</TargetFrameworks>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
