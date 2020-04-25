@@ -607,55 +607,12 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void StringEscapeSyntax()
+        public void NonStandardsConformingStrings_NotSupported()
         {
-            using (var conn = OpenConnection())
-            {
+            using var conn = OpenConnection();
 
-                //the next command will fail on earlier postgres versions, but that is not a bug in itself.
-                try
-                {
-                    conn.ExecuteNonQuery("set standard_conforming_strings=off;set escape_string_warning=off");
-                }
-                catch
-                {
-                }
-                var cmdTxt = "select :par";
-                var command = new NpgsqlCommand(cmdTxt, conn);
-                var arrCommand = new NpgsqlCommand(cmdTxt, conn);
-                var testStrPar = "This string has a single quote: ', a double quote: \", and a backslash: \\";
-                var testArrPar = new string[,] {{testStrPar, ""}, {testStrPar, testStrPar}};
-                command.Parameters.AddWithValue(":par", testStrPar);
-                using (var rdr = command.ExecuteReader())
-                {
-                    rdr.Read();
-                    Assert.AreEqual(rdr.GetString(0), testStrPar);
-                }
-                arrCommand.Parameters.AddWithValue(":par", testArrPar);
-                using (var rdr = arrCommand.ExecuteReader())
-                {
-                    rdr.Read();
-                    Assert.AreEqual(((string[,]) rdr.GetValue(0))[0, 0], testStrPar);
-                }
-
-                try //the next command will fail on earlier postgres versions, but that is not a bug in itself.
-                {
-                    conn.ExecuteNonQuery("set standard_conforming_strings=on;set escape_string_warning=on");
-                }
-                catch
-                {
-                }
-                using (var rdr = command.ExecuteReader())
-                {
-                    rdr.Read();
-                    Assert.AreEqual(rdr.GetString(0), testStrPar);
-                }
-                using (var rdr = arrCommand.ExecuteReader())
-                {
-                    rdr.Read();
-                    Assert.AreEqual(((string[,]) rdr.GetValue(0))[0, 0], testStrPar);
-                }
-            }
+            Assert.That(() => conn.ExecuteNonQuery("set standard_conforming_strings=off"),
+                Throws.Exception.TypeOf<NotSupportedException>());
         }
 
         [Test]

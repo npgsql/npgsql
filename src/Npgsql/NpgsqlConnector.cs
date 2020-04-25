@@ -1861,8 +1861,6 @@ namespace Npgsql
 
         #region Supported features and PostgreSQL settings
 
-        internal bool UseConformingStrings { get; private set; }
-
         /// <summary>
         /// The connection's timezone as reported by PostgreSQL, in the IANA/Olson database format.
         /// </summary>
@@ -1930,8 +1928,11 @@ namespace Npgsql
             switch (name)
             {
             case "standard_conforming_strings":
-                UseConformingStrings = value == "on";
-                SqlParser.StandardConformingStrings = UseConformingStrings;
+                if (value != "on")
+                {
+                    Break();
+                    throw new NotSupportedException("standard_conforming_strings must be on");
+                }
                 return;
 
             case "TimeZone":

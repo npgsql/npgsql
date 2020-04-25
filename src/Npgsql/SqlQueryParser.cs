@@ -13,7 +13,6 @@ namespace Npgsql
     {
         readonly Dictionary<string, int> _paramIndexMap = new Dictionary<string, int>();
         readonly StringBuilder _rewrittenSql = new StringBuilder();
-        internal bool StandardConformingStrings { get; set; } = true;
 
         List<NpgsqlStatement> _statements = default!;
         NpgsqlStatement _statement = default!;
@@ -65,10 +64,7 @@ namespace Npgsql
                 case '-':
                     goto LineCommentBegin;
                 case '\'':
-                    if (StandardConformingStrings)
-                        goto Quoted;
-                    else
-                        goto Escaped;
+                    goto Quoted;
                 case '$':
                     if (!IsIdentifier(lastChar))
                         goto DollarQuotedStart;
