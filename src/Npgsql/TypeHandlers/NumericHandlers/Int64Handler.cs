@@ -56,17 +56,27 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         /// <inheritdoc />
         public override int ValidateAndGetLength(long value, NpgsqlParameter? parameter) => 8;
         /// <inheritdoc />
-        public int ValidateAndGetLength(short value, NpgsqlParameter? parameter)         => 8;
-        /// <inheritdoc />
         public int ValidateAndGetLength(int value, NpgsqlParameter? parameter)           => 8;
         /// <inheritdoc />
-        public int ValidateAndGetLength(float value, NpgsqlParameter? parameter)         => 8;
-        /// <inheritdoc />
-        public int ValidateAndGetLength(double value, NpgsqlParameter? parameter)        => 8;
-        /// <inheritdoc />
-        public int ValidateAndGetLength(decimal value, NpgsqlParameter? parameter)       => 8;
+        public int ValidateAndGetLength(short value, NpgsqlParameter? parameter)         => 8;
         /// <inheritdoc />
         public int ValidateAndGetLength(byte value, NpgsqlParameter? parameter)          => 8;
+        /// <inheritdoc />
+        public int ValidateAndGetLength(decimal value, NpgsqlParameter? parameter)       => 8;
+
+        /// <inheritdoc />
+        public int ValidateAndGetLength(float value, NpgsqlParameter? parameter)
+        {
+            _ = checked((long)value);
+            return 8;
+        }
+
+        /// <inheritdoc />
+        public int ValidateAndGetLength(double value, NpgsqlParameter? parameter)
+        {
+            _ = checked((long)value);
+            return 8;
+        }
 
         /// <inheritdoc />
         public override void Write(long value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter) => buf.WriteInt64(value);
@@ -77,9 +87,9 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         /// <inheritdoc />
         public void Write(byte value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)          => buf.WriteInt64(value);
         /// <inheritdoc />
-        public void Write(float value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)         => buf.WriteInt64(checked((long)value));
+        public void Write(float value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)         => buf.WriteInt64((long)value);
         /// <inheritdoc />
-        public void Write(double value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)        => buf.WriteInt64(checked((long)value));
+        public void Write(double value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)        => buf.WriteInt64((long)value);
         /// <inheritdoc />
         public void Write(decimal value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)       => buf.WriteInt64((long)value);
 
