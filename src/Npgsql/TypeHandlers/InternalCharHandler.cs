@@ -46,35 +46,46 @@ namespace Npgsql.TypeHandlers
         #region Write
 
         /// <inheritdoc />
-        public override int ValidateAndGetLength(char value, NpgsqlParameter? parameter) => 1;
-        /// <inheritdoc />
         public int ValidateAndGetLength(byte value, NpgsqlParameter? parameter)          => 1;
-        /// <inheritdoc />
-        public int ValidateAndGetLength(short value, NpgsqlParameter? parameter)         => 1;
-        /// <inheritdoc />
-        public int ValidateAndGetLength(int value, NpgsqlParameter? parameter)           => 1;
-        /// <inheritdoc />
-        public int ValidateAndGetLength(long value, NpgsqlParameter? parameter)          => 1;
 
         /// <inheritdoc />
-        public override void Write(char value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
-            => buf.WriteByte(checked((byte)value));
+        public override int ValidateAndGetLength(char value, NpgsqlParameter? parameter)
+        {
+            _ = checked((byte)value);
+            return 1;
+        }
 
         /// <inheritdoc />
-        public void Write(byte value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
-            => buf.WriteByte(value);
+        public int ValidateAndGetLength(short value, NpgsqlParameter? parameter)
+        {
+            _ = checked((byte)value);
+            return 1;
+        }
 
         /// <inheritdoc />
-        public void Write(short value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
-            => buf.WriteByte(checked((byte)value));
+        public int ValidateAndGetLength(int value, NpgsqlParameter? parameter)
+        {
+            _ = checked((byte)value);
+            return 1;
+        }
 
         /// <inheritdoc />
-        public void Write(int value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
-            => buf.WriteByte(checked((byte)value));
+        public int ValidateAndGetLength(long value, NpgsqlParameter? parameter)
+        {
+            _ = checked((byte)value);
+            return 1;
+        }
 
         /// <inheritdoc />
-        public void Write(long value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
-            => buf.WriteByte(checked((byte)value));
+        public override void Write(char value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter) => buf.WriteByte((byte)value);
+        /// <inheritdoc />
+        public void Write(byte value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter) => buf.WriteByte(value);
+        /// <inheritdoc />
+        public void Write(short value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter) => buf.WriteByte((byte)value);
+        /// <inheritdoc />
+        public void Write(int value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter) => buf.WriteByte((byte)value);
+        /// <inheritdoc />
+        public void Write(long value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter) => buf.WriteByte((byte)value);
 
         #endregion
     }

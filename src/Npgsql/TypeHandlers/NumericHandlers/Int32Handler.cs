@@ -58,28 +58,43 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         /// <inheritdoc />
         public int ValidateAndGetLength(short value, NpgsqlParameter? parameter)        => 4;
         /// <inheritdoc />
-        public int ValidateAndGetLength(long value, NpgsqlParameter? parameter)         => 4;
-        /// <inheritdoc />
-        public int ValidateAndGetLength(float value, NpgsqlParameter? parameter)        => 4;
-        /// <inheritdoc />
-        public int ValidateAndGetLength(double value, NpgsqlParameter? parameter)       => 4;
+        public int ValidateAndGetLength(byte value, NpgsqlParameter? parameter)         => 4;
         /// <inheritdoc />
         public int ValidateAndGetLength(decimal value, NpgsqlParameter? parameter)      => 4;
+
         /// <inheritdoc />
-        public int ValidateAndGetLength(byte value, NpgsqlParameter? parameter)         => 4;
+        public int ValidateAndGetLength(long value, NpgsqlParameter? parameter)
+        {
+            _ = checked((int)value);
+            return 4;
+        }
+
+        /// <inheritdoc />
+        public int ValidateAndGetLength(float value, NpgsqlParameter? parameter)
+        {
+            _ = checked((int)value);
+            return 4;
+        }
+
+        /// <inheritdoc />
+        public int ValidateAndGetLength(double value, NpgsqlParameter? parameter)
+        {
+            _ = checked((int)value);
+            return 4;
+        }
 
         /// <inheritdoc />
         public override void Write(int value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter) => buf.WriteInt32(value);
         /// <inheritdoc />
         public void Write(short value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)        => buf.WriteInt32(value);
         /// <inheritdoc />
-        public void Write(long value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)         => buf.WriteInt32(checked((int)value));
+        public void Write(long value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)         => buf.WriteInt32((int)value);
         /// <inheritdoc />
         public void Write(byte value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)         => buf.WriteInt32(value);
         /// <inheritdoc />
-        public void Write(float value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)        => buf.WriteInt32(checked((int)value));
+        public void Write(float value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)        => buf.WriteInt32((int)value);
         /// <inheritdoc />
-        public void Write(double value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)       => buf.WriteInt32(checked((int)value));
+        public void Write(double value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)       => buf.WriteInt32((int)value);
         /// <inheritdoc />
         public void Write(decimal value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)      => buf.WriteInt32((int)value);
 
