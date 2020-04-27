@@ -170,34 +170,45 @@ namespace Npgsql
         /// Creates a new instance.
         /// </summary>
         public PostgresNotice(string severity, string invariantSeverity, string sqlState, string messageText)
+            : this(messageText, severity, invariantSeverity, sqlState, detail: null) {}
+
+        /// <summary>
+        /// Creates a new instance.
+        /// </summary>
+        public PostgresNotice(
+            string messageText, string severity, string invariantSeverity, string sqlState,
+            string? detail = null, string? hint = null, int position = 0, int internalPosition = 0,
+            string? internalQuery = null, string? where = null, string? schemaName = null, string? tableName = null,
+            string? columnName = null, string? dataTypeName = null, string? constraintName = null, string? file = null,
+            string? line = null, string? routine = null)
         {
+            MessageText = messageText;
             Severity = severity;
             InvariantSeverity = invariantSeverity;
             SqlState = sqlState;
-            MessageText = messageText;
+
+            Detail = detail;
+            Hint = hint;
+            Position = position;
+            InternalPosition = internalPosition;
+            InternalQuery = internalQuery;
+            Where = where;
+            SchemaName = schemaName;
+            TableName = tableName;
+            ColumnName = columnName;
+            DataTypeName = dataTypeName;
+            ConstraintName = constraintName;
+            File = file;
+            Line = line;
+            Routine = routine;
         }
 
         PostgresNotice(ErrorOrNoticeMessage msg)
-        {
-            Severity = msg.Severity;
-            InvariantSeverity = msg.InvariantSeverity;
-            SqlState = msg.Code;
-            MessageText = msg.Message;
-            Detail = msg.Detail;
-            Hint = msg.Hint;
-            Position = msg.Position;
-            InternalPosition = msg.InternalPosition;
-            InternalQuery = msg.InternalQuery;
-            Where = msg.Where;
-            SchemaName = msg.SchemaName;
-            TableName = msg.TableName;
-            ColumnName = msg.ColumnName;
-            DataTypeName = msg.DataTypeName;
-            ConstraintName = msg.ConstraintName;
-            File = msg.File;
-            Line = msg.Line;
-            Routine = msg.Routine;
-        }
+            : this(
+                msg.Message, msg.Severity, msg.InvariantSeverity, msg.SqlState,
+                msg.Detail, msg.Hint, msg.Position, msg.InternalPosition, msg.InternalQuery,
+                msg.Where, msg.SchemaName, msg.TableName, msg.ColumnName, msg.DataTypeName,
+                msg.ConstraintName, msg.File, msg.Line, msg.Routine) {}
 
         internal static PostgresNotice Load(NpgsqlReadBuffer buf)
             => new PostgresNotice(ErrorOrNoticeMessage.Load(buf));
