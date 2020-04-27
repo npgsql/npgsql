@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.Serialization;
 using System.Text;
@@ -16,9 +15,9 @@ namespace Npgsql
     /// </summary>
     /// <remarks>
     /// This exception only corresponds to a PostgreSQL-delivered error.
-    /// Other errors (e.g. network issues) will be raised via <see cref="NpgsqlException"/>,
+    /// Other errors (e.g. network issues) will be raised via <see cref="NpgsqlException" />,
     /// and purely Npgsql-related issues which aren't related to the server will be raised
-    /// via the standard CLR exceptions (e.g. ArgumentException).
+    /// via the standard CLR exceptions (e.g. <see cref="ArgumentException" />).
     ///
     /// See http://www.postgresql.org/docs/current/static/errcodes-appendix.html,
     /// http://www.postgresql.org/docs/current/static/protocol-error-fields.html
@@ -30,33 +29,37 @@ namespace Npgsql
         /// Creates a new instance.
         /// </summary>
         public PostgresException(string messageText, string severity, string invariantSeverity, string sqlState)
+            : this(messageText, severity, invariantSeverity, sqlState, detail: null) {}
+
+        /// <summary>
+        /// Creates a new instance.
+        /// </summary>
+        public PostgresException(
+            string messageText, string severity, string invariantSeverity, string sqlState,
+            string? detail = null, string? hint = null, int position = 0, int internalPosition = 0,
+            string? internalQuery = null, string? where = null, string? schemaName = null, string? tableName = null,
+            string? columnName = null, string? dataTypeName = null, string? constraintName = null, string? file = null,
+            string? line = null, string? routine = null)
         {
             MessageText = messageText;
             Severity = severity;
             InvariantSeverity = invariantSeverity;
             SqlState = sqlState;
-        }
 
-        PostgresException(ErrorOrNoticeMessage msg)
-        {
-            Severity = msg.Severity;
-            InvariantSeverity = msg.InvariantSeverity;
-            SqlState = msg.Code;
-            MessageText = msg.Message;
-            Detail = msg.Detail;
-            Hint = msg.Hint;
-            Position = msg.Position;
-            InternalPosition = msg.InternalPosition;
-            InternalQuery = msg.InternalQuery;
-            Where = msg.Where;
-            SchemaName = msg.SchemaName;
-            TableName = msg.TableName;
-            ColumnName = msg.ColumnName;
-            DataTypeName = msg.DataTypeName;
-            ConstraintName = msg.ConstraintName;
-            File = msg.File;
-            Line = msg.Line;
-            Routine = msg.Routine;
+            Detail = detail;
+            Hint = hint;
+            Position = position;
+            InternalPosition = internalPosition;
+            InternalQuery = internalQuery;
+            Where = where;
+            SchemaName = schemaName;
+            TableName = tableName;
+            ColumnName = columnName;
+            DataTypeName = dataTypeName;
+            ConstraintName = constraintName;
+            File = file;
+            Line = line;
+            Routine = routine;
 
             AddData(nameof(Severity), Severity);
             AddData(nameof(InvariantSeverity), InvariantSeverity);
@@ -76,13 +79,20 @@ namespace Npgsql
             AddData(nameof(File), File);
             AddData(nameof(Line), Line);
             AddData(nameof(Routine), Routine);
-                    
+
             void AddData<T>(string key, T value)
             {
                 if (!EqualityComparer<T>.Default.Equals(value, default!))
                     Data.Add(key, value);
             }
         }
+
+        PostgresException(ErrorOrNoticeMessage msg)
+            : this(
+                msg.Message, msg.Severity, msg.InvariantSeverity, msg.SqlState,
+                msg.Detail, msg.Hint, msg.Position, msg.InternalPosition, msg.InternalQuery,
+                msg.Where, msg.SchemaName, msg.TableName, msg.ColumnName, msg.DataTypeName,
+                msg.ConstraintName, msg.File, msg.Line, msg.Routine) {}
 
         internal static PostgresException Load(NpgsqlReadBuffer buf)
             => new PostgresException(ErrorOrNoticeMessage.Load(buf));

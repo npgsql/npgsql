@@ -8,7 +8,7 @@ namespace Npgsql.BackendMessages
     {
         internal string Severity { get; }
         internal string InvariantSeverity { get; }
-        internal string Code { get; }
+        internal string SqlState { get; }
         internal string Message { get; }
         internal string? Detail { get; }
         internal string? Hint { get; }
@@ -132,14 +132,14 @@ namespace Npgsql.BackendMessages
         }
 
         internal ErrorOrNoticeMessage(
-            string severity, string invariantSeverity, string code, string message,
+            string severity, string invariantSeverity, string sqlState, string message,
             string? detail = null, string? hint = null, int position = 0, int internalPosition = 0, string? internalQuery = null, string? where = null,
             string? schemaName = null, string? tableName = null, string? columnName = null, string? dataTypeName = null, string? constraintName = null,
             string? file = null, string? line = null, string? routine = null)
         {
             Severity = severity;
             InvariantSeverity = invariantSeverity;
-            Code = code;
+            SqlState = sqlState;
             Message = message;
             Detail = detail;
             Hint = hint;
