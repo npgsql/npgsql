@@ -22,7 +22,7 @@
     <PackageReference Update="NUnit3TestAdapter" Version="3.15.1" />
     <PackageReference Update="xunit" Version="2.4.1" />
     <PackageReference Update="xunit.runner.visualstudio" Version="2.4.1" />
-    <PackageReference Update="GitHubActionsTestLogger" Version="1.0.0" />
+    <PackageReference Update="GitHubActionsTestLogger" Version="1.1.0" />
     <PackageReference Update="AdoNet.Specification.Tests" Version="2.0.0-alpha3" />
 
     <!-- Benchmarks -->
