@@ -1,4 +1,6 @@
 using System;
+using System.Threading;
+using static Npgsql.Util.Statics;
 
 namespace Npgsql.Tests
 {
@@ -15,36 +17,61 @@ namespace Npgsql.Tests
         /// Unless the NPGSQL_TEST_DB environment variable is defined, this is used as the connection string for the
         /// test database.
         /// </summary>
-        const string DefaultConnectionString = "Server=localhost;Username=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;Timeout=0;Command Timeout=0";
+        const string DefaultConnectionString = "Server=localhost;Username=test;Password=test;Database=npgsql_tests;Timeout=0;Command Timeout=0";
+
+        static readonly object DatabaseCreationLock = new object();
 
         #region Utilities for use by tests
 
         protected virtual NpgsqlConnection CreateConnection(string? connectionString = null)
         {
-            if (connectionString == null)
-                connectionString = ConnectionString;
+            connectionString ??= ConnectionString;
             var conn = new NpgsqlConnection(connectionString);
             return conn;
         }
 
         protected virtual NpgsqlConnection OpenConnection(string? connectionString = null)
         {
-            var conn = CreateConnection(connectionString);
-            try
+            while (true)
             {
-                conn.Open();
-            }
-            catch (PostgresException e)
-            {
-                if (e.SqlState == PostgresErrorCodes.InvalidCatalogName)
-                    TestUtil.IgnoreExceptOnBuildServer("Please create a database npgsql_tests, owned by user npgsql_tests");
-                else if (e.SqlState == PostgresErrorCodes.InvalidPassword && connectionString == DefaultConnectionString)
-                    TestUtil.IgnoreExceptOnBuildServer("Please create a user npgsql_tests as follows: create user npgsql_tests with password 'npgsql_tests'");
-                else
-                    throw;
-            }
+                var conn = CreateConnection(connectionString);
+                try
+                {
+                    conn.Open();
+                }
+                catch (PostgresException e) when (e.SqlState == PostgresErrorCodes.InvalidCatalogName)
+                {
+                    // Database does not exist, attempt to create it by connecting to database postgres,
+                    // which should always exist. Make sure we don't have multiple threads trying to create
+                    // a database at the same time - PostgreSQL does not support this.
+                    var gotLock = Monitor.TryEnter(DatabaseCreationLock);
+                    if (gotLock)
+                    {
+                        using var _ = Defer(() => Monitor.Exit(DatabaseCreationLock));
 
-            return conn;
+                        var builder = new NpgsqlConnectionStringBuilder(connectionString ?? ConnectionString)
+                        {
+                            Pooling = false,
+                            Database = "postgres"
+                        };
+
+                        using var adminConn = new NpgsqlConnection(builder.ConnectionString);
+                        adminConn.Open();
+                        adminConn.ExecuteNonQuery("CREATE DATABASE " + conn.Database);
+                        adminConn.Close();
+                        Thread.Sleep(1000);
+                    }
+                    else
+                    {
+                        // Wait for the other thread to create it
+                        lock (DatabaseCreationLock) {}
+                    }
+
+                    continue;
+                }
+
+                return conn;
+            }
         }
 
         protected NpgsqlConnection OpenConnection(NpgsqlConnectionStringBuilder csb)

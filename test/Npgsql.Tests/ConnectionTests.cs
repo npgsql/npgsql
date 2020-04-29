@@ -599,9 +599,10 @@ namespace Npgsql.Tests
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString) { Database = null };
             using (var conn = new NpgsqlConnection(csb.ToString()))
-            {
                 Assert.That(conn.Database, Is.EqualTo(csb.Username));
-                conn.Open();
+
+            using (var conn = OpenConnection(csb.ToString()))
+            {
                 Assert.That(conn.ExecuteScalar("SELECT current_database()"), Is.EqualTo(csb.Username));
                 Assert.That(conn.Database, Is.EqualTo(csb.Username));
             }
