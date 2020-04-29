@@ -1141,6 +1141,24 @@ namespace Npgsql
         }
         bool _loadTableComposites;
 
+        /// <summary>
+        /// Set PostgreSQL configuration parameter default values for the connection.
+        /// </summary>
+        [Category("Advanced")]
+        [Description("Set PostgreSQL configuration parameter default values for the connection.")]
+        [DisplayName("Options")]
+        [NpgsqlConnectionStringProperty]
+        public string? Options
+        {
+            get => _options;
+            set
+            {
+                _options = value;
+                SetValue(nameof(Options), value);
+            }
+        }
+        string? _options;
+
         #endregion
 
         #region Properties - Compatibility

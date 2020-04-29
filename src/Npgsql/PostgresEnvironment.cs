@@ -22,6 +22,8 @@ namespace Npgsql
 
         public static string? TimeZone => Environment.GetEnvironmentVariable("PGTZ");
 
+        public static string? Options => Environment.GetEnvironmentVariable("PGOPTIONS");
+
         static string? GetDefaultFilePath(string fileName) =>
             Environment.GetEnvironmentVariable(PGUtil.IsWindows ? "APPDATA" : "HOME") is string appData
                 ? Path.Combine(appData, "postgresql", fileName)

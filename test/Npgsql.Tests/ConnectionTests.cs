@@ -725,6 +725,20 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        public void SetOptions()
+        {
+            using var conn = OpenConnection(new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Pooling = false,
+                Options = "default_transaction_isolation=serializable  default_transaction_deferrable=on application_name=My\\ Famous\\\\App"
+            });
+
+            Assert.That(conn.ExecuteScalar("SHOW default_transaction_isolation;"), Is.EqualTo("serializable"));
+            Assert.That(conn.ExecuteScalar("SHOW default_transaction_deferrable;"), Is.EqualTo("on"));
+            Assert.That(conn.ExecuteScalar("SHOW application_name;"), Is.EqualTo("My Famous\\App"));
+        }
+
+        [Test]
         public void ConnectorNotInitializedException1000581()
         {
             var command = new NpgsqlCommand();
@@ -1350,6 +1364,26 @@ namespace Npgsql.Tests
             {
                 builder.Password = null;
                 using (OpenConnection(builder)) { }
+            }
+        }
+
+        [Test]
+        [NonParallelizable]
+        public void Connect_OptionsFromEnvironment_Succeeds()
+        {
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Pooling = false,
+                Options = "default_transaction_isolation=serializable  default_transaction_deferrable=on application_name=My\\ Famous\\\\App"
+            };
+
+            using (TestUtil.SetEnvironmentVariable("PGOPTIONS", builder.Options))
+            {
+                builder.Options = null;
+                using var conn = OpenConnection(builder);
+                Assert.That(conn.ExecuteScalar("SHOW default_transaction_isolation;"), Is.EqualTo("serializable"));
+                Assert.That(conn.ExecuteScalar("SHOW default_transaction_deferrable;"), Is.EqualTo("on"));
+                Assert.That(conn.ExecuteScalar("SHOW application_name;"), Is.EqualTo("My Famous\\App"));
             }
         }
 

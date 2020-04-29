@@ -450,7 +450,72 @@ namespace Npgsql
             if (timezone != null)
                 startupParams["TimeZone"] = timezone;
 
+            var options = Settings.Options?.Length > 0
+                ? Settings.Options
+                : PostgresEnvironment.Options?.Length > 0
+                    ? PostgresEnvironment.Options
+                    : null;
+
+            if (options != null)
+            {
+                var pos = 0;
+                while (pos < options.Length)
+                {
+                    var key = ParseKey(options, ref pos);
+                    var value = ParseValue(options, ref pos);
+                    startupParams[key] = value;
+                }
+            }
+
             WriteStartup(startupParams);
+        }
+
+        static string ParseKey(string str, ref int pos)
+        {
+            var start = pos;
+            for (;pos < str.Length; pos++)
+            {
+                if (str[pos] == '=')
+                {
+                    var key = str.Substring(start, pos - start);
+                    pos++;
+                    return key.Length > 0
+                        ? key
+                        : throw new FormatException(
+                            $"Invalid syntax for connection string parameter '{nameof(NpgsqlConnectionStringBuilder.Options)}': Missing key.");
+                }
+            }
+            throw new FormatException($"Invalid syntax for connection string parameter '{nameof(NpgsqlConnectionStringBuilder.Options)}': Missing '='.");
+        }
+
+        static string ParseValue(string str, ref int pos)
+        {
+            var escaped = false;
+            var value = new StringBuilder();
+            for (;pos < str.Length; pos++)
+            {
+                if (escaped)
+                    escaped = false;
+                else if(str[pos] == ' ')
+                {
+                    pos++;
+                    for (; pos < str.Length && str[pos] == ' '; pos++)
+                    {
+                    }
+
+                    break;
+                }
+                else if (str[pos] == '\\')
+                {
+                    escaped = true;
+                    continue;
+                }
+                value.Append(str[pos]);
+            }
+            return value.Length  > 0
+                ? value.ToString()
+                : throw new FormatException(
+                    $"Invalid syntax for connection string parameter '{nameof(NpgsqlConnectionStringBuilder.Options)}': Missing value.");
         }
 
         string GetUsername()
