@@ -1451,6 +1451,31 @@ LANGUAGE plpgsql VOLATILE";
                 }
             }
         }
+
+        [Test, Description("Tests that when Numeric value does not fit in a System.Decimal and reader is in ReaderState.InResult, the value was read wholly and it is safe to continue reading")]
+        [Timeout(5000)]
+        public void OverflowExceptionInResultState()
+        {
+            using var conn = OpenConnection();
+            //This 29-digit number causes OverflowException. Here it is important to have unread column after failing one to leave it ReaderState.InResult
+            using var cmd = new NpgsqlCommand(@"SELECT (0.20285714285714285714285714285)::numeric, generate_series FROM generate_series(1, 2)", conn);
+            using var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess);
+            var i = 1;
+
+            while (reader.Read())
+            {
+                Assert.That(() => reader.GetDecimal(0),
+                    Throws.Exception
+                        .With.TypeOf<OverflowException>()
+                        .With.Message.EqualTo("Numeric value does not fit in a System.Decimal"));
+                var intValue = reader.GetInt32(1);
+
+                Assert.That(intValue, Is.EqualTo(i++));
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open | ConnectionState.Fetching));
+                Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
+                Assert.That(reader.State, Is.EqualTo(ReaderState.InResult));
+            }
+        }
 #endif
 
         #region Initialization / setup / teardown
