@@ -48,13 +48,13 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             var sign = buf.ReadUInt16();
 
             if (sign == SignNan)
-                throw new NpgsqlSafeReadException(new InvalidCastException("Numeric NaN not supported by System.Decimal"));
+                ThrowSafeReadException(new InvalidCastException("Numeric NaN not supported by System.Decimal"), len -6);
             if (sign == SignNegative)
                 DecimalRaw.Negate(ref result);
 
             var scale = buf.ReadInt16();
             if (scale > MaxDecimalScale)
-                throw new NpgsqlSafeReadException(new OverflowException("Numeric value does not fit in a System.Decimal"));
+                ThrowSafeReadException(new OverflowException("Numeric value does not fit in a System.Decimal"), len - 8);
 
             result.Scale = scale;
 
@@ -102,6 +102,13 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             }
 
             return result.Value;
+
+            void ThrowSafeReadException(Exception originalException, int remainingInColumn)
+            {
+                if (remainingInColumn > 0)
+                    buf.Skip(remainingInColumn);
+                throw new NpgsqlSafeReadException(originalException);
+            }
         }
 
         byte INpgsqlSimpleTypeHandler<byte>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
