@@ -1371,16 +1371,12 @@ namespace Npgsql.Tests
         [NonParallelizable]
         public void Connect_OptionsFromEnvironment_Succeeds()
         {
-            var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
+            using (TestUtil.SetEnvironmentVariable("PGOPTIONS", "default_transaction_isolation=serializable  default_transaction_deferrable=on application_name=My\\ Famous\\\\App"))
             {
-                Pooling = false,
-                Options = "default_transaction_isolation=serializable  default_transaction_deferrable=on application_name=My\\ Famous\\\\App"
-            };
-
-            using (TestUtil.SetEnvironmentVariable("PGOPTIONS", builder.Options))
-            {
-                builder.Options = null;
-                using var conn = OpenConnection(builder);
+                using var conn = OpenConnection(new NpgsqlConnectionStringBuilder(ConnectionString)
+                {
+                    Pooling = false
+                });
                 Assert.That(conn.ExecuteScalar("SHOW default_transaction_isolation;"), Is.EqualTo("serializable"));
                 Assert.That(conn.ExecuteScalar("SHOW default_transaction_deferrable;"), Is.EqualTo("on"));
                 Assert.That(conn.ExecuteScalar("SHOW application_name;"), Is.EqualTo("My Famous\\App"));
