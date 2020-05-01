@@ -429,31 +429,9 @@ namespace Npgsql
 
         void WriteStartupMessage(string username)
         {
-            Dictionary<string, string> startupParams;
-
-            if (Settings.OptionsDictionary.Count > 0)
-            {
-                startupParams = new Dictionary<string, string>(Settings.OptionsDictionary);
-            }
-            else
-            {
-                startupParams = new Dictionary<string, string>();
-
-                var options = PostgresEnvironment.Options?.Length > 0
-                    ? PostgresEnvironment.Options
-                    : null;
-
-                if (options != null)
-                {
-                    var pos = 0;
-                    while (pos < options.Length)
-                    {
-                        var key = NpgsqlConnectionStringBuilder.ParseKey(options, ref pos);
-                        var value = NpgsqlConnectionStringBuilder.ParseValue(options, ref pos);
-                        startupParams[key] = value;
-                    }
-                }
-            }
+            var startupParams = Settings.ParsedOptions.Count > 0
+                ? new Dictionary<string, string>(Settings.ParsedOptions)
+                : new Dictionary<string, string>(PostgresEnvironment.ParsedOptions);
 
             startupParams["user"] = username;
             startupParams["client_encoding"] =

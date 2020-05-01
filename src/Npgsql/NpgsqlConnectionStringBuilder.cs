@@ -1162,13 +1162,13 @@ namespace Npgsql
 
         string? _options;
 
-        internal Dictionary<string,string> OptionsDictionary { get; } = new Dictionary<string, string>();
+        internal Dictionary<string,string> ParsedOptions { get; } = new Dictionary<string, string>();
 
         void ParseOptions(string? str)
         {
             if (str == null)
             {
-                OptionsDictionary.Clear();
+                ParsedOptions.Clear();
             }
             else
             {
@@ -1177,7 +1177,7 @@ namespace Npgsql
                 {
                     var key = ParseKey(str, ref pos);
                     var value = ParseValue(str, ref pos);
-                    OptionsDictionary[key] = value;
+                    ParsedOptions[key] = value;
                 }
             }
         }
