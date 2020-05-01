@@ -25,39 +25,24 @@ namespace Npgsql
 
         public static string? Options => Environment.GetEnvironmentVariable("PGOPTIONS");
 
-        public static Dictionary<string, string> ParsedOptions
+        public static Dictionary<string, string> ParsedOptions => ParseOptions(Options);
+
+        static Dictionary<string, string> ParseOptions(string? options)
         {
-            get
-            {
-                if (_optionsCache == Options)
-                    return ParsedOptionsCache;
+            var parsedOptions = new Dictionary<string, string>();
 
-                _optionsCache = Options;
-                ParseOptions();
-                return ParsedOptionsCache;
-            }
-        }
-
-        static readonly Dictionary<string, string> ParsedOptionsCache = new Dictionary<string, string>();
-
-        static string? _optionsCache;
-
-        static void ParseOptions()
-        {
-            if (_optionsCache == null)
-            {
-                ParsedOptions.Clear();
-            }
-            else
+            if (options != null)
             {
                 var pos = 0;
-                while (pos < _optionsCache.Length)
+                while (pos < options.Length)
                 {
-                    var key = NpgsqlConnectionStringBuilder.ParseKey(_optionsCache, ref pos);
-                    var value = NpgsqlConnectionStringBuilder.ParseValue(_optionsCache, ref pos);
-                    ParsedOptions[key] = value;
+                    var key = NpgsqlConnectionStringBuilder.ParseKey(options, ref pos);
+                    var value = NpgsqlConnectionStringBuilder.ParseValue(options, ref pos);
+                    parsedOptions[key] = value;
                 }
             }
+
+            return parsedOptions;
         }
 
         static string? GetDefaultFilePath(string fileName) =>
