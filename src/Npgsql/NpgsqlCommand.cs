@@ -683,11 +683,11 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 foreach (var statement in _statements)
                     if (statement.PreparedStatement?.State == PreparedState.BeingUnprepared)
                     {
-                        Expect<CloseCompletedMessage>(async ? await connector.ReadMessage(true) : connector.ReadMessage(), connector);
+                        Expect<CloseCompletedMessage>(await connector.ReadMessage(async), connector);
                         statement.PreparedStatement.CompleteUnprepare();
                         statement.PreparedStatement = null;
                     }
-                Expect<ReadyForQueryMessage>(async ? await connector.ReadMessage(true) : connector.ReadMessage(), connector);
+                Expect<ReadyForQueryMessage>(await connector.ReadMessage(async), connector);
                 if (async)
                     await sendTask;
                 else
