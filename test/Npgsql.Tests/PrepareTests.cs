@@ -52,7 +52,7 @@ namespace Npgsql.Tests
             }
         }
 
-                [Test]
+        [Test]
         public void Unprepare()
             => Unprepare(false).GetAwaiter().GetResult();
 
