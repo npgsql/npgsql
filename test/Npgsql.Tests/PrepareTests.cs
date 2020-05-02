@@ -52,35 +52,33 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test]
+                [Test]
         public void Unprepare()
-        {
-            using (var conn = OpenConnectionAndUnprepare())
-            {
-                AssertNumPreparedStatements(conn, 0);
-                using (var cmd = new NpgsqlCommand("SELECT 1", conn))
-                {
-                    cmd.Prepare();
-                    AssertNumPreparedStatements(conn, 1);
-                    cmd.Unprepare();
-                    AssertNumPreparedStatements(conn, 0);
-                    Assert.That(cmd.IsPrepared, Is.False);
-                    Assert.That(cmd.ExecuteScalar(), Is.EqualTo(1));
-                }
-            }
-        }
+            => Unprepare(false).GetAwaiter().GetResult();
 
         [Test]
-        public async Task UnprepareAsync()
+        public Task UnprepareAsync()
+            => Unprepare(true);
+
+        private async Task Unprepare(bool async)
         {
             using (var conn = OpenConnectionAndUnprepare())
             {
                 AssertNumPreparedStatements(conn, 0);
                 using (var cmd = new NpgsqlCommand("SELECT 1", conn))
                 {
-                    await cmd.PrepareAsync();
+                    if(async)
+                        await cmd.PrepareAsync();
+                    else
+                        cmd.Prepare();
+
                     AssertNumPreparedStatements(conn, 1);
-                    await cmd.UnprepareAsync();
+
+                    if (async)
+                        await cmd.UnprepareAsync();
+                    else
+                        cmd.Unprepare();
+
                     AssertNumPreparedStatements(conn, 0);
                     Assert.That(cmd.IsPrepared, Is.False);
                     Assert.That(cmd.ExecuteScalar(), Is.EqualTo(1));
