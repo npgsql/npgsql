@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 
 namespace Npgsql
 {
@@ -1140,6 +1141,85 @@ namespace Npgsql
             }
         }
         bool _loadTableComposites;
+
+        /// <summary>
+        /// Set PostgreSQL configuration parameter default values for the connection.
+        /// </summary>
+        [Category("Advanced")]
+        [Description("Set PostgreSQL configuration parameter default values for the connection.")]
+        [DisplayName("Options")]
+        [NpgsqlConnectionStringProperty]
+        public string? Options
+        {
+            get => _options;
+            set
+            {
+                _options = value;
+                SetValue(nameof(Options), value);
+                ParseOptions(value);
+            }
+        }
+
+        string? _options;
+
+        internal Dictionary<string,string> ParsedOptions { get; } = new Dictionary<string, string>();
+
+        void ParseOptions(string? str)
+        {
+            if (str == null)
+            {
+                ParsedOptions.Clear();
+            }
+            else
+            {
+                var pos = 0;
+                while (pos < str?.Length)
+                {
+                    var key = ParseKey(str, ref pos);
+                    var value = ParseValue(str, ref pos);
+                    ParsedOptions[key] = value;
+                }
+            }
+        }
+
+        internal static string ParseKey(string str, ref int pos)
+        {
+            var start = pos;
+            for (; pos < str.Length; pos++)
+            {
+                if (str[pos] == '=')
+                {
+                    var key = str.Substring(start, pos - start);
+                    pos++;
+                    return key.Length > 0
+                        ? key
+                        : throw new FormatException(
+                            $"Invalid syntax for connection string parameter '{nameof(NpgsqlConnectionStringBuilder.Options)}': Missing key.");
+                }
+            }
+
+            throw new FormatException($"Invalid syntax for connection string parameter '{nameof(NpgsqlConnectionStringBuilder.Options)}': Missing '='.");
+        }
+
+        internal static string ParseValue(string str, ref int pos)
+        {
+            var value = new StringBuilder();
+            for (; pos < str.Length; pos++)
+            {
+                if (str[pos] == ' ')
+                {
+                    pos++;
+                    for (; pos < str.Length && str[pos] == ' '; pos++)
+                    {
+                    }
+
+                    break;
+                }
+                value.Append(str[pos] == '\\' ? str[++pos] : str[pos]);
+            }
+
+            return value.ToString();
+        }
 
         #endregion
 

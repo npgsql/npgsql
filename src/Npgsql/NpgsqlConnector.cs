@@ -429,14 +429,15 @@ namespace Npgsql
 
         void WriteStartupMessage(string username)
         {
-            var startupParams = new Dictionary<string, string>
-            {
-                ["user"] = username,
-                ["client_encoding"] =
-                    Settings.ClientEncoding ??
-                    PostgresEnvironment.ClientEncoding ??
-                    "UTF8"
-            };
+            var startupParams = Settings.ParsedOptions.Count > 0
+                ? new Dictionary<string, string>(Settings.ParsedOptions)
+                : new Dictionary<string, string>(PostgresEnvironment.ParsedOptions);
+
+            startupParams["user"] = username;
+            startupParams["client_encoding"] =
+                Settings.ClientEncoding ??
+                PostgresEnvironment.ClientEncoding ??
+                "UTF8";
 
             startupParams["database"] = Settings.Database!;
 
