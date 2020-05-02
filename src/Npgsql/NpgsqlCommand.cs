@@ -654,6 +654,23 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// automatically prepared statements.
         /// </summary>
         public void Unprepare()
+            => Unprepare(false).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Unprepares a command, closing server-side statements associated with it.
+        /// Note that this only affects commands explicitly prepared with <see cref="Prepare()"/>, not
+        /// automatically prepared statements.
+        /// </summary>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        public Task UnprepareAsync(CancellationToken cancellationToken = default)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled<int>(cancellationToken);
+            using (NoSynchronizationContextScope.Enter())
+                return Unprepare(true);
+        }
+
+        async Task Unprepare(bool async)
         {
             if (_statements.All(s => !s.IsPrepared))
                 return;
@@ -662,16 +679,19 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             Log.Debug("Closing command's prepared statements", connector.Id);
             using (connector.StartUserAction())
             {
-                var sendTask = SendClose(connector, false);
+                var sendTask = SendClose(connector, async);
                 foreach (var statement in _statements)
                     if (statement.PreparedStatement?.State == PreparedState.BeingUnprepared)
                     {
-                        Expect<CloseCompletedMessage>(connector.ReadMessage(), connector);
+                        Expect<CloseCompletedMessage>(await connector.ReadMessage(async), connector);
                         statement.PreparedStatement.CompleteUnprepare();
                         statement.PreparedStatement = null;
                     }
-                Expect<ReadyForQueryMessage>(connector.ReadMessage(), connector);
-                sendTask.GetAwaiter().GetResult();
+                Expect<ReadyForQueryMessage>(await connector.ReadMessage(async), connector);
+                if (async)
+                    await sendTask;
+                else
+                    sendTask.GetAwaiter().GetResult();
             }
         }
 
