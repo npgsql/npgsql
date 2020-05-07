@@ -28,13 +28,13 @@ namespace Npgsql.TypeHandlers.NumericHandlers
 
         /// <inheritdoc />
         public override uint Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-            => (uint)buf.ReadInt32();
+            => buf.ReadUInt32();
 
         /// <inheritdoc />
         public override int ValidateAndGetLength(uint value, NpgsqlParameter? parameter) => 4;
 
         /// <inheritdoc />
         public override void Write(uint value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
-            => buf.WriteInt32((int)value);
+            => buf.WriteUInt32(value);
     }
 }

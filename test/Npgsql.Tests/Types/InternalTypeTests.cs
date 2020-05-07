@@ -21,22 +21,26 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
+        [TestCase(NpgsqlDbType.Oid)]
         [TestCase(NpgsqlDbType.Regtype)]
         [TestCase(NpgsqlDbType.Regconfig)]
         public void InternalUintTypes(NpgsqlDbType npgsqlDbType)
         {
-            const uint expected = 8u;
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
-            {
-                cmd.Parameters.AddWithValue("p", npgsqlDbType, expected);
-                using (var reader = cmd.ExecuteReader())
-                {
-                    reader.Read();
-                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(uint)));
-                    Assert.That(reader.GetValue(0), Is.EqualTo(expected));
-                }
-            }
+            var postgresType = npgsqlDbType.ToString().ToLowerInvariant();
+            using var conn = OpenConnection();
+            using var cmd = new NpgsqlCommand($"SELECT @max, 4294967295::{postgresType}, @eight, 8::{postgresType}", conn);
+            cmd.Parameters.AddWithValue("max", npgsqlDbType, uint.MaxValue);
+            cmd.Parameters.AddWithValue("eight", npgsqlDbType, 8u);
+            using var reader = cmd.ExecuteReader();
+            reader.Read();
+
+            for (var i = 0; i < reader.FieldCount; i++)
+                Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(uint)));
+
+            Assert.That(reader.GetValue(0), Is.EqualTo(uint.MaxValue));
+            Assert.That(reader.GetValue(1), Is.EqualTo(uint.MaxValue));
+            Assert.That(reader.GetValue(2), Is.EqualTo(8u));
+            Assert.That(reader.GetValue(3), Is.EqualTo(8u));
         }
 
         [Test]
