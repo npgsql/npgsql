@@ -24,6 +24,7 @@ namespace Npgsql
         {
             var db = new PostgresDatabaseInfo(conn);
             await db.LoadPostgresInfo(conn, timeout, async);
+            Debug.Assert(db.LongVersion != null);
             return db;
         }
     }
@@ -45,6 +46,11 @@ namespace Npgsql
 
         /// <inheritdoc />
         protected override IEnumerable<PostgresType> GetTypes() => _types ?? Enumerable.Empty<PostgresType>();
+
+        /// <summary>
+        /// The PostgreSQL version string as returned by the version() function. Populated during loading.
+        /// </summary>
+        public string LongVersion { get; set; } = default!;
 
         /// <summary>
         /// True if the backend is Amazon Redshift; otherwise, false.
@@ -112,6 +118,8 @@ namespace Npgsql
         static string GenerateTypesQuery(bool withRange, bool withEnum, bool withEnumSortOrder,
             bool loadTableComposites)
             => $@"
+SELECT version();
+
 SELECT ns.nspname, typ_and_elem_type.*,
    CASE
        WHEN typtype IN ('b', 'e', 'p') THEN 0           -- First base types, enums, pseudo-types
@@ -209,7 +217,21 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
             using var reader = async ? await command.ExecuteReaderAsync() : command.ExecuteReader();
             var byOID = new Dictionary<uint, PostgresType>();
 
-            // First load the types themselves
+            // First the PostgreSQL version
+            if (async)
+            {
+                await reader.ReadAsync();
+                LongVersion = reader.GetString(0);
+                await reader.NextResultAsync();
+            }
+            else
+            {
+                reader.Read();
+                LongVersion = reader.GetString(0);
+                reader.NextResult();
+            }
+
+            // Then load the types
             while (async ? await reader.ReadAsync() : reader.Read())
             {
                 timeout.Check();
