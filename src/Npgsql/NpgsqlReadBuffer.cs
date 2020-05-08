@@ -368,9 +368,9 @@ namespace Npgsql
                 return new ValueTask<int>(readFromBuffer);
             }
 
-            return new ValueTask<int>(ReadBytesLong());
+            return ReadBytesLong();
 
-            async Task<int> ReadBytesLong()
+            async ValueTask<int> ReadBytesLong()
             {
                 Debug.Assert(ReadPosition == 0);
                 Clear();
@@ -390,6 +390,41 @@ namespace Npgsql
                 }
             }
         }
+
+#if !NET461 && !NETSTANDARD2_0
+        public ValueTask<int> ReadBytes(Memory<byte> output, bool async)
+        {
+            var readFromBuffer = Math.Min(ReadBytesLeft, output.Length);
+            if (readFromBuffer > 0)
+            {
+                new Span<byte>(Buffer, ReadPosition, readFromBuffer).CopyTo(output.Span);
+                ReadPosition += output.Length;
+                return new ValueTask<int>(readFromBuffer);
+            }
+
+            return ReadBytesLong();
+
+            async ValueTask<int> ReadBytesLong()
+            {
+                Debug.Assert(ReadPosition == 0);
+                Clear();
+                try
+                {
+                    var read = async
+                        ? await Underlying.ReadAsync(output)
+                        : Underlying.Read(output.Span);
+                    if (read == 0)
+                        throw new EndOfStreamException();
+                    return read;
+                }
+                catch (Exception e)
+                {
+                    Connector.Break();
+                    throw new NpgsqlException("Exception while reading from stream", e);
+                }
+            }
+        }
+#endif
 
         public Stream GetStream(int len, bool canSeek)
         {

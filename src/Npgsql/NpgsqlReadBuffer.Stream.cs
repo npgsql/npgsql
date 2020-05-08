@@ -146,10 +146,10 @@ namespace Npgsql
                     return task;
                 }
 
-                return new ValueTask<int>(ReadLong(task, async));
+                return ReadLong(task, async);
             }
 
-            async Task<int> ReadLong(ValueTask<int> task, bool async)
+            async ValueTask<int> ReadLong(ValueTask<int> task, bool async)
             {
                 var read = async
                     ? await task
@@ -158,11 +158,49 @@ namespace Npgsql
                 return read;
             }
 
+#if !NET461 && !NETSTANDARD2_0
+            public override int Read(Span<byte> span)
+                => Read(span.ToArray(), CancellationToken.None, false).GetAwaiter().GetResult();
+
+            public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+                => Read(buffer, cancellationToken, true);
+
+            ValueTask<int> Read(Memory<byte> buffer, CancellationToken cancellationToken, bool async)
+            {
+                CheckDisposed();
+
+                if (cancellationToken.IsCancellationRequested)
+                    return new ValueTask<int>(Task.FromCanceled<int>(cancellationToken));
+
+                var count = Math.Min(buffer.Length, _len - _read);
+
+                if (count == 0)
+                    return new ValueTask<int>(0);
+
+                var task = _buf.ReadBytes(buffer.Slice(0, count), async);
+                if (task.IsCompleted) // This may be a bug in the new version of ValueTask
+                {
+                    _read += task.Result;
+                    return task;
+                }
+
+                return ReadLong(task, async);
+            }
+#endif
+
             public override void Write(byte[] buffer, int offset, int count)
                 => throw new NotSupportedException();
 
             public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
                 => throw new NotSupportedException();
+
+#if !NET461 && !NETSTANDARD2_0
+            public override void Write(ReadOnlySpan<byte> span)
+                => throw new NotSupportedException();
+
+            public override ValueTask WriteAsync(ReadOnlyMemory<byte> memory, CancellationToken cancellationToken)
+                => throw new NotSupportedException();
+#endif
 
             void CheckDisposed()
             {
@@ -180,6 +218,19 @@ namespace Npgsql
                     _buf.Skip(leftToSkip, false).GetAwaiter().GetResult();
                 IsDisposed = true;
             }
+
+#if !NET461 && !NETSTANDARD2_0
+            public override async ValueTask DisposeAsync()
+            {
+                if (IsDisposed)
+                    return;
+
+                var leftToSkip = _len - _read;
+                if (leftToSkip > 0)
+                    await _buf.Skip(leftToSkip, false);
+                IsDisposed = true;
+            }
+#endif
         }
     }
 }
