@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Security;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -532,11 +533,23 @@ namespace Npgsql.Tests
 
         #endregion Timezone
 
-        [Test, Explicit("Doesn't work on Windows, sometimes not available Linux (e.g. when PG is in docker)")]
+        [Test]
         public void UnixDomainSocket()
         {
+            if (RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
+            {
+                if (Environment.OSVersion.Version.Major < 10 || Environment.OSVersion.Version.Build < 17093)
+                    Assert.Ignore("Unix-domain sockets support was introduced in Windows build 17093");
+
+                // On Windows we first need a classic IP connection to make sure we're running against the
+                // right backend version
+                using var versionConnection = OpenConnection();
+                TestUtil.MinimumPgVersion(versionConnection, "13.0",
+                    "Unix-domain sockets support on Windows was introduced in PostgreSQL 13");
+            }
+
             var port = new NpgsqlConnectionStringBuilder(ConnectionString).Port;
-            var candidateDirectories = new[] { "/var/run/postgresql", "/tmp" };
+            var candidateDirectories = new[] { "/var/run/postgresql", "/tmp", Environment.GetEnvironmentVariable("TMP") ?? "C:\\" };
             var dir = candidateDirectories.FirstOrDefault(d => File.Exists(Path.Combine(d, $".s.PGSQL.{port}")));
             if (dir == null)
             {
@@ -546,13 +559,12 @@ namespace Npgsql.Tests
 
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                Host=dir,
-                Username=null  // Let Npgsql detect the username
+                Host=dir
             };
-            using (var conn = OpenConnection(csb))
-            {
-                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
-            }
+
+            using var conn = OpenConnection(csb);
+
+            Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/903")]
