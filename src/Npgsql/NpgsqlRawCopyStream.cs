@@ -132,6 +132,54 @@ namespace Npgsql
             }
         }
 
+#if !NET461 && !NETSTANDARD2_0
+        public override void Write(ReadOnlySpan<byte> span) => Write(span.ToArray(), false).GetAwaiter().GetResult();
+
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return new ValueTask(Task.FromCanceled(cancellationToken));
+            using (NoSynchronizationContextScope.Enter())
+                return Write(buffer, true);
+        }
+
+        async ValueTask Write(ReadOnlyMemory<byte> buffer, bool async)
+        {
+            CheckDisposed();
+            if (!CanWrite)
+                throw new InvalidOperationException("Stream not open for writing");
+
+            if (buffer.Length == 0) { return; }
+
+            if (buffer.Length <= _writeBuf.WriteSpaceLeft)
+            {
+                _writeBuf.WriteBytes(buffer.Span);
+                return;
+            }
+
+            try
+            {
+                // Value is too big, flush.
+                await FlushAsync(async);
+
+                if (buffer.Length <= _writeBuf.WriteSpaceLeft)
+                {
+                    _writeBuf.WriteBytes(buffer.Span);
+                    return;
+                }
+
+                // Value is too big even after a flush - bypass the buffer and write directly.
+                await _writeBuf.DirectWrite(buffer, async);
+            }
+            catch
+            {
+                _connector.Break();
+                Cleanup();
+                throw;
+            }
+        }
+#endif
+
         public override void Flush() => FlushAsync(false).GetAwaiter().GetResult();
 
         public override Task FlushAsync(CancellationToken cancellationToken)
@@ -221,6 +269,71 @@ namespace Npgsql
             return count;
         }
 
+#if !NET461 && !NETSTANDARD2_0
+        public override int Read(Span<byte> span) => Read(span.ToArray(), false).GetAwaiter().GetResult();
+
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return new ValueTask<int>(Task.FromCanceled<int>(cancellationToken));
+            using (NoSynchronizationContextScope.Enter())
+                return Read(buffer, true);
+        }
+
+        async ValueTask<int> Read(Memory<byte> buffer, bool async)
+        {
+            CheckDisposed();
+            if (!CanRead)
+                throw new InvalidOperationException("Stream not open for reading");
+
+            if (_isConsumed)
+            {
+                return 0;
+            }
+
+            if (_leftToReadInDataMsg == 0)
+            {
+                // We've consumed the current DataMessage (or haven't yet received the first),
+                // read the next message
+                var msg = await _connector.ReadMessage(async);
+                switch (msg.Code)
+                {
+                    case BackendMessageCode.CopyData:
+                        _leftToReadInDataMsg = ((CopyDataMessage)msg).Length;
+                        break;
+                    case BackendMessageCode.CopyDone:
+                        Expect<CommandCompleteMessage>(await _connector.ReadMessage(async), _connector);
+                        Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async), _connector);
+                        _isConsumed = true;
+                        return 0;
+                    default:
+                        throw _connector.UnexpectedMessageReceived(msg.Code);
+                }
+            }
+
+            Debug.Assert(_leftToReadInDataMsg > 0);
+
+            // If our buffer is empty, read in more. Otherwise return whatever is there, even if the
+            // user asked for more (normal socket behavior)
+            if (_readBuf.ReadBytesLeft == 0)
+            {
+                await _readBuf.ReadMore(async);
+            }
+
+            Debug.Assert(_readBuf.ReadBytesLeft > 0);
+
+            var maxCount = Math.Min(_readBuf.ReadBytesLeft, _leftToReadInDataMsg);
+            var count = buffer.Length;
+            if (count > maxCount)
+            {
+                count = maxCount;
+            }
+
+            _leftToReadInDataMsg -= count;
+            _readBuf.ReadBytes(buffer.Slice(0, count).Span);
+            return count;
+        }
+#endif
         #endregion
 
         #region Cancel
