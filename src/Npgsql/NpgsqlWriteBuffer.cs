@@ -6,6 +6,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
+using Npgsql.Util;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 namespace Npgsql
@@ -164,7 +165,6 @@ namespace Npgsql
             }
         }
 
-#if !NETSTANDARD2_0 && !NET461
         internal async Task DirectWrite(ReadOnlyMemory<byte> memory, bool async)
         {
             await Flush(async);
@@ -186,7 +186,6 @@ namespace Npgsql
             else
                 Debug.Assert(WritePosition == 0);
 
-
             try
             {
                 if (async)
@@ -200,7 +199,6 @@ namespace Npgsql
                 throw new NpgsqlException("Exception while writing to stream", e);
             }
         }
-#endif
 
         #endregion Direct write
 

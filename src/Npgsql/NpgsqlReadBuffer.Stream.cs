@@ -120,40 +120,13 @@ namespace Npgsql
             }
 
             ValueTask<int> Read(byte[] buffer, int offset, int count, CancellationToken cancellationToken, bool async)
-            {
-                CheckDisposed();
-
-                if (buffer == null)
-                    throw new ArgumentNullException(nameof(buffer));
-                if (offset < 0)
-                    throw new ArgumentNullException(nameof(offset));
-                if (count < 0)
-                    throw new ArgumentNullException(nameof(count));
-                if (buffer.Length - offset < count)
-                    throw new ArgumentException("Offset and length were out of bounds for the array or count is greater than the number of elements from index to the end of the source collection.");
-                if (cancellationToken.IsCancellationRequested)
-                    return new ValueTask<int>(Task.FromCanceled<int>(cancellationToken));
-
-                count = Math.Min(count, _len - _read);
-
-                if (count == 0)
-                    return new ValueTask<int>(0);
-
-                var task = _buf.ReadBytes(buffer, offset, count, async);
-                return ReadLong(task, async);
-            }
-
-            async ValueTask<int> ReadLong(ValueTask<int> task, bool async)
-            {
-                var read = async
-                    ? await task
-                    : task.GetAwaiter().GetResult();
-                _read += read;
-                return read;
-            }
+                => Read(new Memory<byte>(buffer, offset, count), cancellationToken, async);
 
 #if !NET461 && !NETSTANDARD2_0
             public override int Read(Span<byte> span)
+#else
+            public int Read(Span<byte> span)
+#endif
             {
                 CheckDisposed();
 
@@ -168,7 +141,14 @@ namespace Npgsql
                 return count;
             }
 
+#if !NET461 && !NETSTANDARD2_0
             public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+#else
+            public ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+#endif
+                => Read(buffer, cancellationToken, async: true);
+
+            ValueTask<int> Read(Memory<byte> buffer, CancellationToken cancellationToken, bool async)
             {
                 CheckDisposed();
 
@@ -180,10 +160,18 @@ namespace Npgsql
                 if (count == 0)
                     return new ValueTask<int>(0);
 
-                var task = _buf.ReadBytes(buffer.Slice(0, count), async: true);
-                return ReadLong(task, async: true);
+                var task = _buf.ReadBytes(buffer.Slice(0, count), async);
+                return ReadLong(task, async);
             }
-#endif
+
+            async ValueTask<int> ReadLong(ValueTask<int> task, bool async)
+            {
+                var read = async
+                    ? await task
+                    : task.GetAwaiter().GetResult();
+                _read += read;
+                return read;
+            }
 
             public override void Write(byte[] buffer, int offset, int count)
                 => throw new NotSupportedException();

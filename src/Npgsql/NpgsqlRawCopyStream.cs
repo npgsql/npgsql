@@ -96,46 +96,24 @@ namespace Npgsql
             if (cancellationToken.IsCancellationRequested)
                 return Task.FromCanceled(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
-                return Write(buffer, offset, count, true);
+                return Write(buffer, offset, count, true).AsTask();
         }
 
-        async Task Write(byte[] buffer, int offset, int count, bool async)
-        {
-            CheckDisposed();
-            if (!CanWrite)
-                throw new InvalidOperationException("Stream not open for writing");
-
-            if (count == 0) { return; }
-
-            if (count <= _writeBuf.WriteSpaceLeft)
-            {
-                _writeBuf.WriteBytes(buffer, offset, count);
-                return;
-            }
-
-            try {
-                // Value is too big, flush.
-                await FlushAsync(async);
-
-                if (count <= _writeBuf.WriteSpaceLeft)
-                {
-                    _writeBuf.WriteBytes(buffer, offset, count);
-                    return;
-                }
-
-                // Value is too big even after a flush - bypass the buffer and write directly.
-                await _writeBuf.DirectWrite(buffer, offset, count, async);
-            } catch {
-                _connector.Break();
-                Cleanup();
-                throw;
-            }
-        }
+        ValueTask Write(byte[] buffer, int offset, int count, bool async)
+            => Write(new Memory<byte>(buffer, offset, count), async);
 
 #if !NET461 && !NETSTANDARD2_0
-        public override void Write(ReadOnlySpan<byte> span) => Write(span.ToArray(), false).GetAwaiter().GetResult();
+        public override void Write(ReadOnlySpan<byte> span)
+#else
+        public void Write(ReadOnlySpan<byte> span)
+#endif
+            => Write(span.ToArray(), false).GetAwaiter().GetResult();
 
+#if !NET461 && !NETSTANDARD2_0
         public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+#else
+        public ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+#endif
         {
             if (cancellationToken.IsCancellationRequested)
                 return new ValueTask(Task.FromCanceled(cancellationToken));
@@ -178,7 +156,6 @@ namespace Npgsql
                 throw;
             }
         }
-#endif
 
         public override void Flush() => FlushAsync(false).GetAwaiter().GetResult();
 
@@ -207,70 +184,17 @@ namespace Npgsql
             if (cancellationToken.IsCancellationRequested)
                 return Task.FromCanceled<int>(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
-                return Read(buffer, offset, count, true);
+                return Read(buffer, offset, count, true).AsTask();
         }
 
-        async Task<int> Read(byte[] buffer, int offset, int count, bool async)
-        {
-            CheckDisposed();
-            if (!CanRead)
-                throw new InvalidOperationException("Stream not open for reading");
-
-            if (_isConsumed) {
-                return 0;
-            }
-
-            if (_leftToReadInDataMsg == 0)
-            {
-                IBackendMessage msg;
-                try
-                {
-                    // We've consumed the current DataMessage (or haven't yet received the first),
-                    // read the next message
-                    msg = await _connector.ReadMessage(async);
-                }
-                catch
-                {
-                    Cleanup();
-                    throw;
-                }
-
-                switch (msg.Code) {
-                case BackendMessageCode.CopyData:
-                    _leftToReadInDataMsg = ((CopyDataMessage)msg).Length;
-                    break;
-                case BackendMessageCode.CopyDone:
-                    Expect<CommandCompleteMessage>(await _connector.ReadMessage(async), _connector);
-                    Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async), _connector);
-                    _isConsumed = true;
-                    return 0;
-                default:
-                    throw _connector.UnexpectedMessageReceived(msg.Code);
-                }
-            }
-
-            Debug.Assert(_leftToReadInDataMsg > 0);
-
-            // If our buffer is empty, read in more. Otherwise return whatever is there, even if the
-            // user asked for more (normal socket behavior)
-            if (_readBuf.ReadBytesLeft == 0) {
-                await _readBuf.ReadMore(async);
-            }
-
-            Debug.Assert(_readBuf.ReadBytesLeft > 0);
-
-            var maxCount = Math.Min(_readBuf.ReadBytesLeft, _leftToReadInDataMsg);
-            if (count > maxCount) {
-                count = maxCount;
-            }
-
-            _leftToReadInDataMsg -= count;
-            _readBuf.ReadBytes(buffer, offset, count);
-            return count;
-        }
+        ValueTask<int> Read(byte[] buffer, int offset, int count, bool async)
+            => Read(new Memory<byte>(buffer, offset, count), async);
 
 #if !NET461 && !NETSTANDARD2_0
         public override int Read(Span<byte> span)
+#else
+        public int Read(Span<byte> span)
+#endif
         {
             CheckDisposed();
             if (!CanRead)
@@ -334,12 +258,16 @@ namespace Npgsql
             return count;
         }
 
+#if !NET461 && !NETSTANDARD2_0
         public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+#else
+        public ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+#endif
         {
             if (cancellationToken.IsCancellationRequested)
                 return new ValueTask<int>(Task.FromCanceled<int>(cancellationToken));
             using (NoSynchronizationContextScope.Enter())
-                return Read(buffer, true);
+                return Read(buffer, async: true);
         }
 
         async ValueTask<int> Read(Memory<byte> buffer, bool async)
@@ -405,7 +333,6 @@ namespace Npgsql
             _readBuf.ReadBytes(buffer.Slice(0, count).Span);
             return count;
         }
-#endif
         #endregion
 
         #region Cancel

@@ -6,6 +6,7 @@ using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
+using Npgsql.Util;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
@@ -393,7 +394,6 @@ namespace Npgsql
             }
         }
 
-#if !NET461 && !NETSTANDARD2_0
         public ValueTask<int> ReadBytes(Memory<byte> output, bool async)
         {
             var readFromBuffer = Math.Min(ReadBytesLeft, output.Length);
@@ -426,7 +426,6 @@ namespace Npgsql
                 }
             }
         }
-#endif
 
         public Stream GetStream(int len, bool canSeek)
         {
