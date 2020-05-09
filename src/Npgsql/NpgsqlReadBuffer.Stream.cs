@@ -209,28 +209,29 @@ namespace Npgsql
             }
 
             protected override void Dispose(bool disposing)
-            {
-                if (IsDisposed)
-                    return;
-
-                var leftToSkip = _len - _read;
-                if (leftToSkip > 0)
-                    _buf.Skip(leftToSkip, false).GetAwaiter().GetResult();
-                IsDisposed = true;
-            }
+                => DisposeAsync(disposing, async: false).GetAwaiter().GetResult();
 
 #if !NET461 && !NETSTANDARD2_0
-            public override async ValueTask DisposeAsync()
+            public override ValueTask DisposeAsync()
+                => DisposeAsync(disposing: true, async: true);
+#endif
+
+            async ValueTask DisposeAsync(bool disposing, bool async)
             {
-                if (IsDisposed)
+                if (IsDisposed || ! disposing)
                     return;
 
                 var leftToSkip = _len - _read;
                 if (leftToSkip > 0)
-                    await _buf.Skip(leftToSkip, false);
+                {
+                    if (async)
+                        await _buf.Skip(leftToSkip, false);
+                    else
+                        _buf.Skip(leftToSkip, false).GetAwaiter().GetResult();
+                }
                 IsDisposed = true;
             }
-#endif
+
         }
     }
 }
