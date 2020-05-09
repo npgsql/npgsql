@@ -153,6 +153,8 @@ namespace Npgsql
             }
         }
 
+        internal void ReadMore() => ReadMore(false).GetAwaiter().GetResult();
+
         internal Task ReadMore(bool async) => Ensure(ReadBytesLeft + 1, async);
 
         internal NpgsqlReadBuffer AllocateOversize(int count)
