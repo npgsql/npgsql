@@ -599,7 +599,8 @@ namespace Npgsql
         void Connect(NpgsqlTimeout timeout)
         {
             EndPoint[] endpoints;
-            if (!string.IsNullOrEmpty(Host) && Host[0] == '/')
+
+            if (Path.IsPathRooted(Host))
             {
                 endpoints = new EndPoint[] { new UnixEndPoint(Path.Combine(Host, $".s.PGSQL.{Port}")) };
             }
