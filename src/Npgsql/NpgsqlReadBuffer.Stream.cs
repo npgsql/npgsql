@@ -160,12 +160,21 @@ namespace Npgsql
 
 #if !NET461 && !NETSTANDARD2_0
             public override int Read(Span<byte> span)
-                => Read(span.ToArray(), CancellationToken.None, false).GetAwaiter().GetResult();
+            {
+                CheckDisposed();
+
+                var count = Math.Min(span.Length, _len - _read);
+
+                if (count == 0)
+                    return 0;
+
+                _buf.ReadBytes(span.Slice(0, count));
+                _read += count;
+
+                return count;
+            }
 
             public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
-                => Read(buffer, cancellationToken, true);
-
-            ValueTask<int> Read(Memory<byte> buffer, CancellationToken cancellationToken, bool async)
             {
                 CheckDisposed();
 
@@ -177,14 +186,14 @@ namespace Npgsql
                 if (count == 0)
                     return new ValueTask<int>(0);
 
-                var task = _buf.ReadBytes(buffer.Slice(0, count), async);
+                var task = _buf.ReadBytes(buffer.Slice(0, count), async: true);
                 if (task.IsCompleted) // This may be a bug in the new version of ValueTask
                 {
                     _read += task.Result;
                     return task;
                 }
 
-                return ReadLong(task, async);
+                return ReadLong(task, async: true);
             }
 #endif
 
