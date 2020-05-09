@@ -188,17 +188,6 @@ namespace Npgsql
             public override void Write(byte[] buffer, int offset, int count)
                 => throw new NotSupportedException();
 
-            public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-                => throw new NotSupportedException();
-
-#if !NET461 && !NETSTANDARD2_0
-            public override void Write(ReadOnlySpan<byte> span)
-                => throw new NotSupportedException();
-
-            public override ValueTask WriteAsync(ReadOnlyMemory<byte> memory, CancellationToken cancellationToken)
-                => throw new NotSupportedException();
-#endif
-
             void CheckDisposed()
             {
                 if (IsDisposed)
