@@ -140,12 +140,6 @@ namespace Npgsql
                     return new ValueTask<int>(0);
 
                 var task = _buf.ReadBytes(buffer, offset, count, async);
-                if (task.IsCompleted) // This may be a bug in the new version of ValueTask
-                {
-                    _read += task.Result;
-                    return task;
-                }
-
                 return ReadLong(task, async);
             }
 
@@ -187,12 +181,6 @@ namespace Npgsql
                     return new ValueTask<int>(0);
 
                 var task = _buf.ReadBytes(buffer.Slice(0, count), async: true);
-                if (task.IsCompleted) // This may be a bug in the new version of ValueTask
-                {
-                    _read += task.Result;
-                    return task;
-                }
-
                 return ReadLong(task, async: true);
             }
 #endif
