@@ -843,7 +843,7 @@ CREATE TYPE address AS
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 Pooling = false,
-                ApplicationName = nameof(NullablePropertyInStructComposite)
+                ApplicationName = nameof(UnmappedCompositeWithDbNull)
             };
             using var conn = OpenConnection(csb);
 

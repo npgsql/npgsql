@@ -1125,5 +1125,27 @@ CREATE TEMP TABLE ""OrganisatieQmo_Organisatie_QueryModelObjects_Imp""
   CONSTRAINT ""pk_OrganisatieQmo_Organisatie_QueryModelObjects_Imp"" PRIMARY KEY (""Id"")
 )";
         #endregion Bug1285
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2371")]
+        public void NullReferenceExceptionInBeginTextExport()
+        {
+            using var conn = OpenConnection();
+            try
+            {
+                using var transaction = conn.BeginTransaction();
+                var command = conn.CreateCommand();
+                command.CommandText = "CREATE OR REPLACE FUNCTION f_test() RETURNS TABLE (i INT) AS $$ BEGIN RETURN QUERY SELECT s.a FROM pg_stat_activity p; end; $$ LANGUAGE plpgsql;";
+                command.ExecuteNonQuery();
+                using var reader = conn.BeginTextExport("copy (select * FROM f_test())  TO STDOUT WITH (format csv)");
+                Assert.That(() => reader.ReadLine(), Throws.Exception
+                    .TypeOf<PostgresException>()
+                    .With.Property(nameof(PostgresException.SqlState)).EqualTo("42P01")
+                );
+            }
+            finally
+            {
+                conn.ExecuteNonQuery("DROP FUNCTION IF EXISTS f_test()");
+            }
+        }
     }
 }
