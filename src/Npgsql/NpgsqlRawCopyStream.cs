@@ -175,11 +175,14 @@ namespace Npgsql
             if (_leftToReadInDataMsg == 0)
             {
                 IBackendMessage msg;
-                try {
+                try
+                {
                     // We've consumed the current DataMessage (or haven't yet received the first),
                     // read the next message
                     msg = await _connector.ReadMessage(async);
-                } catch {
+                }
+                catch
+                {
                     Cleanup();
                     throw;
                 }
