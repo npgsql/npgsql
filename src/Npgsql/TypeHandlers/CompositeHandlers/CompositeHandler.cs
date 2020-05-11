@@ -50,37 +50,18 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
                 if (IsValueType<T>.Value)
                 {
                     var composite = new ByReference<T> { Value = _constructor() };
-                    await ApplySafelyToMembers(member => member.Read(composite, buffer, async));
+                    foreach (var member in _memberHandlers)
+                        await member.Read(composite, buffer, async);
 
                     return composite.Value;
                 }
                 else
                 {
                     var composite = _constructor();
-                    await ApplySafelyToMembers(member => member.Read(composite, buffer, async));
+                    foreach (var member in _memberHandlers)
+                        await member.Read(composite, buffer, async);
 
                     return composite;
-                }
-            }
-
-            async ValueTask ApplySafelyToMembers(Func<CompositeMemberHandler<T>, ValueTask> func)
-            {
-                NpgsqlSafeReadException? safeReadException = null;
-                foreach (var member in _memberHandlers)
-                {
-                    try
-                    {
-                        await func(member);
-                    }
-                    catch (NpgsqlSafeReadException e)
-                    {
-                        safeReadException ??= e;
-                    }
-                }
-
-                if (safeReadException != null)
-                {
-                    throw safeReadException;
                 }
             }
         }

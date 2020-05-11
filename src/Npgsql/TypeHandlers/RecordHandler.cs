@@ -44,8 +44,6 @@ namespace Npgsql.TypeHandlers
             var fieldCount = buf.ReadInt32();
             var result = new object[fieldCount];
 
-            NpgsqlSafeReadException? safeReadException = null;
-
             for (var i = 0; i < fieldCount; i++)
             {
                 await buf.Ensure(8, async);
@@ -53,19 +51,7 @@ namespace Npgsql.TypeHandlers
                 var fieldLen = buf.ReadInt32();
                 if (fieldLen == -1)  // Null field, simply skip it and leave at default
                     continue;
-                try
-                {
-                    result[i] = await _typeMapper.GetByOID(typeOID).ReadAsObject(buf, fieldLen, async);
-                }
-                catch (NpgsqlSafeReadException e)
-                {
-                    safeReadException ??= e;
-                }
-            }
-
-            if (safeReadException != null)
-            {
-                throw safeReadException;
+                result[i] = await _typeMapper.GetByOID(typeOID).ReadAsObject(buf, fieldLen, async);
             }
 
             return result;
