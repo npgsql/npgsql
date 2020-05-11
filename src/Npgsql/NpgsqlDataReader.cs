@@ -389,7 +389,7 @@ namespace Npgsql
                         Expect<BindCompleteMessage>(await Connector.ReadMessage(async), Connector);
                         RowDescription = statement.Description;
                     }
-                    else // Non-prepared flow
+                    else // Non-prepared/preparing flow
                     {
                         var pStatement = statement.PreparedStatement;
                         if (pStatement != null)
@@ -421,7 +421,11 @@ namespace Npgsql
                             _ => throw Connector.UnexpectedMessageReceived(msg.Code)
                         };
 
-                        pStatement?.CompletePrepare();
+                        if (statement.IsPreparing)
+                        {
+                            statement.IsPreparing = false;
+                            pStatement!.CompletePrepare();
+                        }
                     }
 
                     if (RowDescription == null)
@@ -492,9 +496,12 @@ namespace Npgsql
                 // them back in unprepared state.
                 for (; StatementIndex < _statements.Count; StatementIndex++)
                 {
-                    var pStatement = _statements[StatementIndex].PreparedStatement;
-                    if (pStatement?.IsPrepared == false)
-                        pStatement.CompleteUnprepare();
+                    var statement = _statements[StatementIndex];
+                    if (statement.IsPreparing)
+                    {
+                        statement.IsPreparing = false;
+                        statement.PreparedStatement!.CompleteUnprepare();
+                    }
                 }
 
                 throw;

@@ -77,6 +77,8 @@ namespace Npgsql
 
         PreparedStatement? _preparedStatement;
 
+        internal bool IsPreparing;
+
         /// <summary>
         /// Holds the server-side (prepared) statement name. Empty string for non-prepared statements.
         /// </summary>
