@@ -573,7 +573,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 statement.PreparedStatement = connector.PreparedStatementManager.GetOrAddExplicit(statement);
                 if (statement.PreparedStatement?.State == PreparedState.NotPrepared)
                 {
-                    statement.PreparedStatement.State = PreparedState.ToBePrepared;
+                    statement.PreparedStatement.State = PreparedState.BeingPrepared;
+                    statement.IsPreparing = true;
                     needToPrepare = true;
                 }
             }
@@ -597,9 +598,10 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     for (var i = 0; i < _statements.Count; i++)
                     {
                         var statement = _statements[i];
-                        var pStatement = statement.PreparedStatement;
-                        if (pStatement?.State != PreparedState.BeingPrepared)
+                        if (!statement.IsPreparing)
                             continue;
+
+                        var pStatement = statement.PreparedStatement!;
 
                         try
                         {
@@ -629,6 +631,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                                 throw connector.UnexpectedMessageReceived(msg.Code);
                             }
 
+                            statement.IsPreparing = false;
                             pStatement.CompletePrepare();
                             isFirst = false;
                         }
@@ -638,9 +641,12 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                             // all following statements
                             for (; i < _statements.Count; i++)
                             {
-                                pStatement = _statements[i].PreparedStatement;
-                                if (pStatement?.State == PreparedState.BeingPrepared)
-                                    pStatement.CompleteUnprepare();
+                                statement = _statements[i];
+                                if (statement.IsPreparing)
+                                {
+                                    statement.IsPreparing = false;
+                                    statement.PreparedStatement!.CompleteUnprepare();
+                                }
                             }
 
                             throw;
@@ -815,25 +821,31 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 var statement = _statements[i];
                 var pStatement = statement.PreparedStatement;
 
-                if (pStatement == null || pStatement.State == PreparedState.ToBePrepared)
+                if (pStatement == null || statement.IsPreparing)
                 {
+                    // The statement should either execute unprepared, or is being auto-prepared.
+                    // Send Parse, Bind, Describe
+
                     // We may have a prepared statement that replaces an existing statement - close the latter first.
                     if (pStatement?.StatementBeingReplaced != null)
                         await connector.WriteClose(StatementOrPortal.Statement, pStatement.StatementBeingReplaced.Name!, async);
 
                     await connector.WriteParse(statement.SQL, statement.StatementName, statement.InputParameters, async);
-                }
 
-                await connector.WriteBind(
-                    statement.InputParameters, string.Empty, statement.StatementName, AllResultTypesAreUnknown,
-                    i == 0 ? UnknownResultTypeList : null,
-                    async);
+                    await connector.WriteBind(
+                        statement.InputParameters, string.Empty, statement.StatementName, AllResultTypesAreUnknown,
+                        i == 0 ? UnknownResultTypeList : null,
+                        async);
 
-                if (pStatement == null || pStatement.State == PreparedState.ToBePrepared)
-                {
                     await connector.WriteDescribe(StatementOrPortal.Portal, string.Empty, async);
-                    if (statement.PreparedStatement != null)
-                        statement.PreparedStatement.State = PreparedState.BeingPrepared;
+                }
+                else
+                {
+                    // The statement is already prepared, only a Bind is needed
+                    await connector.WriteBind(
+                        statement.InputParameters, string.Empty, statement.StatementName, AllResultTypesAreUnknown,
+                        i == 0 ? UnknownResultTypeList : null,
+                        async);
                 }
 
                 await connector.WriteExecute(0, async);
@@ -910,18 +922,16 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                 // A statement may be already prepared, already in preparation (i.e. same statement twice
                 // in the same command), or we can't prepare (overloaded SQL)
-                if (pStatement?.State != PreparedState.ToBePrepared)
+                if (!statement.IsPreparing)
                     continue;
 
                 // We may have a prepared statement that replaces an existing statement - close the latter first.
-                var statementToClose = pStatement.StatementBeingReplaced;
+                var statementToClose = pStatement!.StatementBeingReplaced;
                 if (statementToClose != null)
                     await connector.WriteClose(StatementOrPortal.Statement, statementToClose.Name!, async);
 
                 await connector.WriteParse(statement.SQL, pStatement.Name!, statement.InputParameters, async);
                 await connector.WriteDescribe(StatementOrPortal.Statement, pStatement.Name!, async);
-
-                pStatement.State = PreparedState.BeingPrepared;
             }
 
             await connector.WriteSync(async);
@@ -1139,8 +1149,15 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                                 // Note that this may return null (not enough usages for automatic preparation).
                                 if (!statement.IsPrepared)
                                     statement.PreparedStatement = connector.PreparedStatementManager.TryGetAutoPrepared(statement);
-                                if (statement.PreparedStatement != null)
+                                if (statement.PreparedStatement is PreparedStatement pStatement)
+                                {
                                     numPrepared++;
+                                    if (pStatement?.State == PreparedState.NotPrepared)
+                                    {
+                                        pStatement.State = PreparedState.BeingPrepared;
+                                        statement.IsPreparing = true;
+                                    }
+                                }
                             }
 
                             if (numPrepared > 0)

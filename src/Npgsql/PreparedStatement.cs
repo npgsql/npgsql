@@ -131,16 +131,7 @@ namespace Npgsql
         NotPrepared,
 
         /// <summary>
-        /// The statement has been selected for preparation, but the preparation hasn't started yet.
-        /// This is a temporary state that only occurs during preparation, and indicates that no
-        /// no protocol message (Parse) has been sent yet.
-        /// </summary>
-        ToBePrepared,
-
-        /// <summary>
-        /// The statement is in the process of being prepared. This is a temporary state that only occurs during
-        /// preparation, and indicates that a Parse protocol message for the statement has already been written
-        /// to the write buffer.
+        /// The statement is in the process of being prepared.
         /// </summary>
         BeingPrepared,
 
