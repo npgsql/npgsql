@@ -559,12 +559,20 @@ namespace Npgsql.Tests
 
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                Host=dir
+                Host = dir
             };
 
-            using var conn = OpenConnection(csb);
-
-            Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+            try
+            {
+                using var conn = OpenConnection(csb);
+                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+            }
+            catch (PostgresException e) when (e.SqlState.StartsWith("28"))
+            {
+                if (TestUtil.IsOnBuildServer)
+                    throw;
+                Assert.Ignore("Connection via unix domain socket failed");
+            }
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/903")]
