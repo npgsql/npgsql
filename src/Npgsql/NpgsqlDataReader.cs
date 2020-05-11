@@ -1368,28 +1368,12 @@ namespace Npgsql
                 ThrowHelper.ThrowInvalidCastException_NoValue(field);
             }
 
-            try
-            {
-                return NullableHandler<T>.Exists
+            return SafeColumnRead(() =>
+                NullableHandler<T>.Exists
                     ? NullableHandler<T>.Read(field.Handler, Buffer, ColumnLen, field)
                     : typeof(T) == typeof(object)
                         ? (T)field.Handler.ReadAsObject(Buffer, ColumnLen, field)
-                        : field.Handler.Read<T>(Buffer, ColumnLen, field);
-            }
-            catch (NpgsqlSafeReadException e)
-            {
-                throw e.OriginalException;
-            }
-            catch
-            {
-                Connector.Break();
-                throw;
-            }
-            finally
-            {
-                // Important in case a NpgsqlSafeReadException was thrown, position must still be updated
-                PosInColumn += ColumnLen;
-            }
+                        : field.Handler.Read<T>(Buffer, ColumnLen, field));
         }
 
         async ValueTask<T> GetFieldValueSequential<T>(int column, bool async)
@@ -1410,9 +1394,8 @@ namespace Npgsql
                 ThrowHelper.ThrowInvalidCastException_NoValue(field);
             }
 
-            try
-            {
-                return NullableHandler<T>.Exists
+            return await SafeColumnRead(async () =>
+                NullableHandler<T>.Exists
                     ? ColumnLen <= Buffer.ReadBytesLeft
                         ? NullableHandler<T>.Read(field.Handler, Buffer, ColumnLen, field)
                         : await NullableHandler<T>.ReadAsync(field.Handler, Buffer, ColumnLen, async, field)
@@ -1422,22 +1405,7 @@ namespace Npgsql
                             : (T)await field.Handler.ReadAsObject(Buffer, ColumnLen, async, field)
                         : ColumnLen <= Buffer.ReadBytesLeft
                             ? field.Handler.Read<T>(Buffer, ColumnLen, field)
-                            : await field.Handler.Read<T>(Buffer, ColumnLen, async, field);
-            }
-            catch (NpgsqlSafeReadException e)
-            {
-                throw e.OriginalException;
-            }
-            catch
-            {
-                Connector.Break();
-                throw;
-            }
-            finally
-            {
-                // Important in case a NpgsqlSafeReadException was thrown, position must still be updated
-                PosInColumn += ColumnLen;
-            }
+                            : await field.Handler.Read<T>(Buffer, ColumnLen, async, field));
         }
 
         #endregion
@@ -1462,27 +1430,10 @@ namespace Npgsql
             if (ColumnLen == -1)
                 return DBNull.Value;
 
-            object result;
-            try
-            {
-                result = _isSequential
+            var result = SafeColumnRead(() =>
+                _isSequential
                     ? fieldDescription.Handler.ReadAsObject(Buffer, ColumnLen, false, fieldDescription).GetAwaiter().GetResult()
-                    : fieldDescription.Handler.ReadAsObject(Buffer, ColumnLen, fieldDescription);
-            }
-            catch (NpgsqlSafeReadException e)
-            {
-                throw e.OriginalException;
-            }
-            catch
-            {
-                Connector.Break();
-                throw;
-            }
-            finally
-            {
-                // Important in case a NpgsqlSafeReadException was thrown, position must still be updated
-                PosInColumn += ColumnLen;
-            }
+                    : fieldDescription.Handler.ReadAsObject(Buffer, ColumnLen, fieldDescription));
 
             // Used for Entity Framework <= 6 compability
             var objectResultType = Command.ObjectResultTypes?[ordinal];
@@ -1516,26 +1467,10 @@ namespace Npgsql
             if (ColumnLen == -1)
                 return DBNull.Value;
 
-            try
-            {
-                return _isSequential
+            return SafeColumnRead(() =>
+                _isSequential
                     ? fieldDescription.Handler.ReadPsvAsObject(Buffer, ColumnLen, false, fieldDescription).GetAwaiter().GetResult()
-                    : fieldDescription.Handler.ReadPsvAsObject(Buffer, ColumnLen, fieldDescription);
-            }
-            catch (NpgsqlSafeReadException e)
-            {
-                throw e.OriginalException;
-            }
-            catch
-            {
-                Connector.Break();
-                throw;
-            }
-            finally
-            {
-                // Important in case a NpgsqlSafeReadException was thrown, position must still be updated
-                PosInColumn += ColumnLen;
-            }
+                    : fieldDescription.Handler.ReadPsvAsObject(Buffer, ColumnLen, fieldDescription));
         }
 
         /// <summary>
@@ -2004,6 +1939,48 @@ namespace Npgsql
         {
             if (State == ReaderState.Closed)
                 throw new InvalidOperationException("The reader is closed");
+        }
+
+        #endregion
+
+        #region SafeColumnRead
+
+        TValue SafeColumnRead<TValue>(Func<TValue> func)
+            => SafeColumnRead(() => new ValueTask<TValue>(func()), false).GetAwaiter().GetResult();
+
+        ValueTask<TValue> SafeColumnRead<TValue>(Func<ValueTask<TValue>> func)
+            => SafeColumnRead(func, true);
+
+        async ValueTask<TValue> SafeColumnRead<TValue>(Func<ValueTask<TValue>> func, bool async)
+        {
+            var position = Buffer.ReadPosition;
+            try
+            {
+                return await func();
+            }
+            catch (NpgsqlSafeReadException e)
+            {
+                await SkipRemaining();
+                throw e.OriginalException;
+            }
+            catch
+            {
+                Connector.Break();
+                throw;
+            }
+            finally
+            {
+                // Important in case a NpgsqlSafeReadException was thrown, position must still be updated
+                PosInColumn += ColumnLen;
+            }
+
+            async ValueTask SkipRemaining()
+            {
+                var writtenBytes = Buffer.ReadPosition - position;
+                var remainingBytes = ColumnLen - writtenBytes;
+                if (remainingBytes > 0)
+                    await Buffer.Skip(remainingBytes, async);
+            }
         }
 
         #endregion
