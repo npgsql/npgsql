@@ -1269,12 +1269,12 @@ CREATE TEMP TABLE ""OrganisatieQmo_Organisatie_QueryModelObjects_Imp""
             conn.TypeMapper.MapComposite<SomeComposite>("comp1");
 
             conn.ExecuteNonQuery(@"
-CREATE FUNCTION pg_temp.func(id int,out comp1 comp1, OUT comp2 COMP1[])
+CREATE FUNCTION pg_temp.func(id int, out comp1 comp1, OUT comp2 COMP1[])
 LANGUAGE plpgsql AS
 $$
 BEGIN
-    comp1 = ROW(9, 'bar',1)::comp1;
-    comp2 = ARRAY[ROW(9, 'bar',1)::comp1];
+    comp1 = ROW(9, 'bar', 1)::comp1;
+    comp2 = ARRAY[ROW(9, 'bar', 1)::comp1];
 END;
 $$;");
 
