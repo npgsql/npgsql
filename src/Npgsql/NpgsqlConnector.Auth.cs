@@ -218,38 +218,35 @@ namespace Npgsql
             Expect<AuthenticationRequestMessage>(await ReadMessage(async), this);
         }
 
-#pragma warning disable CA1801 // Review unused parameters
         async Task AuthenticateGSS(bool async)
         {
             if (!IntegratedSecurity)
-                throw new NpgsqlException("SSPI authentication but IntegratedSecurity not enabled");
+                throw new NpgsqlException("GSS/SSPI authentication but IntegratedSecurity not enabled");
 
-            using (var negotiateStream = new NegotiateStream(new GSSPasswordMessageStream(this), true))
+            using var negotiateStream = new NegotiateStream(new GSSPasswordMessageStream(this), true);
+            try
             {
-                try
-                {
-                    var targetName = $"{KerberosServiceName}/{Host}";
-                    if (async)
-                        await negotiateStream.AuthenticateAsClientAsync(CredentialCache.DefaultNetworkCredentials, targetName);
-                    else
-                        negotiateStream.AuthenticateAsClient(CredentialCache.DefaultNetworkCredentials, targetName);
-                }
-                catch (AuthenticationCompleteException)
-                {
-                    return;
-                }
-                catch (IOException e) when (e.InnerException is AuthenticationCompleteException)
-                {
-                    return;
-                }
-                catch (IOException e) when (e.InnerException is PostgresException)
-                {
-                    throw e.InnerException;
-                }
+                var targetName = $"{KerberosServiceName}/{Host}";
+                if (async)
+                    await negotiateStream.AuthenticateAsClientAsync(CredentialCache.DefaultNetworkCredentials, targetName);
+                else
+                    negotiateStream.AuthenticateAsClient(CredentialCache.DefaultNetworkCredentials, targetName);
             }
+            catch (AuthenticationCompleteException)
+            {
+                return;
+            }
+            catch (IOException e) when (e.InnerException is AuthenticationCompleteException)
+            {
+                return;
+            }
+            catch (IOException e) when (e.InnerException is PostgresException)
+            {
+                throw e.InnerException;
+            }
+
             throw new NpgsqlException("NegotiateStream.AuthenticateAsClient completed unexpectedly without signaling success");
         }
-#pragma warning restore CA1801 // Review unused parameters
 
         /// <summary>
         /// This Stream is placed between NegotiateStream and the socket's NetworkStream (or SSLStream). It intercepts
