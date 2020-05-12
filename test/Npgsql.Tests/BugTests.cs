@@ -1258,12 +1258,7 @@ CREATE TEMP TABLE ""OrganisatieQmo_Organisatie_QueryModelObjects_Imp""
         [Test]
         public void CompositePostgresType()
         {
-            var csb = new NpgsqlConnectionStringBuilder(ConnectionString + ";Load Table Composites=true")
-            {
-                ApplicationName = nameof(CompositePostgresType),
-                Pooling = false
-            };
-            using var conn = OpenConnection(csb);
+            using var conn = OpenConnection();
             conn.ExecuteNonQuery("CREATE TYPE pg_temp.comp1 as (x int, some_text text, test int)");
             conn.ReloadTypes();
             conn.TypeMapper.MapComposite<SomeComposite>("comp1");
