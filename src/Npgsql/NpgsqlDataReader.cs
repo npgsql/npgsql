@@ -1385,7 +1385,8 @@ namespace Npgsql
                 if (remainingBytes > 0)
                     Buffer.Skip(remainingBytes, false).GetAwaiter().GetResult();
 
-                throw e.OriginalException;
+                ExceptionDispatchInfo.Capture(e.OriginalException).Throw();
+                throw;
             }
             catch
             {
@@ -1439,7 +1440,8 @@ namespace Npgsql
                 if (remainingBytes > 0)
                     await Buffer.Skip(remainingBytes, async);
 
-                throw e.OriginalException;
+                ExceptionDispatchInfo.Capture(e.OriginalException).Throw();
+                throw;
             }
             catch
             {
@@ -1490,7 +1492,8 @@ namespace Npgsql
                 if (remainingBytes > 0)
                     Buffer.Skip(remainingBytes, false).GetAwaiter().GetResult();
 
-                throw e.OriginalException;
+                ExceptionDispatchInfo.Capture(e.OriginalException).Throw();
+                throw;
             }
             catch
             {
@@ -1549,7 +1552,8 @@ namespace Npgsql
                 if (remainingBytes > 0)
                     Buffer.Skip(remainingBytes, false).GetAwaiter().GetResult();
 
-                throw e.OriginalException;
+                ExceptionDispatchInfo.Capture(e.OriginalException).Throw();
+                throw;
             }
             catch
             {
