@@ -102,9 +102,7 @@ namespace Npgsql.TypeHandlers
             if (len > 4 + 4)
             {
                 buf.Skip(len);
-                throw new NpgsqlSafeReadException(
-                    new InvalidCastException("Can't read PostgreSQL bitstring with more than 32 bits into BitVector32")
-                );
+                throw new InvalidCastException("Can't read PostgreSQL bitstring with more than 32 bits into BitVector32");
             }
 
             await buf.Ensure(4 + 4, async);
@@ -124,7 +122,7 @@ namespace Npgsql.TypeHandlers
                 // This isn't a single bit - error.
                 // Consume the rest of the value first so the connection is left in a good state.
                 buf.Skip(len - 4);
-                throw new NpgsqlSafeReadException(new InvalidCastException("Can't convert a BIT(N) type to bool, only BIT(1)"));
+                throw new InvalidCastException("Can't convert a BIT(N) type to bool, only BIT(1)");
             }
             var b = buf.ReadByte();
             return (b & 128) != 0;
@@ -133,7 +131,7 @@ namespace Npgsql.TypeHandlers
         ValueTask<string> INpgsqlTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
         {
             buf.Skip(len);
-            throw new NpgsqlSafeReadException(new NotSupportedException("Only writing string to PostgreSQL bitstring is supported, no reading."));
+            throw new NotSupportedException("Only writing string to PostgreSQL bitstring is supported, no reading.");
         }
 
         internal override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)

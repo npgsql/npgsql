@@ -1378,24 +1378,20 @@ namespace Npgsql
                         ? (T)field.Handler.ReadAsObject(Buffer, ColumnLen, field)
                         : field.Handler.Read<T>(Buffer, ColumnLen, field);
             }
-            catch (NpgsqlSafeReadException e)
-            {
-                var writtenBytes = Buffer.ReadPosition - position;
-                var remainingBytes = ColumnLen - writtenBytes;
-                if (remainingBytes > 0)
-                    Buffer.Skip(remainingBytes, false).GetAwaiter().GetResult();
-
-                ExceptionDispatchInfo.Capture(e.OriginalException).Throw();
-                throw;
-            }
             catch
             {
-                Connector.Break();
+                if (Connector.State != ConnectorState.Broken)
+                {
+                    var writtenBytes = Buffer.ReadPosition - position;
+                    var remainingBytes = ColumnLen - writtenBytes;
+                    if (remainingBytes > 0)
+                        Buffer.Skip(remainingBytes, false).GetAwaiter().GetResult();
+                }
                 throw;
             }
             finally
             {
-                // Important in case a NpgsqlSafeReadException was thrown, position must still be updated
+                // Important: position must still be updated
                 PosInColumn += ColumnLen;
             }
         }
@@ -1433,24 +1429,20 @@ namespace Npgsql
                             ? field.Handler.Read<T>(Buffer, ColumnLen, field)
                             : await field.Handler.Read<T>(Buffer, ColumnLen, async, field);
             }
-            catch (NpgsqlSafeReadException e)
-            {
-                var writtenBytes = Buffer.ReadPosition - position;
-                var remainingBytes = ColumnLen - writtenBytes;
-                if (remainingBytes > 0)
-                    await Buffer.Skip(remainingBytes, async);
-
-                ExceptionDispatchInfo.Capture(e.OriginalException).Throw();
-                throw;
-            }
             catch
             {
-                Connector.Break();
+                if (Connector.State != ConnectorState.Broken)
+                {
+                    var writtenBytes = Buffer.ReadPosition - position;
+                    var remainingBytes = ColumnLen - writtenBytes;
+                    if (remainingBytes > 0)
+                        await Buffer.Skip(remainingBytes, async);
+                }
                 throw;
             }
             finally
             {
-                // Important in case a NpgsqlSafeReadException was thrown, position must still be updated
+                // Important: position must still be updated
                 PosInColumn += ColumnLen;
             }
         }
@@ -1485,24 +1477,20 @@ namespace Npgsql
                     ? fieldDescription.Handler.ReadAsObject(Buffer, ColumnLen, false, fieldDescription).GetAwaiter().GetResult()
                     : fieldDescription.Handler.ReadAsObject(Buffer, ColumnLen, fieldDescription);
             }
-            catch (NpgsqlSafeReadException e)
-            {
-                var writtenBytes = Buffer.ReadPosition - position;
-                var remainingBytes = ColumnLen - writtenBytes;
-                if (remainingBytes > 0)
-                    Buffer.Skip(remainingBytes, false).GetAwaiter().GetResult();
-
-                ExceptionDispatchInfo.Capture(e.OriginalException).Throw();
-                throw;
-            }
             catch
             {
-                Connector.Break();
+                if (Connector.State != ConnectorState.Broken)
+                {
+                    var writtenBytes = Buffer.ReadPosition - position;
+                    var remainingBytes = ColumnLen - writtenBytes;
+                    if (remainingBytes > 0)
+                        Buffer.Skip(remainingBytes, false).GetAwaiter().GetResult();
+                }
                 throw;
             }
             finally
             {
-                // Important in case a NpgsqlSafeReadException was thrown, position must still be updated
+                // Important: position must still be updated
                 PosInColumn += ColumnLen;
             }
 
@@ -1545,24 +1533,20 @@ namespace Npgsql
                     ? fieldDescription.Handler.ReadPsvAsObject(Buffer, ColumnLen, false, fieldDescription).GetAwaiter().GetResult()
                     : fieldDescription.Handler.ReadPsvAsObject(Buffer, ColumnLen, fieldDescription);
             }
-            catch (NpgsqlSafeReadException e)
-            {
-                var writtenBytes = Buffer.ReadPosition - position;
-                var remainingBytes = ColumnLen - writtenBytes;
-                if (remainingBytes > 0)
-                    Buffer.Skip(remainingBytes, false).GetAwaiter().GetResult();
-
-                ExceptionDispatchInfo.Capture(e.OriginalException).Throw();
-                throw;
-            }
             catch
             {
-                Connector.Break();
+                if (Connector.State != ConnectorState.Broken)
+                {
+                    var writtenBytes = Buffer.ReadPosition - position;
+                    var remainingBytes = ColumnLen - writtenBytes;
+                    if (remainingBytes > 0)
+                        Buffer.Skip(remainingBytes, false).GetAwaiter().GetResult();
+                }
                 throw;
             }
             finally
             {
-                // Important in case a NpgsqlSafeReadException was thrown, position must still be updated
+                // Important: position must still be updated
                 PosInColumn += ColumnLen;
             }
         }

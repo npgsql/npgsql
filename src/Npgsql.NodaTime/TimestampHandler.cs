@@ -57,7 +57,7 @@ namespace Npgsql.NodaTime
         {
             var value = buf.ReadInt64();
             if (value == long.MaxValue || value == long.MinValue)
-                throw new NpgsqlSafeReadException(new NotSupportedException("Infinity values not supported when reading LocalDateTime, read as Instant instead"));
+                throw new NotSupportedException("Infinity values not supported when reading LocalDateTime, read as Instant instead");
             return Decode(value).InUtc().LocalDateTime;
         }
 

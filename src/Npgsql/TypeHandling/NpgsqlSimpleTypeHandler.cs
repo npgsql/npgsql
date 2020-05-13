@@ -107,10 +107,10 @@ namespace Npgsql.TypeHandling
             if (asTypedHandler == null)
             {
                 buf.Skip(len);  // Perform this in sync for performance
-                throw new NpgsqlSafeReadException(new InvalidCastException(fieldDescription == null
+                throw new InvalidCastException(fieldDescription == null
                     ? $"Can't cast database type to {typeof(TAny).Name}"
                     : $"Can't cast database type {fieldDescription.Handler.PgDisplayName} to {typeof(TAny).Name}"
-                ));
+                );
             }
 
             return asTypedHandler.Read(buf, len, fieldDescription);

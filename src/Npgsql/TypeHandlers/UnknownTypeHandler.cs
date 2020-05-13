@@ -34,11 +34,11 @@ namespace Npgsql.TypeHandlers
                 // requested text. Skip the data and throw.
                 buf.Skip(byteLen);
                 // At least get the name of the PostgreSQL type for the exception
-                throw new NpgsqlSafeReadException(new NotSupportedException(
+                throw new NotSupportedException(
                     _connector.TypeMapper.DatabaseInfo.ByOID.TryGetValue(fieldDescription.TypeOID, out var pgType)
                         ? $"The field '{fieldDescription.Name}' has type '{pgType.DisplayName}', which is currently unknown to Npgsql. You can retrieve it as a string by marking it as unknown, please see the FAQ."
                         : $"The field '{fieldDescription.Name}' has a type currently unknown to Npgsql (OID {fieldDescription.TypeOID}). You can retrieve it as a string by marking it as unknown, please see the FAQ."
-                ));
+                );
             }
             return base.Read(buf, byteLen, async, fieldDescription);
         }

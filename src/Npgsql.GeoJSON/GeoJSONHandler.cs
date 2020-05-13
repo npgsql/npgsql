@@ -300,7 +300,7 @@ namespace Npgsql.GeoJSON
                 }
 
             default:
-                throw new NpgsqlSafeReadException(UnknownPostGisType());
+                throw UnknownPostGisType();
             }
 
             geometry.CRS = crs;
@@ -689,7 +689,7 @@ namespace Npgsql.GeoJSON
 
             var authority = _crsMap.GetAuthority(srid);
             if (authority == null)
-                throw new NpgsqlSafeReadException(new InvalidOperationException($"SRID {srid} unknown in spatial_ref_sys table"));
+                throw new InvalidOperationException($"SRID {srid} unknown in spatial_ref_sys table");
 
             _lastCrs = new NamedCRS(crsType == GeoJSONOptions.LongCRS
                 ? "urn:ogc:def:crs:" + authority + "::" + srid : authority + ":" + srid);

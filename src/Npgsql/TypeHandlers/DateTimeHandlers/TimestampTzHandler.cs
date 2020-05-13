@@ -50,20 +50,14 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         {
             // TODO: Convert directly to DateTime without passing through NpgsqlTimeStamp?
             var ts = ReadTimeStamp(buf, len, fieldDescription);
-            try
-            {
-                if (ts.IsFinite)
-                    return ts.ToDateTime().ToLocalTime();
-                if (!ConvertInfinityDateTime)
-                    throw new InvalidCastException("Can't convert infinite timestamptz values to DateTime");
-                if (ts.IsInfinity)
-                    return DateTime.MaxValue;
-                return DateTime.MinValue;
-            }
-            catch (Exception e)
-            {
-                throw new NpgsqlSafeReadException(e);
-            }
+
+            if (ts.IsFinite)
+                return ts.ToDateTime().ToLocalTime();
+            if (!ConvertInfinityDateTime)
+                throw new InvalidCastException("Can't convert infinite timestamptz values to DateTime");
+            if (ts.IsInfinity)
+                return DateTime.MaxValue;
+            return DateTime.MinValue;
         }
 
         /// <inheritdoc />
@@ -77,20 +71,14 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         {
             // TODO: Convert directly to DateTime without passing through NpgsqlTimeStamp?
             var ts = ReadTimeStamp(buf, len, fieldDescription);
-            try
-            {
-                if (ts.IsFinite)
-                    return ts.ToDateTime().ToLocalTime();
-                if (!ConvertInfinityDateTime)
-                    throw new InvalidCastException("Can't convert infinite timestamptz values to DateTime");
-                if (ts.IsInfinity)
-                    return DateTimeOffset.MaxValue;
-                return DateTimeOffset.MinValue;
-            }
-            catch (Exception e)
-            {
-                throw new NpgsqlSafeReadException(e);
-            }
+            
+            if (ts.IsFinite)
+                return ts.ToDateTime().ToLocalTime();
+            if (!ConvertInfinityDateTime)
+                throw new InvalidCastException("Can't convert infinite timestamptz values to DateTime");
+            if (ts.IsInfinity)
+                return DateTimeOffset.MaxValue;
+            return DateTimeOffset.MinValue;
         }
 
         #endregion Read

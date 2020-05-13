@@ -38,7 +38,7 @@ namespace Npgsql.TypeHandlers
                 Map(typeof(TAny));
 
             if (!_labelToEnum.TryGetValue(s, out var value))
-                throw new NpgsqlSafeReadException(new InvalidCastException($"Received enum value '{s}' from database which wasn't found on enum {typeof(TAny)}"));
+                throw new InvalidCastException($"Received enum value '{s}' from database which wasn't found on enum {typeof(TAny)}");
 
             // TODO: Avoid boxing
             return (TAny)(object)value;
