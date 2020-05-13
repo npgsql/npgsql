@@ -342,13 +342,11 @@ from
     pg_catalog.pg_class i join
     pg_catalog.pg_index ix ON ix.indexrelid = i.oid join
     pg_catalog.pg_class t ON ix.indrelid = t.oid join
-    pg_attribute a on t.oid = a.attrelid left join
     pg_catalog.pg_user u ON u.usesysid = i.relowner left join
     pg_catalog.pg_namespace n ON n.oid = i.relnamespace
 where
     i.relkind = 'i'
     and n.nspname not in ('pg_catalog', 'pg_toast')
-    and a.attnum = ANY(ix.indkey)
     and t.relkind = 'r'");
 
             using (var command = BuildCommand(conn, getIndexes, restrictions, false, "current_database()", "n.nspname", "t.relname", "i.relname"))
