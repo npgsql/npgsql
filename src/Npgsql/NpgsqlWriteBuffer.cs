@@ -130,9 +130,9 @@ namespace Npgsql
 
         #region Direct write
 
-        internal async Task DirectWrite(byte[] buffer, int offset, int count, bool async)
+        internal void DirectWrite(ReadOnlySpan<byte> buffer)
         {
-            await Flush(async);
+            Flush();
 
             if (_copyMode)
             {
@@ -141,10 +141,10 @@ namespace Npgsql
                 Debug.Assert(WritePosition == 5);
 
                 WritePosition = 1;
-                WriteInt32(count + 4);
+                WriteInt32(buffer.Length + 4);
                 WritePosition = 5;
                 _copyMode = false;
-                await Flush(async);
+                Flush();
                 _copyMode = true;
                 WriteCopyDataHeader();  // And ready the buffer after the direct write completes
             }
@@ -153,10 +153,7 @@ namespace Npgsql
 
             try
             {
-                if (async)
-                    await Underlying.WriteAsync(buffer, offset, count);
-                else
-                    Underlying.Write(buffer, offset, count);
+                Underlying.Write(buffer);
             }
             catch (Exception e)
             {
@@ -164,6 +161,9 @@ namespace Npgsql
                 throw new NpgsqlException("Exception while writing to stream", e);
             }
         }
+
+        internal Task DirectWrite(byte[] buffer, int offset, int count, bool async)
+            => DirectWrite(new ReadOnlyMemory<byte>(buffer, offset, count), async);
 
         internal async Task DirectWrite(ReadOnlyMemory<byte> memory, bool async)
         {

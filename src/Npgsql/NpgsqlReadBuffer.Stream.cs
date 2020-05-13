@@ -111,16 +111,13 @@ namespace Npgsql
                 => throw new NotSupportedException();
 
             public override int Read(byte[] buffer, int offset, int count)
-                => Read(buffer, offset, count, CancellationToken.None, false).GetAwaiter().GetResult();
+                => Read(new Span<byte>(buffer, offset, count));
 
             public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
             {
                 using (NoSynchronizationContextScope.Enter())
-                    return Read(buffer, offset, count, cancellationToken, true).AsTask();
+                    return ReadAsync(new Memory<byte>(buffer, offset, count), cancellationToken).AsTask();
             }
-
-            ValueTask<int> Read(byte[] buffer, int offset, int count, CancellationToken cancellationToken, bool async)
-                => Read(new Memory<byte>(buffer, offset, count), cancellationToken, async);
 
 #if !NET461 && !NETSTANDARD2_0
             public override int Read(Span<byte> span)
@@ -146,9 +143,7 @@ namespace Npgsql
 #else
             public ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
 #endif
-                => Read(buffer, cancellationToken, async: true);
 
-            ValueTask<int> Read(Memory<byte> buffer, CancellationToken cancellationToken, bool async)
             {
                 CheckDisposed();
 
@@ -160,15 +155,13 @@ namespace Npgsql
                 if (count == 0)
                     return new ValueTask<int>(0);
 
-                var task = _buf.ReadBytes(buffer.Slice(0, count), async);
-                return ReadLong(task, async);
+                var task = _buf.ReadBytes(buffer.Slice(0, count));
+                return ReadLong(task);
             }
 
-            async ValueTask<int> ReadLong(ValueTask<int> task, bool async)
+            async ValueTask<int> ReadLong(ValueTask<int> task)
             {
-                var read = async
-                    ? await task
-                    : task.GetAwaiter().GetResult();
+                var read = await task;
                 _read += read;
                 return read;
             }

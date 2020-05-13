@@ -394,7 +394,7 @@ namespace Npgsql
             }
         }
 
-        public ValueTask<int> ReadBytes(Memory<byte> output, bool async)
+        public ValueTask<int> ReadBytes(Memory<byte> output)
         {
             var readFromBuffer = Math.Min(ReadBytesLeft, output.Length);
             if (readFromBuffer > 0)
@@ -412,9 +412,7 @@ namespace Npgsql
                 Clear();
                 try
                 {
-                    var read = async
-                        ? await Underlying.ReadAsync(output)
-                        : Underlying.Read(output.Span);
+                    var read = await Underlying.ReadAsync(output);
                     if (read == 0)
                         throw new EndOfStreamException();
                     return read;

@@ -89,25 +89,51 @@ namespace Npgsql
 
         #region Write
 
-        public override void Write(byte[] buffer, int offset, int count) => Write(buffer, offset, count, false).GetAwaiter().GetResult();
+        public override void Write(byte[] buffer, int offset, int count)
+            => Write(new ReadOnlySpan<byte>(buffer, offset, count));
 
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-        {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled(cancellationToken);
-            using (NoSynchronizationContextScope.Enter())
-                return Write(buffer, offset, count, true).AsTask();
-        }
-
-        ValueTask Write(byte[] buffer, int offset, int count, bool async)
-            => Write(new Memory<byte>(buffer, offset, count), async);
+            => WriteAsync(new Memory<byte>(buffer, offset, count), cancellationToken).AsTask();
 
 #if !NET461 && !NETSTANDARD2_0
-        public override void Write(ReadOnlySpan<byte> span)
+        public override void Write(ReadOnlySpan<byte> buffer)
 #else
-        public void Write(ReadOnlySpan<byte> span)
+        public void Write(ReadOnlySpan<byte> buffer)
 #endif
-            => Write(span.ToArray(), false).GetAwaiter().GetResult();
+        {
+            CheckDisposed();
+            if (!CanWrite)
+                throw new InvalidOperationException("Stream not open for writing");
+
+            if (buffer.Length == 0) { return; }
+
+            if (buffer.Length <= _writeBuf.WriteSpaceLeft)
+            {
+                _writeBuf.WriteBytes(buffer);
+                return;
+            }
+
+            try
+            {
+                // Value is too big, flush.
+                Flush();
+
+                if (buffer.Length <= _writeBuf.WriteSpaceLeft)
+                {
+                    _writeBuf.WriteBytes(buffer);
+                    return;
+                }
+
+                // Value is too big even after a flush - bypass the buffer and write directly.
+                _writeBuf.DirectWrite(buffer);
+            }
+            catch
+            {
+                _connector.Break();
+                Cleanup();
+                throw;
+            }
+        }
 
 #if !NET461 && !NETSTANDARD2_0
         public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
@@ -118,27 +144,15 @@ namespace Npgsql
             if (cancellationToken.IsCancellationRequested)
                 return new ValueTask(Task.FromCanceled(cancellationToken));
             using (NoSynchronizationContextScope.Enter())
-                return Write(buffer, true);
-        }
+                return WriteLong(buffer);
 
-        async ValueTask Write(ReadOnlyMemory<byte> buffer, bool async)
-        {
-            CheckDisposed();
-            if (!CanWrite)
-                throw new InvalidOperationException("Stream not open for writing");
-
-            if (buffer.Length == 0) { return; }
-
-            if (buffer.Length <= _writeBuf.WriteSpaceLeft)
+            async ValueTask WriteLong(ReadOnlyMemory<byte> buffer)
             {
-                _writeBuf.WriteBytes(buffer.Span);
-                return;
-            }
+                CheckDisposed();
+                if (!CanWrite)
+                    throw new InvalidOperationException("Stream not open for writing");
 
-            try
-            {
-                // Value is too big, flush.
-                await FlushAsync(async);
+                if (buffer.Length == 0) { return; }
 
                 if (buffer.Length <= _writeBuf.WriteSpaceLeft)
                 {
@@ -146,14 +160,26 @@ namespace Npgsql
                     return;
                 }
 
-                // Value is too big even after a flush - bypass the buffer and write directly.
-                await _writeBuf.DirectWrite(buffer, async);
-            }
-            catch
-            {
-                _connector.Break();
-                Cleanup();
-                throw;
+                try
+                {
+                    // Value is too big, flush.
+                    await FlushAsync(true);
+
+                    if (buffer.Length <= _writeBuf.WriteSpaceLeft)
+                    {
+                        _writeBuf.WriteBytes(buffer.Span);
+                        return;
+                    }
+
+                    // Value is too big even after a flush - bypass the buffer and write directly.
+                    await _writeBuf.DirectWrite(buffer, true);
+                }
+                catch
+                {
+                    _connector.Break();
+                    Cleanup();
+                    throw;
+                }
             }
         }
 
@@ -177,18 +203,11 @@ namespace Npgsql
 
         #region Read
 
-        public override int Read(byte[] buffer, int offset, int count) => Read(buffer, offset, count, false).GetAwaiter().GetResult();
+        public override int Read(byte[] buffer, int offset, int count)
+            => Read(new Span<byte>(buffer, offset, count));
 
         public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-        {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled<int>(cancellationToken);
-            using (NoSynchronizationContextScope.Enter())
-                return Read(buffer, offset, count, true).AsTask();
-        }
-
-        ValueTask<int> Read(byte[] buffer, int offset, int count, bool async)
-            => Read(new Memory<byte>(buffer, offset, count), async);
+            => ReadAsync(new Memory<byte>(buffer, offset, count), cancellationToken).AsTask();
 
 #if !NET461 && !NETSTANDARD2_0
         public override int Read(Span<byte> span)
@@ -220,18 +239,17 @@ namespace Npgsql
                     throw;
                 }
 
-                switch (msg.Code)
-                {
-                    case BackendMessageCode.CopyData:
-                        _leftToReadInDataMsg = ((CopyDataMessage)msg).Length;
-                        break;
-                    case BackendMessageCode.CopyDone:
-                        Expect<CommandCompleteMessage>(_connector.ReadMessage(), _connector);
-                        Expect<ReadyForQueryMessage>(_connector.ReadMessage(), _connector);
-                        _isConsumed = true;
-                        return 0;
-                    default:
-                        throw _connector.UnexpectedMessageReceived(msg.Code);
+                switch (msg.Code) {
+                case BackendMessageCode.CopyData:
+                    _leftToReadInDataMsg = ((CopyDataMessage)msg).Length;
+                    break;
+                case BackendMessageCode.CopyDone:
+                    Expect<CommandCompleteMessage>(_connector.ReadMessage(), _connector);
+                    Expect<ReadyForQueryMessage>(_connector.ReadMessage(), _connector);
+                    _isConsumed = true;
+                    return 0;
+                default:
+                    throw _connector.UnexpectedMessageReceived(msg.Code);
                 }
             }
 
@@ -240,18 +258,14 @@ namespace Npgsql
             // If our buffer is empty, read in more. Otherwise return whatever is there, even if the
             // user asked for more (normal socket behavior)
             if (_readBuf.ReadBytesLeft == 0)
-            {
                 _readBuf.ReadMore();
-            }
 
             Debug.Assert(_readBuf.ReadBytesLeft > 0);
 
             var maxCount = Math.Min(_readBuf.ReadBytesLeft, _leftToReadInDataMsg);
             var count = span.Length;
             if (count > maxCount)
-            {
                 count = maxCount;
-            }
 
             _leftToReadInDataMsg -= count;
             _readBuf.ReadBytes(span.Slice(0, count));
@@ -267,71 +281,67 @@ namespace Npgsql
             if (cancellationToken.IsCancellationRequested)
                 return new ValueTask<int>(Task.FromCanceled<int>(cancellationToken));
             using (NoSynchronizationContextScope.Enter())
-                return Read(buffer, async: true);
-        }
+                return ReadLong(buffer);
 
-        async ValueTask<int> Read(Memory<byte> buffer, bool async)
-        {
-            CheckDisposed();
-            if (!CanRead)
-                throw new InvalidOperationException("Stream not open for reading");
-
-            if (_isConsumed)
+            async ValueTask<int> ReadLong(Memory<byte> buffer)
             {
-                return 0;
-            }
+                CheckDisposed();
+                if (!CanRead)
+                    throw new InvalidOperationException("Stream not open for reading");
 
-            if (_leftToReadInDataMsg == 0)
-            {
-                IBackendMessage msg;
-                try
+                if (_isConsumed)
                 {
-                    // We've consumed the current DataMessage (or haven't yet received the first),
-                    // read the next message
-                    msg = await _connector.ReadMessage(async);
-                }
-                catch
-                {
-                    Cleanup();
-                    throw;
+                    return 0;
                 }
 
-                switch (msg.Code)
+                if (_leftToReadInDataMsg == 0)
                 {
-                    case BackendMessageCode.CopyData:
-                        _leftToReadInDataMsg = ((CopyDataMessage)msg).Length;
-                        break;
-                    case BackendMessageCode.CopyDone:
-                        Expect<CommandCompleteMessage>(await _connector.ReadMessage(async), _connector);
-                        Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async), _connector);
-                        _isConsumed = true;
-                        return 0;
-                    default:
-                        throw _connector.UnexpectedMessageReceived(msg.Code);
+                    IBackendMessage msg;
+                    try
+                    {
+                        // We've consumed the current DataMessage (or haven't yet received the first),
+                        // read the next message
+                        msg = await _connector.ReadMessage(true);
+                    }
+                    catch
+                    {
+                        Cleanup();
+                        throw;
+                    }
+
+                    switch (msg.Code)
+                    {
+                        case BackendMessageCode.CopyData:
+                            _leftToReadInDataMsg = ((CopyDataMessage)msg).Length;
+                            break;
+                        case BackendMessageCode.CopyDone:
+                            Expect<CommandCompleteMessage>(await _connector.ReadMessage(true), _connector);
+                            Expect<ReadyForQueryMessage>(await _connector.ReadMessage(true), _connector);
+                            _isConsumed = true;
+                            return 0;
+                        default:
+                            throw _connector.UnexpectedMessageReceived(msg.Code);
+                    }
                 }
+
+                Debug.Assert(_leftToReadInDataMsg > 0);
+
+                // If our buffer is empty, read in more. Otherwise return whatever is there, even if the
+                // user asked for more (normal socket behavior)
+                if (_readBuf.ReadBytesLeft == 0)
+                    await _readBuf.ReadMore(true);
+
+                Debug.Assert(_readBuf.ReadBytesLeft > 0);
+
+                var maxCount = Math.Min(_readBuf.ReadBytesLeft, _leftToReadInDataMsg);
+                var count = buffer.Length;
+                if (count > maxCount)
+                    count = maxCount;
+
+                _leftToReadInDataMsg -= count;
+                _readBuf.ReadBytes(buffer.Slice(0, count).Span);
+                return count;
             }
-
-            Debug.Assert(_leftToReadInDataMsg > 0);
-
-            // If our buffer is empty, read in more. Otherwise return whatever is there, even if the
-            // user asked for more (normal socket behavior)
-            if (_readBuf.ReadBytesLeft == 0)
-            {
-                await _readBuf.ReadMore(async);
-            }
-
-            Debug.Assert(_readBuf.ReadBytesLeft > 0);
-
-            var maxCount = Math.Min(_readBuf.ReadBytesLeft, _leftToReadInDataMsg);
-            var count = buffer.Length;
-            if (count > maxCount)
-            {
-                count = maxCount;
-            }
-
-            _leftToReadInDataMsg -= count;
-            _readBuf.ReadBytes(buffer.Slice(0, count).Span);
-            return count;
         }
         #endregion
 
