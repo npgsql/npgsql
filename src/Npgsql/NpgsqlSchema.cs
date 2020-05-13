@@ -187,15 +187,13 @@ namespace Npgsql
                 new DataColumn("schema_owner")
             });
 
-            var getSchemata = new StringBuilder();
-
-            getSchemata.Append(
-@"select * from(
-    select current_database() as catalog_name,
+            var getSchemata = new StringBuilder(@"
+SELECT * FROM (
+    SELECT current_database() AS catalog_name,
         nspname AS schema_name,
         r.rolname AS schema_owner
-    from
-        pg_catalog.pg_namespace left join pg_catalog.pg_roles r on r.oid = nspowner
+    FROM
+        pg_catalog.pg_namespace LEFT JOIN pg_catalog.pg_roles r ON r.oid = nspowner
     ) tmp");
 
             using (var command = BuildCommand(conn, getSchemata, restrictions, "catalog_name", "schema_name", "schema_owner"))
@@ -227,7 +225,9 @@ namespace Npgsql
             getTables.Append(@"
 SELECT table_catalog, table_schema, table_name, table_type
 FROM information_schema.tables
-WHERE table_type IN ('BASE TABLE', 'FOREIGN', 'FOREIGN TABLE') AND table_schema NOT IN ('pg_catalog', 'information_schema')");
+WHERE
+    table_type IN ('BASE TABLE', 'FOREIGN', 'FOREIGN TABLE') AND
+    table_schema NOT IN ('pg_catalog', 'information_schema')");
 
             using (var command = BuildCommand(conn, getTables, restrictions, false, "table_catalog", "table_schema", "table_name", "table_type"))
             using (var adapter = new NpgsqlDataAdapter(command))
@@ -257,10 +257,13 @@ WHERE table_type IN ('BASE TABLE', 'FOREIGN', 'FOREIGN TABLE') AND table_schema 
                 new DataColumn("character_set_name"), new DataColumn("collation_catalog")
             });
 
-            var getColumns = new StringBuilder();
-
-            getColumns.Append(
-                "SELECT table_catalog, table_schema, table_name, column_name, ordinal_position, column_default, is_nullable, udt_name AS data_type, character_maximum_length, character_octet_length, numeric_precision, numeric_precision_radix, numeric_scale, datetime_precision, character_set_catalog, character_set_schema, character_set_name, collation_catalog FROM information_schema.columns");
+            var getColumns = new StringBuilder(@"
+SELECT
+    table_catalog, table_schema, table_name, column_name, ordinal_position, column_default, is_nullable,
+    udt_name AS data_type, character_maximum_length, character_octet_length, numeric_precision,
+    numeric_precision_radix, numeric_scale, datetime_precision, character_set_catalog, character_set_schema,
+    character_set_name, collation_catalog
+FROM information_schema.columns");
 
             using (var command = BuildCommand(conn, getColumns, restrictions, "table_catalog", "table_schema", "table_name", "column_name"))
             using (var adapter = new NpgsqlDataAdapter(command))
@@ -284,10 +287,7 @@ WHERE table_type IN ('BASE TABLE', 'FOREIGN', 'FOREIGN TABLE') AND table_schema 
                 new DataColumn("check_option"), new DataColumn("is_updatable")
             });
 
-            var getViews = new StringBuilder();
-
-            //getViews.Append("SELECT table_catalog, table_schema, table_name, check_option, is_updatable FROM information_schema.views WHERE table_schema NOT IN ('pg_catalog', 'information_schema')");
-            getViews.Append(@"
+            var getViews = new StringBuilder(@"
 SELECT table_catalog, table_schema, table_name, check_option, is_updatable
 FROM information_schema.views
 WHERE table_schema NOT IN ('pg_catalog', 'information_schema')");
@@ -331,25 +331,23 @@ WHERE table_schema NOT IN ('pg_catalog', 'information_schema')");
                 new DataColumn("index_name")
             });
 
-            var getIndexes = new StringBuilder();
-
-            getIndexes.Append(
-@"select current_database() as table_catalog,
-    n.nspname as table_schema,
-    t.relname as table_name,
-    i.relname as index_name
-from
-    pg_catalog.pg_class i join
-    pg_catalog.pg_index ix ON ix.indexrelid = i.oid join
-    pg_catalog.pg_class t ON ix.indrelid = t.oid join
-    pg_attribute a on t.oid = a.attrelid left join
-    pg_catalog.pg_user u ON u.usesysid = i.relowner left join
-    pg_catalog.pg_namespace n ON n.oid = i.relnamespace
-where
-    i.relkind = 'i'
-    and n.nspname not in ('pg_catalog', 'pg_toast')
-    and a.attnum = ANY(ix.indkey)
-    and t.relkind = 'r'");
+            var getIndexes = new StringBuilder(@"
+SELECT current_database() AS table_catalog,
+    n.nspname AS table_schema,
+    t.relname AS table_name,
+    i.relname AS index_name
+FROM
+    pg_catalog.pg_class i
+    JOIN pg_catalog.pg_index ix ON ix.indexrelid = i.oid
+    JOIN pg_catalog.pg_class t ON ix.indrelid = t.oid
+    JOIN pg_attribute a ON t.oid = a.attrelid
+    LEFT JOIN pg_catalog.pg_user u ON u.usesysid = i.relowner
+    LEFT JOIN pg_catalog.pg_namespace n ON n.oid = i.relnamespace
+WHERE
+    i.relkind = 'i' AND
+    n.nspname NOT IN ('pg_catalog', 'pg_toast') AND
+    a.attnum = ANY(ix.indkey) AND
+    t.relkind = 'r'");
 
             using (var command = BuildCommand(conn, getIndexes, restrictions, false, "current_database()", "n.nspname", "t.relname", "i.relname"))
             using (var adapter = new NpgsqlDataAdapter(command))
@@ -367,26 +365,24 @@ where
                 new DataColumn("index_name"), new DataColumn("column_name")
             });
 
-            var getIndexColumns = new StringBuilder();
-
-            getIndexColumns.Append(
-@"select current_database() as table_catalog,
-    n.nspname as table_schema,
-    t.relname as table_name,
-    i.relname as index_name,
-    a.attname as column_name
-from
-    pg_class t join
-    pg_index ix on t.oid = ix.indrelid join
-    pg_class i on ix.indexrelid = i.oid join
-    pg_attribute a on t.oid = a.attrelid left join
-    pg_namespace n on i.relnamespace = n.oid
+            var getIndexColumns = new StringBuilder(@"
+SELECT current_database() AS table_catalog,
+    n.nspname AS table_schema,
+    t.relname AS table_name,
+    i.relname AS index_name,
+    a.attname AS column_name
+FROM
+    pg_class t
+    JOIN pg_index ix ON t.oid = ix.indrelid
+    JOIN pg_class i ON ix.indexrelid = i.oid
+    JOIN pg_attribute a ON t.oid = a.attrelid
+    LEFT JOIN pg_namespace n ON i.relnamespace = n.oid
 where
-    i.relkind = 'i'
-    and n.nspname not in ('pg_catalog', 'pg_toast')
-    and pg_catalog.pg_table_is_visible(i.oid)
-    and a.attnum = ANY(ix.indkey)
-    and t.relkind = 'r'");
+    i.relkind = 'i' AND
+    n.nspname NOT IN ('pg_catalog', 'pg_toast') AND
+    pg_catalog.pg_table_is_visible(i.oid) AND
+    a.attnum = ANY(ix.indkey) AND
+    t.relkind = 'r'");
 
             using (var command = BuildCommand(conn, getIndexColumns, restrictions, false, "current_database()", "n.nspname", "t.relname", "i.relname", "a.attname"))
             using (var adapter = new NpgsqlDataAdapter(command))
@@ -397,28 +393,29 @@ where
 
         static DataTable GetConstraints(NpgsqlConnection conn, string?[]? restrictions, string? constraintType)
         {
-            var getConstraints = new StringBuilder();
-
-            getConstraints.Append(
-@"select
-  current_database() as ""CONSTRAINT_CATALOG"",
-  pgn.nspname as ""CONSTRAINT_SCHEMA"",
-  pgc.conname as ""CONSTRAINT_NAME"",
-  current_database() as ""TABLE_CATALOG"",
-  pgtn.nspname as ""TABLE_SCHEMA"",
-  pgt.relname as ""TABLE_NAME"",
-  ""CONSTRAINT_TYPE"",
-  pgc.condeferrable as ""IS_DEFERRABLE"",
-  pgc.condeferred as ""INITIALLY_DEFERRED""
-from pg_catalog.pg_constraint pgc
-inner join pg_catalog.pg_namespace pgn on pgc.connamespace = pgn.oid
-inner join pg_catalog.pg_class pgt on pgc.conrelid = pgt.oid
-inner join pg_catalog.pg_namespace pgtn on pgt.relnamespace = pgtn.oid
-inner join (
-select 'PRIMARY KEY' as ""CONSTRAINT_TYPE"", 'p' as ""contype"" union all
-select 'FOREIGN KEY' as ""CONSTRAINT_TYPE"", 'f' as ""contype"" union all
-select 'UNIQUE KEY' as ""CONSTRAINT_TYPE"", 'u' as ""contype""
-) mapping_table on mapping_table.contype = pgc.contype");
+            var getConstraints = new StringBuilder(@"
+SELECT
+    current_database() AS ""CONSTRAINT_CATALOG"",
+    pgn.nspname AS ""CONSTRAINT_SCHEMA"",
+    pgc.conname AS ""CONSTRAINT_NAME"",
+    current_database() AS ""TABLE_CATALOG"",
+    pgtn.nspname AS ""TABLE_SCHEMA"",
+    pgt.relname AS ""TABLE_NAME"",
+    ""CONSTRAINT_TYPE"",
+    pgc.condeferrable AS ""IS_DEFERRABLE"",
+    pgc.condeferred AS ""INITIALLY_DEFERRED""
+FROM
+    pg_catalog.pg_constraint pgc
+    JOIN pg_catalog.pg_namespace pgn ON pgc.connamespace = pgn.oid
+    JOIN pg_catalog.pg_class pgt ON pgc.conrelid = pgt.oid
+    JOIN pg_catalog.pg_namespace pgtn ON pgt.relnamespace = pgtn.oid
+    JOIN (
+        SELECT 'PRIMARY KEY' AS ""CONSTRAINT_TYPE"", 'p' AS ""contype""
+        UNION ALL
+        SELECT 'FOREIGN KEY' AS ""CONSTRAINT_TYPE"", 'f' AS ""contype""
+        UNION ALL
+        SELECT 'UNIQUE KEY' AS ""CONSTRAINT_TYPE"", 'u' AS ""contype""
+) mapping_table ON mapping_table.contype = pgc.contype");
             if ("ForeignKeys".Equals(constraintType))
                 getConstraints.Append(" and pgc.contype='f'");
             else if ("PrimaryKey".Equals(constraintType))
@@ -438,28 +435,29 @@ select 'UNIQUE KEY' as ""CONSTRAINT_TYPE"", 'u' as ""contype""
 
         static DataTable GetConstraintColumns(NpgsqlConnection conn, string?[]? restrictions)
         {
-            var getConstraintColumns = new StringBuilder();
-
-            getConstraintColumns.Append(
-@"select current_database() as constraint_catalog,
-    n.nspname as constraint_schema,
-    c.conname as constraint_name,
-    current_database() as table_catalog,
-    n.nspname as table_schema,
-    t.relname as table_name,
-    a.attname as column_name,
-    a.attnum as ordinal_number,
+            var getConstraintColumns = new StringBuilder(@"
+SELECT current_database() AS constraint_catalog,
+    n.nspname AS constraint_schema,
+    c.conname AS constraint_name,
+    current_database() AS table_catalog,
+    n.nspname AS table_schema,
+    t.relname AS table_name,
+    a.attname AS column_name,
+    a.attnum AS ordinal_number,
     mapping_table.constraint_type
-from pg_constraint c
-inner join pg_namespace n on n.oid = c.connamespace
-inner join pg_class t on t.oid = c.conrelid and t.relkind = 'r'
-inner join pg_attribute a on t.oid = a.attrelid and a.attnum = ANY(c.conkey)
-inner join (
-select 'PRIMARY KEY' as constraint_type, 'p' as contype union all
-select 'FOREIGN KEY' as constraint_type, 'f' as contype union all
-select 'UNIQUE KEY' as constraint_type, 'u' as contype
-) mapping_table on mapping_table.contype = c.contype
-and n.nspname not in ('pg_catalog', 'pg_toast')");
+FROM pg_constraint c
+    JOIN pg_namespace n on n.oid = c.connamespace
+    JOIN pg_class t on t.oid = c.conrelid AND t.relkind = 'r'
+    JOIN pg_attribute a on t.oid = a.attrelid AND a.attnum = ANY(c.conkey)
+    JOIN (
+        SELECT 'PRIMARY KEY' AS constraint_type, 'p' AS contype
+        UNION ALL
+        SELECT 'FOREIGN KEY' AS constraint_type, 'f' AS contype
+        UNION ALL
+        SELECT 'UNIQUE KEY' AS constraint_type, 'u' AS contype
+) mapping_table ON
+    mapping_table.contype = c.contype
+    AND n.nspname NOT IN ('pg_catalog', 'pg_toast')");
 
             using var command = BuildCommand(conn, getConstraintColumns, restrictions, false, "current_database()", "n.nspname", "t.relname", "c.conname", "a.attname");
             using var adapter = new NpgsqlDataAdapter(command);
