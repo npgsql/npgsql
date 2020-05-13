@@ -328,25 +328,24 @@ WHERE table_schema NOT IN ('pg_catalog', 'information_schema')");
 
             indexes.Columns.AddRange(new[] {
                 new DataColumn("table_catalog"), new DataColumn("table_schema"), new DataColumn("table_name"),
-                new DataColumn("index_name")
+                new DataColumn("index_name"), new DataColumn("type_desc")
             });
 
             var getIndexes = new StringBuilder(@"
 SELECT current_database() AS table_catalog,
     n.nspname AS table_schema,
     t.relname AS table_name,
-    i.relname AS index_name
+    i.relname AS index_name,
+    '' AS type_desc
 FROM
     pg_catalog.pg_class i
     JOIN pg_catalog.pg_index ix ON ix.indexrelid = i.oid
     JOIN pg_catalog.pg_class t ON ix.indrelid = t.oid
-    JOIN pg_attribute a ON t.oid = a.attrelid
     LEFT JOIN pg_catalog.pg_user u ON u.usesysid = i.relowner
     LEFT JOIN pg_catalog.pg_namespace n ON n.oid = i.relnamespace
 WHERE
     i.relkind = 'i' AND
     n.nspname NOT IN ('pg_catalog', 'pg_toast') AND
-    a.attnum = ANY(ix.indkey) AND
     t.relkind = 'r'");
 
             using (var command = BuildCommand(conn, getIndexes, restrictions, false, "current_database()", "n.nspname", "t.relname", "i.relname"))
@@ -361,26 +360,32 @@ WHERE
             var indexColumns = new DataTable("IndexColumns") { Locale = CultureInfo.InvariantCulture };
 
             indexColumns.Columns.AddRange(new[] {
+                new DataColumn("constraint_catalog"), new DataColumn("constraint_schema"), new DataColumn("constraint_name"),
                 new DataColumn("table_catalog"), new DataColumn("table_schema"), new DataColumn("table_name"),
-                new DataColumn("index_name"), new DataColumn("column_name")
+                new DataColumn("column_name"), new DataColumn("index_name")
             });
 
             var getIndexColumns = new StringBuilder(@"
-SELECT current_database() AS table_catalog,
-    n.nspname AS table_schema,
+SELECT
+    current_database() AS constraint_catalog,
+    t_ns.nspname AS constraint_schema,
+    ix_cls.relname AS constraint_name,
+    current_database() AS table_catalog,
+    ix_ns.nspname AS table_schema,
     t.relname AS table_name,
-    i.relname AS index_name,
-    a.attname AS column_name
+    a.attname AS column_name,
+    ix_cls.relname AS index_name
 FROM
     pg_class t
     JOIN pg_index ix ON t.oid = ix.indrelid
-    JOIN pg_class i ON ix.indexrelid = i.oid
+    JOIN pg_class ix_cls ON ix.indexrelid = ix_cls.oid
     JOIN pg_attribute a ON t.oid = a.attrelid
-    LEFT JOIN pg_namespace n ON i.relnamespace = n.oid
-where
-    i.relkind = 'i' AND
-    n.nspname NOT IN ('pg_catalog', 'pg_toast') AND
-    pg_catalog.pg_table_is_visible(i.oid) AND
+    LEFT JOIN pg_namespace t_ns ON t.relnamespace = t_ns.oid
+    LEFT JOIN pg_namespace ix_ns ON ix_cls.relnamespace = ix_ns.oid
+WHERE
+    ix_cls.relkind = 'i' AND
+    t_ns.nspname NOT IN ('pg_catalog', 'pg_toast') AND
+    pg_catalog.pg_table_is_visible(ix_cls.oid) AND
     a.attnum = ANY(ix.indkey) AND
     t.relkind = 'r'");
 
