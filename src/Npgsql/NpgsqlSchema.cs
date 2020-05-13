@@ -385,7 +385,6 @@ FROM
 WHERE
     ix_cls.relkind = 'i' AND
     t_ns.nspname NOT IN ('pg_catalog', 'pg_toast') AND
-    pg_catalog.pg_table_is_visible(ix_cls.oid) AND
     a.attnum = ANY(ix.indkey) AND
     t.relkind = 'r'");
 
