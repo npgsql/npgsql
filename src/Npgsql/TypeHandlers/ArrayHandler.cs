@@ -230,15 +230,19 @@ namespace Npgsql.TypeHandlers
             NpgsqlLengthCache? elemLengthCache = lengthCache;
 
             foreach (var element in value)
-                if (element != null && typeof(TElement) != typeof(DBNull))
-                    try
-                    {
-                        len += _elementHandler.ValidateAndGetLength(element, ref elemLengthCache, null);
-                    }
-                    catch (Exception e)
-                    {
-                        throw MixedTypesOrJaggedArrayException(e);
-                    }
+            {
+                if (element is null || typeof(TElement) == typeof(DBNull))
+                    continue;
+
+                try
+                {
+                    len += _elementHandler.ValidateAndGetLength(element, ref elemLengthCache, null);
+                }
+                catch (Exception e)
+                {
+                    throw MixedTypesOrJaggedArrayException(e);
+                }
+            }
 
             lengthCache.Lengths[pos] = len;
             return len;
