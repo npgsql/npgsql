@@ -90,10 +90,19 @@ namespace Npgsql
         #region Write
 
         public override void Write(byte[] buffer, int offset, int count)
-            => Write(new ReadOnlySpan<byte>(buffer, offset, count));
+        {
+            ValidateArguments(buffer, offset, count);
+            Write(new ReadOnlySpan<byte>(buffer, offset, count));
+        }
 
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-            => WriteAsync(new Memory<byte>(buffer, offset, count), cancellationToken).AsTask();
+        {
+            ValidateArguments(buffer, offset, count);
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled(cancellationToken);
+            using (NoSynchronizationContextScope.Enter())
+                return WriteAsync(new Memory<byte>(buffer, offset, count), cancellationToken).AsTask();
+        }
 
 #if !NET461 && !NETSTANDARD2_0
         public override void Write(ReadOnlySpan<byte> buffer)
@@ -204,10 +213,19 @@ namespace Npgsql
         #region Read
 
         public override int Read(byte[] buffer, int offset, int count)
-            => Read(new Span<byte>(buffer, offset, count));
+        {
+            ValidateArguments(buffer, offset, count);
+            return Read(new Span<byte>(buffer, offset, count));
+        }
 
         public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-            => ReadAsync(new Memory<byte>(buffer, offset, count), cancellationToken).AsTask();
+        {
+            ValidateArguments(buffer, offset, count);
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled<int>(cancellationToken);
+            using (NoSynchronizationContextScope.Enter())
+                return ReadAsync(new Memory<byte>(buffer, offset, count), cancellationToken).AsTask();
+        }
 
 #if !NET461 && !NETSTANDARD2_0
         public override int Read(Span<byte> span)
@@ -476,6 +494,20 @@ namespace Npgsql
             set => throw new NotSupportedException();
         }
 
+        #endregion
+
+        #region Input validation
+        static void ValidateArguments(byte[] buffer, int offset, int count)
+        {
+            if (buffer == null)
+                throw new ArgumentNullException(nameof(buffer));
+            if (offset < 0)
+                throw new ArgumentNullException(nameof(offset));
+            if (count < 0)
+                throw new ArgumentNullException(nameof(count));
+            if (buffer.Length - offset < count)
+                throw new ArgumentException("Offset and length were out of bounds for the array or count is greater than the number of elements from index to the end of the source collection.");
+        }
         #endregion
     }
 

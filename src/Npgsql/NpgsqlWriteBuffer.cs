@@ -162,9 +162,6 @@ namespace Npgsql
             }
         }
 
-        internal Task DirectWrite(byte[] buffer, int offset, int count, bool async)
-            => DirectWrite(new ReadOnlyMemory<byte>(buffer, offset, count), async);
-
         internal async Task DirectWrite(ReadOnlyMemory<byte> memory, bool async)
         {
             await Flush(async);

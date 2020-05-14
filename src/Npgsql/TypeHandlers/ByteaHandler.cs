@@ -97,7 +97,7 @@ namespace Npgsql.TypeHandlers
             // The segment is larger than our buffer. Flush whatever is currently in the buffer and
             // write the array directly to the socket.
             await buf.Flush(async);
-            await buf.DirectWrite(value, offset, count, async);
+            await buf.DirectWrite(new ReadOnlyMemory<byte>(value, offset, count), async);
         }
 
 #if !NETSTANDARD2_0 && !NET461

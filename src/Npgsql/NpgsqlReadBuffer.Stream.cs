@@ -111,10 +111,16 @@ namespace Npgsql
                 => throw new NotSupportedException();
 
             public override int Read(byte[] buffer, int offset, int count)
-                => Read(new Span<byte>(buffer, offset, count));
+            {
+                ValidateArguments(buffer, offset, count);
+                return Read(new Span<byte>(buffer, offset, count));
+            }
 
             public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
             {
+                ValidateArguments(buffer, offset, count);
+                if (cancellationToken.IsCancellationRequested)
+                    return Task.FromCanceled<int>(cancellationToken);
                 using (NoSynchronizationContextScope.Enter())
                     return ReadAsync(new Memory<byte>(buffer, offset, count), cancellationToken).AsTask();
             }
@@ -143,7 +149,6 @@ namespace Npgsql
 #else
             public ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
 #endif
-
             {
                 CheckDisposed();
 
@@ -155,15 +160,15 @@ namespace Npgsql
                 if (count == 0)
                     return new ValueTask<int>(0);
 
-                var task = _buf.ReadBytes(buffer.Slice(0, count));
-                return ReadLong(task);
-            }
+                using (NoSynchronizationContextScope.Enter())
+                    return ReadLong(buffer.Slice(0, count));
 
-            async ValueTask<int> ReadLong(ValueTask<int> task)
-            {
-                var read = await task;
-                _read += read;
-                return read;
+                async ValueTask<int> ReadLong(Memory<byte> buffer)
+                {
+                    var read = await _buf.ReadBytes(buffer);
+                    _read += read;
+                    return read;
+                }
             }
 
             public override void Write(byte[] buffer, int offset, int count)
@@ -185,20 +190,31 @@ namespace Npgsql
 
             async ValueTask DisposeAsync(bool disposing, bool async)
             {
-                if (IsDisposed || ! disposing)
+                if (IsDisposed || !disposing)
                     return;
 
                 var leftToSkip = _len - _read;
                 if (leftToSkip > 0)
                 {
                     if (async)
-                        await _buf.Skip(leftToSkip, false);
+                        await _buf.Skip(leftToSkip, async);
                     else
-                        _buf.Skip(leftToSkip, false).GetAwaiter().GetResult();
+                        _buf.Skip(leftToSkip, async).GetAwaiter().GetResult();
                 }
                 IsDisposed = true;
             }
+        }
 
+        static void ValidateArguments(byte[] buffer, int offset, int count)
+        {
+            if (buffer == null)
+                throw new ArgumentNullException(nameof(buffer));
+            if (offset < 0)
+                throw new ArgumentNullException(nameof(offset));
+            if (count < 0)
+                throw new ArgumentNullException(nameof(count));
+            if (buffer.Length - offset < count)
+                throw new ArgumentException("Offset and length were out of bounds for the array or count is greater than the number of elements from index to the end of the source collection.");
         }
     }
 }
