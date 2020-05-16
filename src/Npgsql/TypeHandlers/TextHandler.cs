@@ -163,10 +163,7 @@ namespace Npgsql.TypeHandlers
         }
 
         ValueTask<ArraySegment<char>> INpgsqlTypeHandler<ArraySegment<char>>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
-        {
-            buf.Skip(len);
-            throw new NotSupportedException("Only writing ArraySegment<char> to PostgreSQL text is supported, no reading.");
-        }
+            => throw new NotSupportedException("Only writing ArraySegment<char> to PostgreSQL text is supported, no reading.");
 
         ValueTask<byte[]> INpgsqlTypeHandler<byte[]>.Read(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription? fieldDescription)
         {

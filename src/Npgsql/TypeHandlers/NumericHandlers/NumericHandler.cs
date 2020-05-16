@@ -48,22 +48,14 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             var sign = buf.ReadUInt16();
 
             if (sign == SignNan)
-            {
-                if (len - 6 > 0)
-                    buf.Skip(len - 6);
                 throw new InvalidCastException("Numeric NaN not supported by System.Decimal");
-            }
 
             if (sign == SignNegative)
                 DecimalRaw.Negate(ref result);
 
             var scale = buf.ReadInt16();
             if (scale > MaxDecimalScale)
-            {
-                if (len - 8 > 0)
-                    buf.Skip(len - 8);
                 throw new OverflowException("Numeric value does not fit in a System.Decimal");
-            }
 
             result.Scale = scale;
 

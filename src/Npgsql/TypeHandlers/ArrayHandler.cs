@@ -65,7 +65,6 @@ namespace Npgsql.TypeHandlers
             if (ArrayTypeInfo<TRequestedArray>.IsList)
                 return await ArrayTypeInfo<TRequestedArray>.ReadListFunc(this, buf, async);
 
-            buf.Skip(len);  // Perform this in sync for performance
             throw new InvalidCastException(fieldDescription == null
                 ? $"Can't cast database type to {typeof(TRequestedArray).Name}"
                 : $"Can't cast database type {fieldDescription.Handler.PgDisplayName} to {typeof(TRequestedArray).Name}"
