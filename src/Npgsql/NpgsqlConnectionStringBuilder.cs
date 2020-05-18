@@ -40,7 +40,7 @@ namespace Npgsql
         /// </summary>
         string? _dataSourceCached;
 
-        internal string DataSourceCached => _dataSourceCached ??= $"tcp://{_host}:{_port}";
+        internal string DataSourceCached => _dataSourceCached ??= (_host is null ? string.Empty : $"tcp://{_host}:{_port}");
 
         #endregion
 

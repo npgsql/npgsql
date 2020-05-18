@@ -594,6 +594,18 @@ namespace Npgsql.Tests
                 Assert.That(conn.DataSource, Is.EqualTo($"tcp://{conn.Host}:{conn.Port}"));
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2763")]
+        public void DataSourceDefault()
+        {
+            using (var conn = new NpgsqlConnection())
+            {
+                Assert.That(conn.DataSource, Is.EqualTo(string.Empty));
+
+                conn.ConnectionString = ConnectionString;
+                Assert.That(conn.DataSource, Is.EqualTo($"tcp://{conn.Host}:{conn.Port}"));
+            }
+        }
+
         [Test]
         public void SetConnectionString()
         {
