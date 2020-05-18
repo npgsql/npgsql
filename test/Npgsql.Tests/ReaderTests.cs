@@ -1488,9 +1488,11 @@ LANGUAGE plpgsql VOLATILE";
         public override int Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
             buf.ReadInt32();
-            throw _safe
-                ? new NpgsqlSafeReadException(new Exception("Safe read exception as requested"))
-                : throw new Exception("Non-safe read exception as requested");
+            if (!_safe)
+                buf.Connector.Break();
+            throw new Exception(_safe
+                ? "Safe read exception as requested"
+                : "Non-safe read exception as requested");
         }
 
         public override int ValidateAndGetLength(int value, NpgsqlParameter? parameter) => throw new NotSupportedException();

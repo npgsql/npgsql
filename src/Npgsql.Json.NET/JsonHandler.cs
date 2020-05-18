@@ -32,14 +32,8 @@ namespace Npgsql.Json.NET
             var s = await base.Read<string>(buf, len, async, fieldDescription);
             if (typeof(T) == typeof(string))
                 return (T)(object)s;
-            try
-            {
-                return JsonConvert.DeserializeObject<T>(s, _settings);
-            }
-            catch (Exception e)
-            {
-                throw new NpgsqlSafeReadException(e);
-            }
+
+            return JsonConvert.DeserializeObject<T>(s, _settings);
         }
 
         protected override int ValidateAndGetLength<T2>(T2 value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)

@@ -243,19 +243,12 @@ namespace Npgsql.TypeHandlers
                 return await _textHandler.Read<T>(buf, byteLen, async, fieldDescription);
             }
 
-            try
-            {
-                // See #2818 for possibly returning a JsonDocument directly over our internal buffer, rather
-                // than deserializing to string.
-                var s = await _textHandler.Read(buf, byteLen, async, fieldDescription);
-                return typeof(T) == typeof(JsonDocument)
-                    ? (T)(object)JsonDocument.Parse(s)
-                    : JsonSerializer.Deserialize<T>(s, _serializerOptions)!;
-            }
-            catch (Exception e)
-            {
-                throw new NpgsqlSafeReadException(e);
-            }
+            // See #2818 for possibly returning a JsonDocument directly over our internal buffer, rather
+            // than deserializing to string.
+            var s = await _textHandler.Read(buf, byteLen, async, fieldDescription);
+            return typeof(T) == typeof(JsonDocument)
+                ? (T)(object)JsonDocument.Parse(s)
+                : JsonSerializer.Deserialize<T>(s, _serializerOptions)!;
         }
 
         /// <inheritdoc />

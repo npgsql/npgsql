@@ -157,16 +157,13 @@ namespace Npgsql.TypeHandlers
             buf.Skip(len - bytesUsed);
 
             if (charsUsed < 1)
-                throw new NpgsqlSafeReadException(new NpgsqlException("Could not read char - string was empty"));
+                throw new NpgsqlException("Could not read char - string was empty");
 
             return _singleCharArray[0];
         }
 
         ValueTask<ArraySegment<char>> INpgsqlTypeHandler<ArraySegment<char>>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
-        {
-            buf.Skip(len);
-            throw new NpgsqlSafeReadException(new NotSupportedException("Only writing ArraySegment<char> to PostgreSQL text is supported, no reading."));
-        }
+            => throw new NotSupportedException("Only writing ArraySegment<char> to PostgreSQL text is supported, no reading.");
 
         ValueTask<byte[]> INpgsqlTypeHandler<byte[]>.Read(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription? fieldDescription)
         {

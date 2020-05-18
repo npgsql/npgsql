@@ -48,67 +48,53 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             var sign = buf.ReadUInt16();
 
             if (sign == SignNan)
-                ThrowSafeReadException(new InvalidCastException("Numeric NaN not supported by System.Decimal"), len -6);
+                throw new InvalidCastException("Numeric NaN not supported by System.Decimal");
+
             if (sign == SignNegative)
                 DecimalRaw.Negate(ref result);
 
             var scale = buf.ReadInt16();
             if (scale > MaxDecimalScale)
-                ThrowSafeReadException(new OverflowException("Numeric value does not fit in a System.Decimal"), len - 8);
+                throw new OverflowException("Numeric value does not fit in a System.Decimal");
 
             result.Scale = scale;
 
-            try
+            var scaleDifference = scale + weight * MaxGroupScale;
+            if (groups == MaxGroupCount)
             {
-                var scaleDifference = scale + weight * MaxGroupScale;
-                if (groups == MaxGroupCount)
+                while (groups-- > 1)
                 {
-                    while (groups-- > 1)
-                    {
-                        DecimalRaw.Multiply(ref result, MaxGroupSize);
-                        DecimalRaw.Add(ref result, buf.ReadUInt16());
-                    }
-
-                    var group = buf.ReadUInt16();
-                    var groupSize = DecimalRaw.Powers10[-scaleDifference];
-                    if (group % groupSize != 0)
-                        throw new NpgsqlSafeReadException(new OverflowException("Numeric value does not fit in a System.Decimal"));
-
-                    DecimalRaw.Multiply(ref result, MaxGroupSize / groupSize);
-                    DecimalRaw.Add(ref result, group / groupSize);
+                    DecimalRaw.Multiply(ref result, MaxGroupSize);
+                    DecimalRaw.Add(ref result, buf.ReadUInt16());
                 }
+
+                var group = buf.ReadUInt16();
+                var groupSize = DecimalRaw.Powers10[-scaleDifference];
+                if (group % groupSize != 0)
+                    throw new OverflowException("Numeric value does not fit in a System.Decimal");
+
+                DecimalRaw.Multiply(ref result, MaxGroupSize / groupSize);
+                DecimalRaw.Add(ref result, group / groupSize);
+            }
+            else
+            {
+                while (groups-- > 0)
+                {
+                    DecimalRaw.Multiply(ref result, MaxGroupSize);
+                    DecimalRaw.Add(ref result, buf.ReadUInt16());
+                }
+
+                if (scaleDifference < 0)
+                    DecimalRaw.Divide(ref result, DecimalRaw.Powers10[-scaleDifference]);
                 else
-                {
-                    while (groups-- > 0)
+                    while (scaleDifference > 0)
                     {
-                        DecimalRaw.Multiply(ref result, MaxGroupSize);
-                        DecimalRaw.Add(ref result, buf.ReadUInt16());
+                        var scaleChunk = Math.Min(DecimalRaw.MaxUInt32Scale, scaleDifference);
+                        DecimalRaw.Multiply(ref result, DecimalRaw.Powers10[scaleChunk]);
+                        scaleDifference -= scaleChunk;
                     }
-
-                    if (scaleDifference < 0)
-                        DecimalRaw.Divide(ref result, DecimalRaw.Powers10[-scaleDifference]);
-                    else
-                        while (scaleDifference > 0)
-                        {
-                            var scaleChunk = Math.Min(DecimalRaw.MaxUInt32Scale, scaleDifference);
-                            DecimalRaw.Multiply(ref result, DecimalRaw.Powers10[scaleChunk]);
-                            scaleDifference -= scaleChunk;
-                        }
-                }
             }
-            catch (OverflowException e)
-            {
-                throw new NpgsqlSafeReadException(e);
-            }
-
             return result.Value;
-
-            void ThrowSafeReadException(Exception originalException, int remainingInColumn)
-            {
-                if (remainingInColumn > 0)
-                    buf.Skip(remainingInColumn);
-                throw new NpgsqlSafeReadException(originalException);
-            }
         }
 
         byte INpgsqlSimpleTypeHandler<byte>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)

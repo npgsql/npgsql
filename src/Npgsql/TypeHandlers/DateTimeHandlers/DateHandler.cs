@@ -54,17 +54,14 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         public override DateTime Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
             var npgsqlDate = ReadPsv(buf, len, fieldDescription);
-            try {
-                if (npgsqlDate.IsFinite)
-                    return (DateTime)npgsqlDate;
-                if (!_convertInfinityDateTime)
-                    throw new InvalidCastException("Can't convert infinite date values to DateTime");
-                if (npgsqlDate.IsInfinity)
-                    return DateTime.MaxValue;
-                return DateTime.MinValue;
-            } catch (Exception e) {
-                throw new NpgsqlSafeReadException(e);
-            }
+
+            if (npgsqlDate.IsFinite)
+                return (DateTime)npgsqlDate;
+            if (!_convertInfinityDateTime)
+                throw new InvalidCastException("Can't convert infinite date values to DateTime");
+            if (npgsqlDate.IsInfinity)
+                return DateTime.MaxValue;
+            return DateTime.MinValue;
         }
 
         /// <remarks>

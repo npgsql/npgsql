@@ -68,11 +68,10 @@ namespace Npgsql.TypeHandlers
             if (this is INpgsqlTypeHandler<TAny> typedHandler)
                 return typedHandler.Read(buf, len, async, fieldDescription);
 
-            buf.Skip(len); // Perform this in sync for performance
-            throw new NpgsqlSafeReadException(new InvalidCastException(fieldDescription == null
+            throw new InvalidCastException(fieldDescription == null
                 ? $"Can't cast database type to {typeof(TAny).Name}"
                 : $"Can't cast database type {fieldDescription.Handler.PgDisplayName} to {typeof(TAny).Name}"
-            ));
+            );
         }
 
         internal override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)

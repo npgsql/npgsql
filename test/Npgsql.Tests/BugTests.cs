@@ -1238,5 +1238,43 @@ CREATE TEMP TABLE ""OrganisatieQmo_Organisatie_QueryModelObjects_Imp""
                 conn.ExecuteNonQuery("DROP FUNCTION IF EXISTS f_test()");
             }
         }
+
+        public enum TestEnum
+        {
+            One,
+            Two
+        }
+
+        class SomeComposite
+        {
+            /// <summary>
+            /// An enum without proper handler
+            /// </summary>
+            public TestEnum Test { get; set; }
+            public int X { get; set; }
+            public string SomeText { get; set; } = "";
+        }
+
+        [Test]
+        public void CompositePostgresType()
+        {
+            using var conn = OpenConnection();
+            conn.ExecuteNonQuery("CREATE TYPE pg_temp.comp1 as (x int, some_text text, test int)");
+            conn.ReloadTypes();
+            conn.TypeMapper.MapComposite<SomeComposite>("comp1");
+
+            conn.ExecuteNonQuery(@"
+CREATE FUNCTION pg_temp.func(id int, out comp1 comp1, OUT comp2 COMP1[])
+LANGUAGE plpgsql AS
+$$
+BEGIN
+    comp1 = ROW(9, 'bar', 1)::comp1;
+    comp2 = ARRAY[ROW(9, 'bar', 1)::comp1];
+END;
+$$;");
+
+            using var cmd = new NpgsqlCommand("SELECT pg_temp.func(0)", conn);
+            Assert.That(() => cmd.ExecuteScalar(), Throws.TypeOf<InvalidCastException>());
+        }
     }
 }

@@ -49,7 +49,7 @@ namespace Npgsql.TypeHandlers
             var success = _labelToEnum.TryGetValue(str, out var value);
 
             if (!success)
-                throw new NpgsqlSafeReadException(new InvalidCastException($"Received enum value '{str}' from database which wasn't found on enum {typeof(TEnum)}"));
+                throw new InvalidCastException($"Received enum value '{str}' from database which wasn't found on enum {typeof(TEnum)}");
 
             return value;
         }

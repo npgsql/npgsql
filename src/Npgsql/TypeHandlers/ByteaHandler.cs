@@ -59,10 +59,7 @@ namespace Npgsql.TypeHandlers
         }
 
         ValueTask<ArraySegment<byte>> INpgsqlTypeHandler<ArraySegment<byte>>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
-        {
-            buf.Skip(len);
-            throw new NpgsqlSafeReadException(new NotSupportedException("Only writing ArraySegment<byte> to PostgreSQL bytea is supported, no reading."));
-        }
+            => throw new NotSupportedException("Only writing ArraySegment<byte> to PostgreSQL bytea is supported, no reading.");
 
         int ValidateAndGetLength(int bufferLen, NpgsqlParameter? parameter)
             => parameter == null || parameter.Size <= 0 || parameter.Size >= bufferLen
@@ -132,16 +129,10 @@ namespace Npgsql.TypeHandlers
             => Write((ReadOnlyMemory<byte>)value, buf, lengthCache, parameter, async);
 
         ValueTask<ReadOnlyMemory<byte>> INpgsqlTypeHandler<ReadOnlyMemory<byte>>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
-        {
-            buf.Skip(len);
-            throw new NpgsqlSafeReadException(new NotSupportedException("Only writing ReadOnlyMemory<byte> to PostgreSQL bytea is supported, no reading."));
-        }
+            => throw new NotSupportedException("Only writing ReadOnlyMemory<byte> to PostgreSQL bytea is supported, no reading.");
 
         ValueTask<Memory<byte>> INpgsqlTypeHandler<Memory<byte>>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
-        {
-            buf.Skip(len);
-            throw new NpgsqlSafeReadException(new NotSupportedException("Only writing Memory<byte> to PostgreSQL bytea is supported, no reading."));
-        }
+            => throw new NotSupportedException("Only writing Memory<byte> to PostgreSQL bytea is supported, no reading.");
 #endif
     }
 }
