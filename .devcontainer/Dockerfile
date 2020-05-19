@@ -3,7 +3,7 @@
 # Licensed under the MIT License. See https://go.microsoft.com/fwlink/?linkid=2090316 for license information.
 #-------------------------------------------------------------------------------------------------------------
 
-FROM mcr.microsoft.com/dotnet/core/sdk:5.0.100-preview.2.20176.6
+FROM mcr.microsoft.com/dotnet/sdk:5.0-focal
 
 ARG POSTGRESQL_MAJOR_VERSION=12
 ARG POSTGIS_VERSION=3
@@ -20,7 +20,7 @@ RUN apt-get update \
     #
     # Install PostgreSQL
     && wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add - \
-    && sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ bionic-pgdg main" >> /etc/apt/sources.list.d/pgdg.list' \
+    && sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ focal-pgdg main" >> /etc/apt/sources.list.d/pgdg.list' \
     && sudo apt-get update -qq \
     && sudo apt-get install -qq postgresql-$POSTGRESQL_MAJOR_VERSION postgresql-POSTGRESQL_MAJOR_VERSION-postgis-$POSTGIS_VERSION \
     && sudo -u postgres psql -c "CREATE USER npgsql_tests SUPERUSER PASSWORD 'npgsql_tests'" \
