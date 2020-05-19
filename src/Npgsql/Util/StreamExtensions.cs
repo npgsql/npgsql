@@ -38,7 +38,6 @@ namespace Npgsql.Util
             {
                 ArrayPool<byte>.Shared.Return(sharedBuffer);
             }
-            
         }
 
         public static void Write(this Stream stream, ReadOnlySpan<byte> buffer)

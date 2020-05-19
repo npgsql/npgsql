@@ -361,40 +361,33 @@ namespace Npgsql
 
         #region Read Complex
 
-        public ValueTask<int> ReadBytes(byte[] output, int outputOffset, int len, bool async)
+        public int Read(Span<byte> output)
         {
-            var readFromBuffer = Math.Min(ReadBytesLeft, len);
+            var readFromBuffer = Math.Min(ReadBytesLeft, output.Length);
             if (readFromBuffer > 0)
             {
-                System.Buffer.BlockCopy(Buffer, ReadPosition, output, outputOffset, readFromBuffer);
-                ReadPosition += len;
-                return new ValueTask<int>(readFromBuffer);
+                new Span<byte>(Buffer, ReadPosition, readFromBuffer).CopyTo(output);
+                ReadPosition += output.Length;
+                return readFromBuffer;
             }
 
-            return ReadBytesLong();
-
-            async ValueTask<int> ReadBytesLong()
+            Debug.Assert(ReadPosition == 0);
+            Clear();
+            try
             {
-                Debug.Assert(ReadPosition == 0);
-                Clear();
-                try
-                {
-                    var read = async
-                        ? await Underlying.ReadAsync(output, outputOffset, len)
-                        : Underlying.Read(output, outputOffset, len);
-                    if (read == 0)
-                        throw new EndOfStreamException();
-                    return read;
-                }
-                catch (Exception e)
-                {
-                    Connector.Break();
-                    throw new NpgsqlException("Exception while reading from stream", e);
-                }
+                var read = Underlying.Read(output);
+                if (read == 0)
+                    throw new EndOfStreamException();
+                return read;
+            }
+            catch (Exception e)
+            {
+                Connector.Break();
+                throw new NpgsqlException("Exception while reading from stream", e);
             }
         }
 
-        public ValueTask<int> ReadBytes(Memory<byte> output)
+        public ValueTask<int> ReadAsync(Memory<byte> output)
         {
             var readFromBuffer = Math.Min(ReadBytesLeft, output.Length);
             if (readFromBuffer > 0)

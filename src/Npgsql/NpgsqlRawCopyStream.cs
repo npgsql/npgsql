@@ -238,9 +238,7 @@ namespace Npgsql
                 throw new InvalidOperationException("Stream not open for reading");
 
             if (_isConsumed)
-            {
                 return 0;
-            }
 
             if (_leftToReadInDataMsg == 0)
             {
@@ -308,9 +306,7 @@ namespace Npgsql
                     throw new InvalidOperationException("Stream not open for reading");
 
                 if (_isConsumed)
-                {
                     return 0;
-                }
 
                 if (_leftToReadInDataMsg == 0)
                 {

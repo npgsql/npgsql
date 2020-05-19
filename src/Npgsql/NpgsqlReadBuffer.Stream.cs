@@ -138,7 +138,7 @@ namespace Npgsql
                 if (count == 0)
                     return 0;
 
-                _buf.ReadBytes(span.Slice(0, count));
+                _buf.Read(span.Slice(0, count));
                 _read += count;
 
                 return count;
@@ -165,7 +165,7 @@ namespace Npgsql
 
                 async ValueTask<int> ReadLong(Memory<byte> buffer)
                 {
-                    var read = await _buf.ReadBytes(buffer);
+                    var read = await _buf.ReadAsync(buffer);
                     _read += read;
                     return read;
                 }
