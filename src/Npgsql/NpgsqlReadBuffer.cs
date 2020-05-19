@@ -367,7 +367,7 @@ namespace Npgsql
             if (readFromBuffer > 0)
             {
                 new Span<byte>(Buffer, ReadPosition, readFromBuffer).CopyTo(output);
-                ReadPosition += output.Length;
+                ReadPosition += readFromBuffer;
                 return readFromBuffer;
             }
 
@@ -393,13 +393,13 @@ namespace Npgsql
             if (readFromBuffer > 0)
             {
                 new Span<byte>(Buffer, ReadPosition, readFromBuffer).CopyTo(output.Span);
-                ReadPosition += output.Length;
+                ReadPosition += readFromBuffer;
                 return new ValueTask<int>(readFromBuffer);
             }
 
-            return ReadBytesLong();
+            return ReadAsyncLong();
 
-            async ValueTask<int> ReadBytesLong()
+            async ValueTask<int> ReadAsyncLong()
             {
                 Debug.Assert(ReadPosition == 0);
                 Clear();

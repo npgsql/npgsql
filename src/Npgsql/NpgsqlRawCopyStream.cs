@@ -294,6 +294,9 @@ namespace Npgsql
         public ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
 #endif
         {
+            CheckDisposed();
+            if (!CanRead)
+                throw new InvalidOperationException("Stream not open for reading");
             if (cancellationToken.IsCancellationRequested)
                 return new ValueTask<int>(Task.FromCanceled<int>(cancellationToken));
             using (NoSynchronizationContextScope.Enter())
@@ -301,10 +304,6 @@ namespace Npgsql
 
             async ValueTask<int> ReadLong(Memory<byte> buffer)
             {
-                CheckDisposed();
-                if (!CanRead)
-                    throw new InvalidOperationException("Stream not open for reading");
-
                 if (_isConsumed)
                     return 0;
 
