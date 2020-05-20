@@ -364,7 +364,7 @@ namespace Npgsql
             if (readFromBuffer > 0)
             {
                 System.Buffer.BlockCopy(Buffer, ReadPosition, output, outputOffset, readFromBuffer);
-                ReadPosition += len;
+                ReadPosition += readFromBuffer;
                 return new ValueTask<int>(readFromBuffer);
             }
 
