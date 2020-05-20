@@ -24,9 +24,10 @@ RUN apt-get update \
     && apt-get update -qq \
     && apt-get install -qq postgresql-$POSTGRESQL_MAJOR_VERSION postgresql-$POSTGRESQL_MAJOR_VERSION-postgis-$POSTGIS_VERSION \
     && pg_ctlcluster $POSTGRESQL_MAJOR_VERSION main start \
+    #
+    # Configure PostgreSQL for tests
     && sudo -u postgres psql -c "CREATE USER npgsql_tests SUPERUSER PASSWORD 'npgsql_tests'" \
     && sudo -u postgres psql -c "CREATE DATABASE npgsql_tests OWNER npgsql_tests" \
-    #
     && export PGDATA=/etc/postgresql/$POSTGRESQL_MAJOR_VERSION/main \
     && sed -i 's/#ssl = off/ssl = on/' $PGDATA/postgresql.conf \
     && sed -i 's/#max_prepared_transactions = 0/max_prepared_transactions = 10/' $PGDATA/postgresql.conf \
