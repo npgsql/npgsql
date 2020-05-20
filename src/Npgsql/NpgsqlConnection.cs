@@ -371,6 +371,10 @@ namespace Npgsql
         /// <summary>
         /// Gets the string identifying the database server (host and port)
         /// </summary>
+        /// <value>
+        /// The name of the database server (host and port). If the connection uses a Unix-domain socket,
+        /// the path to that socket is returned. The default value is the empty string.
+        /// </value>
         public override string DataSource => Settings.DataSourceCached;
 
         /// <summary>
