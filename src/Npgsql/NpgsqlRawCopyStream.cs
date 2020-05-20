@@ -237,54 +237,9 @@ namespace Npgsql
             if (!CanRead)
                 throw new InvalidOperationException("Stream not open for reading");
 
-            if (_isConsumed)
-                return 0;
-
-            if (_leftToReadInDataMsg == 0)
-            {
-                IBackendMessage msg;
-                try
-                {
-                    // We've consumed the current DataMessage (or haven't yet received the first),
-                    // read the next message
-                    msg = _connector.ReadMessage();
-                }
-                catch
-                {
-                    Cleanup();
-                    throw;
-                }
-
-                switch (msg.Code) {
-                case BackendMessageCode.CopyData:
-                    _leftToReadInDataMsg = ((CopyDataMessage)msg).Length;
-                    break;
-                case BackendMessageCode.CopyDone:
-                    Expect<CommandCompleteMessage>(_connector.ReadMessage(), _connector);
-                    Expect<ReadyForQueryMessage>(_connector.ReadMessage(), _connector);
-                    _isConsumed = true;
-                    return 0;
-                default:
-                    throw _connector.UnexpectedMessageReceived(msg.Code);
-                }
-            }
-
-            Debug.Assert(_leftToReadInDataMsg > 0);
-
-            // If our buffer is empty, read in more. Otherwise return whatever is there, even if the
-            // user asked for more (normal socket behavior)
-            if (_readBuf.ReadBytesLeft == 0)
-                _readBuf.ReadMore();
-
-            Debug.Assert(_readBuf.ReadBytesLeft > 0);
-
-            var maxCount = Math.Min(_readBuf.ReadBytesLeft, _leftToReadInDataMsg);
-            var count = span.Length;
-            if (count > maxCount)
-                count = maxCount;
-
-            _leftToReadInDataMsg -= count;
-            _readBuf.ReadBytes(span.Slice(0, count));
+            var count = ReadCore(span.Length, false).GetAwaiter().GetResult();
+            if (count > 0)
+                _readBuf.ReadBytes(span.Slice(0, count));
             return count;
         }
 
@@ -304,58 +259,65 @@ namespace Npgsql
 
             async ValueTask<int> ReadLong(Memory<byte> buffer)
             {
-                if (_isConsumed)
-                    return 0;
-
-                if (_leftToReadInDataMsg == 0)
-                {
-                    IBackendMessage msg;
-                    try
-                    {
-                        // We've consumed the current DataMessage (or haven't yet received the first),
-                        // read the next message
-                        msg = await _connector.ReadMessage(true);
-                    }
-                    catch
-                    {
-                        Cleanup();
-                        throw;
-                    }
-
-                    switch (msg.Code)
-                    {
-                        case BackendMessageCode.CopyData:
-                            _leftToReadInDataMsg = ((CopyDataMessage)msg).Length;
-                            break;
-                        case BackendMessageCode.CopyDone:
-                            Expect<CommandCompleteMessage>(await _connector.ReadMessage(true), _connector);
-                            Expect<ReadyForQueryMessage>(await _connector.ReadMessage(true), _connector);
-                            _isConsumed = true;
-                            return 0;
-                        default:
-                            throw _connector.UnexpectedMessageReceived(msg.Code);
-                    }
-                }
-
-                Debug.Assert(_leftToReadInDataMsg > 0);
-
-                // If our buffer is empty, read in more. Otherwise return whatever is there, even if the
-                // user asked for more (normal socket behavior)
-                if (_readBuf.ReadBytesLeft == 0)
-                    await _readBuf.ReadMore(true);
-
-                Debug.Assert(_readBuf.ReadBytesLeft > 0);
-
-                var maxCount = Math.Min(_readBuf.ReadBytesLeft, _leftToReadInDataMsg);
-                var count = buffer.Length;
-                if (count > maxCount)
-                    count = maxCount;
-
-                _leftToReadInDataMsg -= count;
-                _readBuf.ReadBytes(buffer.Slice(0, count).Span);
+                var count = await ReadCore(buffer.Length, true);
+                if (count > 0)
+                    _readBuf.ReadBytes(buffer.Slice(0, count).Span);
                 return count;
             }
         }
+
+        async ValueTask<int> ReadCore(int count, bool async)
+        {
+            if (_isConsumed)
+                return 0;
+
+            if (_leftToReadInDataMsg == 0)
+            {
+                IBackendMessage msg;
+                try
+                {
+                    // We've consumed the current DataMessage (or haven't yet received the first),
+                    // read the next message
+                    msg = await _connector.ReadMessage(async);
+                }
+                catch
+                {
+                    Cleanup();
+                    throw;
+                }
+
+                switch (msg.Code)
+                {
+                case BackendMessageCode.CopyData:
+                    _leftToReadInDataMsg = ((CopyDataMessage)msg).Length;
+                    break;
+                case BackendMessageCode.CopyDone:
+                    Expect<CommandCompleteMessage>(await _connector.ReadMessage(async), _connector);
+                    Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async), _connector);
+                    _isConsumed = true;
+                    return 0;
+                default:
+                    throw _connector.UnexpectedMessageReceived(msg.Code);
+                }
+            }
+
+            Debug.Assert(_leftToReadInDataMsg > 0);
+
+            // If our buffer is empty, read in more. Otherwise return whatever is there, even if the
+            // user asked for more (normal socket behavior)
+            if (_readBuf.ReadBytesLeft == 0)
+                await _readBuf.ReadMore(async);
+
+            Debug.Assert(_readBuf.ReadBytesLeft > 0);
+
+            var maxCount = Math.Min(_readBuf.ReadBytesLeft, _leftToReadInDataMsg);
+            if (count > maxCount)
+                count = maxCount;
+
+            _leftToReadInDataMsg -= count;
+            return count;
+        }
+
         #endregion
 
         #region Cancel
