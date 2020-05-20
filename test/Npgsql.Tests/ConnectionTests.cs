@@ -566,6 +566,7 @@ namespace Npgsql.Tests
             {
                 using var conn = OpenConnection(csb);
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+                Assert.That(conn.DataSource, Is.EqualTo(Path.Combine(csb.Host, $".s.PGSQL.{port}")));
             }
             catch (PostgresException e) when (e.SqlState.StartsWith("28"))
             {

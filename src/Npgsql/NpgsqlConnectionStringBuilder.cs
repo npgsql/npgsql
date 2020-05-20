@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -40,7 +41,18 @@ namespace Npgsql
         /// </summary>
         string? _dataSourceCached;
 
-        internal string DataSourceCached => _dataSourceCached ??= (_host is null ? string.Empty : $"tcp://{_host}:{_port}");
+        internal string DataSourceCached
+        {
+            get
+            {
+                if (!(_host is null))
+                {
+                    _dataSourceCached ??= Path.IsPathRooted(_host) ? Path.Combine(_host, $".s.PGSQL.{_port}") : $"tcp://{_host}:{_port}";
+                }
+
+                return _dataSourceCached ??= string.Empty;
+            }
+        }
 
         #endregion
 
