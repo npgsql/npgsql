@@ -23,6 +23,7 @@ RUN apt-get update \
     && sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ focal-pgdg main" >> /etc/apt/sources.list.d/pgdg.list' \
     && apt-get update -qq \
     && apt-get install -qq postgresql-$POSTGRESQL_MAJOR_VERSION postgresql-$POSTGRESQL_MAJOR_VERSION-postgis-$POSTGIS_VERSION \
+    && pg_ctlcluster $POSTGRESQL_MAJOR_VERSION main start \
     && sudo -u postgres psql -c "CREATE USER npgsql_tests SUPERUSER PASSWORD 'npgsql_tests'" \
     && sudo -u postgres psql -c "CREATE DATABASE npgsql_tests OWNER npgsql_tests" \
     #
