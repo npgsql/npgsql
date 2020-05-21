@@ -1,6 +1,7 @@
 {
 	"name": "Npgsql dev environment (.NET 5.0)",
-	"dockerFile": "Dockerfile",
+	"dockerComposeFile": "docker-compose.yml",
+	"service": "npgsql-dev",
 
 	"settings": {
 		"terminal.integrated.shell.linux": "/bin/bash"
@@ -17,5 +18,5 @@
 		"DeveloperBuild": "True"
 	},
 
-	"postCreateCommand": "dotnet restore Npgsql.sln && pg_ctlcluster 12 main start"
+	"postCreateCommand": "dotnet restore Npgsql.sln"
 }
