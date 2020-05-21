@@ -1,5 +1,5 @@
 {
-	"name": "C# (.NET Core 5.0)",
+	"name": "Npgsql dev environment (.NET 5.0)",
 	"dockerFile": "Dockerfile",
 
 	"settings": {
