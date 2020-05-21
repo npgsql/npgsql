@@ -2,40 +2,19 @@ version: '3'
 
 services:
   npgsql-dev:
-    # Uncomment the next line to use a non-root user for all processes. You can also
-    # simply use the "remoteUser" property in devcontainer.json if you just want
-    # VS Code and its sub-processes (terminals, tasks, debugging) to execute as the user
-    # On Linux, you may need to update the args USER_UID and USER_GID the "build" section
-    # to match your user if not 1000. See https://aka.ms/vscode-remote/containers/non-root for details.
-    # user: vscode
-
-    image: mcr.microsoft.com/dotnet/sdk:5.0-focal
-
-    #build:
-      # context: ..
-      # dockerfile: .devcontainer/Dockerfile
-      #args:
-        #
-        # VARIANT: 3
-        # USER_UID: 1000
-        # USER_GID: 1000
-
+    image: mcr.microsoft.com/dotnet/sdk:5.0
     volumes:
       - ..:/workspace:cached
-      
     # Overrides default command so things don't shut down after the process ends.
     command: sleep infinity
-    
     links: 
       - db
-    
+
   db:
-    image: npgsql-postgres
-    build:
-      context: .
-      dockerfile: db.Dockerfile
-    restart: unless-stopped
+    image: postgres
+    environment:
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes:
+      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
     ports: 
       - 5432:5432
-    # environment:
-    #   POSTGRES_PASSWORD: LocalPassword
