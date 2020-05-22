@@ -18,3 +18,13 @@ services:
       - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
     ports: 
       - 5432:5432
+
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-pgadmin4@pgadmin.org}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
+    ports:
+      - 5050:80
+    links:
+      - db

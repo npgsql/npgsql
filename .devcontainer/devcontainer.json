@@ -4,15 +4,20 @@
 	"service": "npgsql-dev",
 
 	"settings": {
-		"terminal.integrated.shell.linux": "/bin/bash"
+		"terminal.integrated.shell.linux": "/bin/bash",
+		"remote.extensionKind": {
+			"ms-azuretools.vscode-docker": "workspace"
+		  },
 	},
 
 	"extensions": [
 		"ms-dotnettools.csharp",
-		"formulahendry.dotnet-test-explorer"
+		"formulahendry.dotnet-test-explorer",
+		"ms-azuretools.vscode-docker",
+		"mutantdino.resourcemonitor"
 	],
 
-	"forwardPorts": [5432],
+	"forwardPorts": [5432, 5050],
 
 	"remoteEnv": {
 		"DeveloperBuild": "True",
