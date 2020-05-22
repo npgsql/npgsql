@@ -142,9 +142,9 @@ namespace Npgsql
         }
 
 #if !NET461 && !NETSTANDARD2_0
-        public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
 #else
-        public async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+        public ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
 #endif
         {
             CheckDisposed();
@@ -152,8 +152,14 @@ namespace Npgsql
                 throw new InvalidOperationException("Stream not open for writing");
             cancellationToken.ThrowIfCancellationRequested();
             using (NoSynchronizationContextScope.Enter())
+                return WriteAsyncInternal();
+
+            async ValueTask WriteAsyncInternal()
             {
-                if (buffer.Length == 0) { return; }
+                if (buffer.Length == 0)
+                {
+                    return;
+                }
 
                 if (buffer.Length <= _writeBuf.WriteSpaceLeft)
                 {
@@ -233,9 +239,9 @@ namespace Npgsql
         }
 
 #if !NET461 && !NETSTANDARD2_0
-        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
 #else
-        public async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+        public ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
 #endif
         {
             CheckDisposed();
@@ -243,6 +249,9 @@ namespace Npgsql
                 throw new InvalidOperationException("Stream not open for reading");
             cancellationToken.ThrowIfCancellationRequested();
             using (NoSynchronizationContextScope.Enter())
+                return ReadAsyncInternal();
+
+            async ValueTask<int> ReadAsyncInternal()
             {
                 var count = await ReadCore(buffer.Length, true);
                 if (count > 0)

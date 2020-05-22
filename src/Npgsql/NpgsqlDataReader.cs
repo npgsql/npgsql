@@ -1593,15 +1593,19 @@ namespace Npgsql
         /// <param name="ordinal">The zero-based column to be retrieved.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <returns><b>true</b> if the specified column value is equivalent to <see cref="DBNull"/> otherwise <b>false</b>.</returns>
-        public override async Task<bool> IsDBNullAsync(int ordinal, CancellationToken cancellationToken)
+        public override Task<bool> IsDBNullAsync(int ordinal, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
             CheckRowAndGetField(ordinal);
 
             if (!_isSequential)
-                return IsDBNull(ordinal);
+                return IsDBNull(ordinal) ? PGUtil.TrueTask : PGUtil.FalseTask;
 
             using (NoSynchronizationContextScope.Enter())
+                return IsDBNullAsyncInternal();
+
+            // ReSharper disable once InconsistentNaming
+            async Task<bool> IsDBNullAsyncInternal()
             {
                 await SeekToColumn(ordinal, true);
                 return ColumnLen == -1;
