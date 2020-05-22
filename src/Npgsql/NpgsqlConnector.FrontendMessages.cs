@@ -401,7 +401,7 @@ namespace Npgsql
             }
 
             await WriteBuffer.Flush(async);
-            await WriteBuffer.DirectWrite(payload, offset, count, async);
+            await WriteBuffer.DirectWrite(new ReadOnlyMemory<byte>(payload, offset, count), async);
         }
 
         internal async Task WriteSASLInitialResponse(string mechanism, byte[] initialResponse, bool async)

@@ -89,46 +89,98 @@ namespace Npgsql
 
         #region Write
 
-        public override void Write(byte[] buffer, int offset, int count) => Write(buffer, offset, count, false).GetAwaiter().GetResult();
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            ValidateArguments(buffer, offset, count);
+            Write(new ReadOnlySpan<byte>(buffer, offset, count));
+        }
 
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled(cancellationToken);
-            using (NoSynchronizationContextScope.Enter())
-                return Write(buffer, offset, count, true);
+            ValidateArguments(buffer, offset, count);
+            return WriteAsync(new Memory<byte>(buffer, offset, count), cancellationToken).AsTask();
         }
 
-        async Task Write(byte[] buffer, int offset, int count, bool async)
+#if !NET461 && !NETSTANDARD2_0
+        public override void Write(ReadOnlySpan<byte> buffer)
+#else
+        public void Write(ReadOnlySpan<byte> buffer)
+#endif
         {
             CheckDisposed();
             if (!CanWrite)
                 throw new InvalidOperationException("Stream not open for writing");
 
-            if (count == 0) { return; }
+            if (buffer.Length == 0) { return; }
 
-            if (count <= _writeBuf.WriteSpaceLeft)
+            if (buffer.Length <= _writeBuf.WriteSpaceLeft)
             {
-                _writeBuf.WriteBytes(buffer, offset, count);
+                _writeBuf.WriteBytes(buffer);
                 return;
             }
 
-            try {
+            try
+            {
                 // Value is too big, flush.
-                await FlushAsync(async);
+                Flush();
 
-                if (count <= _writeBuf.WriteSpaceLeft)
+                if (buffer.Length <= _writeBuf.WriteSpaceLeft)
                 {
-                    _writeBuf.WriteBytes(buffer, offset, count);
+                    _writeBuf.WriteBytes(buffer);
                     return;
                 }
 
                 // Value is too big even after a flush - bypass the buffer and write directly.
-                await _writeBuf.DirectWrite(buffer, offset, count, async);
-            } catch {
+                _writeBuf.DirectWrite(buffer);
+            }
+            catch
+            {
                 _connector.Break();
                 Cleanup();
                 throw;
+            }
+        }
+
+#if !NET461 && !NETSTANDARD2_0
+        public override async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+#else
+        public async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+#endif
+        {
+            CheckDisposed();
+            if (!CanWrite)
+                throw new InvalidOperationException("Stream not open for writing");
+            cancellationToken.ThrowIfCancellationRequested();
+            using (NoSynchronizationContextScope.Enter())
+            {
+                if (buffer.Length == 0) { return; }
+
+                if (buffer.Length <= _writeBuf.WriteSpaceLeft)
+                {
+                    _writeBuf.WriteBytes(buffer.Span);
+                    return;
+                }
+
+                try
+                {
+                    // Value is too big, flush.
+                    await FlushAsync(true);
+
+                    if (buffer.Length <= _writeBuf.WriteSpaceLeft)
+                    {
+                        _writeBuf.WriteBytes(buffer.Span);
+                        return;
+                    }
+
+                    // Value is too big even after a flush - bypass the buffer and write directly.
+                    await _writeBuf.DirectWrite(buffer, true);
+                }
+                catch
+                {
+                    _connector.Break();
+                    Cleanup();
+                    throw;
+                }
             }
         }
 
@@ -152,25 +204,57 @@ namespace Npgsql
 
         #region Read
 
-        public override int Read(byte[] buffer, int offset, int count) => Read(buffer, offset, count, false).GetAwaiter().GetResult();
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            ValidateArguments(buffer, offset, count);
+            return Read(new Span<byte>(buffer, offset, count));
+        }
 
         public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled<int>(cancellationToken);
-            using (NoSynchronizationContextScope.Enter())
-                return Read(buffer, offset, count, true);
+            ValidateArguments(buffer, offset, count);
+            return ReadAsync(new Memory<byte>(buffer, offset, count), cancellationToken).AsTask();
         }
 
-        async Task<int> Read(byte[] buffer, int offset, int count, bool async)
+#if !NET461 && !NETSTANDARD2_0
+        public override int Read(Span<byte> span)
+#else
+        public int Read(Span<byte> span)
+#endif
         {
             CheckDisposed();
             if (!CanRead)
                 throw new InvalidOperationException("Stream not open for reading");
 
-            if (_isConsumed) {
-                return 0;
+            var count = ReadCore(span.Length, false).GetAwaiter().GetResult();
+            if (count > 0)
+                _readBuf.ReadBytes(span.Slice(0, count));
+            return count;
+        }
+
+#if !NET461 && !NETSTANDARD2_0
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+#else
+        public async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+#endif
+        {
+            CheckDisposed();
+            if (!CanRead)
+                throw new InvalidOperationException("Stream not open for reading");
+            cancellationToken.ThrowIfCancellationRequested();
+            using (NoSynchronizationContextScope.Enter())
+            {
+                var count = await ReadCore(buffer.Length, true);
+                if (count > 0)
+                    _readBuf.ReadBytes(buffer.Slice(0, count).Span);
+                return count;
             }
+        }
+
+        async ValueTask<int> ReadCore(int count, bool async)
+        {
+            if (_isConsumed)
+                return 0;
 
             if (_leftToReadInDataMsg == 0)
             {
@@ -187,7 +271,8 @@ namespace Npgsql
                     throw;
                 }
 
-                switch (msg.Code) {
+                switch (msg.Code)
+                {
                 case BackendMessageCode.CopyData:
                     _leftToReadInDataMsg = ((CopyDataMessage)msg).Length;
                     break;
@@ -205,19 +290,16 @@ namespace Npgsql
 
             // If our buffer is empty, read in more. Otherwise return whatever is there, even if the
             // user asked for more (normal socket behavior)
-            if (_readBuf.ReadBytesLeft == 0) {
+            if (_readBuf.ReadBytesLeft == 0)
                 await _readBuf.ReadMore(async);
-            }
 
             Debug.Assert(_readBuf.ReadBytesLeft > 0);
 
             var maxCount = Math.Min(_readBuf.ReadBytesLeft, _leftToReadInDataMsg);
-            if (count > maxCount) {
+            if (count > maxCount)
                 count = maxCount;
-            }
 
             _leftToReadInDataMsg -= count;
-            _readBuf.ReadBytes(buffer, offset, count);
             return count;
         }
 
@@ -354,6 +436,20 @@ namespace Npgsql
             set => throw new NotSupportedException();
         }
 
+        #endregion
+
+        #region Input validation
+        static void ValidateArguments(byte[] buffer, int offset, int count)
+        {
+            if (buffer == null)
+                throw new ArgumentNullException(nameof(buffer));
+            if (offset < 0)
+                throw new ArgumentNullException(nameof(offset));
+            if (count < 0)
+                throw new ArgumentNullException(nameof(count));
+            if (buffer.Length - offset < count)
+                throw new ArgumentException("Offset and length were out of bounds for the array or count is greater than the number of elements from index to the end of the source collection.");
+        }
         #endregion
     }
 

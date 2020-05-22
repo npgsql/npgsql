@@ -6,6 +6,7 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
+using Npgsql.Util;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 namespace Npgsql
@@ -129,9 +130,9 @@ namespace Npgsql
 
         #region Direct write
 
-        internal async Task DirectWrite(byte[] buffer, int offset, int count, bool async)
+        internal void DirectWrite(ReadOnlySpan<byte> buffer)
         {
-            await Flush(async);
+            Flush();
 
             if (_copyMode)
             {
@@ -140,10 +141,10 @@ namespace Npgsql
                 Debug.Assert(WritePosition == 5);
 
                 WritePosition = 1;
-                WriteInt32(count + 4);
+                WriteInt32(buffer.Length + 4);
                 WritePosition = 5;
                 _copyMode = false;
-                await Flush(async);
+                Flush();
                 _copyMode = true;
                 WriteCopyDataHeader();  // And ready the buffer after the direct write completes
             }
@@ -152,10 +153,7 @@ namespace Npgsql
 
             try
             {
-                if (async)
-                    await Underlying.WriteAsync(buffer, offset, count);
-                else
-                    Underlying.Write(buffer, offset, count);
+                Underlying.Write(buffer);
             }
             catch (Exception e)
             {
@@ -164,7 +162,6 @@ namespace Npgsql
             }
         }
 
-#if !NETSTANDARD2_0 && !NET461
         internal async Task DirectWrite(ReadOnlyMemory<byte> memory, bool async)
         {
             await Flush(async);
@@ -186,7 +183,6 @@ namespace Npgsql
             else
                 Debug.Assert(WritePosition == 0);
 
-
             try
             {
                 if (async)
@@ -200,7 +196,6 @@ namespace Npgsql
                 throw new NpgsqlException("Exception while writing to stream", e);
             }
         }
-#endif
 
         #endregion Direct write
 

@@ -111,57 +111,67 @@ namespace Npgsql
                 => throw new NotSupportedException();
 
             public override int Read(byte[] buffer, int offset, int count)
-                => Read(buffer, offset, count, CancellationToken.None, false).GetAwaiter().GetResult();
+            {
+                ValidateArguments(buffer, offset, count);
+                return Read(new Span<byte>(buffer, offset, count));
+            }
 
             public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
             {
+                ValidateArguments(buffer, offset, count);
+                if (cancellationToken.IsCancellationRequested)
+                    return Task.FromCanceled<int>(cancellationToken);
                 using (NoSynchronizationContextScope.Enter())
-                    return Read(buffer, offset, count, cancellationToken, true).AsTask();
+                    return ReadAsync(new Memory<byte>(buffer, offset, count), cancellationToken).AsTask();
             }
 
-            ValueTask<int> Read(byte[] buffer, int offset, int count, CancellationToken cancellationToken, bool async)
+#if !NET461 && !NETSTANDARD2_0
+            public override int Read(Span<byte> span)
+#else
+            public int Read(Span<byte> span)
+#endif
             {
                 CheckDisposed();
 
-                if (buffer == null)
-                    throw new ArgumentNullException(nameof(buffer));
-                if (offset < 0)
-                    throw new ArgumentNullException(nameof(offset));
-                if (count < 0)
-                    throw new ArgumentNullException(nameof(count));
-                if (buffer.Length - offset < count)
-                    throw new ArgumentException("Offset and length were out of bounds for the array or count is greater than the number of elements from index to the end of the source collection.");
+                var count = Math.Min(span.Length, _len - _read);
+
+                if (count == 0)
+                    return 0;
+
+                _buf.Read(span.Slice(0, count));
+                _read += count;
+
+                return count;
+            }
+
+#if !NET461 && !NETSTANDARD2_0
+            public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+#else
+            public ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+#endif
+            {
+                CheckDisposed();
+
                 if (cancellationToken.IsCancellationRequested)
                     return new ValueTask<int>(Task.FromCanceled<int>(cancellationToken));
 
-                count = Math.Min(count, _len - _read);
+                var count = Math.Min(buffer.Length, _len - _read);
 
                 if (count == 0)
                     return new ValueTask<int>(0);
 
-                var task = _buf.ReadBytes(buffer, offset, count, async);
-                if (task.IsCompleted) // This may be a bug in the new version of ValueTask
+                using (NoSynchronizationContextScope.Enter())
+                    return ReadLong(buffer.Slice(0, count));
+
+                async ValueTask<int> ReadLong(Memory<byte> buffer)
                 {
-                    _read += task.Result;
-                    return task;
+                    var read = await _buf.ReadAsync(buffer);
+                    _read += read;
+                    return read;
                 }
-
-                return new ValueTask<int>(ReadLong(task, async));
-            }
-
-            async Task<int> ReadLong(ValueTask<int> task, bool async)
-            {
-                var read = async
-                    ? await task
-                    : task.GetAwaiter().GetResult();
-                _read += read;
-                return read;
             }
 
             public override void Write(byte[] buffer, int offset, int count)
-                => throw new NotSupportedException();
-
-            public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
                 => throw new NotSupportedException();
 
             void CheckDisposed()
@@ -171,15 +181,40 @@ namespace Npgsql
             }
 
             protected override void Dispose(bool disposing)
+                => DisposeAsync(disposing, async: false).GetAwaiter().GetResult();
+
+#if !NET461 && !NETSTANDARD2_0
+            public override ValueTask DisposeAsync()
+                => DisposeAsync(disposing: true, async: true);
+#endif
+
+            async ValueTask DisposeAsync(bool disposing, bool async)
             {
-                if (IsDisposed)
+                if (IsDisposed || !disposing)
                     return;
 
                 var leftToSkip = _len - _read;
                 if (leftToSkip > 0)
-                    _buf.Skip(leftToSkip, false).GetAwaiter().GetResult();
+                {
+                    if (async)
+                        await _buf.Skip(leftToSkip, async);
+                    else
+                        _buf.Skip(leftToSkip, async).GetAwaiter().GetResult();
+                }
                 IsDisposed = true;
             }
+        }
+
+        static void ValidateArguments(byte[] buffer, int offset, int count)
+        {
+            if (buffer == null)
+                throw new ArgumentNullException(nameof(buffer));
+            if (offset < 0)
+                throw new ArgumentNullException(nameof(offset));
+            if (count < 0)
+                throw new ArgumentNullException(nameof(count));
+            if (buffer.Length - offset < count)
+                throw new ArgumentException("Offset and length were out of bounds for the array or count is greater than the number of elements from index to the end of the source collection.");
         }
     }
 }

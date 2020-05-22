@@ -1109,7 +1109,7 @@ namespace Npgsql
             var left = length;
             while (left > 0)
             {
-                var read = Buffer.ReadBytes(buffer, bufferOffset, left, false).GetAwaiter().GetResult();
+                var read = Buffer.Read(new Span<byte>(buffer, bufferOffset, left));
                 bufferOffset += read;
                 left -= read;
             }

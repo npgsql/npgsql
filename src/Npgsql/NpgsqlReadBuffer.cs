@@ -6,6 +6,7 @@ using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
+using Npgsql.Util;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
@@ -152,6 +153,8 @@ namespace Npgsql
                 }
             }
         }
+
+        internal void ReadMore() => ReadMore(false).GetAwaiter().GetResult();
 
         internal Task ReadMore(bool async) => Ensure(ReadBytesLeft + 1, async);
 
@@ -358,27 +361,57 @@ namespace Npgsql
 
         #region Read Complex
 
-        public ValueTask<int> ReadBytes(byte[] output, int outputOffset, int len, bool async)
+        public int Read(Span<byte> output)
         {
-            var readFromBuffer = Math.Min(ReadBytesLeft, len);
+            var readFromBuffer = Math.Min(ReadBytesLeft, output.Length);
             if (readFromBuffer > 0)
             {
-                System.Buffer.BlockCopy(Buffer, ReadPosition, output, outputOffset, readFromBuffer);
-                ReadPosition += len;
+                new Span<byte>(Buffer, ReadPosition, readFromBuffer).CopyTo(output);
+                ReadPosition += readFromBuffer;
+                return readFromBuffer;
+            }
+
+            if (output.Length == 0)
+                return 0;
+
+            Debug.Assert(ReadPosition == 0);
+            Clear();
+            try
+            {
+                var read = Underlying.Read(output);
+                if (read == 0)
+                    throw new EndOfStreamException();
+                return read;
+            }
+            catch (Exception e)
+            {
+                Connector.Break();
+                throw new NpgsqlException("Exception while reading from stream", e);
+            }
+        }
+
+        public ValueTask<int> ReadAsync(Memory<byte> output)
+        {
+            var readFromBuffer = Math.Min(ReadBytesLeft, output.Length);
+            if (readFromBuffer > 0)
+            {
+                new Span<byte>(Buffer, ReadPosition, readFromBuffer).CopyTo(output.Span);
+                ReadPosition += readFromBuffer;
                 return new ValueTask<int>(readFromBuffer);
             }
 
-            return new ValueTask<int>(ReadBytesLong());
+            if (output.Length == 0)
+                return new ValueTask<int>(0);
 
-            async Task<int> ReadBytesLong()
+            return ReadAsyncLong();
+
+            async ValueTask<int> ReadAsyncLong()
             {
                 Debug.Assert(ReadPosition == 0);
                 Clear();
                 try
                 {
-                    var read = async
-                        ? await Underlying.ReadAsync(output, outputOffset, len)
-                        : Underlying.Read(output, outputOffset, len);
+                    var read = await Underlying.ReadAsync(output);
                     if (read == 0)
                         throw new EndOfStreamException();
                     return read;
