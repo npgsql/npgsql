@@ -9,26 +9,18 @@ namespace Npgsql
     /// An interface to remotely control the seekable stream for an opened large object on a PostgreSQL server.
     /// Note that the OpenRead/OpenReadWrite method as well as all operations performed on this stream must be wrapped inside a database transaction.
     /// </summary>
-    public sealed class NpgsqlLargeObjectStream : Stream
+    public sealed class NpgsqlLargeObjectStream : NpgsqlStream
     {
         readonly NpgsqlLargeObjectManager _manager;
         readonly int _fd;
         long _pos;
-        readonly bool _writeable;
-        bool _disposed;
 
         internal NpgsqlLargeObjectStream(NpgsqlLargeObjectManager manager, int fd, bool writeable)
+            : base(canWrite: writeable, canRead: true, canSeek: true)
         {
             _manager = manager;
             _fd = fd;
             _pos = 0;
-            _writeable = writeable;
-        }
-
-        void CheckDisposed()
-        {
-            if (_disposed)
-                throw new InvalidOperationException("Object disposed");
         }
 
         /// <summary>
@@ -45,7 +37,7 @@ namespace Npgsql
         /// <param name="count">The maximum number of bytes that should be read.</param>
         /// <returns>How many bytes actually read, or 0 if end of file was already reached.</returns>
         public override int Read(byte[] buffer, int offset, int count)
-            => Read(buffer, offset, count, false).GetAwaiter().GetResult();
+            => base.Read(buffer, offset, count);
 
         /// <summary>
         /// Reads <i>count</i> bytes from the large object. The only case when fewer bytes are read is when end of stream is reached.
@@ -56,26 +48,11 @@ namespace Npgsql
         /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
         /// <returns>How many bytes actually read, or 0 if end of file was already reached.</returns>
         public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+            => base.ReadAsync(buffer, offset, count, cancellationToken);
+
+        /// <inheritdoc />
+        internal protected override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken, bool async)
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled<int>(cancellationToken);
-            using (NoSynchronizationContextScope.Enter())
-                return Read(buffer, offset, count, true);
-        }
-
-        async Task<int> Read(byte[] buffer, int offset, int count, bool async)
-        {
-            if (buffer == null)
-                throw new ArgumentNullException(nameof(buffer));
-            if (offset < 0)
-                throw new ArgumentOutOfRangeException(nameof(offset));
-            if (count < 0)
-                throw new ArgumentOutOfRangeException(nameof(count));
-            if (buffer.Length - offset < count)
-                throw new ArgumentException("Invalid offset or count for this buffer");
-
-            CheckDisposed();
-
             var chunkCount = Math.Min(count, _manager.MaxTransferBlockSize);
             var read = 0;
 
@@ -99,7 +76,7 @@ namespace Npgsql
         /// <param name="offset">The offset in the buffer at which to begin copying bytes.</param>
         /// <param name="count">The number of bytes to write.</param>
         public override void Write(byte[] buffer, int offset, int count)
-            => Write(buffer, offset, count, false).GetAwaiter().GetResult();
+            => base.Write(buffer, offset, count);
 
         /// <summary>
         /// Writes <i>count</i> bytes to the large object.
@@ -109,29 +86,11 @@ namespace Npgsql
         /// <param name="count">The number of bytes to write.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+            => base.WriteAsync(buffer, offset, count, cancellationToken);
+
+        /// <inheritdoc />
+        internal protected override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken, bool async)
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled(cancellationToken);
-            using (NoSynchronizationContextScope.Enter())
-                return Write(buffer, offset, count, true);
-        }
-
-        async Task Write(byte[] buffer, int offset, int count, bool async)
-        {
-            if (buffer == null)
-                throw new ArgumentNullException(nameof(buffer));
-            if (offset < 0)
-                throw new ArgumentOutOfRangeException(nameof(offset));
-            if (count < 0)
-                throw new ArgumentOutOfRangeException(nameof(count));
-            if (buffer.Length - offset < count)
-                throw new ArgumentException("Invalid offset or count for this buffer");
-
-            CheckDisposed();
-
-            if (!_writeable)
-                throw new NotSupportedException("Write cannot be called on a stream opened with no write permissions");
-
             var totalWritten = 0;
 
             while (totalWritten < count)
@@ -150,22 +109,22 @@ namespace Npgsql
         /// <summary>
         /// CanTimeout always returns false.
         /// </summary>
-        public override bool CanTimeout => false;
+        public override bool CanTimeout => base.CanTimeout;
 
         /// <summary>
         /// CanRead always returns true, unless the stream has been closed.
         /// </summary>
-        public override bool CanRead => !_disposed;
+        public override bool CanRead => base.CanRead;
 
         /// <summary>
         /// CanWrite returns true if the stream was opened with write permissions, and the stream has not been closed.
         /// </summary>
-        public override bool CanWrite => _writeable && !_disposed;
+        public override bool CanWrite => base.CanWrite;
 
         /// <summary>
         /// CanSeek always returns true, unless the stream has been closed.
         /// </summary>
-        public override bool CanSeek => !_disposed;
+        public override bool CanSeek => base.CanSeek;
 
         /// <summary>
         /// Returns the current position in the stream. Getting the current position does not need a round-trip to the server, however setting the current position does.
@@ -174,7 +133,7 @@ namespace Npgsql
         {
             get
             {
-                CheckDisposed();
+                CheckCanSeek();
                 return _pos;
             }
             set => Seek(value, SeekOrigin.Begin);
@@ -183,25 +142,22 @@ namespace Npgsql
         /// <summary>
         /// Gets the length of the large object. This internally seeks to the end of the stream to retrieve the length, and then back again.
         /// </summary>
-        public override long Length => GetLength(false).GetAwaiter().GetResult();
+        public override long Length => base.Length;
 
         /// <summary>
         /// Gets the length of the large object. This internally seeks to the end of the stream to retrieve the length, and then back again.
         /// </summary>
         /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
-        public Task<long> GetLengthAsync(CancellationToken cancellationToken = default)
-        {
-            using (NoSynchronizationContextScope.Enter())
-                return GetLength(true);
-        }
+        public override Task<long> GetLengthAsync(CancellationToken cancellationToken = default)
+            => base.GetLengthAsync(cancellationToken);
 
-        async Task<long> GetLength(bool async)
+        /// <inheritdoc />
+        internal protected override async Task<long> GetLengthAsync(CancellationToken cancellationToken, bool async)
         {
-            CheckDisposed();
             var old = _pos;
-            var retval = await Seek(0, SeekOrigin.End, async);
+            var retval = await SeekAsync(0, SeekOrigin.End, default, async);
             if (retval != old)
-                await Seek(old, SeekOrigin.Begin, async);
+                await SeekAsync(old, SeekOrigin.Begin, default, async);
             return retval;
         }
 
@@ -212,7 +168,7 @@ namespace Npgsql
         /// <param name="origin">A value of type SeekOrigin indicating the reference point used to obtain the new position.</param>
         /// <returns></returns>
         public override long Seek(long offset, SeekOrigin origin)
-            => Seek(offset, origin, false).GetAwaiter().GetResult();
+            => base.Seek(offset, origin);
 
         /// <summary>
         /// Seeks in the stream to the specified position. This requires a round-trip to the backend.
@@ -220,22 +176,14 @@ namespace Npgsql
         /// <param name="offset">A byte offset relative to the <i>origin</i> parameter.</param>
         /// <param name="origin">A value of type SeekOrigin indicating the reference point used to obtain the new position.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
-        public Task<long> SeekAsync(long offset, SeekOrigin origin, CancellationToken cancellationToken = default)
-        {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled<long>(cancellationToken);
-            using (NoSynchronizationContextScope.Enter())
-                return Seek(offset, origin, true);
-        }
+        public override Task<long> SeekAsync(long offset, SeekOrigin origin, CancellationToken cancellationToken = default)
+            => base.SeekAsync(offset, origin, cancellationToken);
 
-        async Task<long> Seek(long offset, SeekOrigin origin, bool async)
+        /// <inheritdoc />
+        internal protected override async Task<long> SeekAsync(long offset, SeekOrigin origin, CancellationToken cancellationToken, bool async)
         {
-            if (origin < SeekOrigin.Begin || origin > SeekOrigin.End)
-                throw new ArgumentException("Invalid origin");
             if (!Has64BitSupport && offset != (int)offset)
                 throw new ArgumentOutOfRangeException(nameof(offset), "offset must fit in 32 bits for PostgreSQL versions older than 9.3");
-
-            CheckDisposed();
 
             return _manager.Has64BitSupport
                 ? _pos = await _manager.ExecuteFunction<long>("lo_lseek64", async, _fd, offset, (int)origin)
@@ -245,7 +193,7 @@ namespace Npgsql
         /// <summary>
         /// Does nothing.
         /// </summary>
-        public override void Flush() {}
+        internal protected override Task FlushAsync(CancellationToken cancellationToken, bool async) => Task.CompletedTask;
 
         /// <summary>
         /// Truncates or enlarges the large object to the given size. If enlarging, the large object is extended with null bytes.
@@ -253,7 +201,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="value">Number of bytes to either truncate or enlarge the large object.</param>
         public override void SetLength(long value)
-            => SetLength(value, false).GetAwaiter().GetResult();
+            => base.SetLength(value);
 
         /// <summary>
         /// Truncates or enlarges the large object to the given size. If enlarging, the large object is extended with null bytes.
@@ -261,24 +209,14 @@ namespace Npgsql
         /// </summary>
         /// <param name="value">Number of bytes to either truncate or enlarge the large object.</param>
         /// <param name="cancellationToken">Cancellation token.</param>
-        public Task SetLength(long value, CancellationToken cancellationToken)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            using (NoSynchronizationContextScope.Enter())
-                return SetLength(value, true);
-        }
+        public override Task SetLengthAsync(long value, CancellationToken cancellationToken)
+            => base.SetLengthAsync(value, cancellationToken);
 
-        async Task SetLength(long value, bool async)
+        /// <inheritdoc />
+        internal protected override async Task SetLengthAsync(long value, CancellationToken cancellationToken, bool async)
         {
-            if (value < 0)
-                throw new ArgumentOutOfRangeException(nameof(value));
             if (!Has64BitSupport && value != (int)value)
                 throw new ArgumentOutOfRangeException(nameof(value), "offset must fit in 32 bits for PostgreSQL versions older than 9.3");
-
-            CheckDisposed();
-
-            if (!_writeable)
-                throw new NotSupportedException("SetLength cannot be called on a stream opened with no write permissions");
 
             if (_manager.Has64BitSupport)
                 await _manager.ExecuteFunction<int>("lo_truncate64", async, _fd, value);
@@ -286,28 +224,13 @@ namespace Npgsql
                 await _manager.ExecuteFunction<int>("lo_truncate", async, _fd, (int)value);
         }
 
-        /// <summary>
-        /// Releases resources at the backend allocated for this stream.
-        /// </summary>
-        public override void Close()
+        /// <inheritdoc />
+        internal protected override async ValueTask DisposeAsync(bool async)
         {
-            if (!_disposed)
-            {
+            if (async)
+                await _manager.ExecuteFunction<int>("lo_close", false, _fd);
+            else
                 _manager.ExecuteFunction<int>("lo_close", false, _fd).GetAwaiter().GetResult();
-                _disposed = true;
-            }
-        }
-
-        /// <summary>
-        /// Releases resources at the backend allocated for this stream, iff disposing is true.
-        /// </summary>
-        /// <param name="disposing">Whether to release resources allocated at the backend.</param>
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                Close();
-            }
         }
     }
 }

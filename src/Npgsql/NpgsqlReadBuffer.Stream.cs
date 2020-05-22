@@ -8,14 +8,13 @@ namespace Npgsql
 {
     public sealed partial class NpgsqlReadBuffer
     {
-        internal sealed class ColumnStream : Stream
+        internal sealed class ColumnStream : NpgsqlSpanStream
         {
             readonly NpgsqlReadBuffer _buf;
             int _start, _len, _read;
-            bool _canSeek;
-            internal bool IsDisposed { get; private set; }
 
             internal ColumnStream(NpgsqlReadBuffer buf)
+                : base(canRead: true)
                 => _buf = buf;
 
             internal void Init(int len, bool canSeek)
@@ -29,29 +28,20 @@ namespace Npgsql
                 IsDisposed = false;
             }
 
-            public override bool CanRead => true;
-
-            public override bool CanWrite => false;
-
-            public override bool CanSeek => _canSeek;
-
             public override long Length
             {
                 get
                 {
-                    CheckDisposed();
+                    CheckCanSeek();
                     return _len;
                 }
             }
-
-            public override void SetLength(long value)
-                => throw new NotSupportedException();
 
             public override long Position
             {
                 get
                 {
-                    CheckDisposed();
+                    CheckCanSeek();
                     return _read;
                 }
                 set
@@ -64,10 +54,8 @@ namespace Npgsql
 
             public override long Seek(long offset, SeekOrigin origin)
             {
-                CheckDisposed();
+                CheckCanSeek();
 
-                if (!_canSeek)
-                    throw new NotSupportedException();
                 if (offset > int.MaxValue)
                     throw new ArgumentOutOfRangeException(nameof(offset), "Stream length must be non-negative and less than 2^31 - 1 - origin.");
 
@@ -104,34 +92,9 @@ namespace Npgsql
                 }
             }
 
-            public override void Flush()
-                => throw new NotSupportedException();
-
-            public override Task FlushAsync(CancellationToken cancellationToken)
-                => throw new NotSupportedException();
-
-            public override int Read(byte[] buffer, int offset, int count)
-            {
-                ValidateArguments(buffer, offset, count);
-                return Read(new Span<byte>(buffer, offset, count));
-            }
-
-            public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-            {
-                ValidateArguments(buffer, offset, count);
-                if (cancellationToken.IsCancellationRequested)
-                    return Task.FromCanceled<int>(cancellationToken);
-                using (NoSynchronizationContextScope.Enter())
-                    return ReadAsync(new Memory<byte>(buffer, offset, count), cancellationToken).AsTask();
-            }
-
-#if !NET461 && !NETSTANDARD2_0
             public override int Read(Span<byte> span)
-#else
-            public int Read(Span<byte> span)
-#endif
             {
-                CheckDisposed();
+                CheckCanRead();
 
                 var count = Math.Min(span.Length, _len - _read);
 
@@ -144,13 +107,9 @@ namespace Npgsql
                 return count;
             }
 
-#if !NET461 && !NETSTANDARD2_0
             public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
-#else
-            public ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
-#endif
             {
-                CheckDisposed();
+                CheckCanRead();
 
                 if (cancellationToken.IsCancellationRequested)
                     return new ValueTask<int>(Task.FromCanceled<int>(cancellationToken));
@@ -171,28 +130,8 @@ namespace Npgsql
                 }
             }
 
-            public override void Write(byte[] buffer, int offset, int count)
-                => throw new NotSupportedException();
-
-            void CheckDisposed()
+            internal protected override async ValueTask DisposeAsync(bool async)
             {
-                if (IsDisposed)
-                    throw new ObjectDisposedException(null);
-            }
-
-            protected override void Dispose(bool disposing)
-                => DisposeAsync(disposing, async: false).GetAwaiter().GetResult();
-
-#if !NET461 && !NETSTANDARD2_0
-            public override ValueTask DisposeAsync()
-                => DisposeAsync(disposing: true, async: true);
-#endif
-
-            async ValueTask DisposeAsync(bool disposing, bool async)
-            {
-                if (IsDisposed || !disposing)
-                    return;
-
                 var leftToSkip = _len - _read;
                 if (leftToSkip > 0)
                 {
@@ -201,20 +140,7 @@ namespace Npgsql
                     else
                         _buf.Skip(leftToSkip, async).GetAwaiter().GetResult();
                 }
-                IsDisposed = true;
             }
-        }
-
-        static void ValidateArguments(byte[] buffer, int offset, int count)
-        {
-            if (buffer == null)
-                throw new ArgumentNullException(nameof(buffer));
-            if (offset < 0)
-                throw new ArgumentNullException(nameof(offset));
-            if (count < 0)
-                throw new ArgumentNullException(nameof(count));
-            if (buffer.Length - offset < count)
-                throw new ArgumentException("Offset and length were out of bounds for the array or count is greater than the number of elements from index to the end of the source collection.");
         }
     }
 }

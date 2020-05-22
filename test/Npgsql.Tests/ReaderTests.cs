@@ -1138,8 +1138,12 @@ LANGUAGE plpgsql VOLATILE";
 
                     using (var stream = await streamGetter(reader, 0))
                     {
-                        Assert.That(stream.CanSeek, Is.EqualTo(Behavior == CommandBehavior.Default));
-                        Assert.That(stream.Length, Is.EqualTo(expected.Length));
+                        Assert.That(stream.CanSeek, Is.EqualTo(!IsSequential));
+                        if (IsSequential)
+                            Assert.That(() => stream.Length, Throws.Exception.TypeOf<NotSupportedException>(), "Stream does not support seeking.");
+                        else
+                            Assert.That(stream.Length, Is.EqualTo(expected.Length));
+
                         stream.Read(actual, 0, 2);
                         Assert.That(actual[0], Is.EqualTo(expected[0]));
                         Assert.That(actual[1], Is.EqualTo(expected[1]));

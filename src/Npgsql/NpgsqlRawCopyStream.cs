@@ -18,7 +18,7 @@ namespace Npgsql
     /// <remarks>
     /// See http://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
-    public sealed class NpgsqlRawCopyStream : Stream, ICancelable
+    public sealed class NpgsqlRawCopyStream : NpgsqlSpanStream, ICancelable
     {
         #region Fields and Properties
 
@@ -27,15 +27,9 @@ namespace Npgsql
         NpgsqlWriteBuffer _writeBuf;
 
         int _leftToReadInDataMsg;
-        bool _isDisposed, _isConsumed;
-
-        readonly bool _canRead;
-        readonly bool _canWrite;
+        bool _isConsumed;
 
         internal bool IsBinary { get; private set; }
-
-        public override bool CanWrite => _canWrite;
-        public override bool CanRead => _canRead;
 
         /// <summary>
         /// The copy binary format header signature
@@ -89,27 +83,9 @@ namespace Npgsql
 
         #region Write
 
-        public override void Write(byte[] buffer, int offset, int count)
-        {
-            ValidateArguments(buffer, offset, count);
-            Write(new ReadOnlySpan<byte>(buffer, offset, count));
-        }
-
-        public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-        {
-            ValidateArguments(buffer, offset, count);
-            return WriteAsync(new Memory<byte>(buffer, offset, count), cancellationToken).AsTask();
-        }
-
-#if !NET461 && !NETSTANDARD2_0
         public override void Write(ReadOnlySpan<byte> buffer)
-#else
-        public void Write(ReadOnlySpan<byte> buffer)
-#endif
         {
-            CheckDisposed();
-            if (!CanWrite)
-                throw new InvalidOperationException("Stream not open for writing");
+            CheckCanWrite();
 
             if (buffer.Length == 0) { return; }
 
@@ -141,15 +117,9 @@ namespace Npgsql
             }
         }
 
-#if !NET461 && !NETSTANDARD2_0
-        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
-#else
-        public ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
-#endif
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
         {
-            CheckDisposed();
-            if (!CanWrite)
-                throw new InvalidOperationException("Stream not open for writing");
+            CheckCanWrite();
             cancellationToken.ThrowIfCancellationRequested();
             using (NoSynchronizationContextScope.Enter())
                 return WriteAsyncInternal();
@@ -168,7 +138,7 @@ namespace Npgsql
                 try
                 {
                     // Value is too big, flush.
-                    await FlushAsync(true);
+                    await FlushAsync(default, true);
 
                     if (buffer.Length <= _writeBuf.WriteSpaceLeft)
                     {
@@ -188,47 +158,15 @@ namespace Npgsql
             }
         }
 
-        public override void Flush() => FlushAsync(false).GetAwaiter().GetResult();
-
-        public override Task FlushAsync(CancellationToken cancellationToken)
-        {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled(cancellationToken);
-            using (NoSynchronizationContextScope.Enter())
-                return FlushAsync(true);
-        }
-
-        Task FlushAsync(bool async)
-        {
-            CheckDisposed();
-            return _writeBuf.Flush(async);
-        }
+        internal protected override Task FlushAsync(CancellationToken cancellationToken, bool async)
+            => _writeBuf.Flush(async);
 
         #endregion
 
         #region Read
-
-        public override int Read(byte[] buffer, int offset, int count)
-        {
-            ValidateArguments(buffer, offset, count);
-            return Read(new Span<byte>(buffer, offset, count));
-        }
-
-        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-        {
-            ValidateArguments(buffer, offset, count);
-            return ReadAsync(new Memory<byte>(buffer, offset, count), cancellationToken).AsTask();
-        }
-
-#if !NET461 && !NETSTANDARD2_0
         public override int Read(Span<byte> span)
-#else
-        public int Read(Span<byte> span)
-#endif
         {
-            CheckDisposed();
-            if (!CanRead)
-                throw new InvalidOperationException("Stream not open for reading");
+            CheckCanRead();
 
             var count = ReadCore(span.Length, false).GetAwaiter().GetResult();
             if (count > 0)
@@ -236,15 +174,9 @@ namespace Npgsql
             return count;
         }
 
-#if !NET461 && !NETSTANDARD2_0
         public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
-#else
-        public ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
-#endif
         {
-            CheckDisposed();
-            if (!CanRead)
-                throw new InvalidOperationException("Stream not open for reading");
+            CheckCanRead();
             cancellationToken.ThrowIfCancellationRequested();
             using (NoSynchronizationContextScope.Enter())
                 return ReadAsyncInternal();
@@ -334,7 +266,7 @@ namespace Npgsql
 
             if (CanWrite)
             {
-                _isDisposed = true;
+                IsDisposed = true;
                 _writeBuf.EndCopyMode();
                 _writeBuf.Clear();
                 await _connector.WriteCopyFail(async);
@@ -363,17 +295,13 @@ namespace Npgsql
 
         #region Dispose
 
-        protected override void Dispose(bool disposing) => DisposeAsync(disposing, false).GetAwaiter().GetResult();
-
-        async ValueTask DisposeAsync(bool disposing, bool async)
+        internal protected override async ValueTask DisposeAsync(bool async)
         {
-            if (_isDisposed || !disposing) { return; }
-
             try
             {
                 if (CanWrite)
                 {
-                    await FlushAsync(async);
+                    await FlushAsync(default, async);
                     _writeBuf.EndCopyMode();
                     await _connector.WriteCopyDone(async);
                     await _connector.Flush(async);
@@ -408,55 +336,17 @@ namespace Npgsql
             _connector = null;
             _readBuf = null;
             _writeBuf = null;
-            _isDisposed = true;
+            IsDisposed = true;
         }
 #pragma warning restore CS8625
 
-        void CheckDisposed()
+        internal protected override void CheckDisposed()
         {
-            if (_isDisposed) {
+            if (IsDisposed) {
                 throw new ObjectDisposedException(GetType().FullName, "The COPY operation has already ended.");
             }
         }
 
-        #endregion
-
-        #region Unsupported
-
-        public override bool CanSeek => false;
-
-        public override long Seek(long offset, SeekOrigin origin)
-        {
-            throw new NotSupportedException();
-        }
-
-        public override void SetLength(long value)
-        {
-            throw new NotSupportedException();
-        }
-
-        public override long Length => throw new NotSupportedException();
-
-        public override long Position
-        {
-            get => throw new NotSupportedException();
-            set => throw new NotSupportedException();
-        }
-
-        #endregion
-
-        #region Input validation
-        static void ValidateArguments(byte[] buffer, int offset, int count)
-        {
-            if (buffer == null)
-                throw new ArgumentNullException(nameof(buffer));
-            if (offset < 0)
-                throw new ArgumentNullException(nameof(offset));
-            if (count < 0)
-                throw new ArgumentNullException(nameof(count));
-            if (buffer.Length - offset < count)
-                throw new ArgumentException("Offset and length were out of bounds for the array or count is greater than the number of elements from index to the end of the source collection.");
-        }
         #endregion
     }
 

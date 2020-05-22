@@ -258,7 +258,7 @@ namespace Npgsql
         /// <remarks>
         /// See https://referencesource.microsoft.com/#System/net/System/Net/_StreamFramer.cs,16417e735f0e9530,references
         /// </remarks>
-        class GSSPasswordMessageStream : Stream
+        class GSSPasswordMessageStream : NpgsqlStream
         {
             readonly NpgsqlConnector _connector;
             int _leftToWrite;
@@ -266,17 +266,12 @@ namespace Npgsql
             byte[]? _readBuf;
 
             internal GSSPasswordMessageStream(NpgsqlConnector connector)
+                : base(canRead: true, canWrite: true)
             {
                 _connector = connector;
             }
 
-            public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-                => Write(buffer, offset, count, true);
-
-            public override void Write(byte[] buffer, int offset, int count)
-                => Write(buffer, offset, count, false).GetAwaiter().GetResult();
-
-            async Task Write(byte[] buffer, int offset, int count, bool async)
+            internal protected override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken, bool async)
             {
                 if (_leftToWrite == 0)
                 {
@@ -303,13 +298,7 @@ namespace Npgsql
                 _leftToWrite -= count;
             }
 
-            public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-                => Read(buffer, offset, count, true);
-
-            public override int Read(byte[] buffer, int offset, int count)
-                => Read(buffer, offset, count, false).GetAwaiter().GetResult();
-
-            async Task<int> Read(byte[] buffer, int offset, int count, bool async)
+            internal protected override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken, bool async)
             {
                 if (_leftToRead == 0)
                 {
@@ -338,21 +327,7 @@ namespace Npgsql
                 return count;
             }
 
-            public override void Flush() { }
-
-            public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
-            public override void SetLength(long value) => throw new NotSupportedException();
-
-            public override bool CanRead => true;
-            public override bool CanWrite => true;
-            public override bool CanSeek => false;
-            public override long Length => throw new NotSupportedException();
-
-            public override long Position
-            {
-                get => throw new NotSupportedException();
-                set => throw new NotSupportedException();
-            }
+            internal protected override Task FlushAsync(CancellationToken cancellationToken, bool async) => Task.CompletedTask;
         }
 
         class AuthenticationCompleteException : Exception { }
