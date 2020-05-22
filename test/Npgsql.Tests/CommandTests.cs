@@ -678,33 +678,39 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void StatementMappedOutputParameters()
+        [TestCase(CommandBehavior.Default)]
+        [TestCase(CommandBehavior.SequentialAccess)]
+        public void StatementMappedOutputParameters(CommandBehavior behavior)
         {
-            using (var conn = OpenConnection())
-            {
-                var command = new NpgsqlCommand("select 3, 4 as param1, 5 as param2, 6;", conn);
+            using var conn = OpenConnection();
+            var command = new NpgsqlCommand("select 3, 4 as param1, 5 as param2, 6;", conn);
 
-                var p = new NpgsqlParameter("param2", NpgsqlDbType.Integer);
-                p.Direction = ParameterDirection.Output;
-                p.Value = -1;
-                command.Parameters.Add(p);
+            var p = new NpgsqlParameter("param2", NpgsqlDbType.Integer);
+            p.Direction = ParameterDirection.Output;
+            p.Value = -1;
+            command.Parameters.Add(p);
 
-                p = new NpgsqlParameter("param1", NpgsqlDbType.Integer);
-                p.Direction = ParameterDirection.Output;
-                p.Value = -1;
-                command.Parameters.Add(p);
+            p = new NpgsqlParameter("param1", NpgsqlDbType.Integer);
+            p.Direction = ParameterDirection.Output;
+            p.Value = -1;
+            command.Parameters.Add(p);
 
-                p = new NpgsqlParameter("p", NpgsqlDbType.Integer);
-                p.Direction = ParameterDirection.Output;
-                p.Value = -1;
-                command.Parameters.Add(p);
+            p = new NpgsqlParameter("p", NpgsqlDbType.Integer);
+            p.Direction = ParameterDirection.Output;
+            p.Value = -1;
+            command.Parameters.Add(p);
 
-                command.ExecuteNonQuery();
+            using var reader = command.ExecuteReader(behavior);
 
-                Assert.AreEqual(4, command.Parameters["param1"].Value);
-                Assert.AreEqual(5, command.Parameters["param2"].Value);
-                //Assert.AreEqual(-1, command.Parameters["p"].Value); //Which is better, not filling this or filling this with an unmapped value?
-            }
+            Assert.AreEqual(4, command.Parameters["param1"].Value);
+            Assert.AreEqual(5, command.Parameters["param2"].Value);
+
+            reader.Read();
+
+            Assert.AreEqual(3, reader.GetInt32(0));
+            Assert.AreEqual(4, reader.GetInt32(1));
+            Assert.AreEqual(5, reader.GetInt32(2));
+            Assert.AreEqual(6, reader.GetInt32(3));
         }
 
         [Test]
