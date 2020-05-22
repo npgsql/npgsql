@@ -371,6 +371,9 @@ namespace Npgsql
                 return readFromBuffer;
             }
 
+            if (output.Length == 0)
+                return 0;
+
             Debug.Assert(ReadPosition == 0);
             Clear();
             try
@@ -396,6 +399,9 @@ namespace Npgsql
                 ReadPosition += readFromBuffer;
                 return new ValueTask<int>(readFromBuffer);
             }
+
+            if (output.Length == 0)
+                return new ValueTask<int>(0);
 
             return ReadAsyncLong();
 

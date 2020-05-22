@@ -98,10 +98,7 @@ namespace Npgsql
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
             ValidateArguments(buffer, offset, count);
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled(cancellationToken);
-            using (NoSynchronizationContextScope.Enter())
-                return WriteAsync(new Memory<byte>(buffer, offset, count), cancellationToken).AsTask();
+            return WriteAsync(new Memory<byte>(buffer, offset, count), cancellationToken).AsTask();
         }
 
 #if !NET461 && !NETSTANDARD2_0
@@ -147,20 +144,15 @@ namespace Npgsql
 #if !NET461 && !NETSTANDARD2_0
         public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
 #else
-        public ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+        public async ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
 #endif
         {
-            if (cancellationToken.IsCancellationRequested)
-                return new ValueTask(Task.FromCanceled(cancellationToken));
+            CheckDisposed();
+            if (!CanWrite)
+                throw new InvalidOperationException("Stream not open for writing");
+            cancellationToken.ThrowIfCancellationRequested();
             using (NoSynchronizationContextScope.Enter())
-                return WriteLong(buffer);
-
-            async ValueTask WriteLong(ReadOnlyMemory<byte> buffer)
             {
-                CheckDisposed();
-                if (!CanWrite)
-                    throw new InvalidOperationException("Stream not open for writing");
-
                 if (buffer.Length == 0) { return; }
 
                 if (buffer.Length <= _writeBuf.WriteSpaceLeft)
@@ -221,10 +213,7 @@ namespace Npgsql
         public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
             ValidateArguments(buffer, offset, count);
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled<int>(cancellationToken);
-            using (NoSynchronizationContextScope.Enter())
-                return ReadAsync(new Memory<byte>(buffer, offset, count), cancellationToken).AsTask();
+            return ReadAsync(new Memory<byte>(buffer, offset, count), cancellationToken).AsTask();
         }
 
 #if !NET461 && !NETSTANDARD2_0
@@ -246,18 +235,14 @@ namespace Npgsql
 #if !NET461 && !NETSTANDARD2_0
         public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
 #else
-        public ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+        public async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
 #endif
         {
             CheckDisposed();
             if (!CanRead)
                 throw new InvalidOperationException("Stream not open for reading");
-            if (cancellationToken.IsCancellationRequested)
-                return new ValueTask<int>(Task.FromCanceled<int>(cancellationToken));
+            cancellationToken.ThrowIfCancellationRequested();
             using (NoSynchronizationContextScope.Enter())
-                return ReadLong(buffer);
-
-            async ValueTask<int> ReadLong(Memory<byte> buffer)
             {
                 var count = await ReadCore(buffer.Length, true);
                 if (count > 0)
