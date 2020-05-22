@@ -157,9 +157,7 @@ namespace Npgsql
             async ValueTask WriteAsyncInternal()
             {
                 if (buffer.Length == 0)
-                {
                     return;
-                }
 
                 if (buffer.Length <= _writeBuf.WriteSpaceLeft)
                 {
