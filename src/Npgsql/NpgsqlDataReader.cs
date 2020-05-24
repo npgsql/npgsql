@@ -519,6 +519,8 @@ namespace Npgsql
             Debug.Assert(RowDescription != null);
             Debug.Assert(State == ReaderState.BeforeResult);
 
+            var currentPosition = Buffer.ReadPosition;
+
             // Temporarily set our state to InResult to allow us to read the values
             State = ReaderState.InResult;
 
@@ -545,7 +547,12 @@ namespace Npgsql
                 p.Value = pending.Dequeue();
             }
 
-            State = ReaderState.BeforeResult;  // Set the state back
+            State = ReaderState.BeforeResult; // Set the state back
+            Buffer.ReadPosition = currentPosition; // Restore position
+
+            _column = -1;
+            ColumnLen = -1;
+            PosInColumn = 0;
         }
 
         /// <summary>
