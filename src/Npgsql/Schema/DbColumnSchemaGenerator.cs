@@ -150,7 +150,8 @@ ORDER BY attnum";
                     populatedColumns++;
                 }
 
-                result[i]!.ColumnName = result[i]!.BaseColumnName = field.Name.StartsWith("?column?") ? null : field.Name;
+                result[i]!.BaseColumnName ??= field.Name.StartsWith("?column?") ? null : field.Name;
+                result[i]!.ColumnName = field.Name.StartsWith("?column?") ? null : field.Name;
             }
 
             if (populatedColumns != fields.Count)
@@ -171,6 +172,7 @@ ORDER BY attnum";
                 BaseSchemaName = reader.GetString(reader.GetOrdinal("nspname")),
                 BaseServerName = _connection.Host!,
                 BaseTableName = reader.GetString(reader.GetOrdinal("relname")),
+                BaseColumnName = reader.GetString(reader.GetOrdinal("attname")),
                 ColumnOrdinal = reader.GetInt32(reader.GetOrdinal("attnum")) - 1,
                 ColumnAttributeNumber = (short)(reader.GetInt16(reader.GetOrdinal("attnum")) - 1),
                 IsKey = reader.GetBoolean(reader.GetOrdinal("isprimarykey")),

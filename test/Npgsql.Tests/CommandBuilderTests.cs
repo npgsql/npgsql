@@ -812,5 +812,39 @@ $$ LANGUAGE SQL;
                 Assert.That(daDataAdapter.Update(dtTable), Is.EqualTo(1));
             }
         }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2560")]
+        public void GetUpdateCommandWithColumnAliases()
+        {
+            using (var conn = OpenConnection())
+            {
+                conn.ExecuteNonQuery(@"
+                    CREATE TABLE pg_temp.test (
+                        Cod varchar(5) NOT NULL,
+                        Descr varchar(40),
+                        Data date,
+                        CONSTRAINT PK_test_Cod PRIMARY KEY (Cod)
+                    );
+                ");
+                var cmd = new NpgsqlCommand("SELECT Cod as CodAlias, Descr as DescrAlias, Data as DataAlias FROM test", conn);
+
+                var daDataAdapter = new NpgsqlDataAdapter(cmd);
+                var cbCommandBuilder = new NpgsqlCommandBuilder(daDataAdapter);
+                daDataAdapter.UpdateCommand = cbCommandBuilder.GetUpdateCommand();
+                Assert.That(daDataAdapter.UpdateCommand.CommandText, Is.EqualTo("UPDATE \"npgsql_tests\".\"pg_temp_3\".\"test\" SET \"cod\" = @p1, \"descr\" = @p2, \"data\" = @p3 WHERE ((\"cod\" = @p4) AND ((@p5 = 1 AND \"descr\" IS NULL) OR (\"descr\" = @p6)) AND ((@p7 = 1 AND \"data\" IS NULL) OR (\"data\" = @p8)))"));
+
+                // specify command behaviour of SchemaOnly | KeyInfo for datareader in order for column meta data to be retrieved
+                var dr = cmd.ExecuteReader(CommandBehavior.SchemaOnly|CommandBehavior.KeyInfo);
+                var dt = dr.GetSchemaTable();
+
+                Assert.That(dt.Rows[0]["BaseColumnName"].ToString(), Is.EqualTo("cod"));
+                Assert.That(dt.Rows[0]["ColumnName"].ToString(), Is.EqualTo("codalias"));
+                Assert.That(dt.Rows[1]["BaseColumnName"].ToString(), Is.EqualTo("descr"));
+                Assert.That(dt.Rows[1]["ColumnName"].ToString(), Is.EqualTo("descralias"));
+                Assert.That(dt.Rows[2]["BaseColumnName"].ToString(), Is.EqualTo("data"));
+                Assert.That(dt.Rows[2]["ColumnName"].ToString(), Is.EqualTo("dataalias"));
+
+            }
+        }
     }
 }
