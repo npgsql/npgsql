@@ -831,7 +831,7 @@ $$ LANGUAGE SQL;
                 var daDataAdapter = new NpgsqlDataAdapter(cmd);
                 var cbCommandBuilder = new NpgsqlCommandBuilder(daDataAdapter);
                 daDataAdapter.UpdateCommand = cbCommandBuilder.GetUpdateCommand();
-                Assert.That(daDataAdapter.UpdateCommand.CommandText, Is.EqualTo("UPDATE \"npgsql_tests\".\"pg_temp_3\".\"test\" SET \"cod\" = @p1, \"descr\" = @p2, \"data\" = @p3 WHERE ((\"cod\" = @p4) AND ((@p5 = 1 AND \"descr\" IS NULL) OR (\"descr\" = @p6)) AND ((@p7 = 1 AND \"data\" IS NULL) OR (\"data\" = @p8)))"));
+                Assert.True(daDataAdapter.UpdateCommand.CommandText.Contains("SET \"cod\" = @p1, \"descr\" = @p2, \"data\" = @p3 WHERE ((\"cod\" = @p4) AND ((@p5 = 1 AND \"descr\" IS NULL) OR (\"descr\" = @p6)) AND ((@p7 = 1 AND \"data\" IS NULL) OR (\"data\" = @p8)))"));
 
                 // specify command behaviour of SchemaOnly | KeyInfo for datareader in order for column meta data to be retrieved
                 var dr = cmd.ExecuteReader(CommandBehavior.SchemaOnly|CommandBehavior.KeyInfo);
