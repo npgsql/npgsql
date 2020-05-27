@@ -323,24 +323,29 @@ namespace Npgsql
         /// Disposes the transaction, rolling it back if it is still pending.
         /// </summary>
 #if !NET461 && !NETSTANDARD2_0
-        public override async ValueTask DisposeAsync()
+        public override ValueTask DisposeAsync()
 #else
-        public async ValueTask DisposeAsync()
+        public ValueTask DisposeAsync()
 #endif
         {
-            if (IsDisposed)
-                return;
-
-            if (!IsCompleted)
+            if (!IsDisposed)
             {
-                using (NoSynchronizationContextScope.Enter())
+                if (!IsCompleted)
                 {
-                    await _connector.CloseOngoingOperations(async: true);
-                    await Rollback(async: true);
+                    using (NoSynchronizationContextScope.Enter())
+                        return DisposeAsyncInternal();
                 }
-            }
 
-            IsDisposed = true;
+                IsDisposed = true;
+            }
+            return default;
+
+            async ValueTask DisposeAsyncInternal()
+            {
+                await _connector.CloseOngoingOperations(async: true);
+                await Rollback(async: true);
+                IsDisposed = true;
+            }
         }
 
         /// <summary>
