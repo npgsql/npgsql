@@ -843,7 +843,6 @@ $$ LANGUAGE SQL;
                 Assert.That(dt.Rows[1]["ColumnName"].ToString(), Is.EqualTo("descralias"));
                 Assert.That(dt.Rows[2]["BaseColumnName"].ToString(), Is.EqualTo("data"));
                 Assert.That(dt.Rows[2]["ColumnName"].ToString(), Is.EqualTo("dataalias"));
-
             }
         }
     }

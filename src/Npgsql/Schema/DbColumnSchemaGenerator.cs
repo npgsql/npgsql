@@ -150,8 +150,13 @@ ORDER BY attnum";
                     populatedColumns++;
                 }
 
-                result[i]!.BaseColumnName ??= field.Name.StartsWith("?column?") ? null : field.Name;
-                result[i]!.ColumnName = field.Name.StartsWith("?column?") ? null : field.Name;
+                Debug.Assert(result != null);
+                var fieldName = field.Name.StartsWith("?column?") ? null : field.Name;
+
+#pragma warning disable CS8602 // Dereference of a possibly null reference.
+                result[i].BaseColumnName ??= fieldName;
+                result[i].ColumnName = fieldName;
+#pragma warning restore CS8602
             }
 
             if (populatedColumns != fields.Count)
