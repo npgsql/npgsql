@@ -135,7 +135,7 @@ namespace Npgsql.TypeMapping
         /// If there is a discrepancy between the .NET type and database type while a composite is read or written,
         /// an exception will be raised.
         /// </remarks>
-        /// <param name="compType">The .NET type to be mapped.</param>
+        /// <param name="compositeType">The .NET type to be mapped.</param>
         /// <param name="pgName">
         /// A PostgreSQL type name for the corresponding composite type in the database.
         /// If null, the name translator given in <paramref name="nameTranslator"/> will be used.
@@ -146,14 +146,14 @@ namespace Npgsql.TypeMapping
         /// </param>
         [NotNull]
         INpgsqlTypeMapper MapComposite(
-            Type compType,
+            Type compositeType,
             string? pgName = null,
             INpgsqlNameTranslator? nameTranslator = null);
 
         /// <summary>
         /// Removes an existing composite mapping.
         /// </summary>
-        /// <param name="compType">The .NET type to be unmapped.</param>
+        /// <param name="compositeType">The .NET type to be unmapped.</param>
         /// <param name="pgName">
         /// A PostgreSQL type name for the corresponding composite type in the database.
         /// If null, the name translator given in <paramref name="nameTranslator"/> will be used.
@@ -163,7 +163,7 @@ namespace Npgsql.TypeMapping
         /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
         bool UnmapComposite(
-            Type compType,
+            Type compositeType,
             string? pgName = null,
             INpgsqlNameTranslator? nameTranslator = null);
 
