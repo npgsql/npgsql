@@ -367,15 +367,14 @@ namespace Npgsql
                 return password;
 
             var passFile = Settings.Passfile ?? PostgresEnvironment.PassFile;
-            var passFileExists = true;
-
-            if (passFile is null)
+            if (passFile is null &&
+                PostgresEnvironment.PassFileDefault is { } passFileDefault &&
+                File.Exists(passFileDefault))
             {
-                passFile = PostgresEnvironment.PassFileDefault;
-                passFileExists = File.Exists(passFile);
+                passFile = passFileDefault;
             }
 
-            if (passFileExists)
+            if (passFile != null)
             {
                 var matchingEntry = new PgPassFile(passFile!)
                     .GetFirstMatchingEntry(Host, Port, Settings.Database!, username);
