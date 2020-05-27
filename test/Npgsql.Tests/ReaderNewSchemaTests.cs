@@ -70,6 +70,33 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        public void BaseColumnNameWithColumnAliases()
+        {
+            using var conn = OpenConnection();
+
+            conn.ExecuteNonQuery(@"
+                CREATE TEMP TABLE data (
+                    Cod varchar(5) NOT NULL,
+                    Descr varchar(40),
+                    Date date,
+                    CONSTRAINT PK_test_Cod PRIMARY KEY (Cod)
+                );
+            ");
+
+            var cmd = new NpgsqlCommand("SELECT Cod as CodAlias, Descr as DescrAlias, Date FROM data", conn);
+
+            using var dr = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo);
+            var cols = dr.GetColumnSchema();
+
+            Assert.That(cols[0].BaseColumnName, Is.EqualTo("cod"));
+            Assert.That(cols[0].ColumnName.ToString(), Is.EqualTo("codalias"));
+            Assert.That(cols[1].BaseColumnName.ToString(), Is.EqualTo("descr"));
+            Assert.That(cols[1].ColumnName.ToString(), Is.EqualTo("descralias"));
+            Assert.That(cols[2].BaseColumnName.ToString(), Is.EqualTo("date"));
+            Assert.That(cols[2].ColumnName.ToString(), Is.EqualTo("date"));
+        }
+
+        [Test]
         public void BaseSchemaName()
         {
             using (var conn = OpenConnection())
