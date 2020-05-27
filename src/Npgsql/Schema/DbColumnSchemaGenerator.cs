@@ -139,10 +139,10 @@ ORDER BY attnum";
             // Fill in whatever info we have from the RowDescription itself
             for (var i = 0; i < fields.Count; i++)
             {
-                NpgsqlDbColumn column;
+                var column = result[i];
                 var field = fields[i];
 
-                if (result[i] == null)
+                if (column == null)
                 {
                     column = SetUpNonColumnField(field);
                     column.ColumnOrdinal = i;
@@ -150,13 +150,10 @@ ORDER BY attnum";
                     populatedColumns++;
                 }
 
-                Debug.Assert(result != null);
                 var fieldName = field.Name.StartsWith("?column?") ? null : field.Name;
 
-#pragma warning disable CS8602 // Dereference of a possibly null reference.
-                result[i].BaseColumnName ??= fieldName;
-                result[i].ColumnName = fieldName;
-#pragma warning restore CS8602
+                column.BaseColumnName ??= fieldName;
+                column.ColumnName = fieldName;
             }
 
             if (populatedColumns != fields.Count)
