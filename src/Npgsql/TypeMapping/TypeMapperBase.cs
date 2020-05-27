@@ -80,43 +80,40 @@ namespace Npgsql.TypeMapping
         #region Composite mapping
 
         public INpgsqlTypeMapper MapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
-            => MapComposite(typeof(T), pgName, nameTranslator);
+            => MapComposite(pgName, nameTranslator, typeof(T), t => new CompositeTypeHandlerFactory<T>(t));
+
+        public INpgsqlTypeMapper MapComposite(Type compType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+            => MapComposite(pgName, nameTranslator, compType, t => (NpgsqlTypeHandlerFactory)
+                Activator.CreateInstance(typeof(CompositeTypeHandlerFactory<>).MakeGenericType(compType), t)!);
+
+        INpgsqlTypeMapper MapComposite(string? pgName, INpgsqlNameTranslator? nameTranslator, Type type, Func<INpgsqlNameTranslator, NpgsqlTypeHandlerFactory> factory)
+        {
+            if (pgName != null && string.IsNullOrWhiteSpace(pgName))
+                throw new ArgumentException("pgName can't be empty.", nameof(pgName));
+
+            nameTranslator ??= DefaultNameTranslator;
+            pgName ??= GetPgName(type, nameTranslator);
+
+            return AddMapping(
+                new NpgsqlTypeMappingBuilder
+                {
+                    PgTypeName = pgName,
+                    ClrTypes = new[] { type },
+                    TypeHandlerFactory = factory(nameTranslator),
+                }
+                .Build());
+        }
 
         public bool UnmapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
             => UnmapComposite(typeof(T), pgName, nameTranslator);
 
-        public INpgsqlTypeMapper MapComposite(Type compType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null) {
-            if (pgName != null && pgName.Trim() == "")
-                throw new ArgumentException("pgName can't be empty", nameof(pgName));
+        public bool UnmapComposite(Type compType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
+        {
+            if (pgName != null && string.IsNullOrWhiteSpace(pgName))
+                throw new ArgumentException("pgName can't be empty.", nameof(pgName));
 
-            if (nameTranslator == null)
-                nameTranslator = DefaultNameTranslator;
-            if (pgName == null)
-                pgName = GetPgName(compType, nameTranslator);
-
-            var thfType = typeof(CompositeTypeHandlerFactory<>);
-            var thf = (NpgsqlTypeHandlerFactory)Activator.CreateInstance(
-                thfType.MakeGenericType(compType),
-                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
-                binder: null,
-                args: new object[] { nameTranslator },
-                culture: null)!;
-
-            return AddMapping(new NpgsqlTypeMappingBuilder {
-                PgTypeName = pgName,
-                ClrTypes = new[] { compType },
-                TypeHandlerFactory = thf,
-            }.Build());
-        }
-
-        public bool UnmapComposite(Type compType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null) {
-            if (pgName != null && pgName.Trim() == "")
-                throw new ArgumentException("pgName can't be empty", nameof(pgName));
-
-            if (nameTranslator == null)
-                nameTranslator = DefaultNameTranslator;
-            if (pgName == null)
-                pgName = GetPgName(compType, nameTranslator);
+            nameTranslator ??= DefaultNameTranslator;
+            pgName ??= GetPgName(compType, nameTranslator);
 
             return RemoveMapping(pgName);
         }
