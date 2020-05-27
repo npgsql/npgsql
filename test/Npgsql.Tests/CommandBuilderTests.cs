@@ -888,5 +888,27 @@ $$ LANGUAGE SQL;
                 Assert.That(daDataAdapter.Update(dtTable), Is.EqualTo(1));
             }
         }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2560")]
+        public void GetUpdateCommandWithColumnAliases()
+        {
+            using var conn = OpenConnection();
+
+            conn.ExecuteNonQuery(@"
+                CREATE TEMP TABLE data (
+                    Cod varchar(5) NOT NULL,
+                    Descr varchar(40),
+                    Data date,
+                    CONSTRAINT PK_test_Cod PRIMARY KEY (Cod)
+                );
+            ");
+
+            using var cmd = new NpgsqlCommand("SELECT Cod as CodAlias, Descr as DescrAlias, Data as DataAlias FROM data", conn);
+            using var daDataAdapter = new NpgsqlDataAdapter(cmd);
+            using var cbCommandBuilder = new NpgsqlCommandBuilder(daDataAdapter);
+
+            daDataAdapter.UpdateCommand = cbCommandBuilder.GetUpdateCommand();
+            Assert.True(daDataAdapter.UpdateCommand.CommandText.Contains("SET \"cod\" = @p1, \"descr\" = @p2, \"data\" = @p3 WHERE ((\"cod\" = @p4) AND ((@p5 = 1 AND \"descr\" IS NULL) OR (\"descr\" = @p6)) AND ((@p7 = 1 AND \"data\" IS NULL) OR (\"data\" = @p8)))"));
+        }
     }
 }
