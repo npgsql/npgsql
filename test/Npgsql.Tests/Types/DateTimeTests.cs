@@ -3,6 +3,7 @@ using System.Data;
 using System.Linq;
 using NpgsqlTypes;
 using NUnit.Framework;
+#pragma warning disable 618
 
 namespace Npgsql.Tests.Types
 {

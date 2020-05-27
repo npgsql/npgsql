@@ -5,6 +5,7 @@ using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
+#pragma warning disable 618
 
 namespace Npgsql.TypeHandlers.DateTimeHandlers
 {

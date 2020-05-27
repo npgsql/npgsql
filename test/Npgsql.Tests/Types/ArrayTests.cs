@@ -315,6 +315,7 @@ namespace Npgsql.Tests.Types
             }
         }
 
+#pragma warning disable 618
         [Test, Description("Reads a one-dimensional array dates, both as DateTime and as the provider-specific NpgsqlDate")]
         public void ReadProviderSpecificType()
         {
@@ -333,6 +334,7 @@ namespace Npgsql.Tests.Types
                 }
             }
         }
+#pragma warning restore 618
 
         [Test, Description("Reads an one-dimensional array with lower bound != 0")]
         public void ReadNonZeroLowerBounded()

@@ -4,6 +4,7 @@ using System.Net;
 using Npgsql.Util;
 using NpgsqlTypes;
 using NUnit.Framework;
+#pragma warning disable 618
 
 namespace Npgsql.Tests
 {

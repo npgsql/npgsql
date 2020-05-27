@@ -10,6 +10,9 @@ using JetBrains.Annotations;
 namespace NpgsqlTypes
 {
     [Serializable]
+    [Obsolete("This type will be removed from the next release. Please use the System.DateTime"
+              + " type or the Instant type from NodaTime. If you can't, please comment "
+              + "at https://github.com/npgsql/npgsql/issues/2009 and describe your issues.")]
     public readonly struct NpgsqlDate : IEquatable<NpgsqlDate>, IComparable<NpgsqlDate>, IComparable,
         IComparer<NpgsqlDate>, IComparer
     {
