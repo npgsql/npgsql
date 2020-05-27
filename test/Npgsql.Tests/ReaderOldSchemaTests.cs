@@ -217,5 +217,32 @@ namespace Npgsql.Tests
                 }
             }
         }
+
+        [Test]
+        public void BaseColumnName()
+        {
+            using var conn = OpenConnection();
+
+            conn.ExecuteNonQuery(@"
+                CREATE TEMP TABLE data (
+                    Cod varchar(5) NOT NULL,
+                    Descr varchar(40),
+                    Date date,
+                    CONSTRAINT PK_test_Cod PRIMARY KEY (Cod)
+                );
+            ");
+
+            var cmd = new NpgsqlCommand("SELECT Cod as CodAlias, Descr as DescrAlias, Date FROM data", conn);
+
+            using var dr = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo);
+            var dt = dr.GetSchemaTable();
+
+            Assert.That(dt.Rows[0]["BaseColumnName"].ToString(), Is.EqualTo("cod"));
+            Assert.That(dt.Rows[0]["ColumnName"].ToString(), Is.EqualTo("codalias"));
+            Assert.That(dt.Rows[1]["BaseColumnName"].ToString(), Is.EqualTo("descr"));
+            Assert.That(dt.Rows[1]["ColumnName"].ToString(), Is.EqualTo("descralias"));
+            Assert.That(dt.Rows[2]["BaseColumnName"].ToString(), Is.EqualTo("date"));
+            Assert.That(dt.Rows[2]["ColumnName"].ToString(), Is.EqualTo("date"));
+        }
     }
 }
