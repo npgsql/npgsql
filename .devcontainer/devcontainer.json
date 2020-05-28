@@ -1,28 +1,28 @@
 {
-	"name": "Npgsql dev environment (.NET 5.0)",
-	"dockerComposeFile": "docker-compose.yml",
-	"service": "npgsql-dev",
+  "name": "Npgsql dev environment (.NET 5.0)",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "npgsql-dev",
 
-	"settings": {
-		"terminal.integrated.shell.linux": "/bin/bash",
-		"remote.extensionKind": {
-			"ms-azuretools.vscode-docker": "workspace"
-	  },
-	},
+  "settings": {
+    "terminal.integrated.shell.linux": "/bin/bash",
+    "remote.extensionKind": {
+      "ms-azuretools.vscode-docker": "workspace"
+    },
+  },
 
-	"extensions": [
-		"ms-dotnettools.csharp",
-		"formulahendry.dotnet-test-explorer",
-		"ms-azuretools.vscode-docker",
-		"mutantdino.resourcemonitor"
-	],
+  "extensions": [
+    "ms-dotnettools.csharp",
+    "formulahendry.dotnet-test-explorer",
+    "ms-azuretools.vscode-docker",
+    "mutantdino.resourcemonitor"
+  ],
 
-	"forwardPorts": [5432, 5050],
+  "forwardPorts": [5432, 5050],
 
-	"remoteEnv": {
-		"DeveloperBuild": "True",
-		"NPGSQL_TEST_DB": "Server=db;Username=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests"
-	},
+  "remoteEnv": {
+    "DeveloperBuild": "True",
+    "NPGSQL_TEST_DB": "Server=db;Username=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests"
+  },
 
-	"postCreateCommand": "dotnet restore Npgsql.sln"
+  "postCreateCommand": "dotnet restore Npgsql.sln"
 }
