@@ -18,10 +18,9 @@ namespace Npgsql
             internal void Init()
                 => IsDisposed = false;
 
-            internal protected override Task FlushAsync(CancellationToken cancellationToken, bool async) => Task.CompletedTask;
+            private protected override Task FlushAsync(CancellationToken cancellationToken, bool async) => Task.CompletedTask;
 
-            /// <inheritdoc />
-            internal protected override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken, bool async)
+            private protected override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken, bool async)
             {
                 while (count > 0)
                 {

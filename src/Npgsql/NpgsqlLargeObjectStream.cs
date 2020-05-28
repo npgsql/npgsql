@@ -50,8 +50,7 @@ namespace Npgsql
         public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
             => base.ReadAsync(buffer, offset, count, cancellationToken);
 
-        /// <inheritdoc />
-        internal protected override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken, bool async)
+        private protected override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken, bool async)
         {
             var chunkCount = Math.Min(count, _manager.MaxTransferBlockSize);
             var read = 0;
@@ -88,8 +87,7 @@ namespace Npgsql
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
             => base.WriteAsync(buffer, offset, count, cancellationToken);
 
-        /// <inheritdoc />
-        internal protected override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken, bool async)
+        private protected override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken, bool async)
         {
             var totalWritten = 0;
 
@@ -151,8 +149,7 @@ namespace Npgsql
         public override Task<long> GetLengthAsync(CancellationToken cancellationToken = default)
             => base.GetLengthAsync(cancellationToken);
 
-        /// <inheritdoc />
-        internal protected override async Task<long> GetLengthAsync(CancellationToken cancellationToken, bool async)
+        private protected override async Task<long> GetLengthAsync(CancellationToken cancellationToken, bool async)
         {
             var old = _pos;
             var retval = await SeekAsync(0, SeekOrigin.End, default, async);
@@ -179,8 +176,7 @@ namespace Npgsql
         public override Task<long> SeekAsync(long offset, SeekOrigin origin, CancellationToken cancellationToken = default)
             => base.SeekAsync(offset, origin, cancellationToken);
 
-        /// <inheritdoc />
-        internal protected override async Task<long> SeekAsync(long offset, SeekOrigin origin, CancellationToken cancellationToken, bool async)
+        private protected override async Task<long> SeekAsync(long offset, SeekOrigin origin, CancellationToken cancellationToken, bool async)
         {
             if (!Has64BitSupport && offset != (int)offset)
                 throw new ArgumentOutOfRangeException(nameof(offset), "offset must fit in 32 bits for PostgreSQL versions older than 9.3");
@@ -193,7 +189,7 @@ namespace Npgsql
         /// <summary>
         /// Does nothing.
         /// </summary>
-        internal protected override Task FlushAsync(CancellationToken cancellationToken, bool async) => Task.CompletedTask;
+        private protected override Task FlushAsync(CancellationToken cancellationToken, bool async) => Task.CompletedTask;
 
         /// <summary>
         /// Truncates or enlarges the large object to the given size. If enlarging, the large object is extended with null bytes.
@@ -212,8 +208,7 @@ namespace Npgsql
         public override Task SetLengthAsync(long value, CancellationToken cancellationToken)
             => base.SetLengthAsync(value, cancellationToken);
 
-        /// <inheritdoc />
-        internal protected override async Task SetLengthAsync(long value, CancellationToken cancellationToken, bool async)
+        private protected override async Task SetLengthAsync(long value, CancellationToken cancellationToken, bool async)
         {
             if (!Has64BitSupport && value != (int)value)
                 throw new ArgumentOutOfRangeException(nameof(value), "offset must fit in 32 bits for PostgreSQL versions older than 9.3");
@@ -224,8 +219,7 @@ namespace Npgsql
                 await _manager.ExecuteFunction<int>("lo_truncate", async, _fd, (int)value);
         }
 
-        /// <inheritdoc />
-        internal protected override async ValueTask DisposeAsync(bool async)
+        private protected override async ValueTask DisposeAsync(bool async)
         {
             if (async)
                 await _manager.ExecuteFunction<int>("lo_close", false, _fd);

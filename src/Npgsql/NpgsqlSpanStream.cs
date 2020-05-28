@@ -5,27 +5,21 @@ using System.Threading.Tasks;
 namespace Npgsql
 {
     /// <summary>
-    /// 
+    /// Abstract class providing implementation of the <see cref="System.IO.Stream">Stream</see> contract
+    /// based on implementation of the span/memory-based read/write methods
     /// </summary>
     public abstract class NpgsqlSpanStream : NpgsqlStream
     {
-        #region Constructor
-
-        /// <inheritdoc />
-        internal protected NpgsqlSpanStream(bool canRead = false, bool canSeek = false, bool canWrite = false)
+        internal NpgsqlSpanStream(bool canRead = false, bool canSeek = false, bool canWrite = false)
             : base(canRead, canSeek, canWrite)
         { }
-
-        #endregion
-
-        #region Read
 
         /// <inheritdoc />
         public override int Read(byte[] buffer, int offset, int count)
         {
             ValidateArguments(buffer, offset, count);
             CheckCanRead();
-            return Read(new Span<byte>(buffer, offset, count));
+            return ReadSpan(new Span<byte>(buffer, offset, count));
         }
 
         /// <inheritdoc />
@@ -33,16 +27,21 @@ namespace Npgsql
         public override int Read(Span<byte> span)
 #else
         public virtual int Read(Span<byte> span)
-#endif
-            => throw new NotImplementedException();
+ #endif
+        {
+            CheckCanRead();
+            return ReadSpan(span);
+        }
+
+        private protected virtual int ReadSpan(Span<byte> span)
+            => throw new NotSupportedException();
 
         /// <inheritdoc />
         public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
             ValidateArguments(buffer, offset, count);
             CheckCanRead();
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled<int>(cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
             using (NoSynchronizationContextScope.Enter())
                 return ReadAsync(new Memory<byte>(buffer, offset, count), cancellationToken).AsTask();
         }
@@ -53,11 +52,15 @@ namespace Npgsql
 #else
         public virtual ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
 #endif
-            => throw new NotImplementedException();
+        {
+            CheckCanRead();
+            cancellationToken.ThrowIfCancellationRequested();
+            using (NoSynchronizationContextScope.Enter())
+                return ReadMemory(buffer, cancellationToken);
+        }
 
-        #endregion
-
-        #region Write
+        private protected virtual ValueTask<int> ReadMemory(Memory<byte> buffer, CancellationToken cancellationToken)
+            => throw new NotSupportedException();
 
         /// <inheritdoc />
         public override void Write(byte[] buffer, int offset, int count)
@@ -73,7 +76,13 @@ namespace Npgsql
 #else
         public virtual void Write(ReadOnlySpan<byte> buffer)
 #endif
-            => throw new NotImplementedException();
+        {
+            CheckCanWrite();
+            WriteSpan(buffer);
+        }
+
+        private protected virtual void WriteSpan(ReadOnlySpan<byte> buffer)
+            => throw new NotSupportedException();
 
         /// <inheritdoc />
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
@@ -92,8 +101,14 @@ namespace Npgsql
 #else
         public virtual ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
 #endif
-            => throw new NotImplementedException();
+        {
+            CheckCanWrite();
+            cancellationToken.ThrowIfCancellationRequested();
+            using (NoSynchronizationContextScope.Enter())
+                return WriteMemory(buffer, cancellationToken);
+        }
 
-        #endregion
+        private protected virtual ValueTask WriteMemory(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+            => throw new NotSupportedException();
     }
 }

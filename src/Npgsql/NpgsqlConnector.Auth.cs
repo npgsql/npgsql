@@ -271,7 +271,7 @@ namespace Npgsql
                 _connector = connector;
             }
 
-            internal protected override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken, bool async)
+            private protected override async Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken, bool async)
             {
                 if (_leftToWrite == 0)
                 {
@@ -298,7 +298,7 @@ namespace Npgsql
                 _leftToWrite -= count;
             }
 
-            internal protected override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken, bool async)
+            private protected override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken, bool async)
             {
                 if (_leftToRead == 0)
                 {
@@ -327,7 +327,7 @@ namespace Npgsql
                 return count;
             }
 
-            internal protected override Task FlushAsync(CancellationToken cancellationToken, bool async) => Task.CompletedTask;
+            private protected override Task FlushAsync(CancellationToken cancellationToken, bool async) => Task.CompletedTask;
         }
 
         class AuthenticationCompleteException : Exception { }

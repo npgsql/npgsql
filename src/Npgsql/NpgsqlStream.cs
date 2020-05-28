@@ -6,13 +6,13 @@ using System.Threading.Tasks;
 namespace Npgsql
 {
     /// <summary>
-    /// 
+    /// Abstract class providing implementation of the <see cref="System.IO.Stream">Stream</see> contract
+    /// based on implementation of the async methods
     /// </summary>
     public abstract class NpgsqlStream : Stream
     {
         #region Constructor
-        /// <inheritdoc />
-        internal protected NpgsqlStream(bool canRead = false, bool canSeek = false, bool canWrite = false)
+        internal NpgsqlStream(bool canRead = false, bool canSeek = false, bool canWrite = false)
         {
             _canRead = canRead;
             _canSeek = canSeek;
@@ -27,7 +27,7 @@ namespace Npgsql
         {
             ValidateArguments(buffer, offset, count);
             CheckCanRead();
-            return ReadAsync(buffer, offset, count, default, false).GetAwaiter().GetResult();
+            return ReadAsync(buffer, offset, count, cancellationToken: default, async: false).GetAwaiter().GetResult();
         }
 
         /// <inheritdoc />
@@ -38,12 +38,11 @@ namespace Npgsql
             if (cancellationToken.IsCancellationRequested)
                 return Task.FromCanceled<int>(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
-                return ReadAsync(buffer, offset, count, cancellationToken, true);
+                return ReadAsync(buffer, offset, count, cancellationToken, async: true);
         }
 
-        /// <inheritdoc />
-        internal protected virtual Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken, bool async)
-            => throw new NotImplementedException();
+        private protected virtual Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken, bool async)
+            => throw new NotSupportedException();
 
         #endregion
 
@@ -54,7 +53,7 @@ namespace Npgsql
         {
             ValidateArguments(buffer, offset, count);
             CheckCanWrite();
-            WriteAsync(buffer, offset, count, default, false).GetAwaiter().GetResult();
+            WriteAsync(buffer, offset, count, cancellationToken: default, async: false).GetAwaiter().GetResult();
         }
 
         /// <inheritdoc />
@@ -65,12 +64,11 @@ namespace Npgsql
             if (cancellationToken.IsCancellationRequested)
                 return Task.FromCanceled(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
-                return WriteAsync(buffer, offset, count, cancellationToken, true);
+                return WriteAsync(buffer, offset, count, cancellationToken, async: true);
         }
 
-        /// <inheritdoc />
-        internal protected virtual Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken, bool async)
-            => throw new NotImplementedException();
+        private protected virtual Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken, bool async)
+            => throw new NotSupportedException();
 
         #endregion
 
@@ -80,7 +78,7 @@ namespace Npgsql
         public override void Flush()
         {
             CheckCanWrite();
-            FlushAsync(default, false).GetAwaiter().GetResult();
+            FlushAsync(cancellationToken: default, async: false).GetAwaiter().GetResult();
         }
 
         /// <inheritdoc />
@@ -90,12 +88,11 @@ namespace Npgsql
             if (cancellationToken.IsCancellationRequested)
                 return Task.FromCanceled(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
-                return FlushAsync(cancellationToken, true);
+                return FlushAsync(cancellationToken, async: true);
         }
 
-        /// <inheritdoc />
-        internal protected virtual Task FlushAsync(CancellationToken cancellationToken, bool async)
-            => throw new NotImplementedException();
+        private protected virtual Task FlushAsync(CancellationToken cancellationToken, bool async)
+            => throw new NotSupportedException();
 
         #endregion
 
@@ -107,7 +104,7 @@ namespace Npgsql
             get
             {
                 CheckCanSeek();
-                return GetLengthAsync(default, false).GetAwaiter().GetResult();
+                return GetLengthAsync(cancellationToken: default, async: false).GetAwaiter().GetResult();
             }
         }
 
@@ -118,12 +115,11 @@ namespace Npgsql
             if (cancellationToken.IsCancellationRequested)
                 return Task.FromCanceled<long>(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
-                return GetLengthAsync(cancellationToken, true);
+                return GetLengthAsync(cancellationToken, async: true);
         }
 
-        /// <inheritdoc />
-        internal protected virtual Task<long> GetLengthAsync(CancellationToken cancellationToken, bool async)
-            => throw new NotImplementedException();
+        private protected virtual Task<long> GetLengthAsync(CancellationToken cancellationToken, bool async)
+            => throw new NotSupportedException();
 
         #endregion
 
@@ -135,7 +131,7 @@ namespace Npgsql
             ValidateArguments(value);
             CheckCanSeek();
             CheckCanWrite();
-            SetLengthAsync(value, default, false).GetAwaiter().GetResult();
+            SetLengthAsync(value, cancellationToken: default, async: false).GetAwaiter().GetResult();
         }
 
         /// <inheritdoc />
@@ -147,12 +143,11 @@ namespace Npgsql
             if (cancellationToken.IsCancellationRequested)
                 return Task.FromCanceled(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
-                return SetLengthAsync(value, cancellationToken, true);
+                return SetLengthAsync(value, cancellationToken, async: true);
         }
 
-        /// <inheritdoc />
-        internal protected virtual Task SetLengthAsync(long value, CancellationToken cancellationToken, bool async)
-            => throw new NotImplementedException();
+        private protected virtual Task SetLengthAsync(long value, CancellationToken cancellationToken, bool async)
+            => throw new NotSupportedException();
 
         #endregion
 
@@ -163,7 +158,7 @@ namespace Npgsql
         {
             ValidateArguments(origin);
             CheckCanSeek();
-            return SeekAsync(offset, origin, default, false).GetAwaiter().GetResult();
+            return SeekAsync(offset, origin, cancellationToken: default, async: false).GetAwaiter().GetResult();
         }
 
         /// <inheritdoc />
@@ -174,12 +169,11 @@ namespace Npgsql
             if (cancellationToken.IsCancellationRequested)
                 return Task.FromCanceled<long>(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
-                return SeekAsync(offset, origin, cancellationToken, true);
+                return SeekAsync(offset, origin, cancellationToken, async: true);
         }
 
-        /// <inheritdoc />
-        internal protected virtual Task<long> SeekAsync(long offset, SeekOrigin origin, CancellationToken cancellationToken, bool async)
-            => throw new NotImplementedException();
+        private protected virtual Task<long> SeekAsync(long offset, SeekOrigin origin, CancellationToken cancellationToken, bool async)
+            => throw new NotSupportedException();
 
         #endregion
 
@@ -188,8 +182,7 @@ namespace Npgsql
         /// <inheritdoc />
         internal protected bool IsDisposed { get; protected set; }
 
-        /// <inheritdoc />
-        internal protected virtual void CheckDisposed()
+        private protected virtual void CheckDisposed()
         {
             if (IsDisposed)
                 throw new ObjectDisposedException(GetType().FullName, "Object disposed");
@@ -201,7 +194,7 @@ namespace Npgsql
             if (IsDisposed || !disposing)
                 return;
 
-            DisposeAsync(false).GetAwaiter().GetResult();
+            DisposeAsync(async: false).GetAwaiter().GetResult();
 
             IsDisposed = true;
         }
@@ -217,13 +210,12 @@ namespace Npgsql
                 return default;
 
             using (NoSynchronizationContextScope.Enter())
-                return DisposeAsync(true).Then(() =>
+                return DisposeAsync(async: true).Then(() =>
                     IsDisposed = true
                 );
         }
 
-        /// <inheritdoc />
-        internal protected virtual ValueTask DisposeAsync(bool async) => default;
+        private protected virtual ValueTask DisposeAsync(bool async) => default;
 
         #endregion
 
@@ -239,22 +231,26 @@ namespace Npgsql
 
         /// <inheritdoc />
         public sealed override int EndRead(IAsyncResult asyncResult)
-            => ((Task<int>)asyncResult).GetAwaiter().GetResult();
+        {
+            ValidateArguments(asyncResult);
+            return ((Task<int>)asyncResult).GetAwaiter().GetResult();
+        }
 
         /// <inheritdoc />
         public sealed override void EndWrite(IAsyncResult asyncResult)
-            => ((Task)asyncResult).GetAwaiter().GetResult();
+        {
+            ValidateArguments(asyncResult);
+            ((Task)asyncResult).GetAwaiter().GetResult();
+        }
 
         #endregion
 
         #region Capabilities
 
-        /// <inheritdoc />
-        internal protected /*readonly*/ bool _canRead;
-        /// <inheritdoc />
-        internal protected /*readonly*/ bool _canSeek;
-        /// <inheritdoc />
-        internal protected /*readonly*/ bool _canWrite;
+        private protected bool _canRead;
+        private protected bool _canSeek;
+        private protected bool _canWrite;
+
         /// <inheritdoc />
         public override bool CanRead => _canRead && !IsDisposed;
         /// <inheritdoc />
@@ -262,24 +258,21 @@ namespace Npgsql
         /// <inheritdoc />
         public override bool CanWrite => _canWrite && !IsDisposed;
 
-        /// <inheritdoc />
-        internal protected virtual void CheckCanRead()
+        private protected virtual void CheckCanRead()
         {
             if (!_canRead)
                 throw new NotSupportedException("Stream does not support reading.");
             CheckDisposed();
         }
 
-        /// <inheritdoc />
-        internal protected virtual void CheckCanSeek()
+        private protected virtual void CheckCanSeek()
         {
             if (!_canSeek)
                 throw new NotSupportedException("Stream does not support seeking.");
             CheckDisposed();
         }
 
-        /// <inheritdoc />
-        internal protected virtual void CheckCanWrite()
+        private protected virtual void CheckCanWrite()
         {
             if (!_canWrite)
                 throw new NotSupportedException("Stream does not support writing.");
@@ -291,14 +284,13 @@ namespace Npgsql
         #region Position
 
         /// <inheritdoc />
-        public override long Position { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
 
         #endregion
 
         #region Input validation
 
-        /// <inheritdoc />
-        internal protected static void ValidateArguments(byte[] buffer, int offset, int count)
+        private protected static void ValidateArguments(byte[] buffer, int offset, int count)
         {
             if (buffer == null)
                 throw new ArgumentNullException(nameof(buffer));
@@ -310,18 +302,22 @@ namespace Npgsql
                 throw new ArgumentException("Offset and length were out of bounds for the array or count is greater than the number of elements from index to the end of the source collection.");
         }
 
-        /// <inheritdoc />
-        internal protected static void ValidateArguments(SeekOrigin origin)
+        private protected static void ValidateArguments(SeekOrigin origin)
         {
             if (origin < SeekOrigin.Begin || origin > SeekOrigin.End)
                 throw new ArgumentException("Invalid origin");
         }
 
-        /// <inheritdoc />
-        internal protected static void ValidateArguments(long value)
+        private protected static void ValidateArguments(long value)
         {
             if (value < 0)
                 throw new ArgumentOutOfRangeException(nameof(value));
+        }
+
+        private protected static void ValidateArguments(IAsyncResult asyncResult)
+        {
+            if (asyncResult == null)
+                throw new ArgumentNullException(nameof(asyncResult));
         }
 
         #endregion

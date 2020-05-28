@@ -5,13 +5,8 @@ namespace Npgsql
 {
     static class AsyncExtensions
     {
-        public static IAsyncResult AsApm<T>(this Task<T> task,
-                                            AsyncCallback callback,
-                                            object? state)
+        public static IAsyncResult AsApm<T>(this Task<T> task, AsyncCallback callback, object? state)
         {
-            if (task == null)
-                throw new ArgumentNullException("task");
-
             var tcs = new TaskCompletionSource<T>(state);
             task.ContinueWith(t =>
             {
@@ -23,17 +18,12 @@ namespace Npgsql
                     tcs.TrySetResult(t.Result);
 
                 callback?.Invoke(tcs.Task);
-            }, TaskScheduler.Default);
+            });
             return tcs.Task;
         }
 
-        public static IAsyncResult AsApm(this Task task,
-                                            AsyncCallback callback,
-                                            object? state)
+        public static IAsyncResult AsApm(this Task task, AsyncCallback callback, object? state)
         {
-            if (task == null)
-                throw new ArgumentNullException("task");
-
             var tcs = new TaskCompletionSource<object?>(state);
             task.ContinueWith(t =>
             {

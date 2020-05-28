@@ -28,14 +28,8 @@ namespace Npgsql
                 IsDisposed = false;
             }
 
-            public override long Length
-            {
-                get
-                {
-                    CheckCanSeek();
-                    return _len;
-                }
-            }
+            private protected override Task<long> GetLengthAsync(CancellationToken cancellationToken, bool async)
+                => Task.FromResult<long>(_len);
 
             public override long Position
             {
@@ -52,7 +46,7 @@ namespace Npgsql
                 }
             }
 
-            public override long Seek(long offset, SeekOrigin origin)
+            private protected override Task<long> SeekAsync(long offset, SeekOrigin origin, CancellationToken cancellationToken, bool async)
             {
                 CheckCanSeek();
 
@@ -69,7 +63,7 @@ namespace Npgsql
                     if (offset < 0 || tempPosition < _start)
                         throw new IOException(seekBeforeBegin);
                     _buf.ReadPosition = _start;
-                    return tempPosition;
+                    return Task.FromResult<long>(tempPosition);
                 }
                 case SeekOrigin.Current:
                 {
@@ -77,7 +71,7 @@ namespace Npgsql
                     if (unchecked(_buf.ReadPosition + offset) < _start || tempPosition < _start)
                         throw new IOException(seekBeforeBegin);
                     _buf.ReadPosition = tempPosition;
-                    return tempPosition;
+                    return Task.FromResult<long>(tempPosition);
                 }
                 case SeekOrigin.End:
                 {
@@ -85,17 +79,15 @@ namespace Npgsql
                     if (unchecked(_len + offset) < _start || tempPosition < _start)
                         throw new IOException(seekBeforeBegin);
                     _buf.ReadPosition = tempPosition;
-                    return tempPosition;
+                    return Task.FromResult<long>(tempPosition);
                 }
                 default:
                     throw new ArgumentOutOfRangeException(nameof(origin), "Invalid seek origin.");
                 }
             }
 
-            public override int Read(Span<byte> span)
+            private protected override int ReadSpan(Span<byte> span)
             {
-                CheckCanRead();
-
                 var count = Math.Min(span.Length, _len - _read);
 
                 if (count == 0)
@@ -107,30 +99,20 @@ namespace Npgsql
                 return count;
             }
 
-            public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+            private protected override async ValueTask<int> ReadMemory(Memory<byte> buffer, CancellationToken cancellationToken)
             {
-                CheckCanRead();
-
-                if (cancellationToken.IsCancellationRequested)
-                    return new ValueTask<int>(Task.FromCanceled<int>(cancellationToken));
-
                 var count = Math.Min(buffer.Length, _len - _read);
 
                 if (count == 0)
-                    return new ValueTask<int>(0);
+                    return 0;
 
-                using (NoSynchronizationContextScope.Enter())
-                    return ReadLong(buffer.Slice(0, count));
+                var read = await _buf.ReadAsync(buffer.Slice(0, count));
+                _read += read;
 
-                async ValueTask<int> ReadLong(Memory<byte> buffer)
-                {
-                    var read = await _buf.ReadAsync(buffer);
-                    _read += read;
-                    return read;
-                }
+                return read;
             }
 
-            internal protected override async ValueTask DisposeAsync(bool async)
+            private protected override async ValueTask DisposeAsync(bool async)
             {
                 var leftToSkip = _len - _read;
                 if (leftToSkip > 0)

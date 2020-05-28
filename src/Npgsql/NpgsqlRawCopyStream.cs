@@ -83,11 +83,10 @@ namespace Npgsql
 
         #region Write
 
-        public override void Write(ReadOnlySpan<byte> buffer)
+        private protected override void WriteSpan(ReadOnlySpan<byte> buffer)
         {
-            CheckCanWrite();
-
-            if (buffer.Length == 0) { return; }
+            if (buffer.Length == 0)
+                return;
 
             if (buffer.Length <= _writeBuf.WriteSpaceLeft)
             {
@@ -117,17 +116,21 @@ namespace Npgsql
             }
         }
 
-        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
+        private protected override async ValueTask WriteMemory(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken)
         {
-            CheckCanWrite();
-            cancellationToken.ThrowIfCancellationRequested();
-            using (NoSynchronizationContextScope.Enter())
-                return WriteAsyncInternal();
+            if (buffer.Length == 0)
+                return;
 
-            async ValueTask WriteAsyncInternal()
+            if (buffer.Length <= _writeBuf.WriteSpaceLeft)
             {
-                if (buffer.Length == 0)
-                    return;
+                _writeBuf.WriteBytes(buffer.Span);
+                return;
+            }
+
+            try
+            {
+                // Value is too big, flush.
+                await FlushAsync(default, true);
 
                 if (buffer.Length <= _writeBuf.WriteSpaceLeft)
                 {
@@ -135,59 +138,38 @@ namespace Npgsql
                     return;
                 }
 
-                try
-                {
-                    // Value is too big, flush.
-                    await FlushAsync(default, true);
-
-                    if (buffer.Length <= _writeBuf.WriteSpaceLeft)
-                    {
-                        _writeBuf.WriteBytes(buffer.Span);
-                        return;
-                    }
-
-                    // Value is too big even after a flush - bypass the buffer and write directly.
-                    await _writeBuf.DirectWrite(buffer, true);
-                }
-                catch
-                {
-                    _connector.Break();
-                    Cleanup();
-                    throw;
-                }
+                // Value is too big even after a flush - bypass the buffer and write directly.
+                await _writeBuf.DirectWrite(buffer, true);
             }
+            catch
+            {
+                _connector.Break();
+                Cleanup();
+                throw;
+            }
+            
         }
 
-        internal protected override Task FlushAsync(CancellationToken cancellationToken, bool async)
+        private protected override Task FlushAsync(CancellationToken cancellationToken, bool async)
             => _writeBuf.Flush(async);
 
         #endregion
 
         #region Read
-        public override int Read(Span<byte> span)
+        private protected override int ReadSpan(Span<byte> span)
         {
-            CheckCanRead();
-
             var count = ReadCore(span.Length, false).GetAwaiter().GetResult();
             if (count > 0)
                 _readBuf.ReadBytes(span.Slice(0, count));
             return count;
         }
 
-        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+        private protected override async ValueTask<int> ReadMemory(Memory<byte> buffer, CancellationToken cancellationToken)
         {
-            CheckCanRead();
-            cancellationToken.ThrowIfCancellationRequested();
-            using (NoSynchronizationContextScope.Enter())
-                return ReadAsyncInternal();
-
-            async ValueTask<int> ReadAsyncInternal()
-            {
-                var count = await ReadCore(buffer.Length, true);
-                if (count > 0)
-                    _readBuf.ReadBytes(buffer.Slice(0, count).Span);
-                return count;
-            }
+            var count = await ReadCore(buffer.Length, true);
+            if (count > 0)
+                _readBuf.ReadBytes(buffer.Slice(0, count).Span);
+            return count;
         }
 
         async ValueTask<int> ReadCore(int count, bool async)
@@ -295,7 +277,7 @@ namespace Npgsql
 
         #region Dispose
 
-        internal protected override async ValueTask DisposeAsync(bool async)
+        private protected override async ValueTask DisposeAsync(bool async)
         {
             try
             {
@@ -340,7 +322,7 @@ namespace Npgsql
         }
 #pragma warning restore CS8625
 
-        internal protected override void CheckDisposed()
+        private protected override void CheckDisposed()
         {
             if (IsDisposed) {
                 throw new ObjectDisposedException(GetType().FullName, "The COPY operation has already ended.");
