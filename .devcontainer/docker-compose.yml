@@ -10,7 +10,7 @@ services:
       - db
 
   db:
-    image: postgres
+    build: ./db
     environment:
       POSTGRES_HOST_AUTH_METHOD: trust
     volumes:
@@ -23,7 +23,11 @@ services:
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-pgadmin4@pgadmin.org}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
+      PGADMIN_LISTEN_PORT: 5050
+    volumes:
+      - ./servers.json:/pgadmin4/servers.json
+      - ./pgadmin_files:/var/lib/pgadmin
     ports:
-      - 5050:80
+      - 5050:5050
     links:
       - db
