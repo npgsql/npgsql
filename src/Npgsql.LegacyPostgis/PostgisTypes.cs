@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using JetBrains.Annotations;
 
 #pragma warning disable CA1710
 
@@ -341,7 +342,7 @@ namespace Npgsql.LegacyPostgis
 
         public PostgisLineString this[int index] => _lineStrings[index];
 
-        public bool Equals(PostgisMultiLineString other)
+        public bool Equals(PostgisMultiLineString? other)
         {
             if (other is null)
                 return false ;
@@ -396,7 +397,7 @@ namespace Npgsql.LegacyPostgis
         public PostgisMultiPolygon(IEnumerable<IEnumerable<IEnumerable<Coordinate2D>>> ringList)
             => _polygons = ringList.Select(x => new PostgisPolygon(x)).ToArray();
 
-        public bool Equals(PostgisMultiPolygon other)
+        public bool Equals(PostgisMultiPolygon? other)
         {
             if (other is null)
                 return false;
@@ -453,7 +454,7 @@ namespace Npgsql.LegacyPostgis
 
         public PostgisGeometryCollection(IEnumerable<PostgisGeometry> geometries) => _geometries = geometries.ToArray();
 
-        public bool Equals(PostgisGeometryCollection other)
+        public bool Equals(PostgisGeometryCollection? other)
         {
             if (other is null)
                 return false;

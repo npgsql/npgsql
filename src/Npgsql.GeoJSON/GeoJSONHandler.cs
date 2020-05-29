@@ -708,7 +708,7 @@ namespace Npgsql.GeoJSON
 
             if (namedCrs.Properties.TryGetValue("name", out var value) && value != null)
             {
-                var name = value.ToString();
+                var name = value.ToString()!;
                 if (string.Equals(name, "urn:ogc:def:crs:OGC::CRS84", StringComparison.Ordinal))
                     return 4326;
 
