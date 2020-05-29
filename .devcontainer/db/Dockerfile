@@ -1,4 +1,3 @@
 FROM postgres:alpine
-RUN apk upgrade --update-cache --available && \
-    apk add openssl && \
-    rm -rf /var/cache/apk/*
+RUN apk update && \
+    apk add --no-cache openssl

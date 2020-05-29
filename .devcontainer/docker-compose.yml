@@ -23,11 +23,10 @@ services:
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-pgadmin4@pgadmin.org}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
-      PGADMIN_LISTEN_PORT: 5050
     volumes:
       - ./servers.json:/pgadmin4/servers.json
-      - ./pgadmin_files:/var/lib/pgadmin
+      - ./config_local.py:/pgadmin4/config_local.py
     ports:
-      - 5050:5050
+      - 5050:80
     links:
       - db

@@ -8,7 +8,7 @@
       "Host": "db",
       "SSLMode": "prefer",
       "MaintenanceDB": "npgsql_tests",
-      "PassFile": ".pgpass"
+      "PassFile": "/.pgpass"
     }
   }
 }
