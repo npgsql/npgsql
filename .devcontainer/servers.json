@@ -1,0 +1,14 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Npgsql devcontainer server",
+      "Group": "Servers",
+      "Port": 5432,
+      "Username": "npgsql_tests",
+      "Host": "db",
+      "SSLMode": "prefer",
+      "MaintenanceDB": "npgsql_tests",
+      "PassFile": "/.pgpass"
+    }
+  }
+}
