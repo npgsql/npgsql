@@ -6,8 +6,9 @@ services:
     volumes:
       - ..:/workspace:cached
     tty: true
-    links: 
-      - db
+    network_mode: host
+    # links: 
+    #   - db
 
   db:
     build: ./db

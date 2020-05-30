@@ -21,7 +21,7 @@
 
   "remoteEnv": {
     "DeveloperBuild": "True",
-    "NPGSQL_TEST_DB": "Server=db;Username=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests"
+    // "NPGSQL_TEST_DB": "Server=db;Username=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests"
   },
 
   "postCreateCommand": "dotnet restore Npgsql.sln"
