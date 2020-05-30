@@ -36,12 +36,6 @@ namespace Npgsql
         /// </summary>
         readonly int _writeCoalescingBufferThresholdBytes;
 
-        internal long NumCommandsSent;
-        internal long NumBatches;
-        long _ticksWritten;
-        long _waitsForFurtherCommands;
-        // long _bytesFlushed;
-
         /// <summary>
         /// Called exactly once per multiplexing pool, when the first connection is opened, with two goals:
         /// 1. Load types and bind the pool-wide type mapper (necessary for binding parameters)
@@ -211,7 +205,7 @@ namespace Npgsql
                             {
                                 if (!_multiplexCommandReader.TryRead(out command))
                                 {
-                                    _waitsForFurtherCommands++;
+                                    stats.Waits++;
                                     command = await _multiplexCommandReader.ReadAsync(timeoutToken);
                                 }
 
@@ -346,7 +340,7 @@ namespace Npgsql
                 switch (task.Status)
                 {
                 case TaskStatus.RanToCompletion:
-                    UpdateStatistics(ref stats);
+                    NpgsqlEventSource.Log.MultiplexingBatchSent(stats.NumCommands, stats.Waits, stats.Stopwatch!);
                     return;
 
                 case TaskStatus.Faulted:
@@ -375,7 +369,7 @@ namespace Npgsql
                         // Flushing has completed, it's safe to write to this connector again
                         conn.FlagAsWritableForMultiplexing();
 
-                        UpdateStatistics(ref clonedStats);
+                        NpgsqlEventSource.Log.MultiplexingBatchSent(clonedStats.NumCommands, clonedStats.Waits, clonedStats.Stopwatch!);
                     }, connector);
 
                     return;
@@ -384,32 +378,6 @@ namespace Npgsql
                 default:
                     Debug.Fail("When flushing, task is in invalid state " + task.Status);
                     throw new Exception("When flushing, task is in invalid state " + task.Status);
-                }
-
-                void UpdateStatistics(ref MultiplexingStats stats)
-                {
-                    // TODO: The following is very temporary - I already have proper perf counter support
-                    // standing by for some upstream changes in the MS perf lab.
-
-                    Interlocked.Add(ref NumCommandsSent, stats.NumCommands);
-                    _ticksWritten += stats.Stopwatch!.ElapsedTicks;
-                    // TODO: Multiple writes/flushes may occur while writing big commands, so there needs to be a
-                    // feature in NpgsqlWriteBuffer to reset the counter, like a Stopwatch.
-                    // _bytesFlushed += connector.WriteBuffer.WritePosition;
-                    // TODO: Same for flushes, except if we're interested only in flushes happening directly by the
-                    // write loop.
-                    var numFlushes = Interlocked.Increment(ref NumBatches);
-                    // if (numFlushes % 100000 == 0)
-                    // {
-                    //     Console.WriteLine(
-                    //         $"Commands: Average commands per batch: {(double)NumCommandsSent / NumBatches} " +
-                    //         $"({NumCommandsSent}/{NumBatches})");
-                    //     Console.WriteLine($"Total physical connections: {_numConnectors}");
-                    //     Console.WriteLine($"Average batch time (us): {_ticksWritten / NumBatches / 1000}");
-                    //     // Console.WriteLine($"Average write buffer position: {_bytesFlushed / NumFlushes}");
-                    //     Console.WriteLine(
-                    //         $"Average waits for further commands: {(double)_waitsForFurtherCommands / NumBatches}");
-                    // }
                 }
             }
 
@@ -437,11 +405,13 @@ namespace Npgsql
         {
             internal Stopwatch Stopwatch;
             internal int NumCommands;
+            internal int Waits;
 
             internal void Reset()
             {
                 Stopwatch.Restart();
                 NumCommands = 0;
+                Waits = 0;
             }
 
             internal MultiplexingStats Clone()

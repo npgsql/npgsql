@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Threading;
 using System.Diagnostics.Tracing;
 using System.Runtime.CompilerServices;
@@ -27,6 +28,11 @@ namespace Npgsql
         PollingCounter? _poolsCounter;
         PollingCounter? _idleConnectionsCounter;
         PollingCounter? _busyConnectionsCounter;
+
+        PollingCounter? _multiplexingAverageCommandsPerBatchCounter;
+        PollingCounter? _multiplexingAverageWaitsPerBatchCounter;
+        PollingCounter? _multiplexingAverageWriteTimePerBatchCounter;
+
 #endif
         long _bytesWritten;
         long _bytesRead;
@@ -37,6 +43,11 @@ namespace Npgsql
         long _failedCommands;
 
         int _pools;
+
+        long _multiplexingBatchesSent;
+        long _multiplexingCommandsSent;
+        long _multiplexingWaits;
+        long _multiplexingTicksWritten;
 
         internal NpgsqlEventSource() : base(EventSourceName) {}
 
@@ -71,6 +82,15 @@ namespace Npgsql
         internal void CommandFailed() => Interlocked.Increment(ref _failedCommands);
 
         internal void PoolCreated() => Interlocked.Increment(ref _pools);
+
+        internal void MultiplexingBatchSent(int numCommands, int waits, Stopwatch stopwatch)
+        {
+            // TODO: CAS loop instead of 4 separate interlocked operations?
+            Interlocked.Increment(ref _multiplexingBatchesSent);
+            Interlocked.Add(ref _multiplexingCommandsSent, numCommands);
+            Interlocked.Add(ref _multiplexingWaits, waits);
+            Interlocked.Add(ref _multiplexingTicksWritten, stopwatch.ElapsedTicks);
+        }
 
 #if !NET461 && !NETSTANDARD2_0
         static int GetIdleConnections()
@@ -169,6 +189,22 @@ namespace Npgsql
                 _busyConnectionsCounter = new PollingCounter("busy-connections", this, () => GetBusyConnections())
                 {
                     DisplayName = "Busy Connections"
+                };
+
+                _multiplexingAverageCommandsPerBatchCounter = new PollingCounter("multiplexing-average-commands-per-batch", this, () => (double)_multiplexingCommandsSent / _multiplexingBatchesSent)
+                {
+                    DisplayName = "Average commands per multiplexing batch"
+                };
+
+                _multiplexingAverageWaitsPerBatchCounter = new PollingCounter("multiplexing-average-waits-per-batch", this, () => (double)_multiplexingWaits / _multiplexingBatchesSent)
+                {
+                    DisplayName = "Average waits per multiplexing batch"
+                };
+
+                _multiplexingAverageWriteTimePerBatchCounter = new PollingCounter("multiplexing-average-write-time-per-batch", this, () => (double)_multiplexingTicksWritten / _multiplexingBatchesSent / 1000)
+                {
+                    DisplayName = "Average write time per multiplexing batch (us)",
+                    DisplayUnits = "us"
                 };
             }
         }
