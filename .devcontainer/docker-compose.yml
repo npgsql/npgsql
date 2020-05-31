@@ -6,15 +6,14 @@ services:
     volumes:
       - ..:/workspace:cached
     tty: true
-    links: 
-      - db
+    network_mode: host
 
   db:
     build: ./db
     environment:
       POSTGRES_HOST_AUTH_METHOD: trust
     volumes:
-      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
+      - ./db/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
     ports: 
       - 5432:5432
 
@@ -24,8 +23,8 @@ services:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-pgadmin4@pgadmin.org}
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
     volumes:
-      - ./servers.json:/pgadmin4/servers.json
-      - ./config_local.py:/pgadmin4/config_local.py
+      - ./pgadmin4/servers.json:/pgadmin4/servers.json
+      - ./pgadmin4/config_local.py:/pgadmin4/config_local.py
     ports:
       - 5050:80
     links:
