@@ -450,7 +450,7 @@ namespace Npgsql
                 // Start an infinite async loop, which processes incoming multiplexing traffic.
                 // It is intentionally not awaited.
                 if (Settings.Multiplexing)
-                    _multiplexingReadLoop = ReadLoop();
+                    _multiplexingReadLoop = Task.Run(ReadLoop);
             }
             catch (Exception e)
             {
@@ -926,6 +926,8 @@ namespace Npgsql
 
                 Log.Error("Exception in multiplexing read loop", e, Id);
             }
+
+            Debug.Assert(CommandsInFlightCount == 0);
         }
 
         #endregion

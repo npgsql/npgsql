@@ -112,7 +112,6 @@ namespace Npgsql
             _connection = connection;
             Transaction = transaction;
             CommandType = CommandType.Text;
-            Id = Interlocked.Increment(ref _nextCommandId);
         }
 
         #endregion Constructors
@@ -1153,9 +1152,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         // TODO: Maybe pool these?
         internal ManualResetValueTaskSource<NpgsqlConnector> ExecutionCompletion { get; }
             = new ManualResetValueTaskSource<NpgsqlConnector>();
-
-        internal long Id;
-        static long _nextCommandId = 1;
 
         async ValueTask<NpgsqlDataReader> ExecuteReaderAsync(CommandBehavior behavior, bool async, CancellationToken cancellationToken)
         {

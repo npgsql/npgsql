@@ -235,7 +235,7 @@ namespace Npgsql
 
                             // The cancellation token (presumably!) has not fired, reset its timer so
                             // we can reuse the cancellation token source instead of reallocating
-                            timeoutTokenSource.CancelAfter(int.MaxValue);
+                            timeoutTokenSource.CancelAfter(Timeout.Infinite);
 
                             // Increase the timeout slightly for next time: we're under load, so allow more
                             // commands to get coalesced into the same packet (up to the hard limit)
@@ -318,7 +318,7 @@ namespace Npgsql
 
                     // Create a copy of the statistics and purposefully box it via the closure. We need a separate
                     // copy of the stats for the async writing that will continue in parallel with this loop.
-                    var clonedStats = stats;
+                    var clonedStats = stats.Clone();
 
                     // ReSharper disable once MethodSupportsCancellation
                     task.ContinueWith((t, o) =>
@@ -373,7 +373,7 @@ namespace Npgsql
 
                     // Create a copy of the statistics and purposefully box it via the closure. We need a separate
                     // copy of the stats for the async writing that will continue in parallel with this loop.
-                    var clonedStats = stats;
+                    var clonedStats = stats.Clone();
 
                     task.ContinueWith((t, o) =>
                     {
@@ -454,6 +454,9 @@ namespace Npgsql
                 Stopwatch.Restart();
                 NumCommands = 0;
             }
+
+            internal MultiplexingStats Clone()
+                => new MultiplexingStats { Stopwatch = Stopwatch, NumCommands = NumCommands };
         }
     }
 }

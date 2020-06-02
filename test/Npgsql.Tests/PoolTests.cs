@@ -171,8 +171,6 @@ namespace Npgsql.Tests
                     Assert.That(async () => await openTask, Throws.Exception.TypeOf<OperationCanceledException>());
                 }
 
-                // The cancelled open attempt should have left a cancelled task completion source
-                // in the pool's wait queue. Close our busy connection and make sure everything work as planned.
                 AssertPoolState(pool, open: 1, idle: 0);
                 using (var conn2 = CreateConnection(connString))
                 using (new Timer(o => conn1.Close(), null, 1000, Timeout.Infinite))

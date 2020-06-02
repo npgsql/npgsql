@@ -150,7 +150,6 @@ namespace Npgsql
                 _writeCoalescingDelayTicks = Settings.WriteCoalescingDelayUs * 100;
                 _writeCoalescingBufferThresholdBytes = Settings.WriteCoalescingBufferThresholdBytes;
 
-                // TODO: Make this bounded
                 var multiplexCommandChannel = Channel.CreateBounded<NpgsqlCommand>(
                     new BoundedChannelOptions(MultiexingCommandChannelBound)
                     {
@@ -162,7 +161,7 @@ namespace Npgsql
 
                 // TODO: Think about cleanup for this, e.g. completing the channel at application shutdown and/or
                 // pool clearing
-                _ = MultiplexingWriteLoopWrapper();
+                _ = Task.Run(MultiplexingWriteLoopWrapper);
             }
         }
 
@@ -186,8 +185,6 @@ namespace Npgsql
 
             async ValueTask<NpgsqlConnector> RentAsync()
             {
-                // TODO: If we're synchronous, use SingleThreadSynchronizationContext to not schedule completions
-                // on the thread pool (standard sync-over-async TP pseudo-deadlock)
                 connector = await OpenNewConnector(conn, timeout, async, cancellationToken);
                 if (connector != null)
                 {
