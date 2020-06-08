@@ -378,15 +378,15 @@ namespace Npgsql
 
                     task.ContinueWith((t, o) =>
                     {
-                        var c = (NpgsqlConnector)o!;
+                        var conn = (NpgsqlConnector)o!;
                         if (t.IsFaulted)
                         {
-                            FailWrite(c, t.Exception!.UnwrapAggregate());
+                            FailWrite(conn, t.Exception!.UnwrapAggregate());
                             return;
                         }
 
                         // Flushing has completed, it's safe to write to this connector again
-                        c.FlagAsWritableForMultiplexing();
+                        conn.FlagAsWritableForMultiplexing();
 
                         UpdateStatistics(ref clonedStats);
                     }, connector);

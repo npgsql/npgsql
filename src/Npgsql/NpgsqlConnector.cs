@@ -866,10 +866,7 @@ namespace Npgsql
                     {
                         commandsRead++;
 
-                        // TODO: Don't forget to remove this (at least for net5.0)
                         await ReadBuffer.Ensure(5, true);
-
-                        // TODO: async message (notifications/notices)
 
                         // We have a resultset for the command - hand back control to the command (which will
                         // return it to the user)
@@ -1102,7 +1099,7 @@ namespace Npgsql
                     if (CurrentReader != null)
                     {
                         // The reader cleanup will call EndUserAction
-                        CurrentReader.Cleanup(async);
+                        await CurrentReader.Cleanup(async);
                     }
                     else
                     {

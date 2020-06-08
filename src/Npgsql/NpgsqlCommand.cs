@@ -1252,7 +1252,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                         // TODO: DRY the following with multiplexing, but be careful with the cancellation registration...
                         var reader = connector.DataReader;
-                        reader.Init(this, behavior, _statements);
+                        reader.Init(this, behavior, _statements, sendTask);
                         connector.CurrentReader = reader;
                         if (async)
                             await reader.NextResultAsync(cancellationToken);
