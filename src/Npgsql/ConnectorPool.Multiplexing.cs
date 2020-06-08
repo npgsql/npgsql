@@ -89,8 +89,6 @@ namespace Npgsql
             var timeoutTokenSource = new CancellationTokenSource();
             var timeoutToken = timeout == 0 ? CancellationToken.None : timeoutTokenSource.Token;
 
-            // TODO: Writing I/O here is currently async-only. Experiment with both sync and async (based on user
-            // preference, ExecuteReader vs. ExecuteReaderAsync).
             while (true)
             {
                 var stats = new MultiplexingStats { Stopwatch = new Stopwatch() };
@@ -307,6 +305,7 @@ namespace Npgsql
                     task.GetAwaiter().GetResult(); // Throw the exception
                     return true;
 
+                case TaskStatus.WaitingForActivation:
                 case TaskStatus.Running:
                 {
                     // Asynchronous completion, which means the writing is flushing to network and there's actual I/O
@@ -349,6 +348,7 @@ namespace Npgsql
                 }
 
                 default:
+                    Debug.Fail("When writing command to connector, task is in invalid state " + task.Status);
                     throw new Exception("When writing command to connector, task is in invalid state " + task.Status);
                 }
             }
@@ -366,6 +366,7 @@ namespace Npgsql
                     task.GetAwaiter().GetResult(); // Throw the exception
                     return;
 
+                case TaskStatus.WaitingForActivation:
                 case TaskStatus.Running:
                 {
                     // Asynchronous completion - the flush didn't complete immediately (e.g. TCP zero window).
@@ -394,6 +395,7 @@ namespace Npgsql
                 }
 
                 default:
+                    Debug.Fail("When flushing, task is in invalid state " + task.Status);
                     throw new Exception("When flushing, task is in invalid state " + task.Status);
                 }
 
