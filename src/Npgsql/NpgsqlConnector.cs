@@ -853,12 +853,13 @@ namespace Npgsql
             Debug.Assert(CommandsInFlightReader != null);
 
             NpgsqlCommand? command = null;
+            var commandsRead = 0;
 
             try
             {
                 while (await CommandsInFlightReader.WaitToReadAsync())
                 {
-                    var commandsRead = 0;
+                    commandsRead = 0;
                     Debug.Assert(!InTransaction);
 
                     while (CommandsInFlightReader.TryRead(out command))
@@ -897,6 +898,9 @@ namespace Npgsql
             catch (Exception e)
             {
                 Debug.Assert(IsBroken);
+
+                // Decrement the commands already dequeued from the in-flight counter
+                Interlocked.Add(ref CommandsInFlightCount, -commandsRead);
 
                 // When a connector is broken, the causing exception is stored on it. We fail commands with
                 // that exception - rather than the one thrown here - since the break may have happened during
