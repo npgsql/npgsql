@@ -334,8 +334,8 @@ namespace Npgsql
                         // occured. Complete the write, which will flush again (and update statistics).
                         try
                         {
-                            // TODO: When we do statistics, everything needs to be captured in this closure - to
-                            // create a copy, otherwise the next synchronous iteration will reuse the same variables.
+                            // Writing has completed, it's safe to write to this connector again.
+                            conn.FlagAsWritableForMultiplexing();
                             CompleteWrite(conn, ref clonedStats);
                         }
                         catch (Exception e)
