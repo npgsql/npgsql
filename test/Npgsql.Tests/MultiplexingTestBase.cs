@@ -5,7 +5,7 @@ namespace Npgsql.Tests
 {
     [TestFixture(MultiplexingMode.NonMultiplexing)]
     [TestFixture(MultiplexingMode.Multiplexing)]
-    public class MultiplexingTestBase : TestBase
+    public abstract class MultiplexingTestBase : TestBase
     {
         protected bool IsMultiplexing => MultiplexingMode == MultiplexingMode.Multiplexing;
 

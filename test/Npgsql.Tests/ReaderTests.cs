@@ -206,9 +206,10 @@ COMMIT;";
             MaximumPgVersionExclusive(conn, "12.0",
 "Support for 'CREATE TABLE ... WITH OIDS' has been removed in 12.0. See https://www.postgresql.org/docs/12/release-12.html#id-1.11.6.5.4");
 
-            await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
+            await using var _ = await GetTempTableName(conn, out var table);
 
             var query = $@"
+CREATE TABLE {table} (name TEXT) WITH OIDS;
 INSERT INTO {table} (name) VALUES ('a');
 UPDATE {table} SET name='b' WHERE name='doesnt_exist';";
 
@@ -216,8 +217,9 @@ UPDATE {table} SET name='b' WHERE name='doesnt_exist';";
             {
                 using var reader = await cmd.ExecuteReaderAsync(Behavior);
 
-                Assert.That(reader.Statements[0].OID, Is.Not.EqualTo(0));
-                Assert.That(reader.Statements[1].OID, Is.EqualTo(0));
+                Assert.That(reader.Statements[0].OID, Is.EqualTo(0));
+                Assert.That(reader.Statements[1].OID, Is.Not.EqualTo(0));
+                Assert.That(reader.Statements[0].OID, Is.EqualTo(0));
             }
 
             using (var cmd = new NpgsqlCommand($"SELECT name FROM {table}; DELETE FROM {table}", conn))

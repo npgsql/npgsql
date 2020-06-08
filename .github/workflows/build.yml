@@ -41,6 +41,9 @@ jobs:
           sudo apt-get install -qq postgresql-${{ matrix.pg_major }} postgresql-${{ matrix.pg_major }}-postgis-${{ env.postgis_version }}
           sudo -u postgres psql -c "CREATE USER npgsql_tests SUPERUSER PASSWORD 'npgsql_tests'"
           sudo -u postgres psql -c "CREATE DATABASE npgsql_tests OWNER npgsql_tests"
+          sudo -u postgres psql -c "CREATE EXTENSION postgis" npgsql_tests
+          sudo -u postgres psql -c "CREATE EXTENSION hstore" npgsql_tests
+          sudo -u postgres psql -c "CREATE EXTENSION citext" npgsql_tests
 
           export PGDATA=/etc/postgresql/${{ matrix.pg_major }}/main
           sudo sed -i 's/#ssl = off/ssl = on/' $PGDATA/postgresql.conf
@@ -91,6 +94,9 @@ jobs:
           # Configure test account
           pgsql/bin/psql -U postgres -c "CREATE ROLE npgsql_tests SUPERUSER LOGIN PASSWORD 'npgsql_tests'"
           pgsql/bin/psql -U postgres -c "CREATE DATABASE npgsql_tests OWNER npgsql_tests"
+          pgsql/bin/psql -U postgres -c "CREATE EXTENSION postgis" npgsql_tests
+          pgsql/bin/psql -U postgres -c "CREATE EXTENSION hstore" npgsql_tests
+          pgsql/bin/psql -U postgres -c "CREATE EXTENSION citext" npgsql_tests
 
           # Disable trust authentication, requiring MD5 passwords - some tests must fail if a password isn't provided.
           echo "host all all all md5" > pgsql/PGDATA/pg_hba.conf

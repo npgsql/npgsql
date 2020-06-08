@@ -274,6 +274,7 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Check that cancel only affects the command on which its was invoked")]
+        [Explicit("Timing-sensitive")]
         [Timeout(3000)]
         public async Task CancelCrossCommand()
         {
@@ -978,7 +979,7 @@ LANGUAGE 'plpgsql' VOLATILE;";
 
             cmd.Parameters.AddWithValue("p1", "foo");
             cmd.Parameters.AddWithValue("p2", "bar");
-            cmd.ExecuteNonQuery();
+            await cmd.ExecuteNonQueryAsync();
 
             Assert.That(cmd.Statements[0].OID, Is.Not.EqualTo(0));
             Assert.That(cmd.Statements[1].OID, Is.EqualTo(0));

@@ -1174,11 +1174,19 @@ LANGUAGE 'plpgsql'");
 
             using (var conn = await OpenConnectionAsync())
             {
-                await using var _ = await CreateTempTable(conn, "", out var table);
+                await conn.ExecuteNonQueryAsync(@"
 
-                conn.ReloadTypes();
-
-                Assert.That(await conn.ExecuteScalarAsync("SELECT COUNT(*) FROM record"), Is.Zero);
+DROP TABLE IF EXISTS record;
+CREATE TABLE record ()");
+                try
+                {
+                    conn.ReloadTypes();
+                    Assert.That(await conn.ExecuteScalarAsync("SELECT COUNT(*) FROM record"), Is.Zero);
+                }
+                finally
+                {
+                    await conn.ExecuteNonQueryAsync("DROP TABLE record");
+                }
             }
         }
 
@@ -1189,19 +1197,21 @@ LANGUAGE 'plpgsql'");
             using (var adminConn = await OpenConnectionAsync())
             {
                 // Create the database with server encoding sql-ascii
-                adminConn.ExecuteNonQuery("DROP DATABASE IF EXISTS sqlascii");
-                adminConn.ExecuteNonQuery("CREATE DATABASE sqlascii ENCODING 'sql_ascii' TEMPLATE template0");
+                await adminConn.ExecuteNonQueryAsync("DROP DATABASE IF EXISTS sqlascii");
+                await adminConn.ExecuteNonQueryAsync("CREATE DATABASE sqlascii ENCODING 'sql_ascii' TEMPLATE template0");
                 try
                 {
                     // Insert some win1252 data
-                    var goodCsb = new NpgsqlConnectionStringBuilder(ConnectionString)
+                    var goodBuilder = new NpgsqlConnectionStringBuilder(ConnectionString)
                     {
                         Database = "sqlascii",
                         Encoding = "windows-1252",
                         ClientEncoding = "sql-ascii",
-                        Pooling = false
                     };
-                    using (var conn = await OpenConnectionAsync(goodCsb))
+
+                    using var _ = CreateTempPool(goodBuilder, out var goodConnectionString);
+
+                    using (var conn = await OpenConnectionAsync(goodConnectionString))
                     {
                         await conn.ExecuteNonQueryAsync("CREATE TABLE foo (bar TEXT)");
                         await conn.ExecuteNonQueryAsync("INSERT INTO foo (bar) VALUES ('éàç')");
@@ -1209,12 +1219,12 @@ LANGUAGE 'plpgsql'");
                     }
 
                     // A normal connection with the default UTF8 encoding and client_encoding should fail
-                    var badCsb = new NpgsqlConnectionStringBuilder(ConnectionString)
+                    var badBuilder = new NpgsqlConnectionStringBuilder(ConnectionString)
                     {
                         Database = "sqlascii",
-                        Pooling = false
                     };
-                    using (var conn = await OpenConnectionAsync(badCsb))
+                    using var __ = CreateTempPool(badBuilder, out var badConnectionString);
+                    using (var conn = await OpenConnectionAsync(badConnectionString))
                     {
                         Assert.That(async () => await conn.ExecuteScalarAsync("SELECT * FROM foo"),
                             Throws.Exception.TypeOf<PostgresException>()
@@ -1225,7 +1235,7 @@ LANGUAGE 'plpgsql'");
                 }
                 finally
                 {
-                    adminConn.ExecuteNonQuery("DROP DATABASE IF EXISTS sqlascii");
+                    await adminConn.ExecuteNonQueryAsync("DROP DATABASE IF EXISTS sqlascii");
                 }
             }
         }
