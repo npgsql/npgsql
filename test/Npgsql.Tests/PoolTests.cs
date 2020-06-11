@@ -107,10 +107,33 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test]
+        public void TimeoutGettingConnectorFromExhaustedPool()
+        {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ApplicationName = nameof(TimeoutGettingConnectorFromExhaustedPool),
+                MaxPoolSize = 1,
+                Timeout = 2
+            }.ToString();
+
+            using (var conn1 = CreateConnection(connString))
+            {
+                conn1.Open();
+                // Pool is exhausted
+                using (var conn2 = CreateConnection(connString))
+                    Assert.That(() => conn2.Open(), Throws.Exception.TypeOf<NpgsqlException>());
+            }
+            // conn1 should now be back in the pool as idle
+            using (var conn3 = CreateConnection(connString))
+                conn3.Open();
+        }
+
         [Test, Explicit, Timeout(15000)]
-        [TestCase(3, 3,30,  5, 5)]
+        [TestCase(3, 3, 30, 5, 5)]
         public async Task PoolAliveAfterExhaustionAsync(int maxPoolSize, int timeout, int idleLifetime, int numTasks, int relaxSeconds)
         {
+            //It covers the same scenario as TimeoutGettingConnectorFromExhaustedPool above. But it emulates real load and reveals problems.
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 ApplicationName = nameof(PoolAliveAfterExhaustionAsync),
@@ -125,7 +148,7 @@ namespace Npgsql.Tests
             var tasks = Enumerable.Range(0, numTasks).Select(i => Run()).ToArray();
             await Task.WhenAll(tasks);
 
-            
+
             await Task.Delay(relaxSeconds * 1000);//Emulate off load time
             using var conn1 = CreateConnection(connString);
             await conn1.OpenAsync();//Connection pool should not stuck in exhausted state
@@ -149,28 +172,6 @@ namespace Npgsql.Tests
                     }
                 }
             }
-        }
-
-        [Test]
-        public void TimeoutGettingConnectorFromExhaustedPool()
-        {
-            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
-            {
-                ApplicationName = nameof(TimeoutGettingConnectorFromExhaustedPool),
-                MaxPoolSize = 1,
-                Timeout = 2
-            }.ToString();
-
-            using (var conn1 = CreateConnection(connString))
-            {
-                conn1.Open();
-                // Pool is exhausted
-                using (var conn2 = CreateConnection(connString))
-                    Assert.That(() => conn2.Open(), Throws.Exception.TypeOf<NpgsqlException>());
-            }
-            // conn1 should now be back in the pool as idle
-            using (var conn3 = CreateConnection(connString))
-                conn3.Open();
         }
 
         [Test]
