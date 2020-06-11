@@ -1117,7 +1117,7 @@ namespace Npgsql
             foreach (var s in _statements)
                 sb.AppendLine().Append("\t").Append(s.SQL);
 
-            if (NpgsqlLogManager.IsParameterLoggingEnabled && Parameters.Any())
+            if (NpgsqlLogManager.IsParameterLoggingEnabled && Parameters.Any() && Connection.Connector.Settings.ExcludeParametersFromLogs == false )
             {
                 sb.AppendLine().AppendLine("Parameters:");
                 for (var i = 0; i < Parameters.Count; i++)
