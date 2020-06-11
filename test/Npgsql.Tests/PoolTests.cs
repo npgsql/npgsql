@@ -107,6 +107,50 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, Explicit, Timeout(15000)]
+        [TestCase(3, 3,30,  5, 5)]
+        public async Task PoolAliveAfterExhaustionAsync(int maxPoolSize, int timeout, int idleLifetime, int numTasks, int relaxSeconds)
+        {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ApplicationName = nameof(PoolAliveAfterExhaustionAsync),
+                MaxPoolSize = maxPoolSize,
+                Timeout = timeout,
+                CommandTimeout = timeout,
+                ConnectionIdleLifetime = idleLifetime
+            }.ToString();
+
+            var sql = "SELECT pg_sleep(0.1)";
+            var errorsCount = 0;
+            var tasks = Enumerable.Range(0, numTasks).Select(i => Run()).ToArray();
+            await Task.WhenAll(tasks);
+
+            
+            await Task.Delay(relaxSeconds * 1000);//Emulate off load time
+            using var conn1 = CreateConnection(connString);
+            await conn1.OpenAsync();//Connection pool should not stuck in exhausted state
+
+            async Task Run()
+            {
+                await Task.Yield();
+                while (Volatile.Read(ref errorsCount) <= 3)
+                {
+                    using var conn = CreateConnection(connString);
+                    var cmd = new NpgsqlCommand(sql, conn);
+                    try
+                    {
+                        await conn.OpenAsync();
+                        await Task.WhenAny(cmd.ExecuteNonQueryAsync(), Task.Delay(25));
+                    }
+                    catch (NpgsqlException ex)
+                    {
+                        Interlocked.Increment(ref errorsCount);
+                        Assert.AreEqual(ex.Message, $"The connection pool has been exhausted, either raise MaxPoolSize (currently {maxPoolSize}) or Timeout (currently {timeout} seconds)");
+                    }
+                }
+            }
+        }
+
         [Test]
         public void TimeoutGettingConnectorFromExhaustedPool()
         {
