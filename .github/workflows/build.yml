@@ -32,6 +32,9 @@ jobs:
       - name: Start PostgreSQL ${{ matrix.pg_major }} (Linux)
         if: startsWith(matrix.os, 'ubuntu')
         run: |
+          # First uninstall any PostgreSQL installed on the image
+          dpkg-query -W --showformat='${Package}\n' 'postgresql-*' | xargs sudo dpkg -P postgresql
+
           wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
           sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ bionic-pgdg main" >> /etc/apt/sources.list.d/pgdg.list'
           sudo apt-get update -qq
