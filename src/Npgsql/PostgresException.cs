@@ -208,13 +208,16 @@ namespace Npgsql
         /// </summary>
         public PostgresException() {}
 
-        internal PostgresException(ReadBuffer buf)
+        internal PostgresException(ReadBuffer buf, NpgsqlConnectionStringBuilder settings)
         {
             var msg = new ErrorOrNoticeMessage(buf);
             Severity = msg.Severity;
             SqlState = msg.Code;
             MessageText = msg.Message;
-            Detail = msg.Detail;
+            if(settings.SuppressDetailInPostgressError == false)
+            {
+                Detail = msg.Detail;
+            }
             Hint = msg.Hint;
             Position = msg.Position;
             InternalPosition = msg.InternalPosition;
