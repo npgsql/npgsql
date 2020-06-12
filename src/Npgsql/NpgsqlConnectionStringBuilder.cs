@@ -653,6 +653,25 @@ namespace Npgsql
         }
         bool _persistSecurityInfo;
 
+        /// <summary>
+        /// Gets or sets a Boolean value that indicates if the Postgres DETAIL field is included in raised exceptions.
+        /// </summary>
+        [Category("Security")]
+        [Description("When enabled, removes the Postgres DETAIL property from raised exceptions. This DETAIL message can contain user data that should not be included in logs or displayed to users.")]
+        [DisplayName("Suppress Detailed Exceptions")]
+        [NpgsqlConnectionStringProperty]
+        public bool SuppressDetailedExceptions
+        {
+            get => _suppressDetailedExceptions;
+            set
+            {
+                _suppressDetailedExceptions = value;
+                SetValue(nameof(SuppressDetailedExceptions), value);
+            }
+        }
+        bool _suppressDetailedExceptions;
+
+
         #endregion
 
         #region Properties - Pooling
