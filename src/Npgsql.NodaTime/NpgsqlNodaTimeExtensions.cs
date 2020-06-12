@@ -20,7 +20,7 @@ namespace Npgsql
             => mapper
                 .AddMapping(new NpgsqlTypeMappingBuilder
                 {
-                    PgTypeName = "timestamp",
+                    PgTypeName = "timestamp without time zone",
                     NpgsqlDbType = NpgsqlDbType.Timestamp,
                     DbTypes = new[] { DbType.DateTime, DbType.DateTime2 },
                     ClrTypes = new[] { typeof(Instant), typeof(LocalDateTime) },
@@ -44,7 +44,7 @@ namespace Npgsql
                 }.Build())
                 .AddMapping(new NpgsqlTypeMappingBuilder
                 {
-                    PgTypeName = "time",
+                    PgTypeName = "time without time zone",
                     NpgsqlDbType = NpgsqlDbType.Time,
                     DbTypes = new[] { DbType.Time },
                     ClrTypes = new[] { typeof(LocalTime) },

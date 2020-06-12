@@ -18,7 +18,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    [TypeMapping("time", NpgsqlDbType.Time, new[] { DbType.Time })]
+    [TypeMapping("time without time zone", NpgsqlDbType.Time, new[] { DbType.Time })]
     public class TimeHandlerFactory : NpgsqlTypeHandlerFactory<TimeSpan>
     {
         /// <inheritdoc />
