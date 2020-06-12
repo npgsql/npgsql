@@ -654,6 +654,24 @@ namespace Npgsql
         bool _persistSecurityInfo;
 
         /// <summary>
+        /// Gets or sets a Boolean value that indicates if NpgsqlCommand parameters should be included (false) or suppressed (true) within logging.
+        /// </summary>
+        [Category("Security")]
+        [Description("When enabled prevents logging of command parameter values.")]
+        [DisplayName("Exclude Parameters From Logs")]
+        [NpgsqlConnectionStringProperty]
+        public bool ExcludeParametersFromLogs
+        {
+            get => _excludeParametersFromLogs;
+            set
+            {
+                _excludeParametersFromLogs = value;
+                SetValue(nameof(ExcludeParametersFromLogs), value);
+            }
+        }
+        bool _excludeParametersFromLogs;
+
+        /// <summary>
         /// Gets or sets a Boolean value that indicates if the Postgres DETAIL field is included in raised exceptions.
         /// </summary>
         [Category("Security")]
