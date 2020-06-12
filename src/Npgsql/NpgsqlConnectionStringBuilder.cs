@@ -629,7 +629,7 @@ namespace Npgsql
         bool _persistSecurityInfo;
 
         /// <summary>
-        /// Gets or sets a Boolean value that indicates if NpgsqlCommand parameters should be included (false) or excluded (true) within logging.
+        /// Gets or sets a Boolean value that indicates if NpgsqlCommand parameters should be included (false) or suppressed (true) within logging.
         /// </summary>
         [Category("Security")]
         [Description("When enabled prevents logging of command parameter values.")]
@@ -649,20 +649,20 @@ namespace Npgsql
         /// <summary>
         /// Gets or sets a Boolean value that indicates if the Postgres DETAIL field is included in raised exceptions.
         /// </summary>
-        /// [Category("Security")]
-        [Description("When enabled prevents excludes the Postgres DETAIL response from raised exceptions. This DETAIL message often contains user data that may be sensative.")]
-        [DisplayName("Suppress Postgres Error Detail")]
+        [Category("Security")]
+        [Description("When enabled, removes the Postgres DETAIL property from raised exceptions. This DETAIL message can contain user data that should not be included in logs or displayed to users.")]
+        [DisplayName("Suppress Detailed Exceptions")]
         [NpgsqlConnectionStringProperty]
-        public bool SuppressDetailInPostgressError
+        public bool SuppressDetailedExceptions
         {
-            get => _suppressDetailInPostgressError;
+            get => _suppressDetailedExceptions;
             set
             {
-                _suppressDetailInPostgressError = value;
-                SetValue(nameof(SuppressDetailInPostgressError), value);
+                _suppressDetailedExceptions = value;
+                SetValue(nameof(SuppressDetailedExceptions), value);
             }
         }
-        bool _suppressDetailInPostgressError;
+        bool _suppressDetailedExceptions;
 
         #endregion
 

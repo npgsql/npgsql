@@ -208,16 +208,14 @@ namespace Npgsql
         /// </summary>
         public PostgresException() {}
 
-        internal PostgresException(ReadBuffer buf, NpgsqlConnectionStringBuilder settings)
+        internal PostgresException(ReadBuffer buf, bool suppressDetailInPostgressError)
         {
             var msg = new ErrorOrNoticeMessage(buf);
             Severity = msg.Severity;
             SqlState = msg.Code;
             MessageText = msg.Message;
-            if(settings.SuppressDetailInPostgressError == false)
-            {
-                Detail = msg.Detail;
-            }
+            Detail = suppressDetailInPostgressError && string.IsNullOrEmpty(msg.Detail) == false ?
+                "Detail suppressed as SuppressDetailInPostgressError is enabled" : msg.Detail;
             Hint = msg.Hint;
             Position = msg.Position;
             InternalPosition = msg.InternalPosition;
