@@ -20,10 +20,12 @@ namespace Npgsql.PostgresTypes
 
             return Name switch
             {
-                // Special case for timestamptz and timetz where the facet is embedded in the middle
-                "timestamp with time zone" => $"timestamp{facets} with time zone",
-                "time with time zone"      => $"time{facets} with time zone",
-                _                          => $"{Name}{facets}"
+                // Special case for time, timestamp, timestamptz and timetz where the facet is embedded in the middle
+                "timestamp without time zone" => $"timestamp{facets} without time zone",
+                "time without time zone"      => $"time{facets} without time zone",
+                "timestamp with time zone"    => $"timestamp{facets} with time zone",
+                "time with time zone"         => $"time{facets} with time zone",
+                _                             => $"{Name}{facets}"
             };
         }
 
@@ -44,8 +46,8 @@ namespace Npgsql.PostgresTypes
                 var precision = ((typeModifier - 4) >> 16) & 65535;
                 var scale = (typeModifier - 4) & 65535;
                 return new PostgresFacets(null, precision, scale == 0 ? (int?)null : scale);
-            case "timestamp":
-            case "time":
+            case "timestamp without time zone":
+            case "time without time zone":
             case "interval":
                 precision = typeModifier & 0xFFFF;
                 return new PostgresFacets(null, precision, null);
@@ -77,6 +79,8 @@ namespace Npgsql.PostgresTypes
                 "int2"        => "smallint",
                 "int4"        => "integer",
                 "int8"        => "bigint",
+                "time"        => "time without time zone",
+                "timestamp"   => "timestamp without time zone",
                 "timetz"      => "time with time zone",
                 "timestamptz" => "timestamp with time zone",
                 "varbit"      => "bit varying",

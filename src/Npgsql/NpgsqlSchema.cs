@@ -260,7 +260,7 @@ WHERE
             var getColumns = new StringBuilder(@"
 SELECT
     table_catalog, table_schema, table_name, column_name, ordinal_position, column_default, is_nullable,
-    udt_name AS data_type, character_maximum_length, character_octet_length, numeric_precision,
+    udt_name::regtype::text AS data_type, character_maximum_length, character_octet_length, numeric_precision,
     numeric_precision_radix, numeric_scale, datetime_precision, character_set_catalog, character_set_schema,
     character_set_name, collation_catalog
 FROM information_schema.columns");

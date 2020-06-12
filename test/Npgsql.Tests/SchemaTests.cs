@@ -459,5 +459,81 @@ CREATE UNIQUE INDEX idx_unique ON data (f1, f2);
                 conn.ExecuteNonQuery("DROP TABLE IF EXISTS data");
             }
         }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1886")]
+        public void ColumnSchemaDataTypes()
+        {
+            using var conn = OpenConnection();
+            try
+            {
+                conn.ExecuteNonQuery(@"
+DROP TABLE IF EXISTS types_table;
+CREATE TABLE types_table
+(
+  p0 integer NOT NULL,
+  achar char,
+  char character(3),
+  vchar character varying(10),
+  text text,
+  bytea bytea,
+  abit bit(1),
+  bit bit(3),
+  vbit bit varying(5),
+  boolean boolean,
+  smallint smallint,
+  integer integer,
+  bigint bigint,
+  real real,
+  double double precision,
+  numeric numeric,
+  money money,
+  date date,
+  timetz time with time zone,
+  timestamptz timestamp with time zone,
+  time time without time zone,
+  timestamp timestamp without time zone,
+  point point,
+  box box,
+  lseg lseg,
+  path path,
+  polygon polygon,
+  circle circle,
+  line line,
+  inet inet,
+  macaddr macaddr,
+  uuid uuid,
+  interval interval,
+  name name,
+  refcursor refcursor,
+  numrange numrange,
+  oidvector oidvector,
+  ""bigint[]"" bigint[],
+  cidr cidr,
+  maccaddr8 macaddr8,
+  jsonb jsonb,
+  json json,
+  xml xml,
+  tsvector tsvector,
+  tsquery tsquery,
+  tid tid,
+  xid xid,
+  cid cid,
+  CONSTRAINT types_table_pkey PRIMARY KEY(p0)
+)
+");
+                var database = conn.ExecuteScalar("SELECT current_database()");
+
+                string?[] restrictions = { "npgsql_tests", "public", "types_table", null };
+                var columns = conn.GetSchema("Columns", restrictions).Rows.Cast<DataRow>().ToList();
+
+                var dataTypes = conn.GetSchema(DbMetaDataCollectionNames.DataTypes);
+
+                columns.ForEach(col => Assert.That(dataTypes.Rows.Cast<DataRow>().Any(row => row["TypeName"].Equals(col["data_type"])), Is.True));
+            }
+            finally
+            {
+                conn.ExecuteNonQuery("DROP TABLE IF EXISTS types_table");
+            }
+        }
     }
 }
