@@ -26,8 +26,8 @@
     <PackageReference Update="AdoNet.Specification.Tests" Version="2.0.0-alpha3" />
 
     <!-- Benchmarks -->
-    <PackageReference Update="BenchmarkDotNet" Version="0.11.5" />
+    <PackageReference Update="BenchmarkDotNet" Version="0.12.1" />
     <PackageReference Update="Microsoft.Data.SqlClient" Version="1.0.19249.1" />
-    <PackageReference Update="BenchmarkDotNet.Diagnostics.Windows" Version="0.11.5" />
+    <PackageReference Update="BenchmarkDotNet.Diagnostics.Windows" Version="0.12.1" />
   </ItemGroup>
 </Project>
