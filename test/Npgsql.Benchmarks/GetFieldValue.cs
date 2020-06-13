@@ -33,7 +33,7 @@ namespace Npgsql.Benchmarks
 
         class Config : ManualConfig
         {
-            public Config() => Add(StatisticColumn.OperationsPerSecond);
+            public Config() => AddColumn(StatisticColumn.OperationsPerSecond);
         }
     }
 }

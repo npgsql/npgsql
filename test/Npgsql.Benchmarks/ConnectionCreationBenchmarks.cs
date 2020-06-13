@@ -23,7 +23,7 @@ namespace Npgsql.Benchmarks
         {
             public Config()
             {
-                Add(StatisticColumn.OperationsPerSecond);
+                AddColumn(StatisticColumn.OperationsPerSecond);
             }
         }
     }
