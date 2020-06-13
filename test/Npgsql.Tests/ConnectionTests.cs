@@ -751,6 +751,39 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, Description("Tests closing a connector while a command in progress")]
+        [Timeout(10000)]
+        public async Task CloseOngoingOperationAndFinishAsync()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString);
+            csb.MaxPoolSize = 1;
+            csb.Timeout = 3;
+
+            var conn = OpenConnection(csb);
+            var cmd = new NpgsqlCommand("SELECT pg_sleep(1)", conn);
+            await Task.WhenAny(cmd.ExecuteNonQueryAsync(), Task.Delay(50));
+            await conn.CloseAsync();//Close should not hang
+            await conn.OpenAsync();//It should be possible to open pooled connection
+            await conn.DisposeAsync();
+        }
+
+        [Test, Description("Tests closing a connector while a command in progress")]
+        [Timeout(10000)]
+        public void CloseOngoingOperationAndFinish()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString);
+            csb.MaxPoolSize = 1;
+            csb.Timeout = 3;
+
+            var conn = OpenConnection(csb);
+            var cmd = new NpgsqlCommand("SELECT pg_sleep(1)", conn);
+            cmd.ExecuteNonQueryAsync();
+            Thread.Sleep(50);
+            conn.Close();// Close should not hang
+            conn.Open();//It should be possible to open pooled connection
+            conn.Dispose();
+        }
+
         [Test]
         public void SearchPath()
         {
