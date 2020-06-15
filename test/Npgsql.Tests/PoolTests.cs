@@ -301,15 +301,15 @@ namespace Npgsql.Tests
                     {
                         await conn2.OpenAsync();
                         AssertPoolState(pool, open: 1, idle: 0);
-                        return Thread.CurrentThread.ManagedThreadId;
                     }
+                    AssertPoolState(pool, open: 1, idle: 1);
+                    return Thread.CurrentThread.ManagedThreadId;
                 };
 
                 // Start an async open which will not complete as the pool is exhausted.
                 var asyncOpenerTask = asyncOpener();
-                AssertPoolState(pool, open: 1, idle: 0);
                 conn1.Close();  // Complete the async open by closing conn1
-                var asyncOpenerThreadId = asyncOpenerTask.Result;
+                var asyncOpenerThreadId = asyncOpenerTask.GetAwaiter().GetResult();
                 AssertPoolState(pool, open: 1, idle: 1);
 
                 Assert.That(asyncOpenerThreadId, Is.Not.EqualTo(Thread.CurrentThread.ManagedThreadId));
@@ -321,7 +321,7 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test, Ignore("How was this working???")] // TODO
+        [Test]
         public void ReleaseWaiterOnConnectionFailure()
         {
             var connectionString = new NpgsqlConnectionStringBuilder(ConnectionString)

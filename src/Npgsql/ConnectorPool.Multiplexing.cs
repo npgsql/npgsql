@@ -255,7 +255,6 @@ namespace Npgsql
                 // to buffer in memory), and the actual flush will occur at the level above. For cases where the
                 // command overflows the buffer, async I/O is done, and we schedule continuations separately -
                 // but the main thread continues to handle other commands on other connectors.
-                // TODO: Need to flow the behavior (SchemaOnly support etc.), cancellation token, async-ness (?)...
                 if (_autoPrepare)
                 {
                     var numPrepared = 0;
