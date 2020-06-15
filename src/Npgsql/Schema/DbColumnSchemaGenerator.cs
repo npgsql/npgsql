@@ -133,6 +133,10 @@ ORDER BY attnum";
                             field.ColumnAttributeNumber == column.ColumnAttributeNumber + 1)
                         {
                             populatedColumns++;
+
+                            if (column.ColumnOrdinal.HasValue)
+                                column = column.Clone();
+
                             // The column's ordinal is with respect to the resultset, not its table
                             column.ColumnOrdinal = ordinal;
                             result[ordinal] = column;
@@ -148,7 +152,7 @@ ORDER BY attnum";
                 var column = result[i];
                 var field = fields[i];
 
-                if (column == null)
+                if (column is null)
                 {
                     column = SetUpNonColumnField(field);
                     column.ColumnOrdinal = i;
@@ -156,8 +160,8 @@ ORDER BY attnum";
                     populatedColumns++;
                 }
 
-                column.BaseColumnName ??= field.Name.StartsWith("?column?") ? null : field.Name;
                 column.ColumnName = field.Name;
+                column.IsAliased = column.BaseColumnName is null ? default(bool?) : (column.BaseColumnName != column.ColumnName);
             }
 
             if (populatedColumns != fields.Count)

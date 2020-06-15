@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
@@ -32,6 +33,9 @@ namespace Npgsql.Schema
             IsHidden = false;
             IsIdentity = false;
         }
+
+        internal NpgsqlDbColumn Clone() =>
+            Unsafe.As<NpgsqlDbColumn>(MemberwiseClone());
 
         #region Standard fields
 #nullable disable
@@ -88,6 +92,12 @@ namespace Npgsql.Schema
         {
             get => base.ColumnSize;
             protected internal set => base.ColumnSize = value;
+        }
+
+        public new bool? IsAliased
+        {
+            get => base.IsAliased;
+            protected internal set => base.IsAliased = value;
         }
 
         public new bool? IsAutoIncrement
