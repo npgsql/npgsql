@@ -1173,7 +1173,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     State = CommandState.InProgress;
 
                     if (Log.IsEnabled(NpgsqlLogLevel.Debug))
-                        LogCommand(connector.Id);
+                        LogCommand(connector.Id, connector.Settings.ExcludeParametersFromLogs);
                     NpgsqlEventSource.Log.CommandStart(CommandText);
                     Task sendTask;
 
@@ -1299,7 +1299,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 rowDescription[i].FormatCode = (UnknownResultTypeList == null || !isFirst ? AllResultTypesAreUnknown : UnknownResultTypeList[i]) ? FormatCode.Text : FormatCode.Binary;
         }
 
-        void LogCommand(int connectorId)
+        void LogCommand(int connectorId, bool excludeParametersFromLogs)
         {
             var sb = new StringBuilder();
             sb.AppendLine("Executing statement(s):");
@@ -1307,7 +1307,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             {
                 sb.Append("\t").AppendLine(s.SQL);
                 var p = s.InputParameters;
-                if (NpgsqlLogManager.IsParameterLoggingEnabled && p.Count > 0)
+                if (NpgsqlLogManager.IsParameterLoggingEnabled && p.Count > 0 && excludeParametersFromLogs == false)
                 {
                     sb.Append('\t').Append("Parameters:");
                     for (var i = 0; i < p.Count; i++)
