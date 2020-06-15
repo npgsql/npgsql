@@ -1320,13 +1320,14 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         void LogCommand()
         {
+            var connector = Connection.Connector;
             var sb = new StringBuilder();
             sb.AppendLine("Executing statement(s):");
             foreach (var s in _statements)
             {
                 sb.Append("\t").AppendLine(s.SQL);
                 var p = s.InputParameters;
-                if (NpgsqlLogManager.IsParameterLoggingEnabled && p.Count > 0)
+                if (NpgsqlLogManager.IsParameterLoggingEnabled && p.Count > 0 && !connector.Settings.SuppressDetailedExceptions)
                 {
                     sb.Append('\t').Append("Parameters:");
                     for (var i = 0; i < p.Count; i++)
@@ -1334,7 +1335,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 }
             }
 
-            Log.Debug(sb.ToString(), Connection.Connector.Id);
+            Log.Debug(sb.ToString(), connector.Id);
         }
 
         /// <summary>

@@ -41,7 +41,7 @@ namespace Npgsql.Tests
                 conn.ExecuteNonQuery(@"SET lc_messages='en_US.UTF8'");
                 conn.ExecuteNonQuery(@"
                      CREATE OR REPLACE FUNCTION pg_temp.emit_exception() RETURNS VOID AS
-                        'BEGIN RAISE EXCEPTION ''testexception'' USING ERRCODE = ''12345''; END;'
+                        'BEGIN RAISE EXCEPTION ''testexception'' USING ERRCODE = ''12345'', DETAIL = ''testdetail''; END;'
                      LANGUAGE 'plpgsql';
                 ");
 
@@ -59,6 +59,7 @@ namespace Npgsql.Tests
                 Assert.That(ex.MessageText, Is.EqualTo("testexception"));
                 Assert.That(ex.Severity, Is.EqualTo("ERROR"));
                 Assert.That(ex.SqlState, Is.EqualTo("12345"));
+                Assert.That(ex.Detail, Is.EqualTo("testdetail"));
                 Assert.That(ex.Position, Is.EqualTo(0));
 
                 var data = ex.Data;
@@ -67,6 +68,40 @@ namespace Npgsql.Tests
                 Assert.That(data.Contains(nameof(PostgresException.Position)), Is.False);
 
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1), "Connection in bad state after an exception");
+            }
+        }
+
+        [Test, Description("Ensures DETAIL is not present in PostgresExceptions when SuppressDetailedExceptions is enabled.")]
+        public void DetailsAreRemoved()
+        {
+            using (var conn = OpenConnection(ConnectionString + ";SuppressDetailedExceptions=true"))
+            {
+                // Make sure messages are in English
+                conn.ExecuteNonQuery(@"SET lc_messages='en_US.UTF-8'");
+                conn.ExecuteNonQuery(@"
+                     CREATE OR REPLACE FUNCTION pg_temp.emit_exception() RETURNS VOID AS
+                        'BEGIN RAISE EXCEPTION ''testexception'' USING DETAIL = ''testdetail''; END;'
+                     LANGUAGE 'plpgsql';
+                ");
+
+                PostgresException ex = null!;
+                try
+                {
+                    conn.ExecuteNonQuery("SELECT pg_temp.emit_exception()");
+                    Assert.Fail("No exception was thrown");
+                }
+                catch (PostgresException e)
+                {
+                    ex = e;
+                }
+
+                Assert.That(ex.Detail, Is.EqualTo("Detail suppressed as SuppressDetailInPostgressError is enabled"));
+
+                var data = ex.Data;
+                Assert.That(data[nameof(PostgresException.Detail)], Is.EqualTo("Detail suppressed as SuppressDetailInPostgressError is enabled"));
+
+                var exString = ex.ToString();
+                Assert.That(exString, Does.Not.Contain("testdetail"));
             }
         }
 

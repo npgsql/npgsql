@@ -190,9 +190,9 @@ namespace Npgsql
         /// </summary>
         public PostgresNotice() { }
 
-        internal PostgresNotice(NpgsqlReadBuffer buf)
+        internal PostgresNotice(NpgsqlReadBuffer buf, bool suppressDetailInPostgressError)
         {
-            var msg = new ErrorOrNoticeMessage(buf);
+            var msg = new ErrorOrNoticeMessage(buf, suppressDetailInPostgressError);
             Severity = msg.Severity;
             SqlState = msg.Code;
             MessageText = msg.Message;
