@@ -58,7 +58,7 @@ namespace Npgsql.BackendMessages
                     break;
                 case ErrorFieldTypeCode.Detail:
                     detail = buf.ReadNullTerminatedStringRelaxed();
-                    if(suppressDetailInPostgressError && string.IsNullOrEmpty(detail) == false)
+                    if(suppressDetailInPostgressError && !string.IsNullOrEmpty(detail))
                     {
                         detail = "Detail suppressed as SuppressDetailInPostgressError is enabled";
                     }
