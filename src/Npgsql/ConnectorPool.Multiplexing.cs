@@ -65,18 +65,6 @@ namespace Npgsql
             IsBootstrapped = true;
         }
 
-        async Task MultiplexingWriteLoopWrapper()
-        {
-            try
-            {
-                await MultiplexingWriteLoop();
-            }
-            catch (Exception e)
-            {
-                Log.Error("Exception in multiplexing write loop, this is an Npgsql bug, please file an issue.", e);
-            }
-        }
-
         async Task MultiplexingWriteLoop()
         {
             // This method is async, but only ever yields when there are no pending commands in the command channel.

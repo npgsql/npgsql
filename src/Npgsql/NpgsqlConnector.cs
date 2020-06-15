@@ -147,8 +147,6 @@ namespace Npgsql
         /// </summary>
         volatile Exception? _breakReason;
 
-        Task? _multiplexingReadLoop;
-
         /// <summary>
         /// Used by the pool to indicate that I/O is currently in progress on this connector, so that another write
         /// isn't started concurrently. Note that since we have only one write loop, this is only necessary to
@@ -447,10 +445,19 @@ namespace Npgsql
 
                 Log.Trace($"Opened connection to {Host}:{Port}");
 
-                // Start an infinite async loop, which processes incoming multiplexing traffic.
-                // It is intentionally not awaited.
                 if (Settings.Multiplexing)
-                    _multiplexingReadLoop = Task.Run(ReadLoop);
+                {
+                    // Start an infinite async loop, which processes incoming multiplexing traffic.
+                    // It is intentionally not awaited and will run as long as the connector is alive.
+                    // The CommandsInFlightWriter channel is completed in Cleanup, which should cause this task
+                    // to complete.
+                    _ = Task.Run(MultiplexingReadLoop)
+                        .ContinueWith(t =>
+                        {
+                            // Note that we *must* observe the exception if the task is faulted.
+                            Log.Error("Exception bubbled out of multiplexing read loop", t.Exception!, Id);
+                        }, TaskContinuationOptions.OnlyOnFaulted);
+                }
             }
             catch (Exception e)
             {
@@ -847,7 +854,7 @@ namespace Npgsql
         internal ManualResetValueTaskSource<object?> ReaderCompleted { get; } =
             new ManualResetValueTaskSource<object?> { RunContinuationsAsynchronously = true };
 
-        async Task ReadLoop()
+        async Task MultiplexingReadLoop()
         {
             Debug.Assert(Settings.Multiplexing);
             Debug.Assert(CommandsInFlightReader != null);
@@ -1489,7 +1496,8 @@ namespace Npgsql
                 // isn't set up with SingleWriter (since at this point it doesn't do anything).
                 CommandsInFlightWriter!.Complete();
 
-                // TODO: await _multiplexingReadLoop?
+                // The connector's read loop has a continuation to observe and log any exception coming out
+                // (see Open)
             }
 
 

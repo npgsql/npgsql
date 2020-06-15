@@ -161,27 +161,29 @@ namespace Npgsql
 
                 // TODO: Think about cleanup for this, e.g. completing the channel at application shutdown and/or
                 // pool clearing
-                _ = Task.Run(MultiplexingWriteLoopWrapper);
+
+                _ = Task.Run(MultiplexingWriteLoop)
+                    .ContinueWith(t =>
+                    {
+                        // Note that we *must* observe the exception if the task is faulted.
+                        Log.Error("Exception in multiplexing write loop, this is an Npgsql bug, please file an issue.",
+                            t.Exception!);
+                    }, TaskContinuationOptions.OnlyOnFaulted);
             }
         }
 
         internal ValueTask<NpgsqlConnector> Rent(
             NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
         {
-            NpgsqlConnector? connector;
-
-            while (true)
+            if (TryGetIdleConnector(out var connector))
             {
-                if (TryGetIdleConnector(out connector))
-                {
-                    connector.Connection = conn;
-                    conn.Connector = connector;
+                connector.Connection = conn;
+                conn.Connector = connector;
 
-                    return new ValueTask<NpgsqlConnector>(connector);
-                }
-
-                return RentAsync();
+                return new ValueTask<NpgsqlConnector>(connector);
             }
+
+            return RentAsync();
 
             async ValueTask<NpgsqlConnector> RentAsync()
             {
