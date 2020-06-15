@@ -64,9 +64,9 @@ namespace Npgsql.Tests
             var columns = reader.GetColumnSchema();
             Assert.That(columns[0].BaseColumnName, Is.EqualTo("foo"));
             Assert.That(columns[1].BaseColumnName, Is.EqualTo("foo"));
-            Assert.That(columns[2].BaseColumnName, Is.EqualTo("bar"));
+            Assert.That(columns[2].BaseColumnName, Is.Null);
             Assert.That(columns[3].BaseColumnName, Is.Null);
-            Assert.That(columns[4].BaseColumnName, Is.EqualTo("varchar"));
+            Assert.That(columns[4].BaseColumnName, Is.Null);
         }
 
         [Test]
@@ -83,17 +83,26 @@ namespace Npgsql.Tests
                 );
             ");
 
-            var cmd = new NpgsqlCommand("SELECT Cod as CodAlias, Descr as DescrAlias, Date FROM data", conn);
+            var cmd = new NpgsqlCommand("SELECT Cod as CodAlias, Descr as DescrAlias, Date, NULL AS Generated FROM data", conn);
 
             using var dr = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo);
             var cols = dr.GetColumnSchema();
 
             Assert.That(cols[0].BaseColumnName, Is.EqualTo("cod"));
-            Assert.That(cols[0].ColumnName.ToString(), Is.EqualTo("codalias"));
-            Assert.That(cols[1].BaseColumnName.ToString(), Is.EqualTo("descr"));
-            Assert.That(cols[1].ColumnName.ToString(), Is.EqualTo("descralias"));
-            Assert.That(cols[2].BaseColumnName.ToString(), Is.EqualTo("date"));
-            Assert.That(cols[2].ColumnName.ToString(), Is.EqualTo("date"));
+            Assert.That(cols[0].ColumnName, Is.EqualTo("codalias"));
+            Assert.That(cols[0].IsAliased, Is.True);
+
+            Assert.That(cols[1].BaseColumnName, Is.EqualTo("descr"));
+            Assert.That(cols[1].ColumnName, Is.EqualTo("descralias"));
+            Assert.That(cols[1].IsAliased, Is.True);
+
+            Assert.That(cols[2].BaseColumnName, Is.EqualTo("date"));
+            Assert.That(cols[2].ColumnName, Is.EqualTo("date"));
+            Assert.That(cols[2].IsAliased, Is.False);
+
+            Assert.That(cols[3].BaseColumnName, Is.Null);
+            Assert.That(cols[3].ColumnName, Is.EqualTo("generated"));
+            Assert.That(cols[3].IsAliased, Is.Null);
         }
 
         [Test]
@@ -151,19 +160,19 @@ namespace Npgsql.Tests
         [Test]
         public async Task ColumnName()
         {
-            using (var conn = await OpenConnectionAsync())
+            await using (var conn = await OpenConnectionAsync())
             {
                 await using var _ = await CreateTempTable(conn, "foo INTEGER", out var table);
 
-                using (var cmd = new NpgsqlCommand($"SELECT foo,8 AS bar,8,'8'::VARCHAR(10) FROM {table}", conn))
-                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly))
-                {
-                    var columns = reader.GetColumnSchema();
-                    Assert.That(columns[0].ColumnName, Is.EqualTo("foo"));
-                    Assert.That(columns[1].ColumnName, Is.EqualTo("bar"));
-                    Assert.That(columns[2].ColumnName, Is.EqualTo("?column?"));
-                    Assert.That(columns[3].ColumnName, Is.EqualTo("varchar"));
-                }
+                using var cmd = new NpgsqlCommand($"SELECT foo, foo AS foobar, 8 AS bar, 8, '8'::VARCHAR(10) FROM {table}", conn);
+                using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly);
+
+                var columns = reader.GetColumnSchema();
+                Assert.That(columns[0].ColumnName, Is.EqualTo("foo"));
+                Assert.That(columns[1].ColumnName, Is.EqualTo("foobar"));
+                Assert.That(columns[2].ColumnName, Is.EqualTo("bar"));
+                Assert.That(columns[3].ColumnName, Is.EqualTo("?column?"));
+                Assert.That(columns[4].ColumnName, Is.EqualTo("varchar"));
             }
 
             // See https://github.com/npgsql/npgsql/issues/1676
@@ -724,20 +733,22 @@ CREATE TABLE {table2} (foo INTEGER)");
             }
         }
 
-        #region Not supported
-
         [Test]
         public async Task IsAliased()
         {
-            using (var conn = await OpenConnectionAsync())
-            {
-                await using var _ = await CreateTempTable(conn, "foo INTEGER", out var table);
+            await using var conn = await OpenConnectionAsync();
+            await using var _ = await CreateTempTable(conn, "foo INTEGER", out var table);
 
-                using (var cmd = new NpgsqlCommand($"SELECT * FROM {table}", conn))
-                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly))
-                    Assert.That(reader.GetColumnSchema().Single().IsAliased, Is.False);
-            }
+            using var cmd = new NpgsqlCommand($"SELECT foo, foo AS bar, NULL AS foobar FROM {table}", conn);
+            await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo);
+
+            var columns = reader.GetColumnSchema();
+            Assert.That(columns[0].IsAliased, Is.False);
+            Assert.That(columns[1].IsAliased, Is.True);
+            Assert.That(columns[2].IsAliased, Is.Null);
         }
+
+        #region Not supported
 
         [Test]
         public async Task IsExpression()
