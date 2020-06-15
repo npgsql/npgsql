@@ -210,8 +210,8 @@ namespace Npgsql
                 msg.Where, msg.SchemaName, msg.TableName, msg.ColumnName, msg.DataTypeName,
                 msg.ConstraintName, msg.File, msg.Line, msg.Routine) {}
 
-        internal static PostgresNotice Load(NpgsqlReadBuffer buf)
-            => new PostgresNotice(ErrorOrNoticeMessage.Load(buf));
+        internal static PostgresNotice Load(NpgsqlReadBuffer buf, bool suppressDetailInPostgressError)
+            => new PostgresNotice(ErrorOrNoticeMessage.Load(buf, suppressDetailInPostgressError));
     }
 
     /// <summary>
