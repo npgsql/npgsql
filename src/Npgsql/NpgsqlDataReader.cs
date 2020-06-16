@@ -136,11 +136,10 @@ namespace Npgsql
             Connector = connector;
         }
 
-        internal void Init
-            (NpgsqlCommand command, CommandBehavior behavior, List<NpgsqlStatement> statements, Task? sendTask = null)
+        internal void Init(
+            NpgsqlCommand command, CommandBehavior behavior, List<NpgsqlStatement> statements, Task? sendTask = null)
         {
             Command = command;
-            //Debug.Assert(command.Connection != null && command.Connection == Connector.Connection);
             _connection = command.Connection!;
             _behavior = behavior;
             _isSchemaOnly = _behavior.HasFlag(CommandBehavior.SchemaOnly);

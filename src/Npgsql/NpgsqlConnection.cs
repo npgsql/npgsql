@@ -263,7 +263,10 @@ namespace Npgsql
                             // opening a new one and triggering escalation to a distributed transaction.
                             // Otherwise just get a new connector and enlist.
                             if (_pool.TryRentEnlistedPending(transaction, out connector))
+                            {
+                                connector.Connection = this;
                                 EnlistedTransaction = transaction;
+                            }
                             else
                             {
                                 connector = await _pool.Rent(this, timeout, async, cancellationToken);
@@ -630,6 +633,9 @@ namespace Npgsql
         public override void EnlistTransaction(Transaction transaction)
 #nullable restore
         {
+            if (Settings.Multiplexing)
+                throw new NotSupportedException("Ambient transactions aren't yet implemented for multiplexing");
+
             if (EnlistedTransaction != null)
             {
                 if (EnlistedTransaction.Equals(transaction))
