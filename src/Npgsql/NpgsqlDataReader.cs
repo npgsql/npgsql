@@ -480,7 +480,7 @@ namespace Npgsql
                     return true;
                 }
 
-                // There are no more queries, we're done. Read to the RFQ.
+                // There are no more queries, we're done. Read the RFQ.
                 ProcessMessage(Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async), Connector));
                 RowDescription = null;
                 return false;

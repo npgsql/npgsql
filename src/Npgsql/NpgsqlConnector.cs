@@ -148,9 +148,16 @@ namespace Npgsql
         volatile Exception? _breakReason;
 
         /// <summary>
+        /// <para>
         /// Used by the pool to indicate that I/O is currently in progress on this connector, so that another write
-        /// isn't started concurrently. Note that since we have only one write loop, this is only necessary to
+        /// isn't started concurrently. Note that since we have only one write loop, this is only ever usedto
         /// protect against an over-capacity writes into a connector that's currently *asynchronously* writing.
+        /// </para>
+        /// <para>
+        /// It is guaranteed that the currently-executing
+        /// Specifically, reading may occur - and the connector may even be returned to the pool - before this is
+        /// released.
+        /// </para>
         /// </summary>
         internal volatile int MultiplexAsyncWritingLock;
 
@@ -158,7 +165,12 @@ namespace Npgsql
         internal void FlagAsNotWritableForMultiplexing()
         {
             if (Settings.Multiplexing)
+            {
+                Debug.Assert(CommandsInFlightCount > 0 || IsBroken || IsClosed,
+                    $"About to mark multiplexing connector as non-writable, but {nameof(CommandsInFlightCount)} is {CommandsInFlightCount}");
+
                 Interlocked.Exchange(ref MultiplexAsyncWritingLock, 1);
+            }
         }
 
         /// <seealso cref="MultiplexAsyncWritingLock"/>
@@ -894,7 +906,15 @@ namespace Npgsql
                     // time (see MultiplexingWriteLoop), and we must make absolutely sure that if a connector is
                     // returned to the pool, it is *never* written to unless properly dequeued from the Idle channel.
                     if (Interlocked.Add(ref CommandsInFlightCount, -commandsRead) == 0)
+                    {
+                        // There's a race condition where the continuation of an asynchronous multiplexing write may not
+                        // have executed yet, and the flush may still be in progress. We know all I/O has already
+                        // been sent - because the reader has already consumed the entire resultset. So we wait until
+                        // the connector's write lock has been released (long waiting will never occur here).
+                        SpinWait.SpinUntil(() => MultiplexAsyncWritingLock == 0);
+
                         _pool!.Return(this);
+                    }
                 }
 
                 Log.Trace("Exiting multiplexing read loop", Id);

@@ -300,6 +300,8 @@ namespace Npgsql
                 return false;
             }
 
+            Debug.Assert(connector.State == ConnectorState.Ready,
+                $"Got idle connector but {nameof(connector.State)} is {connector.State}");
             Debug.Assert(connector.CommandsInFlightCount == 0,
                 $"Got idle connector but {nameof(connector.CommandsInFlightCount)} is {connector.CommandsInFlightCount}");
             Debug.Assert(connector.MultiplexAsyncWritingLock == 0,

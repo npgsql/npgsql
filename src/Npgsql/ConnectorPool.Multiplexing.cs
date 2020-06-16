@@ -168,6 +168,7 @@ namespace Npgsql
                 try
                 {
                     stats.Reset();
+                    connector.FlagAsNotWritableForMultiplexing();
 
                     // Read queued commands and write them to the connector's buffer, for as long as we're
                     // under our write threshold and timer delay.
@@ -234,7 +235,7 @@ namespace Npgsql
                     // and updating statistics. If not, CompleteRewrite is scheduled to run later, when the async
                     // operations complete, so skip it and continue.
                     if (writtenSynchronously)
-                        CompleteWrite(connector, ref stats);
+                        Flush(connector, ref stats);
                 }
                 catch (Exception ex)
                 {
@@ -294,7 +295,6 @@ namespace Npgsql
                     // We don't (ever) await in the write loop, so remove the connector from the writable list (as it's
                     // still flushing) and schedule a continuation to continue taking care of this connector.
                     // The write loop continues to the next connector.
-                    connector.FlagAsNotWritableForMultiplexing();
 
                     // Create a copy of the statistics and purposefully box it via the closure. We need a separate
                     // copy of the stats for the async writing that will continue in parallel with this loop.
@@ -315,9 +315,7 @@ namespace Npgsql
                         // occured. Complete the write, which will flush again (and update statistics).
                         try
                         {
-                            // Writing has completed, it's safe to write to this connector again.
-                            conn.FlagAsWritableForMultiplexing();
-                            CompleteWrite(conn, ref clonedStats);
+                            Flush(conn, ref clonedStats);
                         }
                         catch (Exception e)
                         {
@@ -334,13 +332,13 @@ namespace Npgsql
                 }
             }
 
-            void CompleteWrite(NpgsqlConnector connector, ref MultiplexingStats stats)
+            void Flush(NpgsqlConnector connector, ref MultiplexingStats stats)
             {
                 var task = connector.Flush(async: true);
                 switch (task.Status)
                 {
                 case TaskStatus.RanToCompletion:
-                    NpgsqlEventSource.Log.MultiplexingBatchSent(stats.NumCommands, stats.Waits, stats.Stopwatch!);
+                    CompleteWrite(connector, ref stats);
                     return;
 
                 case TaskStatus.Faulted:
@@ -351,7 +349,6 @@ namespace Npgsql
                 case TaskStatus.Running:
                 {
                     // Asynchronous completion - the flush didn't complete immediately (e.g. TCP zero window).
-                    connector.FlagAsNotWritableForMultiplexing();
 
                     // Create a copy of the statistics and purposefully box it via the closure. We need a separate
                     // copy of the stats for the async writing that will continue in parallel with this loop.
@@ -366,10 +363,7 @@ namespace Npgsql
                             return;
                         }
 
-                        // Flushing has completed, it's safe to write to this connector again
-                        conn.FlagAsWritableForMultiplexing();
-
-                        NpgsqlEventSource.Log.MultiplexingBatchSent(clonedStats.NumCommands, clonedStats.Waits, clonedStats.Stopwatch!);
+                        CompleteWrite(conn, ref clonedStats);
                     }, connector);
 
                     return;
@@ -396,6 +390,16 @@ namespace Npgsql
                 Debug.Assert(connector.IsBroken);
 
                 Log.Error("Exception while writing commands", exception, connector.Id);
+            }
+
+            static void CompleteWrite(NpgsqlConnector connector, ref MultiplexingStats stats)
+            {
+                // All I/O has completed, mark this connector as safe for writing again.
+                // This will allow the connector to be returned to the pool by its read loop, and also to be selected
+                // for over-capacity write.
+                connector.FlagAsWritableForMultiplexing();
+
+                NpgsqlEventSource.Log.MultiplexingBatchSent(stats.NumCommands, stats.Waits, stats.Stopwatch!);
             }
 
             // ReSharper disable once FunctionNeverReturns
