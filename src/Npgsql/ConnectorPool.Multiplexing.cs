@@ -445,7 +445,11 @@ namespace Npgsql
             }
 
             internal MultiplexingStats Clone()
-                => new MultiplexingStats { Stopwatch = Stopwatch, NumCommands = NumCommands };
+            {
+                var clone = new MultiplexingStats { Stopwatch = Stopwatch, NumCommands = NumCommands };
+                Stopwatch = new Stopwatch();
+                return clone;
+            }
         }
     }
 }
