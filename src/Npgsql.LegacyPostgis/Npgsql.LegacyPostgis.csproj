@@ -3,7 +3,7 @@
     <Authors>Shay Rojansky</Authors>
     <Description>PostGIS plugin for Npgsql, allowing mapping of PostGIS types to the legacy types (e.g. PostgisPoint).</Description>
     <PackageTags>npgsql postgresql postgres postgis spatial geometry geography ado ado.net database sql</PackageTags>
-    <TargetFrameworks>netcoreapp5.0</TargetFrameworks>
+    <TargetFrameworks>netcoreapp3.0</TargetFrameworks>
     <TargetFrameworks Condition="'$(DeveloperBuild)' != 'True'">net461;netstandard2.0</TargetFrameworks>
   </PropertyGroup>
   <ItemGroup>

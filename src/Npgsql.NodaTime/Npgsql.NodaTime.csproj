@@ -3,7 +3,7 @@
     <Authors>Shay Rojansky</Authors>
     <Description>NodaTime plugin for Npgsql, allowing mapping of PostgreSQL date/time types to NodaTime types.</Description>
     <PackageTags>npgsql postgresql postgres nodatime date time ado ado.net database sql</PackageTags>
-    <TargetFrameworks>netcoreapp5.0</TargetFrameworks>
+    <TargetFrameworks>netcoreapp3.0</TargetFrameworks>
     <TargetFrameworks Condition="'$(DeveloperBuild)' != 'True'">net461;netstandard2.0</TargetFrameworks>
   </PropertyGroup>
   <ItemGroup>
