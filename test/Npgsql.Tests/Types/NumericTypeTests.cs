@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
+using System.Threading.Tasks;
 using Npgsql.Util;
 using NpgsqlTypes;
 using NUnit.Framework;
@@ -14,12 +15,12 @@ namespace Npgsql.Tests.Types
     /// <summary>
     /// http://www.postgresql.org/docs/current/static/datatype-numeric.html
     /// </summary>
-    public class NumericTypeTests : TestBase
+    public class NumericTypeTests : MultiplexingTestBase
     {
         [Test]
-        public void Int16()
+        public async Task Int16()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4, @p5", conn))
             {
                 var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Smallint);
@@ -35,7 +36,7 @@ namespace Npgsql.Tests.Types
                 cmd.Parameters.Add(p4);
                 cmd.Parameters.Add(p5);
                 p1.Value = p2.Value = p3.Value = (long)8;
-                using (var reader = cmd.ExecuteReader())
+                using (var reader = await cmd.ExecuteReaderAsync())
                 {
                     reader.Read();
 
@@ -58,9 +59,9 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public void Int32()
+        public async Task Int32()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", conn))
             {
                 var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Integer);
@@ -72,7 +73,7 @@ namespace Npgsql.Tests.Types
                 cmd.Parameters.Add(p2);
                 cmd.Parameters.Add(p3);
                 p1.Value = p2.Value = (long)8;
-                using (var reader = cmd.ExecuteReader())
+                using (var reader = await cmd.ExecuteReaderAsync())
                 {
                     reader.Read();
 
@@ -98,14 +99,14 @@ namespace Npgsql.Tests.Types
         [TestCase(NpgsqlDbType.Oid, TestName="OID")]
         [TestCase(NpgsqlDbType.Xid, TestName="XID")]
         [TestCase(NpgsqlDbType.Cid, TestName="CID")]
-        public void UInt32(NpgsqlDbType npgsqlDbType)
+        public async Task UInt32(NpgsqlDbType npgsqlDbType)
         {
             var expected = 8u;
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = new NpgsqlCommand("SELECT @p", conn))
             {
                 cmd.Parameters.Add(new NpgsqlParameter("p", npgsqlDbType) { Value = expected });
-                using (var reader = cmd.ExecuteReader())
+                using (var reader = await cmd.ExecuteReaderAsync())
                 {
                     reader.Read();
                     Assert.That(reader[0], Is.EqualTo(expected));
@@ -116,9 +117,9 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public void Int64()
+        public async Task Int64()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", conn))
             {
                 var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Bigint);
@@ -128,7 +129,7 @@ namespace Npgsql.Tests.Types
                 cmd.Parameters.Add(p2);
                 cmd.Parameters.Add(p3);
                 p1.Value = p2.Value = (short)8;
-                using (var reader = cmd.ExecuteReader())
+                using (var reader = await cmd.ExecuteReaderAsync())
                 {
                     reader.Read();
 
@@ -151,9 +152,9 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public void Double()
+        public async Task Double()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", conn))
             {
                 const double expected = 4.123456789012345;
@@ -164,7 +165,7 @@ namespace Npgsql.Tests.Types
                 cmd.Parameters.Add(p2);
                 cmd.Parameters.Add(p3);
                 p1.Value = p2.Value = expected;
-                using (var reader = cmd.ExecuteReader())
+                using (var reader = await cmd.ExecuteReaderAsync())
                 {
                     reader.Read();
 
@@ -181,22 +182,22 @@ namespace Npgsql.Tests.Types
         [TestCase(double.NaN)]
         [TestCase(double.PositiveInfinity)]
         [TestCase(double.NegativeInfinity)]
-        public void DoubleSpecial(double value)
+        public async Task DoubleSpecial(double value)
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = new NpgsqlCommand("SELECT @p", conn))
             {
                 cmd.Parameters.AddWithValue("p", NpgsqlDbType.Double, value);
-                var actual = cmd.ExecuteScalar();
+                var actual = await cmd.ExecuteScalarAsync();
                 Assert.That(actual, Is.EqualTo(value));
             }
         }
 
         [Test]
-        public void Float()
+        public async Task Float()
         {
             const float expected = .123456F;
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3", conn))
             {
                 var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Real);
@@ -206,7 +207,7 @@ namespace Npgsql.Tests.Types
                 cmd.Parameters.Add(p2);
                 cmd.Parameters.Add(p3);
                 p1.Value = p2.Value = expected;
-                using (var reader = cmd.ExecuteReader())
+                using (var reader = await cmd.ExecuteReaderAsync())
                 {
                     reader.Read();
 
@@ -223,13 +224,13 @@ namespace Npgsql.Tests.Types
         [TestCase(double.NaN)]
         [TestCase(double.PositiveInfinity)]
         [TestCase(double.NegativeInfinity)]
-        public void DoubleFloat(double value)
+        public async Task DoubleFloat(double value)
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = new NpgsqlCommand("SELECT @p", conn))
             {
                 cmd.Parameters.AddWithValue("p", NpgsqlDbType.Real, value);
-                var actual = cmd.ExecuteScalar();
+                var actual = await cmd.ExecuteScalarAsync();
                 Assert.That(actual, Is.EqualTo(value));
             }
         }
@@ -245,9 +246,9 @@ namespace Npgsql.Tests.Types
         [TestCase(NpgsqlDbType.Bigint, 1F + long.MaxValue)]
         [TestCase(NpgsqlDbType.Bigint, 1D + long.MaxValue)]
         [TestCase(NpgsqlDbType.InternalChar, 1 + byte.MaxValue)]
-        public void WriteOverflow(NpgsqlDbType type, object value)
+        public async Task WriteOverflow(NpgsqlDbType type, object value)
         {
-            using var conn = OpenConnection();
+            using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p1", conn);
 
             var p1 = new NpgsqlParameter("p1", type)
@@ -255,8 +256,8 @@ namespace Npgsql.Tests.Types
                 Value = value
             };
             cmd.Parameters.Add(p1);
-            Assert.Throws<OverflowException>(() => cmd.ExecuteScalar());
-            Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+            Assert.ThrowsAsync<OverflowException>(async () => await cmd.ExecuteScalarAsync());
+            Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
         }
 
         static IEnumerable<TestCaseData> ReadOverflowTestCases
@@ -274,15 +275,15 @@ namespace Npgsql.Tests.Types
         [TestCase((byte)0, NpgsqlDbType.Bigint, 1D + byte.MaxValue)]
         [TestCase((short)0, NpgsqlDbType.Bigint, 1D + short.MaxValue)]
         [TestCase(0, NpgsqlDbType.Bigint, 1D + int.MaxValue)]
-        public void ReadOverflow<T>(T readingType, NpgsqlDbType type, double value)
+        public async Task ReadOverflow<T>(T readingType, NpgsqlDbType type, double value)
         {
             var typeString = GetTypeAsString(type);
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = new NpgsqlCommand($"SELECT {value}::{typeString}", conn))
             {
-                Assert.Throws<OverflowException>(() =>
+                Assert.ThrowsAsync<OverflowException>(async() =>
                 {
-                    using (var reader = cmd.ExecuteReader())
+                    using (var reader = await cmd.ExecuteReaderAsync())
                     {
                         Assert.True(reader.Read());
                         reader.GetFieldValue<T>(0);
@@ -303,43 +304,41 @@ namespace Npgsql.Tests.Types
         // Older tests
 
         [Test]
-        public void DoubleWithoutPrepared()
+        public async Task DoubleWithoutPrepared()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var command = new NpgsqlCommand("select :field_float8", conn))
             {
                 command.Parameters.Add(new NpgsqlParameter(":field_float8", NpgsqlDbType.Double));
                 var x = 1d/7d;
                 command.Parameters[0].Value = x;
-                var valueReturned = command.ExecuteScalar();
+                var valueReturned = await command.ExecuteScalarAsync();
                 Assert.That(valueReturned, Is.EqualTo(x).Within(100).Ulps);
             }
         }
 
         [Test]
-        public void NumberConversionWithCulture()
+        public async Task NumberConversionWithCulture()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = new NpgsqlCommand("select :p1", conn))
             using (TestUtil.SetCurrentCulture(new CultureInfo("es-ES")))
             {
                 var parameter = new NpgsqlParameter("p1", NpgsqlDbType.Double) { Value = 5.5 };
                 cmd.Parameters.Add(parameter);
-                var result = cmd.ExecuteScalar();
+                var result = await cmd.ExecuteScalarAsync();
                 Assert.AreEqual(5.5, result);
             }
         }
 
         [Test]
-        public void TestMoney([Values(PrepareOrNot.Prepared, PrepareOrNot.NotPrepared)] PrepareOrNot prepare)
+        public async Task Money()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = conn.CreateCommand())
             {
                 cmd.CommandText = "select '1'::MONEY, '12345'::MONEY / 100, '123456789012345'::MONEY / 100";
-                if (prepare == PrepareOrNot.Prepared)
-                    cmd.Prepare();
-                using (var reader = cmd.ExecuteReader())
+                using (var reader = await cmd.ExecuteReaderAsync())
                 {
                     reader.Read();
                     Assert.AreEqual(1M, reader.GetValue(0));
@@ -348,5 +347,7 @@ namespace Npgsql.Tests.Types
                 }
             }
         }
+
+        public NumericTypeTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
     }
 }

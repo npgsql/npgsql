@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using GeoJSON.Net;
 using GeoJSON.Net.Converters;
 using GeoJSON.Net.CoordinateReferenceSystem;
@@ -315,10 +316,10 @@ namespace Npgsql.PluginTests
         }
 
         [OneTimeSetUp]
-        public void SetUp()
+        public async Task SetUp()
         {
-            using var conn = base.OpenConnection();
-            TestUtil.EnsureExtension(conn, "postgis");
+            await using var conn = await base.OpenConnectionAsync();
+            await TestUtil.EnsureExtensionAsync(conn, "postgis");
         }
     }
 }

@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Data;
 using System.Linq;
+using System.Threading.Tasks;
 using Npgsql.PostgresTypes;
 using NUnit.Framework;
+using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests
 {
@@ -15,14 +17,14 @@ namespace Npgsql.Tests
     {
         // ReSharper disable once InconsistentNaming
         [Test]
-        public void AllowDBNull()
+        public async Task AllowDBNull()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (nullable INTEGER, non_nullable INTEGER NOT NULL)");
+                await using var _ = await CreateTempTable(conn, "nullable INTEGER, non_nullable INTEGER NOT NULL", out var table);
 
-                using (var cmd = new NpgsqlCommand("SELECT nullable,non_nullable,8 FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
+                using (var cmd = new NpgsqlCommand($"SELECT nullable,non_nullable,8 FROM {table}", conn))
+                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
                 {
                     var columns = reader.GetColumnSchema();
                     Assert.That(columns[0].AllowDBNull, Is.True);
@@ -33,15 +35,15 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void BaseCatalogName()
+        public async Task BaseCatalogName()
         {
             var dbName = new NpgsqlConnectionStringBuilder(ConnectionString).Database;
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo INTEGER)");
+                await using var _ = await CreateTempTable(conn, "foo INTEGER", out var table);
 
-                using (var cmd = new NpgsqlCommand("SELECT foo,8 FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                using (var cmd = new NpgsqlCommand($"SELECT foo,8 FROM {table}", conn))
+                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly))
                 {
                     var columns = reader.GetColumnSchema();
                     Assert.That(columns[0].BaseCatalogName, Is.EqualTo(dbName));
@@ -51,14 +53,14 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void BaseColumnName()
+        public async Task BaseColumnName()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo INTEGER)");
+                await using var _ = await CreateTempTable(conn, "foo INTEGER", out var table);
 
-                using (var cmd = new NpgsqlCommand("SELECT foo,8 AS bar,8,'8'::VARCHAR(10) FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                using (var cmd = new NpgsqlCommand($"SELECT foo,8 AS bar,8,'8'::VARCHAR(10) FROM {table}", conn))
+                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly))
                 {
                     var columns = reader.GetColumnSchema();
                     Assert.That(columns[0].BaseColumnName, Is.EqualTo("foo"));
@@ -97,32 +99,32 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void BaseSchemaName()
+        public async Task BaseSchemaName()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo INTEGER)");
+                await using var _ = await CreateTempTable(conn, "foo INTEGER", out var table);
 
-                using (var cmd = new NpgsqlCommand("SELECT foo,8 FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
+                using (var cmd = new NpgsqlCommand($"SELECT foo,8 FROM {table}", conn))
+                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
                 {
                     var columns = reader.GetColumnSchema();
-                    Assert.That(columns[0].BaseSchemaName, Does.StartWith("pg_temp"));
+                    Assert.That(columns[0].BaseSchemaName, Is.EqualTo("public"));
                     Assert.That(columns[1].BaseSchemaName, Is.Null);
                 }
             }
         }
 
         [Test]
-        public void BaseServerName()
+        public async Task BaseServerName()
         {
             var host = new NpgsqlConnectionStringBuilder(ConnectionString).Host;
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo INTEGER)");
+                await using var _ = await CreateTempTable(conn, "foo INTEGER", out var table);
 
-                using (var cmd = new NpgsqlCommand("SELECT foo,8 FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                using (var cmd = new NpgsqlCommand($"SELECT foo,8 FROM {table}", conn))
+                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly))
                 {
                     var columns = reader.GetColumnSchema();
                     Assert.That(columns[0].BaseServerName, Is.EqualTo(host));
@@ -132,31 +134,31 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void BaseTableName()
+        public async Task BaseTableName()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo INTEGER)");
+                await using var _ = await CreateTempTable(conn, "foo INTEGER", out var table);
 
-                using (var cmd = new NpgsqlCommand("SELECT foo,8 FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
+                using (var cmd = new NpgsqlCommand($"SELECT foo,8 FROM {table}", conn))
+                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
                 {
                     var columns = reader.GetColumnSchema();
-                    Assert.That(columns[0].BaseTableName, Is.EqualTo("data"));
+                    Assert.That(columns[0].BaseTableName, Does.StartWith("temp_table"));
                     Assert.That(columns[1].BaseTableName, Is.Null);
                 }
             }
         }
 
         [Test]
-        public void ColumnName()
+        public async Task ColumnName()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo INTEGER)");
+                await using var _ = await CreateTempTable(conn, "foo INTEGER", out var table);
 
-                using (var cmd = new NpgsqlCommand("SELECT foo,8 AS bar,8,'8'::VARCHAR(10) FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                using (var cmd = new NpgsqlCommand($"SELECT foo,8 AS bar,8,'8'::VARCHAR(10) FROM {table}", conn))
+                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly))
                 {
                     var columns = reader.GetColumnSchema();
                     Assert.That(columns[0].ColumnName, Is.EqualTo("foo"));
@@ -167,26 +169,27 @@ namespace Npgsql.Tests
             }
 
             // See https://github.com/npgsql/npgsql/issues/1676
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (col text)");
+                await using var _ = await CreateTempTable(conn, "col TEXT", out var table);
+
                 var behavior = CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo;
                 //var behavior = CommandBehavior.SchemaOnly;
-                using (var command = new NpgsqlCommand("SELECT col AS col_alias FROM data", conn))
+                using (var command = new NpgsqlCommand($"SELECT col AS col_alias FROM {table}", conn))
                 using (var reader = command.ExecuteReader(behavior))
                     Assert.That(reader.GetColumnSchema()[0].ColumnName, Is.EqualTo("col_alias"));
             }
         }
 
         [Test]
-        public void ColumnOrdinal()
+        public async Task ColumnOrdinal()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (first INTEGER, second INTEGER)");
+                await using var _ = await CreateTempTable(conn, "first INTEGER, second INTEGER", out var table);
 
-                using (var cmd = new NpgsqlCommand("SELECT second,first FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                using (var cmd = new NpgsqlCommand($"SELECT second,first FROM {table}", conn))
+                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly))
                 {
                     var columns = reader.GetColumnSchema();
                     Assert.That(columns[0].ColumnName, Is.EqualTo("second"));
@@ -198,14 +201,14 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void ColumnAttributeNumber()
+        public async Task ColumnAttributeNumber()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (first INTEGER, second INTEGER)");
+                await using var _ = await CreateTempTable(conn, "first INTEGER, second INTEGER", out var table);
 
-                using (var cmd = new NpgsqlCommand("SELECT second,first FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
+                using (var cmd = new NpgsqlCommand($"SELECT second,first FROM {table}", conn))
+                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
                 {
                     var columns = reader.GetColumnSchema();
                     Assert.That(columns[0].ColumnName, Is.EqualTo("second"));
@@ -217,16 +220,16 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void ColumnSize()
+        public async Task ColumnSize()
         {
             if (IsRedshift)
                 Assert.Ignore("Column size is never unlimited on Redshift");
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (bounded VARCHAR(30), unbounded VARCHAR)");
+                await using var _ = await CreateTempTable(conn, "bounded VARCHAR(30), unbounded VARCHAR", out var table);
 
-                using (var cmd = new NpgsqlCommand("SELECT bounded,unbounded,'a'::VARCHAR(10),'b'::VARCHAR FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                using (var cmd = new NpgsqlCommand($"SELECT bounded,unbounded,'a'::VARCHAR(10),'b'::VARCHAR FROM {table}", conn))
+                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly))
                 {
                     var columns = reader.GetColumnSchema();
                     Assert.That(columns[0].ColumnSize, Is.EqualTo(30));
@@ -238,16 +241,16 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void IsAutoIncrement()
+        public async Task IsAutoIncrement()
         {
             if (IsRedshift)
                 Assert.Ignore("Serial columns not support on Redshift");
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (inc SERIAL, non_inc INT)");
+                await using var _ = await CreateTempTable(conn, "inc SERIAL, non_inc INT", out var table);
 
-                using (var cmd = new NpgsqlCommand("SELECT inc,non_inc,8 FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
+                using (var cmd = new NpgsqlCommand($"SELECT inc,non_inc,8 FROM {table}", conn))
+                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
                 {
                     var columns = reader.GetColumnSchema();
                     Assert.That(columns[0].IsAutoIncrement, Is.True, "Serial not identified as autoincrement");
@@ -258,17 +261,20 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void IsAutoIncrementIdentity()
+        public async Task IsAutoIncrementIdentity()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
                 if (conn.PostgreSqlVersion < new Version(10, 0))
                     Assert.Ignore("IDENTITY introduced in PostgreSQL 10");
 
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (inc SERIAL, identity INT GENERATED BY DEFAULT AS IDENTITY, non_inc INT)");
+                await using var _ = await CreateTempTable(
+                    conn,
+                    "inc SERIAL, identity INT GENERATED BY DEFAULT AS IDENTITY, non_inc INT",
+                    out var table);
 
-                using (var cmd = new NpgsqlCommand("SELECT inc,identity,non_inc,8 FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
+                using (var cmd = new NpgsqlCommand($"SELECT inc,identity,non_inc,8 FROM {table}", conn))
+                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
                 {
                     var columns = reader.GetColumnSchema();
                     Assert.That(columns[0].IsAutoIncrement, Is.True, "Serial not identified as autoincrement");
@@ -280,16 +286,16 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void IsKey()
+        public async Task IsKey()
         {
             if (IsRedshift)
                 Assert.Ignore("Key not supported in reader schema on Redshift");
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (id INT PRIMARY KEY, non_id INT, uniq INT UNIQUE)");
+                await using var _ = await CreateTempTable(conn, "id INT PRIMARY KEY, non_id INT, uniq INT UNIQUE", out var table);
 
-                using (var cmd = new NpgsqlCommand("SELECT id,non_id,uniq,8 FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
+                using (var cmd = new NpgsqlCommand($"SELECT id,non_id,uniq,8 FROM {table}", conn))
+                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
                 {
                     var columns = reader.GetColumnSchema();
                     Assert.That(columns[0].IsKey, Is.True);
@@ -306,16 +312,16 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void IsKeyComposite()
+        public async Task IsKeyComposite()
         {
             if (IsRedshift)
                 Assert.Ignore("Key not supported in reader schema on Redshift");
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (id1 INT, id2 INT, PRIMARY KEY (id1, id2))");
+                await using var _ = await CreateTempTable(conn, "id1 INT, id2 INT, PRIMARY KEY (id1, id2)", out var table);
 
-                using (var cmd = new NpgsqlCommand("SELECT id1,id2 FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
+                using (var cmd = new NpgsqlCommand($"SELECT id1,id2 FROM {table}", conn))
+                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
                 {
                     var columns = reader.GetColumnSchema();
                     Assert.That(columns[0].IsKey, Is.True);
@@ -325,16 +331,16 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void IsLong()
+        public async Task IsLong()
         {
             if (IsRedshift)
                 Assert.Ignore("bytea not supported on Redshift");
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (long BYTEA, non_long INT)");
+                await using var _ = await CreateTempTable(conn, "long BYTEA, non_long INT", out var table);
 
-                using (var cmd = new NpgsqlCommand("SELECT long, non_long, 8 FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                using (var cmd = new NpgsqlCommand($"SELECT long, non_long, 8 FROM {table}", conn))
+                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly))
                 {
                     var columns = reader.GetColumnSchema();
                     Assert.That(columns[0].IsLong, Is.True);
@@ -345,56 +351,53 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void IsReadOnlyOnView()
+        public async Task IsReadOnlyOnView()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                // We can't use temporary tables because GetColumnSchema opens another connection
-                // internally, which doesn't have our temporary schema
-                conn.ExecuteNonQuery("DROP VIEW IF EXISTS view; DROP TABLE IF EXISTS data");
-                conn.ExecuteNonQuery("CREATE VIEW view AS SELECT 8 AS foo; CREATE TABLE data (bar INTEGER)");
+                await using var _ = await GetTempViewName(conn, out var view);
+                await using var __ = await GetTempTableName(conn, out var table);
 
-                try
+                await conn.ExecuteNonQueryAsync($@"
+CREATE VIEW {view} AS SELECT 8 AS foo;
+CREATE TABLE {table} (bar INTEGER)");
+
+                using (var cmd = new NpgsqlCommand($"SELECT foo,bar FROM {view},{table}", conn))
+                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
                 {
-                    using (var cmd = new NpgsqlCommand("SELECT foo,bar FROM view,data", conn))
-                    using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
-                    {
-                        var columns = reader.GetColumnSchema();
-                        Assert.That(columns[0].IsReadOnly, Is.True);
-                        Assert.That(columns[1].IsReadOnly, Is.False);
-                    }
-                }
-                finally
-                {
-                    conn.ExecuteNonQuery("DROP VIEW IF EXISTS view; DROP TABLE IF EXISTS data");
+                    var columns = reader.GetColumnSchema();
+                    Assert.That(columns[0].IsReadOnly, Is.True);
+                    Assert.That(columns[1].IsReadOnly, Is.False);
                 }
             }
         }
 
         [Test]
-        public void IsReadOnlyOnNonColumn()
+        public async Task IsReadOnlyOnNonColumn()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
                 using (var cmd = new NpgsqlCommand("SELECT 8", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly))
                     Assert.That(reader.GetColumnSchema().Single().IsReadOnly, Is.True);
             }
         }
 
         [Test]
-        public void IsUnique()
+        public async Task IsUnique()
         {
             if (IsRedshift)
                 Assert.Ignore("Unique not supported in reader schema on Redshift");
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (id INT PRIMARY KEY, non_id INT, uniq INT UNIQUE, non_id_second INT, non_id_third INT)");
+                await using var __ = await GetTempTableName(conn, out var table);
 
-                conn.ExecuteNonQuery("CREATE UNIQUE INDEX idx_two_cols_unique ON data (non_id_second, non_id_third)");
+                await conn.ExecuteNonQueryAsync($@"
+CREATE TABLE {table} (id INT PRIMARY KEY, non_id INT, uniq INT UNIQUE, non_id_second INT, non_id_third INT);
+CREATE UNIQUE INDEX idx_{table} ON {table} (non_id_second, non_id_third)");
 
-                using (var cmd = new NpgsqlCommand("SELECT id,non_id,uniq,8,non_id_second,non_id_third FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
+                using (var cmd = new NpgsqlCommand($"SELECT id,non_id,uniq,8,non_id_second,non_id_third FROM {table}", conn))
+                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
                 {
                     var columns = reader.GetColumnSchema();
                     Assert.That(columns[0].IsUnique, Is.True);
@@ -408,16 +411,16 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void NumericPrecision()
+        public async Task NumericPrecision()
         {
             if (IsRedshift)
                 Assert.Ignore("Precision is never unlimited on Redshift");
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (a NUMERIC(8), b NUMERIC, c INTEGER)");
+                await using var _ = await CreateTempTable(conn, "a NUMERIC(8), b NUMERIC, c INTEGER", out var table);
 
-                using (var cmd = new NpgsqlCommand("SELECT a,b,c,8.3::NUMERIC(8) FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                using (var cmd = new NpgsqlCommand($"SELECT a,b,c,8.3::NUMERIC(8) FROM {table}", conn))
+                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly))
                 {
                     var columns = reader.GetColumnSchema();
                     Assert.That(columns[0].NumericPrecision, Is.EqualTo(8));
@@ -429,16 +432,16 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void NumericScale()
+        public async Task NumericScale()
         {
             if (IsRedshift)
                 Assert.Ignore("Scale is never unlimited on Redshift");
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (a NUMERIC(8,5), b NUMERIC, c INTEGER)");
+                await using var _ = await CreateTempTable(conn, "a NUMERIC(8,5), b NUMERIC, c INTEGER", out var table);
 
-                using (var cmd = new NpgsqlCommand("SELECT a,b,c,8.3::NUMERIC(8,5) FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                using (var cmd = new NpgsqlCommand($"SELECT a,b,c,8.3::NUMERIC(8,5) FROM {table}", conn))
+                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly))
                 {
                     var columns = reader.GetColumnSchema();
                     Assert.That(columns[0].NumericScale, Is.EqualTo(5));
@@ -450,14 +453,14 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void DataType()
+        public async Task DataType()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo INTEGER)");
+                await using var _ = await CreateTempTable(conn, "foo INTEGER", out var table);
 
-                using (var cmd = new NpgsqlCommand("SELECT foo,8::INTEGER FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                using (var cmd = new NpgsqlCommand($"SELECT foo,8::INTEGER FROM {table}", conn))
+                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly))
                 {
                     var columns = reader.GetColumnSchema();
                     Assert.That(columns[0].DataType, Is.SameAs(typeof(int)));
@@ -467,16 +470,16 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1305")]
-        public void DataTypeUnknownType()
+        public async Task DataTypeUnknownType()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo INTEGER)");
+                await using var _ = await CreateTempTable(conn, "foo INTEGER", out var table);
 
-                using (var cmd = new NpgsqlCommand("SELECT foo::INTEGER FROM data", conn))
+                using (var cmd = new NpgsqlCommand($"SELECT foo::INTEGER FROM {table}", conn))
                 {
                     cmd.AllResultTypesAreUnknown = true;
-                    using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                    using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly))
                     {
                         var columns = reader.GetColumnSchema();
                         Assert.That(columns[0].DataType, Is.SameAs(typeof(int)));
@@ -486,25 +489,28 @@ namespace Npgsql.Tests
         }
 
         [Test, NonParallelizable]
-        public void DataTypeWithComposite()
+        public async Task DataTypeWithComposite()
         {
             if (IsRedshift)
                 Assert.Ignore("Composite types not support on Redshift");
+            // if (IsMultiplexing)
+            //     Assert.Ignore("Multiplexing: ReloadTypes");
+
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 ApplicationName = nameof(DataTypeWithComposite),  // Prevent backend type caching in TypeHandlerRegistry
                 Pooling = false
             };
 
-            using (var conn = OpenConnection(csb))
+            using (var conn = await OpenConnectionAsync(csb))
             {
-                conn.ExecuteNonQuery("CREATE TYPE pg_temp.some_composite AS (foo int)");
+                await conn.ExecuteNonQueryAsync("CREATE TYPE pg_temp.some_composite AS (foo int)");
                 conn.ReloadTypes();
                 conn.TypeMapper.MapComposite<SomeComposite>();
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (comp pg_temp.some_composite)");
+                await conn.ExecuteNonQueryAsync("CREATE TEMP TABLE data (comp pg_temp.some_composite)");
 
                 using (var cmd = new NpgsqlCommand("SELECT comp,'(4)'::some_composite FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly))
                 {
                     var columns = reader.GetColumnSchema();
                     Assert.That(columns[0].DataType, Is.SameAs(typeof(SomeComposite)));
@@ -516,15 +522,15 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void UdtAssemblyQualifiedName()
+        public async Task UdtAssemblyQualifiedName()
         {
             // Also see DataTypeWithComposite
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo INTEGER)");
+                await using var _ = await CreateTempTable(conn, "foo INTEGER", out var table);
 
-                using (var cmd = new NpgsqlCommand("SELECT foo,8 FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                using (var cmd = new NpgsqlCommand($"SELECT foo,8 FROM {table}", conn))
+                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly))
                 {
                     var columns = reader.GetColumnSchema();
                     Assert.That(columns[0].UdtAssemblyQualifiedName, Is.Null);
@@ -534,14 +540,14 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void PostgresType()
+        public async Task PostgresType()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo INTEGER)");
+                await using var _ = await CreateTempTable(conn, "foo INTEGER", out var table);
 
-                using (var cmd = new NpgsqlCommand("SELECT foo,8 FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                using (var cmd = new NpgsqlCommand($"SELECT foo,8 FROM {table}", conn))
+                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly))
                 {
                     var columns = reader.GetColumnSchema();
                     var intType = columns[0].PostgresType;
@@ -577,19 +583,19 @@ namespace Npgsql.Tests
         [TestCase("bit(3)", 3)]
         [TestCase("bit varying")]
         [TestCase("bit varying(3)", 3)]
-        public void DataTypeName(string typeName, int? size = null, int? precision = null, int? scale = null)
+        public async Task DataTypeName(string typeName, int? size = null, int? precision = null, int? scale = null)
         {
             var openingParen = typeName.IndexOf('(');
             var typeNameWithoutFacets = openingParen == -1
                 ? typeName
                 : typeName.Substring(0, openingParen) + typeName.Substring(typeName.IndexOf(')') + 1);
 
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery($"CREATE TEMP TABLE data (foo {typeName})");
+                await using var _ = await CreateTempTable(conn, $"foo {typeName}", out var table);
 
-                using (var cmd = new NpgsqlCommand($"SELECT foo,NULL::{typeName} FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
+                using (var cmd = new NpgsqlCommand($"SELECT foo,NULL::{typeName} FROM {table}", conn))
+                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
                 {
                     var columns = reader.GetColumnSchema();
                     var tableColumn = columns[0];
@@ -607,14 +613,15 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void DefaultValue()
+        public async Task DefaultValue()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (with_default INTEGER DEFAULT(8), without_default INTEGER)");
+                await using var _ = await CreateTempTable(
+                    conn, "with_default INTEGER DEFAULT(8), without_default INTEGER", out var table);
 
-                using (var cmd = new NpgsqlCommand("SELECT with_default,without_default,8 FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
+                using (var cmd = new NpgsqlCommand($"SELECT with_default,without_default,8 FROM {table}", conn))
+                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
                 {
                     var columns = reader.GetColumnSchema();
                     Assert.That(columns[0].DefaultValue, Is.EqualTo("8"));
@@ -625,36 +632,44 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void SameColumnName()
+        public async Task SameColumnName()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data1 (foo INTEGER); CREATE TEMP TABLE data2 (foo INTEGER)");
+                await using var _ = await GetTempTableName(conn, out var table1);
+                await using var __ = await GetTempTableName(conn, out var table2);
 
-                using (var cmd = new NpgsqlCommand("SELECT data1.foo,data2.foo FROM data1,data2", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
+                await conn.ExecuteNonQueryAsync($@"
+CREATE TABLE {table1} (foo INTEGER);
+CREATE TABLE {table2} (foo INTEGER)");
+
+                using (var cmd = new NpgsqlCommand($"SELECT {table1}.foo,{table2}.foo FROM {table1},{table2}", conn))
+                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
                 {
                     var columns = reader.GetColumnSchema();
                     Assert.That(columns[0].ColumnName, Is.EqualTo("foo"));
-                    Assert.That(columns[0].BaseTableName, Is.EqualTo("data1"));
+                    Assert.That(columns[0].BaseTableName, Does.StartWith("temp_table"));
                     Assert.That(columns[1].ColumnName, Is.EqualTo("foo"));
-                    Assert.That(columns[1].BaseTableName, Is.EqualTo("data2"));
+                    Assert.That(columns[1].BaseTableName, Does.StartWith("temp_table"));
+                    Assert.That(columns[0].BaseTableName, Is.Not.EqualTo(columns[1].BaseTableName));
                 }
             }
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1553")]
-        public void DomainTypes()
+        public async Task DomainTypes()
         {
             if (IsRedshift)
                 Assert.Ignore("Domain types not support on Redshift");
-            using (var conn = OpenConnection())
+            // if (IsMultiplexing)
+            //     Assert.Ignore("Multiplexing: ReloadTypes");
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE DOMAIN pg_temp.mydomain AS varchar(2)");
+                await conn.ExecuteNonQueryAsync("CREATE DOMAIN pg_temp.mydomain AS varchar(2)");
                 conn.ReloadTypes();
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (domain mydomain)");
+                await conn.ExecuteNonQueryAsync("CREATE TEMP TABLE data (domain mydomain)");
                 using (var cmd = new NpgsqlCommand("SELECT domain FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
+                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
                 {
                     var domainSchema = reader.GetColumnSchema().Single(c => c.ColumnName == "domain");
                     Assert.That(domainSchema.ColumnSize, Is.EqualTo(2));
@@ -666,14 +681,14 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void NpgsqlDbType()
+        public async Task NpgsqlDbType()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo INTEGER)");
+                await using var _ = await CreateTempTable(conn, "foo INTEGER", out var table);
 
-                using (var cmd = new NpgsqlCommand("SELECT foo,8::INTEGER FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                using (var cmd = new NpgsqlCommand($"SELECT foo,8::INTEGER FROM {table}", conn))
+                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly))
                 {
                     var columns = reader.GetColumnSchema();
                     Assert.That(columns[0].NpgsqlDbType, Is.EqualTo(NpgsqlTypes.NpgsqlDbType.Integer));
@@ -683,14 +698,14 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void NpgsqlDbTypeExtension()
+        public async Task NpgsqlDbTypeExtension()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                TestUtil.EnsureExtension(conn, "hstore", "9.1");
+                await EnsureExtensionAsync(conn, "hstore", "9.1");
 
                 using (var cmd = new NpgsqlCommand("SELECT NULL::HSTORE", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly))
                 {
                     var columns = reader.GetColumnSchema();
                     // The full datatype name for PostGIS is public.geometry (unlike int4 which is in pg_catalog).
@@ -700,11 +715,11 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1950")]
-        public void NoResultset()
+        public async Task NoResultset()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = new NpgsqlCommand("COMMIT", conn))
-            using (var reader = cmd.ExecuteReader())
+            using (var reader = await cmd.ExecuteReaderAsync())
             {
                 reader.Read();
                 reader.GetColumnSchema();
@@ -714,53 +729,53 @@ namespace Npgsql.Tests
         #region Not supported
 
         [Test]
-        public void IsAliased()
+        public async Task IsAliased()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo INTEGER)");
+                await using var _ = await CreateTempTable(conn, "foo INTEGER", out var table);
 
-                using (var cmd = new NpgsqlCommand("SELECT * FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                using (var cmd = new NpgsqlCommand($"SELECT * FROM {table}", conn))
+                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly))
                     Assert.That(reader.GetColumnSchema().Single().IsAliased, Is.False);
             }
         }
 
         [Test]
-        public void IsExpression()
+        public async Task IsExpression()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo INTEGER)");
+                await using var _ = await CreateTempTable(conn, "foo INTEGER", out var table);
 
-                using (var cmd = new NpgsqlCommand("SELECT * FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                using (var cmd = new NpgsqlCommand($"SELECT * FROM {table}", conn))
+                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly))
                     Assert.That(reader.GetColumnSchema().Single().IsExpression, Is.False);
             }
         }
 
         [Test]
-        public void IsHidden()
+        public async Task IsHidden()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo INTEGER)");
+                await using var _ = await CreateTempTable(conn, "foo INTEGER", out var table);
 
-                using (var cmd = new NpgsqlCommand("SELECT * FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                using (var cmd = new NpgsqlCommand($"SELECT * FROM {table}", conn))
+                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly))
                     Assert.That(reader.GetColumnSchema().Single().IsHidden, Is.False);
             }
         }
 
         [Test]
-        public void IsIdentity()
+        public async Task IsIdentity()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo INTEGER)");
+                await using var _ = await CreateTempTable(conn, "foo INTEGER", out var table);
 
-                using (var cmd = new NpgsqlCommand("SELECT * FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
+                using (var cmd = new NpgsqlCommand($"SELECT * FROM {table}", conn))
+                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly))
                     Assert.That(reader.GetColumnSchema().Single().IsIdentity, Is.False);
             }
         }

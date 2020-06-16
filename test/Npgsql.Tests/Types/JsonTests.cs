@@ -1,25 +1,28 @@
 using System;
 using System.Text;
 using System.Text.Json;
+using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
 
 namespace Npgsql.Tests.Types
 {
-    [TestFixture(NpgsqlDbType.Jsonb)]
-    [TestFixture(NpgsqlDbType.Json)]
-    public class JsonTests : TestBase
+    [TestFixture(MultiplexingMode.NonMultiplexing, NpgsqlDbType.Json)]
+    [TestFixture(MultiplexingMode.NonMultiplexing, NpgsqlDbType.Jsonb)]
+    [TestFixture(MultiplexingMode.Multiplexing, NpgsqlDbType.Json)]
+    [TestFixture(MultiplexingMode.Multiplexing, NpgsqlDbType.Jsonb)]
+    public class JsonTests : MultiplexingTestBase
     {
         [Test]
-        public void RoundtripString()
+        public async Task RoundtripString()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn))
             {
                 const string value = @"{""Key"": ""Value""}";
                 cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType) { Value = value });
                 cmd.Parameters.Add(new NpgsqlParameter<string>("p2", NpgsqlDbType) { TypedValue = value });
-                using (var reader = cmd.ExecuteReader())
+                using (var reader = await cmd.ExecuteReaderAsync())
                 {
                     reader.Read();
                     for (var i = 0; i < 2; i++)
@@ -35,9 +38,9 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public void RoundtripLongString()
+        public async Task RoundtripLongString()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn))
             {
                 var sb = new StringBuilder();
@@ -47,7 +50,7 @@ namespace Npgsql.Tests.Types
                 var value = sb.ToString();
                 cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType) { Value = value });
                 cmd.Parameters.Add(new NpgsqlParameter<string>("p2", NpgsqlDbType) { TypedValue = value });
-                using (var reader = cmd.ExecuteReader())
+                using (var reader = await cmd.ExecuteReaderAsync())
                 {
                     reader.Read();
                     for (var i = 0; i < 2; i++)
@@ -63,14 +66,14 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public void ReadJsonDocument()
+        public async Task ReadJsonDocument()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = new NpgsqlCommand("SELECT @p", conn))
             {
                 var value = @"{""Date"":""2019-09-01T00:00:00"",""TemperatureC"":10,""Summary"":""Partly cloudy""}";
                 cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType) { Value = value });
-                using (var reader = cmd.ExecuteReader())
+                using (var reader = await cmd.ExecuteReaderAsync())
                 {
                     reader.Read();
                     Assert.That(reader.GetDataTypeName(0), Is.EqualTo(PostgresType));
@@ -83,9 +86,9 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public void WriteJsonDocument()
+        public async Task WriteJsonDocument()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn))
             {
                 var value = JsonDocument.Parse(@"{""Date"": ""2019-09-01T00:00:00"", ""Summary"": ""Partly cloudy"", ""TemperatureC"": 10}");
@@ -97,7 +100,7 @@ namespace Npgsql.Tests.Types
                     cmd.Parameters.AddWithValue("p3", value);
                 }
 
-                using (var reader = cmd.ExecuteReader())
+                using (var reader = await cmd.ExecuteReaderAsync())
                 {
                     reader.Read();
                     for (var i = 0; i < reader.FieldCount; i++)
@@ -112,9 +115,9 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public void WriteObject()
+        public async Task WriteObject()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn))
             {
                 var value = new WeatherForecast
@@ -125,7 +128,7 @@ namespace Npgsql.Tests.Types
                 };
                 cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType) { Value = value });
                 cmd.Parameters.Add(new NpgsqlParameter<WeatherForecast>("p2", NpgsqlDbType) { TypedValue = value });
-                using (var reader = cmd.ExecuteReader())
+                using (var reader = await cmd.ExecuteReaderAsync())
                 {
                     reader.Read();
                     for (var i = 0; i < 2; i++)
@@ -140,14 +143,14 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public void ReadObject()
+        public async Task ReadObject()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = new NpgsqlCommand("SELECT @p", conn))
             {
                 var value = @"{""Date"":""2019-09-01T00:00:00"",""TemperatureC"":10,""Summary"":""Partly cloudy""}";
                 cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType) { Value = value });
-                using (var reader = cmd.ExecuteReader())
+                using (var reader = await cmd.ExecuteReaderAsync())
                 {
                     reader.Read();
                     Assert.That(reader.GetDataTypeName(0), Is.EqualTo(PostgresType));
@@ -170,20 +173,20 @@ namespace Npgsql.Tests.Types
         [IssueLink("https://github.com/npgsql/npgsql/issues/2811")]
         [IssueLink("https://github.com/npgsql/efcore.pg/issues/1177")]
         [IssueLink("https://github.com/npgsql/efcore.pg/issues/1082")]
-        public void CanReadTwoJsonDocuments()
+        public async Task CanReadTwoJsonDocuments()
         {
-            using var conn = OpenConnection();
+            using var conn = await OpenConnectionAsync();
 
             JsonDocument car;
             using (var cmd = new NpgsqlCommand(@"SELECT '{""key"" : ""foo""}'::jsonb", conn))
-            using (var reader = cmd.ExecuteReader())
+            using (var reader = await cmd.ExecuteReaderAsync())
             {
                 reader.Read();
                 car = reader.GetFieldValue<JsonDocument>(0);
             }
 
             using (var cmd = new NpgsqlCommand(@"SELECT '{""key"" : ""bar""}'::jsonb", conn))
-            using (var reader = cmd.ExecuteReader())
+            using (var reader = await cmd.ExecuteReaderAsync())
             {
                 reader.Read();
                 reader.GetFieldValue<JsonDocument>(0);
@@ -192,7 +195,8 @@ namespace Npgsql.Tests.Types
             Assert.That(car.RootElement.GetProperty("key").GetString(), Is.EqualTo("foo"));
         }
 
-        public JsonTests(NpgsqlDbType npgsqlDbType)
+        public JsonTests(MultiplexingMode multiplexingMode, NpgsqlDbType npgsqlDbType)
+            : base(multiplexingMode)
         {
             using (var conn = OpenConnection())
                 TestUtil.MinimumPgVersion(conn, "9.4.0", "JSONB data type not yet introduced");

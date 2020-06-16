@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using Npgsql.LegacyPostgis;
 using Npgsql.Tests;
 using NpgsqlTypes;
@@ -406,10 +407,10 @@ namespace Npgsql.PluginTests
         }
 
         [OneTimeSetUp]
-        public void SetUp()
+        public async Task SetUp()
         {
-            using var conn = base.OpenConnection();
-            TestUtil.EnsureExtension(conn, "postgis");
+            await using var conn = await base.OpenConnectionAsync();
+            await TestUtil.EnsureExtensionAsync(conn, "postgis");
         }
     }
 }

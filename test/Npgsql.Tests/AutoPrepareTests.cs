@@ -27,6 +27,7 @@ namespace Npgsql.Tests
 
                 using (var cmd = new NpgsqlCommand("SELECT 1", conn))
                 {
+                    Assert.That(cmd.IsPrepared, Is.False);
                     cmd.ExecuteScalar();
                     Assert.That(cmd.IsPrepared, Is.True);
                     Assert.That(checkCmd.ExecuteScalar(), Is.EqualTo(1));
@@ -224,8 +225,8 @@ namespace Npgsql.Tests
             using (var checkCmd = new NpgsqlCommand(CountPreparedStatements, conn))
             using (var cmd = new NpgsqlCommand("SELECT 1; SELECT 1; SELECT 1; SELECT 1", conn))
             {
-                cmd.Prepare();
-                Assert.That(cmd.IsPrepared, Is.True);
+                //cmd.Prepare();
+                //Assert.That(cmd.IsPrepared, Is.True);
                 cmd.ExecuteNonQuery();
                 Assert.That(checkCmd.ExecuteScalar(), Is.EqualTo(1));
                 conn.UnprepareAll();

@@ -726,8 +726,8 @@ namespace Npgsql
             get => _minPoolSize;
             set
             {
-                if (value < 0 || value > ConnectorPool.PoolSizeLimit)
-                    throw new ArgumentOutOfRangeException(nameof(value), value, "MinPoolSize must be between 0 and " + ConnectorPool.PoolSizeLimit);
+                if (value < 0)
+                    throw new ArgumentOutOfRangeException(nameof(value), value, "MinPoolSize can't be negative");
 
                 _minPoolSize = value;
                 SetValue(nameof(MinPoolSize), value);
@@ -748,8 +748,8 @@ namespace Npgsql
             get => _maxPoolSize;
             set
             {
-                if (value < 0 || value > ConnectorPool.PoolSizeLimit)
-                    throw new ArgumentOutOfRangeException(nameof(value), value, "MaxPoolSize must be between 0 and " + ConnectorPool.PoolSizeLimit);
+                if (value < 0)
+                    throw new ArgumentOutOfRangeException(nameof(value), value, "MaxPoolSize can't be negative");
 
                 _maxPoolSize = value;
                 SetValue(nameof(MaxPoolSize), value);
@@ -1131,24 +1131,6 @@ namespace Npgsql
         int _autoPrepareMinUsages;
 
         /// <summary>
-        /// Writes connection performance information to performance counters.
-        /// </summary>
-        [Category("Advanced")]
-        [Description("Writes connection performance information to performance counters.")]
-        [DisplayName("Use Perf Counters")]
-        [NpgsqlConnectionStringProperty]
-        public bool UsePerfCounters
-        {
-            get => _usePerfCounters;
-            set
-            {
-                _usePerfCounters = value;
-                SetValue(nameof(UsePerfCounters), value);
-            }
-        }
-        bool _usePerfCounters;
-
-        /// <summary>
         /// If set to true, a pool connection's state won't be reset when it is closed (improves performance).
         /// Do not specify this unless you know what you're doing.
         /// </summary>
@@ -1263,6 +1245,71 @@ namespace Npgsql
 
             return value.ToString();
         }
+
+        #endregion
+
+        #region Multiplexing
+
+        /// <summary>
+        /// Enables multiplexing, which allows more efficient use of connections.
+        /// </summary>
+        [Category("Multiplexing")]
+        [Description("Enables multiplexing, which allows more efficient use of connections.")]
+        [DisplayName("Multiplexing")]
+        [NpgsqlConnectionStringProperty]
+        [DefaultValue(false)]
+        public bool Multiplexing
+        {
+            get => _multiplexing;
+            set
+            {
+                _multiplexing = value;
+                SetValue(nameof(Multiplexing), value);
+            }
+        }
+        bool _multiplexing;
+
+        /// <summary>
+        /// When multiplexing is enabled, determines the maximum amount of time to wait for further
+        /// commands before flushing to the network. In microseconds, 0 disables waiting altogether.
+        /// </summary>
+        [Category("Multiplexing")]
+        [Description("When multiplexing is enabled, determines the maximum amount of time to wait for further " +
+                     "commands before flushing to the network. In microseconds, 0 disables waiting altogether.")]
+        [DisplayName("Write Coalescing Delay Us")]
+        [NpgsqlConnectionStringProperty]
+        [DefaultValue(0)]
+        public int WriteCoalescingDelayUs
+        {
+            get => _writeCoalescingDelayUs;
+            set
+            {
+                _writeCoalescingDelayUs = value;
+                SetValue(nameof(WriteCoalescingDelayUs), value);
+            }
+        }
+        int _writeCoalescingDelayUs;
+
+        /// <summary>
+        /// When multiplexing is enabled, determines the maximum number of outgoing bytes to buffer before
+        /// flushing to the network.
+        /// </summary>
+        [Category("Multiplexing")]
+        [Description("When multiplexing is enabled, determines the maximum number of outgoing bytes to buffer before " +
+                     "flushing to the network.")]
+        [DisplayName("Write Coalescing Buffer Threshold Bytes")]
+        [NpgsqlConnectionStringProperty]
+        [DefaultValue(1000)]
+        public int WriteCoalescingBufferThresholdBytes
+        {
+            get => _writeCoalescingBufferThresholdBytes;
+            set
+            {
+                _writeCoalescingBufferThresholdBytes = value;
+                SetValue(nameof(WriteCoalescingBufferThresholdBytes), value);
+            }
+        }
+        int _writeCoalescingBufferThresholdBytes;
 
         #endregion
 
@@ -1392,9 +1439,31 @@ namespace Npgsql
             set => throw new NotSupportedException("The UseSslStream parameter is no longer supported (SslStream is always used). Please see https://www.npgsql.org/doc/release-notes/4.1.html");
         }
 
+        /// <summary>
+        /// Writes connection performance information to performance counters.
+        /// </summary>
+        [Category("Advanced")]
+        [Description("Writes connection performance information to performance counters.")]
+        [DisplayName("Use Perf Counters")]
+        [NpgsqlConnectionStringProperty]
+        [Obsolete("The UsePerfCounters parameter is no longer supported")]
+        public bool UsePerfCounters
+        {
+            get => false;
+            set => throw new NotSupportedException("The UsePerfCounters parameter is no longer supported. Please see https://www.npgsql.org/doc/release-notes/5.0.html");
+        }
+
         #endregion
 
         #region Misc
+
+        internal void Validate()
+        {
+            if (string.IsNullOrWhiteSpace(Host))
+                throw new ArgumentException("Host can't be null");
+            if (Multiplexing && !Pooling)
+                throw new ArgumentException("Pooling must be on to use multiplexing");
+        }
 
         internal string ToStringWithoutPassword()
         {

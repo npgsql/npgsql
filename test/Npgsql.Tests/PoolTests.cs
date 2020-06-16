@@ -39,13 +39,6 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void MinPoolSizeLargerThanPoolSizeLimit()
-        {
-            var csb = new NpgsqlConnectionStringBuilder(ConnectionString);
-            Assert.That(() => csb.MinPoolSize = ConnectorPool.PoolSizeLimit + 1, Throws.Exception.TypeOf<ArgumentOutOfRangeException>());
-        }
-
-        [Test]
         public void ReuseConnectorBeforeCreatingNew()
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
@@ -167,27 +160,25 @@ namespace Npgsql.Tests
                 await conn1.OpenAsync();
 
                 Assert.True(PoolManager.TryGetValue(connString, out var pool));
-                AssertPoolState(pool, open: 1, idle: 0, waiters: 0);
+                AssertPoolState(pool, open: 1, idle: 0);
 
                 // Pool is exhausted
                 using (var conn2 = CreateConnection(connString))
                 {
                     var cts = new CancellationTokenSource(1000);
                     var openTask = conn2.OpenAsync(cts.Token);
-                    AssertPoolState(pool, open: 1, idle: 0, waiters: 1);
+                    AssertPoolState(pool, open: 1, idle: 0);
                     Assert.That(async () => await openTask, Throws.Exception.TypeOf<OperationCanceledException>());
                 }
 
-                // The cancelled open attempt should have left a cancelled task completion source
-                // in the pool's wait queue. Close our busy connection and make sure everything work as planned.
-                AssertPoolState(pool, open: 1, idle: 0, waiters: 1);
+                AssertPoolState(pool, open: 1, idle: 0);
                 using (var conn2 = CreateConnection(connString))
                 using (new Timer(o => conn1.Close(), null, 1000, Timeout.Infinite))
                 {
                     await conn2.OpenAsync();
-                    AssertPoolState(pool, open: 1, idle: 0, waiters: 0);
+                    AssertPoolState(pool, open: 1, idle: 0);
                 }
-                AssertPoolState(pool, open: 1, idle: 1, waiters: 0);
+                AssertPoolState(pool, open: 1, idle: 1);
             }
         }
 
@@ -302,24 +293,24 @@ namespace Npgsql.Tests
                 conn1.Open();   // Pool is now exhausted
 
                 Assert.True(PoolManager.TryGetValue(connString, out var pool));
-                AssertPoolState(pool, open: 1, idle: 0, waiters: 0);
+                AssertPoolState(pool, open: 1, idle: 0);
 
                 Func<Task<int>> asyncOpener = async () =>
                 {
                     using (var conn2 = CreateConnection(connString))
                     {
                         await conn2.OpenAsync();
-                        AssertPoolState(pool, open: 1, idle: 0, waiters: 0);
-                        return Thread.CurrentThread.ManagedThreadId;
+                        AssertPoolState(pool, open: 1, idle: 0);
                     }
+                    AssertPoolState(pool, open: 1, idle: 1);
+                    return Thread.CurrentThread.ManagedThreadId;
                 };
 
                 // Start an async open which will not complete as the pool is exhausted.
                 var asyncOpenerTask = asyncOpener();
-                AssertPoolState(pool, open: 1, idle: 0, waiters: 1);
                 conn1.Close();  // Complete the async open by closing conn1
-                var asyncOpenerThreadId = asyncOpenerTask.Result;
-                AssertPoolState(pool, open: 1, idle: 1, waiters: 0);
+                var asyncOpenerThreadId = asyncOpenerTask.GetAwaiter().GetResult();
+                AssertPoolState(pool, open: 1, idle: 1);
 
                 Assert.That(asyncOpenerThreadId, Is.Not.EqualTo(Thread.CurrentThread.ManagedThreadId));
             }
@@ -469,19 +460,68 @@ namespace Npgsql.Tests
             Console.WriteLine("Done");
         }
 
+        #region Support
+
         volatile int StopFlag;
 
-        void AssertPoolState(ConnectorPool? pool, int open, int idle, int? waiters = null)
+        void AssertPoolState(ConnectorPool? pool, int open, int idle)
         {
             if (pool == null)
                 throw new ArgumentNullException(nameof(pool));
 
-            var (openState, idleState, _, waitersState) = pool.Statistics;
+            var (openState, idleState, _) = pool.Statistics;
             Assert.That(openState, Is.EqualTo(open), $"Open should be {open} but is {openState}");
             Assert.That(idleState, Is.EqualTo(idle), $"Idle should be {idle} but is {idleState}");
+        }
 
-            if (waiters != null)
-                Assert.That(waitersState, Is.EqualTo(waiters.Value), $"Waiters should be {waiters} but is {waitersState}");
+        // With MaxPoolSize=1, opens many connections in parallel and executes a simple SELECT. Since there's only one
+        // physical connection, all operations will be completely serialized
+        [Test]
+        public Task OnePhysicalConnectionManyCommands()
+        {
+            const int numParallelCommands = 10000;
+
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                MaxPoolSize = 1,
+                MaxAutoPrepare = 5,
+                AutoPrepareMinUsages = 5,
+                Timeout = 0
+            }.ToString();
+
+            return Task.WhenAll(Enumerable.Range(0, numParallelCommands)
+                .Select(async i =>
+                {
+                    using var conn = new NpgsqlConnection(connString);
+                    await conn.OpenAsync();
+                    using var cmd = new NpgsqlCommand("SELECT " + i, conn);
+                    var result = await cmd.ExecuteScalarAsync();
+                    Assert.That(result, Is.EqualTo(i));
+                }));
+        }
+
+        // When multiplexing, and the pool is totally saturated (at Max Pool Size and 0 idle connectors), we select
+        // the connector with the least commands in flight and execute on it. We must never select a connector with
+        // a pending transaction on it.
+        // TODO: Test not tested
+        [Test]
+        [Ignore("Multiplexing: fails")]
+        public void MultiplexedCommandDoesntGetExecutedOnTransactionedConnector()
+        {
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                MaxPoolSize = 1,
+                Timeout = 1
+            }.ToString();
+
+            using var connWithTx = OpenConnection(connString);
+            using var tx = connWithTx.BeginTransaction();
+            // connWithTx should now be bound with the only physical connector available.
+            // Any commands execute should timeout
+
+            using var conn2 = OpenConnection(connString);
+            using var cmd = new NpgsqlCommand("SELECT 1", conn2);
+            Assert.ThrowsAsync<NpgsqlException>(() => cmd.ExecuteScalarAsync());
         }
 
         protected override NpgsqlConnection CreateConnection(string? connectionString = null)
@@ -492,6 +532,7 @@ namespace Npgsql.Tests
         }
 
         readonly List<NpgsqlConnection> _cleanup = new List<NpgsqlConnection>();
+
         [TearDown]
         public void Cleanup()
         {
@@ -501,5 +542,7 @@ namespace Npgsql.Tests
             }
             _cleanup.Clear();
         }
+
+        #endregion
     }
 }

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -17,8 +16,27 @@ namespace Npgsql.Util
             if (msg is T asT)
                 return asT;
 
-            connector.Break();
-            throw new NpgsqlException($"Received backend message {msg.Code} while expecting {typeof(T).Name}. Please file a bug.");
+            throw connector.Break(
+                new NpgsqlException($"Received backend message {msg.Code} while expecting {typeof(T).Name}. " +
+                                    "Please file a bug."));
+        }
+
+        internal static DeferDisposable Defer(Action action) => new DeferDisposable(action);
+        // internal static AsyncDeferDisposable DeferAsync(Func<ValueTask> func) => new AsyncDeferDisposable(func);
+        internal static AsyncDeferDisposable DeferAsync(Func<Task> func) => new AsyncDeferDisposable(func);
+
+        internal readonly struct DeferDisposable : IDisposable
+        {
+            readonly Action _action;
+            public DeferDisposable(Action action) => _action = action;
+            public void Dispose() => _action();
+        }
+
+        internal readonly struct AsyncDeferDisposable : IAsyncDisposable
+        {
+            readonly Func<Task> _func;
+            public AsyncDeferDisposable(Func<Task> func) => _func = func;
+            public async ValueTask DisposeAsync() => await _func();
         }
     }
 
@@ -94,6 +112,12 @@ namespace Npgsql.Util
         {
             return string.Join(separator, values);
         }
+    }
+
+    static class ExceptionExtensions
+    {
+        internal static Exception UnwrapAggregate(this Exception exception)
+            => exception is AggregateException agg ? agg.InnerException! : exception;
     }
 
     /// <summary>

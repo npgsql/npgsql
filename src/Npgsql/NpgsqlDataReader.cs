@@ -45,7 +45,11 @@ namespace Npgsql
         /// </summary>
         CommandBehavior _behavior;
 
-        Task _sendTask = default!;
+        /// <summary>
+        /// In multiplexing, this is <see langword="null" /> as the sending is managed in the write multiplexing loop,
+        /// and does not need to be awaited by the reader.
+        /// </summary>
+        Task? _sendTask;
 
         internal ReaderState State;
 
@@ -132,10 +136,10 @@ namespace Npgsql
             Connector = connector;
         }
 
-        internal void Init(NpgsqlCommand command, CommandBehavior behavior, List<NpgsqlStatement> statements, Task sendTask)
+        internal void Init(
+            NpgsqlCommand command, CommandBehavior behavior, List<NpgsqlStatement> statements, Task? sendTask = null)
         {
             Command = command;
-            Debug.Assert(command.Connection != null && command.Connection == Connector.Connection);
             _connection = command.Connection!;
             _behavior = behavior;
             _isSchemaOnly = _behavior.HasFlag(CommandBehavior.SchemaOnly);
@@ -476,7 +480,7 @@ namespace Npgsql
                     return true;
                 }
 
-                // There are no more queries, we're done. Read to the RFQ.
+                // There are no more queries, we're done. Read the RFQ.
                 ProcessMessage(Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async), Connector));
                 RowDescription = null;
                 return false;
@@ -848,19 +852,23 @@ namespace Npgsql
 
             switch (Connector.State)
             {
-            case ConnectorState.Broken:
+            case ConnectorState.Ready:
+            case ConnectorState.Fetching:
+            case ConnectorState.Executing:
+            case ConnectorState.Connecting:
+                if (State != ReaderState.Consumed)
+                    await Consume(async);
+                break;
             case ConnectorState.Closed:
-                // This may have happen because an I/O error while reading a value, or some non-safe
-                // exception thrown from a type handler. Or if the connection was closed while the reader
-                // was still open
-                State = ReaderState.Closed;
-                Command.State = CommandState.Idle;
-                ReaderClosed?.Invoke(this, EventArgs.Empty);
-                return;
+            case ConnectorState.Broken:
+                break;
+            case ConnectorState.Waiting:
+            case ConnectorState.Copy:
+                Debug.Fail("Bad connector state when closing reader: " + Connector.State);
+                break;
+            default:
+                throw new ArgumentOutOfRangeException();
             }
-
-            if (State != ReaderState.Consumed)
-                await Consume(async);
 
             await Cleanup(async, connectionClosing);
         }
@@ -869,12 +877,18 @@ namespace Npgsql
         {
             Log.Trace("Cleaning up reader", Connector.Id);
 
-            // Make sure the send task for this command, which may have executed asynchronously and in
-            // parallel with the reading, has completed, throwing any exceptions it generated.
-            if (async)
-                await _sendTask;
-            else
-                _sendTask.GetAwaiter().GetResult();
+            // If multiplexing isn't on, _sendTask contains the task for the writing of this command.
+            // Make sure that this task, which may have executed asynchronously and in parallel with the reading,
+            // has completed, throwing any exceptions it generated.
+            // Note: if the following is removed, mysterious concurrent connection usage errors start happening
+            // on .NET Framework.
+            if (_sendTask != null)
+            {
+                if (async)
+                    await _sendTask;
+                else
+                    _sendTask.GetAwaiter().GetResult();
+            }
 
             State = ReaderState.Closed;
             Command.State = CommandState.Idle;
@@ -882,9 +896,21 @@ namespace Npgsql
             Connector.EndUserAction();
             NpgsqlEventSource.Log.CommandStop();
 
-            // If the reader is being closed as part of the connection closing, we don't apply
-            // the reader's CommandBehavior.CloseConnection
-            if (_behavior.HasFlag(CommandBehavior.CloseConnection) && !connectionClosing)
+            if (_connection.ConnectorBindingScope == ConnectorBindingScope.Reader)
+            {
+                // TODO: Refactor... Use proper scope
+                _connection.Connector = null;
+                Connector.Connection = null;
+                _connection.ConnectorBindingScope = ConnectorBindingScope.None;
+
+                // If the reader is being closed as part of the connection closing, we don't apply
+                // the reader's CommandBehavior.CloseConnection
+                if (_behavior.HasFlag(CommandBehavior.CloseConnection) && !connectionClosing)
+                    _connection.Close();
+
+                Connector.ReaderCompleted.SetResult(null);
+            }
+            else if (_behavior.HasFlag(CommandBehavior.CloseConnection) && !connectionClosing)
                 _connection.Close();
 
             if (ReaderClosed != null)

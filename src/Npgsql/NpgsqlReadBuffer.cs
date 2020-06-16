@@ -86,7 +86,7 @@ namespace Npgsql
         /// Ensures that <paramref name="count"/> bytes are available in the buffer, and if
         /// not, reads from the socket until enough is available.
         /// </summary>
-        public Task Ensure(int count, bool async) => Ensure(count, async, false);
+        public Task Ensure(int count, bool async) => Ensure(count, async, dontBreakOnTimeouts: false);
 
         internal void Ensure(int count)
         {
@@ -148,8 +148,7 @@ namespace Npgsql
                 }
                 catch (Exception e)
                 {
-                    Connector.Break();
-                    throw new NpgsqlException("Exception while reading from stream", e);
+                    throw Connector.Break(new NpgsqlException("Exception while reading from stream", e));
                 }
             }
         }
@@ -385,8 +384,7 @@ namespace Npgsql
             }
             catch (Exception e)
             {
-                Connector.Break();
-                throw new NpgsqlException("Exception while reading from stream", e);
+                throw Connector.Break(new NpgsqlException("Exception while reading from stream", e));
             }
         }
 
@@ -418,8 +416,7 @@ namespace Npgsql
                 }
                 catch (Exception e)
                 {
-                    Connector.Break();
-                    throw new NpgsqlException("Exception while reading from stream", e);
+                    throw Connector.Break(new NpgsqlException("Exception while reading from stream", e));
                 }
             }
         }

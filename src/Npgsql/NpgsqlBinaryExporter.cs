@@ -59,8 +59,9 @@ namespace Npgsql
                 copyOutResponse = (CopyOutResponseMessage)msg;
                 if (!copyOutResponse.IsBinary)
                 {
-                    _connector.Break();
-                    throw new ArgumentException("copyToCommand triggered a text transfer, only binary is allowed", nameof(copyToCommand));
+                    throw _connector.Break(
+                        new ArgumentException("copyToCommand triggered a text transfer, only binary is allowed",
+                            nameof(copyToCommand)));
                 }
                 break;
             case BackendMessageCode.CompletedResponse:
@@ -281,9 +282,9 @@ namespace Npgsql
                 _column++;
                 return result;
             }
-            catch
+            catch (Exception e)
             {
-                _connector.Break();
+                _connector.Break(e);
                 Cleanup();
                 throw;
             }
@@ -400,6 +401,7 @@ namespace Npgsql
             if (connector != null)
             {
                 connector.CurrentCopyOperation = null;
+                _connector.Connection?.EndBindingScope(ConnectorBindingScope.Copy);
                 _connector = null;
             }
 

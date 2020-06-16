@@ -77,15 +77,6 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void NonConformingStrings()
-        {
-            var parser = new SqlQueryParser() { StandardConformingStrings = false };
-            parser.ParseRawQuery(@"SELECT 'abc\':str''a:str'", _params, _queries);
-            Assert.That(_queries.Single().SQL, Is.EqualTo(@"SELECT 'abc\':str''a:str'"));
-            Assert.That(_queries.Single().InputParameters, Is.Empty);
-        }
-
-        [Test]
         public void MultiqueryWithParams()
         {
             var p1 = new NpgsqlParameter("p1", DbType.String);

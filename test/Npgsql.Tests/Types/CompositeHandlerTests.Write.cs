@@ -20,7 +20,12 @@ namespace Npgsql.Tests.Types
             using var command = new NpgsqlCommand("SELECT (@c).*", connection);
 
             command.Parameters.AddWithValue("c", composite);
-            assert(() => command.ExecuteRecord(), composite);
+            assert(() =>
+            {
+                var reader = command.ExecuteReader();
+                reader.Read();
+                return reader;
+            }, composite);
         }
 
         [Test]

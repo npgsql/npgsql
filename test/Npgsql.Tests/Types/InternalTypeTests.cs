@@ -1,16 +1,17 @@
-﻿using NpgsqlTypes;
+﻿using System.Threading.Tasks;
+using NpgsqlTypes;
 using NUnit.Framework;
 
 namespace Npgsql.Tests.Types
 {
-    public class InternalTypeTests : TestBase
+    public class InternalTypeTests : MultiplexingTestBase
     {
         [Test]
-        public void ReadInternalChar()
+        public async Task ReadInternalChar()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = new NpgsqlCommand("SELECT typdelim FROM pg_type WHERE typname='int4'", conn))
-            using (var reader = cmd.ExecuteReader())
+            using (var reader = await cmd.ExecuteReaderAsync())
             {
                 reader.Read();
                 Assert.That(reader.GetChar(0), Is.EqualTo(','));
@@ -24,14 +25,14 @@ namespace Npgsql.Tests.Types
         [TestCase(NpgsqlDbType.Oid)]
         [TestCase(NpgsqlDbType.Regtype)]
         [TestCase(NpgsqlDbType.Regconfig)]
-        public void InternalUintTypes(NpgsqlDbType npgsqlDbType)
+        public async Task InternalUintTypes(NpgsqlDbType npgsqlDbType)
         {
             var postgresType = npgsqlDbType.ToString().ToLowerInvariant();
-            using var conn = OpenConnection();
+            using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand($"SELECT @max, 4294967295::{postgresType}, @eight, 8::{postgresType}", conn);
             cmd.Parameters.AddWithValue("max", npgsqlDbType, uint.MaxValue);
             cmd.Parameters.AddWithValue("eight", npgsqlDbType, 8u);
-            using var reader = cmd.ExecuteReader();
+            using var reader = await cmd.ExecuteReaderAsync();
             reader.Read();
 
             for (var i = 0; i < reader.FieldCount; i++)
@@ -44,15 +45,15 @@ namespace Npgsql.Tests.Types
         }
 
         [Test]
-        public void Tid()
+        public async Task Tid()
         {
             var expected = new NpgsqlTid(3, 5);
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = conn.CreateCommand())
             {
                 cmd.CommandText = "SELECT '(1234,40000)'::tid, @p::tid";
                 cmd.Parameters.AddWithValue("p", NpgsqlDbType.Tid, expected);
-                using (var reader = cmd.ExecuteReader())
+                using (var reader = await cmd.ExecuteReaderAsync())
                 {
                     reader.Read();
                     Assert.AreEqual(1234, reader.GetFieldValue<NpgsqlTid>(0).BlockNumber);
@@ -62,5 +63,7 @@ namespace Npgsql.Tests.Types
                 }
             }
         }
+
+        public InternalTypeTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
     }
 }

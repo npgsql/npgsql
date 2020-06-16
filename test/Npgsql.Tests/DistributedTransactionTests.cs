@@ -411,11 +411,11 @@ Exception {2}",
         static void AssertHasDistributedIdentifier()
             => Assert.That(Transaction.Current?.TransactionInformation.DistributedIdentifier ?? Guid.Empty, Is.Not.EqualTo(Guid.Empty), "Distributed identifier not found");
 
-        public static string ConnectionStringEnlistOn =
-            new NpgsqlConnectionStringBuilder(ConnectionString) { Enlist = true }.ToString();
+        public string ConnectionStringEnlistOn
+            => new NpgsqlConnectionStringBuilder(ConnectionString) { Enlist = true }.ToString();
 
-        public static string ConnectionStringEnlistOff =
-            new NpgsqlConnectionStringBuilder(ConnectionString) { Enlist = false }.ToString();
+        public string ConnectionStringEnlistOff
+            => new NpgsqlConnectionStringBuilder(ConnectionString) { Enlist = false }.ToString();
 
         static string FormatEventQueue(ConcurrentQueue<TransactionEvent> eventQueue)
         {

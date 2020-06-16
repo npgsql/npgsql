@@ -341,15 +341,18 @@ namespace Npgsql.Tests
         static void AssertNoDistributedIdentifier()
             => Assert.That(Transaction.Current?.TransactionInformation.DistributedIdentifier ?? Guid.Empty, Is.EqualTo(Guid.Empty), "Distributed identifier found");
 
-        public static string ConnectionStringEnlistOn =
-            new NpgsqlConnectionStringBuilder(ConnectionString) { Enlist = true }.ToString();
-
-        public static string ConnectionStringEnlistOff =
-            new NpgsqlConnectionStringBuilder(ConnectionString) { Enlist = false }.ToString();
+        public readonly string ConnectionStringEnlistOn;
+        public readonly string ConnectionStringEnlistOff;
 
         #endregion Utilities
 
         #region Setup
+
+        public SystemTransactionTests()
+        {
+            ConnectionStringEnlistOn = new NpgsqlConnectionStringBuilder(ConnectionString) { Enlist = true }.ToString();
+            ConnectionStringEnlistOff = new NpgsqlConnectionStringBuilder(ConnectionString) { Enlist = false }.ToString();
+        }
 
         NpgsqlConnection _controlConn = default!;
 

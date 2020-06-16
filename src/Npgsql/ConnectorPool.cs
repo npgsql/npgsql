@@ -1,42 +1,23 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using System.Transactions;
 using Npgsql.Logging;
 using Npgsql.Util;
+using static Npgsql.Util.Statics;
 
 namespace Npgsql
 {
-    /// <summary>
-    /// Connection pool for PostgreSQL physical connections. Attempts to allocate connections over MaxPoolSize will
-    /// block until someone releases. Implementation is completely lock-free to avoid contention, and ensure FIFO
-    /// for open attempts waiting (because the pool is at capacity).
-    /// </summary>
-    sealed class ConnectorPool : IDisposable
+    sealed partial class ConnectorPool
     {
-        #region Implementation notes
+        #region Fields and properties
 
-        // General
-        //
-        // * When we're at capacity (Busy==Max) further open attempts wait until someone releases.
-        //   This must happen in FIFO (first to block on open is the first to release), otherwise some attempts may get
-        //   starved and time out. This is why we use a ConcurrentQueue.
-        // * We must avoid a race condition whereby an open attempt starts waiting at the same time as another release
-        //   puts a connector back into the idle list. This would potentially make the waiter wait forever/time out.
-        //
-        // Rules
-        // * You *only* create a new connector if Total < Max.
-        // * You *only* go into waiting if Busy == Max (which also implies Idle == 0)
-
-        #endregion Implementation notes
-
-        #region Fields
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(ConnectorPool));
 
         internal NpgsqlConnectionStringBuilder Settings { get; }
 
@@ -46,55 +27,39 @@ namespace Npgsql
         /// </summary>
         internal string UserFacingConnectionString { get; }
 
+        readonly string _connectionString;
+
         readonly int _max;
         readonly int _min;
+        readonly bool _autoPrepare;
+        volatile int _numConnectors;
 
-        readonly NpgsqlConnector?[] _idle;
-        readonly NpgsqlConnector?[] _open;
+        public bool IsBootstrapped { get; set; }
 
-        readonly ConcurrentQueue<(TaskCompletionSource<NpgsqlConnector?> TaskCompletionSource, bool IsAsync)> _waiting;
+        volatile int _idleCount;
 
-        [StructLayout(LayoutKind.Explicit)]
-        internal struct PoolState
-        {
-            [FieldOffset(0)] public int Open;
-            [FieldOffset(4)] public int Idle;
+        /// <summary>
+        /// Tracks all connectors currently managed by this pool, whether idle or busy.
+        /// Only updated rarely - when physical connections are opened/closed - but is read in perf-sensitive contexts.
+        /// </summary>
+        readonly NpgsqlConnector?[] _connectors;
 
-            [FieldOffset(0)] public long All;
+        readonly bool _multiplexing;
 
-            // Busy can actually be read and written non atomically, it would introduce a benign race
-            // between readers of Busy and the writer(s), connector Close, when Idle is close to zero.
-            // The writer would first decrement Open then Idle to prevent readers racing and concluding Busy == _max.
-            // However with that order a race of the Idle read and decrement could happen, having readers read and
-            // conclude Idle > 0, causing readers to loop for a non existent connector until Idle is also decremented.
-            public void Deconstruct(out int open, out int idle, out int busy)
-            {
-                var copy = new PoolState { All = Volatile.Read(ref All) };
-                open = copy.Open;
-                idle = copy.Idle;
-                busy = copy.Open - copy.Idle;
-            }
-        }
-
-        // Mutable struct, do not make this readonly.
-        PoolState State;
-
-        internal (int Open, int Idle, int Busy, int Waiters) Statistics {
-            get
-            {
-                var (open, idle, busy) = State;
-                return (open, idle, busy, _waiting.Count);
-            }
-        }
+        /// <summary>
+        /// Reader side for the idle connector channel. Contains nulls in order to release waiting attempts after
+        /// a connector has been physically closed/broken.
+        /// </summary>
+        readonly ChannelReader<NpgsqlConnector?> _idleConnectorReader;
+        internal ChannelWriter<NpgsqlConnector?> IdleConnectorWriter { get; }
 
         /// <summary>
         /// Incremented every time this pool is cleared via <see cref="NpgsqlConnection.ClearPool"/> or
         /// <see cref="NpgsqlConnection.ClearAllPools"/>. Allows us to identify connections which were
         /// created before the clear.
         /// </summary>
-        int _clearCounter;
+        volatile int _clearCounter;
 
-        // TODO move all this out of the pool
         static readonly TimerCallback PruningTimerCallback = PruneIdleConnectors;
         readonly Timer _pruningTimer;
         readonly TimeSpan _pruningSamplingInterval;
@@ -104,22 +69,48 @@ namespace Npgsql
         volatile bool _pruningTimerEnabled;
         int _pruningSampleIndex;
 
-        /// <summary>
-        /// Maximum number of possible connections in any pool.
-        /// </summary>
-        internal const int PoolSizeLimit = 1024;
+        // Note that while the dictionary is protected by locking, we assume that the lists it contains don't need to be
+        // (i.e. access to connectors of a specific transaction won't be concurrent)
+        readonly Dictionary<Transaction, List<NpgsqlConnector>> _pendingEnlistedConnectors
+            = new Dictionary<Transaction, List<NpgsqlConnector>>();
 
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(ConnectorPool));
+        static readonly SingleThreadSynchronizationContext SingleThreadSynchronizationContext = new SingleThreadSynchronizationContext("NpgsqlRemainingAsyncSendWorker");
+
+        // TODO: Make this configurable
+        const int MultiexingCommandChannelBound = 4096;
 
         #endregion
 
+        internal (int Total, int Idle, int Busy) Statistics
+        {
+            get
+            {
+                var numConnectors = _numConnectors;
+                var idleCount = _idleCount;
+                return (numConnectors, idleCount, numConnectors - idleCount);
+            }
+        }
+
         internal ConnectorPool(NpgsqlConnectionStringBuilder settings, string connString)
         {
-            Debug.Assert(PoolSizeLimit <= short.MaxValue,
-                "PoolSizeLimit cannot be larger than short.MaxValue unless PoolState is refactored to hold larger values.");
-
             if (settings.MaxPoolSize < settings.MinPoolSize)
                 throw new ArgumentException($"Connection can't have MaxPoolSize {settings.MaxPoolSize} under MinPoolSize {settings.MinPoolSize}");
+
+            // We enforce Max Pool Size, so no need to to create a bounded channel (which is less efficient)
+            // On the consuming side, we have the multiplexing write loop but also non-multiplexing Rents
+            // On the producing side, we have connections being released back into the pool (both multiplexing and not)
+            var idleChannel = Channel.CreateUnbounded<NpgsqlConnector?>();
+            _idleConnectorReader = idleChannel.Reader;
+            IdleConnectorWriter = idleChannel.Writer;
+
+            _max = settings.MaxPoolSize;
+            _min = settings.MinPoolSize;
+
+            UserFacingConnectionString = settings.PersistSecurityInfo
+                ? connString
+                : settings.ToStringWithoutPassword();
+
+            Settings = settings;
 
             if (settings.ConnectionPruningInterval == 0)
                 throw new ArgumentException("ConnectionPruningInterval can't be 0.");
@@ -137,296 +128,271 @@ namespace Npgsql
 
             _max = settings.MaxPoolSize;
             _min = settings.MinPoolSize;
-            _idle = new NpgsqlConnector[_max];
-            _open = new NpgsqlConnector[_max];
-            _waiting = new ConcurrentQueue<(TaskCompletionSource<NpgsqlConnector?> TaskCompletionSource, bool IsAsync)>();
+            _autoPrepare = settings.MaxAutoPrepare > 0;
+
+            _connectionString = connString;
 
             UserFacingConnectionString = settings.PersistSecurityInfo
                 ? connString
                 : settings.ToStringWithoutPassword();
 
-            Settings = settings;
+            _connectors = new NpgsqlConnector[_max];
+
+            // TODO: Validate multiplexing options are set only when Multiplexing is on
+
+            if (Settings.Multiplexing)
+            {
+                _multiplexing = true;
+
+                // Translate microseconds to ticks for cancellation token
+                _writeCoalescingDelayTicks = Settings.WriteCoalescingDelayUs * 100;
+                _writeCoalescingBufferThresholdBytes = Settings.WriteCoalescingBufferThresholdBytes;
+
+                var multiplexCommandChannel = Channel.CreateBounded<NpgsqlCommand>(
+                    new BoundedChannelOptions(MultiexingCommandChannelBound)
+                    {
+                        FullMode = BoundedChannelFullMode.Wait,
+                        SingleReader = true
+                    });
+                _multiplexCommandReader = multiplexCommandChannel.Reader;
+                MultiplexCommandWriter = multiplexCommandChannel.Writer;
+
+                // TODO: Think about cleanup for this, e.g. completing the channel at application shutdown and/or
+                // pool clearing
+
+                _ = Task.Run(MultiplexingWriteLoop)
+                    .ContinueWith(t =>
+                    {
+                        // Note that we *must* observe the exception if the task is faulted.
+                        Log.Error("Exception in multiplexing write loop, this is an Npgsql bug, please file an issue.",
+                            t.Exception!);
+                    }, TaskContinuationOptions.OnlyOnFaulted);
+            }
+        }
+
+        internal ValueTask<NpgsqlConnector> Rent(
+            NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
+        {
+            if (TryGetIdleConnector(out var connector))
+            {
+                connector.Connection = conn;
+                conn.Connector = connector;
+
+                return new ValueTask<NpgsqlConnector>(connector);
+            }
+
+            return RentAsync();
+
+            async ValueTask<NpgsqlConnector> RentAsync()
+            {
+                while (true)
+                {
+                    // First, try to open a new physical connector. This will fail if we're at max capacity.
+                    connector = await OpenNewConnector(conn, timeout, async, cancellationToken);
+                    if (connector != null)
+                    {
+                        connector.Connection = conn;
+                        conn.Connector = connector;
+
+                        return connector;
+                    }
+
+                    // We're at max capacity. Block on the idle channel with a timeout.
+                    // Note that Channels guarantee fair FIFO behavior to callers of ReadAsync (first-come first-
+                    // served), which is crucial to us.
+                    var timeoutSource = new CancellationTokenSource(timeout.TimeLeft);
+                    var timeoutToken = timeoutSource.Token;
+                    using var _ = cancellationToken.Register(cts => ((CancellationTokenSource)cts!).Cancel(), timeoutSource);
+
+                    try
+                    {
+                        if (async)
+                        {
+                            connector = await _idleConnectorReader.ReadAsync(timeoutToken);
+                            if (CheckIdleConnector(connector))
+                            {
+                                // TODO: Duplicated with above
+                                connector.Connection = conn;
+                                conn.Connector = connector;
+
+                                return connector;
+                            }
+                        }
+                        else
+                        {
+                            // Channels don't have a sync API. To avoid sync-over-async issues, we use a special single-
+                            // thread synchronization context which ensures that callbacks are executed on a dedicated
+                            // thread.
+
+                            using (SingleThreadSynchronizationContext.Enter())
+                            {
+                                connector = _idleConnectorReader.ReadAsync(timeoutToken)
+                                    .AsTask().GetAwaiter().GetResult();
+                                if (CheckIdleConnector(connector))
+                                {
+                                    // TODO: Duplicated with above
+                                    connector.Connection = conn;
+                                    conn.Connector = connector;
+
+                                    return connector;
+                                }
+                            }
+                        }
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        Debug.Assert(timeoutToken.IsCancellationRequested);
+                        throw new NpgsqlException(
+                            $"The connection pool has been exhausted, either raise MaxPoolSize (currently {_max}) " +
+                            $"or Timeout (currently {Settings.Timeout} seconds)");
+                    }
+                    catch (ChannelClosedException)
+                    {
+                        throw new NpgsqlException("The connection pool has been shut down.");
+                    }
+
+                    // If we're here, our waiting attempt on the idle connector channel was released with a null
+                    // (or bad connector). Check again if a new idle connector has appeared since we last checked,
+                    // and loop again.
+                    if (TryGetIdleConnector(out connector))
+                    {
+                        connector.Connection = conn;
+                        conn.Connector = connector;
+
+                        return connector;
+                    }
+                }
+            }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal bool TryAllocateFast(NpgsqlConnection conn, [NotNullWhen(true)] out NpgsqlConnector? connector)
+        bool TryGetIdleConnector([NotNullWhen(true)] out NpgsqlConnector? connector)
         {
-            // Idle may indicate that there are idle connectors, with the subsequent scan failing to find any.
-            // This can happen because of race conditions with Release(), which updates Idle before actually putting
-            // the connector in the list, or because of other allocation attempts, which remove the connector from
-            // the idle list before updating Idle.
-            // Loop until either State.Idle is 0 or you manage to remove a connector.
-            connector = null;
-            var spinner = new SpinWait();
-            var idle = _idle;
-            while (Volatile.Read(ref State.Idle) > 0)
+            while (_idleConnectorReader.TryRead(out var nullableConnector))
             {
-                for (var i = 0; connector == null && i < idle.Length; i++)
+                if (CheckIdleConnector(nullableConnector))
                 {
-                    // First check without an Interlocked operation, it's faster
-                    if (Volatile.Read(ref idle[i]) == null)
-                        continue;
-
-                    // If we saw a connector in this slot, atomically exchange it with a null.
-                    // Either we get a connector out which we can use, or we get null because
-                    // someone has taken it in the meanwhile. Either way put a null in its place.
-                    connector = Interlocked.Exchange(ref idle[i], null);
+                    connector = nullableConnector;
+                    return true;
                 }
-
-                if (connector == null)
-                {
-                    spinner.SpinOnce();
-                    continue;
-                }
-
-                // An connector could be broken because of a keepalive that occurred while it was
-                // idling in the pool
-                // TODO: Consider removing the pool from the keepalive code. The following branch is simply irrelevant
-                // if keepalive isn't turned on.
-                if (connector.IsBroken)
-                {
-                    CloseConnector(connector, true);
-                    continue;
-                }
-
-                connector.Connection = conn;
-
-                // We successfully extracted an idle connector, update state
-                Interlocked.Decrement(ref State.Idle);
-                CheckInvariants(State);
-                return true;
             }
 
             connector = null;
             return false;
         }
 
-        internal async ValueTask<NpgsqlConnector> AllocateLong(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        bool CheckIdleConnector([NotNullWhen(true)] NpgsqlConnector? connector)
         {
-            // No idle connector was found in the pool.
-            // We now loop until one of three things happen:
-            // 1. The pool isn't at max capacity (Open < Max), so we can create a new physical connection.
-            // 2. The pool is at maximum capacity and there are no idle connectors (Open - Idle == Max),
-            // so we enqueue an open attempt into the waiting queue, so that the next release will unblock it.
-            // 3. An connector makes it into the idle list (race condition with another Release()).
-            while (true)
+            Interlocked.Decrement(ref _idleCount);
+
+            if (connector is null)
+                return false;
+
+            // An connector could be broken because of a keepalive that occurred while it was
+            // idling in the pool
+            // TODO: Consider removing the pool from the keepalive code. The following branch is simply irrelevant
+            // if keepalive isn't turned on.
+            if (connector.IsBroken)
             {
-                NpgsqlConnector? connector;
-
-                var (openCount, idleCount, busyCount) = State;
-                if (openCount < _max)
-                {
-                    // We're under the pool's max capacity, "allocate" a slot for a new physical connection.
-                    // Don't spin for this https://github.com/dotnet/coreclr/pull/21437
-                    var prevOpenCount = openCount;
-                    while (true)
-                    {
-                        var currentOpenCount = prevOpenCount;
-                        prevOpenCount = Interlocked.CompareExchange(ref State.Open, currentOpenCount + 1, currentOpenCount);
-                        // Either we succeeded or someone else did and we're at max opens, break.
-                        if (prevOpenCount == currentOpenCount || prevOpenCount == _max) break;
-                    }
-                    // Restart the outer loop if we're at max opens.
-                    if (prevOpenCount == _max) continue;
-
-                    try
-                    {
-                        // We've managed to increase the open counter, open a physical connections.
-                        connector = new NpgsqlConnector(conn) { ClearCounter = _clearCounter };
-                        await connector.Open(timeout, async, cancellationToken);
-                    }
-                    catch
-                    {
-                        // Physical open failed, decrement the open and busy counter back down.
-                        conn.Connector = null;
-                        Interlocked.Decrement(ref State.Open);
-                        ReleaseOneWaiter();
-                        throw;
-                    }
-
-                    // We immediately store the connector as well, assigning it an index
-                    // that will be used during the lifetime of the connector for both _idle and _open.
-                    for (var i = 0; i < _open.Length; i++)
-                    {
-                        if (Interlocked.CompareExchange(ref _open[i], connector, null) == null)
-                        {
-                            connector.PoolIndex = i;
-                            break;
-                        }
-                    }
-                    Debug.Assert(connector.PoolIndex != int.MaxValue);
-
-                    // Only start pruning if it was this thread that incremented open count past _min.
-                    if (prevOpenCount == _min)
-                        EnablePruning();
-                    CheckInvariants(State);
-
-                    return connector;
-                }
-
-                if (busyCount == _max)
-                {
-                    // Pool is exhausted.
-                    // Enqueue an allocate attempt into the waiting queue so that the next release will unblock us.
-                    var tcs = new TaskCompletionSource<NpgsqlConnector?>(TaskCreationOptions.RunContinuationsAsynchronously);
-                    _waiting.Enqueue((tcs, async));
-
-                    // Scenario: pre-empted waiter
-                    // Say there's a pre-emption of the thread right between our State.Busy read and our Enqueue.
-                    // If that happens and the waiter queue is empty before we enqueue we couldn't signal to any
-                    // releases we are a new waiter, causing any to add their connectors back into the idle pool.
-                    // We do a correction for that right here after our own enqueue by re-checking Idle.
-                    // We also check Open as we may have raced a connector close.
-                    var (racedOpen, racedIdle, _) = State;
-                    if (racedIdle > 0 || racedOpen < _max)
-                    {
-                        // If setting this fails we have been raced to completion by a Release().
-                        // Otherwise we have an idle connector or open slot to try and race to.
-                        if (tcs.TrySetCanceled())
-                            continue;
-
-                        connector = tcs.Task.Result;
-
-                        // Our task completion may contain a null in order to unblock us, allowing us to try
-                        // allocating again.
-                        if (connector == null)
-                            continue;
-
-                        // Note that we don't update counters or any state since the connector is being
-                        // handed off from one open connection to another.
-                        connector.Connection = conn;
-                        return connector;
-                    }
-
-                    try
-                    {
-                        if (async)
-                        {
-                            if (timeout.IsSet)
-                            {
-                                // Use Task.Delay to implement the timeout, but cancel the timer if we actually
-                                // do complete successfully
-                                var delayCancellationToken = new CancellationTokenSource();
-                                using (cancellationToken.Register(s => ((CancellationTokenSource)s!).Cancel(), delayCancellationToken))
-                                {
-                                    var timeLeft = timeout.TimeLeft;
-                                    if (timeLeft <= TimeSpan.Zero || await Task.WhenAny(tcs.Task, Task.Delay(timeLeft, delayCancellationToken.Token)) != tcs.Task)
-                                    {
-                                        // Delay task completed first, either because of a user cancellation or an actual timeout
-                                        cancellationToken.ThrowIfCancellationRequested();
-                                        throw new NpgsqlException(
-                                            $"The connection pool has been exhausted, either raise MaxPoolSize (currently {_max}) or Timeout (currently {Settings.Timeout} seconds)");
-                                    }
-                                }
-
-                                delayCancellationToken.Cancel();
-                            }
-                            else
-                            {
-                                using (cancellationToken.Register(s => ((TaskCompletionSource<NpgsqlConnector?>)s!).SetCanceled(), tcs))
-                                    await tcs.Task;
-                            }
-                        }
-                        else
-                        {
-                            if (timeout.IsSet)
-                            {
-                                var timeLeft = timeout.TimeLeft;
-                                if (timeLeft <= TimeSpan.Zero || !tcs.Task.Wait(timeLeft))
-                                    throw new NpgsqlException(
-                                        $"The connection pool has been exhausted, either raise MaxPoolSize (currently {_max}) or Timeout (currently {Settings.Timeout} seconds)");
-                            }
-                            else
-                                tcs.Task.Wait();
-                        }
-                    }
-                    catch
-                    {
-                        // We're here if the timeout expired or the cancellation token was triggered.
-                        // Transition our Task to cancelled, so that the next time someone releases
-                        // a connection they'll skip over it.
-                        tcs.TrySetCanceled();
-
-                        // There's still a chance of a race condition, whereby the task was transitioned to
-                        // completed in the meantime.
-                        if (tcs.Task.Status != TaskStatus.RanToCompletion)
-                            throw;
-                    }
-
-                    // Note that we don't update counters since the connector is being
-                    // handed off from one open connection to another.
-                    Debug.Assert(tcs.Task.IsCompleted);
-                    connector = tcs.Task.Result;
-
-                    if (connector == null)
-                        continue;
-
-                    connector.Connection = conn;
-
-                    return connector;
-                }
-
-                // We didn't create a new connector or start waiting, which means there's a new idle connector,
-                // or we raced a connector close, loop again as we could potentially open a new connector.
-                if (idleCount > 0 && TryAllocateFast(conn, out connector))
-                    return connector;
+                CloseConnector(connector);
+                return false;
             }
 
-            // Cannot be here
+            Debug.Assert(connector.State == ConnectorState.Ready,
+                $"Got idle connector but {nameof(connector.State)} is {connector.State}");
+            Debug.Assert(connector.CommandsInFlightCount == 0,
+                $"Got idle connector but {nameof(connector.CommandsInFlightCount)} is {connector.CommandsInFlightCount}");
+            Debug.Assert(connector.MultiplexAsyncWritingLock == 0,
+                $"Got idle connector but {nameof(connector.MultiplexAsyncWritingLock)} is 1");
+
+            return true;
         }
 
-        internal void Release(NpgsqlConnector connector)
+        async ValueTask<NpgsqlConnector?> OpenNewConnector(
+            NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
         {
+            // As long as we're under max capacity, attempt to increase the connector count and open a new connection.
+            for (var numConnectors = _numConnectors; numConnectors < _max; numConnectors = _numConnectors)
+            {
+                // Note that we purposefully don't use SpinWait for this: https://github.com/dotnet/coreclr/pull/21437
+                if (Interlocked.CompareExchange(ref _numConnectors, numConnectors + 1, numConnectors) != numConnectors)
+                    continue;
+
+                try
+                {
+                    // We've managed to increase the open counter, open a physical connections.
+                    var connector = new NpgsqlConnector(conn) { ClearCounter = _clearCounter };
+                    await connector.Open(timeout, async, cancellationToken);
+
+                    var i = 0;
+                    for (; i < _max; i++)
+                        if (Interlocked.CompareExchange(ref _connectors[i], connector, null) == null)
+                            break;
+                    if (i == _max)
+                        throw new Exception($"Could not find free slot in {_connectors} when opening. Please report a bug.");
+
+                    // Only start pruning if it was this thread that incremented open count past _min.
+                    if (numConnectors == _min)
+                        EnablePruning();
+
+                    return connector;
+                }
+                catch
+                {
+                    // Physical open failed, decrement the open and busy counter back down.
+                    conn.Connector = null;
+                    Interlocked.Decrement(ref _numConnectors);
+
+                    // In case there's a waiting attempt on the channel, we write a null to the idle connector channel
+                    // to wake it up, so it will try opening (and probably throw immediately)
+                    IdleConnectorWriter.TryWrite(null);
+
+                    throw;
+                }
+            }
+
+            return null;
+        }
+
+        internal void Return(NpgsqlConnector connector)
+        {
+            Debug.Assert(!connector.InTransaction);
+            Debug.Assert(connector.MultiplexAsyncWritingLock == 0 || connector.IsBroken || connector.IsClosed,
+                $"About to return multiplexing connector to the pool, but {nameof(connector.MultiplexAsyncWritingLock)} is {connector.MultiplexAsyncWritingLock}");
+
             // If Clear/ClearAll has been been called since this connector was first opened,
             // throw it away. The same if it's broken (in which case CloseConnector is only
             // used to update state/perf counter).
             if (connector.ClearCounter < _clearCounter || connector.IsBroken)
             {
-                CloseConnector(connector, false);
+                CloseConnector(connector);
                 return;
             }
 
-            connector.Reset();
-
-            // If there are any pending waiters we hand the connector off to them directly.
-            while (_waiting.TryDequeue(out var waitingOpenAttempt))
-            {
-                var tcs = waitingOpenAttempt.TaskCompletionSource;
-
-                // We have a pending waiter. "Complete" it, handing off the connector.
-                if (tcs.TrySetResult(connector))
-                    return;
-
-                // If the open attempt timed out, the Task's state will be set to Canceled and our
-                // TrySetResult fails. Try again.
-                Debug.Assert(tcs.Task.IsCanceled);
-            }
-
-            // Scenario: pre-empted release
-            // Right here between our check for waiters and our signalling decrement for storing
-            // a connector there could have been a new waiter enqueueing, we compensate at the end.
-
-            // If we're here, we put the connector back in the idle list
-            // We increment Idle, any allocate that is racing us will not match Busy == _max
-            // and will not enqueue but try to get our connector.
-            Interlocked.Increment(ref State.Idle);
-            Volatile.Write(ref _idle[connector.PoolIndex], connector);
-            CheckInvariants(State);
-
-            // Scenario: pre-empted release
-            // We checked at the start of release if there were any waiters.
-            // Unblock any new waiter that raced us by handing it a null result.
-            // We try to complete exactly one waiter as long as there are any in the queue, if any came in at all.
-            // The performance of trying this after each _idle release is fine as the queue is very uncontended.
-            // In the .Net Core BCL, 3.0 as of writing, TryDequeue for the empty path is as fast as doing IsEmpty.
-            ReleaseOneWaiter();
-
-            // Scenario: pre-empted waiter
-            // Could have a pre-empted waiter, that didn't enqueue yet it wakes up right after
-            // our correcting dequeue, it will do its own check after that Enqueue for Idle > 0.
+            // Statement order is important since we have synchronous completions on the channel.
+            Interlocked.Increment(ref _idleCount);
+            var written = IdleConnectorWriter.TryWrite(connector);
+            Debug.Assert(written);
         }
 
-        void CloseConnector(NpgsqlConnector connector, bool wasIdle)
+        internal void Clear()
+        {
+            Interlocked.Increment(ref _clearCounter);
+
+            var count = _idleCount;
+            while (count > 0 && _idleConnectorReader.TryRead(out var connector))
+            {
+                if (CheckIdleConnector(connector))
+                {
+                    CloseConnector(connector);
+                    count--;
+                }
+            }
+        }
+
+        void CloseConnector(NpgsqlConnector connector)
         {
             try
             {
@@ -434,48 +400,71 @@ namespace Npgsql
             }
             catch (Exception e)
             {
-                Log.Warn("Exception while closing outdated connector", e, connector.Id);
+                Log.Warn("Exception while closing connector", e, connector.Id);
             }
 
-            _open[connector.PoolIndex] = null;
+            // If a connector has been closed for any reason, we write a null to the idle connector channel to wake up
+            // a waiter, who will open a new physical connection
+            IdleConnectorWriter.TryWrite(null);
 
-            int openCount;
-            if (wasIdle)
-            {
-                var prevAll = Volatile.Read(ref State.All);
-                var prevState = new PoolState { All = prevAll };
-                while (true)
-                {
-                    var state = new PoolState { Open = prevState.Open - 1, Idle = prevState.Idle - 1 };
-                    prevAll = Interlocked.CompareExchange(ref State.All, state.All, prevState.All);
-                    if (prevAll == prevState.All) break;
-
-                    prevState = new PoolState { All = prevAll };
-                }
-                openCount = prevState.Open - 1;
-            }
-            else
-                openCount = Interlocked.Decrement(ref State.Open);
-
-            // Unblock a single waiter, if any, to get the slot that just opened up.
-            ReleaseOneWaiter();
-
-            // Only turn off the timer one time, when it was this Close that brought Open back to _min.
-            if (openCount == _min)
-                DisablePruning();
-            CheckInvariants(State);
-        }
-
-        /// <summary>
-        /// Dequeues a single waiter and signals that it should re-attempt to allocate again. Needed in various
-        /// race conditions.
-        /// </summary>
-        void ReleaseOneWaiter()
-        {
-            while (_waiting.TryDequeue(out var waiter))
-                if (waiter.TaskCompletionSource.TrySetResult(null))
+            var i = 0;
+            for (; i < _max; i++)
+                if (Interlocked.CompareExchange(ref _connectors[i], null, connector) == connector)
                     break;
+            if (i == _max)
+                throw new Exception($"Could not find connector in {_connectors} when closing. Please report a bug.");
+
+            var numConnectors = Interlocked.Decrement(ref _numConnectors);
+            Debug.Assert(numConnectors >= 0);
+            // Only turn off the timer one time, when it was this Close that brought Open back to _min.
+            if (numConnectors == _min)
+                DisablePruning();
         }
+
+        #region Pending Enlisted Connections
+
+        internal void AddPendingEnlistedConnector(NpgsqlConnector connector, Transaction transaction)
+        {
+            lock (_pendingEnlistedConnectors)
+            {
+                if (!_pendingEnlistedConnectors.TryGetValue(transaction, out var list))
+                    list = _pendingEnlistedConnectors[transaction] = new List<NpgsqlConnector>();
+                list.Add(connector);
+            }
+        }
+
+        internal void TryRemovePendingEnlistedConnector(NpgsqlConnector connector, Transaction transaction)
+        {
+            lock (_pendingEnlistedConnectors)
+            {
+                if (!_pendingEnlistedConnectors.TryGetValue(transaction, out var list))
+                    return;
+                list.Remove(connector);
+                if (list.Count == 0)
+                    _pendingEnlistedConnectors.Remove(transaction);
+            }
+        }
+
+        internal bool TryRentEnlistedPending(Transaction transaction, [NotNullWhen(true)] out NpgsqlConnector? connector)
+        {
+            lock (_pendingEnlistedConnectors)
+            {
+                if (!_pendingEnlistedConnectors.TryGetValue(transaction, out var list))
+                {
+                    connector = null;
+                    return false;
+                }
+                connector = list[list.Count - 1];
+                list.RemoveAt(list.Count - 1);
+                if (list.Count == 0)
+                    _pendingEnlistedConnectors.Remove(transaction);
+                return true;
+            }
+        }
+
+        #endregion
+
+        #region Pruning
 
         // Manual reactivation of timer happens in callback
         void EnablePruning()
@@ -509,13 +498,11 @@ namespace Npgsql
                     return;
 
                 var sampleIndex = pool._pruningSampleIndex;
-                samples[sampleIndex] = pool.State.Idle;
-
+                samples[sampleIndex] = pool._idleCount;
                 if (sampleIndex != pool._pruningSampleSize - 1)
                 {
                     pool._pruningSampleIndex = sampleIndex + 1;
                     pool._pruningTimer.Change(pool._pruningSamplingInterval, Timeout.InfiniteTimeSpan);
-
                     return;
                 }
 
@@ -526,102 +513,18 @@ namespace Npgsql
                 pool._pruningTimer.Change(pool._pruningSamplingInterval, Timeout.InfiniteTimeSpan);
             }
 
-            var idle = pool._idle;
-            for (var i = 0; i < idle.Length; i++)
+            while (toPrune > 0 &&
+                   pool._numConnectors <= pool._min &&
+                   pool._idleConnectorReader.TryRead(out var connector) &&
+                   connector != null)
             {
-                if (Volatile.Read(ref pool.State.Open) <= pool._min || toPrune == 0)
-                    return;
-
-                var connector = Interlocked.Exchange(ref idle[i], null);
-                if (connector == null) continue;
-
-                toPrune -= 1;
-                pool.CloseConnector(connector, true);
+                pool.CloseConnector(connector);
+                toPrune--;
             }
         }
-
-        internal void Clear()
-        {
-            for (var i = 0; i < _idle.Length; i++)
-            {
-                var connector = Interlocked.Exchange(ref _idle[i], null);
-                if (connector != null)
-                    CloseConnector(connector, true);
-            }
-
-            _clearCounter++;
-        }
-
-        #region Pending Enlisted Connections
-
-        internal void AddPendingEnlistedConnector(NpgsqlConnector connector, Transaction transaction)
-        {
-            lock (_pendingEnlistedConnectors)
-            {
-                if (!_pendingEnlistedConnectors.TryGetValue(transaction, out var list))
-                    list = _pendingEnlistedConnectors[transaction] = new List<NpgsqlConnector>();
-                list.Add(connector);
-            }
-        }
-
-        internal void TryRemovePendingEnlistedConnector(NpgsqlConnector connector, Transaction transaction)
-        {
-            lock (_pendingEnlistedConnectors)
-            {
-                if (!_pendingEnlistedConnectors.TryGetValue(transaction, out var list))
-                    return;
-                list.Remove(connector);
-                if (list.Count == 0)
-                    _pendingEnlistedConnectors.Remove(transaction);
-            }
-        }
-
-        internal NpgsqlConnector? TryAllocateEnlistedPending(Transaction transaction)
-        {
-            lock (_pendingEnlistedConnectors)
-            {
-                if (!_pendingEnlistedConnectors.TryGetValue(transaction, out var list))
-                    return null;
-                var connector = list[list.Count - 1];
-                list.RemoveAt(list.Count - 1);
-                if (list.Count == 0)
-                    _pendingEnlistedConnectors.Remove(transaction);
-                return connector;
-            }
-        }
-
-        // Note that while the dictionary is thread-safe, we assume that the lists it contains don't need to be
-        // (i.e. access to connectors of a specific transaction won't be concurrent)
-        readonly Dictionary<Transaction, List<NpgsqlConnector>> _pendingEnlistedConnectors
-            = new Dictionary<Transaction, List<NpgsqlConnector>>();
-
-        #endregion
-
-        #region Misc
 
         static int DivideRoundingUp(int value, int divisor) => 1 + (value - 1) / divisor;
 
-        [Conditional("DEBUG")]
-        void CheckInvariants(PoolState state)
-        {
-            if (state.Open > _max)
-                throw new NpgsqlException($"Pool is over capacity (Total={state.Open}, Max={_max})");
-            if (state.Open < 0)
-                throw new NpgsqlException("Open is negative");
-            if (state.Idle < 0)
-                throw new NpgsqlException("Idle is negative");
-            if (state.Open - state.Idle < 0)
-                throw new NpgsqlException("Busy is negative");
-        }
-
-        public void Dispose() => _pruningTimer?.Dispose();
-
-        public override string ToString()
-        {
-            var (open, idle, busy, waiters) = Statistics;
-            return $"[{open} total, {idle} idle, {busy} busy, {waiters} waiters]";
-        }
-
-        #endregion Misc
+        #endregion
     }
 }

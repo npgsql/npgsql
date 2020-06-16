@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using NetTopologySuite.Geometries;
 using NetTopologySuite.Geometries.Implementation;
 using Npgsql.Tests;
@@ -244,10 +245,10 @@ namespace Npgsql.PluginTests
         }
 
         [OneTimeSetUp]
-        public void SetUp()
+        public async Task SetUp()
         {
-            using var conn = base.OpenConnection();
-            TestUtil.EnsureExtension(conn, "postgis");
+            using var conn = await base.OpenConnectionAsync();
+            await TestUtil.EnsureExtensionAsync(conn, "postgis");
         }
     }
 }

@@ -13,11 +13,6 @@ namespace Npgsql
     {
         readonly Dictionary<string, int> _paramIndexMap = new Dictionary<string, int>();
         readonly StringBuilder _rewrittenSql = new StringBuilder();
-        internal bool StandardConformingStrings { get; set; } = true;
-
-        List<NpgsqlStatement> _statements = default!;
-        NpgsqlStatement _statement = default!;
-        int _statementIndex;
 
         /// <summary>
         /// Receives a raw SQL query as passed in by the user, and performs some processing necessary
@@ -30,15 +25,23 @@ namespace Npgsql
         /// or an empty <see cref="NpgsqlParameterCollection"/> if deriveParameters is set to true.</param>
         /// <param name="statements">An empty list to be populated with the statements parsed by this method</param>
         /// <param name="deriveParameters">A bool indicating whether parameters contains a list of preconfigured parameters or an empty list to be filled with derived parameters.</param>
-        internal void ParseRawQuery(string sql, NpgsqlParameterCollection parameters, List<NpgsqlStatement> statements, bool deriveParameters = false)
+        internal void ParseRawQuery(
+            string sql,
+            NpgsqlParameterCollection parameters,
+            List<NpgsqlStatement> statements,
+            bool deriveParameters = false)
             => ParseRawQuery(sql.AsSpan(), parameters, statements, deriveParameters);
 
-        void ParseRawQuery(ReadOnlySpan<char> sql, NpgsqlParameterCollection parameters, List<NpgsqlStatement> statements, bool deriveParameters)
+        void ParseRawQuery(
+            ReadOnlySpan<char> sql,
+            NpgsqlParameterCollection parameters,
+            List<NpgsqlStatement> statements,
+            bool deriveParameters)
         {
             Debug.Assert(deriveParameters == false || parameters.Count == 0);
 
-            _statements = statements;
-            _statementIndex = -1;
+            NpgsqlStatement statement = null!;
+            var statementIndex = -1;
             MoveToNextStatement();
 
             var currCharOfs = 0;
@@ -65,10 +68,7 @@ namespace Npgsql
                 case '-':
                     goto LineCommentBegin;
                 case '\'':
-                    if (StandardConformingStrings)
-                        goto Quoted;
-                    else
-                        goto Escaped;
+                    goto Quoted;
                 case '$':
                     if (!IsIdentifier(lastChar))
                         goto DollarQuotedStart;
@@ -161,8 +161,8 @@ namespace Npgsql
                         if (!parameter.IsInputDirection)
                             throw new Exception($"Parameter '{paramName}' referenced in SQL but is an out-only parameter");
 
-                        _statement.InputParameters.Add(parameter);
-                        index = _paramIndexMap[paramName] = _statement.InputParameters.Count;
+                        statement.InputParameters.Add(parameter);
+                        index = _paramIndexMap[paramName] = statement.InputParameters.Count;
                     }
                     _rewrittenSql.Append('$');
                     _rewrittenSql.Append(index);
@@ -411,7 +411,7 @@ namespace Npgsql
 
         SemiColon:
             _rewrittenSql.Append(sql.Slice(currTokenBeg, currCharOfs - currTokenBeg - 1));
-            _statement.SQL = _rewrittenSql.ToString();
+            statement.SQL = _rewrittenSql.ToString();
             while (currCharOfs < end)
             {
                 ch = sql[currCharOfs];
@@ -427,32 +427,32 @@ namespace Npgsql
                     MoveToNextStatement();
                 goto None;
             }
-            if (statements.Count > _statementIndex + 1)
-                statements.RemoveRange(_statementIndex + 1, statements.Count - (_statementIndex + 1));
+            if (statements.Count > statementIndex + 1)
+                statements.RemoveRange(statementIndex + 1, statements.Count - (statementIndex + 1));
             return;
 
         Finish:
             _rewrittenSql.Append(sql.Slice(currTokenBeg, end - currTokenBeg));
-            _statement.SQL = _rewrittenSql.ToString();
-            if (statements.Count > _statementIndex + 1)
-               statements.RemoveRange(_statementIndex + 1, statements.Count - (_statementIndex + 1));
-        }
+            statement.SQL = _rewrittenSql.ToString();
+            if (statements.Count > statementIndex + 1)
+               statements.RemoveRange(statementIndex + 1, statements.Count - (statementIndex + 1));
 
-        void MoveToNextStatement()
-        {
-            _statementIndex++;
-            if (_statements.Count > _statementIndex)
+            void MoveToNextStatement()
             {
-                _statement = _statements[_statementIndex];
-                _statement.Reset();
+                statementIndex++;
+                if (statements.Count > statementIndex)
+                {
+                    statement = statements[statementIndex];
+                    statement.Reset();
+                }
+                else
+                {
+                    statement = new NpgsqlStatement();
+                    statements.Add(statement);
+                }
+                _paramIndexMap.Clear();
+                _rewrittenSql.Clear();
             }
-            else
-            {
-                _statement = new NpgsqlStatement();
-                _statements.Add(_statement);
-            }
-            _paramIndexMap.Clear();
-            _rewrittenSql.Clear();
         }
 
         static bool IsLetter(char ch)

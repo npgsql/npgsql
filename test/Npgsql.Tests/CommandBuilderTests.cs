@@ -1,21 +1,29 @@
 ﻿using System;
 using System.Data;
+using System.Threading.Tasks;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 using NUnit.Framework;
+using static Npgsql.Tests.TestUtil;
+using static Npgsql.Util.Statics;
 
 namespace Npgsql.Tests
 {
     class CommandBuilderTests : TestBase
     {
+        // TODO: REMOVE ME
+        bool IsMultiplexing = false;
+
         [Test, Description("Tests function parameter derivation with IN, OUT and INOUT parameters")]
-        public void DeriveFunctionParameters_Various()
+        public async Task DeriveFunctionParameters_Various()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
+                await using var _ = GetTempFunctionName(conn, out var function);
+
                 // This function returns record because of the two Out (InOut & Out) parameters
-                conn.ExecuteNonQuery(@"
-                    CREATE OR REPLACE FUNCTION pg_temp.func(IN param1 INT, OUT param2 text, INOUT param3 INT) RETURNS record AS
+                await conn.ExecuteNonQueryAsync($@"
+                    CREATE OR REPLACE FUNCTION {function}(IN param1 INT, OUT param2 text, INOUT param3 INT) RETURNS record AS
                     '
                     BEGIN
                             param2 = ''sometext'';
@@ -24,7 +32,7 @@ namespace Npgsql.Tests
                     ' LANGUAGE 'plpgsql';
                 ");
 
-                var cmd = new NpgsqlCommand("pg_temp.func", conn) { CommandType = CommandType.StoredProcedure };
+                var cmd = new NpgsqlCommand(function, conn) { CommandType = CommandType.StoredProcedure };
                 NpgsqlCommandBuilder.DeriveParameters(cmd);
                 Assert.That(cmd.Parameters, Has.Count.EqualTo(3));
                 Assert.That(cmd.Parameters[0].Direction, Is.EqualTo(ParameterDirection.Input));
@@ -52,13 +60,15 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Tests function parameter derivation with IN-only parameters")]
-        public void DeriveFunctionParameters_InOnly()
+        public async Task DeriveFunctionParameters_InOnly()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
+                await using var _ = GetTempFunctionName(conn, out var function);
+
                 // This function returns record because of the two Out (InOut & Out) parameters
-                conn.ExecuteNonQuery(@"
-                    CREATE OR REPLACE FUNCTION pg_temp.func(IN param1 INT, IN param2 INT) RETURNS int AS
+                await conn.ExecuteNonQueryAsync($@"
+                    CREATE OR REPLACE FUNCTION {function}(IN param1 INT, IN param2 INT) RETURNS int AS
                     '
                     BEGIN
                     RETURN param1 + param2;
@@ -66,25 +76,27 @@ namespace Npgsql.Tests
                     ' LANGUAGE 'plpgsql';
                 ");
 
-                var cmd = new NpgsqlCommand("pg_temp.func", conn) { CommandType = CommandType.StoredProcedure };
+                var cmd = new NpgsqlCommand(function, conn) { CommandType = CommandType.StoredProcedure };
                 NpgsqlCommandBuilder.DeriveParameters(cmd);
                 Assert.That(cmd.Parameters, Has.Count.EqualTo(2));
                 Assert.That(cmd.Parameters[0].Direction, Is.EqualTo(ParameterDirection.Input));
                 Assert.That(cmd.Parameters[1].Direction, Is.EqualTo(ParameterDirection.Input));
                 cmd.Parameters[0].Value = 5;
                 cmd.Parameters[1].Value = 4;
-                Assert.That(cmd.ExecuteScalar(), Is.EqualTo(9));
+                Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(9));
             }
         }
 
         [Test, Description("Tests function parameter derivation with no parameters")]
-        public void DeriveFunctionParameters_NoParams()
+        public async Task DeriveFunctionParameters_NoParams()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
+                await using var _ = GetTempFunctionName(conn, out var function);
+
                 // This function returns record because of the two Out (InOut & Out) parameters
-                conn.ExecuteNonQuery(@"
-                    CREATE OR REPLACE FUNCTION pg_temp.func() RETURNS int AS
+                await conn.ExecuteNonQueryAsync($@"
+                    CREATE OR REPLACE FUNCTION {function}() RETURNS int AS
                     '
                     BEGIN
                     RETURN 4;
@@ -92,26 +104,28 @@ namespace Npgsql.Tests
                     ' LANGUAGE 'plpgsql';
                 ");
 
-                var cmd = new NpgsqlCommand("pg_temp.func", conn) { CommandType = CommandType.StoredProcedure };
+                var cmd = new NpgsqlCommand(function, conn) { CommandType = CommandType.StoredProcedure };
                 NpgsqlCommandBuilder.DeriveParameters(cmd);
                 Assert.That(cmd.Parameters, Is.Empty);
             }
         }
 
         [Test]
-        public void DeriveFunctionParameters_CaseSensitiveName()
+        public async Task DeriveFunctionParameters_CaseSensitiveName()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery(
-                    @"CREATE OR REPLACE FUNCTION pg_temp.""FunctionCaseSensitive""(int4, text) returns int4 as
+                await conn.ExecuteNonQueryAsync(
+                    @"CREATE OR REPLACE FUNCTION ""FunctionCaseSensitive""(int4, text) returns int4 as
                               $BODY$
                               begin
                                 return 0;
                               end
                               $BODY$
                               language 'plpgsql';");
-                var command = new NpgsqlCommand("pg_temp.\"FunctionCaseSensitive\"", conn) { CommandType = CommandType.StoredProcedure };
+                await using var _ = DeferAsync(() => conn.ExecuteNonQueryAsync(@"DROP FUNCTION ""FunctionCaseSensitive"""));
+
+                var command = new NpgsqlCommand(@"""FunctionCaseSensitive""", conn) { CommandType = CommandType.StoredProcedure };
                 NpgsqlCommandBuilder.DeriveParameters(command);
                 Assert.AreEqual(NpgsqlDbType.Integer, command.Parameters[0].NpgsqlDbType);
                 Assert.AreEqual(NpgsqlDbType.Text, command.Parameters[1].NpgsqlDbType);
@@ -119,12 +133,14 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void DeriveFunctionParameters_ParameterNameFromFunction()
+        public async Task DeriveFunctionParameters_ParameterNameFromFunction()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery(@"CREATE OR REPLACE FUNCTION pg_temp.testoutparameter2(x int, y int, out sum int, out product int) as 'select $1 + $2, $1 * $2' language 'sql';");
-                var command = new NpgsqlCommand("pg_temp.testoutparameter2", conn) { CommandType = CommandType.StoredProcedure };
+                await using var _ = GetTempFunctionName(conn, out var function);
+
+                await conn.ExecuteNonQueryAsync($@"CREATE OR REPLACE FUNCTION {function}(x int, y int, out sum int, out product int) as 'select $1 + $2, $1 * $2' language 'sql';");
+                var command = new NpgsqlCommand(function, conn) { CommandType = CommandType.StoredProcedure };
                 NpgsqlCommandBuilder.DeriveParameters(command);
                 Assert.AreEqual("x", command.Parameters[0].ParameterName);
                 Assert.AreEqual("y", command.Parameters[1].ParameterName);
@@ -132,9 +148,9 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void DeriveFunctionParameters_NonExistingFunction()
+        public async Task DeriveFunctionParameters_NonExistingFunction()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
                 var invalidCommandName = new NpgsqlCommand("invalidfunctionname", conn) { CommandType = CommandType.StoredProcedure };
                 Assert.That(() => NpgsqlCommandBuilder.DeriveParameters(invalidCommandName),
@@ -144,19 +160,20 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1212")]
-        public void DeriveFunctionParameters_TableParameters()
+        public async Task DeriveFunctionParameters_TableParameters()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                TestUtil.MinimumPgVersion(conn, "9.2.0");
+                MinimumPgVersion(conn, "9.2.0");
+                await using var _ = GetTempFunctionName(conn, out var function);
 
                 // This function returns record because of the two Out (InOut & Out) parameters
-                conn.ExecuteNonQuery(@"
-                    CREATE FUNCTION pg_temp.func(IN in1 INT) RETURNS TABLE(t1 INT, t2 INT) AS
+                await conn.ExecuteNonQueryAsync($@"
+                    CREATE FUNCTION {function}(IN in1 INT) RETURNS TABLE(t1 INT, t2 INT) AS
                       'SELECT in1,in1+1' LANGUAGE 'sql';
                 ");
 
-                var cmd = new NpgsqlCommand("pg_temp.func", conn) { CommandType = CommandType.StoredProcedure };
+                var cmd = new NpgsqlCommand(function, conn) { CommandType = CommandType.StoredProcedure };
                 NpgsqlCommandBuilder.DeriveParameters(cmd);
                 Assert.That(cmd.Parameters, Has.Count.EqualTo(3));
                 Assert.That(cmd.Parameters[0].Direction, Is.EqualTo(ParameterDirection.Input));
@@ -170,19 +187,22 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Tests function parameter derivation for quoted functions with double quotes in the name works")]
-        public void DeriveFunctionParameters_QuoteCharactersInFunctionName()
+        public async Task DeriveFunctionParameters_QuoteCharactersInFunctionName()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery(
-                    @"CREATE OR REPLACE FUNCTION pg_temp.""""""FunctionQuote""""CharactersInName""""""(int4, text) returns int4 as
+                var function = @"""""""FunctionQuote""""CharactersInName""""""";
+                await conn.ExecuteNonQueryAsync(
+                    $@"CREATE OR REPLACE FUNCTION {function}(int4, text) returns int4 as
                               $BODY$
                               begin
                                 return 0;
                               end
                               $BODY$
                               language 'plpgsql';");
-                var command = new NpgsqlCommand("pg_temp.\"\"\"FunctionQuote\"\"CharactersInName\"\"\"", conn) { CommandType = CommandType.StoredProcedure };
+                await using var _ = DeferAsync(() => conn.ExecuteNonQueryAsync("DROP FUNCTION " + function));
+
+                var command = new NpgsqlCommand(function, conn) { CommandType = CommandType.StoredProcedure };
                 NpgsqlCommandBuilder.DeriveParameters(command);
                 Assert.AreEqual(NpgsqlDbType.Integer, command.Parameters[0].NpgsqlDbType);
                 Assert.AreEqual(NpgsqlDbType.Text, command.Parameters[1].NpgsqlDbType);
@@ -190,19 +210,21 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Tests function parameter derivation for quoted functions with dots in the name works")]
-        public void DeriveFunctionParameters_DotCharacterInFunctionName()
+        public async Task DeriveFunctionParameters_DotCharacterInFunctionName()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery(
-                    @"CREATE OR REPLACE FUNCTION pg_temp.""My.Dotted.Function""(int4, text) returns int4 as
+                await conn.ExecuteNonQueryAsync(
+                    @"CREATE OR REPLACE FUNCTION ""My.Dotted.Function""(int4, text) returns int4 as
                               $BODY$
                               begin
                                 return 0;
                               end
                               $BODY$
                               language 'plpgsql';");
-                var command = new NpgsqlCommand("pg_temp.\"My.Dotted.Function\"", conn) { CommandType = CommandType.StoredProcedure };
+                await using var _ = DeferAsync(() => conn.ExecuteNonQueryAsync(@"DROP FUNCTION ""My.Dotted.Function"""));
+
+                var command = new NpgsqlCommand(@"""My.Dotted.Function""", conn) { CommandType = CommandType.StoredProcedure };
                 NpgsqlCommandBuilder.DeriveParameters(command);
                 Assert.AreEqual(NpgsqlDbType.Integer, command.Parameters[0].NpgsqlDbType);
                 Assert.AreEqual(NpgsqlDbType.Text, command.Parameters[1].NpgsqlDbType);
@@ -210,16 +232,19 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Tests if the right function according to search_path is used in function parameter derivation")]
-        public void DeriveFunctionParameters_CorrectSchemaResolution()
+        public async Task DeriveFunctionParameters_CorrectSchemaResolution()
         {
-            using (var conn = OpenConnection())
+            if (IsMultiplexing)
+                return;  // Uses search_path
+
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("DROP SCHEMA IF EXISTS schema1, schema2 CASCADE; CREATE SCHEMA schema1; CREATE SCHEMA schema2;");
-                try
-                {
-                    conn.ExecuteNonQuery(
-                        @"
-CREATE OR REPLACE FUNCTION schema1.redundantfunc() RETURNS int AS
+                await using var _ = await CreateTempSchema(conn, out var schema1);
+                await using var __ = await CreateTempSchema(conn, out var schema2);
+
+                await conn.ExecuteNonQueryAsync(
+                    $@"
+CREATE FUNCTION {schema1}.redundantfunc() RETURNS int AS
 $BODY$
 BEGIN
     RETURN 1;
@@ -227,7 +252,7 @@ END;
 $BODY$
 LANGUAGE 'plpgsql';
 
-CREATE OR REPLACE FUNCTION schema2.redundantfunc(IN param1 INT, IN param2 INT) RETURNS int AS
+CREATE FUNCTION {schema2}.redundantfunc(IN param1 INT, IN param2 INT) RETURNS int AS
 $BODY$
 BEGIN
 RETURN param1 + param2;
@@ -235,35 +260,28 @@ END;
 $BODY$
 LANGUAGE 'plpgsql';
 
-SET search_path TO schema2;
+SET search_path TO {schema2};
 ");
-                    var command = new NpgsqlCommand("redundantfunc", conn) { CommandType = CommandType.StoredProcedure };
-                    NpgsqlCommandBuilder.DeriveParameters(command);
-                    Assert.That(command.Parameters, Has.Count.EqualTo(2));
-                    Assert.That(command.Parameters[0].Direction, Is.EqualTo(ParameterDirection.Input));
-                    Assert.That(command.Parameters[1].Direction, Is.EqualTo(ParameterDirection.Input));
-                    command.Parameters[0].Value = 5;
-                    command.Parameters[1].Value = 4;
-                    Assert.That(command.ExecuteScalar(), Is.EqualTo(9));
-                }
-                finally
-                {
-                    if (conn.State == ConnectionState.Open)
-                        conn.ExecuteNonQuery("DROP SCHEMA IF EXISTS schema1, schema2 CASCADE");
-                }
+                var command = new NpgsqlCommand("redundantfunc", conn) { CommandType = CommandType.StoredProcedure };
+                NpgsqlCommandBuilder.DeriveParameters(command);
+                Assert.That(command.Parameters, Has.Count.EqualTo(2));
+                Assert.That(command.Parameters[0].Direction, Is.EqualTo(ParameterDirection.Input));
+                Assert.That(command.Parameters[1].Direction, Is.EqualTo(ParameterDirection.Input));
+                command.Parameters[0].Value = 5;
+                command.Parameters[1].Value = 4;
+                Assert.That(command.ExecuteScalar(), Is.EqualTo(9));
             }
         }
 
         [Test, Description("Tests if function parameter derivation throws an exception if the specified function is not in the search_path")]
-        public void DeriveFunctionParameters_ThrowsForExistingFunctionThatIsNotInSearchPath()
+        public async Task DeriveFunctionParameters_ThrowsForExistingFunctionThatIsNotInSearchPath()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("DROP SCHEMA IF EXISTS schema1 CASCADE; CREATE SCHEMA schema1;");
-                try
-                {
-                    conn.ExecuteNonQuery(@"
-CREATE OR REPLACE FUNCTION schema1.schema1func() RETURNS int AS
+                await using var _ = await CreateTempSchema(conn, out var schema);
+
+                await conn.ExecuteNonQueryAsync($@"
+CREATE OR REPLACE FUNCTION {schema}.schema1func() RETURNS int AS
 $BODY$
 BEGIN
     RETURN 1;
@@ -273,30 +291,27 @@ LANGUAGE 'plpgsql';
 
 RESET search_path;
 ");
-                    var command = new NpgsqlCommand("schema1func", conn) { CommandType = CommandType.StoredProcedure };
-                    Assert.That(() => NpgsqlCommandBuilder.DeriveParameters(command),
-                        Throws.Exception.TypeOf<PostgresException>()
-                        .With.Property(nameof(PostgresException.SqlState)).EqualTo("42883"));
-                }
-                finally
-                {
-                    if (conn.State == ConnectionState.Open)
-                        conn.ExecuteNonQuery("DROP SCHEMA IF EXISTS schema1 CASCADE");
-                }
+                var command = new NpgsqlCommand("schema1func", conn) { CommandType = CommandType.StoredProcedure };
+                Assert.That(() => NpgsqlCommandBuilder.DeriveParameters(command),
+                    Throws.Exception.TypeOf<PostgresException>()
+                    .With.Property(nameof(PostgresException.SqlState)).EqualTo("42883"));
             }
         }
 
         [Test, Description("Tests if an exception is thrown if multiple functions with the specified name are in the search_path")]
-        public void DeriveFunctionParameters_ThrowsForMultipleFunctionNameHitsInSearchPath()
+        public async Task DeriveFunctionParameters_ThrowsForMultipleFunctionNameHitsInSearchPath()
         {
-            using (var conn = OpenConnection())
+            if (IsMultiplexing)
+                return;  // Uses search_path
+
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("DROP SCHEMA IF EXISTS schema1, schema2 CASCADE; CREATE SCHEMA schema1; CREATE SCHEMA schema2;");
-                try
-                {
-                    conn.ExecuteNonQuery(
-                        @"
-CREATE OR REPLACE FUNCTION schema1.redundantfunc() RETURNS int AS
+                await using var _ = await CreateTempSchema(conn, out var schema1);
+                await using var __ = await CreateTempSchema(conn, out var schema2);
+
+                await conn.ExecuteNonQueryAsync(
+                    $@"
+CREATE FUNCTION {schema1}.redundantfunc() RETURNS int AS
 $BODY$
 BEGIN
     RETURN 1;
@@ -304,7 +319,7 @@ END;
 $BODY$
 LANGUAGE 'plpgsql';
 
-CREATE OR REPLACE FUNCTION schema2.redundantfunc(IN param1 INT, IN param2 INT) RETURNS int AS
+CREATE OR REPLACE FUNCTION {schema1}.redundantfunc(IN param1 INT, IN param2 INT) RETURNS int AS
 $BODY$
 BEGIN
 RETURN param1 + param2;
@@ -312,45 +327,42 @@ END;
 $BODY$
 LANGUAGE 'plpgsql';
 
-SET search_path TO schema1, schema2;
+SET search_path TO {schema1}, {schema2};
 ");
-                    var command = new NpgsqlCommand("redundantfunc", conn) { CommandType = CommandType.StoredProcedure };
-                    Assert.That(() => NpgsqlCommandBuilder.DeriveParameters(command),
-                        Throws.Exception.TypeOf<PostgresException>()
-                        .With.Property(nameof(PostgresException.SqlState)).EqualTo("42725"));
-                }
-                finally
-                {
-                    if (conn.State == ConnectionState.Open)
-                        conn.ExecuteNonQuery("DROP SCHEMA IF EXISTS schema1, schema2 CASCADE");
-                }
+                var command = new NpgsqlCommand("redundantfunc", conn) { CommandType = CommandType.StoredProcedure };
+                Assert.That(() => NpgsqlCommandBuilder.DeriveParameters(command),
+                    Throws.Exception.TypeOf<PostgresException>()
+                    .With.Property(nameof(PostgresException.SqlState)).EqualTo("42725"));
             }
         }
 
         #region Set returning functions
 
         [Test, Description("Tests parameter derivation for a function that returns SETOF sometype")]
-        public void DeriveFunctionParameters_FunctionReturningSetofType()
+        public async Task DeriveFunctionParameters_FunctionReturningSetofType()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                TestUtil.MinimumPgVersion(conn, "9.2.0");
+                MinimumPgVersion(conn, "9.2.0");
+
+                await using var _ = await GetTempTableName(conn, out var table);
+                await using var __ = GetTempFunctionName(conn, out var function);
 
                 // This function returns record because of the two Out (InOut & Out) parameters
-                conn.ExecuteNonQuery(@"
-CREATE TABLE pg_temp.foo (fooid int, foosubid int, fooname text);
+                await conn.ExecuteNonQueryAsync($@"
+CREATE TABLE {table} (fooid int, foosubid int, fooname text);
 
-INSERT INTO pg_temp.foo VALUES
+INSERT INTO {table} VALUES
 (1, 1, 'Joe'),
 (1, 2, 'Ed'),
 (2, 1, 'Mary');
 
-CREATE FUNCTION pg_temp.getfoo(int) RETURNS SETOF foo AS $$
-    SELECT * FROM pg_temp.foo WHERE pg_temp.foo.fooid = $1 ORDER BY pg_temp.foo.foosubid;
+CREATE FUNCTION {function}(int) RETURNS SETOF {table} AS $$
+    SELECT * FROM {table} WHERE {table}.fooid = $1 ORDER BY {table}.foosubid;
 $$ LANGUAGE SQL;
                 ");
 
-                var cmd = new NpgsqlCommand("pg_temp.getfoo", conn) { CommandType = CommandType.StoredProcedure };
+                var cmd = new NpgsqlCommand(function, conn) { CommandType = CommandType.StoredProcedure };
                 NpgsqlCommandBuilder.DeriveParameters(cmd);
                 Assert.That(cmd.Parameters, Has.Count.EqualTo(4));
                 Assert.That(cmd.Parameters[0].Direction, Is.EqualTo(ParameterDirection.Input));
@@ -364,27 +376,30 @@ $$ LANGUAGE SQL;
         }
 
         [Test, Description("Tests parameter derivation for a function that returns TABLE")]
-        public void DeriveFunctionParameters_FunctionReturningTable()
+        public async Task DeriveFunctionParameters_FunctionReturningTable()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                TestUtil.MinimumPgVersion(conn, "9.2.0");
+                MinimumPgVersion(conn, "9.2.0");
+
+                await using var _ = await GetTempTableName(conn, out var table);
+                await using var __ = GetTempFunctionName(conn, out var function);
 
                 // This function returns record because of the two Out (InOut & Out) parameters
-                conn.ExecuteNonQuery(@"
-CREATE TABLE pg_temp.foo (fooid int, foosubid int, fooname text);
+                await conn.ExecuteNonQueryAsync($@"
+CREATE TABLE {table} (fooid int, foosubid int, fooname text);
 
-INSERT INTO pg_temp.foo VALUES
+INSERT INTO {table} VALUES
 (1, 1, 'Joe'),
 (1, 2, 'Ed'),
 (2, 1, 'Mary');
 
-CREATE FUNCTION pg_temp.getfoo(int) RETURNS TABLE(fooid int, foosubid int, fooname text) AS $$
-    SELECT * FROM pg_temp.foo WHERE pg_temp.foo.fooid = $1 ORDER BY pg_temp.foo.foosubid;
+CREATE OR REPLACE FUNCTION {function}(int) RETURNS TABLE(fooid int, foosubid int, fooname text) AS $$
+    SELECT * FROM {table} WHERE {table}.fooid = $1 ORDER BY {table}.foosubid;
 $$ LANGUAGE SQL;
                 ");
 
-                var cmd = new NpgsqlCommand("pg_temp.getfoo", conn) { CommandType = CommandType.StoredProcedure };
+                var cmd = new NpgsqlCommand(function, conn) { CommandType = CommandType.StoredProcedure };
                 NpgsqlCommandBuilder.DeriveParameters(cmd);
                 Assert.That(cmd.Parameters, Has.Count.EqualTo(4));
                 Assert.That(cmd.Parameters[0].Direction, Is.EqualTo(ParameterDirection.Input));
@@ -398,27 +413,30 @@ $$ LANGUAGE SQL;
         }
 
         [Test, Description("Tests parameter derivation for a function that returns SETOF record")]
-        public void DeriveFunctionParameters_FunctionReturningSetofRecord()
+        public async Task DeriveFunctionParameters_FunctionReturningSetofRecord()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                TestUtil.MinimumPgVersion(conn, "9.2.0");
+                MinimumPgVersion(conn, "9.2.0");
+
+                await using var _ = await GetTempTableName(conn, out var table);
+                await using var __ = GetTempFunctionName(conn, out var function);
 
                 // This function returns record because of the two Out (InOut & Out) parameters
-                conn.ExecuteNonQuery(@"
-CREATE TABLE pg_temp.foo (fooid int, foosubid int, fooname text);
+                await conn.ExecuteNonQueryAsync($@"
+CREATE TABLE {table} (fooid int, foosubid int, fooname text);
 
-INSERT INTO pg_temp.foo VALUES
+INSERT INTO {table} VALUES
 (1, 1, 'Joe'),
 (1, 2, 'Ed'),
 (2, 1, 'Mary');
 
-CREATE FUNCTION pg_temp.getfoo(int, OUT fooid int, OUT foosubid int, OUT fooname text) RETURNS SETOF record AS $$
-    SELECT * FROM pg_temp.foo WHERE pg_temp.foo.fooid = $1 ORDER BY pg_temp.foo.foosubid;
+CREATE FUNCTION {function}(int, OUT fooid int, OUT foosubid int, OUT fooname text) RETURNS SETOF record AS $$
+    SELECT * FROM {table} WHERE {table}.fooid = $1 ORDER BY {table}.foosubid;
 $$ LANGUAGE SQL;
                 ");
 
-                var cmd = new NpgsqlCommand("pg_temp.getfoo", conn) { CommandType = CommandType.StoredProcedure };
+                var cmd = new NpgsqlCommand(function, conn) { CommandType = CommandType.StoredProcedure };
                 NpgsqlCommandBuilder.DeriveParameters(cmd);
                 Assert.That(cmd.Parameters, Has.Count.EqualTo(4));
                 Assert.That(cmd.Parameters[0].Direction, Is.EqualTo(ParameterDirection.Input));
@@ -432,20 +450,24 @@ $$ LANGUAGE SQL;
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2022")]
-        public void DeriveFunctionParameters_FunctionReturningSetofTypeWithDroppedColumn()
+        public async Task DeriveFunctionParameters_FunctionReturningSetofTypeWithDroppedColumn()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                TestUtil.MinimumPgVersion(conn, "9.2.0");
-                conn.ExecuteNonQuery(@"
-                    CREATE TABLE pg_temp.test (id serial PRIMARY KEY, t1 text, t2 text);
-                    CREATE FUNCTION pg_temp.test_func() RETURNS SETOF test AS $$
-                        SELECT * FROM test
+                MinimumPgVersion(conn, "9.2.0");
+
+                await using var _ = await GetTempTableName(conn, out var table);
+                await using var __ = GetTempFunctionName(conn, out var function);
+
+                await conn.ExecuteNonQueryAsync($@"
+                    CREATE TABLE {table} (id serial PRIMARY KEY, t1 text, t2 text);
+                    CREATE OR REPLACE FUNCTION {function}() RETURNS SETOF {table} AS $$
+                        SELECT * FROM {table}
                     $$LANGUAGE SQL;
-                    ALTER TABLE test DROP t2;
+                    ALTER TABLE {table} DROP t2;
                 ");
 
-                var cmd = new NpgsqlCommand("pg_temp.test_func", conn) { CommandType = CommandType.StoredProcedure };
+                var cmd = new NpgsqlCommand(function, conn) { CommandType = CommandType.StoredProcedure };
                 NpgsqlCommandBuilder.DeriveParameters(cmd);
                 Assert.That(cmd.Parameters, Has.Count.EqualTo(2));
                 Assert.That(cmd.Parameters[0].Direction, Is.EqualTo(ParameterDirection.Output));
@@ -460,15 +482,16 @@ $$ LANGUAGE SQL;
         #region CommandType.Text
 
         [Test, Description("Tests parameter derivation for parameterized queries (CommandType.Text)")]
-        public void DeriveTextCommandParameters_OneParameterWithSameType()
+        public async Task DeriveTextCommandParameters_OneParameterWithSameType()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE mytable(id int, val text);");
+                await using var _ = await CreateTempTable(conn, "id int, val text", out var table);
+
                 var cmd = new NpgsqlCommand(
-                    @"INSERT INTO mytable VALUES(:x, 'some value');
-                    UPDATE mytable SET val = 'changed value' WHERE id = :x;
-                    SELECT val FROM mytable WHERE id = :x;",
+                    $@"INSERT INTO {table} VALUES(:x, 'some value');
+                    UPDATE {table} SET val = 'changed value' WHERE id = :x;
+                    SELECT val FROM {table} WHERE id = :x;",
                     conn);
                 NpgsqlCommandBuilder.DeriveParameters(cmd);
                 Assert.That(cmd.Parameters, Has.Count.EqualTo(1));
@@ -476,21 +499,22 @@ $$ LANGUAGE SQL;
                 Assert.That(cmd.Parameters[0].ParameterName, Is.EqualTo("x"));
                 Assert.That(cmd.Parameters[0].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Integer));
                 cmd.Parameters[0].Value = 42;
-                var retVal = cmd.ExecuteScalar();
+                var retVal = await cmd.ExecuteScalarAsync();
                 Assert.That(retVal, Is.EqualTo("changed value"));
             }
         }
 
         [Test, Description("Tests parameter derivation for parameterized queries (CommandType.Text) where different types would be inferred for placeholders with the same name.")]
-        public void DeriveTextCommandParameters_OneParameterWithDifferentTypes()
+        public async Task DeriveTextCommandParameters_OneParameterWithDifferentTypes()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE mytable(id int, val text);");
+                await using var _ = await CreateTempTable(conn, "id int, val text", out var table);
+
                 var cmd = new NpgsqlCommand(
-                    @"INSERT INTO mytable VALUES(:x, 'some value');
-                    UPDATE mytable SET val = 'changed value' WHERE id = :x::double precision;
-                    SELECT val FROM mytable WHERE id = :x::numeric;",
+                    $@"INSERT INTO {table} VALUES(:x, 'some value');
+                    UPDATE {table} SET val = 'changed value' WHERE id = :x::double precision;
+                    SELECT val FROM {table} WHERE id = :x::numeric;",
                     conn);
                 var ex = Assert.Throws<NpgsqlException>(() => NpgsqlCommandBuilder.DeriveParameters(cmd));
                 Assert.That(ex.Message, Is.EqualTo("The backend parser inferred different types for parameters with the same name. Please try explicit casting within your SQL statement or batch or use different placeholder names."));
@@ -498,15 +522,16 @@ $$ LANGUAGE SQL;
         }
 
         [Test, Description("Tests parameter derivation for parameterized queries (CommandType.Text) with multiple parameters")]
-        public void DeriveTextCommandParameters_MultipleParameters()
+        public async Task DeriveTextCommandParameters_MultipleParameters()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE mytable(id int, val text);");
+                await using var _ = await CreateTempTable(conn, "id int, val text", out var table);
+
                 var cmd = new NpgsqlCommand(
-                    @"INSERT INTO mytable VALUES(:x, 'some value');
-                    UPDATE mytable SET val = 'changed value' WHERE id = @y::double precision;
-                    SELECT val FROM mytable WHERE id = :z::numeric;",
+                    $@"INSERT INTO {table} VALUES(:x, 'some value');
+                    UPDATE {table} SET val = 'changed value' WHERE id = @y::double precision;
+                    SELECT val FROM {table} WHERE id = :z::numeric;",
                     conn);
                 NpgsqlCommandBuilder.DeriveParameters(cmd);
                 Assert.That(cmd.Parameters, Has.Count.EqualTo(3));
@@ -520,17 +545,17 @@ $$ LANGUAGE SQL;
                 cmd.Parameters[0].Value = 42;
                 cmd.Parameters[1].Value = 42d;
                 cmd.Parameters[2].Value = 42;
-                var retVal = cmd.ExecuteScalar();
+                var retVal = await cmd.ExecuteScalarAsync();
                 Assert.That(retVal, Is.EqualTo("changed value"));
             }
         }
 
         [Test, Description("Tests parameter derivation a parameterized query (CommandType.Text) that is already prepared.")]
-        public void DeriveTextCommandParameters_PreparedStatement()
+        public async Task DeriveTextCommandParameters_PreparedStatement()
         {
             const string query = "SELECT @p::integer";
             const int answer = 42;
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = new NpgsqlCommand(query, conn))
             {
                 cmd.Parameters.AddWithValue("@p", NpgsqlDbType.Integer, answer);
@@ -551,16 +576,16 @@ $$ LANGUAGE SQL;
                 Assert.That(cmd.Parameters[0].ParameterName, Is.EqualTo("@p"));
                 Assert.That(conn.Connector.PreparedStatementManager.NumPrepared, Is.EqualTo(1));
                 cmd.Parameters["@p"].Value = answer;
-                Assert.That(cmd.ExecuteScalar(), Is.EqualTo(answer));
+                Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(answer));
 
                 conn.UnprepareAll();
             }
         }
 
         [Test, Description("Tests parameter derivation for array parameters in parameterized queries (CommandType.Text)")]
-        public void DeriveTextCommandParameters_Array()
+        public async Task DeriveTextCommandParameters_Array()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
                 var cmd = new NpgsqlCommand("SELECT :a::integer[]", conn);
                 var val = new[] { 7, 42 };
@@ -570,7 +595,7 @@ $$ LANGUAGE SQL;
                 Assert.That(cmd.Parameters[0].ParameterName, Is.EqualTo("a"));
                 Assert.That(cmd.Parameters[0].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Integer | NpgsqlDbType.Array));
                 cmd.Parameters[0].Value = val;
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SingleResult | CommandBehavior.SingleRow))
+                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SingleResult | CommandBehavior.SingleRow))
                 {
                     Assert.That(reader.Read(), Is.True);
                     Assert.That(reader.GetFieldValue<int[]>(0), Is.EqualTo(val));
@@ -579,14 +604,19 @@ $$ LANGUAGE SQL;
         }
 
         [Test, Description("Tests parameter derivation for domain parameters in parameterized queries (CommandType.Text)")]
-        public void DeriveTextCommandParameters_Domain()
+        public async Task DeriveTextCommandParameters_Domain()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                TestUtil.MinimumPgVersion(conn, "11.0", "Arrays of domains and domains over arrays were introduced in PostgreSQL 11");
-                conn.ExecuteNonQuery("CREATE DOMAIN pg_temp.posint AS integer CHECK (VALUE > 0);" +
-                                     "CREATE DOMAIN pg_temp.int_array  AS int[] CHECK(array_length(VALUE, 1) = 2);");
+                MinimumPgVersion(conn, "11.0", "Arrays of domains and domains over arrays were introduced in PostgreSQL 11");
+                await conn.ExecuteNonQueryAsync("CREATE DOMAIN posint AS integer CHECK (VALUE > 0);" +
+                                     "CREATE DOMAIN int_array AS int[] CHECK(array_length(VALUE, 1) = 2);");
                 conn.ReloadTypes();
+                await using var _ = DeferAsync(async () =>
+                {
+                    await conn.ExecuteNonQueryAsync("DROP DOMAIN int_array; DROP DOMAIN posint");
+                    conn.ReloadTypes();
+                });
 
                 var cmd = new NpgsqlCommand("SELECT :a::posint, :b::posint[], :c::int_array", conn);
                 var val = 23;
@@ -606,8 +636,9 @@ $$ LANGUAGE SQL;
                 cmd.Parameters[0].Value = val;
                 cmd.Parameters[1].Value = arrayVal;
                 cmd.Parameters[2].Value = arrayVal;
-                using (var reader = cmd.ExecuteRecord())
+                using (var reader = await cmd.ExecuteReaderAsync())
                 {
+                    reader.Read();
                     Assert.That(reader.GetFieldValue<int>(0), Is.EqualTo(val));
                     Assert.That(reader.GetFieldValue<int[]>(1), Is.EqualTo(arrayVal));
                     Assert.That(reader.GetFieldValue<int[]>(2), Is.EqualTo(arrayVal));
@@ -616,12 +647,18 @@ $$ LANGUAGE SQL;
         }
 
         [Test, Description("Tests parameter derivation for unmapped enum parameters in parameterized queries (CommandType.Text)")]
-        public void DeriveTextCommandParameters_UnmappedEnum()
+        public async Task DeriveTextCommandParameters_UnmappedEnum()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TYPE pg_temp.fruit AS ENUM ('Apple', 'Cherry', 'Plum')");
+                await conn.ExecuteNonQueryAsync("CREATE TYPE fruit AS ENUM ('Apple', 'Cherry', 'Plum')");
                 conn.ReloadTypes();
+                await using var _ = DeferAsync(async () =>
+                {
+                    await conn.ExecuteNonQueryAsync("DROP TYPE fruit");
+                    conn.ReloadTypes();
+                });
+
                 var cmd = new NpgsqlCommand("SELECT :x::fruit", conn);
                 const string val1 = "Apple";
                 var val2 = new string[] { "Cherry", "Plum" };
@@ -634,7 +671,7 @@ $$ LANGUAGE SQL;
                 Assert.That(cmd.Parameters[0].PostgresType!.Name, Is.EqualTo("fruit"));
                 Assert.That(cmd.Parameters[0].DataTypeName, Does.EndWith("fruit"));
                 cmd.Parameters[0].Value = val1;
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SingleResult | CommandBehavior.SingleRow))
+                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SingleResult | CommandBehavior.SingleRow))
                 {
                     Assert.That(reader.Read(), Is.True);
                     Assert.That(reader.GetString(0), Is.EqualTo(val1));
@@ -645,12 +682,18 @@ $$ LANGUAGE SQL;
         enum Fruit { Apple, Cherry, Plum }
 
         [Test, Description("Tests parameter derivation for mapped enum parameters in parameterized queries (CommandType.Text)")]
-        public void DeriveTextCommandParameters_MappedEnum()
+        public async Task DeriveTextCommandParameters_MappedEnum()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TYPE pg_temp.fruit AS ENUM ('apple', 'cherry', 'plum')");
+                await conn.ExecuteNonQueryAsync("CREATE TYPE fruit AS ENUM ('apple', 'cherry', 'plum')");
                 conn.ReloadTypes();
+                await using var _ = DeferAsync(async () =>
+                {
+                    await conn.ExecuteNonQueryAsync("DROP TYPE fruit");
+                    conn.ReloadTypes();
+                });
+
                 conn.TypeMapper.MapEnum<Fruit>("fruit");
                 var cmd = new NpgsqlCommand("SELECT :x::fruit, :y::fruit[]", conn);
                 const Fruit val1 = Fruit.Apple;
@@ -668,7 +711,7 @@ $$ LANGUAGE SQL;
                 Assert.That(cmd.Parameters[1].DataTypeName, Does.EndWith("fruit[]"));
                 cmd.Parameters[0].Value = val1;
                 cmd.Parameters[1].Value = val2;
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SingleResult | CommandBehavior.SingleRow))
+                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SingleResult | CommandBehavior.SingleRow))
                 {
                     Assert.That(reader.Read(), Is.True);
                     Assert.That(reader.GetFieldValue<Fruit>(0), Is.EqualTo(val1));
@@ -686,13 +729,20 @@ $$ LANGUAGE SQL;
         }
 
         [Test]
-        public void DeriveTextCommandParameters_MappedComposite()
+        public async Task DeriveTextCommandParameters_MappedComposite()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TYPE pg_temp.deriveparameterscomposite1 AS (x int, some_text text)");
+                await conn.ExecuteNonQueryAsync(@"
+DROP TYPE IF EXISTS deriveparameterscomposite1;
+CREATE TYPE deriveparameterscomposite1 AS (x int, some_text text)");
                 conn.ReloadTypes();
                 conn.TypeMapper.MapComposite<SomeComposite>("deriveparameterscomposite1");
+                await using var _ = DeferAsync(async () =>
+                {
+                    await conn.ExecuteNonQueryAsync("DROP TYPE deriveparameterscomposite1");
+                    conn.ReloadTypes();
+                });
 
                 var expected1 = new SomeComposite { X = 8, SomeText = "foo" };
                 var expected2 = new[] {
@@ -725,7 +775,7 @@ $$ LANGUAGE SQL;
 
                     cmd.Parameters[0].Value = expected1;
                     cmd.Parameters[1].Value = expected2;
-                    using (var reader = cmd.ExecuteReader(CommandBehavior.SingleResult | CommandBehavior.SingleRow))
+                    using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SingleResult | CommandBehavior.SingleRow))
                     {
                         Assert.That(reader.Read(), Is.True);
                         Assert.That(reader.GetFieldValue<SomeComposite>(0).SomeText, Is.EqualTo(expected1.SomeText));
@@ -743,12 +793,13 @@ $$ LANGUAGE SQL;
         #endregion
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1591")]
-        public void GetUpdateCommandInfersParametersWithNpgsqDbType()
+        public async Task GetUpdateCommandInfersParametersWithNpgsqDbType()
         {
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery(@"
-                    CREATE TABLE pg_temp.test (
+                await using var _ = await GetTempTableName(conn, out var table);
+                await conn.ExecuteNonQueryAsync($@"
+                    CREATE TABLE {table} (
                         Cod varchar(5) NOT NULL,
                         Descr varchar(40),
                         Data date,
@@ -758,14 +809,14 @@ $$ LANGUAGE SQL;
                         Singolo float,
                         Booleano bit,
                         Nota varchar(255),
-                        CONSTRAINT PK_test_Cod PRIMARY KEY (Cod)
+                        PRIMARY KEY (Cod)
                     );
-                    INSERT INTO test VALUES('key1', 'description', '2018-07-03', '2018-07-03 07:02:00', 123, 123.4, 1234.5, B'1', 'note');
+                    INSERT INTO {table} VALUES('key1', 'description', '2018-07-03', '2018-07-03 07:02:00', 123, 123.4, 1234.5, B'1', 'note');
                 ");
 
                 var daDataAdapter =
                     new NpgsqlDataAdapter(
-                        "SELECT Cod, Descr, Data, DataOra, Intero, Decimale, Singolo, Booleano, Nota FROM test", conn);
+                        $"SELECT Cod, Descr, Data, DataOra, Intero, Decimale, Singolo, Booleano, Nota FROM {table}", conn);
                 var cbCommandBuilder = new NpgsqlCommandBuilder(daDataAdapter);
                 var dtTable = new DataTable();
 
@@ -836,3 +887,4 @@ $$ LANGUAGE SQL;
         }
     }
 }
+

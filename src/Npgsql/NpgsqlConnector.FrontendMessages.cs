@@ -101,7 +101,17 @@ namespace Npgsql
         {
             Debug.Assert(statementName.All(c => c < 128));
 
-            var queryByteLen = TextEncoding.GetByteCount(sql);
+            int queryByteLen;
+            try
+            {
+                queryByteLen = TextEncoding.GetByteCount(sql);
+            }
+            catch (Exception e)
+            {
+                Break(e);
+                throw;
+            }
+
             if (WriteBuffer.WriteSpaceLeft < 1 + 4 + statementName.Length + 1)
                 await Flush(async);
 
