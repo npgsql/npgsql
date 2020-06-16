@@ -10,7 +10,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Globalization;
-using Microsoft.Extensions.ObjectPool;
 using Npgsql.BackendMessages;
 using Npgsql.Logging;
 using Npgsql.TypeMapping;
@@ -55,9 +54,6 @@ namespace Npgsql
         UpdateRowSource _updateRowSource = UpdateRowSource.Both;
 
         bool IsExplicitlyPrepared => _connectorPreparedOn != null;
-
-        static readonly ObjectPool<SqlQueryParser> SqlParserPool
-            = new DefaultObjectPoolProvider().Create<SqlQueryParser>();
 
         static readonly List<NpgsqlParameter> EmptyParameters = new List<NpgsqlParameter>();
 
@@ -736,18 +732,11 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             NpgsqlStatement statement;
             switch (CommandType) {
             case CommandType.Text:
-                var parser = SqlParserPool.Get();
-                try
-                {
-                    parser.ParseRawQuery(CommandText, _parameters, _statements, deriveParameters);
-                }
-                finally
-                {
-                    SqlParserPool.Return(parser);
-                }
+                var parser = new SqlQueryParser();
+                parser.ParseRawQuery(CommandText, _parameters, _statements, deriveParameters);
 
                 if (_statements.Count > 1 && _parameters.HasOutputParameters)
-                    throw new NotSupportedException("Commands with multiple queries cannot have out parameters");
+                    throw new NotSupportedException("Commands with multipl e queries cannot have out parameters");
                 break;
 
             case CommandType.TableDirect:
