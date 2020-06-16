@@ -55,10 +55,10 @@ imestamp is stored. There is no single PostgreSQL type that stores both a date/t
 
 PostgreSQL Type 		| Default NodaTime Type | Additional NodaTime Type      | Notes
 --------------------------------|-----------------------|-------------------------------|-------
-timestamp       		| Instant               | LocalDateTime                 | It's common to store UTC timestamps in databases - you can simply do so and read/write Instant values. You also have the option of readin/writing LocalDateTime, which is a date/time with no information about timezones; this makes sense if you're storing the timezone in a different column and want to read both into a NodaTime ZonedDateTime.
+timestamp without time zone		| Instant               | LocalDateTime                 | It's common to store UTC timestamps in databases - you can simply do so and read/write Instant values. You also have the option of readin/writing LocalDateTime, which is a date/time with no information about timezones; this makes sense if you're storing the timezone in a different column and want to read both into a NodaTime ZonedDateTime.
 timestamp with time zone	| Instant               | ZonedDateTime, OffsetDateTime | This PostgreSQL type stores only a timestamp, assumed to be in UTC. If you read/write this as an Instant, it will be provided as stored with no timezone conversions whatsoever. If, however, you read/write as a ZonedDateTime or OffsetDateTime, the plugin will automatically convert to and from UTC according to your PostgreSQL session's timezone.
 date				| LocalDate             |                               | A simple date with no timezone or offset information.
-time				| LocalTime             |                               | A simple time-of-day, with no timezone or offset information.
+time without time zone	| LocalTime             |                               | A simple time-of-day, with no timezone or offset information.
 time with time zone		| OffsetTime            |                               | This is a PostgreSQL type that stores a time and an offset.
 interval        		| Period                |                               | This is a human interval which does not have a fixed absolute length ("two months" can vary depending on the months in question), and so it is mapped to NodaTime's Period (and not Duration or TimeSpan).
 

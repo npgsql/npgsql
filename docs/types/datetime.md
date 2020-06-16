@@ -14,14 +14,14 @@ yourself with PostgreSQL's types.
 
 The .NET and PostgreSQL types differ in the resolution and range they provide; the .NET type usually have a higher resolution but a lower range than the PostgreSQL types:
 
-PostgreSQL type         | Precision/Range                           | .NET Native Type             | Precision/Range                                | Npgsql .NET Provider-Specific Type
-------------------------|-------------------------------------------|------------------------------|------------------------------------------------|-----------------------------------
-timestamp               | 1 microsecond, 4713BC-294276AD            | DateTime                     | 100 nanoseconds, 1AD-9999AD                    | NpgsqlDateTime
-timestamp with timezone | 1 microsecond, 4713BC-294276AD            | DateTime                     | 100 nanoseconds, 1AD-9999AD                    | NpgsqlDateTime
-date                    | 1 day, 4713BC-5874897AD                   | DateTime                     | 100 nanoseconds, 1AD-9999AD                    | NpgsqlDate
-time                    | 1 microsecond, 0-24 hours                 | TimeSpan                     | 100 nanoseconds, -10,675,199 - 10,675,199 days | N/A
-time with timezone      | 1 microsecond, 0-24 hours                 | DateTimeOffset (ignore date) | 100 nanoseconds, 1AD-9999AD                    | N/A
-interval                | 1 microsecond, -178000000-178000000 years | TimeSpan                     | 100 nanoseconds, -10,675,199 - 10,675,199 days | NpgsqlTimeSpan
+PostgreSQL type             | Precision/Range                           | .NET Native Type             | Precision/Range                                | Npgsql .NET Provider-Specific Type
+----------------------------|-------------------------------------------|------------------------------|------------------------------------------------|-----------------------------------
+timestamp without time zone | 1 microsecond, 4713BC-294276AD            | DateTime                     | 100 nanoseconds, 1AD-9999AD                    | NpgsqlDateTime
+timestamp with time zone    | 1 microsecond, 4713BC-294276AD            | DateTime                     | 100 nanoseconds, 1AD-9999AD                    | NpgsqlDateTime
+date                        | 1 day, 4713BC-5874897AD                   | DateTime                     | 100 nanoseconds, 1AD-9999AD                    | NpgsqlDate
+time without time zone      | 1 microsecond, 0-24 hours                 | TimeSpan                     | 100 nanoseconds, -10,675,199 - 10,675,199 days | N/A
+time with time zone         | 1 microsecond, 0-24 hours                 | DateTimeOffset (ignore date) | 100 nanoseconds, 1AD-9999AD                    | N/A
+interval                    | 1 microsecond, -178000000-178000000 years | TimeSpan                     | 100 nanoseconds, -10,675,199 - 10,675,199 days | NpgsqlTimeSpan
 
 If your needs are met by the .NET native types, it is best that you use them directly with Npgsql.
 If, however, you require the extended range of a PostgreSQL type you can use Npgsql's provider-specific types, which represent PostgreSQL types in an exact way.
