@@ -248,7 +248,7 @@ namespace Npgsql.PluginTests
         public async Task SetUp()
         {
             using var conn = await base.OpenConnectionAsync();
-            await TestUtil.EnsureExtensionAsync(conn, "postgis");
+            await TestUtil.EnsurePostgis(conn);
         }
     }
 }

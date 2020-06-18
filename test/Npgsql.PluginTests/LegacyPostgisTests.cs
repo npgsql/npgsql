@@ -401,7 +401,6 @@ namespace Npgsql.PluginTests
         protected override NpgsqlConnection OpenConnection(string? connectionString = null)
         {
             var conn = base.OpenConnection(connectionString);
-            TestUtil.EnsureExtension(conn, "postgis");
             conn.TypeMapper.UseLegacyPostgis();
             return conn;
         }
@@ -410,7 +409,7 @@ namespace Npgsql.PluginTests
         public async Task SetUp()
         {
             await using var conn = await base.OpenConnectionAsync();
-            await TestUtil.EnsureExtensionAsync(conn, "postgis");
+            await TestUtil.EnsurePostgis(conn);
         }
     }
 }
