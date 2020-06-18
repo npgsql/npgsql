@@ -59,6 +59,9 @@ namespace Npgsql.Tests
 
         static readonly Version MinCreateExtensionVersion = new Version(9, 1);
 
+        public static bool IsPgPrerelease(NpgsqlConnection conn)
+            => ((string)conn.ExecuteScalar("SELECT version()")).Contains("beta");
+
         public static void EnsureExtension(NpgsqlConnection conn, string extension, string? minVersion = null)
             => EnsureExtension(conn, extension, minVersion, async: false).GetAwaiter().GetResult();
 
@@ -80,6 +83,22 @@ namespace Npgsql.Tests
                 conn.ExecuteNonQuery($"CREATE EXTENSION IF NOT EXISTS {extension}");
 
             conn.ReloadTypes();
+        }
+
+        public static async Task EnsurePostgis(NpgsqlConnection conn)
+        {
+            try
+            {
+                await EnsureExtensionAsync(conn, "postgis");
+            }
+            catch (PostgresException e) when (e.SqlState == "58P01")
+            {
+                // PostGIS packages aren't available for PostgreSQL prereleases
+                if (IsPgPrerelease(conn))
+                {
+                    Assert.Ignore($"PostGIS could not be installed, but PostgreSQL is prerelease ({conn.ServerVersion}), ignoring test suite.");
+                }
+            }
         }
 
         public static string GetUniqueIdentifier(string prefix)
