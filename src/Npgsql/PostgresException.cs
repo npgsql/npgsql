@@ -204,9 +204,9 @@ namespace Npgsql
         /// </summary>
         public PostgresException() {}
 
-        internal PostgresException(NpgsqlReadBuffer buf, bool suppressDetailInPostgressError)
+        internal PostgresException(NpgsqlReadBuffer buf, bool includeDetail)
         {
-            var msg = new ErrorOrNoticeMessage(buf, suppressDetailInPostgressError);
+            var msg = new ErrorOrNoticeMessage(buf, includeDetail);
             Severity = msg.Severity;
             SqlState = msg.Code;
             MessageText = msg.Message;

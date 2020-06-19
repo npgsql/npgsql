@@ -51,7 +51,7 @@ namespace Npgsql.BackendMessages
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(ErrorOrNoticeMessage));
 
         // ReSharper disable once FunctionComplexityOverflow
-        internal ErrorOrNoticeMessage(NpgsqlReadBuffer buf, bool suppressDetailInPostgressError)
+        internal ErrorOrNoticeMessage(NpgsqlReadBuffer buf, bool includeDetail)
         {
             while (true)
             {
@@ -71,9 +71,9 @@ namespace Npgsql.BackendMessages
                     break;
                 case ErrorFieldTypeCode.Detail:
                     Detail = buf.ReadNullTerminatedString(PGUtil.RelaxedUTF8Encoding);
-                    if (suppressDetailInPostgressError && !string.IsNullOrEmpty(Detail))
+                    if (!includeDetail && !string.IsNullOrEmpty(Detail))
                     {
-                        Detail = "Detail suppressed as SuppressDetailInPostgressError is enabled";
+                        Detail = $"Detail redacted as it may contain sensitive data. Specify '{NpgsqlConnectionStringBuilder.IncludeExceptionDetailDisplayName}' in the connection string to include this information.";
                     }
                     break;
                 case ErrorFieldTypeCode.Hint:

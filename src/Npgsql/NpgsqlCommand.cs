@@ -1327,7 +1327,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             {
                 sb.Append("\t").AppendLine(s.SQL);
                 var p = s.InputParameters;
-                if (NpgsqlLogManager.IsParameterLoggingEnabled && p.Count > 0 && !connector.Settings.SuppressDetailedExceptions)
+                if (p.Count > 0 && (NpgsqlLogManager.IsParameterLoggingEnabled || connector.Settings.LogParameters))
                 {
                     sb.Append('\t').Append("Parameters:");
                     for (var i = 0; i < p.Count; i++)
