@@ -654,40 +654,43 @@ namespace Npgsql
         bool _persistSecurityInfo;
 
         /// <summary>
-        /// Gets or sets a Boolean value that indicates if NpgsqlCommand parameters should be included (false) or suppressed (true) within logging.
+        /// When enabled, parameter values are logged when commands are executed. Defaults to false.
         /// </summary>
         [Category("Security")]
-        [Description("When enabled prevents logging of command parameter values.")]
-        [DisplayName("Exclude Parameters From Logs")]
+        [Description("When enabled, parameter values are logged when commands are executed. Defaults to false.")]
+        [DisplayName("Log Parameters")]
         [NpgsqlConnectionStringProperty]
-        public bool ExcludeParametersFromLogs
+        public bool LogParameters
         {
-            get => _excludeParametersFromLogs;
+            get => _logParameters;
             set
             {
-                _excludeParametersFromLogs = value;
-                SetValue(nameof(ExcludeParametersFromLogs), value);
+                _logParameters = value;
+                SetValue(nameof(LogParameters), value);
             }
         }
-        bool _excludeParametersFromLogs;
+        bool _logParameters;
+
+        internal const string IncludeExceptionDetailDisplayName = "Include Error Detail";
 
         /// <summary>
-        /// Gets or sets a Boolean value that indicates if the Postgres DETAIL field is included in raised exceptions.
+        /// When enabled, PostgreSQL error details are included on <see cref="PostgresException.Detail" /> and
+        /// <see cref="PostgresNotice.Detail" />. These can contain sensitive data.
         /// </summary>
         [Category("Security")]
-        [Description("When enabled, removes the Postgres DETAIL property from raised exceptions. This DETAIL message can contain user data that should not be included in logs or displayed to users.")]
-        [DisplayName("Suppress Detailed Exceptions")]
+        [Description("When enabled, PostgreSQL error and notice details are included on PostgresException.Detail and PostgresNotice.Detail. These can contain sensitive data.")]
+        [DisplayName(IncludeExceptionDetailDisplayName)]
         [NpgsqlConnectionStringProperty]
-        public bool SuppressDetailedExceptions
+        public bool IncludeErrorDetails
         {
-            get => _suppressDetailedExceptions;
+            get => _includeErrorDetails;
             set
             {
-                _suppressDetailedExceptions = value;
-                SetValue(nameof(SuppressDetailedExceptions), value);
+                _includeErrorDetails = value;
+                SetValue(nameof(IncludeErrorDetails), value);
             }
         }
-        bool _suppressDetailedExceptions;
+        bool _includeErrorDetails;
 
 
         #endregion
