@@ -4,7 +4,9 @@ using System.IO;
 using System.Net.Sockets;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Formatters.Binary;
+using System.Threading.Tasks;
 using NUnit.Framework;
+using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests
 {
@@ -38,7 +40,6 @@ namespace Npgsql.Tests
                 Assert.That(ex.Severity, Is.EqualTo("ERROR"));
                 Assert.That(ex.InvariantSeverity, Is.EqualTo("ERROR"));
                 Assert.That(ex.SqlState, Is.EqualTo("12345"));
-                Assert.That(ex.Detail, Is.EqualTo("testdetail"));
                 Assert.That(ex.Position, Is.EqualTo(0));
 
                 var data = ex.Data;
@@ -54,38 +55,66 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test, Description("Ensures DETAIL is not present in PostgresExceptions when SuppressDetailedExceptions is enabled.")]
-        public void DetailsAreRemoved()
+        [Test, Description("Ensures Detail is redacted by default in PostgresException and PostgresNotice")]
+        public async Task ErrorDetailsAreRedacted()
         {
-            using (var conn = OpenConnection(ConnectionString + ";SuppressDetailedExceptions=true"))
+            await using var conn = OpenConnection();
+
+            await conn.ExecuteNonQueryAsync(@"
+CREATE OR REPLACE FUNCTION pg_temp.raise_exception() RETURNS VOID AS $$
+BEGIN
+    RAISE EXCEPTION 'testexception' USING DETAIL = 'secret';
+END;
+$$ LANGUAGE 'plpgsql';
+
+CREATE OR REPLACE FUNCTION pg_temp.raise_notice() RETURNS VOID AS $$
+BEGIN
+    RAISE NOTICE 'testexception' USING DETAIL = 'secret';
+END;
+$$ LANGUAGE 'plpgsql';");
+
+            var ex = Assert.ThrowsAsync<PostgresException>(() => conn.ExecuteNonQueryAsync("SELECT * FROM pg_temp.raise_exception()"));
+            Assert.That(ex.Data[nameof(PostgresException.Detail)], Does.Not.Contain("secret"));
+            Assert.That(ex.ToString(), Does.Not.Contain("secret"));
+
+            PostgresNotice? notice = null;
+            conn.Notice += (___, a) => notice = a.Notice;
+            await conn.ExecuteNonQueryAsync("SELECT * FROM pg_temp.raise_notice()");
+            Assert.That(notice!.Detail, Does.Not.Contain("secret"));
+        }
+
+        [Test]
+        public async Task IncludeErrorDetails()
+        {
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                // Make sure messages are in English
-                conn.ExecuteNonQuery(@"SET lc_messages='en_US.UTF-8'");
-                conn.ExecuteNonQuery(@"
-                     CREATE OR REPLACE FUNCTION pg_temp.emit_exception() RETURNS VOID AS
-                        'BEGIN RAISE EXCEPTION ''testexception'' USING DETAIL = ''testdetail''; END;'
-                     LANGUAGE 'plpgsql';
-                ");
+                Pooling = false,
+                IncludeErrorDetails = true
+            };
+            await using var conn = OpenConnection(builder);
 
-                PostgresException ex = null!;
-                try
-                {
-                    conn.ExecuteNonQuery("SELECT pg_temp.emit_exception()");
-                    Assert.Fail("No exception was thrown");
-                }
-                catch (PostgresException e)
-                {
-                    ex = e;
-                }
+            await conn.ExecuteNonQueryAsync($@"
+CREATE OR REPLACE FUNCTION pg_temp.raise_exception() RETURNS VOID AS $$
+BEGIN
+    RAISE EXCEPTION 'testexception' USING DETAIL = 'secret';
+END;
+$$ LANGUAGE 'plpgsql';
 
-                Assert.That(ex.Detail, Is.EqualTo("Detail suppressed as SuppressDetailInPostgressError is enabled"));
+CREATE OR REPLACE FUNCTION pg_temp.raise_notice() RETURNS VOID AS $$
+BEGIN
+    RAISE NOTICE 'testexception' USING DETAIL = 'secret';
+END;
+$$ LANGUAGE 'plpgsql';");
 
-                var data = ex.Data;
-                Assert.That(data[nameof(PostgresException.Detail)], Is.EqualTo("Detail suppressed as SuppressDetailInPostgressError is enabled"));
+            var ex = Assert.ThrowsAsync<PostgresException>(() => conn.ExecuteNonQueryAsync("SELECT * FROM pg_temp.raise_exception()"));
+            Assert.That(ex.Detail, Does.Contain("secret"));
+            Assert.That(ex.Data[nameof(PostgresException.Detail)], Does.Contain("secret"));
+            Assert.That(ex.ToString(), Does.Contain("secret"));
 
-                var exString = ex.ToString();
-                Assert.That(exString, Does.Not.Contain("testdetail"));
-            }
+            PostgresNotice? notice = null;
+            conn.Notice += (____, a) => notice = a.Notice;
+            await conn.ExecuteNonQueryAsync("SELECT * FROM pg_temp.raise_notice()");
+            Assert.That(notice!.Detail, Does.Contain("secret"));
         }
 
         [Test]
