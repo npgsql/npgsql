@@ -449,7 +449,7 @@ namespace Npgsql
 
                 await LoadDatabaseInfo(forceReload: false, timeout, async);
 
-                if (Settings.Pooling && !Settings.Multiplexing && DatabaseInfo.SupportsDiscard)
+                if (Settings.Pooling && !Settings.Multiplexing && !Settings.NoResetOnClose && DatabaseInfo.SupportsDiscard)
                 {
                     _sendResetOnClose = true;
                     GenerateResetMessage();
