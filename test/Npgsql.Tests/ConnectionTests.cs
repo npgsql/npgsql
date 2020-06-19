@@ -1356,6 +1356,29 @@ CREATE TABLE record ()");
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3030")]
+        [TestCase(true, TestName = "NoResetOnClose")]
+        [TestCase(false, TestName = "NoNoResetOnClose")]
+        public async Task NoResetOnClose(bool noResetOnClose)
+        {
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                MaxPoolSize = 1,
+                NoResetOnClose = noResetOnClose
+            };
+            using var _ = CreateTempPool(builder, out var connectionString);
+            var original = new NpgsqlConnectionStringBuilder(connectionString).ApplicationName;
+
+            using var conn = await OpenConnectionAsync(connectionString);
+            await conn.ExecuteNonQueryAsync("SET application_name = 'modified'");
+            await conn.CloseAsync();
+            await conn.OpenAsync();
+            Assert.That(await conn.ExecuteScalarAsync("SHOW application_name"), Is.EqualTo(
+                noResetOnClose || IsMultiplexing
+                    ? "modified"
+                    : original));
+        }
+
         #region pgpass
 
         [Test]
