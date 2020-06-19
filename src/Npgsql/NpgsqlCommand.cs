@@ -1211,7 +1211,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         State = CommandState.InProgress;
 
                         if (Log.IsEnabled(NpgsqlLogLevel.Debug))
-                            LogCommand(connector.Id, connector.Settings.ExcludeParametersFromLogs);
+                            LogCommand();
                         NpgsqlEventSource.Log.CommandStart(CommandText);
 
                         // If a cancellation is in progress, wait for it to "complete" before proceeding (#615)
@@ -1390,15 +1390,16 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 rowDescription[i].FormatCode = (UnknownResultTypeList == null || !isFirst ? AllResultTypesAreUnknown : UnknownResultTypeList[i]) ? FormatCode.Text : FormatCode.Binary;
         }
 
-        void LogCommand(int connectorId, bool excludeParametersFromLogs)
+        void LogCommand()
         {
+            var connector = _connection!.Connector!;
             var sb = new StringBuilder();
             sb.AppendLine("Executing statement(s):");
             foreach (var s in _statements)
             {
                 sb.Append("\t").AppendLine(s.SQL);
                 var p = s.InputParameters;
-                if (NpgsqlLogManager.IsParameterLoggingEnabled && p.Count > 0 && excludeParametersFromLogs == false)
+                if (p.Count > 0 && (NpgsqlLogManager.IsParameterLoggingEnabled || connector.Settings.LogParameters))
                 {
                     sb.Append('\t').Append("Parameters:");
                     for (var i = 0; i < p.Count; i++)
@@ -1406,7 +1407,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 }
             }
 
-            Log.Debug(sb.ToString(), connectorId);
+            Log.Debug(sb.ToString(), connector.Id);
         }
 
         /// <summary>
