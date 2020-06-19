@@ -834,6 +834,8 @@ $$ LANGUAGE SQL;
                         Singolo float,
                         Booleano bit,
                         Nota varchar(255),
+                        BigIntArr bigint[],
+                        VarCharArr character varying(20)[],
                         CONSTRAINT PK_test_Cod PRIMARY KEY (Cod)
                     );
                     INSERT INTO test VALUES('key1', 'description', '2018-07-03', '2018-07-03 07:02:00', 123, 123.4, 1234.5, B'1', 'note');
@@ -841,7 +843,8 @@ $$ LANGUAGE SQL;
 
                 var daDataAdapter =
                     new NpgsqlDataAdapter(
-                        "SELECT Cod, Descr, Data, DataOra, Intero, Decimale, Singolo, Booleano, Nota FROM test", conn);
+                        "SELECT Cod, Descr, Data, DataOra, Intero, Decimale, Singolo, Booleano, Nota, BigIntArr, VarCharArr FROM test", conn);
+
                 var cbCommandBuilder = new NpgsqlCommandBuilder(daDataAdapter);
                 var dtTable = new DataTable();
 
@@ -858,16 +861,20 @@ $$ LANGUAGE SQL;
                 Assert.That(daDataAdapter.UpdateCommand.Parameters[6].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Double));
                 Assert.That(daDataAdapter.UpdateCommand.Parameters[7].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Bit));
                 Assert.That(daDataAdapter.UpdateCommand.Parameters[8].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Varchar));
+                Assert.That(daDataAdapter.UpdateCommand.Parameters[9].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Array | NpgsqlDbType.Bigint));
+                Assert.That(daDataAdapter.UpdateCommand.Parameters[10].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Array | NpgsqlDbType.Varchar));
 
-                Assert.That(daDataAdapter.UpdateCommand.Parameters[9].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Varchar));
                 Assert.That(daDataAdapter.UpdateCommand.Parameters[11].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Varchar));
-                Assert.That(daDataAdapter.UpdateCommand.Parameters[13].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Date));
-                Assert.That(daDataAdapter.UpdateCommand.Parameters[15].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Timestamp));
-                Assert.That(daDataAdapter.UpdateCommand.Parameters[16].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Smallint));
-                Assert.That(daDataAdapter.UpdateCommand.Parameters[18].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Money));
-                Assert.That(daDataAdapter.UpdateCommand.Parameters[20].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Double));
-                Assert.That(daDataAdapter.UpdateCommand.Parameters[22].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Bit));
-                Assert.That(daDataAdapter.UpdateCommand.Parameters[24].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Varchar));
+                Assert.That(daDataAdapter.UpdateCommand.Parameters[13].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Varchar));
+                Assert.That(daDataAdapter.UpdateCommand.Parameters[15].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Date));
+                Assert.That(daDataAdapter.UpdateCommand.Parameters[17].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Timestamp));
+                Assert.That(daDataAdapter.UpdateCommand.Parameters[18].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Smallint));
+                Assert.That(daDataAdapter.UpdateCommand.Parameters[20].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Money));
+                Assert.That(daDataAdapter.UpdateCommand.Parameters[22].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Double));
+                Assert.That(daDataAdapter.UpdateCommand.Parameters[24].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Bit));
+                Assert.That(daDataAdapter.UpdateCommand.Parameters[26].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Varchar));
+                Assert.That(daDataAdapter.UpdateCommand.Parameters[28].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Array | NpgsqlDbType.Bigint));
+                Assert.That(daDataAdapter.UpdateCommand.Parameters[30].NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Array | NpgsqlDbType.Varchar));
 
                 daDataAdapter.Fill(dtTable);
 
@@ -909,6 +916,46 @@ $$ LANGUAGE SQL;
 
             daDataAdapter.UpdateCommand = cbCommandBuilder.GetUpdateCommand();
             Assert.True(daDataAdapter.UpdateCommand.CommandText.Contains("SET \"cod\" = @p1, \"descr\" = @p2, \"data\" = @p3 WHERE ((\"cod\" = @p4) AND ((@p5 = 1 AND \"descr\" IS NULL) OR (\"descr\" = @p6)) AND ((@p7 = 1 AND \"data\" IS NULL) OR (\"data\" = @p8)))"));
+        }
+
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2846")]
+        public void GetUpdateCommandWithArrayColumType()
+        {
+            using var conn = OpenConnection();
+            try
+            {
+                conn.ExecuteNonQuery(@"
+DROP TABLE IF EXISTS Test;
+CREATE TABLE Test (
+Cod varchar(5) NOT NULL,
+Vettore character varying(20)[],
+CONSTRAINT PK_test_Cod PRIMARY KEY (Cod)
+)
+");
+                using var daDataAdapter = new NpgsqlDataAdapter("SELECT cod, vettore FROM test ORDER By cod", conn);
+                using var cbCommandBuilder = new NpgsqlCommandBuilder(daDataAdapter);
+                var dtTable = new DataTable();
+
+                cbCommandBuilder.SetAllValues = true;
+
+                daDataAdapter.UpdateCommand = cbCommandBuilder.GetUpdateCommand();
+
+                daDataAdapter.Fill(dtTable);
+                dtTable.Rows.Add();
+                dtTable.Rows[0]["cod"] = '0';
+                dtTable.Rows[0]["vettore"] = new string[] { "aaa", "bbb" };
+
+                daDataAdapter.Update(dtTable);
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+            finally
+            {
+                conn.ExecuteNonQuery("DROP TABLE IF EXISTS Test");
+            }
         }
     }
 }

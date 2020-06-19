@@ -227,15 +227,7 @@ ORDER BY attnum";
         {
             var typeMapper = _connection.Connector!.TypeMapper;
 
-            if (typeMapper.Mappings.TryGetValue(column.PostgresType.Name, out var mapping))
-                column.NpgsqlDbType = mapping.NpgsqlDbType;
-            else if (
-                column.PostgresType.Name.Contains(".") &&
-                typeMapper.Mappings.TryGetValue(column.PostgresType.Name.Split('.')[1], out mapping)
-            ) {
-                column.NpgsqlDbType = mapping.NpgsqlDbType;
-            }
-
+            column.NpgsqlDbType = typeMapper.GetTypeInfoByOid(column.TypeOID).npgsqlDbType;
             column.DataType = typeMapper.TryGetByOID(column.TypeOID, out var handler)
                 ? handler.GetFieldType()
                 : null;
