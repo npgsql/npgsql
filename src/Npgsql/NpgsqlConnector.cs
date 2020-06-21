@@ -837,12 +837,34 @@ namespace Npgsql
                     ? Settings.TcpKeepAliveInterval
                     : Settings.TcpKeepAliveTime;
 
+#if NET461 || NETSTANDARD2_0 || NETSTANDARD2_1
                 if (!PGUtil.IsWindows)
                     throw new PlatformNotSupportedException(
                         "Npgsql management of TCP keepalive is supported only on Windows. " +
                         "TCP keepalives can still be used on other systems but are enabled via the TcpKeepAlive option or configured globally for the machine, see the relevant docs.");
 
                 SetTcpKeepaliveSocketOptionsWindows(socket, timeMilliseconds, intervalMilliseconds);
+#else
+                if (PGUtil.IsWindows)
+                {
+                    // Historically, we only supported setting TCP keepalive parameters on Windows, which
+                    // allows those parameters to be set with millisecond granularity, so continue using
+                    // the "old" (IOControl) way of setting these options if running on Windows to keep
+                    // backward compatibility
+                    SetTcpKeepaliveSocketOptionsWindows(socket, timeMilliseconds, intervalMilliseconds);
+                }
+                else
+                {
+                    // This API for setting TCP keepalive parameters uses seconds, rather than milliseconds
+                    // Round parameters up to the nearest second
+                    var timeSeconds = Convert.ToInt32(Math.Ceiling(timeMilliseconds / 1000.0));
+                    var intervalSeconds = Convert.ToInt32(Math.Ceiling(intervalMilliseconds / 1000.0));
+
+                    socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
+                    socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveTime, timeSeconds);
+                    socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveInterval, intervalSeconds);
+                }
+#endif
             }
 
             void SetTcpKeepaliveSocketOptionsWindows(Socket socket, int keepAliveTimeMilliseconds, int keepAliveIntervalMilliseconds)
