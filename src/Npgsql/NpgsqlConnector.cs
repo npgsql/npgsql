@@ -842,12 +842,17 @@ namespace Npgsql
                         "Npgsql management of TCP keepalive is supported only on Windows. " +
                         "TCP keepalives can still be used on other systems but are enabled via the TcpKeepAlive option or configured globally for the machine, see the relevant docs.");
 
+                SetTcpKeepaliveSocketOptionsWindows(socket, timeMilliseconds, intervalMilliseconds);
+            }
+
+            void SetTcpKeepaliveSocketOptionsWindows(Socket socket, int keepAliveTimeMilliseconds, int keepAliveIntervalMilliseconds)
+            {
                 // For the following see https://msdn.microsoft.com/en-us/library/dd877220.aspx
                 var uintSize = Marshal.SizeOf(typeof(uint));
                 var inOptionValues = new byte[uintSize * 3];
                 BitConverter.GetBytes((uint)1).CopyTo(inOptionValues, 0);
-                BitConverter.GetBytes((uint)timeMilliseconds).CopyTo(inOptionValues, uintSize);
-                BitConverter.GetBytes((uint)intervalMilliseconds).CopyTo(inOptionValues, uintSize * 2);
+                BitConverter.GetBytes((uint)keepAliveTimeMilliseconds).CopyTo(inOptionValues, uintSize);
+                BitConverter.GetBytes((uint)keepAliveIntervalMilliseconds).CopyTo(inOptionValues, uintSize * 2);
                 var result = socket.IOControl(IOControlCode.KeepAliveValues, inOptionValues, null);
                 if (result != 0)
                     throw new NpgsqlException($"Got non-zero value when trying to set TCP keepalive: {result}");
