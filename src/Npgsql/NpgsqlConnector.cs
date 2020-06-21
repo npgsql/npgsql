@@ -840,7 +840,7 @@ namespace Npgsql
 #if NET461 || NETSTANDARD2_0 || NETSTANDARD2_1
                 if (!PGUtil.IsWindows)
                     throw new PlatformNotSupportedException(
-                        "Npgsql management of TCP keepalive is supported only on Windows. " +
+                        "Npgsql management of TCP keepalive is supported only on Windows, unless targeting .NET Core 3.0 and above " +
                         "TCP keepalives can still be used on other systems but are enabled via the TcpKeepAlive option or configured globally for the machine, see the relevant docs.");
 
                 SetTcpKeepaliveSocketOptionsWindows(socket, timeMilliseconds, intervalMilliseconds);
