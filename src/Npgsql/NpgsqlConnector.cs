@@ -832,15 +832,15 @@ namespace Npgsql
                 throw new ArgumentException("If TcpKeepAliveInterval is defined, TcpKeepAliveTime must be defined as well");
             if (Settings.TcpKeepAliveTime > 0)
             {
-                if (!PGUtil.IsWindows)
-                    throw new PlatformNotSupportedException(
-                        "Npgsql management of TCP keepalive is supported only on Windows. " +
-                        "TCP keepalives can still be used on other systems but are enabled via the TcpKeepAlive option or configured globally for the machine, see the relevant docs.");
-
                 var time = Settings.TcpKeepAliveTime;
                 var interval = Settings.TcpKeepAliveInterval > 0
                     ? Settings.TcpKeepAliveInterval
                     : Settings.TcpKeepAliveTime;
+
+                if (!PGUtil.IsWindows)
+                    throw new PlatformNotSupportedException(
+                        "Npgsql management of TCP keepalive is supported only on Windows. " +
+                        "TCP keepalives can still be used on other systems but are enabled via the TcpKeepAlive option or configured globally for the machine, see the relevant docs.");
 
                 // For the following see https://msdn.microsoft.com/en-us/library/dd877220.aspx
                 var uintSize = Marshal.SizeOf(typeof(uint));
