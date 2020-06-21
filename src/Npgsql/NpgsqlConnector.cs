@@ -837,24 +837,31 @@ namespace Npgsql
                     ? Settings.TcpKeepAliveInterval
                     : Settings.TcpKeepAliveTime;
 
-#if NET461 || NETSTANDARD2_0 || NETSTANDARD2_1
-                if (!PGUtil.IsWindows)
-                    throw new PlatformNotSupportedException(
-                        "Npgsql management of TCP keepalive is supported only on Windows, unless targeting .NET Core 3.0 and above " +
-                        "TCP keepalives can still be used on other systems but are enabled via the TcpKeepAlive option or configured globally for the machine, see the relevant docs.");
 
-                SetTcpKeepaliveSocketOptionsWindows(socket, timeMilliseconds, intervalMilliseconds);
-#else
                 if (PGUtil.IsWindows)
                 {
                     // Historically, we only supported setting TCP keepalive parameters on Windows, which
                     // allows those parameters to be set with millisecond granularity, so continue using
                     // the "old" (IOControl) way of setting these options if running on Windows to keep
                     // backward compatibility
-                    SetTcpKeepaliveSocketOptionsWindows(socket, timeMilliseconds, intervalMilliseconds);
+
+                    // For the following see https://msdn.microsoft.com/en-us/library/dd877220.aspx
+                    var uintSize = Marshal.SizeOf(typeof(uint));
+                    var inOptionValues = new byte[uintSize * 3];
+                    BitConverter.GetBytes((uint)1).CopyTo(inOptionValues, 0);
+                    BitConverter.GetBytes((uint)timeMilliseconds).CopyTo(inOptionValues, uintSize);
+                    BitConverter.GetBytes((uint)intervalMilliseconds).CopyTo(inOptionValues, uintSize * 2);
+                    var result = socket.IOControl(IOControlCode.KeepAliveValues, inOptionValues, null);
+                    if (result != 0)
+                        throw new NpgsqlException($"Got non-zero value when trying to set TCP keepalive: {result}");
                 }
                 else
                 {
+#if NET461 || NETSTANDARD2_0 || NETSTANDARD2_1
+                    throw new PlatformNotSupportedException(
+                        "Npgsql management of TCP keepalive is supported only on Windows, unless targeting .NET Core 3.0 and above " +
+                        "TCP keepalives can still be used on other systems but are enabled via the TcpKeepAlive option or configured globally for the machine, see the relevant docs.");
+#else
                     // This API for setting TCP keepalive parameters uses seconds, rather than milliseconds
                     // Round parameters up to the nearest second
                     var timeSeconds = Convert.ToInt32(Math.Ceiling(timeMilliseconds / 1000.0));
@@ -863,21 +870,8 @@ namespace Npgsql
                     socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
                     socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveTime, timeSeconds);
                     socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveInterval, intervalSeconds);
-                }
 #endif
-            }
-
-            void SetTcpKeepaliveSocketOptionsWindows(Socket socket, int keepAliveTimeMilliseconds, int keepAliveIntervalMilliseconds)
-            {
-                // For the following see https://msdn.microsoft.com/en-us/library/dd877220.aspx
-                var uintSize = Marshal.SizeOf(typeof(uint));
-                var inOptionValues = new byte[uintSize * 3];
-                BitConverter.GetBytes((uint)1).CopyTo(inOptionValues, 0);
-                BitConverter.GetBytes((uint)keepAliveTimeMilliseconds).CopyTo(inOptionValues, uintSize);
-                BitConverter.GetBytes((uint)keepAliveIntervalMilliseconds).CopyTo(inOptionValues, uintSize * 2);
-                var result = socket.IOControl(IOControlCode.KeepAliveValues, inOptionValues, null);
-                if (result != 0)
-                    throw new NpgsqlException($"Got non-zero value when trying to set TCP keepalive: {result}");
+                }
             }
         }
 
