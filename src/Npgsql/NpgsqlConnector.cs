@@ -832,8 +832,8 @@ namespace Npgsql
                 throw new ArgumentException("If TcpKeepAliveInterval is defined, TcpKeepAliveTime must be defined as well");
             if (Settings.TcpKeepAliveTime > 0)
             {
-                var time = Settings.TcpKeepAliveTime;
-                var interval = Settings.TcpKeepAliveInterval > 0
+                var timeMilliseconds = Settings.TcpKeepAliveTime;
+                var intervalMilliseconds = Settings.TcpKeepAliveInterval > 0
                     ? Settings.TcpKeepAliveInterval
                     : Settings.TcpKeepAliveTime;
 
@@ -846,8 +846,8 @@ namespace Npgsql
                 var uintSize = Marshal.SizeOf(typeof(uint));
                 var inOptionValues = new byte[uintSize * 3];
                 BitConverter.GetBytes((uint)1).CopyTo(inOptionValues, 0);
-                BitConverter.GetBytes((uint)time).CopyTo(inOptionValues, uintSize);
-                BitConverter.GetBytes((uint)interval).CopyTo(inOptionValues, uintSize * 2);
+                BitConverter.GetBytes((uint)timeMilliseconds).CopyTo(inOptionValues, uintSize);
+                BitConverter.GetBytes((uint)intervalMilliseconds).CopyTo(inOptionValues, uintSize * 2);
                 var result = socket.IOControl(IOControlCode.KeepAliveValues, inOptionValues, null);
                 if (result != 0)
                     throw new NpgsqlException($"Got non-zero value when trying to set TCP keepalive: {result}");
