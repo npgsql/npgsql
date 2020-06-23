@@ -84,7 +84,7 @@ namespace Npgsql.TypeMapping
 
         public INpgsqlTypeMapper MapComposite(Type clrType, string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
             => MapComposite(pgName, nameTranslator, clrType, t => (NpgsqlTypeHandlerFactory)
-                Activator.CreateInstance(typeof(CompositeTypeHandlerFactory<>).MakeGenericType(clrType), t)!);
+                Activator.CreateInstance(typeof(CompositeTypeHandlerFactory<>).MakeGenericType(clrType), BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic, null, new object[] { t }, null)!);
 
         INpgsqlTypeMapper MapComposite(string? pgName, INpgsqlNameTranslator? nameTranslator, Type type, Func<INpgsqlNameTranslator, NpgsqlTypeHandlerFactory> factory)
         {
