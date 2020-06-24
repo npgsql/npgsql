@@ -150,9 +150,7 @@ namespace Npgsql
                 catch (Exception e)
                 {
                     if (e is OperationCanceledException)
-                    {
                         e = new TimeoutException("Timeout during reading attempt");
-                    }
 
                     throw Connector.Break(new NpgsqlException("Exception while reading from stream", e));
                 }
