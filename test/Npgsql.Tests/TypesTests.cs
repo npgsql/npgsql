@@ -381,6 +381,25 @@ namespace Npgsql.Tests
             Assert.AreEqual(dateForTestMonths.AddMonths(-13), new NpgsqlDate(2008, 2, 29));
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3019")]
+        public void NpgsqlDateTimeMath()
+        {
+            // Note* NpgsqlTimespan treats 1 month as 30 days
+            Assert.That(new NpgsqlDateTime(2020, 1, 1, 0, 0, 0).Add(new NpgsqlTimeSpan(1, 2, 0)),
+                Is.EqualTo(new NpgsqlDateTime(2020, 2, 2, 0, 0, 0)));
+            Assert.That(new NpgsqlDateTime(2020, 1, 1, 0, 0, 0).Add(new NpgsqlTimeSpan(0, -1, 0)),
+                Is.EqualTo(new NpgsqlDateTime(2019, 12, 31, 0, 0, 0)));
+            Assert.That(new NpgsqlDateTime(2020, 1, 1, 0, 0, 0).Add(new NpgsqlTimeSpan(0, 0, 0)),
+                Is.EqualTo(new NpgsqlDateTime(2020, 1, 1, 0, 0, 0)));
+            Assert.That(new NpgsqlDateTime(2020, 1, 1, 0, 0, 0).Add(new NpgsqlTimeSpan(0, 0, 10000000)),
+                Is.EqualTo(new NpgsqlDateTime(2020, 1, 1, 0, 0, 1)));
+            Assert.That(new NpgsqlDateTime(2020, 1, 1, 0, 0, 0).Subtract(new NpgsqlTimeSpan(1, 1, 0)),
+                Is.EqualTo(new NpgsqlDateTime(2019, 12, 1, 0, 0, 0)));
+            // Add 1 month = 2020-03-01 then add 30 days (1 month in npgsqlTimespan = 30 days) = 2020-03-31
+            Assert.That(new NpgsqlDateTime(2020, 2, 1, 0, 0, 0).AddMonths(1).Add(new NpgsqlTimeSpan(1, 0, 0)),
+                Is.EqualTo(new NpgsqlDateTime(2020, 3, 31, 0, 0, 0)));
+        }
+
         [Test]
         public void TsVector()
         {

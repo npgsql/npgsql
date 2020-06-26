@@ -308,14 +308,14 @@ namespace NpgsqlTypes
         #region Arithmetic
 
         /// <summary>
-        /// Returns a new <see cref="NpgsqlDateTime"/> that adds the value of the specified TimeSpan to the value of this instance.
+        /// Returns a new <see cref="NpgsqlDateTime"/> that adds the value of the specified <see cref="NpgsqlTimeSpan"/> to the value of this instance.
         /// </summary>
-        /// <param name="value">A positive or negative time interval.</param>
+        /// <param name="value">An NpgsqlTimeSpan interval.</param>
         /// <returns>An object whose value is the sum of the date and time represented by this instance and the time interval represented by value.</returns>
-        public NpgsqlDateTime Add(NpgsqlTimeSpan value) { return AddTicks(value.Ticks); }
+        public NpgsqlDateTime Add(NpgsqlTimeSpan value) { return AddTicks(value.UnjustifyInterval().TotalTicks); }
 
         /// <summary>
-        /// Returns a new <see cref="NpgsqlDateTime"/> that adds the value of the specified <see cref="NpgsqlTimeSpan"/> to the value of this instance.
+        /// Returns a new <see cref="NpgsqlDateTime"/> that adds the value of the specified TimeSpan to the value of this instance.
         /// </summary>
         /// <param name="value">A positive or negative time interval.</param>
         /// <returns>An object whose value is the sum of the date and time represented by this instance and the time interval represented by value.</returns>
