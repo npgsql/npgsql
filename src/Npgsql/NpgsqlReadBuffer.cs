@@ -17,7 +17,7 @@ namespace Npgsql
     /// A buffer used by Npgsql to read data from the socket efficiently.
     /// Provides methods which decode different values types and tracks the current position.
     /// </summary>
-    public sealed partial class NpgsqlReadBuffer
+    public sealed partial class NpgsqlReadBuffer : IDisposable
     {
         #region Fields and Properties
 
@@ -27,7 +27,7 @@ namespace Npgsql
 
         internal Stream Underlying { private get; set; }
 
-        CancellationTokenSource? _timeoutCts;
+        CancellationTokenSource _timeoutCts = new CancellationTokenSource();
 
         internal int ReadTimeout
         {
@@ -70,6 +70,8 @@ namespace Npgsql
         internal int FilledBytes;
 
         ColumnStream? _columnStream;
+
+        bool _disposed;
 
         /// <summary>
         /// The minimum buffer size possible.
@@ -122,6 +124,8 @@ namespace Npgsql
 
         internal Task Ensure(int count, bool async, bool dontBreakOnTimeouts)
         {
+            CheckDisposed();
+
             return count <= ReadBytesLeft ? Task.CompletedTask : EnsureLong();
 
             async Task EnsureLong()
@@ -151,8 +155,6 @@ namespace Npgsql
                         {
                             // We reuse the timeout's cancellation token source as long as it hasn't fired, but once it has
                             // there's no way to reset it (see https://github.com/dotnet/runtime/issues/4694)
-                            if (_timeoutCts == null)
-                                _timeoutCts = new CancellationTokenSource();
                             var timeoutTimeSpan = TimeSpan.FromMilliseconds(ReadTimeout);
                             _timeoutCts.CancelAfter(timeoutTimeSpan);
                             if (_timeoutCts.IsCancellationRequested)
@@ -212,6 +214,8 @@ namespace Npgsql
 
         internal NpgsqlReadBuffer AllocateOversize(int count)
         {
+            CheckDisposed();
+
             Debug.Assert(count > Size);
             var tempBuf = new NpgsqlReadBuffer(Connector, Underlying, count, TextEncoding, RelaxedTextEncoding)
             {
@@ -219,11 +223,6 @@ namespace Npgsql
             };
             CopyTo(tempBuf);
             Clear();
-            if (_timeoutCts != null)
-            {
-                _timeoutCts.Dispose();
-                _timeoutCts = null;
-            }
             return tempBuf;
         }
 
@@ -530,6 +529,27 @@ namespace Npgsql
             var result = new ReadOnlySpan<byte>(Buffer, ReadPosition, i - ReadPosition);
             ReadPosition = i + 1;
             return result;
+        }
+
+        #endregion
+
+        #region Dispose
+
+        public void Dispose()
+        {
+            if (_disposed)
+                return;
+
+            _timeoutCts.Dispose();
+
+            _disposed = true;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        void CheckDisposed()
+        {
+            if (_disposed)
+                throw new ObjectDisposedException(typeof(NpgsqlReadBuffer).Name);
         }
 
         #endregion

@@ -648,7 +648,15 @@ namespace Npgsql
             catch
             {
 #pragma warning disable CS8625
-                try { _stream?.Dispose(); } catch {
+                try { ReadBuffer?.Dispose(); }
+                catch
+                {
+                    // ignored
+                }
+                ReadBuffer = null;
+                try { _stream?.Dispose(); }
+                catch
+                {
                     // ignored
                 }
                 _stream = null;
@@ -1069,10 +1077,14 @@ namespace Npgsql
                         {
                             if (len > ReadBuffer.Size)
                             {
+                                var oversizeBuffer = ReadBuffer.AllocateOversize(len);
+
                                 if (_origReadBuffer == null)
                                     _origReadBuffer = ReadBuffer;
+                                else
+                                    ReadBuffer.Dispose();
 
-                                ReadBuffer = ReadBuffer.AllocateOversize(len);
+                                ReadBuffer = oversizeBuffer;
                             }
 
                             await ReadBuffer.Ensure(len, async);
@@ -1552,7 +1564,9 @@ namespace Npgsql
 
             _stream = null;
             _baseStream = null;
+            _origReadBuffer?.Dispose();
             _origReadBuffer = null;
+            ReadBuffer?.Dispose();
             ReadBuffer = null;
             WriteBuffer = null;
             Connection = null;
