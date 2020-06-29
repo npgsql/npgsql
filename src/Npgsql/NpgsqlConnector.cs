@@ -190,17 +190,9 @@ namespace Npgsql
         {
             set
             {
-                // TODO: Socket.ReceiveTimeout doesn't work for async.
-                if (value != _currentTimeout)
-                    _socket.ReceiveTimeout = _currentTimeout = value;
+                ReadBuffer.ReadTimeout = value;
             }
         }
-
-        /// <summary>
-        /// Contains the current value of the socket's ReceiveTimeout, used to determine whether
-        /// we need to change it when commands are received.
-        /// </summary>
-        int _currentTimeout;
 
         /// <summary>
         /// A lock that's taken while a user action is in progress, e.g. a command being executed.
@@ -1051,22 +1043,14 @@ namespace Npgsql
                 }
 
                 PostgresException? error = null;
-                CancellationTokenSource? cts = null;
-                CancellationToken ct = default;
 
                 try
                 {
                     ReceiveTimeout = UserTimeout;
 
-                    if (async && UserTimeout > 0)
-                    {
-                        cts = new CancellationTokenSource(UserTimeout);
-                        ct = cts.Token;
-                    }
-
                     while (true)
                     {
-                        await ReadBuffer.Ensure(5, async, readingNotifications2, ct);
+                        await ReadBuffer.Ensure(5, async, readingNotifications2);
                         messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
                         PGUtil.ValidateBackendMessageCode(messageCode);
                         len = ReadBuffer.ReadInt32() - 4; // Transmitted length includes itself
@@ -1077,7 +1061,7 @@ namespace Npgsql
                         {
                             if (dataRowLoadingMode2 == DataRowLoadingMode.Skip)
                             {
-                                await ReadBuffer.Skip(len, async, ct);
+                                await ReadBuffer.Skip(len, async);
                                 continue;
                             }
                         }
@@ -1091,7 +1075,7 @@ namespace Npgsql
                                 ReadBuffer = ReadBuffer.AllocateOversize(len);
                             }
 
-                            await ReadBuffer.Ensure(len, async, ct);
+                            await ReadBuffer.Ensure(len, async);
                         }
 
                         var msg = ParseServerMessage(ReadBuffer, messageCode, len, isReadingPrependedMessage);
@@ -1157,10 +1141,6 @@ namespace Npgsql
                     if (error != null)
                         ExceptionDispatchInfo.Capture(error).Throw();
                     throw;
-                }
-                finally
-                {
-                    cts?.Dispose();
                 }
             }
         }

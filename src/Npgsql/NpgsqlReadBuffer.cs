@@ -27,6 +27,28 @@ namespace Npgsql
 
         internal Stream Underlying { private get; set; }
 
+        CancellationTokenSource? _timeoutCts;
+
+        internal int ReadTimeout
+        {
+            get
+            {
+                return _readTimeout;
+            }
+            set
+            {
+                _readTimeout = value <= 0 ? Timeout.Infinite : value;
+            }
+        }
+
+        int _readTimeout;
+
+        /// <summary>
+        /// Contains the current value of the Socket's Timeout, used to determine whether
+        /// we need to change it when commands are received.
+        /// </summary>
+        int _currentReadTimeout;
+
         /// <summary>
         /// The total byte length of the buffer.
         /// </summary>
@@ -73,6 +95,8 @@ namespace Npgsql
 
             Connector = connector;
             Underlying = stream;
+            var underlyingTimeout = Underlying.CanTimeout ? Underlying.ReadTimeout : Timeout.Infinite;
+            _readTimeout = _currentReadTimeout = underlyingTimeout;
             Size = size;
             Buffer = new byte[Size];
             TextEncoding = textEncoding;
@@ -87,7 +111,7 @@ namespace Npgsql
         /// Ensures that <paramref name="count"/> bytes are available in the buffer, and if
         /// not, reads from the socket until enough is available.
         /// </summary>
-        public Task Ensure(int count, bool async, CancellationToken cancellationToken = default) => Ensure(count, async, dontBreakOnTimeouts: false, cancellationToken);
+        public Task Ensure(int count, bool async) => Ensure(count, async, dontBreakOnTimeouts: false);
 
         internal void Ensure(int count)
         {
@@ -96,7 +120,7 @@ namespace Npgsql
             Ensure(count, false).GetAwaiter().GetResult();
         }
 
-        internal Task Ensure(int count, bool async, bool dontBreakOnTimeouts, CancellationToken cancellationToken = default)
+        internal Task Ensure(int count, bool async, bool dontBreakOnTimeouts)
         {
             return count <= ReadBytesLeft ? Task.CompletedTask : EnsureLong();
 
@@ -120,12 +144,37 @@ namespace Npgsql
 
                 try
                 {
+                    var timeoutCt = CancellationToken.None;
+                    if (async)
+                    {
+                        if (ReadTimeout > 0)
+                        {
+                            // We reuse the timeout's cancellation token source as long as it hasn't fired, but once it has
+                            // there's no way to reset it (see https://github.com/dotnet/runtime/issues/4694)
+                            if (_timeoutCts == null)
+                                _timeoutCts = new CancellationTokenSource();
+                            var timeoutTimeSpan = TimeSpan.FromMilliseconds(ReadTimeout);
+                            _timeoutCts.CancelAfter(timeoutTimeSpan);
+                            if (_timeoutCts.IsCancellationRequested)
+                            {
+                                _timeoutCts.Dispose();
+                                _timeoutCts = new CancellationTokenSource(timeoutTimeSpan);
+                            }
+                            timeoutCt = _timeoutCts.Token;
+                        }
+                    }
+                    else
+                    {
+                        if (ReadTimeout != _currentReadTimeout)
+                            Underlying.ReadTimeout = _currentReadTimeout = ReadTimeout;
+                    }
+
                     var totalRead = 0;
                     while (count > 0)
                     {
                         var toRead = Size - FilledBytes;
                         var read = async
-                            ? await Underlying.ReadAsync(Buffer, FilledBytes, toRead, cancellationToken)
+                            ? await Underlying.ReadAsync(Buffer, FilledBytes, toRead, timeoutCt)
                             : Underlying.Read(Buffer, FilledBytes, toRead);
 
                         if (read == 0)
@@ -164,9 +213,17 @@ namespace Npgsql
         internal NpgsqlReadBuffer AllocateOversize(int count)
         {
             Debug.Assert(count > Size);
-            var tempBuf = new NpgsqlReadBuffer(Connector, Underlying, count, TextEncoding, RelaxedTextEncoding);
+            var tempBuf = new NpgsqlReadBuffer(Connector, Underlying, count, TextEncoding, RelaxedTextEncoding)
+            {
+                ReadTimeout = ReadTimeout
+            };
             CopyTo(tempBuf);
             Clear();
+            if (_timeoutCts != null)
+            {
+                _timeoutCts.Dispose();
+                _timeoutCts = null;
+            }
             return tempBuf;
         }
 
@@ -183,7 +240,7 @@ namespace Npgsql
         /// <summary>
         /// Skip a given number of bytes.
         /// </summary>
-        public async Task Skip(long len, bool async, CancellationToken cancellationToken = default)
+        public async Task Skip(long len, bool async)
         {
             Debug.Assert(len >= 0);
 
@@ -193,11 +250,11 @@ namespace Npgsql
                 while (len > Size)
                 {
                     Clear();
-                    await Ensure(Size, async, cancellationToken);
+                    await Ensure(Size, async);
                     len -= Size;
                 }
                 Clear();
-                await Ensure((int)len, async, cancellationToken);
+                await Ensure((int)len, async);
             }
 
             ReadPosition += (int)len;
