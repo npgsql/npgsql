@@ -1,5 +1,6 @@
 ﻿# [Getting Started](index.md)
 # Release Notes
+## [5.0](release-notes/5.0.md)
 ## [4.1](release-notes/4.1.md)
 ## [4.0](release-notes/4.0.md)
 ## [3.2](release-notes/3.2.md)
