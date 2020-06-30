@@ -1288,7 +1288,7 @@ CREATE TABLE record ()");
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                TcpKeepAliveTime = 2000
+                TcpKeepAliveTime = 2
             };
             using (await OpenConnectionAsync(csb))
                 Thread.Sleep(Timeout.Infinite);

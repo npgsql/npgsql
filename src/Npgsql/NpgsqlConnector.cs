@@ -832,25 +832,34 @@ namespace Npgsql
                 throw new ArgumentException("If TcpKeepAliveInterval is defined, TcpKeepAliveTime must be defined as well");
             if (Settings.TcpKeepAliveTime > 0)
             {
-                if (!PGUtil.IsWindows)
-                    throw new PlatformNotSupportedException(
-                        "Npgsql management of TCP keepalive is supported only on Windows. " +
-                        "TCP keepalives can still be used on other systems but are enabled via the TcpKeepAlive option or configured globally for the machine, see the relevant docs.");
-
-                var time = Settings.TcpKeepAliveTime;
-                var interval = Settings.TcpKeepAliveInterval > 0
+                var timeSeconds = Settings.TcpKeepAliveTime;
+                var intervalSeconds = Settings.TcpKeepAliveInterval > 0
                     ? Settings.TcpKeepAliveInterval
                     : Settings.TcpKeepAliveTime;
+
+#if NET461 || NETSTANDARD2_0 || NETSTANDARD2_1
+                if (!PGUtil.IsWindows)
+                    throw new PlatformNotSupportedException(
+                        "Npgsql management of TCP keepalive is supported only on Windows, unless targeting .NET Core 3.0 and above " +
+                        "TCP keepalives can still be used on other systems but are enabled via the TcpKeepAlive option or configured globally for the machine, see the relevant docs.");
+
+                var timeMilliseconds = timeSeconds * 1000;
+                var intervalMilliseconds = intervalSeconds * 1000;
 
                 // For the following see https://msdn.microsoft.com/en-us/library/dd877220.aspx
                 var uintSize = Marshal.SizeOf(typeof(uint));
                 var inOptionValues = new byte[uintSize * 3];
                 BitConverter.GetBytes((uint)1).CopyTo(inOptionValues, 0);
-                BitConverter.GetBytes((uint)time).CopyTo(inOptionValues, uintSize);
-                BitConverter.GetBytes((uint)interval).CopyTo(inOptionValues, uintSize * 2);
+                BitConverter.GetBytes((uint)timeMilliseconds).CopyTo(inOptionValues, uintSize);
+                BitConverter.GetBytes((uint)intervalMilliseconds).CopyTo(inOptionValues, uintSize * 2);
                 var result = socket.IOControl(IOControlCode.KeepAliveValues, inOptionValues, null);
                 if (result != 0)
                     throw new NpgsqlException($"Got non-zero value when trying to set TCP keepalive: {result}");
+#else
+                socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
+                socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveTime, timeSeconds);
+                socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveInterval, intervalSeconds);
+#endif
             }
         }
 
