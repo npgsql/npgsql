@@ -195,7 +195,7 @@ CREATE OR REPLACE VIEW {view} (id, int2) AS SELECT id, int2 + int2 AS int2 FROM 
                 var query = $@"
 SELECT 1 AS some_column;
 UPDATE {table} SET name='yo' WHERE 1=0;
-SELECT 1 AS some_other_column";
+SELECT 1 AS some_other_column, 2";
 
                 using (var cmd = new NpgsqlCommand(query, conn))
                 {
@@ -210,6 +210,7 @@ SELECT 1 AS some_other_column";
                         Assert.That(reader.Read(), Is.False);
                         t = reader.GetSchemaTable();
                         Assert.That(t.Rows[0]["ColumnName"], Is.EqualTo("some_other_column"));
+                        Assert.That(t.Rows[1]["ColumnName"], Is.EqualTo("?column?"));
                         Assert.That(reader.NextResult(), Is.False);
                     }
 

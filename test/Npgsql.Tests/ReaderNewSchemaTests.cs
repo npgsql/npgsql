@@ -163,7 +163,7 @@ namespace Npgsql.Tests
                     var columns = reader.GetColumnSchema();
                     Assert.That(columns[0].ColumnName, Is.EqualTo("foo"));
                     Assert.That(columns[1].ColumnName, Is.EqualTo("bar"));
-                    Assert.That(columns[2].ColumnName, Is.Null);
+                    Assert.That(columns[2].ColumnName, Is.EqualTo("?column?"));
                     Assert.That(columns[3].ColumnName, Is.EqualTo("varchar"));
                 }
             }

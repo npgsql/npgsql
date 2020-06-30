@@ -150,10 +150,8 @@ ORDER BY attnum";
                     populatedColumns++;
                 }
 
-                var fieldName = field.Name.StartsWith("?column?") ? null : field.Name;
-
-                column.BaseColumnName ??= fieldName;
-                column.ColumnName = fieldName;
+                column.BaseColumnName ??= field.Name.StartsWith("?column?") ? null : field.Name;
+                column.ColumnName = field.Name;
             }
 
             if (populatedColumns != fields.Count)
