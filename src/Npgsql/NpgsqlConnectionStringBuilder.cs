@@ -965,12 +965,12 @@ namespace Npgsql
         bool _tcpKeepAlive;
 
         /// <summary>
-        /// The number of milliseconds of connection inactivity before a TCP keepalive query is sent.
+        /// The number of seconds of connection inactivity before a TCP keepalive query is sent.
         /// Use of this option is discouraged, use <see cref="KeepAlive"/> instead if possible.
         /// Set to 0 (the default) to disable. Supported only on Windows.
         /// </summary>
         [Category("Advanced")]
-        [Description("The number of milliseconds of connection inactivity before a TCP keepalive query is sent.")]
+        [Description("The number of seconds of connection inactivity before a TCP keepalive query is sent.")]
         [DisplayName("TCP Keepalive Time")]
         [NpgsqlConnectionStringProperty]
         public int TcpKeepAliveTime
@@ -988,12 +988,12 @@ namespace Npgsql
         int _tcpKeepAliveTime;
 
         /// <summary>
-        /// The interval, in milliseconds, between when successive keep-alive packets are sent if no acknowledgement is received.
+        /// The interval, in seconds, between when successive keep-alive packets are sent if no acknowledgement is received.
         /// Defaults to the value of <see cref="TcpKeepAliveTime"/>. <see cref="TcpKeepAliveTime"/> must be non-zero as well.
         /// Supported only on Windows.
         /// </summary>
         [Category("Advanced")]
-        [Description("The interval, in milliseconds, between when successive keep-alive packets are sent if no acknowledgement is received.")]
+        [Description("The interval, in seconds, between when successive keep-alive packets are sent if no acknowledgement is received.")]
         [DisplayName("TCP Keepalive Interval")]
         [NpgsqlConnectionStringProperty]
         public int TcpKeepAliveInterval
