@@ -651,6 +651,12 @@ namespace Npgsql
                     // ignored
                 }
                 ReadBuffer = null;
+                try { WriteBuffer?.Dispose(); }
+                catch
+                {
+                    // ignored
+                }
+                WriteBuffer = null;
                 try { _stream?.Dispose(); }
                 catch
                 {
@@ -1565,6 +1571,7 @@ namespace Npgsql
             _origReadBuffer = null;
             ReadBuffer?.Dispose();
             ReadBuffer = null;
+            WriteBuffer?.Dispose();
             WriteBuffer = null;
             Connection = null;
             PostgresParameters.Clear();

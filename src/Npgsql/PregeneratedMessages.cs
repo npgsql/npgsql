@@ -12,7 +12,7 @@ namespace Npgsql
 #pragma warning disable CS8625
             // This is the only use of a write buffer without a connector, for in-memory construction of
             // pregenerated messages.
-            var buf = new NpgsqlWriteBuffer(null, new MemoryStream(), NpgsqlWriteBuffer.MinimumSize, Encoding.ASCII);
+            using var buf = new NpgsqlWriteBuffer(null, new MemoryStream(), NpgsqlWriteBuffer.MinimumSize, Encoding.ASCII);
 #pragma warning restore CS8625
 
             BeginTransRepeatableRead    = Generate(buf, "BEGIN ISOLATION LEVEL REPEATABLE READ");
