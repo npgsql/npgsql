@@ -29,25 +29,23 @@ namespace Npgsql
 
         CancellationTokenSource _timeoutCts = new CancellationTokenSource();
 
-        internal int ReadTimeout
+        /// <summary>
+        /// Underlying stream ReadTimeout in ms
+        /// </summary>
+        internal int Timeout
         {
-            get
-            {
-                return _readTimeout;
-            }
-            set
-            {
-                _readTimeout = value <= 0 ? Timeout.Infinite : value;
-            }
+            get => _timeout;
+            // Underlying NetworkStream only accepts -1 as infinite timeout and fails for 0
+            set => _timeout = value <= 0 ? -1 : value;
         }
 
-        int _readTimeout;
+        int _timeout;
 
         /// <summary>
         /// Contains the current value of the Socket's Timeout, used to determine whether
         /// we need to change it when commands are received.
         /// </summary>
-        int _currentReadTimeout;
+        int _currentTimeout;
 
         /// <summary>
         /// The total byte length of the buffer.
@@ -97,8 +95,8 @@ namespace Npgsql
 
             Connector = connector;
             Underlying = stream;
-            var underlyingTimeout = Underlying.CanTimeout ? Underlying.ReadTimeout : Timeout.Infinite;
-            _readTimeout = _currentReadTimeout = underlyingTimeout;
+            // Underlying NetworkStream only accepts -1 as infinite timeout and fails for 0
+            _timeout = _currentTimeout = Underlying.CanTimeout ? Underlying.ReadTimeout : -1;
             Size = size;
             Buffer = new byte[Size];
             TextEncoding = textEncoding;
@@ -149,11 +147,11 @@ namespace Npgsql
                     var timeoutCt = CancellationToken.None;
                     if (async)
                     {
-                        if (ReadTimeout > 0)
+                        if (Timeout > 0)
                         {
                             // We reuse the timeout's cancellation token source as long as it hasn't fired, but once it has
                             // there's no way to reset it (see https://github.com/dotnet/runtime/issues/4694)
-                            var timeoutTimeSpan = TimeSpan.FromMilliseconds(ReadTimeout);
+                            var timeoutTimeSpan = TimeSpan.FromMilliseconds(Timeout);
                             _timeoutCts.CancelAfter(timeoutTimeSpan);
                             if (_timeoutCts.IsCancellationRequested)
                             {
@@ -165,8 +163,8 @@ namespace Npgsql
                     }
                     else
                     {
-                        if (ReadTimeout != _currentReadTimeout)
-                            Underlying.ReadTimeout = _currentReadTimeout = ReadTimeout;
+                        if (Timeout != _currentTimeout)
+                            Underlying.ReadTimeout = _currentTimeout = Timeout;
                     }
 
                     var totalRead = 0;
@@ -215,7 +213,7 @@ namespace Npgsql
             Debug.Assert(count > Size);
             var tempBuf = new NpgsqlReadBuffer(Connector, Underlying, count, TextEncoding, RelaxedTextEncoding)
             {
-                ReadTimeout = ReadTimeout
+                Timeout = Timeout
             };
             CopyTo(tempBuf);
             Clear();
