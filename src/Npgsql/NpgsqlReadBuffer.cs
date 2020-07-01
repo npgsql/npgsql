@@ -182,6 +182,10 @@ namespace Npgsql
                         totalRead += read;
                     }
 
+                    // Resetting cancellation token source, so we can use it again
+                    if (async)
+                        _timeoutCts.CancelAfter(-1);
+
                     NpgsqlEventSource.Log.BytesRead(totalRead);
                 }
                 // We have a special case when reading async notifications - a timeout may be normal
