@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Util;
 
@@ -15,13 +16,33 @@ namespace Npgsql
     /// A buffer used by Npgsql to write data to the socket efficiently.
     /// Provides methods which encode different values types and tracks the current position.
     /// </summary>
-    public sealed partial class NpgsqlWriteBuffer
+    public sealed partial class NpgsqlWriteBuffer : IDisposable
     {
         #region Fields and Properties
 
         internal readonly NpgsqlConnector Connector;
 
         internal Stream Underlying { private get; set; }
+
+        CancellationTokenSource _timeoutCts = new CancellationTokenSource();
+
+        /// <summary>
+        /// Underlying stream WriteTimeout in ms
+        /// </summary>
+        internal int Timeout
+        {
+            get => _timeout;
+            // Underlying NetworkStream only accepts -1 as infinite timeout and fails for 0
+            set => _timeout = value <= 0 ? -1 : value;
+        }
+
+        int _timeout;
+
+        /// <summary>
+        /// Contains the current value of the Socket's Timeout, used to determine whether
+        /// we need to change it when commands are received.
+        /// </summary>
+        int _currentTimeout;
 
         /// <summary>
         /// The total byte length of the buffer.
@@ -40,6 +61,8 @@ namespace Npgsql
 
         ParameterStream? _parameterStream;
 
+        bool _disposed;
+
         /// <summary>
         /// The minimum buffer size possible.
         /// </summary>
@@ -57,6 +80,8 @@ namespace Npgsql
 
             Connector = connector;
             Underlying = stream;
+            // Underlying NetworkStream only accepts -1 as infinite timeout and fails for 0
+            _timeout = _currentTimeout = Underlying.CanTimeout ? Underlying.WriteTimeout : -1;
             Size = size;
             Buffer = new byte[Size];
             TextEncoding = textEncoding;
@@ -83,10 +108,33 @@ namespace Npgsql
             } else if (WritePosition == 0)
                 return;
 
+            var timeoutCt = CancellationToken.None;
+            if (async)
+            {
+                if (Timeout > 0)
+                {
+                    // We reuse the timeout's cancellation token source as long as it hasn't fired, but once it has
+                    // there's no way to reset it (see https://github.com/dotnet/runtime/issues/4694)
+                    var timeoutTimeSpan = TimeSpan.FromMilliseconds(Timeout);
+                    _timeoutCts.CancelAfter(timeoutTimeSpan);
+                    if (_timeoutCts.IsCancellationRequested)
+                    {
+                        _timeoutCts.Dispose();
+                        _timeoutCts = new CancellationTokenSource(timeoutTimeSpan);
+                    }
+                    timeoutCt = _timeoutCts.Token;
+                }
+            }
+            else
+            {
+                if (Timeout != _currentTimeout)
+                    Underlying.WriteTimeout = _currentTimeout = Timeout;
+            }
+
             try
             {
                 if (async)
-                    await Underlying.WriteAsync(Buffer, 0, WritePosition);
+                    await Underlying.WriteAsync(Buffer, 0, WritePosition, timeoutCt);
                 else
                     Underlying.Write(Buffer, 0, WritePosition);
             }
@@ -98,7 +146,7 @@ namespace Npgsql
             try
             {
                 if (async)
-                    await Underlying.FlushAsync();
+                    await Underlying.FlushAsync(timeoutCt);
                 else
                     Underlying.Flush();
             }
@@ -106,6 +154,10 @@ namespace Npgsql
             {
                 throw Connector.Break(new NpgsqlException("Exception while flushing stream", e));
             }
+
+            // Resetting cancellation token source, so we can use it again
+            if (async)
+                _timeoutCts.CancelAfter(-1);
 
             NpgsqlEventSource.Log.BytesWritten(WritePosition);
             //NpgsqlEventSource.Log.RequestFailed();
@@ -500,6 +552,20 @@ namespace Npgsql
             WriteByte((byte)BackendMessageCode.CopyData);
             // Leave space for the message length
             WriteInt32(0);
+        }
+
+        #endregion
+
+        #region Dispose
+
+        public void Dispose()
+        {
+            if (_disposed)
+                return;
+
+            _timeoutCts.Dispose();
+
+            _disposed = true;
         }
 
         #endregion

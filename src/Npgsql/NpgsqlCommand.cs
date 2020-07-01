@@ -834,6 +834,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         void BeginSend(NpgsqlConnector connector)
         {
+            connector.WriteBuffer.Timeout = CommandTimeout * 1000;
             connector.WriteBuffer.CurrentCommand = this;
             FlushOccurred = false;
         }
