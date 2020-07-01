@@ -124,8 +124,6 @@ namespace Npgsql
 
         internal Task Ensure(int count, bool async, bool dontBreakOnTimeouts)
         {
-            CheckDisposed();
-
             return count <= ReadBytesLeft ? Task.CompletedTask : EnsureLong();
 
             async Task EnsureLong()
@@ -214,8 +212,6 @@ namespace Npgsql
 
         internal NpgsqlReadBuffer AllocateOversize(int count)
         {
-            CheckDisposed();
-
             Debug.Assert(count > Size);
             var tempBuf = new NpgsqlReadBuffer(Connector, Underlying, count, TextEncoding, RelaxedTextEncoding)
             {
@@ -543,13 +539,6 @@ namespace Npgsql
             _timeoutCts.Dispose();
 
             _disposed = true;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        void CheckDisposed()
-        {
-            if (_disposed)
-                throw new ObjectDisposedException(typeof(NpgsqlReadBuffer).Name);
         }
 
         #endregion
