@@ -168,12 +168,12 @@ namespace Npgsql
             catch (IOException e) when ((e.InnerException as SocketException)?.SocketErrorCode ==
                    (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock))
             {
-                throw Connector.Break(new NpgsqlException("Exception while flushing stream", new TimeoutException("Timeout during flushing attempt")));
+                throw Connector.Break(new NpgsqlException("Exception while flushing stream", new TimeoutException("Timeout during flushing attempt", e)));
             }
             // async timeout
-            catch (OperationCanceledException)
+            catch (OperationCanceledException e)
             {
-                throw Connector.Break(new NpgsqlException("Exception while flushing stream", new TimeoutException("Timeout during flushing attempt")));
+                throw Connector.Break(new NpgsqlException("Exception while flushing stream", new TimeoutException("Timeout during flushing attempt", e)));
             }
             catch (Exception e)
             {

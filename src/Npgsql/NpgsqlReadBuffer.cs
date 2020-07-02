@@ -198,17 +198,17 @@ namespace Npgsql
                 )
                 {
                     if (dontBreakOnTimeouts)
-                        throw new TimeoutException("Timeout while reading from stream");
+                        throw new TimeoutException("Timeout while reading from stream", e);
                     else
-                        throw Connector.Break(new NpgsqlException("Exception while reading from stream", new TimeoutException("Timeout during reading attempt")));
+                        throw Connector.Break(new NpgsqlException("Exception while reading from stream", new TimeoutException("Timeout during reading attempt", e)));
                 }
                 // async timeout
-                catch (OperationCanceledException)
+                catch (OperationCanceledException e)
                 {
                     if (dontBreakOnTimeouts)
-                        throw new TimeoutException("Timeout while reading from stream");
+                        throw new TimeoutException("Timeout while reading from stream", e);
                     else
-                        throw Connector.Break(new NpgsqlException("Exception while reading from stream", new TimeoutException("Timeout during reading attempt")));
+                        throw Connector.Break(new NpgsqlException("Exception while reading from stream", new TimeoutException("Timeout during reading attempt", e)));
                 }
                 catch (Exception e)
                 {

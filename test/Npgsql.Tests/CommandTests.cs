@@ -158,17 +158,34 @@ namespace Npgsql.Tests
 
             // Mono throws a socket exception with WouldBlock instead of TimedOut (see #1330)
             var isMono = Type.GetType("Mono.Runtime") != null;
-            using (var conn = await OpenConnectionAsync(ConnectionString + ";CommandTimeout=1"))
-            using (var cmd = CreateSleepCommand(conn, 10))
-            {
-                Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception
-                    .TypeOf<NpgsqlException>()
-                    .With.InnerException.TypeOf<IOException>()
-                    .With.InnerException.InnerException.TypeOf<SocketException>()
-                    .With.InnerException.InnerException.Property(nameof(SocketException.SocketErrorCode)).EqualTo(isMono ? SocketError.WouldBlock : SocketError.TimedOut)
-                    );
-                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
-            }
+            using var conn = await OpenConnectionAsync(ConnectionString + ";CommandTimeout=1");
+            using var cmd = CreateSleepCommand(conn, 10);
+            Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception
+                .TypeOf<NpgsqlException>()
+                .With.InnerException.TypeOf<TimeoutException>()
+                .With.InnerException.InnerException.TypeOf<IOException>()
+                .With.InnerException.InnerException.InnerException.TypeOf<SocketException>()
+                .With.InnerException.InnerException.InnerException.Property(nameof(SocketException.SocketErrorCode)).EqualTo(isMono ? SocketError.WouldBlock : SocketError.TimedOut)
+                );
+            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+        }
+
+        [Test, Description("Checks that CommandTimeout gets enforced for async queries")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/607")]
+        [Timeout(10000)]
+        public async Task TimeoutAsync()
+        {
+            if (IsMultiplexing)
+                return; // Multiplexing, Timeout
+
+            using var conn = await OpenConnectionAsync(ConnectionString + ";CommandTimeout=1");
+            using var cmd = CreateSleepCommand(conn, 10);
+            Assert.That(async () => await cmd.ExecuteNonQueryAsync(), Throws.Exception
+                .TypeOf<NpgsqlException>()
+                .With.InnerException.TypeOf<TimeoutException>()
+                .With.InnerException.InnerException.TypeOf<OperationCanceledException>()
+                );
+            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
         }
 
         [Test]
