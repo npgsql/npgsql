@@ -189,7 +189,7 @@ namespace Npgsql
         public override string Message => SqlState + ": " + MessageText;
 
         /// <summary>
-        /// Specifies whether the exception is considered transient, that is, whether retrying to operation could
+        /// Specifies whether the exception is considered transient, that is, whether retrying the operation could
         /// succeed (e.g. a network error). Check <see cref="SqlState"/>.
         /// </summary>
         public override bool IsTransient
