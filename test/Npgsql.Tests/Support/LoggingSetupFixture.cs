@@ -32,6 +32,5 @@ public class LoggingSetupFixture
         LogManager.Configuration = config;
 
         NpgsqlLogManager.Provider = new NLogLoggingProvider();
-        NpgsqlLogManager.IsParameterLoggingEnabled = true;
     }
 }
