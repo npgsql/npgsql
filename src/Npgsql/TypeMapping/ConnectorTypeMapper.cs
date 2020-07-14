@@ -409,28 +409,28 @@ namespace Npgsql.TypeMapping
 
             // Try to find the postgresType in the mappings
             if (TryGetMapping(postgresType, out var npgsqlTypeMapping))
-                return (npgsqlTypeMapping.NpgsqlDbType, postgresType);
+                return (npgsqlTypeMapping!.NpgsqlDbType, postgresType);
 
             // Try to find the elements' postgresType in the mappings
             if (postgresType is PostgresArrayType arrayType &&
                 TryGetMapping(arrayType.Element, out var elementNpgsqlTypeMapping))
-                return (elementNpgsqlTypeMapping.NpgsqlDbType | NpgsqlDbType.Array, postgresType);
+                return (elementNpgsqlTypeMapping!.NpgsqlDbType | NpgsqlDbType.Array, postgresType);
 
             // Try to find the elements' postgresType of the base type in the mappings
             // this happens with domains over arrays
             if (postgresType is PostgresDomainType domainType && domainType.BaseType is PostgresArrayType baseType &&
                 TryGetMapping(baseType.Element, out var baseTypeElementNpgsqlTypeMapping))
-                return (baseTypeElementNpgsqlTypeMapping.NpgsqlDbType | NpgsqlDbType.Array, postgresType);
+                return (baseTypeElementNpgsqlTypeMapping!.NpgsqlDbType | NpgsqlDbType.Array, postgresType);
 
             // It might be an unmapped enum/composite type, or some other unmapped type
             return (null, postgresType);
         }
 
-        bool TryGetMapping(PostgresType pgType, [MaybeNullWhen(false)] out NpgsqlTypeMapping? mapping)
-            => Mappings.TryGetValue(pgType.Name, out mapping) ||
-               Mappings.TryGetValue(pgType.FullName, out mapping) ||
+        bool TryGetMapping(PostgresType pgType, [NotNullWhen(false)] out NpgsqlTypeMapping? mapping)
+            => Mappings.TryGetValue(pgType.Name, out mapping!) ||
+               Mappings.TryGetValue(pgType.FullName, out mapping!) ||
                pgType is PostgresDomainType domain && (
-                   Mappings.TryGetValue(domain.BaseType.Name, out mapping) ||
-                   Mappings.TryGetValue(domain.BaseType.FullName, out mapping));
+                   Mappings.TryGetValue(domain.BaseType.Name, out mapping!) ||
+                   Mappings.TryGetValue(domain.BaseType.FullName, out mapping!));
     }
 }
