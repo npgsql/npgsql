@@ -123,15 +123,21 @@ ORDER BY attnum";
 
                 using var cmd = new NpgsqlCommand(query, connection);
                 using var reader = cmd.ExecuteReader();
-                for (; reader.Read(); populatedColumns++)
+                while (reader.Read())
                 {
                     var column = LoadColumnDefinition(reader, _connection.Connector!.TypeMapper.DatabaseInfo, oldQueryMode);
-                    var ordinal = fields.FindIndex(f => f.TableOID == column.TableOID && f.ColumnAttributeNumber - 1 == column.ColumnAttributeNumber);
-                    Debug.Assert(ordinal >= 0);
-
-                    // The column's ordinal is with respect to the resultset, not its table
-                    column.ColumnOrdinal = ordinal;
-                    result[ordinal] = column;
+                    for (var ordinal = 0; ordinal < fields.Count; ordinal++)
+                    {
+                        var field = fields[ordinal];
+                        if (field.TableOID == column.TableOID &&
+                            field.ColumnAttributeNumber == column.ColumnAttributeNumber + 1)
+                        {
+                            populatedColumns++;
+                            // The column's ordinal is with respect to the resultset, not its table
+                            column.ColumnOrdinal = ordinal;
+                            result[ordinal] = column;
+                        }
+                    }
                 }
             }
 
