@@ -130,7 +130,7 @@ ORDER BY attnum";
                     {
                         var field = fields[ordinal];
                         if (field.TableOID == column.TableOID &&
-                            field.ColumnAttributeNumber == column.ColumnAttributeNumber + 1)
+                            field.ColumnAttributeNumber == column.ColumnAttributeNumber)
                         {
                             populatedColumns++;
 
@@ -182,8 +182,7 @@ ORDER BY attnum";
                 BaseServerName = _connection.Host!,
                 BaseTableName = reader.GetString(reader.GetOrdinal("relname")),
                 BaseColumnName = reader.GetString(reader.GetOrdinal("attname")),
-                ColumnOrdinal = reader.GetInt32(reader.GetOrdinal("attnum")) - 1,
-                ColumnAttributeNumber = (short)(reader.GetInt16(reader.GetOrdinal("attnum")) - 1),
+                ColumnAttributeNumber = reader.GetInt16(reader.GetOrdinal("attnum")),
                 IsKey = reader.GetBoolean(reader.GetOrdinal("isprimarykey")),
                 IsReadOnly = !reader.GetBoolean(reader.GetOrdinal("is_updatable")),
                 IsUnique = reader.GetBoolean(reader.GetOrdinal("isunique")),
