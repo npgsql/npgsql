@@ -210,9 +210,9 @@ namespace Npgsql.Tests
                 {
                     var columns = reader.GetColumnSchema();
                     Assert.That(columns[0].ColumnName, Is.EqualTo("second"));
-                    Assert.That(columns[0].ColumnAttributeNumber, Is.EqualTo(1));
+                    Assert.That(columns[0].ColumnAttributeNumber, Is.EqualTo(2));
                     Assert.That(columns[1].ColumnName, Is.EqualTo("first"));
-                    Assert.That(columns[1].ColumnAttributeNumber, Is.EqualTo(0));
+                    Assert.That(columns[1].ColumnAttributeNumber, Is.EqualTo(1));
                 }
             }
         }
