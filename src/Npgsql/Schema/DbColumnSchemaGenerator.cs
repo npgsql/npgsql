@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.Linq;
 using System.Transactions;
 using Npgsql.BackendMessages;
@@ -119,6 +118,7 @@ ORDER BY attnum";
 
                 using var scope = new TransactionScope(TransactionScopeOption.Suppress);
                 using var connection = (NpgsqlConnection)((ICloneable)_connection).Clone();
+
                 connection.Open();
 
                 using var cmd = new NpgsqlCommand(query, connection);
@@ -172,9 +172,8 @@ ORDER BY attnum";
 
         NpgsqlDbColumn LoadColumnDefinition(NpgsqlDataReader reader, NpgsqlDatabaseInfo databaseInfo, bool oldQueryMode)
         {
-            // Note: we don't set ColumnName and BaseColumnName. These should always contain the
-            // column alias rather than the table column name (i.e. in case of "SELECT foo AS foo_alias").
-            // It will be set later.
+            // We don't set ColumnName here. It should always contain the column alias rather than
+            // the table column name (i.e. in case of "SELECT foo AS foo_alias"). It will be set later.
             var column = new NpgsqlDbColumn
             {
                 AllowDBNull = !reader.GetBoolean(reader.GetOrdinal("attnotnull")),
