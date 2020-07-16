@@ -110,7 +110,7 @@ jobs:
           echo "host all all all md5" > pgsql/PGDATA/pg_hba.conf
 
       - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@1.4.0
+        uses: actions/setup-dotnet@v1
         with:
           dotnet-version: ${{ env.dotnet_sdk_version }}
 
@@ -146,7 +146,7 @@ jobs:
             ${{ runner.os }}-nuget-
 
       - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@1.4.0
+        uses: actions/setup-dotnet@v1
         with:
           dotnet-version: ${{ env.dotnet_sdk_version }}
 
