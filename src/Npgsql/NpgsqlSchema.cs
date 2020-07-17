@@ -3,6 +3,8 @@ using System.Data;
 using System.Data.Common;
 using System.Globalization;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using Npgsql.PostgresTypes;
 using Npgsql.Util;
 using NpgsqlTypes;
@@ -16,33 +18,38 @@ namespace Npgsql
     static class NpgsqlSchema
     {
         public static DataTable GetSchema(NpgsqlConnection conn, string? collectionName, string?[]? restrictions)
+            => GetSchemaAsync(conn, collectionName, restrictions, false).GetAwaiter().GetResult();
+
+        public static ValueTask<DataTable> GetSchemaAsync(NpgsqlConnection conn, string? collectionName, string?[]? restrictions, bool async = true, CancellationToken cancellationToken = default)
         {
             if (collectionName is null)
                 throw new ArgumentNullException(nameof(collectionName));
             if (collectionName.Length == 0)
                 throw new ArgumentException("Collection name cannot be empty.", nameof(collectionName));
 
+            cancellationToken.ThrowIfCancellationRequested();
+
             return collectionName.ToUpperInvariant() switch
             {
-                "METADATACOLLECTIONS"   => GetMetaDataCollections(),
-                "RESTRICTIONS"          => GetRestrictions(),
-                "DATASOURCEINFORMATION" => GetDataSourceInformation(conn),
-                "DATATYPES"             => GetDataTypes(conn),
-                "RESERVEDWORDS"         => GetReservedWords(),
+                "METADATACOLLECTIONS"   => new ValueTask<DataTable>(GetMetaDataCollections()),
+                "RESTRICTIONS"          => new ValueTask<DataTable>(GetRestrictions()),
+                "DATASOURCEINFORMATION" => new ValueTask<DataTable>(GetDataSourceInformation(conn)),
+                "DATATYPES"             => new ValueTask<DataTable>(GetDataTypes(conn)),
+                "RESERVEDWORDS"         => new ValueTask<DataTable>(GetReservedWords()),
                 // custom collections for npgsql
-                "DATABASES"             => GetDatabases(conn, restrictions),
-                "SCHEMATA"              => GetSchemata(conn, restrictions),
-                "TABLES"                => GetTables(conn, restrictions),
-                "COLUMNS"               => GetColumns(conn, restrictions),
-                "VIEWS"                 => GetViews(conn, restrictions),
-                "USERS"                 => GetUsers(conn, restrictions),
-                "INDEXES"               => GetIndexes(conn, restrictions),
-                "INDEXCOLUMNS"          => GetIndexColumns(conn, restrictions),
-                "CONSTRAINTS"           => GetConstraints(conn, restrictions, collectionName),
-                "PRIMARYKEY"            => GetConstraints(conn, restrictions, collectionName),
-                "UNIQUEKEYS"            => GetConstraints(conn, restrictions, collectionName),
-                "FOREIGNKEYS"           => GetConstraints(conn, restrictions, collectionName),
-                "CONSTRAINTCOLUMNS"     => GetConstraintColumns(conn, restrictions),
+                "DATABASES"             => GetDatabasesAsync(conn, restrictions, async),
+                "SCHEMATA"              => GetSchemataAsync(conn, restrictions, async),
+                "TABLES"                => GetTablesAsync(conn, restrictions, async),
+                "COLUMNS"               => GetColumnsAsync(conn, restrictions, async),
+                "VIEWS"                 => GetViewsAsync(conn, restrictions, async),
+                "USERS"                 => GetUsersAsync(conn, restrictions, async),
+                "INDEXES"               => GetIndexesAsync(conn, restrictions, async),
+                "INDEXCOLUMNS"          => GetIndexColumnsAsync(conn, restrictions, async),
+                "CONSTRAINTS"           => GetConstraintsAsync(conn, restrictions, collectionName, async),
+                "PRIMARYKEY"            => GetConstraintsAsync(conn, restrictions, collectionName, async),
+                "UNIQUEKEYS"            => GetConstraintsAsync(conn, restrictions, collectionName, async),
+                "FOREIGNKEYS"           => GetConstraintsAsync(conn, restrictions, collectionName, async),
+                "CONSTRAINTCOLUMNS"     => GetConstraintColumnsAsync(conn, restrictions, async),
                 _ => throw new ArgumentOutOfRangeException(nameof(collectionName), collectionName, "Invalid collection name.")
             };
         }
@@ -152,13 +159,7 @@ namespace Npgsql
         static string RemoveSpecialChars(string paramName)
             => paramName.Replace("(", "").Replace(")", "").Replace(".", "");
 
-        /// <summary>
-        /// Returns the Databases that contains a list of all accessable databases.
-        /// </summary>
-        /// <param name="conn">The database connection on which to run the metadataquery.</param>
-        /// <param name="restrictions">The restrictions to filter the collection.</param>
-        /// <returns>The Databases</returns>
-        static DataTable GetDatabases(NpgsqlConnection conn, string?[]? restrictions)
+        static async ValueTask<DataTable> GetDatabasesAsync(NpgsqlConnection conn, string?[]? restrictions, bool async = true)
         {
             var databases = new DataTable("Databases") { Locale = CultureInfo.InvariantCulture };
 
@@ -172,14 +173,17 @@ namespace Npgsql
 
             getDatabases.Append("SELECT d.datname AS database_name, u.usename AS owner, pg_catalog.pg_encoding_to_char(d.encoding) AS encoding FROM pg_catalog.pg_database d LEFT JOIN pg_catalog.pg_user u ON d.datdba = u.usesysid");
 
-            using (var command = BuildCommand(conn, getDatabases, restrictions, "datname"))
-            using (var adapter = new NpgsqlDataAdapter(command))
+            using var command = BuildCommand(conn, getDatabases, restrictions, "datname");
+            using var adapter = new NpgsqlDataAdapter(command);
+            if (async)
+                await adapter.FillAsync(databases);
+            else
                 adapter.Fill(databases);
 
             return databases;
         }
 
-        static DataTable GetSchemata(NpgsqlConnection conn, string?[]? restrictions)
+        static async ValueTask<DataTable> GetSchemataAsync(NpgsqlConnection conn, string?[]? restrictions, bool async = true)
         {
             var schemata = new DataTable("Schemata") { Locale = CultureInfo.InvariantCulture };
 
@@ -198,20 +202,18 @@ SELECT * FROM (
         pg_catalog.pg_namespace LEFT JOIN pg_catalog.pg_roles r ON r.oid = nspowner
     ) tmp");
 
-            using (var command = BuildCommand(conn, getSchemata, restrictions, "catalog_name", "schema_name", "schema_owner"))
-            using (var adapter = new NpgsqlDataAdapter(command))
+            using var command = BuildCommand(conn, getSchemata, restrictions, "catalog_name", "schema_name", "schema_owner");
+            using var adapter = new NpgsqlDataAdapter(command);
+            if (async)
+                await adapter.FillAsync(schemata);
+            else
                 adapter.Fill(schemata);
 
             return schemata;
         }
 
-        /// <summary>
-        /// Returns the Tables that contains table and view names and the database and schema they come from.
-        /// </summary>
-        /// <param name="conn">The database connection on which to run the metadataquery.</param>
-        /// <param name="restrictions">The restrictions to filter the collection.</param>
-        /// <returns>The Tables</returns>
-        static DataTable GetTables(NpgsqlConnection conn, string?[]? restrictions)
+
+        static async ValueTask<DataTable> GetTablesAsync(NpgsqlConnection conn, string?[]? restrictions, bool async = true)
         {
             var tables = new DataTable("Tables") { Locale = CultureInfo.InvariantCulture };
 
@@ -231,20 +233,17 @@ WHERE
     table_type IN ('BASE TABLE', 'FOREIGN', 'FOREIGN TABLE') AND
     table_schema NOT IN ('pg_catalog', 'information_schema')");
 
-            using (var command = BuildCommand(conn, getTables, restrictions, false, "table_catalog", "table_schema", "table_name", "table_type"))
-            using (var adapter = new NpgsqlDataAdapter(command))
+            using var command = BuildCommand(conn, getTables, restrictions, false, "table_catalog", "table_schema", "table_name", "table_type");
+            using var adapter = new NpgsqlDataAdapter(command);
+            if (async)
+                await adapter.FillAsync(tables);
+            else
                 adapter.Fill(tables);
 
             return tables;
         }
 
-        /// <summary>
-        /// Returns the Columns that contains information about columns in tables.
-        /// </summary>
-        /// <param name="conn">The database connection on which to run the metadataquery.</param>
-        /// <param name="restrictions">The restrictions to filter the collection.</param>
-        /// <returns>The Columns.</returns>
-        static DataTable GetColumns(NpgsqlConnection conn, string?[]? restrictions)
+        static async ValueTask<DataTable> GetColumnsAsync(NpgsqlConnection conn, string?[]? restrictions, bool async = true)
         {
             var columns = new DataTable("Columns") { Locale = CultureInfo.InvariantCulture };
 
@@ -267,20 +266,17 @@ SELECT
     character_set_name, collation_catalog
 FROM information_schema.columns");
 
-            using (var command = BuildCommand(conn, getColumns, restrictions, "table_catalog", "table_schema", "table_name", "column_name"))
-            using (var adapter = new NpgsqlDataAdapter(command))
+            using var command = BuildCommand(conn, getColumns, restrictions, "table_catalog", "table_schema", "table_name", "column_name");
+            using var adapter = new NpgsqlDataAdapter(command);
+            if (async)
+                await adapter.FillAsync(columns);
+            else
                 adapter.Fill(columns);
 
             return columns;
         }
 
-        /// <summary>
-        /// Returns the Views that contains view names and the database and schema they come from.
-        /// </summary>
-        /// <param name="conn">The database connection on which to run the metadataquery.</param>
-        /// <param name="restrictions">The restrictions to filter the collection.</param>
-        /// <returns>The Views</returns>
-        static DataTable GetViews(NpgsqlConnection conn, string?[]? restrictions)
+        static async ValueTask<DataTable> GetViewsAsync(NpgsqlConnection conn, string?[]? restrictions, bool async = true)
         {
             var views = new DataTable("Views") { Locale = CultureInfo.InvariantCulture };
 
@@ -294,37 +290,37 @@ SELECT table_catalog, table_schema, table_name, check_option, is_updatable
 FROM information_schema.views
 WHERE table_schema NOT IN ('pg_catalog', 'information_schema')");
 
-            using (var command = BuildCommand(conn, getViews, restrictions, false, "table_catalog", "table_schema", "table_name"))
-            using (var adapter = new NpgsqlDataAdapter(command))
+            using var command = BuildCommand(conn, getViews, restrictions, false, "table_catalog", "table_schema", "table_name");
+            using var adapter = new NpgsqlDataAdapter(command);
+            if (async)
+                await adapter.FillAsync(views);
+            else
                 adapter.Fill(views);
 
             return views;
         }
 
-        /// <summary>
-        /// Returns the Users containing user names and the sysid of those users.
-        /// </summary>
-        /// <param name="conn">The database connection on which to run the metadataquery.</param>
-        /// <param name="restrictions">The restrictions to filter the collection.</param>
-        /// <returns>The Users.</returns>
-        static DataTable GetUsers(NpgsqlConnection conn, string?[]? restrictions)
+        static async ValueTask<DataTable> GetUsersAsync(NpgsqlConnection conn, string?[]? restrictions, bool async = true)
         {
             var users = new DataTable("Users") { Locale = CultureInfo.InvariantCulture };
 
-            users.Columns.AddRange(new[] {new DataColumn("user_name"), new DataColumn("user_sysid", typeof(int))});
+            users.Columns.AddRange(new[] { new DataColumn("user_name"), new DataColumn("user_sysid", typeof(int)) });
 
             var getUsers = new StringBuilder();
 
             getUsers.Append("SELECT usename as user_name, usesysid as user_sysid FROM pg_catalog.pg_user");
 
-            using (var command = BuildCommand(conn, getUsers, restrictions, "usename"))
-            using (var adapter = new NpgsqlDataAdapter(command))
+            using var command = BuildCommand(conn, getUsers, restrictions, "usename");
+            using var adapter = new NpgsqlDataAdapter(command);
+            if (async)
+                await adapter.FillAsync(users);
+            else
                 adapter.Fill(users);
 
             return users;
         }
 
-        static DataTable GetIndexes(NpgsqlConnection conn, string?[]? restrictions)
+        static async ValueTask<DataTable> GetIndexesAsync(NpgsqlConnection conn, string?[]? restrictions, bool async = true)
         {
             var indexes = new DataTable("Indexes") { Locale = CultureInfo.InvariantCulture };
 
@@ -350,14 +346,17 @@ WHERE
     n.nspname NOT IN ('pg_catalog', 'pg_toast') AND
     t.relkind = 'r'");
 
-            using (var command = BuildCommand(conn, getIndexes, restrictions, false, "current_database()", "n.nspname", "t.relname", "i.relname"))
-            using (var adapter = new NpgsqlDataAdapter(command))
+            using var command = BuildCommand(conn, getIndexes, restrictions, false, "current_database()", "n.nspname", "t.relname", "i.relname");
+            using var adapter = new NpgsqlDataAdapter(command);
+            if (async)
+                await adapter.FillAsync(indexes);
+            else
                 adapter.Fill(indexes);
 
             return indexes;
         }
 
-        static DataTable GetIndexColumns(NpgsqlConnection conn, string?[]? restrictions)
+        static async ValueTask<DataTable> GetIndexColumnsAsync(NpgsqlConnection conn, string?[]? restrictions, bool async = true)
         {
             var indexColumns = new DataTable("IndexColumns") { Locale = CultureInfo.InvariantCulture };
 
@@ -390,14 +389,17 @@ WHERE
     a.attnum = ANY(ix.indkey) AND
     t.relkind = 'r'");
 
-            using (var command = BuildCommand(conn, getIndexColumns, restrictions, false, "current_database()", "n.nspname", "t.relname", "i.relname", "a.attname"))
-            using (var adapter = new NpgsqlDataAdapter(command))
+            using var command = BuildCommand(conn, getIndexColumns, restrictions, false, "current_database()", "n.nspname", "t.relname", "i.relname", "a.attname");
+            using var adapter = new NpgsqlDataAdapter(command);
+            if (async)
+                await adapter.FillAsync(indexColumns);
+            else
                 adapter.Fill(indexColumns);
 
             return indexColumns;
         }
 
-        static DataTable GetConstraints(NpgsqlConnection conn, string?[]? restrictions, string? constraintType)
+        static async ValueTask<DataTable> GetConstraintsAsync(NpgsqlConnection conn, string?[]? restrictions, string? constraintType, bool async = true)
         {
             var getConstraints = new StringBuilder(@"
 SELECT
@@ -435,11 +437,15 @@ FROM
             using var adapter = new NpgsqlDataAdapter(command);
             var table = new DataTable(constraintType) { Locale = CultureInfo.InvariantCulture };
 
-            adapter.Fill(table);
+            if (async)
+                await adapter.FillAsync(table);
+            else
+                adapter.Fill(table);
+
             return table;
         }
 
-        static DataTable GetConstraintColumns(NpgsqlConnection conn, string?[]? restrictions)
+        static async ValueTask<DataTable> GetConstraintColumnsAsync(NpgsqlConnection conn, string?[]? restrictions, bool async = true)
         {
             var getConstraintColumns = new StringBuilder(@"
 SELECT current_database() AS constraint_catalog,
@@ -469,7 +475,11 @@ FROM pg_constraint c
             using var adapter = new NpgsqlDataAdapter(command);
             var table = new DataTable("ConstraintColumns") { Locale = CultureInfo.InvariantCulture };
 
-            adapter.Fill(table);
+            if (async)
+                await adapter.FillAsync(table);
+            else
+                adapter.Fill(table);
+
             return table;
         }
 
