@@ -565,6 +565,89 @@ CREATE UNIQUE INDEX idx_{table} ON {table} (non_id_second, non_id_third)");
             }
         }
 
+        [Test]
+        public async Task ColumnSchemaWithoutWithNoKeyInfo()
+        {
+            await using var conn = await OpenConnectionAsync();
+            await using var _ = await CreateTempTable(conn, "foo INTEGER", out var table);
+
+            using var cmd = new NpgsqlCommand($"SELECT foo, foo AS foobar, 8 AS bar, 8, '8'::VARCHAR(10) FROM {table}", conn);
+            await using var reader = await cmd.ExecuteReaderAsync();
+            var columns = reader.GetColumnSchema();
+
+            Assert.That(columns[0].ColumnName, Is.EqualTo("foo"));
+            Assert.That(columns[0].BaseColumnName, Is.EqualTo(null));
+            Assert.That(columns[0].BaseTableName, Is.EqualTo(null));
+            Assert.That(columns[0].BaseSchemaName, Is.EqualTo(null));
+            Assert.That(columns[0].IsAliased, Is.EqualTo(null));
+            Assert.That(columns[0].IsKey, Is.EqualTo(null));
+            Assert.That(columns[0].IsUnique, Is.EqualTo(null));
+            Assert.That(columns[1].ColumnName, Is.EqualTo("foobar"));
+            Assert.That(columns[1].BaseColumnName, Is.EqualTo(null));
+            Assert.That(columns[1].BaseTableName, Is.EqualTo(null));
+            Assert.That(columns[1].BaseSchemaName, Is.EqualTo(null));
+            Assert.That(columns[1].IsAliased, Is.EqualTo(null));
+            Assert.That(columns[1].IsKey, Is.EqualTo(null));
+            Assert.That(columns[1].IsUnique, Is.EqualTo(null));
+            Assert.That(columns[2].ColumnName, Is.EqualTo("bar"));
+            Assert.That(columns[2].BaseColumnName, Is.EqualTo(null));
+            Assert.That(columns[2].BaseTableName, Is.EqualTo(null));
+            Assert.That(columns[2].BaseSchemaName, Is.EqualTo(null));
+            Assert.That(columns[2].IsAliased, Is.EqualTo(null));
+            Assert.That(columns[2].IsKey, Is.EqualTo(null));
+            Assert.That(columns[2].IsUnique, Is.EqualTo(null));
+            Assert.That(columns[3].ColumnName, Is.EqualTo("?column?"));
+            Assert.That(columns[3].BaseColumnName, Is.EqualTo(null));
+            Assert.That(columns[3].BaseTableName, Is.EqualTo(null));
+            Assert.That(columns[3].BaseSchemaName, Is.EqualTo(null));
+            Assert.That(columns[3].IsAliased, Is.EqualTo(null));
+            Assert.That(columns[3].IsKey, Is.EqualTo(null));
+            Assert.That(columns[3].IsUnique, Is.EqualTo(null));
+            Assert.That(columns[4].ColumnName, Is.EqualTo("varchar"));
+            Assert.That(columns[4].BaseColumnName, Is.EqualTo(null));
+            Assert.That(columns[4].BaseTableName, Is.EqualTo(null));
+            Assert.That(columns[4].BaseSchemaName, Is.EqualTo(null));
+            Assert.That(columns[4].IsAliased, Is.EqualTo(null));
+            Assert.That(columns[4].IsKey, Is.EqualTo(null));
+            Assert.That(columns[4].IsUnique, Is.EqualTo(null));
+
+            await reader.DisposeAsync();
+
+            await using var readerInfo = await cmd.ExecuteReaderAsync(CommandBehavior.KeyInfo);
+            var columnsInfo = reader.GetColumnSchema();
+
+            Assert.That(columnsInfo[0].ColumnName, Is.EqualTo("foo"));
+            Assert.That(columnsInfo[0].BaseColumnName, Is.EqualTo("foo"));
+            Assert.That(columnsInfo[0].BaseSchemaName, Is.EqualTo("public"));
+            Assert.That(columnsInfo[0].IsAliased, Is.EqualTo(false));
+            Assert.That(columnsInfo[0].IsKey, Is.EqualTo(false));
+            Assert.That(columnsInfo[0].IsUnique, Is.EqualTo(false));
+            Assert.That(columnsInfo[1].ColumnName, Is.EqualTo("foobar"));
+            Assert.That(columnsInfo[1].BaseColumnName, Is.EqualTo("foo"));
+            Assert.That(columnsInfo[1].BaseSchemaName, Is.EqualTo("public"));
+            Assert.That(columnsInfo[1].IsAliased, Is.EqualTo(true));
+            Assert.That(columnsInfo[1].IsKey, Is.EqualTo(false));
+            Assert.That(columnsInfo[1].IsUnique, Is.EqualTo(false));
+            Assert.That(columnsInfo[2].ColumnName, Is.EqualTo("bar"));
+            Assert.That(columnsInfo[2].BaseColumnName, Is.EqualTo(null));
+            Assert.That(columnsInfo[2].BaseSchemaName, Is.EqualTo(null));
+            Assert.That(columnsInfo[2].IsAliased, Is.EqualTo(null));
+            Assert.That(columnsInfo[2].IsKey, Is.EqualTo(null));
+            Assert.That(columnsInfo[2].IsUnique, Is.EqualTo(null));
+            Assert.That(columnsInfo[3].ColumnName, Is.EqualTo("?column?"));
+            Assert.That(columnsInfo[3].BaseColumnName, Is.EqualTo(null));
+            Assert.That(columnsInfo[3].BaseSchemaName, Is.EqualTo(null));
+            Assert.That(columnsInfo[3].IsAliased, Is.EqualTo(null));
+            Assert.That(columnsInfo[3].IsKey, Is.EqualTo(null));
+            Assert.That(columnsInfo[3].IsUnique, Is.EqualTo(null));
+            Assert.That(columnsInfo[4].ColumnName, Is.EqualTo("varchar"));
+            Assert.That(columnsInfo[4].BaseColumnName, Is.EqualTo(null));
+            Assert.That(columnsInfo[4].BaseSchemaName, Is.EqualTo(null));
+            Assert.That(columnsInfo[4].IsAliased, Is.EqualTo(null));
+            Assert.That(columnsInfo[4].IsKey, Is.EqualTo(null));
+            Assert.That(columnsInfo[4].IsUnique, Is.EqualTo(null));
+        }
+
         /// <seealso cref="ReaderTests.GetDataTypeName"/>
         [Test]
         [TestCase("integer")]
