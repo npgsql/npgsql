@@ -1785,6 +1785,12 @@ namespace Npgsql
                 : new DbColumnSchemaGenerator(_connection, RowDescription, _behavior.HasFlag(CommandBehavior.KeyInfo))
                     .GetColumnSchemaAsync(async, cancellationToken);
 
+#if !NET461 && !NETSTANDARD2_0 && !NETSTANDARD2_1 && !NETCOREAPP3_0
+        public /*override*/ Task<ReadOnlyCollection<DbColumn>> GetColumnSchemaAsync(CancellationToken cancellationToken = default)
+#else
+        public Task<ReadOnlyCollection<DbColumn>> GetColumnSchemaAsync(CancellationToken cancellationToken = default)
+#endif
+            => GetColumnSchemaAsync(cancellationToken).ContinueWith(t => new ReadOnlyCollection<DbColumn>(t.Result.Cast<DbColumn>().ToList()));
         #endregion
 
         #region Schema metadata table
@@ -1811,7 +1817,11 @@ namespace Npgsql
         /// Asynchronously returns a System.Data.DataTable that describes the column metadata of the DataReader.
         /// </summary>
 #nullable disable
+#if !NET461 && !NETSTANDARD2_0 && !NETSTANDARD2_1 && !NETCOREAPP3_0
+        public /*override*/ async Task<DataTable> GetSchemaTableAsync(CancellationToken cancellationToken = default)
+#else
         public async Task<DataTable> GetSchemaTableAsync(CancellationToken cancellationToken = default)
+#endif
 #nullable restore
         {
             var table = GetEmptySchemaTable();

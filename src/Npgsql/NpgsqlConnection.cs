@@ -1590,7 +1590,11 @@ namespace Npgsql
         /// </summary>
         /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is None.</param>
         /// <returns>The collection specified.</returns>
+#if !NET461 && !NETSTANDARD2_0 && !NETSTANDARD2_1 && !NETCOREAPP3_0
+        public /*override*/ Task<DataTable> GetSchemaAsync(CancellationToken cancellationToken = default)
+#else
         public Task<DataTable> GetSchemaAsync(CancellationToken cancellationToken = default)
+#endif
             => GetSchemaAsync("MetaDataCollections", cancellationToken);
 
         /// <summary>
@@ -1599,7 +1603,11 @@ namespace Npgsql
         /// <param name="collectionName">The collection name.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is None.</param>
         /// <returns>The collection specified.</returns>
+#if !NET461 && !NETSTANDARD2_0 && !NETSTANDARD2_1 && !NETCOREAPP3_0
+        public /*override*/ Task<DataTable> GetSchemaAsync(string collectionName, CancellationToken cancellationToken = default)
+#else
         public Task<DataTable> GetSchemaAsync(string collectionName, CancellationToken cancellationToken = default)
+#endif
             => NpgsqlSchema.GetSchemaAsync(this, collectionName, null, async: true, cancellationToken).AsTask();
 
         /// <summary>
@@ -1612,7 +1620,11 @@ namespace Npgsql
         /// </param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is None.</param>
         /// <returns>The collection specified.</returns>
+#if !NET461 && !NETSTANDARD2_0 && !NETSTANDARD2_1 && !NETCOREAPP3_0
+        public /*override*/ Task<DataTable> GetSchemaAsync(string collectionName, string?[] restrictions, CancellationToken cancellationToken = default)
+#else
         public Task<DataTable> GetSchemaAsync(string collectionName, string?[] restrictions, CancellationToken cancellationToken = default)
+#endif
             => NpgsqlSchema.GetSchemaAsync(this, collectionName, restrictions, async: true, cancellationToken).AsTask();
 
         #endregion Schema operations
