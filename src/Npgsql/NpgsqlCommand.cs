@@ -1137,7 +1137,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         internal ManualResetValueTaskSource<NpgsqlConnector> ExecutionCompletion { get; }
             = new ManualResetValueTaskSource<NpgsqlConnector>();
 
-        internal async ValueTask<NpgsqlDataReader> ExecuteReaderAsync(CommandBehavior behavior, bool async, CancellationToken cancellationToken)
+        async ValueTask<NpgsqlDataReader> ExecuteReaderAsync(CommandBehavior behavior, bool async, CancellationToken cancellationToken)
         {
             var conn = CheckAndGetConnection();
             _behavior = behavior;

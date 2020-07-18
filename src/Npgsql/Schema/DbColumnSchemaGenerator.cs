@@ -124,10 +124,13 @@ ORDER BY attnum";
                     async ? TransactionScopeAsyncFlowOption.Enabled : TransactionScopeAsyncFlowOption.Suppress);
                 using var connection = (NpgsqlConnection)((ICloneable)_connection).Clone();
 
-                await connection.Open(async, cancellationToken);
+                if (async)
+                    await connection.OpenAsync(cancellationToken);
+                else
+                    connection.Open();
 
                 using var cmd = new NpgsqlCommand(query, connection);
-                using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.Default, async, cancellationToken);
+                using var reader = async ? await cmd.ExecuteReaderAsync(cancellationToken) : cmd.ExecuteReader();
                 while (async ? await reader.ReadAsync(cancellationToken): reader.Read())
                 {
                     var column = await LoadColumnDefinition(reader, _connection.Connector!.TypeMapper.DatabaseInfo, oldQueryMode, async, cancellationToken);

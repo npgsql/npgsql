@@ -1776,21 +1776,23 @@ namespace Npgsql
         /// Asynchronously returns schema information for the columns in the current resultset.
         /// </summary>
         /// <returns></returns>
+#if !NET461 && !NETSTANDARD2_0 && !NETSTANDARD2_1 && !NETCOREAPP3_0
+        public /*new*/ Task<ReadOnlyCollection<NpgsqlDbColumn>> GetColumnSchemaAsync(CancellationToken cancellationToken = default)
+#else
         public Task<ReadOnlyCollection<NpgsqlDbColumn>> GetColumnSchemaAsync(CancellationToken cancellationToken = default)
-            => GetColumnSchema(true, cancellationToken).AsTask();
+#endif
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled<ReadOnlyCollection<NpgsqlDbColumn>>(cancellationToken);
+            using (NoSynchronizationContextScope.Enter())
+                return GetColumnSchema(true, cancellationToken).AsTask();
+        }
 
         ValueTask<ReadOnlyCollection<NpgsqlDbColumn>> GetColumnSchema(bool async, CancellationToken cancellationToken = default)
             => RowDescription == null || RowDescription.Fields.Count == 0
                 ? new ValueTask<ReadOnlyCollection<NpgsqlDbColumn>>(new List<NpgsqlDbColumn>().AsReadOnly())
                 : new DbColumnSchemaGenerator(_connection, RowDescription, _behavior.HasFlag(CommandBehavior.KeyInfo))
                     .GetColumnSchemaAsync(async, cancellationToken);
-
-#if !NET461 && !NETSTANDARD2_0 && !NETSTANDARD2_1 && !NETCOREAPP3_0
-        public /*override*/ Task<ReadOnlyCollection<DbColumn>> GetColumnSchemaAsync(CancellationToken cancellationToken = default)
-#else
-        public Task<ReadOnlyCollection<DbColumn>> GetColumnSchemaAsync(CancellationToken cancellationToken = default)
-#endif
-            => GetColumnSchemaAsync(cancellationToken).ContinueWith(t => new ReadOnlyCollection<DbColumn>(t.Result.Cast<DbColumn>().ToList()));
         #endregion
 
         #region Schema metadata table
@@ -1818,12 +1820,21 @@ namespace Npgsql
         /// </summary>
 #nullable disable
 #if !NET461 && !NETSTANDARD2_0 && !NETSTANDARD2_1 && !NETCOREAPP3_0
-        public /*override*/ async Task<DataTable> GetSchemaTableAsync(CancellationToken cancellationToken = default)
+        public /*override*/ Task<DataTable> GetSchemaTableAsync(CancellationToken cancellationToken = default)
 #else
-        public async Task<DataTable> GetSchemaTableAsync(CancellationToken cancellationToken = default)
+        public Task<DataTable> GetSchemaTableAsync(CancellationToken cancellationToken = default)
 #endif
 #nullable restore
         {
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled<DataTable>(cancellationToken);
+
+            using (NoSynchronizationContextScope.Enter())
+                return GetSchemaTable(cancellationToken);
+        }
+
+        async Task<DataTable> GetSchemaTable(CancellationToken cancellationToken = default)
+        { 
             var table = GetEmptySchemaTable();
 
             foreach (var column in await GetColumnSchemaAsync(cancellationToken))
