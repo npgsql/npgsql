@@ -3,6 +3,7 @@ name: Build
 on: [push, pull_request]
 
 env:
+  dotnet_sdk_version: '3.1.x'
   postgis_version: 3
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
 
@@ -74,7 +75,9 @@ jobs:
         shell: bash
 
       - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@1.4.0
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: ${{ env.dotnet_sdk_version }}
 
       # TODO: Once test/Npgsql.Specification.Tests work, switch to just testing on the solution
       - name: Test
@@ -108,7 +111,9 @@ jobs:
             ${{ runner.os }}-nuget-
 
       - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@1.4.0
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: ${{ env.dotnet_sdk_version }}
 
       - name: Pack NuGet packages (CI versions)
         if: startsWith(github.ref, 'refs/heads/')
