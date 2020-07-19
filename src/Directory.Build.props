@@ -4,6 +4,7 @@
   <PropertyGroup>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
   </PropertyGroup>
 
   <!-- Build configuration -->
@@ -13,6 +14,6 @@
 
   <!-- Debug configuration -->
   <ItemGroup>
-    <PackageReference Include="SourceLink.Create.CommandLine" PrivateAssets="All" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="All" />
   </ItemGroup>
 </Project>

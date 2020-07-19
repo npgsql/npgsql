@@ -389,7 +389,7 @@ namespace Npgsql
                         Expect<BindCompleteMessage>(await Connector.ReadMessage(async), Connector);
                         RowDescription = statement.Description;
                     }
-                    else // Non-prepared flow
+                    else // Non-prepared/preparing flow
                     {
                         var pStatement = statement.PreparedStatement;
                         if (pStatement != null)
@@ -421,7 +421,11 @@ namespace Npgsql
                             _ => throw Connector.UnexpectedMessageReceived(msg.Code)
                         };
 
-                        pStatement?.CompletePrepare();
+                        if (statement.IsPreparing)
+                        {
+                            statement.IsPreparing = false;
+                            pStatement!.CompletePrepare();
+                        }
                     }
 
                     if (RowDescription == null)
@@ -492,9 +496,12 @@ namespace Npgsql
                 // them back in unprepared state.
                 for (; StatementIndex < _statements.Count; StatementIndex++)
                 {
-                    var pStatement = _statements[StatementIndex].PreparedStatement;
-                    if (pStatement?.IsPrepared == false)
-                        pStatement.CompleteUnprepare();
+                    var statement = _statements[StatementIndex];
+                    if (statement.IsPreparing)
+                    {
+                        statement.IsPreparing = false;
+                        statement.PreparedStatement!.CompleteUnprepare();
+                    }
                 }
 
                 throw;
@@ -510,6 +517,8 @@ namespace Npgsql
             Debug.Assert(StatementIndex == 0);
             Debug.Assert(RowDescription != null);
             Debug.Assert(State == ReaderState.BeforeResult);
+
+            var currentPosition = Buffer.ReadPosition;
 
             // Temporarily set our state to InResult to allow us to read the values
             State = ReaderState.InResult;
@@ -537,7 +546,12 @@ namespace Npgsql
                 p.Value = pending.Dequeue();
             }
 
-            State = ReaderState.BeforeResult;  // Set the state back
+            State = ReaderState.BeforeResult; // Set the state back
+            Buffer.ReadPosition = currentPosition; // Restore position
+
+            _column = -1;
+            ColumnLen = -1;
+            PosInColumn = 0;
         }
 
         /// <summary>
@@ -550,6 +564,19 @@ namespace Npgsql
 
             try
             {
+                switch (State)
+                {
+                case ReaderState.BeforeResult:
+                case ReaderState.InResult:
+                case ReaderState.BetweenResults:
+                    break;
+                case ReaderState.Consumed:
+                case ReaderState.Closed:
+                    return false;
+                default:
+                    throw new ArgumentOutOfRangeException();
+                }
+
                 for (StatementIndex++; StatementIndex < _statements.Count; StatementIndex++)
                 {
                     var statement = _statements[StatementIndex];
@@ -1066,14 +1093,15 @@ namespace Npgsql
             if (buffer != null && (length < 0 || length > buffer.Length - bufferOffset))
                 throw new IndexOutOfRangeException($"length must be between {0} and {buffer.Length - bufferOffset}");
 
-            var fieldDescription = CheckRowAndGetField(ordinal);
-            var handler = fieldDescription.Handler;
+            var field = CheckRowAndGetField(ordinal);
+            var handler = field.Handler;
             if (!(handler is ByteaHandler))
-                throw new InvalidCastException("GetBytes() not supported for type " + fieldDescription.Name);
+                throw new InvalidCastException("GetBytes() not supported for type " + field.Name);
 
             SeekToColumn(ordinal, false).GetAwaiter().GetResult();
             if (ColumnLen == -1)
-                throw new InvalidCastException("Column is null");
+                ThrowHelper.ThrowInvalidCastException_NoValue(field);
+
             if (buffer == null)
                 return ColumnLen;
 
@@ -1128,14 +1156,13 @@ namespace Npgsql
 
         ValueTask<Stream> GetStream(int ordinal, bool async)
         {
-            var fieldDescription = CheckRowAndGetField(ordinal);
-            if (!(fieldDescription.Handler is ByteaHandler))
-                throw new InvalidCastException($"GetStream() not supported for type {fieldDescription.Handler.PgDisplayName}");
-
-            return GetStreamInternal(ordinal, async);
+            var field = CheckRowAndGetField(ordinal);
+            return field.Handler is ByteaHandler
+                ? GetStreamInternal(field, ordinal, async)
+                : throw new InvalidCastException($"The GetStream method is not supported for type {field.Handler.PgDisplayName}");
         }
 
-        ValueTask<Stream> GetStreamInternal(int ordinal, bool async)
+        ValueTask<Stream> GetStreamInternal(FieldDescription field, int ordinal, bool async)
         {
             if (_columnStream != null && !_columnStream.IsDisposed)
                 throw new InvalidOperationException("A stream is already open for this reader");
@@ -1145,7 +1172,8 @@ namespace Npgsql
                 return new ValueTask<Stream>(GetStreamLong(t));
 
             if (ColumnLen == -1)
-                throw new InvalidCastException("Column is null");
+                ThrowHelper.ThrowInvalidCastException_NoValue(field);
+
             PosInColumn += ColumnLen;
             return new ValueTask<Stream>(_columnStream = (NpgsqlReadBuffer.ColumnStream)Buffer.GetStream(ColumnLen, !_isSequential));
 
@@ -1153,7 +1181,8 @@ namespace Npgsql
             {
                 await seekTask;
                 if (ColumnLen == -1)
-                    throw new InvalidCastException("Column is null");
+                    ThrowHelper.ThrowInvalidCastException_NoValue(field);
+
                 PosInColumn += ColumnLen;
                 return _columnStream = (NpgsqlReadBuffer.ColumnStream)Buffer.GetStream(ColumnLen, !_isSequential);
             }
@@ -1181,14 +1210,15 @@ namespace Npgsql
             if (buffer != null && (length < 0 || length > buffer.Length - bufferOffset))
                 throw new IndexOutOfRangeException($"length must be between {0} and {buffer.Length - bufferOffset}");
 
-            var fieldDescription = CheckRowAndGetField(ordinal);
-            var handler = fieldDescription.Handler as TextHandler;
+            var field = CheckRowAndGetField(ordinal);
+            var handler = field.Handler as TextHandler;
             if (handler == null)
-                throw new InvalidCastException("GetChars() not supported for type " + fieldDescription.Name);
+                throw new InvalidCastException("The GetChars method is not supported for type " + field.Name);
 
             SeekToColumn(ordinal, false).GetAwaiter().GetResult();
             if (ColumnLen == -1)
-                throw new InvalidCastException("Column is null");
+                ThrowHelper.ThrowInvalidCastException_NoValue(field);
+
             if (PosInColumn == 0)
                 _charPos = 0;
 
@@ -1307,15 +1337,13 @@ namespace Npgsql
 
         async ValueTask<TextReader> GetTextReader(int ordinal, bool async)
         {
-            var fieldDescription = CheckRowAndGetField(ordinal);
-            if (!(fieldDescription.Handler is ITextReaderHandler handler))
-                throw new InvalidCastException($"GetTextReader() not supported for type {fieldDescription.Handler.PgDisplayName}");
+            var field = CheckRowAndGetField(ordinal);
+            if (field.Handler is ITextReaderHandler handler)
+                return handler.GetTextReader(async
+                    ? await GetStreamInternal(field, ordinal, async)
+                    : GetStreamInternal(field, ordinal, async).Result);
 
-            var stream = async
-                ? await GetStreamInternal(ordinal, async)
-                : GetStreamInternal(ordinal, async).Result;
-
-            return handler.GetTextReader(stream);
+            throw new InvalidCastException($"The GetTextReader method is not supported for type {field.Handler.PgDisplayName}");
         }
 
         #endregion
@@ -1355,7 +1383,7 @@ namespace Npgsql
 
             // In non-sequential, we know that the column is already buffered - no I/O will take place
 
-            var fieldDescription = CheckRowAndGetField(ordinal);
+            var field = CheckRowAndGetField(ordinal);
             SeekToColumnNonSequential(ordinal);
 
             if (ColumnLen == -1)
@@ -1363,18 +1391,20 @@ namespace Npgsql
                 // When T is a Nullable<T> (and only in that case), we support returning null
                 if (NullableHandler<T>.Exists)
                     return default!;
+
                 if (typeof(T) == typeof(object))
                     return (T)(object)DBNull.Value;
-                throw new InvalidCastException("Column is null");
+
+                ThrowHelper.ThrowInvalidCastException_NoValue(field);
             }
 
             try
             {
                 return NullableHandler<T>.Exists
-                    ? NullableHandler<T>.Read(fieldDescription.Handler, Buffer, ColumnLen, fieldDescription)
+                    ? NullableHandler<T>.Read(field.Handler, Buffer, ColumnLen, field)
                     : typeof(T) == typeof(object)
-                        ? (T)fieldDescription.Handler.ReadAsObject(Buffer, ColumnLen, fieldDescription)
-                        : fieldDescription.Handler.Read<T>(Buffer, ColumnLen, fieldDescription);
+                        ? (T)field.Handler.ReadAsObject(Buffer, ColumnLen, field)
+                        : field.Handler.Read<T>(Buffer, ColumnLen, field);
             }
             catch (NpgsqlSafeReadException e)
             {
@@ -1394,7 +1424,7 @@ namespace Npgsql
 
         async ValueTask<T> GetFieldValueSequential<T>(int column, bool async)
         {
-            var fieldDescription = CheckRowAndGetField(column);
+            var field = CheckRowAndGetField(column);
             await SeekToColumnSequential(column, async);
             CheckColumnStart();
 
@@ -1403,24 +1433,26 @@ namespace Npgsql
                 // When T is a Nullable<T> (and only in that case), we support returning null
                 if (NullableHandler<T>.Exists)
                     return default!;
+
                 if (typeof(T) == typeof(object))
                     return (T)(object)DBNull.Value;
-                throw new InvalidCastException("Column is null");
+
+                ThrowHelper.ThrowInvalidCastException_NoValue(field);
             }
 
             try
             {
                 return NullableHandler<T>.Exists
                     ? ColumnLen <= Buffer.ReadBytesLeft
-                        ? NullableHandler<T>.Read(fieldDescription.Handler, Buffer, ColumnLen, fieldDescription)
-                        : await NullableHandler<T>.ReadAsync(fieldDescription.Handler, Buffer, ColumnLen, async, fieldDescription)
+                        ? NullableHandler<T>.Read(field.Handler, Buffer, ColumnLen, field)
+                        : await NullableHandler<T>.ReadAsync(field.Handler, Buffer, ColumnLen, async, field)
                     : typeof(T) == typeof(object)
                         ? ColumnLen <= Buffer.ReadBytesLeft
-                            ? (T)fieldDescription.Handler.ReadAsObject(Buffer, ColumnLen, fieldDescription)
-                            : (T)await fieldDescription.Handler.ReadAsObject(Buffer, ColumnLen, async, fieldDescription)
+                            ? (T)field.Handler.ReadAsObject(Buffer, ColumnLen, field)
+                            : (T)await field.Handler.ReadAsObject(Buffer, ColumnLen, async, field)
                         : ColumnLen <= Buffer.ReadBytesLeft
-                            ? fieldDescription.Handler.Read<T>(Buffer, ColumnLen, fieldDescription)
-                            : await fieldDescription.Handler.Read<T>(Buffer, ColumnLen, async, fieldDescription);
+                            ? field.Handler.Read<T>(Buffer, ColumnLen, field)
+                            : await field.Handler.Read<T>(Buffer, ColumnLen, async, field);
             }
             catch (NpgsqlSafeReadException e)
             {
@@ -1571,15 +1603,19 @@ namespace Npgsql
         /// <param name="ordinal">The zero-based column to be retrieved.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <returns><b>true</b> if the specified column value is equivalent to <see cref="DBNull"/> otherwise <b>false</b>.</returns>
-        public override async Task<bool> IsDBNullAsync(int ordinal, CancellationToken cancellationToken)
+        public override Task<bool> IsDBNullAsync(int ordinal, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
             CheckRowAndGetField(ordinal);
 
             if (!_isSequential)
-                return IsDBNull(ordinal);
+                return IsDBNull(ordinal) ? PGUtil.TrueTask : PGUtil.FalseTask;
 
             using (NoSynchronizationContextScope.Enter())
+                return IsDBNullAsyncInternal();
+
+            // ReSharper disable once InconsistentNaming
+            async Task<bool> IsDBNullAsyncInternal()
             {
                 await SeekToColumn(ordinal, true);
                 return ColumnLen == -1;

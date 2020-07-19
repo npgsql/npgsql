@@ -1,4 +1,5 @@
-﻿using System.Data;
+﻿using System;
+using System.Data;
 using NpgsqlTypes;
 using NUnit.Framework;
 
@@ -23,7 +24,7 @@ namespace Npgsql.Tests.Types
             new object[] { "100000000000000000000::numeric", 100000000000000000000M },
             new object[] { "1000000000000000000000000::numeric", 1000000000000000000000000M },
             new object[] { "10000000000000000000000000000::numeric", 10000000000000000000000000000M },
-            
+
             new object[] { "11.222233334444555566667777888::numeric", 11.222233334444555566667777888M },
             new object[] { "111.22223333444455556666777788::numeric", 111.22223333444455556666777788M },
             new object[] { "1111.2222333344445555666677778::numeric", 1111.2222333344445555666677778M },
@@ -109,6 +110,31 @@ namespace Npgsql.Tests.Types
                         Assert.That(rdr.GetFieldValue<float>(i), Is.EqualTo(8.0f));
                         Assert.That(rdr.GetFieldValue<double>(i), Is.EqualTo(8.0d));
                     }
+            }
+        }
+
+        [Test, Description("Tests that when Numeric value does not fit in a System.Decimal and reader is in ReaderState.InResult, the value was read wholly and it is safe to continue reading")]
+        [Timeout(5000)]
+        public void ReadOverflowIsSafe()
+        {
+            using var conn = OpenConnection();
+            //This 29-digit number causes OverflowException. Here it is important to have unread column after failing one to leave it ReaderState.InResult
+            using var cmd = new NpgsqlCommand(@"SELECT (0.20285714285714285714285714285)::numeric, generate_series FROM generate_series(1, 2)", conn);
+            using var reader = cmd.ExecuteReader(CommandBehavior.SequentialAccess);
+            var i = 1;
+
+            while (reader.Read())
+            {
+                Assert.That(() => reader.GetDecimal(0),
+                    Throws.Exception
+                        .With.TypeOf<OverflowException>()
+                        .With.Message.EqualTo("Numeric value does not fit in a System.Decimal"));
+                var intValue = reader.GetInt32(1);
+
+                Assert.That(intValue, Is.EqualTo(i++));
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open | ConnectionState.Fetching));
+                Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
+                Assert.That(reader.State, Is.EqualTo(ReaderState.InResult));
             }
         }
     }

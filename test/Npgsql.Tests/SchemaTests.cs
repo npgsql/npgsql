@@ -3,6 +3,7 @@ using System.Data;
 using System.Data.Common;
 using System.Linq;
 using System.Text.RegularExpressions;
+using NLog.Filters;
 using NpgsqlTypes;
 using NUnit.Framework;
 
@@ -345,6 +346,113 @@ namespace Npgsql.Tests
                 {
                     conn.ExecuteNonQuery("DROP VIEW IF EXISTS view");
                 }
+            }
+        }
+
+        [Test]
+        public void PrimaryKey()
+        {
+            using var conn = OpenConnection();
+            try
+            {
+                conn.ExecuteNonQuery(@"
+DROP TABLE IF EXISTS data;
+CREATE TABLE data (id INT, f1 INT);
+ALTER TABLE data ADD PRIMARY KEY (id);");
+                string?[] restrictions = { null, null, "data" };
+                var column = conn.GetSchema("CONSTRAINTCOLUMNS", restrictions).Rows.Cast<DataRow>().Single();
+
+                Assert.That(column["table_schema"], Is.EqualTo("public"));
+                Assert.That(column["table_name"], Is.EqualTo("data"));
+                Assert.That(column["column_name"], Is.EqualTo("id"));
+                Assert.That(column["constraint_type"], Is.EqualTo("PRIMARY KEY"));
+            }
+            finally
+            {
+                conn.ExecuteNonQuery("DROP TABLE IF EXISTS data");
+            }
+        }
+
+        [Test]
+        public void PrimaryKeyComposite()
+        {
+            using var conn = OpenConnection();
+            try
+            {
+                conn.ExecuteNonQuery(@"
+DROP TABLE IF EXISTS data;
+CREATE TABLE data (id1 INT, id2 INT, f1 INT);
+ALTER TABLE data ADD PRIMARY KEY (id1, id2);");
+                string?[] restrictions = { null, null, "data" };
+                var columns = conn.GetSchema("CONSTRAINTCOLUMNS", restrictions).Rows.Cast<DataRow>()
+                    .OrderBy(r => r["ordinal_number"]).ToList();
+
+                Assert.That(columns.All(r => r["table_schema"].Equals("public")));
+                Assert.That(columns.All(r => r["table_name"].Equals("data")));
+                Assert.That(columns.All(r => r["constraint_type"].Equals("PRIMARY KEY")));
+
+                Assert.That(columns[0]["column_name"], Is.EqualTo("id1"));
+                Assert.That(columns[1]["column_name"], Is.EqualTo("id2"));
+            }
+            finally
+            {
+                conn.ExecuteNonQuery("DROP TABLE IF EXISTS data");
+            }
+        }
+
+        [Test]
+        public void UniqueConstraint()
+        {
+            using var conn = OpenConnection();
+            try
+            {
+                conn.ExecuteNonQuery(@"
+DROP TABLE IF EXISTS data;
+CREATE TABLE data (f1 INT, f2 INT);
+ALTER TABLE data ADD UNIQUE (f1, f2);");
+                string?[] restrictions = { null, null, "data" };
+                var rows = conn.GetSchema("CONSTRAINTCOLUMNS", restrictions).Rows.Cast<DataRow>().ToList();
+            }
+            finally
+            {
+                conn.ExecuteNonQuery("DROP TABLE IF EXISTS data");
+            }
+        }
+
+        [Test]
+        public void UniqueIndexComposite()
+        {
+            using var conn = OpenConnection();
+            try
+            {
+                conn.ExecuteNonQuery(@"
+DROP TABLE IF EXISTS data;
+CREATE TABLE data (f1 INT, f2 INT);
+CREATE UNIQUE INDEX idx_unique ON data (f1, f2);
+");
+                var database = conn.ExecuteScalar("SELECT current_database()");
+
+                string?[] restrictions = { null, null, "data" };
+                var index = conn.GetSchema("INDEXES", restrictions).Rows.Cast<DataRow>().Single();
+
+                Assert.That(index["table_schema"], Is.EqualTo("public"));
+                Assert.That(index["table_name"], Is.EqualTo("data"));
+                Assert.That(index["index_name"], Is.EqualTo("idx_unique"));
+
+                string?[] indexColumnRestrictions = { null, null, "data" };
+                var columns = conn.GetSchema("INDEXCOLUMNS", indexColumnRestrictions).Rows.Cast<DataRow>().ToList();
+
+                Assert.That(columns.All(r => r["table_catalog"].Equals(database)));
+                Assert.That(columns.All(r => r["table_schema"].Equals("public")));
+                Assert.That(columns.All(r => r["table_name"].Equals("data")));
+                Assert.That(columns.All(r => r["index_name"].Equals("idx_unique")));
+
+                Assert.That(columns[0]["column_name"], Is.EqualTo("f1"));
+                Assert.That(columns[1]["column_name"], Is.EqualTo("f2"));
+            }
+            finally
+            {
+                conn.ExecuteNonQuery("DROP TABLE IF EXISTS data");
             }
         }
     }

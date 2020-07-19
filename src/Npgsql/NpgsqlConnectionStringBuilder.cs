@@ -646,6 +646,46 @@ namespace Npgsql
         }
         bool _persistSecurityInfo;
 
+        /// <summary>
+        /// When enabled, parameter values are logged when commands are executed. Defaults to false.
+        /// </summary>
+        [Category("Security")]
+        [Description("When enabled, parameter values are logged when commands are executed. Defaults to false.")]
+        [DisplayName("Log Parameters")]
+        [NpgsqlConnectionStringProperty]
+        public bool LogParameters
+        {
+            get => _logParameters;
+            set
+            {
+                _logParameters = value;
+                SetValue(nameof(LogParameters), value);
+            }
+        }
+        bool _logParameters;
+
+        internal const string IncludeExceptionDetailDisplayName = "Include Error Detail";
+
+        /// <summary>
+        /// When enabled, PostgreSQL error details are included on <see cref="PostgresException.Detail" /> and
+        /// <see cref="PostgresNotice.Detail" />. These can contain sensitive data.
+        /// </summary>
+        [Category("Security")]
+        [Description("When enabled, PostgreSQL error and notice details are included on PostgresException.Detail and PostgresNotice.Detail. These can contain sensitive data.")]
+        [DisplayName(IncludeExceptionDetailDisplayName)]
+        [NpgsqlConnectionStringProperty]
+        public bool IncludeErrorDetails
+        {
+            get => _includeErrorDetails;
+            set
+            {
+                _includeErrorDetails = value;
+                SetValue(nameof(IncludeErrorDetails), value);
+            }
+        }
+        bool _includeErrorDetails;
+
+
         #endregion
 
         #region Properties - Pooling

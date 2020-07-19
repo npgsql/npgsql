@@ -55,7 +55,7 @@ namespace Npgsql
         {
             Interlocked.Increment(ref _totalCommands);
             Interlocked.Increment(ref _currentCommands);
-            WriteEvent(CommandStartId, sql);
+            NpgsqlSqlEventSource.CommandStart(sql);
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
@@ -63,7 +63,7 @@ namespace Npgsql
         public void CommandStop()
         {
             Interlocked.Decrement(ref _currentCommands);
-            WriteEvent(CommandStopId);
+            NpgsqlSqlEventSource.CommandStop();
         }
 
         internal void CommandStartPrepared() => Interlocked.Increment(ref _totalPreparedCommands);

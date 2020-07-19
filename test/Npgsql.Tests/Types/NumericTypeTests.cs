@@ -244,21 +244,19 @@ namespace Npgsql.Tests.Types
         [TestCase(NpgsqlDbType.Integer, 1D + int.MaxValue)]
         [TestCase(NpgsqlDbType.Bigint, 1F + long.MaxValue)]
         [TestCase(NpgsqlDbType.Bigint, 1D + long.MaxValue)]
+        [TestCase(NpgsqlDbType.InternalChar, 1 + byte.MaxValue)]
         public void WriteOverflow(NpgsqlDbType type, object value)
         {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT @p1", conn))
+            using var conn = OpenConnection();
+            using var cmd = new NpgsqlCommand("SELECT @p1", conn);
+
+            var p1 = new NpgsqlParameter("p1", type)
             {
-                var p1 = new NpgsqlParameter("p1", type)
-                {
-                    Value = value
-                };
-                cmd.Parameters.Add(p1);
-                Assert.Throws<OverflowException>(() =>
-                {
-                    using (var reader = cmd.ExecuteReader()) { }
-                });
-            }
+                Value = value
+            };
+            cmd.Parameters.Add(p1);
+            Assert.Throws<OverflowException>(() => cmd.ExecuteScalar());
+            Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
         }
 
         static IEnumerable<TestCaseData> ReadOverflowTestCases

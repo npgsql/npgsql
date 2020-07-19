@@ -78,8 +78,6 @@ namespace Npgsql
                     // The statement has already been autoprepared. We need to "promote" it to explicit.
                     statementBeingReplaced = pStatement;
                     break;
-                case PreparedState.BeingPrepared:
-                    throw new InvalidOperationException($"Found autoprepare statement in state {nameof(PreparedState.BeingPrepared)}");
                 case PreparedState.Unprepared:
                     throw new InvalidOperationException($"Found unprepared statement in {nameof(PreparedStatementManager)}");
                 default:
@@ -133,7 +131,7 @@ namespace Npgsql
             switch (pStatement.State)
             {
                 case PreparedState.Prepared:
-                case PreparedState.ToBePrepared:
+                case PreparedState.BeingPrepared:
                 // The statement has already been prepared (explicitly or automatically), or has been selected
                 // for preparation (earlier identical statement in the same command).
                 // We just need to check that the parameter types correspond, since prepared statements are
@@ -153,7 +151,6 @@ namespace Npgsql
 
             // Bingo, we've just passed the usage threshold, statement should get prepared
             Log.Trace($"Automatically preparing statement: {sql}", _connector.Id);
-            pStatement.State = PreparedState.ToBePrepared;
 
             RemoveCandidate(pStatement);
 

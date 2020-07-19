@@ -588,12 +588,6 @@ namespace Npgsql
                     }
                 }
 
-                if (!IsSecure)
-                {
-                    WriteBuffer.AwaitableSocket = new AwaitableSocket(new SocketAsyncEventArgs(), _socket);
-                    ReadBuffer.AwaitableSocket = new AwaitableSocket(new SocketAsyncEventArgs(), _socket);
-                }
-
                 Log.Trace($"Socket connected to {Host}:{Port}");
             }
             catch
@@ -909,6 +903,7 @@ namespace Npgsql
                             {
                                 if (_origReadBuffer == null)
                                     _origReadBuffer = ReadBuffer;
+
                                 ReadBuffer = ReadBuffer.AllocateOversize(len);
                             }
 
@@ -924,7 +919,7 @@ namespace Npgsql
 
                             // An ErrorResponse is (almost) always followed by a ReadyForQuery. Save the error
                             // and throw it as an exception when the ReadyForQuery is received (next).
-                            error = PostgresException.Load(ReadBuffer);
+                            error = PostgresException.Load(ReadBuffer, Settings.IncludeErrorDetails);
 
                             if (State == ConnectorState.Connecting)
                             {
@@ -1018,7 +1013,7 @@ namespace Npgsql
                     ReadParameterStatus(buf.GetNullTerminatedBytes(), buf.GetNullTerminatedBytes());
                     return null;
                 case BackendMessageCode.NoticeResponse:
-                    var notice = PostgresNotice.Load(buf);
+                    var notice = PostgresNotice.Load(buf, Settings.IncludeErrorDetails);
                     Log.Debug($"Received notice: {notice.MessageText}", Id);
                     Connection?.OnNotice(notice);
                     return null;
@@ -1382,9 +1377,8 @@ namespace Npgsql
 
             _stream = null;
             _baseStream = null;
-            ReadBuffer?.AwaitableSocket?.Dispose();
+            _origReadBuffer = null;
             ReadBuffer = null;
-            WriteBuffer?.AwaitableSocket?.Dispose();
             WriteBuffer = null;
             Connection = null;
             PostgresParameters.Clear();
@@ -1692,7 +1686,7 @@ namespace Npgsql
 
         public bool Wait(int timeout)
         {
-            if ((timeout == 0 || timeout == -1) && IsSecure)
+            if ((timeout != 0 && timeout != -1) && IsSecure)
                 throw new NotSupportedException("Wait() with timeout isn't supported when SSL is used, see https://github.com/npgsql/npgsql/issues/1501");
 
             using (StartUserAction(ConnectorState.Waiting))

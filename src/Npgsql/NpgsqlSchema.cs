@@ -224,11 +224,10 @@ namespace Npgsql
 
             var getTables = new StringBuilder();
 
-            //getTables.Append("SELECT * FROM (SELECT table_catalog, table_schema, table_name, table_type FROM information_schema.tables WHERE table_type = 'BASE TABLE' AND table_schema NOT IN ('pg_catalog', 'information_schema')) tmp");
             getTables.Append(@"
 SELECT table_catalog, table_schema, table_name, table_type
 FROM information_schema.tables
-WHERE table_type IN ('BASE TABLE', 'FOREIGN') AND table_schema NOT IN ('pg_catalog', 'information_schema')");
+WHERE table_type IN ('BASE TABLE', 'FOREIGN', 'FOREIGN TABLE') AND table_schema NOT IN ('pg_catalog', 'information_schema')");
 
             using (var command = BuildCommand(conn, getTables, restrictions, false, "table_catalog", "table_schema", "table_name", "table_type"))
             using (var adapter = new NpgsqlDataAdapter(command))
@@ -343,13 +342,11 @@ from
     pg_catalog.pg_class i join
     pg_catalog.pg_index ix ON ix.indexrelid = i.oid join
     pg_catalog.pg_class t ON ix.indrelid = t.oid join
-    pg_attribute a on t.oid = a.attrelid left join
     pg_catalog.pg_user u ON u.usesysid = i.relowner left join
     pg_catalog.pg_namespace n ON n.oid = i.relnamespace
 where
     i.relkind = 'i'
     and n.nspname not in ('pg_catalog', 'pg_toast')
-    and a.attnum = ANY(ix.indkey)
     and t.relkind = 'r'");
 
             using (var command = BuildCommand(conn, getIndexes, restrictions, false, "current_database()", "n.nspname", "t.relname", "i.relname"))

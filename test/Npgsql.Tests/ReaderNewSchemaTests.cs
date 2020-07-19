@@ -53,20 +53,45 @@ namespace Npgsql.Tests
         [Test]
         public void BaseColumnName()
         {
-            using (var conn = OpenConnection())
-            {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo INTEGER)");
+            using var conn = OpenConnection();
+            conn.ExecuteNonQuery("CREATE TEMP TABLE data (foo INTEGER)");
 
-                using (var cmd = new NpgsqlCommand("SELECT foo,8 AS bar,8,'8'::VARCHAR(10) FROM data", conn))
-                using (var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly))
-                {
-                    var columns = reader.GetColumnSchema();
-                    Assert.That(columns[0].BaseColumnName, Is.EqualTo("foo"));
-                    Assert.That(columns[1].BaseColumnName, Is.EqualTo("bar"));
-                    Assert.That(columns[2].BaseColumnName, Is.Null);
-                    Assert.That(columns[3].BaseColumnName, Is.EqualTo("varchar"));
-                }
-            }
+            using var cmd = new NpgsqlCommand("SELECT foo, foo AS foobar, 8 AS bar, 8, '8'::VARCHAR(10) FROM data", conn);
+            using var reader = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo);
+
+            var columns = reader.GetColumnSchema();
+            Assert.That(columns[0].BaseColumnName, Is.EqualTo("foo"));
+            Assert.That(columns[1].BaseColumnName, Is.EqualTo("foo"));
+            Assert.That(columns[2].BaseColumnName, Is.EqualTo("bar"));
+            Assert.That(columns[3].BaseColumnName, Is.Null);
+            Assert.That(columns[4].BaseColumnName, Is.EqualTo("varchar"));
+        }
+
+        [Test]
+        public void BaseColumnNameWithColumnAliases()
+        {
+            using var conn = OpenConnection();
+
+            conn.ExecuteNonQuery(@"
+                CREATE TEMP TABLE data (
+                    Cod varchar(5) NOT NULL,
+                    Descr varchar(40),
+                    Date date,
+                    CONSTRAINT PK_test_Cod PRIMARY KEY (Cod)
+                );
+            ");
+
+            var cmd = new NpgsqlCommand("SELECT Cod as CodAlias, Descr as DescrAlias, Date FROM data", conn);
+
+            using var dr = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo);
+            var cols = dr.GetColumnSchema();
+
+            Assert.That(cols[0].BaseColumnName, Is.EqualTo("cod"));
+            Assert.That(cols[0].ColumnName.ToString(), Is.EqualTo("codalias"));
+            Assert.That(cols[1].BaseColumnName.ToString(), Is.EqualTo("descr"));
+            Assert.That(cols[1].ColumnName.ToString(), Is.EqualTo("descralias"));
+            Assert.That(cols[2].BaseColumnName.ToString(), Is.EqualTo("date"));
+            Assert.That(cols[2].ColumnName.ToString(), Is.EqualTo("date"));
         }
 
         [Test]

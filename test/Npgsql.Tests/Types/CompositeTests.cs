@@ -865,5 +865,23 @@ CREATE TYPE address AS
                 }
             }
         }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2831")]
+        public void UnmappedCompositeWithDbNull()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Pooling = false,
+                ApplicationName = nameof(NullablePropertyInStructComposite)
+            };
+            using var conn = OpenConnection(csb);
+
+            conn.ExecuteNonQuery("CREATE TYPE pg_temp.composite_with_db_null AS (foo INT)");
+            conn.ReloadTypes();
+
+            using var cmd = new NpgsqlCommand(@"SELECT @p1", conn);
+            cmd.Parameters.Add(new NpgsqlParameter("p1", new { foo = DBNull.Value }) { DataTypeName = "composite_with_db_null" });
+            cmd.ExecuteNonQuery();
+        }
     }
 }

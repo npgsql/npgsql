@@ -123,15 +123,21 @@ ORDER BY attnum";
 
                 using var cmd = new NpgsqlCommand(query, connection);
                 using var reader = cmd.ExecuteReader();
-                for (; reader.Read(); populatedColumns++)
+                while (reader.Read())
                 {
                     var column = LoadColumnDefinition(reader, _connection.Connector!.TypeMapper.DatabaseInfo, oldQueryMode);
-                    var ordinal = fields.FindIndex(f => f.TableOID == column.TableOID && f.ColumnAttributeNumber - 1 == column.ColumnAttributeNumber);
-                    Debug.Assert(ordinal >= 0);
-
-                    // The column's ordinal is with respect to the resultset, not its table
-                    column.ColumnOrdinal = ordinal;
-                    result[ordinal] = column;
+                    for (var ordinal = 0; ordinal < fields.Count; ordinal++)
+                    {
+                        var field = fields[ordinal];
+                        if (field.TableOID == column.TableOID &&
+                            field.ColumnAttributeNumber == column.ColumnAttributeNumber + 1)
+                        {
+                            populatedColumns++;
+                            // The column's ordinal is with respect to the resultset, not its table
+                            column.ColumnOrdinal = ordinal;
+                            result[ordinal] = column;
+                        }
+                    }
                 }
             }
 
@@ -139,10 +145,10 @@ ORDER BY attnum";
             // Fill in whatever info we have from the RowDescription itself
             for (var i = 0; i < fields.Count; i++)
             {
-                NpgsqlDbColumn column;
+                var column = result[i];
                 var field = fields[i];
 
-                if (result[i] == null)
+                if (column == null)
                 {
                     column = SetUpNonColumnField(field);
                     column.ColumnOrdinal = i;
@@ -150,7 +156,10 @@ ORDER BY attnum";
                     populatedColumns++;
                 }
 
-                result[i]!.ColumnName = result[i]!.BaseColumnName = field.Name.StartsWith("?column?") ? null : field.Name;
+                var fieldName = field.Name.StartsWith("?column?") ? null : field.Name;
+
+                column.BaseColumnName ??= fieldName;
+                column.ColumnName = fieldName;
             }
 
             if (populatedColumns != fields.Count)
@@ -171,6 +180,7 @@ ORDER BY attnum";
                 BaseSchemaName = reader.GetString(reader.GetOrdinal("nspname")),
                 BaseServerName = _connection.Host!,
                 BaseTableName = reader.GetString(reader.GetOrdinal("relname")),
+                BaseColumnName = reader.GetString(reader.GetOrdinal("attname")),
                 ColumnOrdinal = reader.GetInt32(reader.GetOrdinal("attnum")) - 1,
                 ColumnAttributeNumber = (short)(reader.GetInt16(reader.GetOrdinal("attnum")) - 1),
                 IsKey = reader.GetBoolean(reader.GetOrdinal("isprimarykey")),
@@ -223,15 +233,7 @@ ORDER BY attnum";
         {
             var typeMapper = _connection.Connector!.TypeMapper;
 
-            if (typeMapper.Mappings.TryGetValue(column.PostgresType.Name, out var mapping))
-                column.NpgsqlDbType = mapping.NpgsqlDbType;
-            else if (
-                column.PostgresType.Name.Contains(".") &&
-                typeMapper.Mappings.TryGetValue(column.PostgresType.Name.Split('.')[1], out mapping)
-            ) {
-                column.NpgsqlDbType = mapping.NpgsqlDbType;
-            }
-
+            column.NpgsqlDbType = typeMapper.GetTypeInfoByOid(column.TypeOID).npgsqlDbType;
             column.DataType = typeMapper.TryGetByOID(column.TypeOID, out var handler)
                 ? handler.GetFieldType()
                 : null;

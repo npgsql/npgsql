@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,7 +12,9 @@ namespace Npgsql.Tests
 {
     public static class TestUtil
     {
-        public static bool IsOnBuildServer => Environment.GetEnvironmentVariable("CI") != null;
+        public static bool IsOnBuildServer =>
+            Environment.GetEnvironmentVariable("GITHUB_ACTIONS") != null ||
+            Environment.GetEnvironmentVariable("CI") != null;
 
         /// <summary>
         /// Calls Assert.Ignore() unless we're on the build server, in which case calls
@@ -143,6 +146,7 @@ namespace Npgsql.Tests
 
     public static class NpgsqlCommandExtensions
     {
+        [return: MaybeNull]
         public static T ExecuteScalar<T>(this NpgsqlCommand cmd)
         {
             using (var rdr = cmd.ExecuteReader())
