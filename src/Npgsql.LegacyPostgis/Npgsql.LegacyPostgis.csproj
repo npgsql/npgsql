@@ -13,7 +13,6 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageProjectUrl>http://www.npgsql.org</PackageProjectUrl>
-    <PackageIconUrl>http://www.npgsql.org/img/postgresql.gif</PackageIconUrl>
     <PackageLicenseExpression>PostgreSQL</PackageLicenseExpression>
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>git://github.com/npgsql/npgsql</RepositoryUrl>
