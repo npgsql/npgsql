@@ -111,7 +111,7 @@ namespace Npgsql.TypeMapping
                 if (_arrayHandlerByClrType.TryGetValue(arrayElementType, out var elementHandler))
                     return elementHandler;
                 throw new NotSupportedException($"The CLR array type {type} isn't supported by Npgsql or your PostgreSQL. " +
-                                                "If you wish to map it to an  PostgreSQL composite type array you need to register it before usage, please refer to the documentation.");
+                                                "If you wish to map it to a PostgreSQL composite type array you need to register it before usage, please refer to the documentation.");
             }
 
             // Nothing worked
