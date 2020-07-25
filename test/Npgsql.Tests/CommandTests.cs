@@ -169,6 +169,8 @@ namespace Npgsql.Tests
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
         }
 
+// Timeout for async queries is not supported for .net 4.6.1
+#if !NET461
         [Test, Description("Checks that CommandTimeout gets enforced for async queries")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/607")]
         [Timeout(10000)]
@@ -186,6 +188,7 @@ namespace Npgsql.Tests
                 );
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
         }
+#endif
 
         [Test]
         public async Task TimeoutFromConnectionString()

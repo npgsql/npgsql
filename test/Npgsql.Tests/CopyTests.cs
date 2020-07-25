@@ -22,7 +22,7 @@ namespace Npgsql.Tests
             if (IsMultiplexing)
                 Assert.Ignore("Multiplexing: fails");
 
-            using (var conn = OpenConnection(new NpgsqlConnectionStringBuilder(ConnectionString) { CommandTimeout = 3 }))
+            using (var conn = OpenConnection(new NpgsqlConnectionStringBuilder(ConnectionString) { CommandTimeout = 5 }))
             {
                 await using var _ = await GetTempTableName(conn, out var table1);
                 await using var __ = await GetTempTableName(conn, out var table2);
