@@ -200,24 +200,20 @@ namespace Npgsql
                 // We have a special case when reading async notifications - a timeout may be normal
                 // shouldn't be fatal
                 // Note that mono throws SocketException with the wrong error (see #1330)
-                // sync timeout
                 catch (IOException e) when (
-                    (e.InnerException as SocketException)?.SocketErrorCode ==
+                    dontBreakOnTimeouts && (e.InnerException as SocketException)?.SocketErrorCode ==
                        (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock)
                 )
                 {
-                    if (dontBreakOnTimeouts)
-                        throw new TimeoutException("Timeout while reading from stream", e);
-                    else
-                        throw Connector.Break(new NpgsqlException("Exception while reading from stream", new TimeoutException("Timeout during reading attempt", e)));
+                    throw new TimeoutException("Timeout while reading from stream");
                 }
-                // async timeout
                 catch (OperationCanceledException e)
                 {
                     if (dontBreakOnTimeouts)
-                        throw new TimeoutException("Timeout while reading from stream", e);
+                        throw new TimeoutException("Timeout while reading from stream");
                     else
-                        throw Connector.Break(new NpgsqlException("Exception while reading from stream", new TimeoutException("Timeout during reading attempt", e)));
+                        throw Connector.Break(new NpgsqlException("Exception while reading from stream",
+                            new TimeoutException("Timeout during reading attempt", e)));
                 }
                 catch (Exception e)
                 {

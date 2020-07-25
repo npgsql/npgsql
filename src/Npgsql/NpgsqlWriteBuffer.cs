@@ -3,7 +3,6 @@ using System.Buffers.Binary;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
@@ -139,17 +138,9 @@ namespace Npgsql
                 else
                     Underlying.Write(Buffer, 0, WritePosition);
             }
-            // sync timeout
-            // Note that mono throws SocketException with the wrong error (see #1330)
-            catch (IOException e) when ((e.InnerException as SocketException)?.SocketErrorCode ==
-                   (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock))
+            catch (OperationCanceledException e)
             {
-                throw Connector.Break(new NpgsqlException("Exception while writing to stream", new TimeoutException("Timeout during writing attempt")));
-            }
-            // async timeout
-            catch (OperationCanceledException)
-            {
-                throw Connector.Break(new NpgsqlException("Exception while writing to stream", new TimeoutException("Timeout during writing attempt")));
+                throw Connector.Break(new NpgsqlException("Exception while writing to stream", new TimeoutException("Timeout during writing attempt", e)));
             }
             catch (Exception e)
             {
@@ -163,14 +154,6 @@ namespace Npgsql
                 else
                     Underlying.Flush();
             }
-            // sync timeout
-            // Note that mono throws SocketException with the wrong error (see #1330)
-            catch (IOException e) when ((e.InnerException as SocketException)?.SocketErrorCode ==
-                   (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock))
-            {
-                throw Connector.Break(new NpgsqlException("Exception while flushing stream", new TimeoutException("Timeout during flushing attempt", e)));
-            }
-            // async timeout
             catch (OperationCanceledException e)
             {
                 throw Connector.Break(new NpgsqlException("Exception while flushing stream", new TimeoutException("Timeout during flushing attempt", e)));
