@@ -3,6 +3,8 @@ using Newtonsoft.Json.Linq;
 using Npgsql.Tests;
 using NpgsqlTypes;
 using NUnit.Framework;
+using System;
+using System.Text;
 
 // ReSharper disable AccessToModifiedClosure
 // ReSharper disable AccessToDisposedClosure
@@ -51,6 +53,40 @@ namespace Npgsql.PluginTests
                 // State should still be OK to continue
                 var actual = reader.GetFieldValue<JArray>(0);
                 Assert.That((int)actual[0], Is.EqualTo(1));
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3085")]
+        public void RoundtripStringTypes()
+        {
+            var expected1 = @"{""Key"": ""Value""}";
+            var expected2 = new char[] { '{', '"', 'p', '"',':', '1', '}' };
+            var expected3 = new ArraySegment<char>("{\"p\":1}".ToCharArray());
+            // If we serialize to JSONB, Postgres will not store the Json.NET formatting, and will add a space after ':'
+            var expected2String = _npgsqlDbType.Equals(NpgsqlDbType.Jsonb) ? "{\"p\": 1}"
+                                    : "{\"p\":1}";
+            var expected4 = Encoding.ASCII.GetBytes("\"test\"");
+
+            using var conn = OpenConnection();
+            using var cmd = new NpgsqlCommand(@"SELECT @p1, @p2, @p3, @p4", conn);
+
+            cmd.Parameters.Add(new NpgsqlParameter<string>("p1", _npgsqlDbType) { Value = expected1 });
+            cmd.Parameters.Add(new NpgsqlParameter<char[]>("p2", _npgsqlDbType) { Value = expected2 });
+            cmd.Parameters.Add(new NpgsqlParameter<ArraySegment<char>>("p3", _npgsqlDbType) { Value = expected3 });
+            cmd.Parameters.Add(new NpgsqlParameter<byte[]>("p4", _npgsqlDbType) { Value = expected4 });
+
+            try
+            {
+                using var reader = cmd.ExecuteReader();
+                reader.Read();
+                Assert.That(reader.GetFieldValue<string>(0), Is.EqualTo(expected1));
+                Assert.That(reader.GetFieldValue<string>(1), Is.EqualTo(expected2String));
+                Assert.That(reader.GetFieldValue<string>(2), Is.EqualTo(expected2String));
+                Assert.That(reader.GetFieldValue<string>(3), Is.EqualTo(Encoding.ASCII.GetString(expected4)));
+            }
+            catch (Exception ex)
+            {
+                Assert.Fail(ex.Message);
             }
         }
 
