@@ -74,12 +74,8 @@ namespace Npgsql.PluginTests
             using var reader = cmd.ExecuteReader();
             reader.Read();
             Assert.That(reader.GetFieldValue<string>(0), Is.EqualTo(expectedString));
-            // following tests will fail on json handler. Remove this once a fix is pushed.
-            if (_npgsqlDbType.Equals(NpgsqlDbType.Jsonb))
-            {
-                Assert.That(reader.GetFieldValue<char[]>(1), Is.EqualTo(expectedString.ToCharArray()));
-                Assert.That(reader.GetFieldValue<byte[]>(2), Is.EqualTo(Encoding.ASCII.GetBytes(expectedString)));
-            }
+            Assert.That(reader.GetFieldValue<char[]>(1), Is.EqualTo(expectedString.ToCharArray()));
+            Assert.That(reader.GetFieldValue<byte[]>(2), Is.EqualTo(Encoding.ASCII.GetBytes(expectedString)));
         }
 
         [Test, Ignore("INpgsqlTypeHandler<ArraySegment<char>>.Read currently not yet implemented in TextHandler")]
