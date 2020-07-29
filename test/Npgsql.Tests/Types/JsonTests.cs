@@ -65,6 +65,47 @@ namespace Npgsql.Tests.Types
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3085")]
+        public async Task RoundtripStringTypes()
+        {
+            var expected = "{\"p\":1}";
+            // If we serialize to JSONB, Postgres will not store the Json.NET formatting, and will add a space after ':'
+            var expectedString = NpgsqlDbType.Equals(NpgsqlDbType.Jsonb) ? "{\"p\": 1}"
+                                    : "{\"p\":1}";
+
+            using var conn = OpenConnection();
+            using var cmd = new NpgsqlCommand(@"SELECT @p1, @p2, @p3", conn);
+
+            cmd.Parameters.Add(new NpgsqlParameter<string>("p1", NpgsqlDbType) { Value = expected });
+            cmd.Parameters.Add(new NpgsqlParameter<char[]>("p2", NpgsqlDbType) { Value = expected.ToCharArray() });
+            cmd.Parameters.Add(new NpgsqlParameter<byte[]>("p3", NpgsqlDbType) { Value = Encoding.ASCII.GetBytes(expected) });
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+            reader.Read();
+            Assert.That(reader.GetFieldValue<string>(0), Is.EqualTo(expectedString));
+            Assert.That(reader.GetFieldValue<char[]>(1), Is.EqualTo(expectedString.ToCharArray()));
+            Assert.That(reader.GetFieldValue<byte[]>(2), Is.EqualTo(Encoding.ASCII.GetBytes(expectedString)));
+        }
+
+        [Test, Ignore("INpgsqlTypeHandler<ArraySegment<char>>.Read currently not yet implemented in TextHandler")]
+        public async Task RoundtripArraySegment()
+        {
+            var expected = "{\"p\":1}";
+            // If we serialize to JSONB, Postgres will not store the Json.NET formatting, and will add a space after ':'
+            var expectedString = NpgsqlDbType.Equals(NpgsqlDbType.Jsonb) ? "{\"p\": 1}"
+                                    : "{\"p\":1}";
+
+            using var conn = OpenConnection();
+            using var cmd = new NpgsqlCommand(@"SELECT @p1", conn);
+
+            cmd.Parameters.Add(new NpgsqlParameter<ArraySegment<char>>("p1", NpgsqlDbType) { Value = new ArraySegment<char>(expected.ToCharArray()) });
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+            reader.Read();
+            Assert.That(reader.GetFieldValue<ArraySegment<char>>(0), Is.EqualTo(expectedString));
+        }
+
+
         [Test]
         public async Task ReadJsonDocument()
         {
