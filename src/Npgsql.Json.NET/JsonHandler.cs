@@ -29,11 +29,16 @@ namespace Npgsql.Json.NET
 
         protected override async ValueTask<T> Read<T>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
-            var s = await base.Read<string>(buf, len, async, fieldDescription);
-            if (typeof(T) == typeof(string))
-                return (T)(object)s;
+            if (typeof(T) == typeof(string) ||
+                typeof(T) == typeof(char[]) ||
+                typeof(T) == typeof(ArraySegment<char>) ||
+                typeof(T) == typeof(char) ||
+                typeof(T) == typeof(byte[]))
+            {
+                return await base.Read<T>(buf, len, async, fieldDescription);
+            }
 
-            return JsonConvert.DeserializeObject<T>(s, _settings);
+            return JsonConvert.DeserializeObject<T>(await base.Read<string>(buf, len, async, fieldDescription), _settings);
         }
 
         protected override int ValidateAndGetLength<T2>(T2 value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
