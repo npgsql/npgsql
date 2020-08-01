@@ -499,6 +499,25 @@ namespace Npgsql
         }
         string? _timezone;
 
+        /// <summary>
+        /// Gets or sets the PostgreSQL target server.
+        /// </summary>
+        [Category("Connection")]
+        [Description("Gets or sets the PostgreSQL target server.")]
+        [DisplayName("TargetServerType")]
+        [DefaultValue(TargetServerType.Any)]
+        [NpgsqlConnectionStringProperty]
+        public TargetServerType TargetServerType
+        {
+            get => _targetservertype;
+            set
+            {
+                _targetservertype = value;
+                SetValue(nameof(TargetServerType), value);
+            }
+        }
+        TargetServerType _targetservertype;
+
         #endregion
 
         #region Properties - Security
@@ -1628,6 +1647,25 @@ namespace Npgsql
         /// Fail the connection if the server doesn't support SSL.
         /// </summary>
         Require,
+    }
+
+    /// <summary>
+    /// Specifies server type preference.
+    /// </summary>
+    public enum TargetServerType
+    {
+        /// <summary>
+        ///  Try to connect every server in order.
+        /// </summary>
+        Any,
+        /// <summary>
+        ///  Primary (writable) server is selected for the connection.
+        /// </summary>
+        Primary,
+        /// <summary>
+        ///  Secondary (readonly) server is selected for the connection.
+        /// </summary>
+        Secondary,
     }
 
     #endregion
