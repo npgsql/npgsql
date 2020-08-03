@@ -1478,6 +1478,7 @@ CREATE TABLE record ()");
             var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 Pooling = false,
+                Multiplexing = false,
                 IntegratedSecurity = false,
                 TargetServerType = TargetServerType.Primary
             };
