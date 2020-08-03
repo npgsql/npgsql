@@ -22,7 +22,7 @@ namespace Npgsql.Tests
             if (IsMultiplexing)
                 Assert.Ignore("Multiplexing: fails");
 
-            using (var conn = OpenConnection(new NpgsqlConnectionStringBuilder(ConnectionString) { CommandTimeout = 5 }))
+            using (var conn = OpenConnection(new NpgsqlConnectionStringBuilder(ConnectionString) { CommandTimeout = 3 }))
             {
                 await using var _ = await GetTempTableName(conn, out var table1);
                 await using var __ = await GetTempTableName(conn, out var table2);
@@ -31,10 +31,15 @@ namespace Npgsql.Tests
                 using (var cmd = conn.CreateCommand())
                 {
                     cmd.CommandText = $"CREATE TABLE {table1} AS SELECT * FROM generate_series(1, {rowCount}) id";
+                    // Creating table can take some time, so we set quite large timeout
+                    cmd.CommandTimeout = 30;
                     await cmd.ExecuteNonQueryAsync();
                     cmd.CommandText = $"ALTER TABLE {table1} ADD CONSTRAINT {table1}_pk PRIMARY KEY (id)";
                     await cmd.ExecuteNonQueryAsync();
                     cmd.CommandText = $"CREATE TABLE {table2} (master_id integer NOT NULL REFERENCES {table1} (id))";
+                    // We need to fail with timeout while calling writer.Complete() and conn.BeginBinaryImport reuses timeout from previous command
+                    // so we set default timeout here
+                    cmd.CommandTimeout = 3;
                     await cmd.ExecuteNonQueryAsync();
                 }
 
