@@ -1628,6 +1628,7 @@ namespace Npgsql
             // TODO: Replace this with array pooling, #2326
             if (_origReadBuffer != null)
             {
+                ReadBuffer.Dispose();
                 ReadBuffer = _origReadBuffer;
                 _origReadBuffer = null;
             }
