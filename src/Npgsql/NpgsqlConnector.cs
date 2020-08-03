@@ -645,18 +645,6 @@ namespace Npgsql
             catch
             {
 #pragma warning disable CS8625
-                try { ReadBuffer?.Dispose(); }
-                catch
-                {
-                    // ignored
-                }
-                ReadBuffer = null;
-                try { WriteBuffer?.Dispose(); }
-                catch
-                {
-                    // ignored
-                }
-                WriteBuffer = null;
                 try { _stream?.Dispose(); }
                 catch
                 {
