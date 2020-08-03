@@ -23,6 +23,7 @@ namespace Npgsql
             RollbackTransaction         = Generate(buf, "ROLLBACK");
             KeepAlive                   = Generate(buf, "SELECT NULL");
             DiscardAll                  = Generate(buf, "DISCARD ALL");
+            ServerIsSecondary           = Generate(buf, "SELECT pg_is_in_recovery()");
         }
 
         internal static byte[] Generate(NpgsqlWriteBuffer buf, string query)
@@ -53,5 +54,6 @@ namespace Npgsql
         internal static readonly byte[] KeepAlive;
 
         internal static readonly byte[] DiscardAll;
+        internal static readonly byte[] ServerIsSecondary;
     }
 }
