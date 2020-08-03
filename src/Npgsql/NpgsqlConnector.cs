@@ -188,7 +188,7 @@ namespace Npgsql
 
         int ReceiveTimeout
         {
-            set => ReadBuffer.Timeout = value;
+            set => ReadBuffer.Timeout = TimeSpan.FromMilliseconds(value);
         }
 
         /// <summary>

@@ -27,22 +27,15 @@ namespace Npgsql
         CancellationTokenSource _timeoutCts = new CancellationTokenSource();
 
         /// <summary>
-        /// Underlying stream WriteTimeout in ms
+        /// Underlying stream WriteTimeout
         /// </summary>
-        internal int Timeout
-        {
-            get => _timeout;
-            // Underlying NetworkStream only accepts -1 as infinite timeout and fails for 0
-            set => _timeout = value <= 0 ? -1 : value;
-        }
-
-        int _timeout;
+        internal TimeSpan Timeout { get; set; }
 
         /// <summary>
         /// Contains the current value of the Socket's Timeout, used to determine whether
         /// we need to change it when commands are received.
         /// </summary>
-        int _currentTimeout;
+        TimeSpan _currentTimeout;
 
         /// <summary>
         /// The total byte length of the buffer.
@@ -80,8 +73,9 @@ namespace Npgsql
 
             Connector = connector;
             Underlying = stream;
-            // Underlying NetworkStream only accepts -1 as infinite timeout and fails for 0
-            _timeout = _currentTimeout = Underlying.CanTimeout ? Underlying.WriteTimeout : -1;
+            _currentTimeout = Timeout = Underlying.CanTimeout && Underlying.WriteTimeout > 0
+                ? TimeSpan.FromMilliseconds(Underlying.WriteTimeout)
+                : TimeSpan.FromMilliseconds(-1);
             Size = size;
             Buffer = new byte[Size];
             TextEncoding = textEncoding;
@@ -111,16 +105,15 @@ namespace Npgsql
             var timeoutCt = CancellationToken.None;
             if (async)
             {
-                if (Timeout > 0)
+                if (Timeout > TimeSpan.Zero)
                 {
                     // We reuse the timeout's cancellation token source as long as it hasn't fired, but once it has
                     // there's no way to reset it (see https://github.com/dotnet/runtime/issues/4694)
-                    var timeoutTimeSpan = TimeSpan.FromMilliseconds(Timeout);
-                    _timeoutCts.CancelAfter(timeoutTimeSpan);
+                    _timeoutCts.CancelAfter(Timeout);
                     if (_timeoutCts.IsCancellationRequested)
                     {
                         _timeoutCts.Dispose();
-                        _timeoutCts = new CancellationTokenSource(timeoutTimeSpan);
+                        _timeoutCts = new CancellationTokenSource(Timeout);
                     }
                     timeoutCt = _timeoutCts.Token;
                 }
@@ -128,7 +121,10 @@ namespace Npgsql
             else
             {
                 if (Timeout != _currentTimeout)
-                    Underlying.WriteTimeout = _currentTimeout = Timeout;
+                {
+                    _currentTimeout = Timeout;
+                    Underlying.WriteTimeout = Timeout > TimeSpan.Zero ? (int)Timeout.TotalMilliseconds : -1;
+                }
             }
 
             try
