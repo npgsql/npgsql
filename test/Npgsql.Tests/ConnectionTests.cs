@@ -1429,6 +1429,7 @@ CREATE TABLE record ()");
             var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 Pooling = false,
+                Multiplexing = false,
                 IntegratedSecurity = false,
                 TargetServerType = TargetServerType.Any
             };
@@ -1450,6 +1451,7 @@ CREATE TABLE record ()");
             var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 Pooling = false,
+                Multiplexing = false,
                 IntegratedSecurity = false,
                 TargetServerType = TargetServerType.Primary
             };
@@ -1469,6 +1471,7 @@ CREATE TABLE record ()");
             var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 Pooling = false,
+                Multiplexing = false,
                 IntegratedSecurity = false,
                 TargetServerType = TargetServerType.Secondary
             };
@@ -1496,6 +1499,7 @@ CREATE TABLE record ()");
             var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 Pooling = false,
+                Multiplexing = false,
                 IntegratedSecurity = false,
                 TargetServerType = TargetServerType.Secondary
             };
@@ -1523,6 +1527,7 @@ CREATE TABLE record ()");
             var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 Pooling = false,
+                Multiplexing = false,
                 IntegratedSecurity = false,
                 TargetServerType = TargetServerType.Primary
             };
@@ -1550,6 +1555,7 @@ CREATE TABLE record ()");
             var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 Pooling = false,
+                Multiplexing = false,
                 IntegratedSecurity = false,
                 TargetServerType = TargetServerType.Primary
             };
