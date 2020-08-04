@@ -3,6 +3,7 @@ using System.Buffers.Binary;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
@@ -24,6 +25,8 @@ namespace Npgsql
 
         internal Stream Underlying { private get; set; }
 
+        internal Socket UnderlyingSocket { private get; set; }
+
         CancellationTokenSource _timeoutCts = new CancellationTokenSource();
 
         /// <summary>
@@ -32,10 +35,11 @@ namespace Npgsql
         internal TimeSpan Timeout { get; set; }
 
         /// <summary>
-        /// Contains the current value of the Socket's Timeout, used to determine whether
+        /// Contains the current value of the Socket's SendTimeout, used to determine whether
         /// we need to change it when commands are received.
+        /// It's used only for sync IO (<see cref="Stream.Write(byte[], int, int)"/> and <see cref="Stream.Flush"/>)
         /// </summary>
-        TimeSpan _currentTimeout;
+        TimeSpan _currentSocketTimeout;
 
         /// <summary>
         /// The total byte length of the buffer.
@@ -73,9 +77,7 @@ namespace Npgsql
 
             Connector = connector;
             Underlying = stream;
-            _currentTimeout = Timeout = Underlying.CanTimeout && Underlying.WriteTimeout > 0
-                ? TimeSpan.FromMilliseconds(Underlying.WriteTimeout)
-                : TimeSpan.FromMilliseconds(-1);
+            _currentSocketTimeout = Timeout = TimeSpan.Zero;
             Size = size;
             Buffer = new byte[Size];
             TextEncoding = textEncoding;
@@ -120,10 +122,10 @@ namespace Npgsql
             }
             else
             {
-                if (Timeout != _currentTimeout)
+                if (Timeout != _currentSocketTimeout && UnderlyingSocket != null)
                 {
-                    _currentTimeout = Timeout;
-                    Underlying.WriteTimeout = Timeout > TimeSpan.Zero ? (int)Timeout.TotalMilliseconds : -1;
+                    _currentSocketTimeout = Timeout;
+                    UnderlyingSocket.SendTimeout = Timeout > TimeSpan.Zero ? (int)Timeout.TotalMilliseconds : -1;
                 }
             }
 

@@ -27,6 +27,8 @@ namespace Npgsql
 
         internal Stream Underlying { private get; set; }
 
+        internal Socket UnderlyingSocket { private get; set; }
+
         CancellationTokenSource _timeoutCts = new CancellationTokenSource();
 
         /// <summary>
@@ -35,10 +37,11 @@ namespace Npgsql
         internal TimeSpan Timeout { get; set; }
 
         /// <summary>
-        /// Contains the current value of the Socket's Timeout, used to determine whether
+        /// Contains the current value of the Socket's RecieveTimeout, used to determine whether
         /// we need to change it when commands are received.
+        /// It's used only for sync IO (<see cref="Stream.Read(byte[], int, int)"/>)
         /// </summary>
-        TimeSpan _currentTimeout;
+        TimeSpan _currentSocketTimeout;
 
         /// <summary>
         /// The total byte length of the buffer.
@@ -88,9 +91,7 @@ namespace Npgsql
 
             Connector = connector;
             Underlying = stream;
-            _currentTimeout = Timeout = Underlying.CanTimeout && Underlying.ReadTimeout > 0
-                ? TimeSpan.FromMilliseconds(Underlying.ReadTimeout)
-                : TimeSpan.FromMilliseconds(-1);
+            _currentSocketTimeout = Timeout = TimeSpan.Zero;
             Size = size;
             Buffer = new byte[Size];
             TextEncoding = textEncoding;
@@ -156,10 +157,10 @@ namespace Npgsql
                     }
                     else
                     {
-                        if (Timeout != _currentTimeout)
+                        if (Timeout != _currentSocketTimeout && UnderlyingSocket != null)
                         {
-                            _currentTimeout = Timeout;
-                            Underlying.ReadTimeout = Timeout > TimeSpan.Zero ? (int)Timeout.TotalMilliseconds : -1;
+                            _currentSocketTimeout = Timeout;
+                            UnderlyingSocket.ReceiveTimeout = Timeout > TimeSpan.Zero ? (int)Timeout.TotalMilliseconds : -1;
                         }    
                     }
 
@@ -226,7 +227,8 @@ namespace Npgsql
             Debug.Assert(count > Size);
             var tempBuf = new NpgsqlReadBuffer(Connector, Underlying, count, TextEncoding, RelaxedTextEncoding)
             {
-                Timeout = Timeout
+                Timeout = Timeout,
+                UnderlyingSocket = UnderlyingSocket
             };
             CopyTo(tempBuf);
             Clear();
