@@ -25,7 +25,7 @@ namespace Npgsql
 
         internal Stream Underlying { private get; set; }
 
-        internal Socket UnderlyingSocket { private get; set; }
+        internal Socket? UnderlyingSocket { private get; set; }
 
         CancellationTokenSource _timeoutCts = new CancellationTokenSource();
 
