@@ -521,6 +521,7 @@ namespace Npgsql
                             Log.Error("Exception bubbled out of multiplexing read loop", t.Exception!, Id);
                                 }, TaskContinuationOptions.OnlyOnFaulted);
                         }
+                        return;
                     }
                     catch (SocketException)
                     {
