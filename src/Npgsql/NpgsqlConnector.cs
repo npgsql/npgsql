@@ -21,7 +21,6 @@ using Npgsql.Logging;
 using Npgsql.TypeMapping;
 using Npgsql.Util;
 using static Npgsql.Util.Statics;
-using System.ComponentModel.Design;
 
 namespace Npgsql
 {
