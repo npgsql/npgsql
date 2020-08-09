@@ -10,7 +10,7 @@ namespace Npgsql
             _connectionString = connectionString;
         }
 
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             return obj is PoolKey key && _connectionString == key._connectionString;
         }
