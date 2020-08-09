@@ -1516,6 +1516,7 @@ CREATE TABLE record ()");
         [Test]
         public void ConnectionToASecondaryIfThereIsntOneShouldFail()
         {
+            //TODO fix this test
             var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 Pooling = false,
@@ -1534,6 +1535,7 @@ CREATE TABLE record ()");
         [Test]
         public void FailoverFromANonExistantHostToPrimaryWorksWithinTheTimeout()
         {
+            //TODO fix this test
             var unknownIp = Environment.GetEnvironmentVariable("NPGSQL_UNKNOWN_IP");
             if (unknownIp == null)
                 Assert.Ignore("NPGSQL_UNKNOWN_IP isn't defined and is required for connection failover tests");
@@ -1572,7 +1574,7 @@ CREATE TABLE record ()");
 
                 Assert.That(() => { using (OpenConnection(builder)) { } },
                             Throws.Exception.TypeOf<NpgsqlException>()
-                                .With.Property(nameof(NpgsqlException.Message)).Matches("was not of compatible type. Got: Primary Expected: Secondary")
+                                .With.Property(nameof(NpgsqlException.Message)).Matches("Connected Server was of type Primary however we wanted Secondary and is not appropriate for this connection")
                         );
             }
         }
@@ -1580,6 +1582,7 @@ CREATE TABLE record ()");
         [Test, Explicit]
         public void ConnectionToSecondaryIgnoresThePrimary()
         {
+            //TODO fix this test
             var secondaryHost = Environment.GetEnvironmentVariable("NPGSQL_SECONDARY_HOST");
             if (secondaryHost == null)
                 Assert.Ignore("NPGSQL_SECONDARY_HOST isn't defined and is required for connection failover tests");
