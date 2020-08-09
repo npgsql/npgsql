@@ -155,7 +155,7 @@ namespace Npgsql
 
         void GetPoolAndSettings()
         {
-            if (PoolManager.TryGetValue(_connectionString, out _pool))
+            if (PoolManager.TryGetValue(new PoolKey(_connectionString), out _pool))
             {
                 Settings = _pool.Settings;  // Great, we already have a pool
                 return;
@@ -175,11 +175,11 @@ namespace Npgsql
             // and recheck.
             var canonical = Settings.ConnectionString;
 
-            if (PoolManager.TryGetValue(canonical, out _pool))
+            if (PoolManager.TryGetValue(new PoolKey(canonical), out _pool))
             {
                 // The pool was found, but only under the canonical key - we're using a different version
                 // for the first time. Map it via our own key for next time.
-                _pool = PoolManager.GetOrAdd(_connectionString, _pool);
+                _pool = PoolManager.GetOrAdd(new PoolKey(_connectionString), _pool);
                 return;
             }
 
@@ -187,7 +187,7 @@ namespace Npgsql
             // The canonical pool is the 'base' pool so we need to set that up first. If someone beats us to it use what they put.
             // The connection string pool can either be added here or above, if it's added above we should just use that.
             var newPool = new ConnectorPool(Settings, canonical);
-            _pool = PoolManager.GetOrAdd(canonical, newPool);
+            _pool = PoolManager.GetOrAdd(new PoolKey(canonical), newPool);
 
             // If the pool we created was the one that ended up being stored we need to increment the appropriate counter.
             // Avoids a race condition where multiple threads will create a pool but only one will be stored.
@@ -198,7 +198,7 @@ namespace Npgsql
                 NpgsqlEventSource.Log.PoolCreated();
             }
 
-            _pool = PoolManager.GetOrAdd(_connectionString, _pool);
+            _pool = PoolManager.GetOrAdd(new PoolKey(_connectionString), _pool);
         }
 
         internal Task Open(bool async, CancellationToken cancellationToken)
@@ -1731,7 +1731,7 @@ namespace Npgsql
         /// immediately closed, and any busy connections which were opened before <see cref="ClearPool"/> was called
         /// will be closed when returned to the pool.
         /// </summary>
-        public static void ClearPool(NpgsqlConnection connection) => PoolManager.Clear(connection._connectionString);
+        public static void ClearPool(NpgsqlConnection connection) => PoolManager.Clear(new PoolKey(connection._connectionString));
 
         /// <summary>
         /// Clear all connection pools. All idle physical connections in all pools are immediately closed, and any busy
