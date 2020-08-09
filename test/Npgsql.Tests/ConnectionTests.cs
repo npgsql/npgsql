@@ -1486,7 +1486,9 @@ CREATE TABLE record ()");
             using (TestUtil.SetEnvironmentVariable("PGPASSWORD", builder.Password))
             {
                 builder.Password = null;
-                using (OpenConnection(builder)) { }
+                using (var connection = OpenConnection(builder)) {
+                    var isInrecovery = connection.ExecuteScalar("SELECT pg_is_in_recovery();");
+                }
             }
         }
 
@@ -1504,7 +1506,10 @@ CREATE TABLE record ()");
             using (TestUtil.SetEnvironmentVariable("PGPASSWORD", builder.Password))
             {
                 builder.Password = null;
-                using (OpenConnection(builder)) { }
+                using (var connection = OpenConnection(builder)) {
+                    var isInrecovery = connection.ExecuteScalar("SELECT pg_is_in_recovery();");
+
+                }
             }
         }
 
@@ -1522,7 +1527,7 @@ CREATE TABLE record ()");
             using (TestUtil.SetEnvironmentVariable("PGPASSWORD", builder.Password))
             {
                 builder.Password = null;
-                using (OpenConnection(builder)) { }
+                Assert.That(OpenConnection(builder), Throws.Exception.AssignableTo<NpgsqlException>());
             }
         }
 
