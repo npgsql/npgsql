@@ -148,7 +148,11 @@ namespace Npgsql
             try
             {
                 if (async)
+                {
                     await Underlying.FlushAsync(timeoutCt);
+                    // Resetting cancellation token source, so we can use it again
+                    _timeoutCts.CancelAfter(-1);
+                }
                 else
                     Underlying.Flush();
             }
@@ -159,11 +163,7 @@ namespace Npgsql
             catch (Exception e)
             {
                 throw Connector.Break(new NpgsqlException("Exception while flushing stream", e));
-            }
-
-            // Resetting cancellation token source, so we can use it again
-            if (async)
-                _timeoutCts.CancelAfter(-1);
+            }   
 
             NpgsqlEventSource.Log.BytesWritten(WritePosition);
             //NpgsqlEventSource.Log.RequestFailed();
