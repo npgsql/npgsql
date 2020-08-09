@@ -21,6 +21,7 @@ using Npgsql.Logging;
 using Npgsql.TypeMapping;
 using Npgsql.Util;
 using static Npgsql.Util.Statics;
+using System.ComponentModel.Design;
 
 namespace Npgsql
 {
@@ -160,6 +161,12 @@ namespace Npgsql
         /// </para>
         /// </summary>
         internal volatile int MultiplexAsyncWritingLock;
+
+        /// <summary>
+        /// The connected Host
+        /// </summary>
+
+        internal string Host;
 
         /// <seealso cref="MultiplexAsyncWritingLock"/>
         internal void FlagAsNotWritableForMultiplexing()
@@ -306,6 +313,7 @@ namespace Npgsql
             ConnectionString = connectionString;
             PostgresParameters = new Dictionary<string, string>();
             Transaction = new NpgsqlTransaction(this);
+            Host = Settings.Host!;
 
             CancelLock = new object();
 
@@ -344,7 +352,6 @@ namespace Npgsql
 
         #region Configuration settings
 
-        string Host => Settings.Host!;
         int Port => Settings.Port;
         string KerberosServiceName => Settings.KerberosServiceName;
         SslMode SslMode => Settings.SslMode;
@@ -423,55 +430,81 @@ namespace Npgsql
 
             State = ConnectorState.Connecting;
 
-            try {
-                await RawOpen(timeout, async, cancellationToken);
-                var username = GetUsername();
-                if (Settings.Database == null)
-                    Settings.Database = username;
-                WriteStartupMessage(username);
-                await Flush(async);
-                timeout.Check();
-
-                await Authenticate(username, timeout, async);
-
-                // We treat BackendKeyData as optional because some PostgreSQL-like database
-                // don't send it (CockroachDB, CrateDB)
-                var msg = await ReadMessage(async);
-                if (msg.Code == BackendMessageCode.BackendKeyData)
+            try
+            {
+                var hosts = Settings.Host!.Split(',');
+                for(var hostIndex=0; hostIndex < hosts.Length; ++hostIndex)
                 {
-                    var keyDataMsg = (BackendKeyDataMessage)msg;
-                    BackendProcessId = keyDataMsg.BackendProcessId;
-                    _backendSecretKey = keyDataMsg.BackendSecretKey;
-                    msg = await ReadMessage(async);
-                }
-                if (msg.Code != BackendMessageCode.ReadyForQuery)
-                    throw new NpgsqlException($"Received backend message {msg.Code} while expecting ReadyForQuery. Please file a bug.");
+                    Host = hosts[hostIndex];
+                    try
+                    {
+                        await RawOpen(timeout, async, cancellationToken);
+                        var username = GetUsername();
+                        if (Settings.Database == null)
+                            Settings.Database = username;
+                        WriteStartupMessage(username);
+                        await Flush(async);
+                        timeout.Check();
 
-                State = ConnectorState.Ready;
+                        await Authenticate(username, timeout, async);
 
-                await LoadDatabaseInfo(forceReload: false, timeout, async);
-                UpdateServerPrimaryStatus();
-
-                if (Settings.Pooling && !Settings.Multiplexing && !Settings.NoResetOnClose && DatabaseInfo.SupportsDiscard)
-                {
-                    _sendResetOnClose = true;
-                    GenerateResetMessage();
-                }
-
-                Log.Trace($"Opened connection to {Host}:{Port} as {ConnectedServerType}");
-
-                if (Settings.Multiplexing)
-                {
-                    // Start an infinite async loop, which processes incoming multiplexing traffic.
-                    // It is intentionally not awaited and will run as long as the connector is alive.
-                    // The CommandsInFlightWriter channel is completed in Cleanup, which should cause this task
-                    // to complete.
-                    _ = Task.Run(MultiplexingReadLoop)
-                        .ContinueWith(t =>
+                        // We treat BackendKeyData as optional because some PostgreSQL-like database
+                        // don't send it (CockroachDB, CrateDB)
+                        var msg = await ReadMessage(async);
+                        if (msg.Code == BackendMessageCode.BackendKeyData)
                         {
+                            var keyDataMsg = (BackendKeyDataMessage)msg;
+                            BackendProcessId = keyDataMsg.BackendProcessId;
+                            _backendSecretKey = keyDataMsg.BackendSecretKey;
+                            msg = await ReadMessage(async);
+                        }
+                        if (msg.Code != BackendMessageCode.ReadyForQuery)
+                            throw new NpgsqlException($"Received backend message {msg.Code} while expecting ReadyForQuery. Please file a bug.");
+
+                        State = ConnectorState.Ready;
+
+                        await LoadDatabaseInfo(forceReload: false, timeout, async);
+                        UpdateServerPrimaryStatus();
+
+                        if (IsAppropriateFor(Settings.TargetServerType) == false)
+                        {
+                            throw new NpgsqlException($"Connected Server was of type {ConnectedServerType} however we wanted {Settings.TargetServerType} and is not appropriate for this connection");
+                        }
+
+                        if (Settings.Pooling && !Settings.Multiplexing && !Settings.NoResetOnClose && DatabaseInfo.SupportsDiscard)
+                        {
+                            _sendResetOnClose = true;
+                            GenerateResetMessage();
+                        }
+
+                        Log.Trace($"Opened connection to {Host}:{Port} as {ConnectedServerType}");
+
+                        if (Settings.Multiplexing)
+                        {
+                            // Start an infinite async loop, which processes incoming multiplexing traffic.
+                            // It is intentionally not awaited and will run as long as the connector is alive.
+                            // The CommandsInFlightWriter channel is completed in Cleanup, which should cause this task
+                            // to complete.
+                            _ = Task.Run(MultiplexingReadLoop)
+                                .ContinueWith(t =>
+                                {
                             // Note that we *must* observe the exception if the task is faulted.
                             Log.Error("Exception bubbled out of multiplexing read loop", t.Exception!, Id);
-                        }, TaskContinuationOptions.OnlyOnFaulted);
+                                }, TaskContinuationOptions.OnlyOnFaulted);
+                        }
+                    }
+                    catch (SocketException)
+                    {
+                        if (hostIndex == hosts.Length - 1)
+                            throw;
+                        SoftCleanup();
+                    }
+                    catch (NpgsqlException)
+                    {
+                        if (hostIndex == hosts.Length - 1)
+                            throw;
+                        SoftCleanup();
+                    }
                 }
             }
             catch (Exception e)
@@ -500,6 +533,12 @@ namespace Npgsql
 
             SkipUntil(BackendMessageCode.ReadyForQuery);
             EndUserAction();
+        }
+        internal bool IsAppropriateFor(TargetServerType requestedServerType)
+        {
+            if (requestedServerType == TargetServerType.Any)
+                return true;
+            return ConnectedServerType == requestedServerType;
         }
 
         internal async Task LoadDatabaseInfo(bool forceReload, NpgsqlTimeout timeout, bool async)
@@ -1599,6 +1638,14 @@ namespace Npgsql
                 _keepAliveTimer.Dispose();
             }
 #pragma warning restore CS8625
+        }
+
+        private void SoftCleanup()
+        {
+            // TODO: There needs to be some sort of soft cleanup here, this.Close() is too much and this.Break() is too little.
+            // I think just closing the socket is enough as all the buffers etc aren't used until a connection is allocated?
+            if(_socket != null && _socket.Connected)
+                _socket.Close();
         }
 
         void GenerateResetMessage()
