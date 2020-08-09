@@ -1442,6 +1442,24 @@ CREATE TABLE record ()");
         }
 
         [Test]
+        public void ConnectionToASecondaryIfThereIsntOneShouldFail()
+        {
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Pooling = false,
+                Multiplexing = false,
+                IntegratedSecurity = false,
+                TargetServerType = TargetServerType.Secondary
+            };
+
+            using (TestUtil.SetEnvironmentVariable("PGPASSWORD", builder.Password))
+            {
+                builder.Password = null;
+                using (OpenConnection(builder)) { }
+            }
+        }
+
+        [Test]
         public void FailoverFromANonExistantHostToPrimaryWorksWithinTheTimeout()
         {
             var unknownIp = Environment.GetEnvironmentVariable("NPGSQL_UNKNOWN_IP");
@@ -1484,8 +1502,6 @@ CREATE TABLE record ()");
                             Throws.Exception.TypeOf<NpgsqlException>()
                                 .With.Property(nameof(NpgsqlException.Message)).Matches("was not of compatible type. Got: Primary Expected: Secondary")
                         );
-
-
             }
         }
 
