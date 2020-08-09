@@ -1072,14 +1072,16 @@ namespace Npgsql
                         {
                             if (len > ReadBuffer.Size)
                             {
-                                var oversizeBuffer = ReadBuffer.AllocateOversize(len);
-
                                 if (_origReadBuffer == null)
                                     _origReadBuffer = ReadBuffer;
                                 else
+                                {
+                                    // Disposing ReadBuffer only disposes internal CancellationTokenSource
+                                    // So it's fine to call ReadBuffer.AllocateOversize later
                                     ReadBuffer.Dispose();
+                                } 
 
-                                ReadBuffer = oversizeBuffer;
+                                ReadBuffer = ReadBuffer.AllocateOversize(len);
                             }
 
                             await ReadBuffer.Ensure(len, async);
