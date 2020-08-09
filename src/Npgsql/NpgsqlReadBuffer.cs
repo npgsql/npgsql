@@ -181,6 +181,8 @@ namespace Npgsql
                         // Most of the time, it should be fine to reset cancellation token source, so we can use it again
                         // It's still possible for cancellation token to cancel between reading and resetting (although highly improbable)
                         // In this case, we consider it as timed out and fail with OperationCancelledException on next ReadAsync
+                        // Or we consider it not timed out if we have already read everything (count == 0)
+                        // In which case we reinitialize it on the next call to EnsureLong()
                         if (async)
                         {
                             _timeoutCts.CancelAfter(Timeout);
