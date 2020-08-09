@@ -651,9 +651,7 @@ namespace Npgsql
             catch
             {
 #pragma warning disable CS8625
-                try { _stream?.Dispose(); }
-                catch
-                {
+                try { _stream?.Dispose(); } catch {
                     // ignored
                 }
                 _stream = null;
