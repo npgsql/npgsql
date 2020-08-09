@@ -200,7 +200,7 @@ namespace Npgsql.Tests.Types
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2766")]
-        [Timeout(1000)]
+        [Timeout(3000)]
         public async Task SequentialReadOfOversizedBitArray()
         {
             using var conn = await OpenConnectionAsync();
