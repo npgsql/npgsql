@@ -1403,8 +1403,33 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 {
                     sb.Append('\t').Append("Parameters:");
                     for (var i = 0; i < p.Count; i++)
-                        sb.Append("\t$").Append(i + 1).Append(": ").Append(Convert.ToString(p[i].Value, CultureInfo.InvariantCulture));
+                    {
+                        if (p[i].Value.GetType().IsArray)
+                        {
+                            switch (p[i].Value)
+                            {
+                            case int[] pInt:
+                                for (var x = 0; x < pInt.Count(); x++)
+                                    LogParamValue(sb, i, pInt[x]);
+                                break;
+                            case string[] pStr:
+                                for (var x = 0; x < pStr.Count(); x++)
+                                    LogParamValue(sb, i, pStr[x]);
+                                break;
+                            default:
+                                LogParamValue(sb, i, p[i].Value);
+                                break;
+                            }
+                        }
+                        else
+                            LogParamValue(sb, i, p[i].Value);
+                    }
                 }
+            }
+
+            StringBuilder LogParamValue(StringBuilder sb, int idx, object val)
+            {
+                return sb.Append("\t$").Append(idx + 1).Append(": ").Append(Convert.ToString(val, CultureInfo.InvariantCulture));
             }
 
             Log.Debug(sb.ToString(), connector.Id);
