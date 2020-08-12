@@ -17,7 +17,11 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    [TypeMapping("interval", NpgsqlDbType.Interval, new[] { typeof(TimeSpan), typeof(NpgsqlTimeSpan) })]
+    [TypeMapping("interval", NpgsqlDbType.Interval, new[] { typeof(TimeSpan)
+#if LegacyProviderSpecificDateTimeTypes
+        , typeof(NpgsqlTimeSpan)
+#endif // LegacyProviderSpecificDateTimeTypes
+    })]
     public class IntervalHandlerFactory : NpgsqlTypeHandlerFactory<TimeSpan>
     {
         /// <inheritdoc />
@@ -37,7 +41,12 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    public class IntervalHandler : NpgsqlSimpleTypeHandlerWithPsv<TimeSpan, NpgsqlTimeSpan>
+    public class IntervalHandler :
+#if LegacyProviderSpecificDateTimeTypes
+        NpgsqlSimpleTypeHandlerWithPsv<TimeSpan, NpgsqlTimeSpan>
+#else
+        NpgsqlSimpleTypeHandler<TimeSpan>
+#endif // LegacyProviderSpecificDateTimeTypes
     {
         /// <summary>
         /// Constructs an <see cref="IntervalHandler"/>
@@ -46,8 +55,14 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
 
         /// <inheritdoc />
         public override TimeSpan Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-            => (TimeSpan)((INpgsqlSimpleTypeHandler<NpgsqlTimeSpan>)this).Read(buf, len, fieldDescription);
+        {
+            var microseconds = buf.ReadInt64();
+            var day = buf.ReadInt32();
+            var month = buf.ReadInt32();
+            return new TimeSpan(microseconds * 10 + day * TimeSpan.TicksPerDay + month * 30 * TimeSpan.TicksPerDay);
+        }
 
+#if LegacyProviderSpecificDateTimeTypes
         /// <inheritdoc />
         protected override NpgsqlTimeSpan ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
@@ -56,10 +71,12 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             var month = buf.ReadInt32();
             return new NpgsqlTimeSpan(month, day, ticks * 10);
         }
+#endif // LegacyProviderSpecificDateTimeTypes
 
         /// <inheritdoc />
         public override int ValidateAndGetLength(TimeSpan value, NpgsqlParameter? parameter) => 16;
 
+#if LegacyProviderSpecificDateTimeTypes
         /// <inheritdoc />
         public override int ValidateAndGetLength(NpgsqlTimeSpan value, NpgsqlParameter? parameter) => 16;
 
@@ -70,10 +87,14 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             buf.WriteInt32(value.Days);
             buf.WriteInt32(value.Months);
         }
+#endif // LegacyProviderSpecificDateTimeTypes
 
-        // TODO: Can write directly from TimeSpan
         /// <inheritdoc />
         public override void Write(TimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
-            => Write(value, buf, parameter);
+        {
+            buf.WriteInt64((value.Ticks - value.Days * TimeSpan.TicksPerDay) / 10);
+            buf.WriteInt32(value.Days % 30);
+            buf.WriteInt32(value.Days / 30);
+        }
     }
 }

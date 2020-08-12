@@ -550,23 +550,26 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
         [Test]
         public async Task GetProviderSpecificValues()
         {
-            using (var conn = await OpenConnectionAsync())
-            using (var command = new NpgsqlCommand(@"SELECT 'hello', 1, '2014-01-01'::DATE", conn))
+            await using var conn = await OpenConnectionAsync();
+            using var command = new NpgsqlCommand(@"SELECT 'hello', 1, '2014-01-01'::DATE", conn);
+            await using (var dr = await command.ExecuteReaderAsync(Behavior))
             {
-                using (var dr = await command.ExecuteReaderAsync(Behavior))
-                {
-                    dr.Read();
-                    var values = new object[4];
-                    Assert.That(dr.GetProviderSpecificValues(values), Is.EqualTo(3));
+                dr.Read();
+                var values = new object[4];
+                Assert.That(dr.GetProviderSpecificValues(values), Is.EqualTo(3));
+#if LegacyProviderSpecificDateTimeTypes
                     Assert.That(values, Is.EqualTo(new object?[] { "hello", 1, new NpgsqlDate(2014, 1, 1), null }));
-                }
-                using (var dr = await command.ExecuteReaderAsync(Behavior))
-                {
-                    dr.Read();
-                    var values = new object[2];
-                    Assert.That(dr.GetProviderSpecificValues(values), Is.EqualTo(2));
-                    Assert.That(values, Is.EqualTo(new object[] { "hello", 1 }));
-                }
+#else
+                Assert.That(values, Is.EqualTo(new object?[] { "hello", 1, new DateTime(2014, 1, 1), null }));
+#endif // LegacyProviderSpecificDateTimeTypes
+            }
+
+            await using (var dr = await command.ExecuteReaderAsync(Behavior))
+            {
+                dr.Read();
+                var values = new object[2];
+                Assert.That(dr.GetProviderSpecificValues(values), Is.EqualTo(2));
+                Assert.That(values, Is.EqualTo(new object[] { "hello", 1 }));
             }
         }
 
@@ -1033,24 +1036,22 @@ LANGUAGE plpgsql VOLATILE";
         [Test]
         public async Task InvalidCast()
         {
-            using (var conn = await OpenConnectionAsync())
+            await using var conn = await OpenConnectionAsync();
+            // Chunking type handler
+            using (var cmd = new NpgsqlCommand("SELECT 'foo'", conn))
+            await using (var reader = await cmd.ExecuteReaderAsync())
             {
-                // Chunking type handler
-                using (var cmd = new NpgsqlCommand("SELECT 'foo'", conn))
-                using (var reader = await cmd.ExecuteReaderAsync())
-                {
-                    reader.Read();
-                    Assert.That(() => reader.GetInt32(0), Throws.Exception.TypeOf<InvalidCastException>());
-                }
-                // Simple type handler
-                using (var cmd = new NpgsqlCommand("SELECT 1", conn))
-                using (var reader = await cmd.ExecuteReaderAsync())
-                {
-                    reader.Read();
-                    Assert.That(() => reader.GetDate(0), Throws.Exception.TypeOf<InvalidCastException>());
-                }
-                Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
+                reader.Read();
+                Assert.That(() => reader.GetInt32(0), Throws.Exception.TypeOf<InvalidCastException>());
             }
+            // Simple type handler
+            using (var cmd = new NpgsqlCommand("SELECT 1", conn))
+            await using (var reader = await cmd.ExecuteReaderAsync())
+            {
+                reader.Read();
+                Assert.That(() => reader.GetDateTime(0), Throws.Exception.TypeOf<InvalidCastException>());
+            }
+            Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
         }
 
         [Test, Description("Reads a lot of rows to make sure the long unoptimized path for Read() works")]

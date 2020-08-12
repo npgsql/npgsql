@@ -11,6 +11,7 @@
     <PackageLicenseExpression>PostgreSQL</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/npgsql/npgsql</PackageProjectUrl>
     <PackageIcon>postgresql.png</PackageIcon>
+    <DefineConstants>LegacyProviderSpecificDateTimeTypes</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>

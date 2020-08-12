@@ -1,4 +1,5 @@
-﻿using System;
+﻿#if LegacyProviderSpecificDateTimeTypes
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using Npgsql.Util;
@@ -476,3 +477,4 @@ namespace NpgsqlTypes
         }
     }
 }
+#endif // LegacyProviderSpecificDateTimeTypes

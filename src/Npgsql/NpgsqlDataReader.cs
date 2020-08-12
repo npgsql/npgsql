@@ -974,6 +974,19 @@ namespace Npgsql
         public override DateTime GetDateTime(int ordinal) => GetFieldValue<DateTime>(ordinal);
 
         /// <summary>
+        /// Gets the value of the specified column as a TimeSpan,
+        /// </summary>
+        /// <remarks>
+        /// PostgreSQL's interval type has has a resolution of 1 microsecond and ranges from
+        /// -178000000 to 178000000 years, while .NET's TimeSpan has a resolution of 100 nanoseconds
+        /// and ranges from roughly -29247 to 29247 years.
+        /// See http://www.postgresql.org/docs/current/static/datatype-datetime.html
+        /// </remarks>
+        /// <param name="ordinal">The zero-based column ordinal.</param>
+        /// <returns>The value of the specified column.</returns>
+        public TimeSpan GetTimeSpan(int ordinal) => GetFieldValue<TimeSpan>(ordinal);
+
+        /// <summary>
         /// Gets the value of the specified column as an instance of <see cref="string"/>.
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
@@ -1036,6 +1049,8 @@ namespace Npgsql
 
         #region Provider-specific simple type getters
 
+#if LegacyProviderSpecificDateTimeTypes
+
         /// <summary>
         /// Gets the value of the specified column as an <see cref="NpgsqlDate"/>,
         /// Npgsql's provider-specific type for dates.
@@ -1050,19 +1065,6 @@ namespace Npgsql
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
         public NpgsqlDate GetDate(int ordinal) => GetFieldValue<NpgsqlDate>(ordinal);
-
-        /// <summary>
-        /// Gets the value of the specified column as a TimeSpan,
-        /// </summary>
-        /// <remarks>
-        /// PostgreSQL's interval type has has a resolution of 1 microsecond and ranges from
-        /// -178000000 to 178000000 years, while .NET's TimeSpan has a resolution of 100 nanoseconds
-        /// and ranges from roughly -29247 to 29247 years.
-        /// See http://www.postgresql.org/docs/current/static/datatype-datetime.html
-        /// </remarks>
-        /// <param name="ordinal">The zero-based column ordinal.</param>
-        /// <returns>The value of the specified column.</returns>
-        public TimeSpan GetTimeSpan(int ordinal) => GetFieldValue<TimeSpan>(ordinal);
 
         /// <summary>
         /// Gets the value of the specified column as an <see cref="NpgsqlTimeSpan"/>,
@@ -1097,6 +1099,8 @@ namespace Npgsql
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
         public NpgsqlDateTime GetTimeStamp(int ordinal) => GetFieldValue<NpgsqlDateTime>(ordinal);
+
+#endif // LegacyProviderSpecificDateTimeTypes
 
         #endregion
 

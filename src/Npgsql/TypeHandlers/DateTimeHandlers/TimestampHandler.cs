@@ -2,6 +2,7 @@
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
+using System.Runtime.CompilerServices;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
@@ -18,7 +19,13 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    [TypeMapping("timestamp without time zone", NpgsqlDbType.Timestamp, new[] { DbType.DateTime, DbType.DateTime2 }, new[] { typeof(NpgsqlDateTime), typeof(DateTime) }, DbType.DateTime)]
+    [TypeMapping("timestamp without time zone", NpgsqlDbType.Timestamp, new[] { DbType.DateTime, DbType.DateTime2 }, new[]
+    {
+#if LegacyProviderSpecificDateTimeTypes
+        typeof(NpgsqlDateTime),
+#endif // LegacyProviderSpecificDateTimeTypes
+        typeof(DateTime)
+    }, DbType.DateTime)]
     public class TimestampHandlerFactory : NpgsqlTypeHandlerFactory<DateTime>
     {
         /// <inheritdoc />
@@ -38,7 +45,12 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    public class TimestampHandler : NpgsqlSimpleTypeHandlerWithPsv<DateTime, NpgsqlDateTime>
+    public class TimestampHandler :
+#if LegacyProviderSpecificDateTimeTypes
+        NpgsqlSimpleTypeHandlerWithPsv<DateTime, NpgsqlDateTime>
+#else
+        NpgsqlSimpleTypeHandler<DateTime>
+#endif // LegacyProviderSpecificDateTimeTypes
     {
         /// <summary>
         /// Whether to convert positive and negative infinity values to DateTime.{Max,Min}Value when
@@ -54,29 +66,36 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
 
         #region Read
 
+        private protected const string InfinityExceptionMessage = "Can't convert infinite timestamp values to DateTime";
+        private protected const string OutOfRangeExceptionMessage = "Out of the range of DateTime (year must be between 1 and 9999)";
+
         /// <inheritdoc />
         public override DateTime Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
-            // TODO: Convert directly to DateTime without passing through NpgsqlTimeStamp?
-            var ts = ReadTimeStamp(buf, len, fieldDescription);
 
-            if (ts.IsFinite)
-                return ts.ToDateTime();
-            if (!ConvertInfinityDateTime)
-                throw new InvalidCastException("Can't convert infinite timestamp values to DateTime");
-            if (ts.IsInfinity)
-                return DateTime.MaxValue;
-            return DateTime.MinValue;
+            var postgresTimestamp = buf.ReadInt64();
+            if (postgresTimestamp == long.MaxValue)
+                return ConvertInfinityDateTime
+                    ? DateTime.MaxValue
+                    : throw new InvalidCastException(InfinityExceptionMessage);
+            if (postgresTimestamp == long.MinValue)
+                return ConvertInfinityDateTime
+                    ? DateTime.MinValue
+                    : throw new InvalidCastException(InfinityExceptionMessage);
+
+            try
+            {
+                return FromPostgresTimestamp(postgresTimestamp);
+            }
+            catch (ArgumentOutOfRangeException e)
+            {
+                throw new InvalidCastException(OutOfRangeExceptionMessage, e);
+            }
         }
 
+#if LegacyProviderSpecificDateTimeTypes
         /// <inheritdoc />
         protected override NpgsqlDateTime ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-            => ReadTimeStamp(buf, len, fieldDescription);
-
-        /// <summary>
-        /// Reads a timestamp from the buffer as an <see cref="NpgsqlDateTime"/>.
-        /// </summary>
-        protected NpgsqlDateTime ReadTimeStamp(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
             var value = buf.ReadInt64();
             if (value == long.MaxValue)
@@ -110,6 +129,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                 return new NpgsqlDateTime(new NpgsqlDate(date), new TimeSpan(time));
             }
         }
+#endif // LegacyProviderSpecificDateTimeTypes
 
         #endregion Read
 
@@ -118,6 +138,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         /// <inheritdoc />
         public override int ValidateAndGetLength(DateTime value, NpgsqlParameter? parameter) => 8;
 
+#if LegacyProviderSpecificDateTimeTypes
         /// <inheritdoc />
         public override int ValidateAndGetLength(NpgsqlDateTime value, NpgsqlParameter? parameter) => 8;
 
@@ -149,6 +170,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                 buf.WriteInt64(-(uSecsDate - uSecsTime));
             }
         }
+#endif // LegacyProviderSpecificDateTimeTypes
 
         /// <inheritdoc />
         public override void Write(DateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
@@ -167,10 +189,22 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                     return;
                 }
             }
-
-            Write(new NpgsqlDateTime(value), buf, parameter);
+            var postgresTimestamp = ToPostgresTimestamp(value);
+            buf.WriteInt64(postgresTimestamp);
         }
 
         #endregion Write
+
+        const long PostgresTimestampOffsetTicks = 630822816000000000L;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static long ToPostgresTimestamp(DateTime value)
+            // Rounding here would cause problems because we would round up DateTime.MaxValue
+            // which would make it impossible to retrieve it back from the database, so we just drop the additional precision
+            => (value.Ticks - PostgresTimestampOffsetTicks) / 10;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static DateTime FromPostgresTimestamp(long value)
+            => new DateTime(value * 10 + PostgresTimestampOffsetTicks);
     }
 }

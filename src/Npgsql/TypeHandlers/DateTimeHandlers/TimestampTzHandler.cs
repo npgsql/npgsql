@@ -50,38 +50,34 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
 
         /// <inheritdoc />
         public override DateTime Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-        {
-            // TODO: Convert directly to DateTime without passing through NpgsqlTimeStamp?
-            var ts = ReadTimeStamp(buf, len, fieldDescription);
+            => base.Read(buf, len, fieldDescription).ToLocalTime();
 
-            if (ts.IsFinite)
-                return ts.ToDateTime().ToLocalTime();
-            if (!ConvertInfinityDateTime)
-                throw new InvalidCastException("Can't convert infinite timestamptz values to DateTime");
-            if (ts.IsInfinity)
-                return DateTime.MaxValue;
-            return DateTime.MinValue;
-        }
-
+#if LegacyProviderSpecificDateTimeTypes
         /// <inheritdoc />
         protected override NpgsqlDateTime ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-        {
-            var ts = ReadTimeStamp(buf, len, fieldDescription);
-            return new NpgsqlDateTime(ts.Date, ts.Time, DateTimeKind.Utc).ToLocalTime();
-        }
+            => base.ReadPsv(buf, len, fieldDescription).ToLocalTime();
+#endif // LegacyProviderSpecificDateTimeTypes
 
         DateTimeOffset INpgsqlSimpleTypeHandler<DateTimeOffset>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
         {
-            // TODO: Convert directly to DateTime without passing through NpgsqlTimeStamp?
-            var ts = ReadTimeStamp(buf, len, fieldDescription);
-            
-            if (ts.IsFinite)
-                return ts.ToDateTime().ToLocalTime();
-            if (!ConvertInfinityDateTime)
-                throw new InvalidCastException("Can't convert infinite timestamptz values to DateTime");
-            if (ts.IsInfinity)
-                return DateTimeOffset.MaxValue;
-            return DateTimeOffset.MinValue;
+            var postgresTimestamp = buf.ReadInt64();
+            if (postgresTimestamp == long.MaxValue)
+                return ConvertInfinityDateTime
+                    ? DateTimeOffset.MaxValue
+                    : throw new InvalidCastException(InfinityExceptionMessage);
+            if (postgresTimestamp == long.MinValue)
+                return ConvertInfinityDateTime
+                    ? DateTimeOffset.MinValue
+                    : throw new InvalidCastException(InfinityExceptionMessage);
+
+            try
+            {
+                return FromPostgresTimestamp(postgresTimestamp).ToLocalTime();
+            }
+            catch (ArgumentOutOfRangeException e)
+            {
+                throw new InvalidCastException(OutOfRangeExceptionMessage, e);
+            }
         }
 
         #endregion Read
@@ -91,6 +87,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         /// <inheritdoc />
         public int ValidateAndGetLength(DateTimeOffset value, NpgsqlParameter? parameter) => 8;
 
+#if LegacyProviderSpecificDateTimeTypes
         /// <inheritdoc />
         public override void Write(NpgsqlDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
@@ -108,6 +105,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
 
             base.Write(value, buf, parameter);
         }
+#endif // LegacyProviderSpecificDateTimeTypes
 
         /// <inheritdoc />
         public override void Write(DateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)

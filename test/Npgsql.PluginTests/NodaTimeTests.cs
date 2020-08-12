@@ -78,7 +78,9 @@ namespace Npgsql.PluginTests
                         Assert.That(() => reader.GetFieldValue<ZonedDateTime>(i), Throws.TypeOf<InvalidCastException>());
                         Assert.That(() => reader.GetDateTime(i), Is.EqualTo(localDateTime.ToDateTimeUnspecified()));
                         Assert.That(() => reader.GetFieldValue<DateTime>(i), Is.EqualTo(localDateTime.ToDateTimeUnspecified()));
+#if LegacyProviderSpecificDateTimeTypes
                         Assert.That(() => reader.GetDate(i), Throws.TypeOf<InvalidCastException>());
+#endif // LegacyProviderSpecificDateTimeTypes
                     }
                 }
             }
@@ -179,7 +181,9 @@ namespace Npgsql.PluginTests
                         Assert.That(reader.GetFieldValue<DateTimeOffset>(i), Is.EqualTo(dateTimeOffset));
                         Assert.That(() => reader.GetFieldValue<LocalDateTime>(i), Throws.TypeOf<InvalidCastException>());
                         Assert.That(() => reader.GetDateTime(i), Throws.TypeOf<InvalidCastException>());
+#if LegacyProviderSpecificDateTimeTypes
                         Assert.That(() => reader.GetDate(i), Throws.TypeOf<InvalidCastException>());
+#endif // LegacyProviderSpecificDateTimeTypes
                     }
                 }
             }
@@ -230,6 +234,9 @@ namespace Npgsql.PluginTests
                     Assert.That(reader.GetValue(0), Is.EqualTo(localDate));
                     Assert.That(() => reader.GetDateTime(0), Is.EqualTo(dateTime));
                     Assert.That(() => reader.GetDate(0), Is.EqualTo(new NpgsqlDate(localDate.Year, localDate.Month, localDate.Day)));
+#if LegacyProviderSpecificDateTimeTypes
+                    Assert.That(() => reader.GetDate(0), Throws.TypeOf<InvalidCastException>());
+#endif // LegacyProviderSpecificDateTimeTypes
                     Assert.That(reader.GetFieldValue<LocalDate>(2), Is.EqualTo(new LocalDate(-5, 3, 3)));
                     Assert.That(reader.GetFieldValue<DateTime>(3), Is.EqualTo(dateTime));
                     Assert.That(reader.GetDateTime(4), Is.EqualTo(dateTime));

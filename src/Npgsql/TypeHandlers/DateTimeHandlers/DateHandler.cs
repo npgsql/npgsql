@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Data;
+using System.Runtime.CompilerServices;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
@@ -18,7 +19,11 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    [TypeMapping("date", NpgsqlDbType.Date, DbType.Date, typeof(NpgsqlDate))]
+    [TypeMapping("date", NpgsqlDbType.Date, DbType.Date
+#if LegacyProviderSpecificDateTimeTypes
+        , typeof(NpgsqlDate)
+#endif // LegacyProviderSpecificDateTimeTypes
+        )]
     public class DateHandlerFactory : NpgsqlTypeHandlerFactory<DateTime>
     {
         /// <inheritdoc />
@@ -36,7 +41,12 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    public class DateHandler : NpgsqlSimpleTypeHandlerWithPsv<DateTime, NpgsqlDate>
+    public class DateHandler :
+#if LegacyProviderSpecificDateTimeTypes
+        NpgsqlSimpleTypeHandlerWithPsv<DateTime, NpgsqlDate>
+#else
+        NpgsqlSimpleTypeHandler<DateTime>
+#endif // LegacyProviderSpecificDateTimeTypes
     {
         /// <summary>
         /// Whether to convert positive and negative infinity values to DateTime.{Max,Min}Value when
@@ -56,17 +66,34 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         /// <inheritdoc />
         public override DateTime Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
-            var npgsqlDate = ReadPsv(buf, len, fieldDescription);
+            const string infinityExceptionMessage = "Can't convert infinite date values to DateTime";
+            const string outOfRangeExceptionMessage = "Out of the range of DateTime (year must be between 1 and 9999)";
 
-            if (npgsqlDate.IsFinite)
-                return (DateTime)npgsqlDate;
-            if (!_convertInfinityDateTime)
-                throw new InvalidCastException("Can't convert infinite date values to DateTime");
-            if (npgsqlDate.IsInfinity)
-                return DateTime.MaxValue;
-            return DateTime.MinValue;
+            var postgresDate = buf.ReadInt32();
+
+            switch (postgresDate)
+            {
+            case int.MaxValue:
+                return _convertInfinityDateTime
+                    ? DateTime.MaxValue
+                    : throw new InvalidCastException(infinityExceptionMessage);
+            case int.MinValue:
+                return _convertInfinityDateTime
+                    ? DateTime.MinValue
+                    : throw new InvalidCastException(infinityExceptionMessage);
+            default:
+                try
+                {
+                    return FromPostgresDate(postgresDate);
+                }
+                catch (ArgumentOutOfRangeException e)
+                {
+                    throw new InvalidCastException(outOfRangeExceptionMessage, e);
+                }
+            }
         }
 
+#if LegacyProviderSpecificDateTimeTypes
         /// <remarks>
         /// Copied wholesale from Postgresql backend/utils/adt/datetime.c:j2date
         /// </remarks>
@@ -81,6 +108,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                 _            => new NpgsqlDate(binDate + 730119)
             };
         }
+#endif // LegacyProviderSpecificDateTimeTypes
 
         #endregion Read
 
@@ -89,28 +117,28 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         /// <inheritdoc />
         public override int ValidateAndGetLength(DateTime value, NpgsqlParameter? parameter) => 4;
 
+#if LegacyProviderSpecificDateTimeTypes
         /// <inheritdoc />
         public override int ValidateAndGetLength(NpgsqlDate value, NpgsqlParameter? parameter) => 4;
+#endif // LegacyProviderSpecificDateTimeTypes
 
         /// <inheritdoc />
         public override void Write(DateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
-            NpgsqlDate value2;
             if (_convertInfinityDateTime)
             {
                 if (value == DateTime.MaxValue)
-                    value2 = NpgsqlDate.Infinity;
+                    buf.WriteInt32(int.MaxValue);
                 else if (value == DateTime.MinValue)
-                    value2 = NpgsqlDate.NegativeInfinity;
+                    buf.WriteInt32(int.MinValue);
                 else
-                    value2 = new NpgsqlDate(value);
+                    buf.WriteInt32(ToPostgresDate(value));
             }
             else
-                value2 = new NpgsqlDate(value);
-
-            Write(value2, buf, parameter);
+                buf.WriteInt32(ToPostgresDate(value));
         }
 
+#if LegacyProviderSpecificDateTimeTypes
         /// <inheritdoc />
         public override void Write(NpgsqlDate value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
@@ -121,7 +149,18 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             else
                 buf.WriteInt32(value.DaysSinceEra - 730119);
         }
+#endif // LegacyProviderSpecificDateTimeTypes
 
         #endregion Write
+
+        const int PostgresDateOffsetDays = 730119;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static int ToPostgresDate(DateTime value)
+            => (int)(value.Ticks / TimeSpan.TicksPerDay) - PostgresDateOffsetDays;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static DateTime FromPostgresDate(int value)
+            => new DateTime((value + PostgresDateOffsetDays) * TimeSpan.TicksPerDay);
     }
 }

@@ -322,20 +322,22 @@ namespace Npgsql.Tests.Types
         [Test, Description("Reads a one-dimensional array dates, both as DateTime and as the provider-specific NpgsqlDate")]
         public async Task ReadProviderSpecificType()
         {
-            using (var conn = await OpenConnectionAsync())
-            using (var cmd = new NpgsqlCommand(@"SELECT '{ ""2014-01-04"", ""2014-01-08"" }'::DATE[]", conn))
-            {
-                var expectedRegular = new[] { new DateTime(2014, 1, 4), new DateTime(2014, 1, 8) };
-                var expectedPsv = new[] { new NpgsqlDate(2014, 1, 4), new NpgsqlDate(2014, 1, 8) };
-                using (var reader = await cmd.ExecuteReaderAsync())
-                {
-                    reader.Read();
-                    Assert.That(reader.GetValue(0), Is.EqualTo(expectedRegular));
-                    Assert.That(reader.GetFieldValue<DateTime[]>(0), Is.EqualTo(expectedRegular));
-                    Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(expectedPsv));
-                    Assert.That(reader.GetFieldValue<NpgsqlDate[]>(0), Is.EqualTo(expectedPsv));
-                }
-            }
+            await using var conn = await OpenConnectionAsync();
+            using var cmd = new NpgsqlCommand(@"SELECT '{ ""2014-01-04"", ""2014-01-08"" }'::DATE[]", conn);
+            var expectedRegular = new[] { new DateTime(2014, 1, 4), new DateTime(2014, 1, 8) };
+#if LegacyProviderSpecificDateTimeTypes
+            var expectedPsv = new[] { new NpgsqlDate(2014, 1, 4), new NpgsqlDate(2014, 1, 8) };
+#endif // LegacyProviderSpecificDateTimeTypes
+            await using var reader = await cmd.ExecuteReaderAsync();
+            reader.Read();
+            Assert.That(reader.GetValue(0), Is.EqualTo(expectedRegular));
+            Assert.That(reader.GetFieldValue<DateTime[]>(0), Is.EqualTo(expectedRegular));
+#if LegacyProviderSpecificDateTimeTypes
+            Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(expectedPsv));
+            Assert.That(reader.GetFieldValue<NpgsqlDate[]>(0), Is.EqualTo(expectedPsv));
+#else
+            Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(expectedRegular));
+#endif // LegacyProviderSpecificDateTimeTypes
         }
 
         [Test, Description("Reads an one-dimensional array with lower bound != 0")]
