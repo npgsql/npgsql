@@ -395,17 +395,17 @@ namespace Npgsql.Tests.Types
             {
                 var expectedValue = 8.99m;
                 command.Parameters.Add("moneyvalue", NpgsqlDbType.Money).Value = expectedValue;
-                var result = (decimal)await command.ExecuteScalarAsync();
+                var result = (decimal?)await command.ExecuteScalarAsync();
                 Assert.AreEqual(expectedValue, result);
 
                 expectedValue = 100m;
                 command.Parameters[0].Value = expectedValue;
-                result = (decimal)await command.ExecuteScalarAsync();
+                result = (decimal?)await command.ExecuteScalarAsync();
                 Assert.AreEqual(expectedValue, result);
 
                 expectedValue = 72.25m;
                 command.Parameters[0].Value = expectedValue;
-                result = (decimal)await command.ExecuteScalarAsync();
+                result = (decimal?)await command.ExecuteScalarAsync();
                 Assert.AreEqual(expectedValue, result);
             }
         }
@@ -433,7 +433,7 @@ CREATE TABLE {table} (
 
                 command = new NpgsqlCommand($"SELECT person_uuid::uuid FROM {table} LIMIT 1", conn);
                 var result = await command.ExecuteScalarAsync();
-                Assert.AreEqual(typeof(Guid), result.GetType());
+                Assert.AreEqual(typeof(Guid), result!.GetType());
             }
         }
 

@@ -335,7 +335,7 @@ namespace Npgsql.Tests
                 return await cmd.ExecuteNonQueryAsync();
         }
 
-        public static async Task<object> ExecuteScalarAsync(this NpgsqlConnection conn, string sql, NpgsqlTransaction? tx = null)
+        public static async Task<object?> ExecuteScalarAsync(this NpgsqlConnection conn, string sql, NpgsqlTransaction? tx = null)
         {
             var cmd = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
             using (cmd)

@@ -18,7 +18,7 @@ namespace Npgsql.Tests.Types
                 cmd.CommandText = "Select :p";
                 cmd.Parameters.AddWithValue("p", inputVec);
                 var outputVec = await cmd.ExecuteScalarAsync();
-                Assert.AreEqual(inputVec.ToString(), outputVec.ToString());
+                Assert.AreEqual(inputVec.ToString(), outputVec!.ToString());
             }
         }
 
@@ -35,7 +35,7 @@ namespace Npgsql.Tests.Types
                 cmd.CommandText = "Select :p";
                 cmd.Parameters.AddWithValue("p", query);
                 var output = await cmd.ExecuteScalarAsync();
-                Assert.AreEqual(query.ToString(), output.ToString());
+                Assert.AreEqual(query.ToString(), output!.ToString());
             }
         }
 
