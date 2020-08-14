@@ -29,7 +29,7 @@ namespace Npgsql.Tests.Types
             using (var cmd = new NpgsqlCommand("SELECT " + query, conn))
             {
                 Assert.That(
-                    decimal.GetBits((decimal)await cmd.ExecuteScalarAsync()),
+                    decimal.GetBits((decimal)(await cmd.ExecuteScalarAsync())!),
                     Is.EqualTo(decimal.GetBits(expected)));
             }
         }

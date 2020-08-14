@@ -450,7 +450,7 @@ namespace Npgsql.Tests
             string newTimezone;
             using (var conn1 = await OpenConnectionAsync())
             {
-                newTimezone = (string)await conn1.ExecuteScalarAsync("SHOW TIMEZONE") == "Africa/Bamako"
+                newTimezone = (string?)await conn1.ExecuteScalarAsync("SHOW TIMEZONE") == "Africa/Bamako"
                     ? "Africa/Lagos"
                     : "Africa/Bamako";
             }
@@ -469,7 +469,7 @@ namespace Npgsql.Tests
             string newTimezone;
             using (var conn = await OpenConnectionAsync())
             {
-                newTimezone = (string)await conn.ExecuteScalarAsync("SHOW TIMEZONE") == "Africa/Bamako"
+                newTimezone = (string?)await conn.ExecuteScalarAsync("SHOW TIMEZONE") == "Africa/Bamako"
                     ? "Africa/Lagos"
                     : "Africa/Bamako";
             }
