@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
 
@@ -368,6 +370,24 @@ namespace Npgsql.Tests
                 Assert.That(reader.GetName(0), Is.EqualTo("foo"));
 
             conn.UnprepareAll();
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3106")]
+        public async Task DontAutoPrepareMoreThanMaxStatementsInBatch()
+        {
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                MaxAutoPrepare = 50,
+            };
+
+            await using var connection = new NpgsqlConnection(builder.ToString());
+            await connection.OpenAsync();
+            for (var i = 0; i < 10; i++)
+            {
+                using var command = connection.CreateCommand();
+                command.CommandText = string.Join("", Enumerable.Range(0, 100).Select(n => $"SELECT {n};"));
+                await command.ExecuteNonQueryAsync();
+            }
         }
 
         // Exclude some internal Npgsql queries which include pg_type as well as the count statement itself
