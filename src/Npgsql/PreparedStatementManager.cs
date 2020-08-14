@@ -152,8 +152,6 @@ namespace Npgsql
             // Bingo, we've just passed the usage threshold, statement should get prepared
             Log.Trace($"Automatically preparing statement: {sql}", _connector.Id);
 
-            RemoveCandidate(pStatement);
-
             if (_numAutoPrepared < MaxAutoPrepared)
             {
                 // We still have free slots
@@ -174,11 +172,24 @@ namespace Npgsql
                         oldestTimestamp = _autoPrepared[i].LastUsed;
                     }
                 }
+
+                if (oldestIndex == -1)
+                {
+                    // We're here if we couldn't find a prepared statement to replace, because all of them are already
+                    // being prepared in this batch.
+                    return null;
+                }
+
                 var lru = _autoPrepared[oldestIndex];
                 pStatement.Name = lru.Name;
                 pStatement.StatementBeingReplaced = lru;
                 _autoPrepared[oldestIndex] = pStatement;
             }
+
+            RemoveCandidate(pStatement);
+
+            // Make sure this statement is replaced by a later statement in the same batch.
+            pStatement.LastUsed = DateTime.MaxValue;
 
             // Note that the parameter types are only set at the moment of preparation - in the candidate phase
             // there's no differentiation between overloaded statements, which are a pretty rare case, saving
