@@ -16,6 +16,7 @@ using Npgsql.TypeMapping;
 using Npgsql.Util;
 using NpgsqlTypes;
 using static Npgsql.Util.Statics;
+using System.Collections;
 
 namespace Npgsql
 {
@@ -1401,37 +1402,25 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 var p = s.InputParameters;
                 if (p.Count > 0 && (NpgsqlLogManager.IsParameterLoggingEnabled || connector.Settings.LogParameters))
                 {
-                    sb.Append('\t').Append("Parameters:");
                     for (var i = 0; i < p.Count; i++)
                     {
-                        if (p[i].Value.GetType().IsArray)
+                        if (p[i].Value == null || p[i].Value == DBNull.Value)
+                            sb.Append("\t").Append("Parameters $").Append(i + 1).Append(":\t").Append(Convert.ToString("null", CultureInfo.InvariantCulture));
+                        else if (p[i].Value is IList list)
                         {
-                            switch (p[i].Value)
+                            foreach (var val in list)
                             {
-                            case int[] pInt:
-                                for (var x = 0; x < pInt.Count(); x++)
-                                    LogParamValue(sb, i, pInt[x]);
-                                break;
-                            case string[] pStr:
-                                for (var x = 0; x < pStr.Count(); x++)
-                                    LogParamValue(sb, i, pStr[x]);
-                                break;
-                            default:
-                                LogParamValue(sb, i, p[i].Value);
-                                break;
+                                if (list.IndexOf(val) == 0)
+                                    sb.Append("\t").Append("Parameters $").Append(i + 1).Append(": ");
+                                sb.Append("\t#").Append(list.IndexOf(val) + 1).Append(": ").Append(Convert.ToString(val, CultureInfo.InvariantCulture));
                             }
                         }
                         else
-                            LogParamValue(sb, i, p[i].Value);
+                            sb.Append("\t").Append("Parameters $").Append(i + 1).Append(":\t").Append(Convert.ToString(p[i].Value, CultureInfo.InvariantCulture));
+                        sb.AppendLine();
                     }
                 }
             }
-
-            StringBuilder LogParamValue(StringBuilder sb, int idx, object val)
-            {
-                return sb.Append("\t$").Append(idx + 1).Append(": ").Append(Convert.ToString(val, CultureInfo.InvariantCulture));
-            }
-
             Log.Debug(sb.ToString(), connector.Id);
         }
 
