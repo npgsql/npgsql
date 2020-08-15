@@ -230,10 +230,9 @@ namespace Npgsql
         internal NpgsqlReadBuffer AllocateOversize(int count)
         {
             Debug.Assert(count > Size);
-            var tempBuf = new NpgsqlReadBuffer(Connector, Underlying, _underlyingSocket, count, TextEncoding, RelaxedTextEncoding)
-            {
-                Timeout = Timeout,
-            };
+            var tempBuf = new NpgsqlReadBuffer(Connector, Underlying, _underlyingSocket, count, TextEncoding, RelaxedTextEncoding);
+            if (_underlyingSocket != null)
+                tempBuf.Timeout = Timeout;
             CopyTo(tempBuf);
             Clear();
             return tempBuf;
