@@ -21,7 +21,9 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// </remarks>
     [TypeMapping("date", NpgsqlDbType.Date, DbType.Date
 #if LegacyProviderSpecificDateTimeTypes
+#pragma warning disable 618
         , typeof(NpgsqlDate)
+#pragma warning restore 618
 #endif // LegacyProviderSpecificDateTimeTypes
         )]
     public class DateHandlerFactory : NpgsqlTypeHandlerFactory<DateTime>
@@ -43,7 +45,9 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// </remarks>
     public class DateHandler :
 #if LegacyProviderSpecificDateTimeTypes
+#pragma warning disable 618
         NpgsqlSimpleTypeHandlerWithPsv<DateTime, NpgsqlDate>
+#pragma warning restore 618
 #else
         NpgsqlSimpleTypeHandler<DateTime>
 #endif // LegacyProviderSpecificDateTimeTypes
@@ -94,6 +98,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         }
 
 #if LegacyProviderSpecificDateTimeTypes
+#pragma warning disable 618
         /// <remarks>
         /// Copied wholesale from Postgresql backend/utils/adt/datetime.c:j2date
         /// </remarks>
@@ -108,6 +113,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                 _            => new NpgsqlDate(binDate + 730119)
             };
         }
+#pragma warning restore 618
 #endif // LegacyProviderSpecificDateTimeTypes
 
         #endregion Read
@@ -118,8 +124,10 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         public override int ValidateAndGetLength(DateTime value, NpgsqlParameter? parameter) => 4;
 
 #if LegacyProviderSpecificDateTimeTypes
+#pragma warning disable 618
         /// <inheritdoc />
         public override int ValidateAndGetLength(NpgsqlDate value, NpgsqlParameter? parameter) => 4;
+#pragma warning restore 618
 #endif // LegacyProviderSpecificDateTimeTypes
 
         /// <inheritdoc />
@@ -139,6 +147,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         }
 
 #if LegacyProviderSpecificDateTimeTypes
+#pragma warning disable 618
         /// <inheritdoc />
         public override void Write(NpgsqlDate value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
@@ -149,6 +158,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             else
                 buf.WriteInt32(value.DaysSinceEra - 730119);
         }
+#pragma warning restore 618
 #endif // LegacyProviderSpecificDateTimeTypes
 
         #endregion Write

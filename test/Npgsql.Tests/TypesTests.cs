@@ -14,6 +14,7 @@ namespace Npgsql.Tests
     public class TypesTests
     {
 #if LegacyProviderSpecificDateTimeTypes
+#pragma warning disable 618
         [Test]
         public void NpgsqlIntervalParse()
         {
@@ -400,6 +401,7 @@ namespace Npgsql.Tests
             Assert.That(new NpgsqlDateTime(2020, 2, 1, 0, 0, 0).AddMonths(1).Add(new NpgsqlTimeSpan(1, 0, 0)),
                 Is.EqualTo(new NpgsqlDateTime(2020, 3, 31, 0, 0, 0)));
         }
+#pragma warning restore 618
 #endif // LegacyProviderSpecificDateTimeTypes
 
         [Test]

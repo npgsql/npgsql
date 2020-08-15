@@ -11,6 +11,9 @@ using JetBrains.Annotations;
 namespace NpgsqlTypes
 {
     [Serializable]
+    [Obsolete("This type will be removed/replaced in the next release. Please use the System.DateTime"
+              + " type or the LocalDate type from NodaTime. If you can't, please comment "
+              + "at https://github.com/npgsql/npgsql/issues/3108 and describe your issues.")]
     public readonly struct NpgsqlDate : IEquatable<NpgsqlDate>, IComparable<NpgsqlDate>, IComparable,
         IComparer<NpgsqlDate>, IComparer
     {

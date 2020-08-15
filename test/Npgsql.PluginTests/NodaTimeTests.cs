@@ -233,9 +233,10 @@ namespace Npgsql.PluginTests
                     Assert.That(reader.GetFieldValue<LocalDate>(0), Is.EqualTo(localDate));
                     Assert.That(reader.GetValue(0), Is.EqualTo(localDate));
                     Assert.That(() => reader.GetDateTime(0), Is.EqualTo(dateTime));
-                    Assert.That(() => reader.GetDate(0), Is.EqualTo(new NpgsqlDate(localDate.Year, localDate.Month, localDate.Day)));
 #if LegacyProviderSpecificDateTimeTypes
-                    Assert.That(() => reader.GetDate(0), Throws.TypeOf<InvalidCastException>());
+#pragma warning disable 618
+                    Assert.That(() => reader.GetDate(0), Is.EqualTo(new NpgsqlDate(localDate.Year, localDate.Month, localDate.Day)));
+#pragma warning restore 618
 #endif // LegacyProviderSpecificDateTimeTypes
                     Assert.That(reader.GetFieldValue<LocalDate>(2), Is.EqualTo(new LocalDate(-5, 3, 3)));
                     Assert.That(reader.GetFieldValue<DateTime>(3), Is.EqualTo(dateTime));

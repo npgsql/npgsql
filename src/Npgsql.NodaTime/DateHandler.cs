@@ -19,7 +19,12 @@ namespace Npgsql.NodaTime
         }
     }
 
-    sealed class DateHandler : NpgsqlSimpleTypeHandler<LocalDate>, INpgsqlSimpleTypeHandler<DateTime>, INpgsqlSimpleTypeHandler<NpgsqlDate>
+    sealed class DateHandler : NpgsqlSimpleTypeHandler<LocalDate>, INpgsqlSimpleTypeHandler<DateTime>
+#if LegacyProviderSpecificDateTimeTypes
+#pragma warning disable 618
+        , INpgsqlSimpleTypeHandler<NpgsqlDate>
+#pragma warning restore 618
+#endif // LegacyProviderSpecificDateTimeTypes
     {
         /// <summary>
         /// Whether to convert positive and negative infinity values to Instant.{Max,Min}Value when
@@ -71,6 +76,8 @@ namespace Npgsql.NodaTime
             buf.WriteInt32(totalDaysSinceEra - 730119);
         }
 
+#if LegacyProviderSpecificDateTimeTypes
+#pragma warning disable 618
         NpgsqlDate INpgsqlSimpleTypeHandler<NpgsqlDate>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
             => _bclHandler.Read<NpgsqlDate>(buf, len, fieldDescription);
 
@@ -79,6 +86,8 @@ namespace Npgsql.NodaTime
 
         void INpgsqlSimpleTypeHandler<NpgsqlDate>.Write(NpgsqlDate value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => _bclHandler.Write(value, buf, parameter);
+#pragma warning restore 618
+#endif // LegacyProviderSpecificDateTimeTypes
 
         DateTime INpgsqlSimpleTypeHandler<DateTime>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
             => _bclHandler.Read<DateTime>(buf, len, fieldDescription);

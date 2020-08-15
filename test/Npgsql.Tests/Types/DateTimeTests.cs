@@ -23,7 +23,9 @@ namespace Npgsql.Tests.Types
             await using var conn = await OpenConnectionAsync();
             var dateTime = new DateTime(2002, 3, 4, 0, 0, 0, 0, DateTimeKind.Unspecified);
 #if LegacyProviderSpecificDateTimeTypes
+#pragma warning disable 618
             var npgsqlDate = new NpgsqlDate(dateTime);
+#pragma warning restore 618
 #endif // LegacyProviderSpecificDateTimeTypes
 
             using var cmd = new NpgsqlCommand("SELECT @p1::date, @p2::date", conn);
@@ -55,10 +57,12 @@ namespace Npgsql.Tests.Types
 
                 // Provider-specific type (NpgsqlDate)
 #if LegacyProviderSpecificDateTimeTypes
+#pragma warning disable 618
                 Assert.That(reader.GetDate(i), Is.EqualTo(npgsqlDate));
                 Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof(NpgsqlDate)));
                 Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(npgsqlDate));
                 Assert.That(reader.GetFieldValue<NpgsqlDate>(i), Is.EqualTo(npgsqlDate));
+#pragma warning restore 618
 #else
                 Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof(DateTime)));
                 Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(dateTime));
@@ -81,11 +85,13 @@ namespace Npgsql.Tests.Types
             await using var reader = await cmd.ExecuteReaderAsync();
             reader.Read();
 #if LegacyProviderSpecificDateTimeTypes
+#pragma warning disable 618
             var npgsqlDate = NpgsqlDate.Parse(value);
             Assert.That(reader.GetDate(0), Is.EqualTo(npgsqlDate));
             Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof(NpgsqlDate)));
             Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(npgsqlDate));
             Assert.That(reader.GetFieldValue<NpgsqlDate>(0), Is.EqualTo(npgsqlDate));
+#pragma warning restore 618
 #else
             Assert.That(() => reader.GetProviderSpecificValue(0), Throws.Exception.TypeOf<InvalidCastException>());
             Assert.That(() => reader.GetDateTime(0), Throws.Exception.TypeOf<InvalidCastException>());
@@ -103,8 +109,10 @@ namespace Npgsql.Tests.Types
             await using var reader = await cmd.ExecuteReaderAsync();
             reader.Read();
 #if LegacyProviderSpecificDateTimeTypes
+#pragma warning disable 618
             Assert.That(reader.GetFieldValue<NpgsqlDate>(0), Is.EqualTo(NpgsqlDate.Infinity));
             Assert.That(reader.GetFieldValue<NpgsqlDate>(1), Is.EqualTo(NpgsqlDate.NegativeInfinity));
+#pragma warning restore 618
 #endif // LegacyProviderSpecificDateTimeTypes
             Assert.That(reader.GetDateTime(0), Is.EqualTo(DateTime.MaxValue));
             Assert.That(reader.GetDateTime(1), Is.EqualTo(DateTime.MinValue));
@@ -220,7 +228,9 @@ namespace Npgsql.Tests.Types
         {
             await using var conn = await OpenConnectionAsync();
 #if LegacyProviderSpecificDateTimeTypes
-                var npgsqlDateTime = new NpgsqlDateTime(dateTime.Ticks);
+#pragma warning disable 618
+            var npgsqlDateTime = new NpgsqlDateTime(dateTime.Ticks);
+#pragma warning restore 618
 #endif // LegacyProviderSpecificDateTimeTypes
 
             using var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4, @p5, @p6::timestamp", conn);
@@ -265,10 +275,12 @@ namespace Npgsql.Tests.Types
 
                 // Provider-specific type (NpgsqlTimeStamp)
 #if LegacyProviderSpecificDateTimeTypes
+#pragma warning disable 618
                 Assert.That(reader.GetTimeStamp(i), Is.EqualTo(npgsqlDateTime));
                 Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof(NpgsqlDateTime)));
                 Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(npgsqlDateTime));
                 Assert.That(reader.GetFieldValue<NpgsqlDateTime>(i), Is.EqualTo(npgsqlDateTime));
+#pragma warning restore 618
 #else
                 Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof(DateTime)));
                 Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(dateTime));
@@ -290,9 +302,11 @@ namespace Npgsql.Tests.Types
         {
             await using var conn = await OpenConnectionAsync();
 #if LegacyProviderSpecificDateTimeTypes
+#pragma warning disable 618
             var npgsqlDateTime = NpgsqlDateTime.Parse(value);
             using var cmd = new NpgsqlCommand("SELECT @p", conn);
             cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Value = npgsqlDateTime });
+#pragma warning restore 618
 #else
             using var cmd = new NpgsqlCommand("SELECT @p::timestamp", conn);
             cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Value = value });
@@ -319,8 +333,10 @@ namespace Npgsql.Tests.Types
             await using var reader = await cmd.ExecuteReaderAsync();
             reader.Read();
 #if LegacyProviderSpecificDateTimeTypes
+#pragma warning disable 618
             Assert.That(reader.GetFieldValue<NpgsqlDateTime>(0), Is.EqualTo(NpgsqlDateTime.Infinity));
             Assert.That(reader.GetFieldValue<NpgsqlDateTime>(1), Is.EqualTo(NpgsqlDateTime.NegativeInfinity));
+#pragma warning restore 618
 #endif // LegacyProviderSpecificDateTimeTypes
             Assert.That(reader.GetDateTime(0), Is.EqualTo(DateTime.MaxValue));
             Assert.That(reader.GetDateTime(1), Is.EqualTo(DateTime.MinValue));
@@ -343,6 +359,7 @@ namespace Npgsql.Tests.Types
             var dateTimeUnspecified = new DateTime(dateTimeUtc.Ticks, DateTimeKind.Unspecified);
 
 #if LegacyProviderSpecificDateTimeTypes
+#pragma warning disable 618
             var nDateTimeUtc = new NpgsqlDateTime(dateTimeUtc);
             var nDateTimeLocal = nDateTimeUtc.ToLocalTime();
             var nDateTimeUnspecified = new NpgsqlDateTime(nDateTimeUtc.Ticks, DateTimeKind.Unspecified);
@@ -350,6 +367,7 @@ namespace Npgsql.Tests.Types
             Assert.AreEqual(nDateTimeUtc, nDateTimeLocal.ToUniversalTime());
             Assert.AreEqual(nDateTimeUtc, new NpgsqlDateTime(nDateTimeLocal.Ticks, DateTimeKind.Unspecified).ToUniversalTime());
             Assert.AreEqual(nDateTimeLocal, nDateTimeUnspecified.ToLocalTime());
+#pragma warning restore 618
 #endif // LegacyProviderSpecificDateTimeTypes
 
             var dateTimeOffset = new DateTimeOffset(dateTimeLocal);
@@ -383,10 +401,12 @@ namespace Npgsql.Tests.Types
 
                 // Provider-specific type (NpgsqlDateTime)
 #if LegacyProviderSpecificDateTimeTypes
+#pragma warning disable 618
                 Assert.That(reader.GetTimeStamp(i), Is.EqualTo(nDateTimeLocal));
                 Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof(NpgsqlDateTime)));
                 Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(nDateTimeLocal));
                 Assert.That(reader.GetFieldValue<NpgsqlDateTime>(i), Is.EqualTo(nDateTimeLocal));
+#pragma warning restore 618
 #else
                 Assert.That(reader.GetProviderSpecificFieldType(i), Is.EqualTo(typeof(DateTime)));
                 Assert.That(reader.GetProviderSpecificValue(i), Is.EqualTo(dateTimeLocal));
@@ -409,7 +429,9 @@ namespace Npgsql.Tests.Types
             await using var conn = await OpenConnectionAsync();
             var expectedTimeSpan = new TimeSpan(1, 2, 3, 4, 5);
 #if LegacyProviderSpecificDateTimeTypes
+#pragma warning disable 618
             var expectedNpgsqlInterval = new NpgsqlTimeSpan(1, 2, 3, 4, 5);
+#pragma warning restore 618
 #endif // LegacyProviderSpecificDateTimeTypes
 
             using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
@@ -444,10 +466,12 @@ namespace Npgsql.Tests.Types
 
             // Provider-specific type (NpgsqlInterval)
 #if LegacyProviderSpecificDateTimeTypes
+#pragma warning disable 618
             Assert.That(reader.GetInterval(0), Is.EqualTo(expectedNpgsqlInterval));
             Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof(NpgsqlTimeSpan)));
             Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(expectedNpgsqlInterval));
             Assert.That(reader.GetFieldValue<NpgsqlTimeSpan>(0), Is.EqualTo(expectedNpgsqlInterval));
+#pragma warning restore 618
 #else
             Assert.That(reader.GetProviderSpecificFieldType(0), Is.EqualTo(typeof(TimeSpan)));
             Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(expectedTimeSpan));

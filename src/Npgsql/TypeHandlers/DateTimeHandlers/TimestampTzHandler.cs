@@ -53,9 +53,11 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             => base.Read(buf, len, fieldDescription).ToLocalTime();
 
 #if LegacyProviderSpecificDateTimeTypes
+#pragma warning disable 618
         /// <inheritdoc />
         protected override NpgsqlDateTime ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             => base.ReadPsv(buf, len, fieldDescription).ToLocalTime();
+#pragma warning restore 618
 #endif // LegacyProviderSpecificDateTimeTypes
 
         DateTimeOffset INpgsqlSimpleTypeHandler<DateTimeOffset>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
@@ -88,6 +90,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         public int ValidateAndGetLength(DateTimeOffset value, NpgsqlParameter? parameter) => 8;
 
 #if LegacyProviderSpecificDateTimeTypes
+#pragma warning disable 618
         /// <inheritdoc />
         public override void Write(NpgsqlDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
@@ -105,6 +108,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
 
             base.Write(value, buf, parameter);
         }
+#pragma warning restore 618
 #endif // LegacyProviderSpecificDateTimeTypes
 
         /// <inheritdoc />

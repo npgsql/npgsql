@@ -326,15 +326,19 @@ namespace Npgsql.Tests.Types
             using var cmd = new NpgsqlCommand(@"SELECT '{ ""2014-01-04"", ""2014-01-08"" }'::DATE[]", conn);
             var expectedRegular = new[] { new DateTime(2014, 1, 4), new DateTime(2014, 1, 8) };
 #if LegacyProviderSpecificDateTimeTypes
+#pragma warning disable 618
             var expectedPsv = new[] { new NpgsqlDate(2014, 1, 4), new NpgsqlDate(2014, 1, 8) };
+#pragma warning restore 618
 #endif // LegacyProviderSpecificDateTimeTypes
             await using var reader = await cmd.ExecuteReaderAsync();
             reader.Read();
             Assert.That(reader.GetValue(0), Is.EqualTo(expectedRegular));
             Assert.That(reader.GetFieldValue<DateTime[]>(0), Is.EqualTo(expectedRegular));
 #if LegacyProviderSpecificDateTimeTypes
+#pragma warning disable 618
             Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(expectedPsv));
             Assert.That(reader.GetFieldValue<NpgsqlDate[]>(0), Is.EqualTo(expectedPsv));
+#pragma warning restore 618
 #else
             Assert.That(reader.GetProviderSpecificValue(0), Is.EqualTo(expectedRegular));
 #endif // LegacyProviderSpecificDateTimeTypes

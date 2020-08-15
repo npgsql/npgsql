@@ -15,6 +15,9 @@ namespace NpgsqlTypes
     /// while PostgreSQL's timestamps store values from 4713BC to 5874897AD with 1-microsecond precision.
     /// </summary>
     [Serializable]
+    [Obsolete("This type will be removed/replaced in the next release. Please use the System.DateTime"
+              + " type or the Instant type from NodaTime. If you can't, please comment "
+              + "at https://github.com/npgsql/npgsql/issues/3108 and describe your issues.")]
     public readonly struct NpgsqlDateTime : IEquatable<NpgsqlDateTime>, IComparable<NpgsqlDateTime>, IComparable,
         IComparer<NpgsqlDateTime>, IComparer
     {

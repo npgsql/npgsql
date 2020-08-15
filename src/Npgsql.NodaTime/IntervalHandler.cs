@@ -19,7 +19,12 @@ namespace Npgsql.NodaTime
                 : throw new NotSupportedException($"The deprecated floating-point date/time format is not supported by {nameof(Npgsql)}.");
     }
 
-    sealed class IntervalHandler : NpgsqlSimpleTypeHandler<Period>, INpgsqlSimpleTypeHandler<NpgsqlTimeSpan>, INpgsqlSimpleTypeHandler<TimeSpan>
+    sealed class IntervalHandler : NpgsqlSimpleTypeHandler<Period>, INpgsqlSimpleTypeHandler<TimeSpan>
+#if LegacyProviderSpecificDateTimeTypes
+#pragma warning disable 618
+        , INpgsqlSimpleTypeHandler<NpgsqlTimeSpan>
+#pragma warning restore 618
+#endif // LegacyProviderSpecificDateTimeTypes
     {
         readonly BclIntervalHandler _bclHandler;
 
@@ -60,6 +65,8 @@ namespace Npgsql.NodaTime
             buf.WriteInt32(value.Years * 12 + value.Months); // months
         }
 
+#if LegacyProviderSpecificDateTimeTypes
+#pragma warning disable 618
         NpgsqlTimeSpan INpgsqlSimpleTypeHandler<NpgsqlTimeSpan>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
             => _bclHandler.Read<NpgsqlTimeSpan>(buf, len, fieldDescription);
 
@@ -68,6 +75,8 @@ namespace Npgsql.NodaTime
 
         void INpgsqlSimpleTypeHandler<NpgsqlTimeSpan>.Write(NpgsqlTimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => _bclHandler.Write(value, buf, parameter);
+#pragma warning restore 618
+#endif // LegacyProviderSpecificDateTimeTypes
 
         TimeSpan INpgsqlSimpleTypeHandler<TimeSpan>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
             => _bclHandler.Read<TimeSpan>(buf, len, fieldDescription);

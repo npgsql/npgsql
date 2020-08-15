@@ -1064,7 +1064,9 @@ namespace Npgsql
         /// </remarks>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
+#pragma warning disable 618
         public NpgsqlDate GetDate(int ordinal) => GetFieldValue<NpgsqlDate>(ordinal);
+#pragma warning restore 618
 
         /// <summary>
         /// Gets the value of the specified column as an <see cref="NpgsqlTimeSpan"/>,
@@ -1081,7 +1083,9 @@ namespace Npgsql
         /// </remarks>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
+#pragma warning disable 618
         public NpgsqlTimeSpan GetInterval(int ordinal) => GetFieldValue<NpgsqlTimeSpan>(ordinal);
+#pragma warning restore 618
 
         /// <summary>
         /// Gets the value of the specified column as an <see cref="NpgsqlDateTime"/>,
@@ -1098,7 +1102,9 @@ namespace Npgsql
         /// </remarks>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
+#pragma warning disable 618
         public NpgsqlDateTime GetTimeStamp(int ordinal) => GetFieldValue<NpgsqlDateTime>(ordinal);
+#pragma warning restore 618
 
 #endif // LegacyProviderSpecificDateTimeTypes
 

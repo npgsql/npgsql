@@ -22,7 +22,9 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     [TypeMapping("timestamp without time zone", NpgsqlDbType.Timestamp, new[] { DbType.DateTime, DbType.DateTime2 }, new[]
     {
 #if LegacyProviderSpecificDateTimeTypes
+#pragma warning disable 618
         typeof(NpgsqlDateTime),
+#pragma warning restore 618
 #endif // LegacyProviderSpecificDateTimeTypes
         typeof(DateTime)
     }, DbType.DateTime)]
@@ -47,7 +49,9 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// </remarks>
     public class TimestampHandler :
 #if LegacyProviderSpecificDateTimeTypes
+#pragma warning disable 618
         NpgsqlSimpleTypeHandlerWithPsv<DateTime, NpgsqlDateTime>
+#pragma warning restore 618
 #else
         NpgsqlSimpleTypeHandler<DateTime>
 #endif // LegacyProviderSpecificDateTimeTypes
@@ -94,6 +98,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         }
 
 #if LegacyProviderSpecificDateTimeTypes
+#pragma warning disable 618
         /// <inheritdoc />
         protected override NpgsqlDateTime ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
@@ -129,6 +134,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                 return new NpgsqlDateTime(new NpgsqlDate(date), new TimeSpan(time));
             }
         }
+#pragma warning restore 618
 #endif // LegacyProviderSpecificDateTimeTypes
 
         #endregion Read
@@ -139,6 +145,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         public override int ValidateAndGetLength(DateTime value, NpgsqlParameter? parameter) => 8;
 
 #if LegacyProviderSpecificDateTimeTypes
+#pragma warning disable 618
         /// <inheritdoc />
         public override int ValidateAndGetLength(NpgsqlDateTime value, NpgsqlParameter? parameter) => 8;
 
@@ -170,6 +177,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                 buf.WriteInt64(-(uSecsDate - uSecsTime));
             }
         }
+#pragma warning restore 618
 #endif // LegacyProviderSpecificDateTimeTypes
 
         /// <inheritdoc />

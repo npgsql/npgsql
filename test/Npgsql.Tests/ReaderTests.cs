@@ -558,7 +558,9 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
                 var values = new object[4];
                 Assert.That(dr.GetProviderSpecificValues(values), Is.EqualTo(3));
 #if LegacyProviderSpecificDateTimeTypes
+#pragma warning disable 618
                     Assert.That(values, Is.EqualTo(new object?[] { "hello", 1, new NpgsqlDate(2014, 1, 1), null }));
+#pragma warning restore 618
 #else
                 Assert.That(values, Is.EqualTo(new object?[] { "hello", 1, new DateTime(2014, 1, 1), null }));
 #endif // LegacyProviderSpecificDateTimeTypes

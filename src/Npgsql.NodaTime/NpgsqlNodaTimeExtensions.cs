@@ -40,7 +40,13 @@ namespace Npgsql
                     PgTypeName = "date",
                     NpgsqlDbType = NpgsqlDbType.Date,
                     DbTypes = new[] { DbType.Date },
-                    ClrTypes = new[] { typeof(LocalDate),  typeof(NpgsqlDate) },
+                    ClrTypes = new[] { typeof(LocalDate)
+#if LegacyProviderSpecificDateTimeTypes
+#pragma warning disable 618
+                        ,  typeof(NpgsqlDate)
+#pragma warning restore 618
+#endif // LegacyProviderSpecificDateTimeTypes
+                    },
                     TypeHandlerFactory = new DateHandlerFactory()
                 }.Build())
                 .AddMapping(new NpgsqlTypeMappingBuilder
@@ -62,7 +68,13 @@ namespace Npgsql
                 {
                     PgTypeName = "interval",
                     NpgsqlDbType = NpgsqlDbType.Interval,
-                    ClrTypes = new[] { typeof(Period), typeof(TimeSpan), typeof(NpgsqlTimeSpan) },
+                    ClrTypes = new[] { typeof(Period), typeof(TimeSpan)
+#if LegacyProviderSpecificDateTimeTypes
+#pragma warning disable 618
+                        , typeof(NpgsqlTimeSpan)
+#pragma warning restore 618
+#endif // LegacyProviderSpecificDateTimeTypes
+                    },
                     TypeHandlerFactory = new IntervalHandlerFactory()
                 }.Build());
     }

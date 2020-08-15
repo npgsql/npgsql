@@ -19,7 +19,9 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// </remarks>
     [TypeMapping("interval", NpgsqlDbType.Interval, new[] { typeof(TimeSpan)
 #if LegacyProviderSpecificDateTimeTypes
+#pragma warning disable 618
         , typeof(NpgsqlTimeSpan)
+#pragma warning restore 618
 #endif // LegacyProviderSpecificDateTimeTypes
     })]
     public class IntervalHandlerFactory : NpgsqlTypeHandlerFactory<TimeSpan>
@@ -43,7 +45,9 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// </remarks>
     public class IntervalHandler :
 #if LegacyProviderSpecificDateTimeTypes
+#pragma warning disable 618
         NpgsqlSimpleTypeHandlerWithPsv<TimeSpan, NpgsqlTimeSpan>
+#pragma warning restore 618
 #else
         NpgsqlSimpleTypeHandler<TimeSpan>
 #endif // LegacyProviderSpecificDateTimeTypes
@@ -63,6 +67,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         }
 
 #if LegacyProviderSpecificDateTimeTypes
+#pragma warning disable 618
         /// <inheritdoc />
         protected override NpgsqlTimeSpan ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
@@ -71,12 +76,14 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             var month = buf.ReadInt32();
             return new NpgsqlTimeSpan(month, day, ticks * 10);
         }
+#pragma warning restore 618
 #endif // LegacyProviderSpecificDateTimeTypes
 
         /// <inheritdoc />
         public override int ValidateAndGetLength(TimeSpan value, NpgsqlParameter? parameter) => 16;
 
 #if LegacyProviderSpecificDateTimeTypes
+#pragma warning disable 618
         /// <inheritdoc />
         public override int ValidateAndGetLength(NpgsqlTimeSpan value, NpgsqlParameter? parameter) => 16;
 
@@ -87,6 +94,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
             buf.WriteInt32(value.Days);
             buf.WriteInt32(value.Months);
         }
+#pragma warning restore 618
 #endif // LegacyProviderSpecificDateTimeTypes
 
         /// <inheritdoc />
