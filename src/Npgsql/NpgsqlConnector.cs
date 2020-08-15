@@ -186,11 +186,6 @@ namespace Npgsql
         /// </summary>
         internal int UserTimeout { private get; set; }
 
-        int ReceiveTimeout
-        {
-            set => ReadBuffer.Timeout = TimeSpan.FromMilliseconds(value);
-        }
-
         /// <summary>
         /// A lock that's taken while a user action is in progress, e.g. a command being executed.
         /// Only used when keepalive is enabled, otherwise null.
@@ -1029,7 +1024,7 @@ namespace Npgsql
                     try
                     {
                         // TODO: There could be room for optimization here, rather than the async call(s)
-                        ReceiveTimeout = InternalCommandTimeout;
+                        ReadBuffer.Timeout = TimeSpan.FromMilliseconds(InternalCommandTimeout);
                         for (; _pendingPrependedResponses > 0; _pendingPrependedResponses--)
                             await ReadMessageLong(DataRowLoadingMode.Skip, false, true);
                     }
@@ -1043,7 +1038,7 @@ namespace Npgsql
 
                 try
                 {
-                    ReceiveTimeout = UserTimeout;
+                    ReadBuffer.Timeout = TimeSpan.FromMilliseconds(UserTimeout);
 
                     while (true)
                     {
