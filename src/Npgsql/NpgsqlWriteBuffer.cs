@@ -167,7 +167,7 @@ namespace Npgsql
             catch (Exception e)
             {
                 throw Connector.Break(new NpgsqlException("Exception while flushing stream", e));
-            }   
+            }
 
             NpgsqlEventSource.Log.BytesWritten(WritePosition);
             //NpgsqlEventSource.Log.RequestFailed();
