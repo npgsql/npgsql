@@ -30,29 +30,29 @@ namespace Npgsql
         CancellationTokenSource _timeoutCts = new CancellationTokenSource();
 
         /// <summary>
-        /// Underlying socket SendTimeout
+        /// Timeout for sync and async writes
         /// </summary>
         internal TimeSpan Timeout
         {
-            get => _currentSocketTimeout;
+            get => _currentTimeout;
             set
             {
-                if (_currentSocketTimeout != value)
+                if (_currentTimeout != value)
                 {
                     Debug.Assert(_underlyingSocket != null);
 
                     _underlyingSocket.SendTimeout = value > TimeSpan.Zero ? (int)value.TotalMilliseconds : -1;
-                    _currentSocketTimeout = value;
+                    _currentTimeout = value;
                 }
             }
         }
 
         /// <summary>
         /// Contains the current value of the Socket's SendTimeout, used to determine whether
-        /// we need to change it when commands are received.
-        /// It's used only for sync IO (<see cref="Stream.Write(byte[], int, int)"/> and <see cref="Stream.Flush"/>)
+        /// we need to change it when commands are send.
+        /// Also, used as a timeout for async writes.
         /// </summary>
-        TimeSpan _currentSocketTimeout;
+        TimeSpan _currentTimeout;
 
         /// <summary>
         /// The total byte length of the buffer.
@@ -91,7 +91,7 @@ namespace Npgsql
             Connector = connector;
             Underlying = stream;
             _underlyingSocket = socket;
-            _currentSocketTimeout = TimeSpan.Zero;
+            _currentTimeout = TimeSpan.Zero;
             Size = size;
             Buffer = new byte[Size];
             TextEncoding = textEncoding;
