@@ -27,7 +27,7 @@ namespace Npgsql
 
         internal Stream Underlying { private get; set; }
 
-        readonly Socket _underlyingSocket;
+        readonly Socket? _underlyingSocket;
 
         CancellationTokenSource _timeoutCts = new CancellationTokenSource();
 
@@ -93,7 +93,7 @@ namespace Npgsql
         internal NpgsqlReadBuffer(
             NpgsqlConnector connector,
             Stream stream,
-            Socket socket,
+            Socket? socket,
             int size,
             Encoding textEncoding,
             Encoding relaxedTextEncoding)

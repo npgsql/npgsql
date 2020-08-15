@@ -25,7 +25,7 @@ namespace Npgsql
 
         internal Stream Underlying { private get; set; }
 
-        readonly Socket _underlyingSocket;
+        readonly Socket? _underlyingSocket;
 
         CancellationTokenSource _timeoutCts = new CancellationTokenSource();
 
@@ -83,7 +83,7 @@ namespace Npgsql
 
         #region Constructors
 
-        internal NpgsqlWriteBuffer(NpgsqlConnector connector, Stream stream, Socket socket, int size, Encoding textEncoding)
+        internal NpgsqlWriteBuffer(NpgsqlConnector connector, Stream stream, Socket? socket, int size, Encoding textEncoding)
         {
             if (size < MinimumSize)
                 throw new ArgumentOutOfRangeException(nameof(size), size, "Buffer size must be at least " + MinimumSize);
