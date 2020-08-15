@@ -39,8 +39,7 @@ namespace Npgsql
             {
                 if (_currentSocketTimeout != value)
                 {
-                    if (_underlyingSocket == null)
-                        throw new InvalidOperationException("Unable to set timeout as underlying socket is null");
+                    Debug.Assert(_underlyingSocket != null);
 
                     _underlyingSocket.SendTimeout = value > TimeSpan.Zero ? (int)value.TotalMilliseconds : -1;
                     _currentSocketTimeout = value;
@@ -92,7 +91,7 @@ namespace Npgsql
             Connector = connector;
             Underlying = stream;
             _underlyingSocket = socket;
-            _currentSocketTimeout =TimeSpan.Zero;
+            _currentSocketTimeout = TimeSpan.Zero;
             Size = size;
             Buffer = new byte[Size];
             TextEncoding = textEncoding;
