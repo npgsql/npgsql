@@ -3,8 +3,10 @@ using System.Buffers.Binary;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Util;
 
@@ -15,13 +17,42 @@ namespace Npgsql
     /// A buffer used by Npgsql to write data to the socket efficiently.
     /// Provides methods which encode different values types and tracks the current position.
     /// </summary>
-    public sealed partial class NpgsqlWriteBuffer
+    public sealed partial class NpgsqlWriteBuffer : IDisposable
     {
         #region Fields and Properties
 
         internal readonly NpgsqlConnector Connector;
 
         internal Stream Underlying { private get; set; }
+
+        readonly Socket? _underlyingSocket;
+
+        CancellationTokenSource _timeoutCts = new CancellationTokenSource();
+
+        /// <summary>
+        /// Timeout for sync and async writes
+        /// </summary>
+        internal TimeSpan Timeout
+        {
+            get => _currentTimeout;
+            set
+            {
+                if (_currentTimeout != value)
+                {
+                    Debug.Assert(_underlyingSocket != null);
+
+                    _underlyingSocket.SendTimeout = value > TimeSpan.Zero ? (int)value.TotalMilliseconds : -1;
+                    _currentTimeout = value;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Contains the current value of the Socket's SendTimeout, used to determine whether
+        /// we need to change it when commands are send.
+        /// Also, used as a timeout for async writes.
+        /// </summary>
+        TimeSpan _currentTimeout;
 
         /// <summary>
         /// The total byte length of the buffer.
@@ -40,6 +71,8 @@ namespace Npgsql
 
         ParameterStream? _parameterStream;
 
+        bool _disposed;
+
         /// <summary>
         /// The minimum buffer size possible.
         /// </summary>
@@ -50,13 +83,15 @@ namespace Npgsql
 
         #region Constructors
 
-        internal NpgsqlWriteBuffer(NpgsqlConnector connector, Stream stream, int size, Encoding textEncoding)
+        internal NpgsqlWriteBuffer(NpgsqlConnector connector, Stream stream, Socket? socket, int size, Encoding textEncoding)
         {
             if (size < MinimumSize)
                 throw new ArgumentOutOfRangeException(nameof(size), size, "Buffer size must be at least " + MinimumSize);
 
             Connector = connector;
             Underlying = stream;
+            _underlyingSocket = socket;
+            _currentTimeout = TimeSpan.Zero;
             Size = size;
             Buffer = new byte[Size];
             TextEncoding = textEncoding;
@@ -83,12 +118,30 @@ namespace Npgsql
             } else if (WritePosition == 0)
                 return;
 
+            var timeoutCt = CancellationToken.None;
+            if (async && Timeout > TimeSpan.Zero)
+            {
+                // We reuse the timeout's cancellation token source as long as it hasn't fired, but once it has
+                // there's no way to reset it (see https://github.com/dotnet/runtime/issues/4694)
+                _timeoutCts.CancelAfter(Timeout);
+                if (_timeoutCts.IsCancellationRequested)
+                {
+                    _timeoutCts.Dispose();
+                    _timeoutCts = new CancellationTokenSource(Timeout);
+                }
+                timeoutCt = _timeoutCts.Token;
+            }
+
             try
             {
                 if (async)
-                    await Underlying.WriteAsync(Buffer, 0, WritePosition);
+                    await Underlying.WriteAsync(Buffer, 0, WritePosition, timeoutCt);
                 else
                     Underlying.Write(Buffer, 0, WritePosition);
+            }
+            catch (OperationCanceledException e)
+            {
+                throw Connector.Break(new NpgsqlException("Exception while writing to stream", new TimeoutException("Timeout during writing attempt", e)));
             }
             catch (Exception e)
             {
@@ -98,9 +151,17 @@ namespace Npgsql
             try
             {
                 if (async)
-                    await Underlying.FlushAsync();
+                {
+                    await Underlying.FlushAsync(timeoutCt);
+                    // Resetting cancellation token source, so we can use it again
+                    _timeoutCts.CancelAfter(-1);
+                }
                 else
                     Underlying.Flush();
+            }
+            catch (OperationCanceledException e)
+            {
+                throw Connector.Break(new NpgsqlException("Exception while flushing stream", new TimeoutException("Timeout during flushing attempt", e)));
             }
             catch (Exception e)
             {
@@ -500,6 +561,20 @@ namespace Npgsql
             WriteByte((byte)BackendMessageCode.CopyData);
             // Leave space for the message length
             WriteInt32(0);
+        }
+
+        #endregion
+
+        #region Dispose
+
+        public void Dispose()
+        {
+            if (_disposed)
+                return;
+
+            _timeoutCts.Dispose();
+
+            _disposed = true;
         }
 
         #endregion

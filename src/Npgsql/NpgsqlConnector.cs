@@ -186,22 +186,6 @@ namespace Npgsql
         /// </summary>
         internal int UserTimeout { private get; set; }
 
-        int ReceiveTimeout
-        {
-            set
-            {
-                // TODO: Socket.ReceiveTimeout doesn't work for async.
-                if (value != _currentTimeout)
-                    _socket.ReceiveTimeout = _currentTimeout = value;
-            }
-        }
-
-        /// <summary>
-        /// Contains the current value of the socket's ReceiveTimeout, used to determine whether
-        /// we need to change it when commands are received.
-        /// </summary>
-        int _currentTimeout;
-
         /// <summary>
         /// A lock that's taken while a user action is in progress, e.g. a command being executed.
         /// Only used when keepalive is enabled, otherwise null.
@@ -591,8 +575,8 @@ namespace Npgsql
                     RelaxedTextEncoding = Encoding.GetEncoding(Settings.Encoding, EncoderFallback.ReplacementFallback, DecoderFallback.ReplacementFallback);
                 }
 
-                ReadBuffer = new NpgsqlReadBuffer(this, _stream, Settings.ReadBufferSize, TextEncoding, RelaxedTextEncoding);
-                WriteBuffer = new NpgsqlWriteBuffer(this, _stream, Settings.WriteBufferSize, TextEncoding);
+                ReadBuffer = new NpgsqlReadBuffer(this, _stream, _socket, Settings.ReadBufferSize, TextEncoding, RelaxedTextEncoding);
+                WriteBuffer = new NpgsqlWriteBuffer(this, _stream, _socket, Settings.WriteBufferSize, TextEncoding);
 
                 if (SslMode == SslMode.Require || SslMode == SslMode.Prefer)
                 {
@@ -1040,7 +1024,7 @@ namespace Npgsql
                     try
                     {
                         // TODO: There could be room for optimization here, rather than the async call(s)
-                        ReceiveTimeout = InternalCommandTimeout;
+                        ReadBuffer.Timeout = TimeSpan.FromMilliseconds(InternalCommandTimeout);
                         for (; _pendingPrependedResponses > 0; _pendingPrependedResponses--)
                             await ReadMessageLong(DataRowLoadingMode.Skip, false, true);
                     }
@@ -1054,7 +1038,7 @@ namespace Npgsql
 
                 try
                 {
-                    ReceiveTimeout = UserTimeout;
+                    ReadBuffer.Timeout = TimeSpan.FromMilliseconds(UserTimeout);
 
                     while (true)
                     {
@@ -1077,10 +1061,14 @@ namespace Npgsql
                         {
                             if (len > ReadBuffer.Size)
                             {
+                                var oversizeBuffer = ReadBuffer.AllocateOversize(len);
+
                                 if (_origReadBuffer == null)
                                     _origReadBuffer = ReadBuffer;
+                                else
+                                    ReadBuffer.Dispose();
 
-                                ReadBuffer = ReadBuffer.AllocateOversize(len);
+                                ReadBuffer = oversizeBuffer;
                             }
 
                             await ReadBuffer.Ensure(len, async);
@@ -1560,8 +1548,11 @@ namespace Npgsql
 
             _stream = null;
             _baseStream = null;
+            _origReadBuffer?.Dispose();
             _origReadBuffer = null;
+            ReadBuffer?.Dispose();
             ReadBuffer = null;
+            WriteBuffer?.Dispose();
             WriteBuffer = null;
             Connection = null;
             PostgresParameters.Clear();
@@ -1630,6 +1621,7 @@ namespace Npgsql
             // TODO: Replace this with array pooling, #2326
             if (_origReadBuffer != null)
             {
+                ReadBuffer.Dispose();
                 ReadBuffer = _origReadBuffer;
                 _origReadBuffer = null;
             }

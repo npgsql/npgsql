@@ -5,6 +5,7 @@ using System.IO;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Util;
 
@@ -16,7 +17,7 @@ namespace Npgsql
     /// A buffer used by Npgsql to read data from the socket efficiently.
     /// Provides methods which decode different values types and tracks the current position.
     /// </summary>
-    public sealed partial class NpgsqlReadBuffer
+    public sealed partial class NpgsqlReadBuffer : IDisposable
     {
         #region Fields and Properties
 
@@ -25,6 +26,35 @@ namespace Npgsql
         internal readonly NpgsqlConnector Connector;
 
         internal Stream Underlying { private get; set; }
+
+        readonly Socket? _underlyingSocket;
+
+        CancellationTokenSource _timeoutCts = new CancellationTokenSource();
+
+        /// <summary>
+        /// Timeout for sync and async reads
+        /// </summary>
+        internal TimeSpan Timeout
+        {
+            get => _currentTimeout;
+            set
+            {
+                if (_currentTimeout != value)
+                {
+                    Debug.Assert(_underlyingSocket != null);
+
+                    _underlyingSocket.ReceiveTimeout = value > TimeSpan.Zero ? (int)value.TotalMilliseconds : -1;
+                    _currentTimeout = value;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Contains the current value of the Socket's RecieveTimeout, used to determine whether
+        /// we need to change it when commands are received.
+        /// Also, used as a timeout for async reads.
+        /// </summary>
+        TimeSpan _currentTimeout;
 
         /// <summary>
         /// The total byte length of the buffer.
@@ -48,6 +78,8 @@ namespace Npgsql
 
         ColumnStream? _columnStream;
 
+        bool _disposed;
+
         /// <summary>
         /// The minimum buffer size possible.
         /// </summary>
@@ -61,6 +93,7 @@ namespace Npgsql
         internal NpgsqlReadBuffer(
             NpgsqlConnector connector,
             Stream stream,
+            Socket? socket,
             int size,
             Encoding textEncoding,
             Encoding relaxedTextEncoding)
@@ -72,6 +105,8 @@ namespace Npgsql
 
             Connector = connector;
             Underlying = stream;
+            _underlyingSocket = socket;
+            _currentTimeout = TimeSpan.Zero;
             Size = size;
             Buffer = new byte[Size];
             TextEncoding = textEncoding;
@@ -119,12 +154,26 @@ namespace Npgsql
 
                 try
                 {
+                    var timeoutCt = CancellationToken.None;
+                    if (async && Timeout > TimeSpan.Zero)
+                    {
+                        // We reuse the timeout's cancellation token source as long as it hasn't fired, but once it has
+                        // there's no way to reset it (see https://github.com/dotnet/runtime/issues/4694)
+                        _timeoutCts.CancelAfter(Timeout);
+                        if (_timeoutCts.IsCancellationRequested)
+                        {
+                            _timeoutCts.Dispose();
+                            _timeoutCts = new CancellationTokenSource(Timeout);
+                        }
+                        timeoutCt = _timeoutCts.Token;
+                    }
+
                     var totalRead = 0;
                     while (count > 0)
                     {
                         var toRead = Size - FilledBytes;
                         var read = async
-                            ? await Underlying.ReadAsync(Buffer, FilledBytes, toRead)
+                            ? await Underlying.ReadAsync(Buffer, FilledBytes, toRead, timeoutCt)
                             : Underlying.Read(Buffer, FilledBytes, toRead);
 
                         if (read == 0)
@@ -132,7 +181,19 @@ namespace Npgsql
                         count -= read;
                         FilledBytes += read;
                         totalRead += read;
+
+                        // Most of the time, it should be fine to reset cancellation token source, so we can use it again
+                        // It's still possible for cancellation token to cancel between reading and resetting (although highly improbable)
+                        // In this case, we consider it as timed out and fail with OperationCancelledException on next ReadAsync
+                        // Or we consider it not timed out if we have already read everything (count == 0)
+                        // In which case we reinitialize it on the next call to EnsureLong()
+                        if (async)
+                            _timeoutCts.CancelAfter(Timeout);
                     }
+
+                    // Resetting cancellation token source, so we can use it again
+                    if (async)
+                        _timeoutCts.CancelAfter(-1);
 
                     NpgsqlEventSource.Log.BytesRead(totalRead);
                 }
@@ -145,6 +206,14 @@ namespace Npgsql
                 )
                 {
                     throw new TimeoutException("Timeout while reading from stream");
+                }
+                catch (OperationCanceledException e)
+                {
+                    if (dontBreakOnTimeouts)
+                        throw new TimeoutException("Timeout while reading from stream");
+                    else
+                        throw Connector.Break(new NpgsqlException("Exception while reading from stream",
+                            new TimeoutException("Timeout during reading attempt", e)));
                 }
                 catch (Exception e)
                 {
@@ -160,7 +229,9 @@ namespace Npgsql
         internal NpgsqlReadBuffer AllocateOversize(int count)
         {
             Debug.Assert(count > Size);
-            var tempBuf = new NpgsqlReadBuffer(Connector, Underlying, count, TextEncoding, RelaxedTextEncoding);
+            var tempBuf = new NpgsqlReadBuffer(Connector, Underlying, _underlyingSocket, count, TextEncoding, RelaxedTextEncoding);
+            if (_underlyingSocket != null)
+                tempBuf.Timeout = Timeout;
             CopyTo(tempBuf);
             Clear();
             return tempBuf;
@@ -469,6 +540,20 @@ namespace Npgsql
             var result = new ReadOnlySpan<byte>(Buffer, ReadPosition, i - ReadPosition);
             ReadPosition = i + 1;
             return result;
+        }
+
+        #endregion
+
+        #region Dispose
+
+        public void Dispose()
+        {
+            if (_disposed)
+                return;
+
+            _timeoutCts.Dispose();
+
+            _disposed = true;
         }
 
         #endregion
