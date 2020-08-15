@@ -56,7 +56,7 @@ namespace Npgsql.Tests
         public void SetUp()
         {
             Underlying = new MemoryStream();
-            WriteBuffer = new NpgsqlWriteBuffer(null, Underlying, NpgsqlReadBuffer.DefaultSize, PGUtil.UTF8Encoding);
+            WriteBuffer = new NpgsqlWriteBuffer(null, Underlying, null, NpgsqlReadBuffer.DefaultSize, PGUtil.UTF8Encoding);
         }
 #pragma warning restore CS8625
 

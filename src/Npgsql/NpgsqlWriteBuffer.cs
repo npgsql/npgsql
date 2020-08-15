@@ -25,14 +25,28 @@ namespace Npgsql
 
         internal Stream Underlying { private get; set; }
 
-        internal Socket? UnderlyingSocket { private get; set; }
+        readonly Socket _underlyingSocket;
 
         CancellationTokenSource _timeoutCts = new CancellationTokenSource();
 
         /// <summary>
-        /// Underlying stream WriteTimeout
+        /// Underlying socket SendTimeout
         /// </summary>
-        internal TimeSpan Timeout { get; set; }
+        internal TimeSpan Timeout
+        {
+            get => _currentSocketTimeout;
+            set
+            {
+                if (_currentSocketTimeout != value)
+                {
+                    if (_underlyingSocket == null)
+                        throw new InvalidOperationException("Unable to set timeout as underlying socket is null");
+
+                    _underlyingSocket.SendTimeout = value > TimeSpan.Zero ? (int)value.TotalMilliseconds : -1;
+                    _currentSocketTimeout = value;
+                }
+            }
+        }
 
         /// <summary>
         /// Contains the current value of the Socket's SendTimeout, used to determine whether
@@ -70,14 +84,15 @@ namespace Npgsql
 
         #region Constructors
 
-        internal NpgsqlWriteBuffer(NpgsqlConnector connector, Stream stream, int size, Encoding textEncoding)
+        internal NpgsqlWriteBuffer(NpgsqlConnector connector, Stream stream, Socket socket, int size, Encoding textEncoding)
         {
             if (size < MinimumSize)
                 throw new ArgumentOutOfRangeException(nameof(size), size, "Buffer size must be at least " + MinimumSize);
 
             Connector = connector;
             Underlying = stream;
-            _currentSocketTimeout = Timeout = TimeSpan.Zero;
+            _underlyingSocket = socket;
+            _currentSocketTimeout =TimeSpan.Zero;
             Size = size;
             Buffer = new byte[Size];
             TextEncoding = textEncoding;
@@ -105,28 +120,17 @@ namespace Npgsql
                 return;
 
             var timeoutCt = CancellationToken.None;
-            if (async)
+            if (async && Timeout > TimeSpan.Zero)
             {
-                if (Timeout > TimeSpan.Zero)
+                // We reuse the timeout's cancellation token source as long as it hasn't fired, but once it has
+                // there's no way to reset it (see https://github.com/dotnet/runtime/issues/4694)
+                _timeoutCts.CancelAfter(Timeout);
+                if (_timeoutCts.IsCancellationRequested)
                 {
-                    // We reuse the timeout's cancellation token source as long as it hasn't fired, but once it has
-                    // there's no way to reset it (see https://github.com/dotnet/runtime/issues/4694)
-                    _timeoutCts.CancelAfter(Timeout);
-                    if (_timeoutCts.IsCancellationRequested)
-                    {
-                        _timeoutCts.Dispose();
-                        _timeoutCts = new CancellationTokenSource(Timeout);
-                    }
-                    timeoutCt = _timeoutCts.Token;
+                    _timeoutCts.Dispose();
+                    _timeoutCts = new CancellationTokenSource(Timeout);
                 }
-            }
-            else
-            {
-                if (Timeout != _currentSocketTimeout && UnderlyingSocket != null)
-                {
-                    _currentSocketTimeout = Timeout;
-                    UnderlyingSocket.SendTimeout = Timeout > TimeSpan.Zero ? (int)Timeout.TotalMilliseconds : -1;
-                }
+                timeoutCt = _timeoutCts.Token;
             }
 
             try

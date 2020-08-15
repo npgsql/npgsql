@@ -580,14 +580,8 @@ namespace Npgsql
                     RelaxedTextEncoding = Encoding.GetEncoding(Settings.Encoding, EncoderFallback.ReplacementFallback, DecoderFallback.ReplacementFallback);
                 }
 
-                ReadBuffer = new NpgsqlReadBuffer(this, _stream, Settings.ReadBufferSize, TextEncoding, RelaxedTextEncoding)
-                {
-                    UnderlyingSocket = _socket   
-                };
-                WriteBuffer = new NpgsqlWriteBuffer(this, _stream, Settings.WriteBufferSize, TextEncoding)
-                {
-                    UnderlyingSocket = _socket
-                };
+                ReadBuffer = new NpgsqlReadBuffer(this, _stream, _socket, Settings.ReadBufferSize, TextEncoding, RelaxedTextEncoding);
+                WriteBuffer = new NpgsqlWriteBuffer(this, _stream, _socket, Settings.WriteBufferSize, TextEncoding);
 
                 if (SslMode == SslMode.Require || SslMode == SslMode.Prefer)
                 {
