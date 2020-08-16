@@ -1404,22 +1404,31 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 {
                     for (var i = 0; i < p.Count; i++)
                     {
-                        if (p[i].Value == null || p[i].Value == DBNull.Value)
-                            sb.Append("\t").Append("Parameters $").Append(i + 1).Append(":\t").Append(Convert.ToString("null", CultureInfo.InvariantCulture));
-                        else if (p[i].Value is IList list)
+                        switch (p[i].Value)
                         {
-                            foreach (var val in list)
+                        case IList list:
+                            for (var j = 0; j < list.Count; j++)
                             {
-                                if (list.IndexOf(val) == 0)
-                                    sb.Append("\t").Append("Parameters $").Append(i + 1).Append(": ");
-                                sb.Append("\t#").Append(list.IndexOf(val) + 1).Append(": ").Append(Convert.ToString(val, CultureInfo.InvariantCulture));
+                                if (j == 0)
+                                    LogParamHelper(sb, i + 1).Append(": ");
+                                sb.Append("\t#").Append(j).Append(": ").Append(Convert.ToString(list[j], CultureInfo.InvariantCulture));
                             }
+                            break;
+                        case DBNull _:
+                        case null:
+                            LogParamHelper(sb, i + 1).Append(":\t").Append(Convert.ToString("null", CultureInfo.InvariantCulture));
+                            break;
+                        default:
+                            LogParamHelper(sb, i + 1).Append(":\t").Append(Convert.ToString(p[i].Value, CultureInfo.InvariantCulture));
+                            break;
                         }
-                        else
-                            sb.Append("\t").Append("Parameters $").Append(i + 1).Append(":\t").Append(Convert.ToString(p[i].Value, CultureInfo.InvariantCulture));
                         sb.AppendLine();
                     }
                 }
+            }
+            StringBuilder LogParamHelper(StringBuilder sb, int idx)
+            {
+                return sb.Append("\t").Append("Parameters $").Append(idx);
             }
             Log.Debug(sb.ToString(), connector.Id);
         }
