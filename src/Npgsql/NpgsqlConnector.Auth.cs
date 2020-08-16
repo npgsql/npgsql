@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Security;
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -67,11 +69,53 @@ namespace Npgsql
 
         async Task AuthenticateSASL(List<string> mechanisms, string username, bool async)
         {
-            // At the time of writing PostgreSQL only supports SCRAM-SHA-256
-            if (!mechanisms.Contains("SCRAM-SHA-256"))
-                throw new NpgsqlException("No supported SASL mechanism found (only SCRAM-SHA-256 is supported for now). " +
+            // At the time of writing PostgreSQL only supports SCRAM-SHA-256 and SCRAM-SHA-256-PLUS
+            var supportsSha256 = mechanisms.Contains("SCRAM-SHA-256");
+            var supportsSha256Plus = mechanisms.Contains("SCRAM-SHA-256-PLUS");
+            if (!supportsSha256 && !supportsSha256Plus)
+                throw new NpgsqlException("No supported SASL mechanism found (only SCRAM-SHA-256 and SCRAM-SHA-256-PLUS is supported for now). " +
                                           "Mechanisms received from server: " + string.Join(", ", mechanisms));
-            var mechanism = "SCRAM-SHA-256";
+
+            string mechanism;
+            string cbindFlag;
+            string cbind;
+
+            if (supportsSha256)
+            {
+                mechanism = "SCRAM-SHA-256";
+                cbindFlag = "y";
+                cbind = "biws";
+            }
+            else
+            {
+                // RFC 5929
+                mechanism = "SCRAM-SHA-256-PLUS";
+                // PostgreSQL only supports tls-server-end-point binding
+                cbindFlag = "p=tls-server-end-point";
+                // SCRAM-SHA-256-PLUS depends on using ssl stream, so it's fine
+                var sslStream = (SslStream)_stream;
+                var cbindFlagBytes = Encoding.UTF8.GetBytes($"{cbindFlag},,");
+
+                using var remoteCertificate = new X509Certificate2(sslStream.RemoteCertificate);
+                if (remoteCertificate.SignatureAlgorithm == null)
+                {
+                    throw new NpgsqlException("Binding is undefined");
+                }
+
+                if (remoteCertificate.SignatureAlgorithm.FriendlyName.IndexOf("sha1", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        remoteCertificate.SignatureAlgorithm.FriendlyName.IndexOf("md5", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    using var sha256 = SHA256.Create();
+                    var certificateHash = sha256.ComputeHash(remoteCertificate.GetRawCertData());
+                    var cbindBytes = cbindFlagBytes.Concat(certificateHash).ToArray();
+                    cbind = Convert.ToBase64String(cbindBytes);
+                }
+                else
+                {
+                    //TODO
+                    throw new NotImplementedException("Support for other signature algorithms is not yet implemented");
+                }
+            }
 
             var passwd = GetPassword(username) ??
                          throw new NpgsqlException($"No password has been provided but the backend requires one (in SASL/{mechanism})");
@@ -79,7 +123,7 @@ namespace Npgsql
             // Assumption: the write buffer is big enough to contain all our outgoing messages
             var clientNonce = GetNonce();
 
-            await WriteSASLInitialResponse(mechanism, PGUtil.UTF8Encoding.GetBytes("n,,n=*,r=" + clientNonce), async);
+            await WriteSASLInitialResponse(mechanism, PGUtil.UTF8Encoding.GetBytes($"{cbindFlag},,n=*,r={clientNonce}"), async);
             await Flush(async);
 
             var saslContinueMsg = Expect<AuthenticationSASLContinueMessage>(await ReadMessage(async), this);
@@ -97,9 +141,9 @@ namespace Npgsql
             using (var sha256 = SHA256.Create())
                 storedKey = sha256.ComputeHash(clientKey);
 
-            var clientFirstMessageBare = "n=*,r=" + clientNonce;
+            var clientFirstMessageBare = $"n=*,r={clientNonce}";
             var serverFirstMessage = $"r={firstServerMsg.Nonce},s={firstServerMsg.Salt},i={firstServerMsg.Iteration}";
-            var clientFinalMessageWithoutProof = "c=biws,r=" + firstServerMsg.Nonce;
+            var clientFinalMessageWithoutProof = $"c={cbind},r={firstServerMsg.Nonce}";
 
             var authMessage = $"{clientFirstMessageBare},{serverFirstMessage},{clientFinalMessageWithoutProof}";
 
