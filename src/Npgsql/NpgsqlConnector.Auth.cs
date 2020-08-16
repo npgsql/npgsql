@@ -80,13 +80,7 @@ namespace Npgsql
             string cbindFlag;
             string cbind;
 
-            if (supportsSha256)
-            {
-                mechanism = "SCRAM-SHA-256";
-                cbindFlag = "y";
-                cbind = "biws";
-            }
-            else
+            if (supportsSha256Plus)
             {
                 // RFC 5929
                 mechanism = "SCRAM-SHA-256-PLUS";
@@ -115,6 +109,12 @@ namespace Npgsql
                     //TODO
                     throw new NotImplementedException("Support for other signature algorithms is not yet implemented");
                 }
+            }
+            else
+            {
+                mechanism = "SCRAM-SHA-256";
+                cbindFlag = "y";
+                cbind = "biws";
             }
 
             var passwd = GetPassword(username) ??
