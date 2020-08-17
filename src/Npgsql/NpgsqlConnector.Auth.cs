@@ -73,7 +73,7 @@ namespace Npgsql
             var supportsSha256 = mechanisms.Contains("SCRAM-SHA-256");
             var supportsSha256Plus = mechanisms.Contains("SCRAM-SHA-256-PLUS");
             if (!supportsSha256 && !supportsSha256Plus)
-                throw new NpgsqlException("No supported SASL mechanism found (only SCRAM-SHA-256 and SCRAM-SHA-256-PLUS is supported for now). " +
+                throw new NpgsqlException("No supported SASL mechanism found (only SCRAM-SHA-256 and SCRAM-SHA-256-PLUS are supported for now). " +
                                           "Mechanisms received from server: " + string.Join(", ", mechanisms));
 
             string mechanism;
@@ -96,18 +96,33 @@ namespace Npgsql
                     throw new NpgsqlException("Binding is undefined");
                 }
 
-                if (remoteCertificate.SignatureAlgorithm.FriendlyName.IndexOf("sha1", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                        remoteCertificate.SignatureAlgorithm.FriendlyName.IndexOf("md5", StringComparison.OrdinalIgnoreCase) >= 0)
+                // Checking for hashing algorithms
+                HashAlgorithm hashAlgorithm;
+                var algorithmName = remoteCertificate.SignatureAlgorithm.FriendlyName;
+                if (algorithmName.IndexOf("sha1", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    algorithmName.IndexOf("md5", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                    algorithmName.IndexOf("sha256", StringComparison.OrdinalIgnoreCase) >= 0)
                 {
-                    using var sha256 = SHA256.Create();
-                    var certificateHash = sha256.ComputeHash(remoteCertificate.GetRawCertData());
-                    var cbindBytes = cbindFlagBytes.Concat(certificateHash).ToArray();
-                    cbind = Convert.ToBase64String(cbindBytes);
+                    hashAlgorithm = SHA256.Create();
+                }
+                else if (algorithmName.IndexOf("sha384", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    hashAlgorithm = SHA384.Create();
+                }
+                else if (algorithmName.IndexOf("sha512", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    hashAlgorithm = SHA512.Create();
                 }
                 else
                 {
-                    //TODO
-                    throw new NotImplementedException("Support for other signature algorithms is not yet implemented");
+                    throw new NotImplementedException($"Support for signature algorithm {algorithmName} is not yet implemented");
+                }
+
+                using (hashAlgorithm)
+                {
+                    var certificateHash = hashAlgorithm.ComputeHash(remoteCertificate.GetRawCertData());
+                    var cbindBytes = cbindFlagBytes.Concat(certificateHash).ToArray();
+                    cbind = Convert.ToBase64String(cbindBytes);
                 }
             }
             else
