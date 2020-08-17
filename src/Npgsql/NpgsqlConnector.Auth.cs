@@ -129,7 +129,10 @@ namespace Npgsql
             if (!successfulBind && supportsSha256)
             {
                 mechanism = "SCRAM-SHA-256";
-                cbindFlag = "y";
+                // We can get here if PostgreSQL supports only SCRAM-SHA-256 or there was an error while binding to SCRAM-SHA-256-PLUS
+                // So, we set 'n' (client does not support binding) if there was an error while binding
+                // or 'y' (client supports but server doesn't) in other case
+                cbindFlag = supportsSha256Plus ? "n" : "y";
                 cbind = "biws";
                 successfulBind = true;
             }
