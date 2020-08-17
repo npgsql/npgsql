@@ -16,6 +16,7 @@ using Npgsql.TypeMapping;
 using Npgsql.Util;
 using NpgsqlTypes;
 using static Npgsql.Util.Statics;
+using System.Collections;
 
 namespace Npgsql
 {
@@ -1402,12 +1403,29 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 var p = s.InputParameters;
                 if (p.Count > 0 && (NpgsqlLogManager.IsParameterLoggingEnabled || connector.Settings.LogParameters))
                 {
-                    sb.Append('\t').Append("Parameters:");
                     for (var i = 0; i < p.Count; i++)
-                        sb.Append("\t$").Append(i + 1).Append(": ").Append(Convert.ToString(p[i].Value, CultureInfo.InvariantCulture));
+                    {
+                        sb.Append("\t").Append("Parameters $").Append(i + 1).Append(":");
+                        switch (p[i].Value)
+                        {
+                        case IList list:
+                            for (var j = 0; j < list.Count; j++)
+                            {
+                                sb.Append("\t#").Append(j).Append(": ").Append(Convert.ToString(list[j], CultureInfo.InvariantCulture));
+                            }
+                            break;
+                        case DBNull _:
+                        case null:
+                            sb.Append("\t").Append(Convert.ToString("null", CultureInfo.InvariantCulture));
+                            break;
+                        default:
+                            sb.Append("\t").Append(Convert.ToString(p[i].Value, CultureInfo.InvariantCulture));
+                            break;
+                        }
+                        sb.AppendLine();
+                    }
                 }
             }
-
             Log.Debug(sb.ToString(), connector.Id);
         }
 
