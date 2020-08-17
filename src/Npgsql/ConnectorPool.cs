@@ -514,7 +514,7 @@ namespace Npgsql
             }
 
             while (toPrune > 0 &&
-                   pool._numConnectors <= pool._min &&
+                   pool._numConnectors > pool._min &&
                    pool._idleConnectorReader.TryRead(out var connector) &&
                    connector != null)
             {
