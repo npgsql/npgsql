@@ -76,9 +76,10 @@ namespace Npgsql
                 throw new NpgsqlException("No supported SASL mechanism found (only SCRAM-SHA-256 and SCRAM-SHA-256-PLUS are supported for now). " +
                                           "Mechanisms received from server: " + string.Join(", ", mechanisms));
 
-            string mechanism;
-            string cbindFlag;
-            string cbind;
+            var mechanism = string.Empty;
+            var cbindFlag = string.Empty;
+            var cbind = string.Empty;
+            var successfulBind = false;
 
             if (supportsSha256Plus)
             {
@@ -91,13 +92,8 @@ namespace Npgsql
                 var cbindFlagBytes = Encoding.UTF8.GetBytes($"{cbindFlag},,");
 
                 using var remoteCertificate = new X509Certificate2(sslStream.RemoteCertificate);
-                if (remoteCertificate.SignatureAlgorithm == null)
-                {
-                    throw new NpgsqlException("Binding is undefined");
-                }
-
                 // Checking for hashing algorithms
-                HashAlgorithm hashAlgorithm;
+                HashAlgorithm? hashAlgorithm = null;
                 var algorithmName = remoteCertificate.SignatureAlgorithm.FriendlyName;
                 if (algorithmName.IndexOf("sha1", StringComparison.OrdinalIgnoreCase) >= 0 ||
                     algorithmName.IndexOf("md5", StringComparison.OrdinalIgnoreCase) >= 0 ||
@@ -115,21 +111,33 @@ namespace Npgsql
                 }
                 else
                 {
-                    throw new NotImplementedException($"Support for signature algorithm {algorithmName} is not yet implemented");
+                    Log.Warn($"Support for signature algorithm {algorithmName} is not yet implemented, falling back to SCRAM-SHA-256");
                 }
 
-                using (hashAlgorithm)
+                if (hashAlgorithm != null)
                 {
-                    var certificateHash = hashAlgorithm.ComputeHash(remoteCertificate.GetRawCertData());
-                    var cbindBytes = cbindFlagBytes.Concat(certificateHash).ToArray();
-                    cbind = Convert.ToBase64String(cbindBytes);
+                    using (hashAlgorithm)
+                    {
+                        var certificateHash = hashAlgorithm.ComputeHash(remoteCertificate.GetRawCertData());
+                        var cbindBytes = cbindFlagBytes.Concat(certificateHash).ToArray();
+                        cbind = Convert.ToBase64String(cbindBytes);
+                        successfulBind = true;
+                    }
                 }
             }
-            else
+
+            if (!successfulBind && supportsSha256)
             {
                 mechanism = "SCRAM-SHA-256";
                 cbindFlag = "y";
                 cbind = "biws";
+                successfulBind = true;
+            }
+
+            if (!successfulBind)
+            {
+                // We can get here if PostgreSQL supports only SCRAM-SHA-256-PLUS but there was an error while binding to it
+                throw new NpgsqlException("Unable to bind to SCRAM-SHA-256-PLUS, check logs for more information");
             }
 
             var passwd = GetPassword(username) ??
