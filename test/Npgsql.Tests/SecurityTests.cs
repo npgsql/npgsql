@@ -19,6 +19,22 @@ namespace Npgsql.Tests
                 Assert.That(conn.IsSecure, Is.True);
         }
 
+        [Test, Description("Default user must run with md5 password encryption")]
+        public void DefaultUserUsesMd5Password()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                SslMode = SslMode.Require,
+                TrustServerCertificate = true
+            };
+
+            using (var conn = OpenConnection(csb))
+            {
+                Assert.That(conn.IsScram, Is.False);
+                Assert.That(conn.IsScramPlus, Is.False);
+            }
+        }
+
         [Test, Description("Makes sure a certificate whose root CA isn't known isn't accepted")]
         public void RejectSelfSignedCertificate()
         {
@@ -159,6 +175,36 @@ namespace Npgsql.Tests
                 Assert.That(async () => await cmd.ExecuteNonQueryAsync(cts), Throws.Exception
                     .TypeOf<PostgresException>()
                     .With.Property(nameof(PostgresException.SqlState)).EqualTo("57014"));
+            }
+        }
+
+        [Test]
+        [Timeout(2000)]
+        public void ConnectToDatabaseUsingScramPlus() 
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                SslMode = SslMode.Require,
+                TrustServerCertificate = true,
+                Username = "npgsql_tests_scram",
+                Password = "npgsql_tests_scram",
+            };
+
+            try
+            {
+                using var conn = OpenConnection(csb);
+                // scram-sha-256-plus only works begining from PostgreSQL 11
+                if (conn.PostgreSqlVersion.Major >= 11)
+                {
+                    Assert.That(conn.IsScramPlus, Is.True);
+                }
+            }
+            catch (Exception e)
+            {
+                if (TestUtil.IsOnBuildServer)
+                    throw;
+                Console.WriteLine(e);
+                Assert.Ignore("scram-sha-256-plus doesn't seem to be set up");
             }
         }
 

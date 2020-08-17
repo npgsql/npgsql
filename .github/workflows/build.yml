@@ -56,10 +56,15 @@ jobs:
           export PGDATA=/etc/postgresql/${{ matrix.pg_major }}/main
           sudo sed -i 's/#ssl = off/ssl = on/' $PGDATA/postgresql.conf
           sudo sed -i 's/#max_prepared_transactions = 0/max_prepared_transactions = 10/' $PGDATA/postgresql.conf
+          sudo sed -i 's/#password_encryption = md5/password_encryption = scram-sha-256/' $PGDATA/postgresql.conf
           # Disable trust authentication, requiring MD5 passwords - some tests must fail if a password isn't provided.
           sudo sh -c "echo 'local all all trust' > $PGDATA/pg_hba.conf"
+          sudo sh -c "echo 'host all npgsql_tests_scram all scram-sha-256' >> $PGDATA/pg_hba.conf"
           sudo sh -c "echo 'host all all all md5' >> $PGDATA/pg_hba.conf"
           sudo pg_ctlcluster ${{ matrix.pg_major }} main restart
+          
+          # user 'npgsql_tests_scram' must be created with password encrypted as scram-sha-256 (which only applies after restart)
+          sudo -u postgres psql -c "CREATE USER npgsql_tests_scram SUPERUSER PASSWORD 'npgsql_tests_scram'"
 
       - name: Start PostgreSQL ${{ matrix.pg_major }} (Windows)
         if: startsWith(matrix.os, 'windows')
@@ -105,9 +110,17 @@ jobs:
           pgsql/bin/psql -U postgres -c "CREATE EXTENSION postgis" npgsql_tests
           pgsql/bin/psql -U postgres -c "CREATE EXTENSION hstore" npgsql_tests
           pgsql/bin/psql -U postgres -c "CREATE EXTENSION citext" npgsql_tests
+          
+          # user 'npgsql_tests_scram' must be created with password encrypted as scram-sha-256 (which only applies after restart)
+          sed -i "s|#password_encryption = md5|password_encryption = scram-sha-256|" pgsql/PGDATA/postgresql.conf
+          
+          pgsql/bin/pg_ctl -D pgsql/PGDATA -l logfile -o '-c max_prepared_transactions=10 -c ssl=true -c ssl_cert_file=../server.crt -c ssl_key_file=../server.key' restart
+          
+          pgsql/bin/psql -U postgres -c "CREATE ROLE npgsql_tests_scram SUPERUSER LOGIN PASSWORD 'npgsql_tests_scram'"
 
           # Disable trust authentication, requiring MD5 passwords - some tests must fail if a password isn't provided.
-          echo "host all all all md5" > pgsql/PGDATA/pg_hba.conf
+          echo "host all npgsql_tests_scram all scram-sha-256" > pgsql/PGDATA/pg_hba.conf
+          echo "host all all all md5" >> pgsql/PGDATA/pg_hba.conf
 
       - name: Setup .NET Core SDK
         uses: actions/setup-dotnet@v1

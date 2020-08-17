@@ -122,6 +122,7 @@ namespace Npgsql
                         var cbindBytes = cbindFlagBytes.Concat(certificateHash).ToArray();
                         cbind = Convert.ToBase64String(cbindBytes);
                         successfulBind = true;
+                        IsScramPlus = true;
                     }
                 }
             }
@@ -135,6 +136,7 @@ namespace Npgsql
                 cbindFlag = supportsSha256Plus ? "n" : "y";
                 cbind = supportsSha256Plus ? "biws" : "eSws";
                 successfulBind = true;
+                IsScram = true;
             }
 
             if (!successfulBind)
