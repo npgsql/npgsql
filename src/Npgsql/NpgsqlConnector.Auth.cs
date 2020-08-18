@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Security;
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -67,11 +69,79 @@ namespace Npgsql
 
         async Task AuthenticateSASL(List<string> mechanisms, string username, bool async)
         {
-            // At the time of writing PostgreSQL only supports SCRAM-SHA-256
-            if (!mechanisms.Contains("SCRAM-SHA-256"))
-                throw new NpgsqlException("No supported SASL mechanism found (only SCRAM-SHA-256 is supported for now). " +
+            // At the time of writing PostgreSQL only supports SCRAM-SHA-256 and SCRAM-SHA-256-PLUS
+            var supportsSha256 = mechanisms.Contains("SCRAM-SHA-256");
+            var supportsSha256Plus = mechanisms.Contains("SCRAM-SHA-256-PLUS");
+            if (!supportsSha256 && !supportsSha256Plus)
+                throw new NpgsqlException("No supported SASL mechanism found (only SCRAM-SHA-256 and SCRAM-SHA-256-PLUS are supported for now). " +
                                           "Mechanisms received from server: " + string.Join(", ", mechanisms));
-            var mechanism = "SCRAM-SHA-256";
+
+            var mechanism = string.Empty;
+            var cbindFlag = string.Empty;
+            var cbind = string.Empty;
+            var successfulBind = false;
+
+            if (supportsSha256Plus)
+            {
+                // RFC 5929
+                mechanism = "SCRAM-SHA-256-PLUS";
+                // PostgreSQL only supports tls-server-end-point binding
+                cbindFlag = "p=tls-server-end-point";
+                // SCRAM-SHA-256-PLUS depends on using ssl stream, so it's fine
+                var sslStream = (SslStream)_stream;
+                var cbindFlagBytes = Encoding.UTF8.GetBytes($"{cbindFlag},,");
+
+                using var remoteCertificate = new X509Certificate2(sslStream.RemoteCertificate);
+                // Checking for hashing algorithms
+                HashAlgorithm? hashAlgorithm = null;
+                var algorithmName = remoteCertificate.SignatureAlgorithm.FriendlyName;
+                if (algorithmName.StartsWith("sha1", StringComparison.OrdinalIgnoreCase) ||
+                    algorithmName.StartsWith("md5", StringComparison.OrdinalIgnoreCase) ||
+                    algorithmName.StartsWith("sha256", StringComparison.OrdinalIgnoreCase))
+                {
+                    hashAlgorithm = SHA256.Create();
+                }
+                else if (algorithmName.StartsWith("sha384", StringComparison.OrdinalIgnoreCase))
+                {
+                    hashAlgorithm = SHA384.Create();
+                }
+                else if (algorithmName.StartsWith("sha512", StringComparison.OrdinalIgnoreCase))
+                {
+                    hashAlgorithm = SHA512.Create();
+                }
+                else
+                {
+                    Log.Warn($"Support for signature algorithm {algorithmName} is not yet implemented, falling back to SCRAM-SHA-256");
+                }
+
+                if (hashAlgorithm != null)
+                {
+                    using var _ = hashAlgorithm;
+                    var certificateHash = hashAlgorithm.ComputeHash(remoteCertificate.GetRawCertData());
+                    var cbindBytes = cbindFlagBytes.Concat(certificateHash).ToArray();
+                    cbind = Convert.ToBase64String(cbindBytes);
+                    successfulBind = true;
+                    IsScramPlus = true;
+                }
+            }
+
+            if (!successfulBind && supportsSha256)
+            {
+                mechanism = "SCRAM-SHA-256";
+                // We can get here if PostgreSQL supports only SCRAM-SHA-256 or there was an error while binding to SCRAM-SHA-256-PLUS
+                // So, we set 'n' (client does not support binding) if there was an error while binding
+                // or 'y' (client supports but server doesn't) in other case
+                cbindFlag = supportsSha256Plus ? "n" : "y";
+                cbind = supportsSha256Plus ? "biws" : "eSws";
+                successfulBind = true;
+                IsScram = true;
+            }
+
+            if (!successfulBind)
+            {
+                // We can get here if PostgreSQL supports only SCRAM-SHA-256-PLUS but there was an error while binding to it
+                throw new NpgsqlException("Unable to bind to SCRAM-SHA-256-PLUS, check logs for more information");
+            }
 
             var passwd = GetPassword(username) ??
                          throw new NpgsqlException($"No password has been provided but the backend requires one (in SASL/{mechanism})");
@@ -79,7 +149,7 @@ namespace Npgsql
             // Assumption: the write buffer is big enough to contain all our outgoing messages
             var clientNonce = GetNonce();
 
-            await WriteSASLInitialResponse(mechanism, PGUtil.UTF8Encoding.GetBytes("n,,n=*,r=" + clientNonce), async);
+            await WriteSASLInitialResponse(mechanism, PGUtil.UTF8Encoding.GetBytes($"{cbindFlag},,n=*,r={clientNonce}"), async);
             await Flush(async);
 
             var saslContinueMsg = Expect<AuthenticationSASLContinueMessage>(await ReadMessage(async), this);
@@ -97,9 +167,9 @@ namespace Npgsql
             using (var sha256 = SHA256.Create())
                 storedKey = sha256.ComputeHash(clientKey);
 
-            var clientFirstMessageBare = "n=*,r=" + clientNonce;
+            var clientFirstMessageBare = $"n=*,r={clientNonce}";
             var serverFirstMessage = $"r={firstServerMsg.Nonce},s={firstServerMsg.Salt},i={firstServerMsg.Iteration}";
-            var clientFinalMessageWithoutProof = "c=biws,r=" + firstServerMsg.Nonce;
+            var clientFinalMessageWithoutProof = $"c={cbind},r={firstServerMsg.Nonce}";
 
             var authMessage = $"{clientFirstMessageBare},{serverFirstMessage},{clientFinalMessageWithoutProof}";
 

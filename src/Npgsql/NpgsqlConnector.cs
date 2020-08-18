@@ -1315,6 +1315,16 @@ namespace Npgsql
         /// </summary>
         internal bool IsSecure { get; private set; }
 
+        /// <summary>
+        /// Returns whether SCRAM-SHA256 is being user for the connection
+        /// </summary>
+        internal bool IsScram { get; private set; }
+
+        /// <summary>
+        /// Returns whether SCRAM-SHA256-PLUS is being user for the connection
+        /// </summary>
+        internal bool IsScramPlus { get; private set; }
+
 #pragma warning disable CA1801 // Review unused parameters
         static bool DefaultUserCertificateValidationCallback(object sender, X509Certificate? certificate, X509Chain? chain, SslPolicyErrors sslPolicyErrors)
             => sslPolicyErrors == SslPolicyErrors.None;

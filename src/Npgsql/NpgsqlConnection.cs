@@ -895,6 +895,16 @@ namespace Npgsql
         internal bool IsSecure => CheckOpenAndRunInTemporaryScope(c => c.IsSecure);
 
         /// <summary>
+        /// Returns whether SCRAM-SHA256 is being user for the connection
+        /// </summary>
+        internal bool IsScram => CheckOpenAndRunInTemporaryScope(c => c.IsScram);
+
+        /// <summary>
+        /// Returns whether SCRAM-SHA256-PLUS is being user for the connection
+        /// </summary>
+        internal bool IsScramPlus => CheckOpenAndRunInTemporaryScope(c => c.IsScramPlus);
+
+        /// <summary>
         /// Selects the local Secure Sockets Layer (SSL) certificate used for authentication.
         /// </summary>
         /// <remarks>
