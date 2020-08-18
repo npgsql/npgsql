@@ -147,10 +147,8 @@ namespace Npgsql.Tests
                 {
                     conn.Open();
                 }
-                catch (Exception e)
+                catch (Exception e) when (!TestUtil.IsOnBuildServer)
                 {
-                    if (TestUtil.IsOnBuildServer)
-                        throw;
                     Console.WriteLine(e);
                     Assert.Ignore("Integrated security (GSS/SSPI) doesn't seem to be set up");
                 }

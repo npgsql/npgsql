@@ -95,17 +95,17 @@ namespace Npgsql
                 // Checking for hashing algorithms
                 HashAlgorithm? hashAlgorithm = null;
                 var algorithmName = remoteCertificate.SignatureAlgorithm.FriendlyName;
-                if (algorithmName.IndexOf("sha1", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    algorithmName.IndexOf("md5", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                    algorithmName.IndexOf("sha256", StringComparison.OrdinalIgnoreCase) >= 0)
+                if (algorithmName.StartsWith("sha1", StringComparison.OrdinalIgnoreCase) ||
+                    algorithmName.StartsWith("md5", StringComparison.OrdinalIgnoreCase) ||
+                    algorithmName.StartsWith("sha256", StringComparison.OrdinalIgnoreCase))
                 {
                     hashAlgorithm = SHA256.Create();
                 }
-                else if (algorithmName.IndexOf("sha384", StringComparison.OrdinalIgnoreCase) >= 0)
+                else if (algorithmName.StartsWith("sha384", StringComparison.OrdinalIgnoreCase))
                 {
                     hashAlgorithm = SHA384.Create();
                 }
-                else if (algorithmName.IndexOf("sha512", StringComparison.OrdinalIgnoreCase) >= 0)
+                else if (algorithmName.StartsWith("sha512", StringComparison.OrdinalIgnoreCase))
                 {
                     hashAlgorithm = SHA512.Create();
                 }
@@ -116,14 +116,12 @@ namespace Npgsql
 
                 if (hashAlgorithm != null)
                 {
-                    using (hashAlgorithm)
-                    {
-                        var certificateHash = hashAlgorithm.ComputeHash(remoteCertificate.GetRawCertData());
-                        var cbindBytes = cbindFlagBytes.Concat(certificateHash).ToArray();
-                        cbind = Convert.ToBase64String(cbindBytes);
-                        successfulBind = true;
-                        IsScramPlus = true;
-                    }
+                    using var _ = hashAlgorithm;
+                    var certificateHash = hashAlgorithm.ComputeHash(remoteCertificate.GetRawCertData());
+                    var cbindBytes = cbindFlagBytes.Concat(certificateHash).ToArray();
+                    cbind = Convert.ToBase64String(cbindBytes);
+                    successfulBind = true;
+                    IsScramPlus = true;
                 }
             }
 
