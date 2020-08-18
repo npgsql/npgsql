@@ -262,7 +262,7 @@ namespace Npgsql.Tests
                 var sleepInterval = connectionPruningIntervalMs + paddingMs;
                 var total = 0;
 
-                for (var i = 0; i < samples; i++)
+                for (var i = 0; i < samples - 1; i++)
                 {
                     total += sleepInterval;
                     Thread.Sleep(sleepInterval);
@@ -358,7 +358,9 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void ClearPool()
+        [TestCase(1)]
+        [TestCase(2)]
+        public void ClearPool(int iterations)
         {
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -366,13 +368,16 @@ namespace Npgsql.Tests
             }.ToString();
 
             NpgsqlConnection conn;
-            using (conn = OpenConnection(connString)) {}
-            // Now have one connection in the pool
-            Assert.True(PoolManager.TryGetValue(connString, out var pool));
-            AssertPoolState(pool, open: 1, idle: 1);
+            for (var i = 0; i < iterations; i++)
+            {
+                using (conn = OpenConnection(connString)) { }
+                // Now have one connection in the pool
+                Assert.True(PoolManager.TryGetValue(connString, out var pool));
+                AssertPoolState(pool, open: 1, idle: 1);
 
-            NpgsqlConnection.ClearPool(conn);
-            AssertPoolState(pool, open: 0, idle: 0);
+                NpgsqlConnection.ClearPool(conn);
+                AssertPoolState(pool, open: 0, idle: 0);
+            }
         }
 
         [Test]
