@@ -147,8 +147,10 @@ namespace Npgsql.Tests
                 {
                     conn.Open();
                 }
-                catch (Exception e) when (!TestUtil.IsOnBuildServer)
+                catch (Exception e)
                 {
+                    if (TestUtil.IsOnBuildServer)
+                        throw;
                     Console.WriteLine(e);
                     Assert.Ignore("Integrated security (GSS/SSPI) doesn't seem to be set up");
                 }
@@ -197,10 +199,8 @@ namespace Npgsql.Tests
                     Assert.That(conn.IsScramPlus, Is.True);
                 }
             }
-            catch (Exception e)
+            catch (Exception e) when (!TestUtil.IsOnBuildServer)
             {
-                if (TestUtil.IsOnBuildServer)
-                    throw;
                 Console.WriteLine(e);
                 Assert.Ignore("scram-sha-256-plus doesn't seem to be set up");
             }
