@@ -864,7 +864,7 @@ namespace Npgsql.Tests
             await using (var conn = await OpenConnectionAsync(new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 // Make sure messages are in English
-                Options = "lc_messages='en_US.UTF-8'"
+                Options = "lc_messages=en_US.UTF-8"
             }))
             await using (GetTempFunctionName(conn, out var function))
             {
