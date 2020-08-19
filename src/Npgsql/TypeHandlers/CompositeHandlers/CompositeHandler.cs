@@ -4,6 +4,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
@@ -31,17 +32,17 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
             _nameTranslator = nameTranslator;
         }
 
-        public override ValueTask<T> Read(NpgsqlReadBuffer buffer, int length, bool async, FieldDescription? fieldDescription = null)
+        public override ValueTask<T> Read(NpgsqlReadBuffer buffer, int length, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription = null)
         {
             Initialize();
 
             return _constructorHandler is null
                 ? ReadUsingMemberHandlers()
-                : _constructorHandler.Read(buffer, async);
+                : _constructorHandler.Read(buffer, async, cancellationToken);
 
             async ValueTask<T> ReadUsingMemberHandlers()
             {
-                await buffer.Ensure(sizeof(int), async);
+                await buffer.Ensure(sizeof(int), async, cancellationToken);
 
                 var fieldCount = buffer.ReadInt32();
                 if (fieldCount != _memberHandlers.Length)
@@ -51,7 +52,7 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
                 {
                     var composite = new ByReference<T> { Value = _constructor() };
                     foreach (var member in _memberHandlers)
-                        await member.Read(composite, buffer, async);
+                        await member.Read(composite, buffer, async, cancellationToken);
 
                     return composite.Value;
                 }
@@ -59,7 +60,7 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
                 {
                     var composite = _constructor();
                     foreach (var member in _memberHandlers)
-                        await member.Read(composite, buffer, async);
+                        await member.Read(composite, buffer, async, cancellationToken);
 
                     return composite;
                 }

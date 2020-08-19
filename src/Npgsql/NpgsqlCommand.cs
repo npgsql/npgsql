@@ -537,7 +537,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// Creates a server-side prepared statement on the PostgreSQL server.
         /// This will make repeated future executions of this command much faster.
         /// </summary>
-        public override void Prepare() => Prepare(false).GetAwaiter().GetResult();
+        public override void Prepare() => Prepare(false, default).GetAwaiter().GetResult();
 
         /// <summary>
         /// Creates a server-side prepared statement on the PostgreSQL server.
@@ -550,13 +550,11 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         public Task PrepareAsync(CancellationToken cancellationToken = default)
 #endif
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
-                return Prepare(true);
+                return Prepare(true, cancellationToken);
         }
 
-        Task Prepare(bool async)
+        Task Prepare(bool async, CancellationToken cancellationToken)
         {
             var connection = CheckAndGetConnection();
             if (connection.Settings.Multiplexing)
@@ -588,10 +586,10 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             // It's possible the command was already prepared, or that persistent prepared statements were found for
             // all statements. Nothing to do here, move along.
             return needToPrepare
-                ? PrepareLong()
+                ? PrepareLong(cancellationToken)
                 : Task.CompletedTask;
 
-            async Task PrepareLong()
+            async Task PrepareLong(CancellationToken cancellationToken)
             {
                 using (connector.StartUserAction())
                 {
@@ -611,14 +609,14 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         {
                             if (pStatement.StatementBeingReplaced != null)
                             {
-                                Expect<CloseCompletedMessage>(await connector.ReadMessage(async), connector);
+                                Expect<CloseCompletedMessage>(await connector.ReadMessage(async, cancellationToken), connector);
                                 pStatement.StatementBeingReplaced.CompleteUnprepare();
                                 pStatement.StatementBeingReplaced = null;
                             }
 
-                            Expect<ParseCompleteMessage>(await connector.ReadMessage(async), connector);
-                            Expect<ParameterDescriptionMessage>(await connector.ReadMessage(async), connector);
-                            var msg = await connector.ReadMessage(async);
+                            Expect<ParseCompleteMessage>(await connector.ReadMessage(async, cancellationToken), connector);
+                            Expect<ParameterDescriptionMessage>(await connector.ReadMessage(async, cancellationToken), connector);
+                            var msg = await connector.ReadMessage(async, cancellationToken);
                             switch (msg.Code)
                             {
                             case BackendMessageCode.RowDescription:
@@ -657,7 +655,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         }
                     }
 
-                    Expect<ReadyForQueryMessage>(await connector.ReadMessage(async), connector);
+                    Expect<ReadyForQueryMessage>(await connector.ReadMessage(async, cancellationToken), connector);
 
                     if (async)
                         await sendTask;
@@ -673,7 +671,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// automatically prepared statements.
         /// </summary>
         public void Unprepare()
-            => Unprepare(false).GetAwaiter().GetResult();
+            => Unprepare(false, default).GetAwaiter().GetResult();
 
         /// <summary>
         /// Unprepares a command, closing server-side statements associated with it.
@@ -683,13 +681,11 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
         public Task UnprepareAsync(CancellationToken cancellationToken = default)
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled<int>(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
-                return Unprepare(true);
+                return Unprepare(true, cancellationToken);
         }
 
-        async Task Unprepare(bool async)
+        async Task Unprepare(bool async, CancellationToken cancellationToken)
         {
             var connection = CheckAndGetConnection();
             if (connection.Settings.Multiplexing)
@@ -706,11 +702,11 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 foreach (var statement in _statements)
                     if (statement.PreparedStatement?.State == PreparedState.BeingUnprepared)
                     {
-                        Expect<CloseCompletedMessage>(await connector.ReadMessage(async), connector);
+                        Expect<CloseCompletedMessage>(await connector.ReadMessage(async, cancellationToken), connector);
                         statement.PreparedStatement.CompleteUnprepare();
                         statement.PreparedStatement = null;
                     }
-                Expect<ReadyForQueryMessage>(await connector.ReadMessage(async), connector);
+                Expect<ReadyForQueryMessage>(await connector.ReadMessage(async, cancellationToken), connector);
                 if (async)
                     await sendTask;
                 else

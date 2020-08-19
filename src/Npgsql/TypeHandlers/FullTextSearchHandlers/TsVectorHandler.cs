@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
@@ -34,16 +35,16 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
         #region Read
 
         /// <inheritdoc />
-        public override async ValueTask<NpgsqlTsVector> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
+        public override async ValueTask<NpgsqlTsVector> Read(NpgsqlReadBuffer buf, int len, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription = null)
         {
-            await buf.Ensure(4, async);
+            await buf.Ensure(4, async, cancellationToken);
             var numLexemes = buf.ReadInt32();
             len -= 4;
 
             var lexemes = new List<NpgsqlTsVector.Lexeme>();
             for (var lexemePos = 0; lexemePos < numLexemes; lexemePos++)
             {
-                await buf.Ensure(Math.Min(len, MaxSingleLexemeBytes), async);
+                await buf.Ensure(Math.Min(len, MaxSingleLexemeBytes), async, cancellationToken);
                 var posBefore = buf.ReadPosition;
 
                 List<NpgsqlTsVector.Lexeme.WordEntryPos>? positions = null;

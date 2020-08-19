@@ -378,7 +378,7 @@ namespace Npgsql
         /// <summary>
         /// Completes the import operation. The writer is unusable after this operation.
         /// </summary>
-        public ulong Complete() => Complete(false).GetAwaiter().GetResult();
+        public ulong Complete() => Complete(false, default).GetAwaiter().GetResult();
 
         /// <summary>
         /// Completes the import operation. The writer is unusable after this operation.
@@ -388,16 +388,16 @@ namespace Npgsql
             if (cancellationToken.IsCancellationRequested)
                 return new ValueTask<ulong>(Task.FromCanceled<ulong>(cancellationToken));
             using (NoSynchronizationContextScope.Enter())
-                return Complete(true);
+                return Complete(true, cancellationToken);
         }
 
-        async ValueTask<ulong> Complete(bool async)
+        async ValueTask<ulong> Complete(bool async, CancellationToken cancellationToken)
         {
             CheckReady();
 
             if (InMiddleOfRow)
             {
-                await Cancel(async);
+                await Cancel(async, cancellationToken);
                 throw new InvalidOperationException("Binary importer closed in the middle of a row, cancelling import.");
             }
 
@@ -408,8 +408,8 @@ namespace Npgsql
                 _buf.EndCopyMode();
                 await _connector.WriteCopyDone(async);
                 await _connector.Flush(async);
-                var cmdComplete = Expect<CommandCompleteMessage>(await _connector.ReadMessage(async), _connector);
-                Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async), _connector);
+                var cmdComplete = Expect<CommandCompleteMessage>(await _connector.ReadMessage(async, cancellationToken), _connector);
+                Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async, cancellationToken), _connector);
                 _state = ImporterState.Committed;
                 return cmdComplete.Rows;
             }
@@ -435,10 +435,10 @@ namespace Npgsql
         public ValueTask DisposeAsync()
         {
             using (NoSynchronizationContextScope.Enter())
-                return CloseAsync(true);
+                return CloseAsync(true, default);
         }
 
-        async Task Cancel(bool async)
+        async Task Cancel(bool async, CancellationToken cancellationToken)
         {
             _state = ImporterState.Cancelled;
             _buf.Clear();
@@ -447,7 +447,7 @@ namespace Npgsql
             await _connector.Flush(async);
             try
             {
-                var msg = await _connector.ReadMessage(async);
+                var msg = await _connector.ReadMessage(async, cancellationToken);
                 // The CopyFail should immediately trigger an exception from the read above.
                 throw _connector.Break(
                     new NpgsqlException("Expected ErrorResponse when cancelling COPY but got: " + msg.Code));
@@ -463,7 +463,7 @@ namespace Npgsql
         /// Completes the import process and signals to the database to write everything.
         /// </summary>
         [PublicAPI]
-        public void Close() => CloseAsync(false).GetAwaiter().GetResult();
+        public void Close() => CloseAsync(false, default).GetAwaiter().GetResult();
 
         /// <summary>
         /// Async completes the import process and signals to the database to write everything.
@@ -473,20 +473,18 @@ namespace Npgsql
         [PublicAPI]
         public ValueTask CloseAsync(CancellationToken cancellationToken = default)
         {
-            if (cancellationToken.IsCancellationRequested)
-                return new ValueTask(Task.FromCanceled(cancellationToken));
             using (NoSynchronizationContextScope.Enter())
-                return CloseAsync(true);
+                return CloseAsync(true, cancellationToken);
         }
 
-        async ValueTask CloseAsync(bool async)
+        async ValueTask CloseAsync(bool async, CancellationToken cancellationToken)
         {
             switch (_state)
             {
             case ImporterState.Disposed:
                 return;
             case ImporterState.Ready:
-                await Cancel(async);
+                await Cancel(async, cancellationToken);
                 break;
             case ImporterState.Cancelled:
             case ImporterState.Committed:

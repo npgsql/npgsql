@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.PostgresTypes;
 
@@ -18,9 +19,9 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
             Handlers = handlers;
         }
 
-        public virtual async ValueTask<TComposite> Read(NpgsqlReadBuffer buffer, bool async)
+        public virtual async ValueTask<TComposite> Read(NpgsqlReadBuffer buffer, bool async, CancellationToken cancellationToken)
         {
-            await buffer.Ensure(sizeof(int), async);
+            await buffer.Ensure(sizeof(int), async, cancellationToken);
 
             var fieldCount = buffer.ReadInt32();
             if (fieldCount != Handlers.Length)
@@ -28,7 +29,7 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
 
             var args = new object?[Handlers.Length];
             foreach (var handler in Handlers)
-                args[handler.Position] = await handler.Read(buffer, async);
+                args[handler.Position] = await handler.Read(buffer, async, cancellationToken);
 
             return (TComposite)ConstructorInfo.Invoke(args);
         }

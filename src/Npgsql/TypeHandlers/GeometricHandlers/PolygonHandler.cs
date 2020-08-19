@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.Threading;
+using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
@@ -26,14 +27,14 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
         #region Read
 
         /// <inheritdoc />
-        public override async ValueTask<NpgsqlPolygon> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
+        public override async ValueTask<NpgsqlPolygon> Read(NpgsqlReadBuffer buf, int len, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription = null)
         {
-            await buf.Ensure(4, async);
+            await buf.Ensure(4, async, cancellationToken);
             var numPoints = buf.ReadInt32();
             var result = new NpgsqlPolygon(numPoints);
             for (var i = 0; i < numPoints; i++)
             {
-                await buf.Ensure(16, async);
+                await buf.Ensure(16, async, cancellationToken);
                 result.Add(new NpgsqlPoint(buf.ReadDouble(), buf.ReadDouble()));
             }
             return result;

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
@@ -27,9 +28,9 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
         #region Read
 
         /// <inheritdoc />
-        public override async ValueTask<NpgsqlPath> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
+        public override async ValueTask<NpgsqlPath> Read(NpgsqlReadBuffer buf, int len, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription = null)
         {
-            await buf.Ensure(5, async);
+            await buf.Ensure(5, async, cancellationToken);
             var open = buf.ReadByte() switch
             {
                 1 => false,
@@ -41,7 +42,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
             var result = new NpgsqlPath(numPoints, open);
             for (var i = 0; i < numPoints; i++)
             {
-                await buf.Ensure(16, async);
+                await buf.Ensure(16, async, cancellationToken);
                 result.Add(new NpgsqlPoint(buf.ReadDouble(), buf.ReadDouble()));
             }
             return result;

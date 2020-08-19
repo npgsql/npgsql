@@ -673,7 +673,7 @@ namespace Npgsql
         /// Releases the connection. If the connection is pooled, it will be returned to the pool and made available for re-use.
         /// If it is non-pooled, the physical connection will be closed.
         /// </summary>
-        public override void Close() => Close(async: false);
+        public override void Close() => Close(false, default);
 
         /// <summary>
         /// Releases the connection. If the connection is pooled, it will be returned to the pool and made available for re-use.
@@ -686,10 +686,10 @@ namespace Npgsql
 #endif
         {
             using (NoSynchronizationContextScope.Enter())
-                return Close(async: true);
+                return Close(true, default);
         }
 
-        internal Task Close(bool async)
+        internal Task Close(bool async, CancellationToken cancellationToken)
         {
             // Even though NpgsqlConnection isn't thread safe we'll make sure this part is.
             // Because we really don't want double returns to the pool.
@@ -725,9 +725,9 @@ namespace Npgsql
                 return Task.CompletedTask;
             }
 
-            return CloseAsync();
+            return CloseAsync(cancellationToken);
 
-            async Task CloseAsync()
+            async Task CloseAsync(CancellationToken cancellationToken)
             {
                 Debug.Assert(Connector != null);
                 var connector = Connector;
@@ -738,7 +738,7 @@ namespace Npgsql
                 if (connector.CurrentReader != null || connector.CurrentCopyOperation != null || connector.InTransaction)
                 {
                     // This method could re-enter connection.Close() due to an underlying connection failure.
-                    await connector.CloseOngoingOperations(async);
+                    await connector.CloseOngoingOperations(async, cancellationToken);
                 }
 
                 Debug.Assert(connector.IsReady || connector.IsBroken);
@@ -776,7 +776,7 @@ namespace Npgsql
                     else
                     {
                         // Clear the buffer, roll back any pending transaction and prepend a reset message if needed
-                        await connector.Reset(async);
+                        await connector.Reset(async, cancellationToken);
 
                         if (Settings.Multiplexing)
                         {
@@ -823,7 +823,11 @@ namespace Npgsql
         {
             if (_disposed)
                 return;
+#if !NET461 && !NETSTANDARD2_0
             await CloseAsync();
+#else
+            await CloseAsync();
+#endif
             _disposed = true;
         }
 

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
@@ -123,38 +124,38 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        async ValueTask<T> ReadInto<T>(T dictionary, int numElements, NpgsqlReadBuffer buf, bool async)
+        async ValueTask<T> ReadInto<T>(T dictionary, int numElements, NpgsqlReadBuffer buf, bool async, CancellationToken cancellationToken)
             where T : IDictionary<string, string?>
         {
             for (var i = 0; i < numElements; i++)
             {
-                await buf.Ensure(4, async);
+                await buf.Ensure(4, async, cancellationToken);
                 var keyLen = buf.ReadInt32();
                 Debug.Assert(keyLen != -1);
-                var key = await _textHandler.Read(buf, keyLen, async);
+                var key = await _textHandler.Read(buf, keyLen, async, cancellationToken);
 
-                await buf.Ensure(4, async);
+                await buf.Ensure(4, async, cancellationToken);
                 var valueLen = buf.ReadInt32();
 
                 dictionary[key] = valueLen == -1
                     ? null
-                    : await _textHandler.Read(buf, valueLen, async);
+                    : await _textHandler.Read(buf, valueLen, async, cancellationToken);
             }
             return dictionary;
         }
 
         /// <inheritdoc />
-        public override async ValueTask<Dictionary<string, string?>> Read(NpgsqlReadBuffer buf, int len, bool async,
+        public override async ValueTask<Dictionary<string, string?>> Read(NpgsqlReadBuffer buf, int len, bool async, CancellationToken cancellationToken,
             FieldDescription? fieldDescription = null)
         {
-            await buf.Ensure(4, async);
+            await buf.Ensure(4, async, cancellationToken);
             var numElements = buf.ReadInt32();
-            return await ReadInto(new Dictionary<string, string?>(numElements), numElements, buf, async);
+            return await ReadInto(new Dictionary<string, string?>(numElements), numElements, buf, async, cancellationToken);
         }
 
         ValueTask<IDictionary<string, string?>> INpgsqlTypeHandler<IDictionary<string, string?>>.Read(
-            NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
-            => new ValueTask<IDictionary<string, string?>>(Read(buf, len, async, fieldDescription).Result);
+            NpgsqlReadBuffer buf, int len, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription)
+            => new ValueTask<IDictionary<string, string?>>(Read(buf, len, async, cancellationToken, fieldDescription).Result);
 
         #endregion
 
@@ -172,11 +173,11 @@ namespace Npgsql.TypeHandlers
             => Write((IDictionary<string, string?>)value, buf, lengthCache, parameter, async);
 
         async ValueTask<ImmutableDictionary<string, string?>> INpgsqlTypeHandler<ImmutableDictionary<string, string?>>.Read(
-            NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
+            NpgsqlReadBuffer buf, int len, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription)
         {
-            await buf.Ensure(4, async);
+            await buf.Ensure(4, async, cancellationToken);
             var numElements = buf.ReadInt32();
-            return (await ReadInto(ImmutableDictionary<string, string?>.Empty.ToBuilder(), numElements, buf, async))
+            return (await ReadInto(ImmutableDictionary<string, string?>.Empty.ToBuilder(), numElements, buf, async, cancellationToken))
                 .ToImmutable();
         }
 

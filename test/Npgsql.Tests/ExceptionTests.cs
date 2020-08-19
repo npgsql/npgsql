@@ -20,6 +20,7 @@ namespace Npgsql.Tests
                 // Make sure messages are in English
                 Options = "lc_messages=en_US.UTF-8"
             });
+
             conn.ExecuteNonQuery(@"
                      CREATE OR REPLACE FUNCTION pg_temp.emit_exception() RETURNS VOID AS
                         'BEGIN RAISE EXCEPTION ''testexception'' USING ERRCODE = ''12345'', DETAIL = ''testdetail''; END;'

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
@@ -38,20 +39,20 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        public override async ValueTask<object[]> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
+        public override async ValueTask<object[]> Read(NpgsqlReadBuffer buf, int len, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription = null)
         {
-            await buf.Ensure(4, async);
+            await buf.Ensure(4, async, cancellationToken);
             var fieldCount = buf.ReadInt32();
             var result = new object[fieldCount];
 
             for (var i = 0; i < fieldCount; i++)
             {
-                await buf.Ensure(8, async);
+                await buf.Ensure(8, async, cancellationToken);
                 var typeOID = buf.ReadUInt32();
                 var fieldLen = buf.ReadInt32();
                 if (fieldLen == -1)  // Null field, simply skip it and leave at default
                     continue;
-                result[i] = await _typeMapper.GetByOID(typeOID).ReadAsObject(buf, fieldLen, async);
+                result[i] = await _typeMapper.GetByOID(typeOID).ReadAsObject(buf, fieldLen, async, cancellationToken);
             }
 
             return result;

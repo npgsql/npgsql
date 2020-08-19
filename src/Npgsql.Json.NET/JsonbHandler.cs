@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Npgsql.BackendMessages;
@@ -27,7 +28,7 @@ namespace Npgsql.Json.NET
         public JsonbHandler(PostgresType postgresType, NpgsqlConnection connection, JsonSerializerSettings settings)
             : base(postgresType, connection, isJsonb: true) => _settings = settings;
 
-        protected override async ValueTask<T> Read<T>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
+        protected override async ValueTask<T> Read<T>(NpgsqlReadBuffer buf, int len, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription = null)
         {
             if (typeof(T) == typeof(string)             ||
                 typeof(T) == typeof(char[])             ||
@@ -35,10 +36,10 @@ namespace Npgsql.Json.NET
                 typeof(T) == typeof(char)               ||
                 typeof(T) == typeof(byte[]))
             {
-                return await base.Read<T>(buf, len, async, fieldDescription);
+                return await base.Read<T>(buf, len, async, cancellationToken, fieldDescription);
             }
 
-            return JsonConvert.DeserializeObject<T>(await base.Read<string>(buf, len, async, fieldDescription), _settings);
+            return JsonConvert.DeserializeObject<T>(await base.Read<string>(buf, len, async, cancellationToken, fieldDescription), _settings);
         }
 
         protected override int ValidateAndGetLength<T2>(T2 value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)

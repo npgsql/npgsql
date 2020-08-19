@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
@@ -49,12 +50,12 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
             _handler = handler;
         }
 
-        public override async ValueTask Read(TComposite composite, NpgsqlReadBuffer buffer, bool async)
+        public override async ValueTask Read(TComposite composite, NpgsqlReadBuffer buffer, bool async, CancellationToken cancellationToken)
         {
             if (_set == null)
                 ThrowHelper.ThrowInvalidOperationException_NoPropertySetter(typeof(TComposite), MemberInfo);
 
-            await buffer.Ensure(sizeof(uint) + sizeof(int), async);
+            await buffer.Ensure(sizeof(uint) + sizeof(int), async, cancellationToken);
 
             var oid = buffer.ReadUInt32();
             Debug.Assert(oid == PostgresType.OID);
@@ -64,13 +65,13 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
                 return;
 
             var value = NullableHandler<TMember>.Exists
-                ? await NullableHandler<TMember>.ReadAsync(_handler, buffer, length, async)
-                : await _handler.Read<TMember>(buffer, length, async);
+                ? await NullableHandler<TMember>.ReadAsync(_handler, buffer, length, async, cancellationToken)
+                : await _handler.Read<TMember>(buffer, length, async, cancellationToken);
 
             _set(composite, value);
         }
 
-        public override ValueTask Read(ByReference<TComposite> composite, NpgsqlReadBuffer buffer, bool async)
+        public override ValueTask Read(ByReference<TComposite> composite, NpgsqlReadBuffer buffer, bool async, CancellationToken cancellationToken)
             => throw new NotSupportedException();
 
         public override async Task Write(TComposite composite, NpgsqlWriteBuffer buffer, NpgsqlLengthCache? lengthCache, bool async)

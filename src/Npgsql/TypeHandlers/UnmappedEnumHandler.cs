@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
@@ -28,9 +29,9 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        protected internal override async ValueTask<TAny> Read<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
+        protected internal override async ValueTask<TAny> Read<TAny>(NpgsqlReadBuffer buf, int len, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription = null)
         {
-            var s = await base.Read(buf, len, async, fieldDescription);
+            var s = await base.Read(buf, len, async, cancellationToken, fieldDescription);
             if (typeof(TAny) == typeof(string))
                 return (TAny)(object)s;
 
@@ -44,8 +45,8 @@ namespace Npgsql.TypeHandlers
             return (TAny)(object)value;
         }
 
-        public override ValueTask<string> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
-            => base.Read(buf, len, async, fieldDescription);
+        public override ValueTask<string> Read(NpgsqlReadBuffer buf, int len, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription = null)
+            => base.Read(buf, len, async, cancellationToken, fieldDescription);
 
         #endregion
 

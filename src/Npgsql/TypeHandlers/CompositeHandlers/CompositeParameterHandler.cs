@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.TypeHandling;
 
@@ -17,9 +18,9 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
             Position = parameterInfo.Position;
         }
 
-        public async ValueTask<T> Read<T>(NpgsqlReadBuffer buffer, bool async)
+        public async ValueTask<T> Read<T>(NpgsqlReadBuffer buffer, bool async, CancellationToken cancellationToken)
         {
-            await buffer.Ensure(sizeof(uint) + sizeof(int), async);
+            await buffer.Ensure(sizeof(uint) + sizeof(int), async, cancellationToken);
 
             var oid = buffer.ReadUInt32();
             var length = buffer.ReadInt32();
@@ -27,10 +28,10 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
                 return default!;
 
             return NullableHandler<T>.Exists
-                ? await NullableHandler<T>.ReadAsync(Handler, buffer, length, async)
-                : await Handler.Read<T>(buffer, length, async);
+                ? await NullableHandler<T>.ReadAsync(Handler, buffer, length, async, cancellationToken)
+                : await Handler.Read<T>(buffer, length, async, cancellationToken);
         }
 
-        public abstract ValueTask<object?> Read(NpgsqlReadBuffer buffer, bool async);
+        public abstract ValueTask<object?> Read(NpgsqlReadBuffer buffer, bool async, CancellationToken cancellationToken);
     }
 }
