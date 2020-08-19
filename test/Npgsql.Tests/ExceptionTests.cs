@@ -15,44 +15,44 @@ namespace Npgsql.Tests
         [Test, Description("Generates a basic server-side exception, checks that it's properly raised and populated")]
         public void Basic()
         {
-            using (var conn = OpenConnection())
+            using var conn = OpenConnection(new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 // Make sure messages are in English
-                conn.ExecuteNonQuery(@"SET lc_messages='en_US.UTF-8'");
-                conn.ExecuteNonQuery(@"
+                Options = "lc_messages='en_US.UTF-8'"
+            });
+            conn.ExecuteNonQuery(@"
                      CREATE OR REPLACE FUNCTION pg_temp.emit_exception() RETURNS VOID AS
                         'BEGIN RAISE EXCEPTION ''testexception'' USING ERRCODE = ''12345'', DETAIL = ''testdetail''; END;'
                      LANGUAGE 'plpgsql';
                 ");
 
-                PostgresException ex = null!;
-                try
-                {
-                    conn.ExecuteNonQuery("SELECT pg_temp.emit_exception()");
-                    Assert.Fail("No exception was thrown");
-                }
-                catch (PostgresException e)
-                {
-                    ex = e;
-                }
-
-                Assert.That(ex.MessageText, Is.EqualTo("testexception"));
-                Assert.That(ex.Severity, Is.EqualTo("ERROR"));
-                Assert.That(ex.InvariantSeverity, Is.EqualTo("ERROR"));
-                Assert.That(ex.SqlState, Is.EqualTo("12345"));
-                Assert.That(ex.Position, Is.EqualTo(0));
-
-                var data = ex.Data;
-                Assert.That(data[nameof(PostgresException.Severity)], Is.EqualTo("ERROR"));
-                Assert.That(data[nameof(PostgresException.SqlState)], Is.EqualTo("12345"));
-                Assert.That(data.Contains(nameof(PostgresException.Position)), Is.False);
-
-                var exString = ex.ToString();
-                Assert.That(exString, Contains.Substring(nameof(PostgresException.Severity) + ": ERROR"));
-                Assert.That(exString, Contains.Substring(nameof(PostgresException.SqlState) + ": 12345"));
-
-                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1), "Connection in bad state after an exception");
+            PostgresException ex = null!;
+            try
+            {
+                conn.ExecuteNonQuery("SELECT pg_temp.emit_exception()");
+                Assert.Fail("No exception was thrown");
             }
+            catch (PostgresException e)
+            {
+                ex = e;
+            }
+
+            Assert.That(ex.MessageText, Is.EqualTo("testexception"));
+            Assert.That(ex.Severity, Is.EqualTo("ERROR"));
+            Assert.That(ex.InvariantSeverity, Is.EqualTo("ERROR"));
+            Assert.That(ex.SqlState, Is.EqualTo("12345"));
+            Assert.That(ex.Position, Is.EqualTo(0));
+
+            var data = ex.Data;
+            Assert.That(data[nameof(PostgresException.Severity)], Is.EqualTo("ERROR"));
+            Assert.That(data[nameof(PostgresException.SqlState)], Is.EqualTo("12345"));
+            Assert.That(data.Contains(nameof(PostgresException.Position)), Is.False);
+
+            var exString = ex.ToString();
+            Assert.That(exString, Contains.Substring(nameof(PostgresException.Severity) + ": ERROR"));
+            Assert.That(exString, Contains.Substring(nameof(PostgresException.SqlState) + ": 12345"));
+
+            Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1), "Connection in bad state after an exception");
         }
 
         [Test, Description("Ensures Detail is redacted by default in PostgresException and PostgresNotice")]

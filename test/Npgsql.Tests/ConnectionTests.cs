@@ -861,13 +861,14 @@ namespace Npgsql.Tests
         [Test, Description("Makes sure notices are probably received and emitted as events")]
         public async Task Notice()
         {
-            using (var conn = await OpenConnectionAsync())
-            await using (GetTempFunctionName(conn, out var function))
+            await using (var conn = await OpenConnectionAsync(new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 // Make sure messages are in English
+                Options = "lc_messages='en_US.UTF-8'"
+            }))
+            await using (GetTempFunctionName(conn, out var function))
+            {
                 await conn.ExecuteNonQueryAsync($@"
-SET lc_messages='en_US.UTF-8';
-
 CREATE OR REPLACE FUNCTION {function}() RETURNS VOID AS
 'BEGIN RAISE NOTICE ''testnotice''; END;'
 LANGUAGE 'plpgsql'");
