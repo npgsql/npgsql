@@ -112,7 +112,8 @@ namespace Npgsql
         internal void CompleteUnprepare()
         {
             _manager.BySql.Remove(Sql);
-            _manager.NumPrepared--;
+            if (IsPrepared || State == PreparedState.BeingUnprepared)
+                _manager.NumPrepared--;
             State = PreparedState.Unprepared;
         }
 
