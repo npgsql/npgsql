@@ -1278,5 +1278,38 @@ $$;");
             using var cmd = new NpgsqlCommand("SELECT pg_temp.func(0)", conn);
             Assert.That(() => cmd.ExecuteScalar(), Throws.TypeOf<InvalidCastException>());
         }
+
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/3117")]
+        public void Bug3117()
+        {
+            const string OkCommand = "SELECT 1";
+            const string ErrorCommand = "SELECT * FROM public.imnotexist";
+            using (var conn = new NpgsqlConnection(ConnectionString))
+            {
+                conn.Open();
+                var okCommand = new NpgsqlCommand(OkCommand, conn);
+                okCommand.Prepare();
+                using (okCommand.ExecuteReader()) { }
+
+                var errorCommand = new NpgsqlCommand(ErrorCommand, conn);
+                try
+                {
+                    errorCommand.Prepare();
+                }
+                catch
+                {
+                }
+            }
+
+            using (var conn = new NpgsqlConnection(ConnectionString))
+            {
+                conn.Open();
+                var okCommand = new NpgsqlCommand(OkCommand, conn);
+                okCommand.Prepare();
+                using (okCommand.ExecuteReader()) { }
+                conn.UnprepareAll();
+            }
+        }
     }
 }
