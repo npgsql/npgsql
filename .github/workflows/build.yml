@@ -14,10 +14,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-18.04, windows-2019 ]
+        os: [ ubuntu-20.04, windows-2019 ]
         pg_major: [ 12, 11, 10 ]
         include:
-          - os: ubuntu-18.04
+          - os: ubuntu-20.04
             pg_major: 13
             pg_prerelease: prerelease
 
@@ -40,7 +40,7 @@ jobs:
           dpkg-query -W --showformat='${Package}\n' 'postgresql-*' | xargs sudo dpkg -P postgresql
 
           wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
-          sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ bionic-pgdg main 13" >> /etc/apt/sources.list.d/pgdg.list'
+          sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ focal-pgdg main 13" >> /etc/apt/sources.list.d/pgdg.list'
           sudo apt-get update -qq
           sudo apt-get install -qq postgresql-${{ matrix.pg_major }}
           sudo -u postgres psql -c "CREATE USER npgsql_tests SUPERUSER PASSWORD 'npgsql_tests'"
