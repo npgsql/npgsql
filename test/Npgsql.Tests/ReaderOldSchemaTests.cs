@@ -161,8 +161,7 @@ CREATE OR REPLACE VIEW {view} (id, int2) AS SELECT id, int2 + int2 AS int2 FROM 
             {
                 reader.NextResult();
                 // We're no longer on a result
-                var table = reader.GetSchemaTable();
-                Assert.That(table.Rows, Is.Empty);
+                Assert.That(reader.GetSchemaTable(), Is.Null);
             }
         }
 
