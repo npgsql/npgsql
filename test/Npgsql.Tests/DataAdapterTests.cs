@@ -100,7 +100,7 @@ namespace Npgsql.Tests
                 dr["field_numeric"] = 7.3M;
                 dt.Rows.Add(dr);
 
-                var ds2 = ds.GetChanges();
+                var ds2 = ds.GetChanges()!;
                 da.Update(ds2);
 
                 ds.Merge(ds2);
@@ -153,7 +153,7 @@ namespace Npgsql.Tests
                 dr["field_numeric"] = 7.3M;
                 dt.Rows.Add(dr);
 
-                var ds2 = ds.GetChanges();
+                var ds2 = ds.GetChanges()!;
                 var daupdate = da.Update(ds2);
 
                 Assert.AreEqual(2, daupdate);
@@ -337,7 +337,7 @@ namespace Npgsql.Tests
                 var dr = ds.Tables[0].Rows[ds.Tables[0].Rows.Count - 1];
                 dr["field_int2"] = 4;
 
-                var ds2 = ds.GetChanges();
+                var ds2 = ds.GetChanges()!;
                 da.Update(ds2);
                 ds.Merge(ds2);
                 ds.AcceptChanges();
@@ -390,7 +390,7 @@ namespace Npgsql.Tests
 
                 dr["field_int2"] = 4;
 
-                var ds2 = ds.GetChanges();
+                var ds2 = ds.GetChanges()!;
                 da.Update(ds2);
                 ds.Merge(ds2);
                 ds.AcceptChanges();
@@ -426,7 +426,7 @@ namespace Npgsql.Tests
                 dr["Field_Case_Sensitive"] = 4;
                 dt.Rows.Add(dr);
 
-                var ds2 = ds.GetChanges();
+                var ds2 = ds.GetChanges()!;
                 da.Update(ds2);
                 ds.Merge(ds2);
                 ds.AcceptChanges();

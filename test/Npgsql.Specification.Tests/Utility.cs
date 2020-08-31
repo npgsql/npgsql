@@ -7,7 +7,7 @@ namespace Npgsql.Specification.Tests
     {
         public static void ExecuteNonQuery(IDbFactoryFixture factoryFixture, string sql)
         {
-            using (var connection = factoryFixture.Factory.CreateConnection())
+            using (var connection = factoryFixture.Factory.CreateConnection()!)
             {
                 connection.ConnectionString = factoryFixture.ConnectionString;
                 connection.Open();
