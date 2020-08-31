@@ -35,9 +35,9 @@ namespace Npgsql.Benchmarks
         }
 
         [Benchmark(Baseline = true)]
-        public string Tcpip() => (string)_tcpipCmd.ExecuteScalar();
+        public string Tcpip() => (string)_tcpipCmd.ExecuteScalar()!;
 
         [Benchmark]
-        public string UnixDomain() => (string)_unixCmd.ExecuteScalar();
+        public string UnixDomain() => (string)_unixCmd.ExecuteScalar()!;
     }
 }

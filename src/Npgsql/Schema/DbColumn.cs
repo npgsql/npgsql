@@ -3,7 +3,6 @@
 using System;
 
 #pragma warning disable 1591
-#nullable disable
 
 namespace Npgsql.Schema
 {
@@ -17,11 +16,11 @@ namespace Npgsql.Schema
     {
         // ReSharper disable once InconsistentNaming
         public bool? AllowDBNull { get; protected set; }
-        public string BaseCatalogName { get; protected set; }
-        public string BaseColumnName { get; protected set; }
-        public string BaseSchemaName { get; protected set; }
-        public string BaseServerName { get; protected set; }
-        public string BaseTableName { get; protected set; }
+        public string? BaseCatalogName { get; protected set; }
+        public string? BaseColumnName { get; protected set; }
+        public string? BaseSchemaName { get; protected set; }
+        public string? BaseServerName { get; protected set; }
+        public string? BaseTableName { get; protected set; }
         public string ColumnName { get; protected set; }
         public int? ColumnOrdinal { get; protected set; }
         public int? ColumnSize { get; protected set; }
@@ -36,9 +35,9 @@ namespace Npgsql.Schema
         public bool? IsUnique { get; protected set; }
         public int? NumericPrecision { get; protected set; }
         public int? NumericScale { get; protected set; }
-        public string UdtAssemblyQualifiedName { get; protected set; }
-        public Type DataType { get; protected set; }
-        public string DataTypeName { get; protected set; }
+        public string? UdtAssemblyQualifiedName { get; protected set; }
+        public Type? DataType { get; protected set; }
+        public string? DataTypeName { get; protected set; }
 
         public virtual object this[string propertyName]
             => propertyName switch

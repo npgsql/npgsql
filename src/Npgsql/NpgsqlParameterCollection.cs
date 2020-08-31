@@ -130,13 +130,12 @@ namespace Npgsql
         void ICollection<NpgsqlParameter>.Add(NpgsqlParameter item)
             => Add(item);
 
-#nullable disable
         /// <summary>
         /// Adds a <see cref="NpgsqlParameter">NpgsqlParameter</see> to the <see cref="NpgsqlParameterCollection">NpgsqlParameterCollection</see> given the specified parameter name and value.
         /// </summary>
         /// <param name="parameterName">The name of the <see cref="NpgsqlParameter">NpgsqlParameter</see>.</param>
         /// <param name="value">The Value of the <see cref="NpgsqlParameter">NpgsqlParameter</see> to add to the collection.</param>
-        /// <returns>The paramater that was added.</returns>
+        /// <returns>The parameter that was added.</returns>
         [PublicAPI]
         public NpgsqlParameter AddWithValue(string parameterName, object value)
             => Add(new NpgsqlParameter(parameterName, value));
@@ -147,7 +146,7 @@ namespace Npgsql
         /// <param name="parameterName">The name of the <see cref="NpgsqlParameter">NpgsqlParameter</see>.</param>
         /// <param name="parameterType">One of the NpgsqlDbType values.</param>
         /// <param name="value">The Value of the <see cref="NpgsqlParameter">NpgsqlParameter</see> to add to the collection.</param>
-        /// <returns>The paramater that was added.</returns>
+        /// <returns>The parameter that was added.</returns>
         [PublicAPI]
         public NpgsqlParameter AddWithValue(string parameterName, NpgsqlDbType parameterType, object value)
             => Add(new NpgsqlParameter(parameterName, parameterType) { Value = value });
@@ -159,7 +158,7 @@ namespace Npgsql
         /// <param name="value">The Value of the <see cref="NpgsqlParameter">NpgsqlParameter</see> to add to the collection.</param>
         /// <param name="parameterType">One of the NpgsqlDbType values.</param>
         /// <param name="size">The length of the column.</param>
-        /// <returns>The paramater that was added.</returns>
+        /// <returns>The parameter that was added.</returns>
         [PublicAPI]
         public NpgsqlParameter AddWithValue(string parameterName, NpgsqlDbType parameterType, int size, object value)
             => Add(new NpgsqlParameter(parameterName, parameterType, size) { Value = value });
@@ -172,30 +171,29 @@ namespace Npgsql
         /// <param name="parameterType">One of the NpgsqlDbType values.</param>
         /// <param name="size">The length of the column.</param>
         /// <param name="sourceColumn">The name of the source column.</param>
-        /// <returns>The paramater that was added.</returns>
+        /// <returns>The parameter that was added.</returns>
         [PublicAPI]
-        public NpgsqlParameter AddWithValue(string parameterName, NpgsqlDbType parameterType, int size, string sourceColumn, object value)
+        public NpgsqlParameter AddWithValue(string parameterName, NpgsqlDbType parameterType, int size, string? sourceColumn, object value)
             => Add(new NpgsqlParameter(parameterName, parameterType, size, sourceColumn) { Value = value });
 
         /// <summary>
         /// Adds a <see cref="NpgsqlParameter">NpgsqlParameter</see> to the <see cref="NpgsqlParameterCollection">NpgsqlParameterCollection</see> given the specified value.
         /// </summary>
         /// <param name="value">The Value of the <see cref="NpgsqlParameter">NpgsqlParameter</see> to add to the collection.</param>
-        /// <returns>The paramater that was added.</returns>
+        /// <returns>The parameter that was added.</returns>
         [PublicAPI]
         public NpgsqlParameter AddWithValue(object value)
-            => Add(new NpgsqlParameter() { Value = value });
+            => Add(new NpgsqlParameter { Value = value });
 
         /// <summary>
         /// Adds a <see cref="NpgsqlParameter">NpgsqlParameter</see> to the <see cref="NpgsqlParameterCollection">NpgsqlParameterCollection</see> given the specified data type and value.
         /// </summary>
         /// <param name="parameterType">One of the NpgsqlDbType values.</param>
         /// <param name="value">The Value of the <see cref="NpgsqlParameter">NpgsqlParameter</see> to add to the collection.</param>
-        /// <returns>The paramater that was added.</returns>
+        /// <returns>The parameter that was added.</returns>
         [PublicAPI]
         public NpgsqlParameter AddWithValue(NpgsqlDbType parameterType, object value)
             => Add(new NpgsqlParameter { NpgsqlDbType = parameterType, Value = value });
-#nullable restore
 
         /// <summary>
         /// Adds a <see cref="NpgsqlParameter">NpgsqlParameter</see> to the <see cref="NpgsqlParameterCollection">NpgsqlParameterCollection</see> given the parameter name and the data type.

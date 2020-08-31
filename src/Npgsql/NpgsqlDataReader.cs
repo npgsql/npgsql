@@ -1759,9 +1759,7 @@ namespace Npgsql
         /// <summary>
         /// Returns a System.Data.DataTable that describes the column metadata of the DataReader.
         /// </summary>
-#nullable disable
-        public override DataTable GetSchemaTable()
-#nullable restore
+        public override DataTable? GetSchemaTable()
         {
             if (FieldCount == 0) // No resultset
                 return null;

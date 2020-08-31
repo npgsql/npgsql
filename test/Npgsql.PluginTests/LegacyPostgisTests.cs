@@ -99,7 +99,7 @@ namespace Npgsql.PluginTests
             {
                 var a = att;
                 cmd.CommandText = "Select " + a.SQL;
-                var p = cmd.ExecuteScalar();
+                var p = cmd.ExecuteScalar()!;
                 Assert.IsTrue(p.Equals(a.Geom));
             }
         }
@@ -115,7 +115,7 @@ namespace Npgsql.PluginTests
                 cmd.CommandText = "Select st_asewkb(:p1) = st_asewkb(" + a.SQL + ")";
                 bool areEqual;
                 try {
-                    areEqual = (bool)cmd.ExecuteScalar();
+                    areEqual = (bool)cmd.ExecuteScalar()!;
                 }
                 catch (Exception e)
                 {
@@ -134,7 +134,7 @@ namespace Npgsql.PluginTests
                 cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Geometry, a.Geom);
                 a.Geom.SRID = 3942;
                 cmd.CommandText = "Select st_asewkb(:p1) = st_asewkb(st_setsrid("+ a.SQL + ",3942))";
-                var p = (bool)cmd.ExecuteScalar();
+                var p = (bool)cmd.ExecuteScalar()!;
                 Assert.IsTrue(p);
             }
         }
@@ -146,7 +146,7 @@ namespace Npgsql.PluginTests
             using (var cmd = conn.CreateCommand())
             {
                 cmd.CommandText = "Select st_setsrid(" + a.SQL + ",3942)";
-                var p = cmd.ExecuteScalar();
+                var p = cmd.ExecuteScalar()!;
                 Assert.IsTrue(p.Equals(a.Geom));
                 Assert.IsTrue(((PostgisGeometry)p).SRID == 3942);
             }
@@ -174,7 +174,7 @@ namespace Npgsql.PluginTests
                 var p = new PostgisPoint[1] { new PostgisPoint(1d, 1d) };
                 cmd.Parameters.AddWithValue(":p1", NpgsqlDbType.Array | NpgsqlDbType.Geometry, p);
                 cmd.CommandText = "SELECT :p1 = array(select st_makepoint(1,1))";
-                Assert.IsTrue((bool)cmd.ExecuteScalar());
+                Assert.IsTrue((bool)cmd.ExecuteScalar()!);
             }
         }
 

@@ -81,18 +81,18 @@ INSERT INTO table{i} (id, data) VALUES (1, {i});
         public object Unprepared()
         {
             using (var cmd = new NpgsqlCommand(_query, _conn))
-                return cmd.ExecuteScalar();
+                return cmd.ExecuteScalar()!;
         }
 
         [Benchmark]
         public object AutoPrepared()
         {
             using (var cmd = new NpgsqlCommand(_query, _autoPreparingConn))
-                return cmd.ExecuteScalar();
+                return cmd.ExecuteScalar()!;
         }
 
         [Benchmark]
-        public object Prepared() => _preparedCmd.ExecuteScalar();
+        public object Prepared() => _preparedCmd.ExecuteScalar()!;
 
         static Prepare()
         {

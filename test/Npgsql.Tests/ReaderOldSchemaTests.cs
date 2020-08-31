@@ -33,7 +33,7 @@ CREATE TABLE {table} (
                 {
                     dr.Read();
                     var keyColumns =
-                        dr.GetSchemaTable().Rows.Cast<DataRow>().Where(r => (bool)r["IsKey"]).ToArray();
+                        dr.GetSchemaTable()!.Rows.Cast<DataRow>().Where(r => (bool)r["IsKey"]).ToArray();
                     Assert.That(keyColumns, Has.Length.EqualTo(2));
                     Assert.That(keyColumns.Count(c => (string)c["ColumnName"] == "field_pk1"), Is.EqualTo(1));
                     Assert.That(keyColumns.Count(c => (string)c["ColumnName"] == "field_pk2"), Is.EqualTo(1));
@@ -53,7 +53,7 @@ CREATE TABLE {table} (
                     using (var dr = command.ExecuteReader(CommandBehavior.KeyInfo))
                     {
                         dr.Read();
-                        var metadata = dr.GetSchemaTable();
+                        var metadata = dr.GetSchemaTable()!;
                         var key = metadata.Rows.Cast<DataRow>().Single(r => (bool)r["IsKey"]);
                         Assert.That(key["ColumnName"], Is.EqualTo("id"));
                     }
@@ -72,7 +72,7 @@ CREATE TABLE {table} (
 
                 using (var dr = command.ExecuteReader(CommandBehavior.KeyInfo))
                 {
-                    var metadata = dr.GetSchemaTable();
+                    var metadata = dr.GetSchemaTable()!;
                     Assert.That(metadata.Rows.Cast<DataRow>()
                         .Where(r => ((string)r["ColumnName"]).Contains("serial"))
                         .All(r => (bool)r["IsAutoIncrement"]));
@@ -96,7 +96,7 @@ CREATE OR REPLACE VIEW {view} (id, int2) AS SELECT id, int2 + int2 AS int2 FROM 
 
                 using (var dr = command.ExecuteReader())
                 {
-                    var metadata = dr.GetSchemaTable();
+                    var metadata = dr.GetSchemaTable()!;
 
                     foreach (var r in metadata.Rows.OfType<DataRow>())
                     {
@@ -133,7 +133,7 @@ CREATE OR REPLACE VIEW {view} (id, int2) AS SELECT id, int2 + int2 AS int2 FROM 
 
                 using (var cmd = new NpgsqlCommand($"SELECT * FROM {table}", conn))
                 using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo))
-                using (var metadata = reader.GetSchemaTable())
+                using (var metadata = reader.GetSchemaTable()!)
                 {
                     foreach (var row in metadata.Rows.OfType<DataRow>())
                     {
@@ -172,7 +172,7 @@ CREATE OR REPLACE VIEW {view} (id, int2) AS SELECT id, int2 + int2 AS int2 FROM 
             using (var cmd = new NpgsqlCommand("SELECT 1::NUMERIC AS result", conn))
             using (var reader = await cmd.ExecuteReaderAsync())
             {
-                var schemaTable = reader.GetSchemaTable();
+                var schemaTable = reader.GetSchemaTable()!;
                 foreach (var myField in schemaTable.Rows.OfType<DataRow>())
                 {
                     Assert.That(myField["NumericScale"], Is.EqualTo(0));
@@ -203,11 +203,11 @@ SELECT 1 AS some_other_column, 2";
                     using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly))
                     {
                         Assert.That(reader.Read(), Is.False);
-                        var t = reader.GetSchemaTable();
+                        var t = reader.GetSchemaTable()!;
                         Assert.That(t.Rows[0]["ColumnName"], Is.EqualTo("some_column"));
                         Assert.That(reader.NextResult(), Is.True);
                         Assert.That(reader.Read(), Is.False);
-                        t = reader.GetSchemaTable();
+                        t = reader.GetSchemaTable()!;
                         Assert.That(t.Rows[0]["ColumnName"], Is.EqualTo("some_other_column"));
                         Assert.That(t.Rows[1]["ColumnName"], Is.EqualTo("?column?"));
                         Assert.That(reader.NextResult(), Is.False);
@@ -237,7 +237,7 @@ SELECT 1 AS some_other_column, 2";
             var cmd = new NpgsqlCommand("SELECT Cod as CodAlias, Descr as DescrAlias, Date FROM data", conn);
 
             using var dr = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo);
-            var dt = dr.GetSchemaTable();
+            var dt = dr.GetSchemaTable()!;
 
             Assert.That(dt.Rows[0]["BaseColumnName"].ToString(), Is.EqualTo("cod"));
             Assert.That(dt.Rows[0]["ColumnName"].ToString(), Is.EqualTo("codalias"));

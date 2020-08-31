@@ -180,7 +180,7 @@ namespace Npgsql.Tests
 
         [Test]
         [Timeout(2000)]
-        public void ConnectToDatabaseUsingScramPlus() 
+        public void ConnectToDatabaseUsingScramPlus()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -213,7 +213,7 @@ namespace Npgsql.Tests
         {
             using (var conn = OpenConnection())
             {
-                var sslSupport = (string)conn.ExecuteScalar("SHOW ssl");
+                var sslSupport = (string)conn.ExecuteScalar("SHOW ssl")!;
                 if (sslSupport == "off")
                     TestUtil.IgnoreExceptOnBuildServer("SSL support isn't enabled at the backend");
             }

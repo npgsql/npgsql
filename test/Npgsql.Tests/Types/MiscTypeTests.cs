@@ -184,7 +184,7 @@ namespace Npgsql.Tests.Types
                 // Setting non-generic NpgsqlParameter.Value is not allowed, only DBNull.Value
                 using (var cmd = new NpgsqlCommand("SELECT @p::TEXT", conn))
                 {
-                    cmd.Parameters.AddWithValue("p4", NpgsqlDbType.Text, null);
+                    cmd.Parameters.AddWithValue("p4", NpgsqlDbType.Text, null!);
                     Assert.That(async () => await cmd.ExecuteReaderAsync(), Throws.Exception.TypeOf<InvalidCastException>());
                 }
             }

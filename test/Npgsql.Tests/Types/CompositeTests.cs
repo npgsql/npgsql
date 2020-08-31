@@ -404,7 +404,7 @@ namespace Npgsql.Tests.Types
                 using (var cmd = new NpgsqlCommand("SELECT @p", conn))
                 {
                     cmd.Parameters.AddWithValue("p", expected);
-                    var actual = (NameTranslationComposite)cmd.ExecuteScalar();
+                    var actual = (NameTranslationComposite)cmd.ExecuteScalar()!;
                     Assert.That(actual.Simple, Is.EqualTo(expected.Simple));
                     Assert.That(actual.TwoWords, Is.EqualTo(expected.TwoWords));
                     Assert.That(actual.SomeClrName, Is.EqualTo(expected.SomeClrName));
@@ -503,7 +503,7 @@ CREATE TYPE address AS
                     "INSERT INTO table_as_composite (foo) VALUES (8)");
                 conn.ReloadTypes();
                 conn.TypeMapper.MapComposite<TableAsCompositeType>("table_as_composite");
-                var value = (TableAsCompositeType)conn.ExecuteScalar(@"SELECT t.*::table_as_composite FROM table_as_composite AS t");
+                var value = (TableAsCompositeType)conn.ExecuteScalar(@"SELECT t.*::table_as_composite FROM table_as_composite AS t")!;
                 Assert.That(value.Foo, Is.EqualTo(8));
             }
         }
@@ -526,7 +526,7 @@ CREATE TYPE address AS
                     INSERT INTO table_as_composite2 (foo) VALUES (8)");
                 conn.ReloadTypes();
                 conn.TypeMapper.MapComposite<TableAsCompositeType>("table_as_composite2");
-                var value = (TableAsCompositeType)conn.ExecuteScalar(@"SELECT t.*::table_as_composite2 FROM table_as_composite2 AS t");
+                var value = (TableAsCompositeType)conn.ExecuteScalar(@"SELECT t.*::table_as_composite2 FROM table_as_composite2 AS t")!;
                 Assert.That(value.Foo, Is.EqualTo(8));
             }
         }

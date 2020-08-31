@@ -194,7 +194,7 @@ namespace Npgsql.PluginTests
             using (var conn = OpenConnection(option: GeoJSONOptions.ShortCRS))
             using (var cmd = new NpgsqlCommand("SELECT st_setsrid(st_makepoint(0,0), 4326)", conn))
             {
-                var point = (Point)cmd.ExecuteScalar();
+                var point = (Point)cmd.ExecuteScalar()!;
                 var crs = point.CRS as NamedCRS;
 
                 Assert.That(crs, Is.Not.Null);
@@ -208,7 +208,7 @@ namespace Npgsql.PluginTests
             using (var conn = OpenConnection(option: GeoJSONOptions.LongCRS))
             using (var cmd = new NpgsqlCommand("SELECT st_setsrid(st_makepoint(0,0), 4326)", conn))
             {
-                var point = (Point)cmd.ExecuteScalar();
+                var point = (Point)cmd.ExecuteScalar()!;
                 var crs = point.CRS as NamedCRS;
 
                 Assert.That(crs, Is.Not.Null);

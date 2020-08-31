@@ -60,7 +60,7 @@ namespace Npgsql.Tests
         static readonly Version MinCreateExtensionVersion = new Version(9, 1);
 
         public static bool IsPgPrerelease(NpgsqlConnection conn)
-            => ((string)conn.ExecuteScalar("SELECT version()")).Contains("beta");
+            => ((string)conn.ExecuteScalar("SELECT version()")!).Contains("beta");
 
         public static void EnsureExtension(NpgsqlConnection conn, string extension, string? minVersion = null)
             => EnsureExtension(conn, extension, minVersion, async: false).GetAwaiter().GetResult();
@@ -321,7 +321,7 @@ namespace Npgsql.Tests
                 return cmd.ExecuteNonQuery();
         }
 
-        public static object ExecuteScalar(this NpgsqlConnection conn, string sql, NpgsqlTransaction? tx = null)
+        public static object? ExecuteScalar(this NpgsqlConnection conn, string sql, NpgsqlTransaction? tx = null)
         {
             var cmd = tx == null ? new NpgsqlCommand(sql, conn) : new NpgsqlCommand(sql, conn, tx);
             using (cmd)
