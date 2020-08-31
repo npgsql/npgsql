@@ -17,6 +17,7 @@ using Npgsql.Util;
 using NpgsqlTypes;
 using static Npgsql.Util.Statics;
 using System.Collections;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Npgsql
 {
@@ -39,7 +40,7 @@ namespace Npgsql
         /// </summary>
         NpgsqlConnector? _connectorPreparedOn;
 
-        string? _commandText;
+        string _commandText;
         CommandBehavior _behavior;
         int? _timeout;
         readonly NpgsqlParameterCollection _parameters;
@@ -72,8 +73,6 @@ namespace Npgsql
 
         #region Constructors
 
-#nullable disable
-
         /// <summary>
         /// Initializes a new instance of the <see cref="NpgsqlCommand">NpgsqlCommand</see> class.
         /// </summary>
@@ -84,7 +83,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="cmdText">The text of the query.</param>
         // ReSharper disable once IntroduceOptionalParameters.Global
-        public NpgsqlCommand(string cmdText) : this(cmdText, null, null) {}
+        public NpgsqlCommand(string? cmdText) : this(cmdText, null, null) {}
 
         /// <summary>
         /// Initializes a new instance of the <see cref="NpgsqlCommand">NpgsqlCommand</see> class with the text of the query and a <see cref="NpgsqlConnection">NpgsqlConnection</see>.
@@ -92,7 +91,7 @@ namespace Npgsql
         /// <param name="cmdText">The text of the query.</param>
         /// <param name="connection">A <see cref="NpgsqlConnection">NpgsqlConnection</see> that represents the connection to a PostgreSQL server.</param>
         // ReSharper disable once IntroduceOptionalParameters.Global
-        public NpgsqlCommand(string cmdText, NpgsqlConnection connection) : this(cmdText, connection, null) {}
+        public NpgsqlCommand(string? cmdText, NpgsqlConnection? connection) : this(cmdText, connection, null) {}
 
         /// <summary>
         /// Initializes a new instance of the <see cref="NpgsqlCommand">NpgsqlCommand</see> class with the text of the query, a <see cref="NpgsqlConnection">NpgsqlConnection</see>, and the <see cref="NpgsqlTransaction">NpgsqlTransaction</see>.
@@ -100,12 +99,12 @@ namespace Npgsql
         /// <param name="cmdText">The text of the query.</param>
         /// <param name="connection">A <see cref="NpgsqlConnection">NpgsqlConnection</see> that represents the connection to a PostgreSQL server.</param>
         /// <param name="transaction">The <see cref="NpgsqlTransaction">NpgsqlTransaction</see> in which the <see cref="NpgsqlCommand">NpgsqlCommand</see> executes.</param>
-        public NpgsqlCommand(string cmdText, NpgsqlConnection connection, NpgsqlTransaction transaction)
+        public NpgsqlCommand(string? cmdText, NpgsqlConnection? connection, NpgsqlTransaction? transaction)
         {
             GC.SuppressFinalize(this);
             _statements = new List<NpgsqlStatement>(1);
             _parameters = new NpgsqlParameterCollection();
-            _commandText = cmdText;
+            _commandText = cmdText ?? string.Empty;
             _connection = connection;
             Transaction = transaction;
             CommandType = CommandType.Text;
@@ -119,7 +118,7 @@ namespace Npgsql
         /// Gets or sets the SQL statement or function (stored procedure) to execute at the data source.
         /// </summary>
         /// <value>The Transact-SQL statement or stored procedure to execute. The default is an empty string.</value>
-        [DefaultValue("")]
+        [AllowNull, DefaultValue("")]
         [Category("Data")]
         public override string CommandText
         {
@@ -134,8 +133,6 @@ namespace Npgsql
                 // TODO: Technically should do this also if the parameter list (or type) changes
             }
         }
-
-#nullable restore
 
         /// <summary>
         /// Gets or sets the wait time (in seconds) before terminating the attempt  to execute a command and generating an error.
@@ -1047,15 +1044,13 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         #region Execute Scalar
 
-#nullable disable
-
         /// <summary>
         /// Executes the query, and returns the first column of the first row
         /// in the result set returned by the query. Extra columns or rows are ignored.
         /// </summary>
         /// <returns>The first column of the first row in the result set,
         /// or a null reference if the result set is empty.</returns>
-        public override object ExecuteScalar() => ExecuteScalar(false, CancellationToken.None).GetAwaiter().GetResult();
+        public override object? ExecuteScalar() => ExecuteScalar(false, CancellationToken.None).GetAwaiter().GetResult();
 
         /// <summary>
         /// Asynchronous version of <see cref="ExecuteScalar()"/>
@@ -1063,15 +1058,13 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
         /// <returns>A task representing the asynchronous operation, with the first column of the
         /// first row in the result set, or a null reference if the result set is empty.</returns>
-        public override Task<object> ExecuteScalarAsync(CancellationToken cancellationToken)
+        public override Task<object?> ExecuteScalarAsync(CancellationToken cancellationToken)
         {
             if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled<object>(cancellationToken);
+                return Task.FromCanceled<object?>(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
                 return ExecuteScalar(true, cancellationToken).AsTask();
         }
-
-#nullable restore
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         async ValueTask<object?> ExecuteScalar(bool async, CancellationToken cancellationToken)

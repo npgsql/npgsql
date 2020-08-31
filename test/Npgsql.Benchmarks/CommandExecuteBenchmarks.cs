@@ -40,7 +40,7 @@ namespace Npgsql.Benchmarks
         public int ExecuteNonQueryPrepared() => _executeNonQueryPreparedCmd.ExecuteNonQuery();
 
         [Benchmark]
-        public object ExecuteScalar() => _executeScalarCmd.ExecuteScalar();
+        public object ExecuteScalar() => _executeScalarCmd.ExecuteScalar()!;
 
         [Benchmark]
         public object ExecuteReader()

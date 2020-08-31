@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
@@ -61,7 +62,6 @@ namespace Npgsql
             SourceVersion = DataRowVersion.Current;
         }
 
-#nullable disable
         /// <summary>
         /// Initializes a new instance of the <see cref="NpgsqlParameter">NpgsqlParameter</see>
         /// class with the parameter name and a value of the new <b>NpgsqlParameter</b>.
@@ -76,7 +76,7 @@ namespace Npgsql
         /// This happens when calling this constructor passing an int 0 and the compiler thinks you are passing a value of DbType.
         /// Use <code> Convert.ToInt32(value) </code> for example to have compiler calling the correct constructor.</p>
         /// </remarks>
-        public NpgsqlParameter(string parameterName, object value)
+        public NpgsqlParameter(string? parameterName, object? value)
             : this()
         {
             ParameterName = parameterName;
@@ -90,7 +90,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="parameterName">The name of the parameter to map.</param>
         /// <param name="parameterType">One of the <see cref="NpgsqlTypes.NpgsqlDbType">NpgsqlDbType</see> values.</param>
-        public NpgsqlParameter(string parameterName, NpgsqlDbType parameterType)
+        public NpgsqlParameter(string? parameterName, NpgsqlDbType parameterType)
             : this(parameterName, parameterType, 0, string.Empty)
         {
         }
@@ -100,7 +100,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="parameterName">The name of the parameter to map.</param>
         /// <param name="parameterType">One of the <see cref="System.Data.DbType">DbType</see> values.</param>
-        public NpgsqlParameter(string parameterName, DbType parameterType)
+        public NpgsqlParameter(string? parameterName, DbType parameterType)
             : this(parameterName, parameterType, 0, string.Empty)
         {
         }
@@ -111,7 +111,7 @@ namespace Npgsql
         /// <param name="parameterName">The name of the parameter to map.</param>
         /// <param name="parameterType">One of the <see cref="NpgsqlTypes.NpgsqlDbType">NpgsqlDbType</see> values.</param>
         /// <param name="size">The length of the parameter.</param>
-        public NpgsqlParameter(string parameterName, NpgsqlDbType parameterType, int size)
+        public NpgsqlParameter(string? parameterName, NpgsqlDbType parameterType, int size)
             : this(parameterName, parameterType, size, string.Empty)
         {
         }
@@ -122,7 +122,7 @@ namespace Npgsql
         /// <param name="parameterName">The name of the parameter to map.</param>
         /// <param name="parameterType">One of the <see cref="System.Data.DbType">DbType</see> values.</param>
         /// <param name="size">The length of the parameter.</param>
-        public NpgsqlParameter(string parameterName, DbType parameterType, int size)
+        public NpgsqlParameter(string? parameterName, DbType parameterType, int size)
             : this(parameterName, parameterType, size, string.Empty)
         {
         }
@@ -134,12 +134,12 @@ namespace Npgsql
         /// <param name="parameterType">One of the <see cref="NpgsqlTypes.NpgsqlDbType">NpgsqlDbType</see> values.</param>
         /// <param name="size">The length of the parameter.</param>
         /// <param name="sourceColumn">The name of the source column.</param>
-        public NpgsqlParameter(string parameterName, NpgsqlDbType parameterType, int size, string sourceColumn)
+        public NpgsqlParameter(string? parameterName, NpgsqlDbType parameterType, int size, string? sourceColumn)
         {
             ParameterName = parameterName;
             NpgsqlDbType = parameterType;
             _size = size;
-            SourceColumn = sourceColumn;
+            _sourceColumn = sourceColumn ?? string.Empty;
             Direction = ParameterDirection.Input;
             SourceVersion = DataRowVersion.Current;
         }
@@ -151,12 +151,12 @@ namespace Npgsql
         /// <param name="parameterType">One of the <see cref="System.Data.DbType">DbType</see> values.</param>
         /// <param name="size">The length of the parameter.</param>
         /// <param name="sourceColumn">The name of the source column.</param>
-        public NpgsqlParameter(string parameterName, DbType parameterType, int size, string sourceColumn)
+        public NpgsqlParameter(string? parameterName, DbType parameterType, int size, string? sourceColumn)
         {
             ParameterName = parameterName;
             DbType = parameterType;
             _size = size;
-            _sourceColumn = sourceColumn;
+            _sourceColumn = sourceColumn ?? string.Empty;
             Direction = ParameterDirection.Input;
             SourceVersion = DataRowVersion.Current;
         }
@@ -177,13 +177,13 @@ namespace Npgsql
         /// <param name="sourceVersion">One of the <see cref="System.Data.DataRowVersion">DataRowVersion</see> values.</param>
         /// <param name="value">An <see cref="System.Object">Object</see> that is the value
         /// of the <see cref="NpgsqlParameter">NpgsqlParameter</see>.</param>
-        public NpgsqlParameter(string parameterName, NpgsqlDbType parameterType, int size, string sourceColumn,
+        public NpgsqlParameter(string parameterName, NpgsqlDbType parameterType, int size, string? sourceColumn,
                                ParameterDirection direction, bool isNullable, byte precision, byte scale,
                                DataRowVersion sourceVersion, object value)
         {
             ParameterName = parameterName;
             Size = size;
-            _sourceColumn = sourceColumn;
+            _sourceColumn = sourceColumn ?? string.Empty;
             Direction = direction;
             IsNullable = isNullable;
             Precision = precision;
@@ -211,13 +211,13 @@ namespace Npgsql
         /// <param name="sourceVersion">One of the <see cref="System.Data.DataRowVersion">DataRowVersion</see> values.</param>
         /// <param name="value">An <see cref="System.Object">Object</see> that is the value
         /// of the <see cref="NpgsqlParameter">NpgsqlParameter</see>.</param>
-        public NpgsqlParameter(string parameterName, DbType parameterType, int size, string sourceColumn,
+        public NpgsqlParameter(string parameterName, DbType parameterType, int size, string? sourceColumn,
                                ParameterDirection direction, bool isNullable, byte precision, byte scale,
                                DataRowVersion sourceVersion, object value)
         {
             ParameterName = parameterName;
             Size = size;
-            _sourceColumn = sourceColumn;
+            _sourceColumn = sourceColumn ?? string.Empty;
             Direction = direction;
             IsNullable = isNullable;
             Precision = precision;
@@ -227,7 +227,6 @@ namespace Npgsql
             Value = value;
             DbType = parameterType;
         }
-#nullable restore
         #endregion
 
         #region Name
@@ -237,10 +236,8 @@ namespace Npgsql
         /// </summary>
         /// <value>The name of the <see cref="NpgsqlParameter">NpgsqlParameter</see>.
         /// The default is an empty string.</value>
-        [DefaultValue("")]
-#nullable disable
+        [AllowNull, DefaultValue("")]
         public sealed override string ParameterName
-#nullable restore
         {
             get => _name;
             set
@@ -263,9 +260,7 @@ namespace Npgsql
 
         /// <inheritdoc />
         [TypeConverter(typeof(StringConverter)), Category("Data")]
-#nullable disable
-        public override object Value
-#nullable restore
+        public override object? Value
         {
             get => _value;
             set
@@ -280,13 +275,13 @@ namespace Npgsql
         /// <summary>
         /// Gets or sets the value of the parameter.
         /// </summary>
-        /// <value>An <see cref="System.Object">Object</see> that is the value of the parameter.
-        /// The default value is null.</value>
+        /// <value>
+        /// An <see cref="System.Object" /> that is the value of the parameter.
+        /// The default value is <see langword="null" />.
+        /// </value>
         [Category("Data")]
         [TypeConverter(typeof(StringConverter))]
-#nullable disable
-        public object NpgsqlValue
-#nullable restore
+        public object? NpgsqlValue
         {
             get => Value;
             set => Value = value;
@@ -449,9 +444,9 @@ namespace Npgsql
         }
 
         /// <inheritdoc />
-        [DefaultValue("")]
+        [AllowNull, DefaultValue("")]
         [Category("Data")]
-        public sealed override string? SourceColumn
+        public sealed override string SourceColumn
         {
             get => _sourceColumn;
             set => _sourceColumn = value ?? string.Empty;

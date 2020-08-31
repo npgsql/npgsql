@@ -104,13 +104,13 @@ namespace Npgsql.Tests
                     command.Parameters.AddWithValue("hour", 2);
                     command.Parameters.AddWithValue("min", 3);
                     command.Parameters.AddWithValue("sec", 4);
-                    var dt = (DateTime) command.ExecuteScalar();
+                    var dt = (DateTime) command.ExecuteScalar()!;
 
                     Assert.AreEqual(new DateTime(2015, 8, 1, 2, 3, 4), dt);
 
                     command.Parameters[0].Value = 2014;
                     command.Parameters[0].ParameterName = ""; // 2014 will be sent as a positional parameter
-                    dt = (DateTime) command.ExecuteScalar();
+                    dt = (DateTime) command.ExecuteScalar()!;
                     Assert.AreEqual(new DateTime(2014, 8, 1, 2, 3, 4), dt);
                 }
             }

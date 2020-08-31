@@ -44,7 +44,7 @@ namespace Npgsql
             foreach (var argument in arguments)
                 command.Parameters.Add(new NpgsqlParameter { Value = argument });
 
-            return (T)(async ? await command.ExecuteScalarAsync() : command.ExecuteScalar());
+            return (T)(async ? await command.ExecuteScalarAsync() : command.ExecuteScalar())!;
         }
 
         /// <summary>

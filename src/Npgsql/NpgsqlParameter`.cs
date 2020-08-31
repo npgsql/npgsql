@@ -23,12 +23,10 @@ namespace Npgsql
         /// <summary>
         /// Gets or sets the value of the parameter. This delegates to <see cref="TypedValue"/>.
         /// </summary>
-#nullable disable
-        public override object Value
-#nullable restore
+        public override object? Value
         {
             get => TypedValue;
-            set => TypedValue = (T)value;
+            set => TypedValue = (T)value!;
         }
 
         #region Constructors

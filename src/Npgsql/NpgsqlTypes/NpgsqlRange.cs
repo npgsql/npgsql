@@ -435,6 +435,7 @@ namespace NpgsqlTypes
             return new NpgsqlRange<T>(lower, lowerInclusive, lowerInfinite, upper, upperInclusive, upperInfinite);
         }
 
+#nullable disable
         /// <summary>
         /// Represents a type converter for <see cref="NpgsqlRange{T}" />.
         /// </summary>
@@ -462,11 +463,10 @@ namespace NpgsqlTypes
 
             /// <inheritdoc />
             public override object ConvertTo(ITypeDescriptorContext context, CultureInfo culture, object value, Type destinationType)
-#nullable disable
                 => value.ToString();
-#nullable restore
         }
     }
+#nullable restore
 
     /// <summary>
     /// Represents characteristics of range type boundaries.

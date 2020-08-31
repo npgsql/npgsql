@@ -344,18 +344,15 @@ namespace Npgsql
         /// the database name, and other parameters needed to establish
         /// the initial connection. The default value is an empty string.
         /// </value>
-#nullable disable
+        [AllowNull]
         public override string ConnectionString
-#nullable restore
         {
             get => _userFacingConnectionString;
             set
             {
                 CheckClosed();
 
-                if (value == null)
-                    value = string.Empty;
-                _userFacingConnectionString = _connectionString = value;
+                _userFacingConnectionString = _connectionString = value ?? string.Empty;
                 GetPoolAndSettings();
             }
         }
@@ -629,9 +626,7 @@ namespace Npgsql
         /// <summary>
         /// Enlist transaction.
         /// </summary>
-#nullable disable
-        public override void EnlistTransaction(Transaction transaction)
-#nullable restore
+        public override void EnlistTransaction(Transaction? transaction)
         {
             if (Settings.Multiplexing)
                 throw new NotSupportedException("Ambient transactions aren't yet implemented for multiplexing");

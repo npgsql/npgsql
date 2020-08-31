@@ -27,9 +27,7 @@ namespace Npgsql
         /// Initializes a new instance of the <see cref="NpgsqlCommandBuilder"/> class.
         /// </summary>
         /// <param name="adapter">The adapter.</param>
-#nullable disable
-        public NpgsqlCommandBuilder(NpgsqlDataAdapter adapter)
-#nullable restore
+        public NpgsqlCommandBuilder(NpgsqlDataAdapter? adapter)
         {
             DataAdapter = adapter;
             QuotePrefix = "\"";

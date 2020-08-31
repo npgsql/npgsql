@@ -133,9 +133,8 @@ namespace Npgsql
         /// </summary>
         /// <param name="keyword">The key of the item to get or set.</param>
         /// <returns>The value associated with the specified key.</returns>
-#nullable disable
+        [AllowNull]
         public override object this[string keyword]
-#nullable restore
         {
             get
             {
@@ -145,7 +144,7 @@ namespace Npgsql
             }
             set
             {
-                if (value == null)
+                if (value is null)
                 {
                     Remove(keyword);
                     return;

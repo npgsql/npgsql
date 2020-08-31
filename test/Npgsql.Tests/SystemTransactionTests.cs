@@ -331,7 +331,7 @@ namespace Npgsql.Tests
             using (var cmd = new NpgsqlCommand("SELECT COUNT(*) FROM pg_prepared_xacts WHERE database = @database", conn))
             {
                 cmd.Parameters.Add(new NpgsqlParameter("database", conn.Database));
-                return (int)(long)cmd.ExecuteScalar();
+                return (int)(long)cmd.ExecuteScalar()!;
             }
         }
 
