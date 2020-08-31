@@ -76,10 +76,9 @@ namespace Npgsql.Json.NET
             return base.WriteWithLength(serialized, buf, lengthCache, parameter, async);
         }
 
-        protected override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+        protected override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
-            if (value is null ||
-                value is DBNull ||
+            if (value is DBNull ||
                 value is string ||
                 value is char[] ||
                 value is ArraySegment<char> ||
@@ -92,10 +91,9 @@ namespace Npgsql.Json.NET
             return ValidateAndGetLength(value, ref lengthCache, parameter);
         }
 
-        protected override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+        protected override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
-            if (value is null ||
-                value is DBNull ||
+            if (value is DBNull ||
                 value is string ||
                 value is char[] ||
                 value is ArraySegment<char> ||

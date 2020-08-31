@@ -253,6 +253,8 @@ $$ LANGUAGE 'plpgsql';");
             }
         }
 
+#pragma warning disable MSLIB0003
+#pragma warning disable 618
         [Test]
         public void Serialization()
         {
@@ -313,5 +315,7 @@ $$ LANGUAGE 'plpgsql';");
 
             return info;
         }
+#pragma warning restore 618
+#pragma warning restore MSLIB0003
     }
 }
