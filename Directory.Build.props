@@ -21,6 +21,7 @@
   <PropertyGroup>
     <LangVersion>8.0</LangVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>latest</AnalysisLevel>
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(TargetFramework)' != 'net461' And '$(TargetFramework)' != 'netstandard2.0' ">
