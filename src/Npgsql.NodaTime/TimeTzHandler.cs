@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Threading.Tasks;
 using NodaTime;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
+using BclDateTimeOffsetHandler = Npgsql.TypeHandlers.DateTimeHandlers.TimeTzHandler;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
@@ -17,9 +19,13 @@ namespace Npgsql.NodaTime
                 : throw new NotSupportedException($"The deprecated floating-point date/time format is not supported by {nameof(Npgsql)}.");
     }
 
-    class TimeTzHandler : NpgsqlSimpleTypeHandler<OffsetTime>
+    sealed class TimeTzHandler : NpgsqlSimpleTypeHandler<OffsetTime>
     {
-        public TimeTzHandler(PostgresType postgresType) : base(postgresType) {}
+        readonly BclDateTimeOffsetHandler _bclHandler;
+
+        internal TimeTzHandler(PostgresType postgresType) : base(postgresType) {
+            _bclHandler = new BclDateTimeOffsetHandler(postgresType);
+        }
 
         // Adjust from 1 microsecond to 100ns. Time zone (in seconds) is inverted.
         public override OffsetTime Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
@@ -34,5 +40,20 @@ namespace Npgsql.NodaTime
             buf.WriteInt64(value.TickOfDay / 10);
             buf.WriteInt32(-(int)(value.Offset.Ticks / NodaConstants.TicksPerSecond));
         }
+
+        protected internal override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+            => value is DateTimeOffset
+                ? _bclHandler.ValidateObjectAndGetLength(value, ref lengthCache, parameter)
+                : base.ValidateObjectAndGetLength(value, ref lengthCache, parameter);
+
+        protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+            => value is DateTimeOffset
+                ? _bclHandler.WriteObjectWithLength(value, buf, lengthCache, parameter, async)
+                : base.WriteObjectWithLength(value, buf, lengthCache, parameter, async);
+
+        internal override TAny Read<TAny>(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+            => typeof(TAny) == typeof(DateTimeOffset)
+                ? _bclHandler.Read<TAny>(buf, len, fieldDescription)
+                : base.Read<TAny>(buf, len, fieldDescription);
     }
 }

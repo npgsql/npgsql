@@ -1,9 +1,11 @@
 ﻿using System;
+using System.Threading.Tasks;
 using NodaTime;
 using NodaTime.TimeZones;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
+using BclDateTimeOffsetHandler = Npgsql.TypeHandlers.DateTimeHandlers.TimestampTzHandler;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
@@ -26,6 +28,7 @@ namespace Npgsql.NodaTime
                                INpgsqlSimpleTypeHandler<OffsetDateTime>
     {
         readonly IDateTimeZoneProvider _dateTimeZoneProvider;
+        readonly BclDateTimeOffsetHandler _bclHandler;
 
         /// <summary>
         /// Whether to convert positive and negative infinity values to Instant.{Max,Min}Value when
@@ -38,6 +41,7 @@ namespace Npgsql.NodaTime
         {
             _dateTimeZoneProvider = DateTimeZoneProviders.Tzdb;
             _convertInfinityDateTime = convertInfinityDateTime;
+            _bclHandler = new BclDateTimeOffsetHandler(postgresType, convertInfinityDateTime);
         }
 
         #region Read
@@ -117,5 +121,20 @@ namespace Npgsql.NodaTime
             => Write(value.ToInstant(), buf, parameter);
 
         #endregion Write
+
+        protected internal override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+            => value is DateTimeOffset
+                ? _bclHandler.ValidateObjectAndGetLength(value, ref lengthCache, parameter)
+                : base.ValidateObjectAndGetLength(value, ref lengthCache, parameter);
+
+        protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+            => value is DateTimeOffset
+                ? _bclHandler.WriteObjectWithLength(value, buf, lengthCache, parameter, async)
+                : base.WriteObjectWithLength(value, buf, lengthCache, parameter, async);
+
+        internal override TAny Read<TAny>(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+            => typeof(TAny) == typeof(DateTimeOffset)
+                ? _bclHandler.Read<TAny>(buf, len, fieldDescription)
+                : base.Read<TAny>(buf, len, fieldDescription);
     }
 }

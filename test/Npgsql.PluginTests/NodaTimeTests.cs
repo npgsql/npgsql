@@ -73,7 +73,7 @@ namespace Npgsql.PluginTests
                         Assert.That(reader.GetValue(i), Is.EqualTo(instant));
                         Assert.That(reader.GetFieldValue<LocalDateTime>(i), Is.EqualTo(localDateTime));
                         Assert.That(() => reader.GetFieldValue<ZonedDateTime>(i), Throws.TypeOf<InvalidCastException>());
-                        Assert.That(() => reader.GetDateTime(i), Throws.TypeOf<InvalidCastException>());
+                        Assert.That(() => reader.GetDateTime(i), Is.EqualTo(localDateTime.ToDateTimeUnspecified()));
                         Assert.That(() => reader.GetDate(i), Throws.TypeOf<InvalidCastException>());
                     }
                 }
@@ -115,6 +115,7 @@ namespace Npgsql.PluginTests
 
         #endregion Timestamp
 
+        
         #region Timestamp with time zone
 
         [Test]
@@ -176,7 +177,6 @@ namespace Npgsql.PluginTests
         }
 
         #endregion Timestamp with time zone
-
         #region Date
 
         [Test]
@@ -214,9 +214,8 @@ namespace Npgsql.PluginTests
                     Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(LocalDate)));
                     Assert.That(reader.GetFieldValue<LocalDate>(0), Is.EqualTo(localDate));
                     Assert.That(reader.GetValue(0), Is.EqualTo(localDate));
-                    Assert.That(() => reader.GetDateTime(0), Throws.TypeOf<InvalidCastException>());
-                    Assert.That(() => reader.GetDate(0), Throws.TypeOf<InvalidCastException>());
-
+                    Assert.That(() => reader.GetDateTime(0), Is.EqualTo(new DateTime(localDate.Year, localDate.Month, localDate.Day)));
+                    Assert.That(() => reader.GetDate(0), Is.EqualTo(new NpgsqlDate(localDate.Year, localDate.Month, localDate.Day)));
                     Assert.That(reader.GetFieldValue<LocalDate>(2), Is.EqualTo(new LocalDate(-5, 3, 3)));
                 }
             }
@@ -279,7 +278,7 @@ namespace Npgsql.PluginTests
                             Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(LocalTime)));
                             Assert.That(reader.GetFieldValue<LocalTime>(i), Is.EqualTo(expected));
                             Assert.That(reader.GetValue(i), Is.EqualTo(expected));
-                            Assert.That(() => reader.GetTimeSpan(i), Throws.TypeOf<InvalidCastException>());
+                            Assert.That(() => reader.GetTimeSpan(i), Is.EqualTo(new TimeSpan(0, 1, 2, 3, 4).Add(TimeSpan.FromTicks(50))));
                         }
                     }
                 }
@@ -345,7 +344,7 @@ namespace Npgsql.PluginTests
                         Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(Period)));
                         Assert.That(reader.GetFieldValue<Period>(i), Is.EqualTo(expected));
                         Assert.That(reader.GetValue(i), Is.EqualTo(expected));
-                        Assert.That(() => reader.GetTimeSpan(i), Throws.TypeOf<InvalidCastException>());
+                        Assert.That(() => reader.GetTimeSpan(i), Is.EqualTo(new TimeSpan(445, 5, 6, 7, 8).Add(TimeSpan.FromTicks(90))));
                     }
                 }
             }
@@ -364,5 +363,55 @@ namespace Npgsql.PluginTests
         }
 
         #endregion Support
+
+        [Test, Description("Makes sure noda time type handlers are forwarded to BCL type handlers.")]
+        public void BclTypeHandlerForwarding()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString);
+            using (var conn = OpenConnection(csb))
+            {
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (d1 date, d2 timestamp, d3 TIMESTAMPTZ, d4 time, d5 timetz, d6 interval)");
+                var dateTime = new DateTime(2020, 05, 08, 03, 04, 43, 20, DateTimeKind.Utc);
+                var dateTimeOffsetZero = new DateTimeOffset(2020, 05, 08, 03, 43, 20, TimeSpan.FromHours(0));
+                var dateTimeOffset = new DateTimeOffset(2020, 05, 08, 03, 43, 20, TimeSpan.FromHours(3));
+                var timeSpanTime = TimeSpan.FromHours(3);
+                var timeSpanInterval = TimeSpan.FromHours(4);
+
+                using (var cmd = new NpgsqlCommand("INSERT INTO data VALUES (@p1, @p2, @p3, @p4, @p5, @p6)", conn))
+                {
+                    cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Date, dateTime);
+                    cmd.Parameters.AddWithValue("p2", NpgsqlDbType.Timestamp, dateTime);
+                    cmd.Parameters.AddWithValue("p3", NpgsqlDbType.TimestampTz, dateTimeOffsetZero);
+                    cmd.Parameters.AddWithValue("p4", NpgsqlDbType.Time, timeSpanTime);
+                    cmd.Parameters.AddWithValue("p5", NpgsqlDbType.TimeTz, dateTimeOffset);
+                    cmd.Parameters.AddWithValue("p6", NpgsqlDbType.Interval, timeSpanInterval);
+                    cmd.ExecuteNonQuery();
+                }
+
+                using (var cmd = new NpgsqlCommand("SELECT d1::TEXT, d2::TEXT, d3::TEXT, d4::TEXT, d5::TEXT, d6::TEXT FROM data", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetValue(0), Is.EqualTo(dateTime.ToString("yyyy-MM-dd")));
+                    Assert.That(reader.GetValue(1), Is.EqualTo(dateTime.ToString("yyyy-MM-dd HH:mm:ss.FFFFFF")));
+                    Assert.That(reader.GetValue(2), Is.EqualTo(dateTimeOffsetZero.ToString("yyyy-MM-dd HH:mm:ss+00")));
+                    Assert.That(reader.GetValue(3), Is.EqualTo(timeSpanTime.ToString(null, CultureInfo.InvariantCulture)));
+                    Assert.That(reader.GetValue(4), Is.EqualTo(dateTimeOffset.ToString("HH:mm:sszz")));
+                    Assert.That(reader.GetValue(5), Is.EqualTo(timeSpanInterval.ToString(null, CultureInfo.InvariantCulture)));
+                }
+
+                using (var cmd = new NpgsqlCommand("SELECT * FROM data", conn))
+                using (var reader = cmd.ExecuteReader())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetFieldValue<DateTime>(0), Is.EqualTo(dateTime.Date));
+                    Assert.That(reader.GetFieldValue<DateTime>(1), Is.EqualTo(dateTime));
+                    Assert.That(reader.GetFieldValue<DateTimeOffset>(2), Is.EqualTo(dateTimeOffsetZero));
+                    Assert.That(reader.GetFieldValue<TimeSpan>(3), Is.EqualTo(timeSpanTime));
+                    Assert.That(reader.GetFieldValue<DateTimeOffset>(4), Is.EqualTo(new DateTimeOffset(0001, 01, 02, dateTimeOffset.Hour, dateTimeOffset.Minute, dateTimeOffset.Second, dateTimeOffset.Offset)));
+                    Assert.That(reader.GetFieldValue<TimeSpan>(5), Is.EqualTo(timeSpanInterval));
+                }
+            }
+        }
     }
 }

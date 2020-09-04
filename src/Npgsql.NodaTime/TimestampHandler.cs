@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Threading.Tasks;
 using NodaTime;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
+using BclTimestampHandler = Npgsql.TypeHandlers.DateTimeHandlers.TimestampHandler;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
@@ -33,9 +35,14 @@ namespace Npgsql.NodaTime
         /// an Instant is requested
         /// </summary>
         readonly bool _convertInfinityDateTime;
+        readonly BclTimestampHandler _bclTimestampHandler;
 
         internal TimestampHandler(PostgresType postgresType, bool convertInfinityDateTime)
-            : base(postgresType) => _convertInfinityDateTime = convertInfinityDateTime;
+            : base(postgresType)
+        {
+            _convertInfinityDateTime = convertInfinityDateTime;
+            _bclTimestampHandler = new BclTimestampHandler(postgresType, convertInfinityDateTime);
+        }
 
         #region Read
 
@@ -167,5 +174,20 @@ namespace Npgsql.NodaTime
         }
 
         #endregion Write
+
+        protected internal override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
+            => value is DateTime
+                ? _bclTimestampHandler.ValidateObjectAndGetLength(value, ref lengthCache, parameter)
+                : base.ValidateObjectAndGetLength(value, ref lengthCache, parameter);
+
+        protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
+            => value is DateTime
+                ? _bclTimestampHandler.WriteObjectWithLength(value, buf, lengthCache, parameter, async)
+                : base.WriteObjectWithLength(value, buf, lengthCache, parameter, async);
+
+        internal override TAny Read<TAny>(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
+            => typeof(TAny) == typeof(DateTime)
+                ? _bclTimestampHandler.Read<TAny>(buf, len, fieldDescription)
+                : base.Read<TAny>(buf, len, fieldDescription);
     }
 }
