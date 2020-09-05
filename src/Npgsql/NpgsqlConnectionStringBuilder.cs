@@ -1318,6 +1318,9 @@ namespace Npgsql
 
         internal static string ParseKey(string str, ref int pos)
         {
+            if (str.StartsWith("-c "))
+                pos += 3;
+
             var start = pos;
             for (; pos < str.Length; pos++)
             {
