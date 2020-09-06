@@ -285,10 +285,12 @@ namespace Npgsql
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         bool CheckIdleConnector([NotNullWhen(true)] NpgsqlConnector? connector)
         {
-            Interlocked.Decrement(ref _idleCount);
 
             if (connector is null)
                 return false;
+
+            // Only decrement when the connector has a value. 
+            Interlocked.Decrement(ref _idleCount);
 
             // An connector could be broken because of a keepalive that occurred while it was
             // idling in the pool
@@ -514,12 +516,15 @@ namespace Npgsql
             }
 
             while (toPrune > 0 &&
-                   pool._numConnectors <= pool._min &&
+                   pool._numConnectors > pool._min &&
                    pool._idleConnectorReader.TryRead(out var connector) &&
                    connector != null)
             {
-                pool.CloseConnector(connector);
-                toPrune--;
+                if (pool.CheckIdleConnector(connector))
+                {
+                    pool.CloseConnector(connector);
+                    toPrune--;
+                }
             }
         }
 
