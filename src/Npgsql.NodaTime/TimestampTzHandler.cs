@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Threading.Tasks;
 using NodaTime;
 using NodaTime.TimeZones;
 using Npgsql.BackendMessages;
@@ -25,7 +24,7 @@ namespace Npgsql.NodaTime
     }
 
     sealed class TimestampTzHandler : NpgsqlSimpleTypeHandler<Instant>, INpgsqlSimpleTypeHandler<ZonedDateTime>,
-                               INpgsqlSimpleTypeHandler<OffsetDateTime>
+                               INpgsqlSimpleTypeHandler<OffsetDateTime>, INpgsqlSimpleTypeHandler<DateTimeOffset>
     {
         readonly IDateTimeZoneProvider _dateTimeZoneProvider;
         readonly BclTimestampTzHandler _bclHandler;
@@ -122,19 +121,13 @@ namespace Npgsql.NodaTime
 
         #endregion Write
 
-        protected internal override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
-            => value is DateTimeOffset
-                ? _bclHandler.ValidateObjectAndGetLength(value, ref lengthCache, parameter)
-                : base.ValidateObjectAndGetLength(value, ref lengthCache, parameter);
+        DateTimeOffset INpgsqlSimpleTypeHandler<DateTimeOffset>.Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription)
+            => _bclHandler.Read<DateTimeOffset>(buf, len, fieldDescription);
 
-        protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-            => value is DateTimeOffset
-                ? _bclHandler.WriteObjectWithLength(value, buf, lengthCache, parameter, async)
-                : base.WriteObjectWithLength(value, buf, lengthCache, parameter, async);
+        int INpgsqlSimpleTypeHandler<DateTimeOffset>.ValidateAndGetLength(DateTimeOffset value, NpgsqlParameter parameter)
+            => _bclHandler.ValidateAndGetLength(value, parameter);
 
-        internal override TAny Read<TAny>(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
-            => typeof(TAny) == typeof(DateTimeOffset)
-                ? _bclHandler.Read<TAny>(buf, len, fieldDescription)
-                : base.Read<TAny>(buf, len, fieldDescription);
+        void INpgsqlSimpleTypeHandler<DateTimeOffset>.Write(DateTimeOffset value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => _bclHandler.Write(value, buf, parameter);
     }
 }

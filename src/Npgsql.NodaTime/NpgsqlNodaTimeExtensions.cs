@@ -62,7 +62,7 @@ namespace Npgsql
                 {
                     PgTypeName = "interval",
                     NpgsqlDbType = NpgsqlDbType.Interval,
-                    ClrTypes = new[] { typeof(Period), typeof(TimeSpan) },
+                    ClrTypes = new[] { typeof(Period), typeof(TimeSpan), typeof(NpgsqlTimeSpan) },
                     TypeHandlerFactory = new IntervalHandlerFactory()
                 }.Build());
     }

@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Threading.Tasks;
 using NodaTime;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
@@ -20,20 +19,20 @@ namespace Npgsql.NodaTime
         }
     }
 
-    sealed class DateHandler : NpgsqlSimpleTypeHandler<LocalDate>, INpgsqlSimpleTypeHandler<NpgsqlDate>
+    sealed class DateHandler : NpgsqlSimpleTypeHandler<LocalDate>, INpgsqlSimpleTypeHandler<DateTime>, INpgsqlSimpleTypeHandler<NpgsqlDate>
     {
         /// <summary>
         /// Whether to convert positive and negative infinity values to Instant.{Max,Min}Value when
         /// an Instant is requested
         /// </summary>
         readonly bool _convertInfinityDateTime;
-        readonly BclDateHandler _bclDateHandler;
+        readonly BclDateHandler _bclHandler;
 
         internal DateHandler(PostgresType postgresType, bool convertInfinityDateTime)
             : base(postgresType)
         {
             _convertInfinityDateTime = convertInfinityDateTime;
-            _bclDateHandler = new BclDateHandler(postgresType, convertInfinityDateTime);
+            _bclHandler = new BclDateHandler(postgresType, convertInfinityDateTime);
         }
 
         public override LocalDate Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
@@ -72,28 +71,22 @@ namespace Npgsql.NodaTime
             buf.WriteInt32(totalDaysSinceEra - 730119);
         }
 
-        protected internal override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
-            => value is DateTime
-                ? _bclDateHandler.ValidateObjectAndGetLength(value, ref lengthCache, parameter)
-                : base.ValidateObjectAndGetLength(value, ref lengthCache, parameter);
-
-        protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-            => value is DateTime
-                ? _bclDateHandler.WriteObjectWithLength(value, buf, lengthCache, parameter, async)
-                : base.WriteObjectWithLength(value, buf, lengthCache, parameter, async);
-
-        internal override TAny Read<TAny>(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
-            => typeof(TAny) == typeof(DateTime)
-                ? _bclDateHandler.Read<TAny>(buf, len, fieldDescription)
-                : base.Read<TAny>(buf, len, fieldDescription);
-
         NpgsqlDate INpgsqlSimpleTypeHandler<NpgsqlDate>.Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription)
-            => _bclDateHandler.Read<NpgsqlDate>(buf, len, fieldDescription);
+            => _bclHandler.Read<NpgsqlDate>(buf, len, fieldDescription);
 
         int INpgsqlSimpleTypeHandler<NpgsqlDate>.ValidateAndGetLength(NpgsqlDate value, NpgsqlParameter parameter)
-            => _bclDateHandler.ValidateAndGetLength(value, parameter);
+            => _bclHandler.ValidateAndGetLength(value, parameter);
 
         void INpgsqlSimpleTypeHandler<NpgsqlDate>.Write(NpgsqlDate value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
-            => _bclDateHandler.Write(value, buf, parameter);
+            => _bclHandler.Write(value, buf, parameter);
+
+        DateTime INpgsqlSimpleTypeHandler<DateTime>.Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription)
+            => _bclHandler.Read<DateTime>(buf, len, fieldDescription);
+
+        int INpgsqlSimpleTypeHandler<DateTime>.ValidateAndGetLength(DateTime value, NpgsqlParameter parameter)
+            => _bclHandler.ValidateAndGetLength(value, parameter);
+
+        void INpgsqlSimpleTypeHandler<DateTime>.Write(DateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => _bclHandler.Write(value, buf, parameter);
     }
 }

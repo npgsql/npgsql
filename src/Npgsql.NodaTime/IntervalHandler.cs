@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Threading.Tasks;
 using NodaTime;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
@@ -20,12 +19,12 @@ namespace Npgsql.NodaTime
                 : throw new NotSupportedException($"The deprecated floating-point date/time format is not supported by {nameof(Npgsql)}.");
     }
 
-    sealed class IntervalHandler : NpgsqlSimpleTypeHandler<Period>, INpgsqlSimpleTypeHandler<NpgsqlTimeSpan>
+    sealed class IntervalHandler : NpgsqlSimpleTypeHandler<Period>, INpgsqlSimpleTypeHandler<NpgsqlTimeSpan>, INpgsqlSimpleTypeHandler<TimeSpan>
     {
-        readonly BclIntervalHandler _bclIntervalHandler;
+        readonly BclIntervalHandler _bclHandler;
 
         internal IntervalHandler(PostgresType postgresType) : base(postgresType)
-            => _bclIntervalHandler = new BclIntervalHandler(postgresType);
+            => _bclHandler = new BclIntervalHandler(postgresType);
 
         public override Period Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
@@ -61,28 +60,22 @@ namespace Npgsql.NodaTime
             buf.WriteInt32(value.Years * 12 + value.Months); // months
         }
 
-        protected internal override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache lengthCache, NpgsqlParameter parameter)
-            => value is TimeSpan
-                ? _bclIntervalHandler.ValidateObjectAndGetLength(value, ref lengthCache, parameter)
-                : base.ValidateObjectAndGetLength(value, ref lengthCache, parameter);
-
-        protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async)
-            => value is TimeSpan
-                ? _bclIntervalHandler.WriteObjectWithLength(value, buf, lengthCache, parameter, async)
-                : base.WriteObjectWithLength(value, buf, lengthCache, parameter, async);
-
-        internal override TAny Read<TAny>(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription = null)
-            => typeof(TAny) == typeof(TimeSpan)
-                ? _bclIntervalHandler.Read<TAny>(buf, len, fieldDescription)
-                : base.Read<TAny>(buf, len, fieldDescription);
-
         NpgsqlTimeSpan INpgsqlSimpleTypeHandler<NpgsqlTimeSpan>.Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription)
-            => _bclIntervalHandler.Read<NpgsqlTimeSpan>(buf, len, fieldDescription);
+            => _bclHandler.Read<NpgsqlTimeSpan>(buf, len, fieldDescription);
 
         int INpgsqlSimpleTypeHandler<NpgsqlTimeSpan>.ValidateAndGetLength(NpgsqlTimeSpan value, NpgsqlParameter parameter)
-            => _bclIntervalHandler.ValidateAndGetLength(value, parameter);
+            => _bclHandler.ValidateAndGetLength(value, parameter);
 
         void INpgsqlSimpleTypeHandler<NpgsqlTimeSpan>.Write(NpgsqlTimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
-            => _bclIntervalHandler.Write(value, buf, parameter);
+            => _bclHandler.Write(value, buf, parameter);
+
+        TimeSpan INpgsqlSimpleTypeHandler<TimeSpan>.Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription)
+            => _bclHandler.Read<TimeSpan>(buf, len, fieldDescription);
+
+        int INpgsqlSimpleTypeHandler<TimeSpan>.ValidateAndGetLength(TimeSpan value, NpgsqlParameter parameter)
+            => _bclHandler.ValidateAndGetLength(value, parameter);
+
+        void INpgsqlSimpleTypeHandler<TimeSpan>.Write(TimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => _bclHandler.Write(value, buf, parameter);
     }
 }
