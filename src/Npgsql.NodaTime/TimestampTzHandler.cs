@@ -5,7 +5,7 @@ using NodaTime.TimeZones;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
-using BclDateTimeOffsetHandler = Npgsql.TypeHandlers.DateTimeHandlers.TimestampTzHandler;
+using BclTimestampTzHandler = Npgsql.TypeHandlers.DateTimeHandlers.TimestampTzHandler;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
@@ -24,11 +24,11 @@ namespace Npgsql.NodaTime
         }
     }
 
-    class TimestampTzHandler : NpgsqlSimpleTypeHandler<Instant>, INpgsqlSimpleTypeHandler<ZonedDateTime>,
+    sealed class TimestampTzHandler : NpgsqlSimpleTypeHandler<Instant>, INpgsqlSimpleTypeHandler<ZonedDateTime>,
                                INpgsqlSimpleTypeHandler<OffsetDateTime>
     {
         readonly IDateTimeZoneProvider _dateTimeZoneProvider;
-        readonly BclDateTimeOffsetHandler _bclHandler;
+        readonly BclTimestampTzHandler _bclHandler;
 
         /// <summary>
         /// Whether to convert positive and negative infinity values to Instant.{Max,Min}Value when
@@ -41,7 +41,7 @@ namespace Npgsql.NodaTime
         {
             _dateTimeZoneProvider = DateTimeZoneProviders.Tzdb;
             _convertInfinityDateTime = convertInfinityDateTime;
-            _bclHandler = new BclDateTimeOffsetHandler(postgresType, convertInfinityDateTime);
+            _bclHandler = new BclTimestampTzHandler(postgresType, convertInfinityDateTime);
         }
 
         #region Read

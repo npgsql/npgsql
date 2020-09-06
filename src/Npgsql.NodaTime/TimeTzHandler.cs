@@ -4,7 +4,7 @@ using NodaTime;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
-using BclDateTimeOffsetHandler = Npgsql.TypeHandlers.DateTimeHandlers.TimeTzHandler;
+using BclTimeTzHandler = Npgsql.TypeHandlers.DateTimeHandlers.TimeTzHandler;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
@@ -21,11 +21,10 @@ namespace Npgsql.NodaTime
 
     sealed class TimeTzHandler : NpgsqlSimpleTypeHandler<OffsetTime>
     {
-        readonly BclDateTimeOffsetHandler _bclHandler;
+        readonly BclTimeTzHandler _bclHandler;
 
-        internal TimeTzHandler(PostgresType postgresType) : base(postgresType) {
-            _bclHandler = new BclDateTimeOffsetHandler(postgresType);
-        }
+        internal TimeTzHandler(PostgresType postgresType) : base(postgresType)
+            => _bclHandler = new BclTimeTzHandler(postgresType);
 
         // Adjust from 1 microsecond to 100ns. Time zone (in seconds) is inverted.
         public override OffsetTime Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)

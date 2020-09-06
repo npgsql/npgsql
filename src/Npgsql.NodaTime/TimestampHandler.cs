@@ -23,7 +23,7 @@ namespace Npgsql.NodaTime
         }
     }
 
-    class TimestampHandler : NpgsqlSimpleTypeHandler<Instant>, INpgsqlSimpleTypeHandler<LocalDateTime>
+    sealed class TimestampHandler : NpgsqlSimpleTypeHandler<Instant>, INpgsqlSimpleTypeHandler<LocalDateTime>
     {
         static readonly Instant Instant0 = Instant.FromUtc(1, 1, 1, 0, 0, 0);
         static readonly Instant Instant2000 = Instant.FromUtc(2000, 1, 1, 0, 0, 0);

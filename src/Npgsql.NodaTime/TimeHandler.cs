@@ -19,7 +19,7 @@ namespace Npgsql.NodaTime
                 : throw new NotSupportedException($"The deprecated floating-point date/time format is not supported by {nameof(Npgsql)}.");
     }
 
-    internal class TimeHandler : NpgsqlSimpleTypeHandler<LocalTime>
+    sealed class TimeHandler : NpgsqlSimpleTypeHandler<LocalTime>
     {
         readonly BclTimeHandler _bclTimeHandler;
 
