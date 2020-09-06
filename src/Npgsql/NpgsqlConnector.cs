@@ -278,7 +278,7 @@ namespace Npgsql
 
         #endregion
 
-        internal NpgsqlDataReader DataReader { get; }
+        internal NpgsqlDataReader DataReader { get; set; }
 
         #region Constructors
 
@@ -1216,15 +1216,9 @@ namespace Npgsql
                 }
                 catch (PostgresException e)
                 {
-                    if (connector.CurrentReader != null)
-                    {
-                        // The reader cleanup will call EndUserAction
-                        await connector.CurrentReader.Cleanup(async);
-                    }
-                    else
-                    {
-                        connector.EndUserAction();
-                    }
+                    // In case if reader is not null, it will do cleanup (and call EndUserAction) while catching the exception
+                    if (CurrentReader is null)
+                        EndUserAction();
 
                     if (e.SqlState == PostgresErrorCodes.QueryCanceled && connector.PostgresCancellationPerformed)
                     {
@@ -1606,7 +1600,7 @@ namespace Npgsql
             var copyOperation = CurrentCopyOperation;
 
             if (reader != null)
-                await reader.Close(connectionClosing: true, async);
+                await reader.Close(connectionClosing: true, async, isDisposing: false);
             else if (copyOperation != null)
             {
                 // TODO: There's probably a race condition as the COPY operation may finish on its own during the next few lines
@@ -1887,6 +1881,8 @@ namespace Npgsql
                 }
             }
 
+            DataReader.UnbindIfNecessary();
+            
             if (endBindingScope)
             {
                 // Connection is null if a connection enlisted in a TransactionScope was closed before the

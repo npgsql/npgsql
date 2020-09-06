@@ -132,7 +132,10 @@ namespace Npgsql.Tests
                 await using var _ = await CreateTempTable(conn, "int INT", out var table);
 
                 var sb = new StringBuilder();
-                for (var i = 0; i < 15; i++)
+                for (var i = 0; i < 10; i++)
+                    sb.Append($"INSERT INTO {table} (int) VALUES ({i});");
+                sb.Append("SELECT 1;"); // Testing, that on close reader consumes all rows (as insert doesn't have a result set, but select does)
+                for (var i = 10; i < 15; i++)
                     sb.Append($"INSERT INTO {table} (int) VALUES ({i});");
                 var cmd = new NpgsqlCommand(sb.ToString(), conn);
                 var reader = await cmd.ExecuteReaderAsync(Behavior);
@@ -1112,6 +1115,121 @@ LANGUAGE plpgsql VOLATILE";
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2913")]
+        public async Task ReaderReadingPreviousQueryMessagesBug()
+        {
+            // No point in testing for multiplexing, as every query may use another connection
+            if (IsMultiplexing)
+                return;
+
+            var firstMrs = new ManualResetEventSlim(false);
+            var secondMrs = new ManualResetEventSlim(false);
+
+            var secondQuery = Task.Run(async () =>
+            {
+                firstMrs.Wait();
+                await using var secondConn = await OpenConnectionAsync();
+                using var secondCmd = new NpgsqlCommand(@"SELECT 1; SELECT 2;", secondConn);
+                await using var secondReader = await secondCmd.ExecuteReaderAsync(Behavior | CommandBehavior.CloseConnection);
+
+                // Check, that StatementIndex is equals to default value
+                Assert.That(secondReader.StatementIndex, Is.EqualTo(0));
+                secondMrs.Wait();
+                // Check, that the first query didn't change StatementIndex
+                Assert.That(secondReader.StatementIndex, Is.EqualTo(0));
+            });
+
+            await using (var firstConn = await OpenConnectionAsync())
+            {
+                // Executing a query, which fails with NpgsqlException on reader disposing, as NotExistingTable doesn't exist
+                using var firstCmd = new NpgsqlCommand(@"SELECT 1; SELECT * FROM NotExistingTable;", firstConn);
+                await using var firstReader = await firstCmd.ExecuteReaderAsync(Behavior | CommandBehavior.CloseConnection);
+
+                Assert.That(firstReader.StatementIndex, Is.EqualTo(0));
+
+                firstReader.ReaderClosed += (s, e) =>
+                {
+                    // Starting a second query, which in case of a bug uses firstConn
+                    firstMrs.Set();
+                    // Waiting for the second query to start executing
+                    Thread.Sleep(100);
+                    // After waiting, reader is free to reset prepared statements, which also increments StatementIndex
+                };
+
+                Assert.ThrowsAsync<PostgresException>(firstReader.NextResultAsync);
+
+                secondMrs.Set();
+            }
+
+            await secondQuery;
+
+            // If we're here and a bug is still not fixed, we fail while executing reader, as we're reading skipped messages for the second query
+            await using var thirdConn = OpenConnection();
+            using var thirdCmd = new NpgsqlCommand(@"SELECT 1; SELECT 2;", thirdConn);
+            await using var thirdReader = await thirdCmd.ExecuteReaderAsync(Behavior | CommandBehavior.CloseConnection);
+        }
+
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/2913")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/3289")]
+        public async Task ReaderCloseAndDisposeBug()
+        {
+            await using var conn = await OpenConnectionAsync();
+            using var cmd1 = conn.CreateCommand();
+            cmd1.CommandText = "SELECT 1";
+
+            var reader1 = await cmd1.ExecuteReaderAsync(Behavior | CommandBehavior.CloseConnection);
+            await reader1.CloseAsync();
+
+            await conn.OpenAsync();
+            cmd1.Connection = conn;
+            var reader2 = await cmd1.ExecuteReaderAsync(Behavior | CommandBehavior.CloseConnection);
+            Assert.That(reader1, Is.Not.SameAs(reader2));
+            Assert.That(reader2.State, Is.EqualTo(ReaderState.BeforeResult));
+
+            await reader1.DisposeAsync();
+
+            Assert.That(reader2.State, Is.EqualTo(ReaderState.BeforeResult));
+        }
+
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/2964")]
+        public async Task ConnectionCloseAndReaderDisposeBug()
+        {
+            await using var conn = await OpenConnectionAsync();
+            using var cmd1 = conn.CreateCommand();
+            cmd1.CommandText = "SELECT 1";
+
+            var reader1 = await cmd1.ExecuteReaderAsync(Behavior);
+            await conn.CloseAsync();
+            await conn.OpenAsync();
+
+            var reader2 = await cmd1.ExecuteReaderAsync(Behavior);
+            Assert.That(reader1, Is.Not.SameAs(reader2));
+            Assert.That(reader2.State, Is.EqualTo(ReaderState.BeforeResult));
+
+            await reader1.DisposeAsync();
+
+            Assert.That(reader2.State, Is.EqualTo(ReaderState.BeforeResult));
+        }
+
+        [Test]
+        public async Task ReaderReuseOnDispose()
+        {
+            await using var conn = await OpenConnectionAsync();
+            await using var tx = await conn.BeginTransactionAsync();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT 1";
+
+            var reader1 = await cmd.ExecuteReaderAsync(Behavior);
+            await reader1.ReadAsync();
+            await reader1.DisposeAsync();
+
+            var reader2 = await cmd.ExecuteReaderAsync(Behavior);
+            Assert.That(reader1, Is.SameAs(reader2));
+            await reader2.DisposeAsync();
+        }
+        
         [Test]
         public async Task DisposeSwallowsExceptions([Values(true, false)] bool async)
         {

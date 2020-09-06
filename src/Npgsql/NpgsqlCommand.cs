@@ -1243,7 +1243,10 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     }
                     catch
                     {
-                        connector.CurrentReader = null;
+                        var reader = connector.CurrentReader;
+                        if (reader != null)
+                            await reader.Cleanup(async);
+
                         conn.Connector?.EndUserAction();
                         throw;
                     }
@@ -1260,28 +1263,40 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                             "Synchronous command execution is not supported when multiplexing is on");
                     }
 
-                    ValidateParameters(conn.Pool!.MultiplexingTypeMapper!);
-                    ProcessRawQuery();
+                    try
+                    {
+                        ValidateParameters(conn.Pool!.MultiplexingTypeMapper!);
+                        ProcessRawQuery();
 
-                    State = CommandState.InProgress;
+                        State = CommandState.InProgress;
 
-                    // TODO: Experiment: do we want to wait on *writing* here, or on *reading*?
-                    // Previous behavior was to wait on reading, which throw the exception from ExecuteReader (and not from
-                    // the first read). But waiting on writing would allow us to do sync writing and async reading.
-                    ExecutionCompletion.Reset();
-                    await conn.Pool!.MultiplexCommandWriter!.WriteAsync(this, cancellationToken);
-                    connector = await new ValueTask<NpgsqlConnector>(ExecutionCompletion, ExecutionCompletion.Version);
-                    // TODO: Overload of StartBindingScope?
-                    conn.Connector = connector;
-                    connector.Connection = conn;
-                    conn.ConnectorBindingScope = ConnectorBindingScope.Reader;
+                        // TODO: Experiment: do we want to wait on *writing* here, or on *reading*?
+                        // Previous behavior was to wait on reading, which throw the exception from ExecuteReader (and not from
+                        // the first read). But waiting on writing would allow us to do sync writing and async reading.
+                        ExecutionCompletion.Reset();
+                        await conn.Pool!.MultiplexCommandWriter!.WriteAsync(this, cancellationToken);
+                        connector = await new ValueTask<NpgsqlConnector>(ExecutionCompletion, ExecutionCompletion.Version);
+                        // TODO: Overload of StartBindingScope?
+                        conn.Connector = connector;
+                        connector.Connection = conn;
+                        conn.ConnectorBindingScope = ConnectorBindingScope.Reader;
 
-                    var reader = connector.DataReader;
-                    reader.Init(this, behavior, _statements);
-                    connector.CurrentReader = reader;
-                    await reader.NextResultAsync(cancellationToken);
+                        var reader = connector.DataReader;
+                        reader.Init(this, behavior, _statements);
+                        connector.CurrentReader = reader;
+                        await reader.NextResultAsync(cancellationToken);
 
-                    return reader;
+                        return reader;
+                    }
+                    catch
+                    {
+                        var reader = connector?.CurrentReader;
+                        if (reader != null)
+                            await reader.Cleanup(async);
+
+                        throw;
+                    }
+                    
                 }
             }
             catch
