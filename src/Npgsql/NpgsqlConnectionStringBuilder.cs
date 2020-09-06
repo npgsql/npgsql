@@ -1192,19 +1192,18 @@ namespace Npgsql
 
         void ParseOptions(string? str)
         {
-            if (str == null)
+            if (str is null)
             {
                 ParsedOptions.Clear();
+                return;
             }
-            else
+
+            var pos = 0;
+            while (pos < str.Length)
             {
-                var pos = 0;
-                while (pos < str?.Length)
-                {
-                    var key = ParseKey(str, ref pos);
-                    var value = ParseValue(str, ref pos);
-                    ParsedOptions[key] = value;
-                }
+                var key = ParseKey(str, ref pos);
+                var value = ParseValue(str, ref pos);
+                ParsedOptions[key] = value;
             }
         }
 
@@ -1220,11 +1219,11 @@ namespace Npgsql
                     return key.Length > 0
                         ? key
                         : throw new FormatException(
-                            $"Invalid syntax for connection string parameter '{nameof(NpgsqlConnectionStringBuilder.Options)}': Missing key.");
+                            $"Invalid syntax for connection string parameter '{nameof(Options)}': Missing key.");
                 }
             }
 
-            throw new FormatException($"Invalid syntax for connection string parameter '{nameof(NpgsqlConnectionStringBuilder.Options)}': Missing '='.");
+            throw new FormatException($"Invalid syntax for connection string parameter '{nameof(Options)}': Missing '='.");
         }
 
         internal static string ParseValue(string str, ref int pos)
