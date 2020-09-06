@@ -24,7 +24,7 @@ namespace Npgsql
                     PgTypeName = "timestamp without time zone",
                     NpgsqlDbType = NpgsqlDbType.Timestamp,
                     DbTypes = new[] { DbType.DateTime, DbType.DateTime2 },
-                    ClrTypes = new[] { typeof(Instant), typeof(LocalDateTime) },
+                    ClrTypes = new[] { typeof(Instant), typeof(LocalDateTime), typeof(DateTime) },
                     InferredDbType = DbType.DateTime,
                     TypeHandlerFactory = new TimestampHandlerFactory()
                 }.Build())
@@ -40,7 +40,7 @@ namespace Npgsql
                     PgTypeName = "date",
                     NpgsqlDbType = NpgsqlDbType.Date,
                     DbTypes = new[] { DbType.Date },
-                    ClrTypes = new[] { typeof(LocalDate), typeof(DateTime), typeof(NpgsqlDate) },
+                    ClrTypes = new[] { typeof(LocalDate),  typeof(NpgsqlDate) },
                     TypeHandlerFactory = new DateHandlerFactory()
                 }.Build())
                 .AddMapping(new NpgsqlTypeMappingBuilder
