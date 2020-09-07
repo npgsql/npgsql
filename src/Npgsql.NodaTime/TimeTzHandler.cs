@@ -19,7 +19,7 @@ namespace Npgsql.NodaTime
     }
 
     sealed class TimeTzHandler : NpgsqlSimpleTypeHandler<OffsetTime>, INpgsqlSimpleTypeHandler<DateTimeOffset>,
-                                    INpgsqlSimpleTypeHandler<DateTime>, INpgsqlSimpleTypeHandler<TimeSpan>
+                                  INpgsqlSimpleTypeHandler<DateTime>, INpgsqlSimpleTypeHandler<TimeSpan>
     {
         readonly BclTimeTzHandler _bclHandler;
 

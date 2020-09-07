@@ -24,7 +24,7 @@ namespace Npgsql.NodaTime
     }
 
     sealed class TimestampTzHandler : NpgsqlSimpleTypeHandler<Instant>, INpgsqlSimpleTypeHandler<ZonedDateTime>,
-                               INpgsqlSimpleTypeHandler<OffsetDateTime>, INpgsqlSimpleTypeHandler<DateTimeOffset>
+                              INpgsqlSimpleTypeHandler<OffsetDateTime>, INpgsqlSimpleTypeHandler<DateTimeOffset>
     {
         readonly IDateTimeZoneProvider _dateTimeZoneProvider;
         readonly BclTimestampTzHandler _bclHandler;
