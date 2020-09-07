@@ -175,12 +175,12 @@ namespace Npgsql.NodaTime
         #endregion Write
 
         DateTime INpgsqlSimpleTypeHandler<DateTime>.Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription)
-           => _bclHandler.Read<DateTime>(buf, len, fieldDescription);
+           => ((INpgsqlSimpleTypeHandler<DateTime>)_bclHandler).Read(buf, len, fieldDescription);
 
         int INpgsqlSimpleTypeHandler<DateTime>.ValidateAndGetLength(DateTime value, NpgsqlParameter parameter)
-            => _bclHandler.ValidateAndGetLength(value, parameter);
+            => ((INpgsqlSimpleTypeHandler<DateTime>)_bclHandler).ValidateAndGetLength(value, parameter);
 
         void INpgsqlSimpleTypeHandler<DateTime>.Write(DateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
-            => _bclHandler.Write(value, buf, parameter);
+            => ((INpgsqlSimpleTypeHandler<DateTime>)_bclHandler).Write(value, buf, parameter);
     }
 }
