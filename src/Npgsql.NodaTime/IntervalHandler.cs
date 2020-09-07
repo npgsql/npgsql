@@ -73,9 +73,9 @@ namespace Npgsql.NodaTime
             => _bclHandler.Read<TimeSpan>(buf, len, fieldDescription);
 
         int INpgsqlSimpleTypeHandler<TimeSpan>.ValidateAndGetLength(TimeSpan value, NpgsqlParameter parameter)
-            => _bclHandler.ValidateAndGetLength(value, parameter);
+            => ((INpgsqlSimpleTypeHandler<TimeSpan>)_bclHandler).ValidateAndGetLength(value, parameter);
 
         void INpgsqlSimpleTypeHandler<TimeSpan>.Write(TimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
-            => _bclHandler.Write(value, buf, parameter);
+            => ((INpgsqlSimpleTypeHandler<TimeSpan>)_bclHandler).Write(value, buf, parameter);
     }
 }
