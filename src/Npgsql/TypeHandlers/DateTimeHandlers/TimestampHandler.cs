@@ -46,7 +46,10 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         /// </summary>
         protected readonly bool ConvertInfinityDateTime;
 
-        internal TimestampHandler(PostgresType postgresType, bool convertInfinityDateTime)
+        /// <summary>
+        /// Constructs a <see cref="TimestampHandler"/>.
+        /// </summary>
+        public TimestampHandler(PostgresType postgresType, bool convertInfinityDateTime)
             : base(postgresType) => ConvertInfinityDateTime = convertInfinityDateTime;
 
         #region Read

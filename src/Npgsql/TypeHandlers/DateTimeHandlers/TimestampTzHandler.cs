@@ -40,7 +40,10 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// </remarks>
     public class TimestampTzHandler : TimestampHandler, INpgsqlSimpleTypeHandler<DateTimeOffset>
     {
-        internal TimestampTzHandler(PostgresType postgresType, bool convertInfinityDateTime)
+        /// <summary>
+        /// Constructs an <see cref="TimestampTzHandler"/>.
+        /// </summary>
+        public TimestampTzHandler(PostgresType postgresType, bool convertInfinityDateTime)
             : base(postgresType, convertInfinityDateTime) {}
 
         #region Read

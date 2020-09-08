@@ -50,7 +50,7 @@ namespace Npgsql.TypeHandling
         /// <param name="len">The byte length of the value. The buffer might not contain the full length, requiring I/O to be performed.</param>
         /// <param name="fieldDescription">Additional PostgreSQL information about the type, such as the length in varchar(30).</param>
         /// <returns>The fully-read value.</returns>
-        internal abstract TAny Read<TAny>(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null);
+        public abstract TAny Read<TAny>(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null);
 
         /// <summary>
         /// Reads a column as the type handler's default read type, assuming that it is already entirely

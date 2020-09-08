@@ -41,7 +41,10 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     {
         // Binary Format: int64 expressing microseconds, int32 expressing timezone in seconds, negative
 
-        internal TimeTzHandler(PostgresType postgresType) : base(postgresType) {}
+        /// <summary>
+        /// Constructs an <see cref="TimeTzHandler"/>.
+        /// </summary>
+        public TimeTzHandler(PostgresType postgresType) : base(postgresType) {}
 
         #region Read
 
