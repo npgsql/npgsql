@@ -1041,7 +1041,7 @@ namespace Npgsql
                 try
                 {
                     ReadBuffer.Timeout = TimeSpan.FromMilliseconds(UserTimeout);
-                    var cancelRequestIsSend = false;
+                    NpgsqlException? originalTimeoutException = null;
 
                     while (true)
                     {
@@ -1122,19 +1122,24 @@ namespace Npgsql
                             Debug.Assert(msg != null, "Message is null for code: " + messageCode);
                             return msg;
                         }
-                        catch (NpgsqlException e) when (!cancelRequestIsSend && (e.InnerException is TimeoutException ||
+                        catch (NpgsqlException e) when (originalTimeoutException is null && (e.InnerException is TimeoutException ||
                             (e.InnerException is IOException io && (io.InnerException as SocketException)?.SocketErrorCode ==
                             (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock))))
                         {
-                            cancelRequestIsSend = true;
+                            originalTimeoutException = e;
                             CancelRequest();
                         }
-                        catch (NpgsqlException e) when (cancelRequestIsSend && (e.InnerException is TimeoutException ||
+                        catch (NpgsqlException e) when (!(originalTimeoutException is null) && (e.InnerException is TimeoutException ||
                             (e.InnerException is IOException io && (io.InnerException as SocketException)?.SocketErrorCode ==
                             (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock))))
                         {
                             // Cancel request is send, but we were unable to read a response from PG due to timeout
-                            throw Break(e);
+                            throw Break(originalTimeoutException);
+                        }
+                        catch (PostgresException e) when (!(originalTimeoutException is null)
+                            && e.SqlState == PostgresErrorCodes.QueryCanceled)
+                        {
+                            throw originalTimeoutException;
                         }
                     }
                 }
