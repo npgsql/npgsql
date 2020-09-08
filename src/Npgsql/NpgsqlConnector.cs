@@ -210,13 +210,14 @@ namespace Npgsql
 
         bool _sendResetOnClose;
 
-        ConnectorPool? _pool;
+        NpgsqlException? originalTimeoutException = null;
 
         /// <summary>
-        /// Contains the UTC timestamp when this connector was opened, used to implement
-        /// <see cref="NpgsqlConnectionStringBuilder.ConnectionLifetime"/>.
+        /// If pooled, the pool index on which this connector will be returned to the pool.
         /// </summary>
-        internal DateTime OpenTimestamp { get; private set; }
+        internal int PoolIndex { get; set; } = int.MaxValue;
+
+        ConnectorPool? _pool;
 
         internal int ClearCounter { get; set; }
 
@@ -440,7 +441,6 @@ namespace Npgsql
                     GenerateResetMessage();
                 }
 
-                OpenTimestamp = DateTime.UtcNow;
                 Log.Trace($"Opened connection to {Host}:{Port}");
 
                 if (Settings.Multiplexing)
@@ -1041,7 +1041,6 @@ namespace Npgsql
                 try
                 {
                     ReadBuffer.Timeout = TimeSpan.FromMilliseconds(UserTimeout);
-                    NpgsqlException? originalTimeoutException = null;
 
                     while (true)
                     {
@@ -1105,6 +1104,7 @@ namespace Npgsql
                                     NpgsqlEventSource.Log.CommandFailed();
                                     throw error;
                                 }
+                                originalTimeoutException = null;
 
                                 break;
 
@@ -1134,12 +1134,17 @@ namespace Npgsql
                             (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock))))
                         {
                             // Cancel request is send, but we were unable to read a response from PG due to timeout
-                            throw Break(originalTimeoutException);
+                            var tempException = originalTimeoutException;
+                            originalTimeoutException = null;
+                            throw Break(tempException);
                         }
                         catch (PostgresException e) when (!(originalTimeoutException is null)
                             && e.SqlState == PostgresErrorCodes.QueryCanceled)
                         {
-                            throw originalTimeoutException;
+                            var tempException = originalTimeoutException;
+                            originalTimeoutException = null;
+                            error = null;
+                            throw tempException;
                         }
                     }
                 }
@@ -1725,12 +1730,6 @@ namespace Npgsql
 
             lock (this)
             {
-                if (State == ConnectorState.Broken)
-                {
-                    // Most of the time it's due to keepalive failing, so we return the original error
-                    throw _breakReason!;
-                }
-
                 if (!_userLock!.Wait(0))
                 {
                     var currentCommand = _currentCommand;
@@ -1861,12 +1860,7 @@ namespace Npgsql
                 Log.Error("Keepalive failure", e, Id);
                 try
                 {
-                    Break(e is NpgsqlException npgsqlException
-                        ? new NpgsqlException(
-                            "The connection was broken due to a keepalive failure, the original exception message: " +
-                            npgsqlException.Message,
-                            npgsqlException.InnerException)
-                        : new NpgsqlException("The connection was broken due to a keepalive failure", e));
+                    Break(e);
                 }
                 catch (Exception e2)
                 {
