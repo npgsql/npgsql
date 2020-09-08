@@ -1144,6 +1144,17 @@ namespace Npgsql
                             var tempException = originalTimeoutException;
                             originalTimeoutException = null;
                             error = null;
+
+                            if (CurrentReader != null)
+                            {
+                                // The reader cleanup will call EndUserAction
+                                await CurrentReader.Cleanup(async);
+                            }
+                            else
+                            {
+                                EndUserAction();
+                            }
+
                             throw tempException;
                         }
                     }
