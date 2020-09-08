@@ -5,6 +5,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
+using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests
 {
@@ -463,6 +464,26 @@ namespace Npgsql.Tests
             Console.WriteLine("Stopped. Waiting for all tasks to stop...");
             Task.WaitAll(tasks);
             Console.WriteLine("Done");
+        }
+
+        [Test]
+        public async Task ConnectionLifetime()
+        {
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ConnectionLifetime = 1
+            };
+
+            using var _ = CreateTempPool(builder, out var connectionString);
+            await using var conn = new NpgsqlConnection(connectionString);
+            await conn.OpenAsync();
+            var processId = conn.ProcessID;
+            await conn.CloseAsync();
+
+            await Task.Delay(2000);
+
+            await conn.OpenAsync();
+            Assert.That(conn.ProcessID, Is.Not.EqualTo(processId));
         }
 
         #region Support

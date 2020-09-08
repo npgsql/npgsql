@@ -801,6 +801,28 @@ namespace Npgsql
         }
         int _connectionPruningInterval;
 
+        /// <summary>
+        /// The total maximum lifetime of connections (in seconds). Connections which have exceeded this value will be
+        /// destroyed instead of returned from the pool. This is useful in clustered configurations to force load
+        /// balancing between a running server and a server just brought online.
+        /// </summary>
+        /// <value>The time (in seconds) to wait, or 0 to to make connections last indefinitely (the default).</value>
+        [Category("Pooling")]
+        [Description("The total maximum lifetime of connections (in seconds).")]
+        [DisplayName("Connection Lifetime")]
+        [NpgsqlConnectionStringProperty("Load Balance Timeout")]
+        [DefaultValue(0)]
+        public int ConnectionLifetime
+        {
+            get => _connectionLifetime;
+            set
+            {
+                _connectionLifetime = value;
+                SetValue(nameof(ConnectionLifetime), value);
+            }
+        }
+        int _connectionLifetime;
+
         #endregion
 
         #region Properties - Timeouts
@@ -1354,20 +1376,6 @@ namespace Npgsql
         #endregion
 
         #region Properties - Obsolete
-
-        /// <summary>
-        /// Obsolete, see https://www.npgsql.org/doc/release-notes/3.1.html
-        /// </summary>
-        [Category("Obsolete")]
-        [Description("Obsolete, see https://www.npgsql.org/doc/release-notes/3.1.html")]
-        [DisplayName("Connection Lifetime")]
-        [NpgsqlConnectionStringProperty]
-        [Obsolete("The ConnectionLifeTime parameter is no longer supported")]
-        public int ConnectionLifeTime
-        {
-            get => 0;
-            set => throw new NotSupportedException("The ConnectionLifeTime parameter is no longer supported. Please see https://www.npgsql.org/doc/release-notes/3.1.html");
-        }
 
         /// <summary>
         /// Obsolete, see https://www.npgsql.org/doc/release-notes/3.1.html

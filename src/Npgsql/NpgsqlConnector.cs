@@ -210,12 +210,13 @@ namespace Npgsql
 
         bool _sendResetOnClose;
 
-        /// <summary>
-        /// If pooled, the pool index on which this connector will be returned to the pool.
-        /// </summary>
-        internal int PoolIndex { get; set; } = int.MaxValue;
-
         ConnectorPool? _pool;
+
+        /// <summary>
+        /// Contains the UTC timestamp when this connector was opened, used to implement
+        /// <see cref="NpgsqlConnectionStringBuilder.ConnectionLifetime"/>.
+        /// </summary>
+        internal DateTime OpenTimestamp { get; private set; }
 
         internal int ClearCounter { get; set; }
 
@@ -439,6 +440,7 @@ namespace Npgsql
                     GenerateResetMessage();
                 }
 
+                OpenTimestamp = DateTime.UtcNow;
                 Log.Trace($"Opened connection to {Host}:{Port}");
 
                 if (Settings.Multiplexing)
