@@ -4,6 +4,7 @@ using NodaTime.TimeZones;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
+using BclTimestampTzHandler = Npgsql.TypeHandlers.DateTimeHandlers.TimestampTzHandler;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
@@ -22,10 +23,11 @@ namespace Npgsql.NodaTime
         }
     }
 
-    class TimestampTzHandler : NpgsqlSimpleTypeHandler<Instant>, INpgsqlSimpleTypeHandler<ZonedDateTime>,
-                               INpgsqlSimpleTypeHandler<OffsetDateTime>
+    sealed class TimestampTzHandler : NpgsqlSimpleTypeHandler<Instant>, INpgsqlSimpleTypeHandler<ZonedDateTime>,
+                              INpgsqlSimpleTypeHandler<OffsetDateTime>, INpgsqlSimpleTypeHandler<DateTimeOffset>
     {
         readonly IDateTimeZoneProvider _dateTimeZoneProvider;
+        readonly BclTimestampTzHandler _bclHandler;
 
         /// <summary>
         /// Whether to convert positive and negative infinity values to Instant.{Max,Min}Value when
@@ -38,6 +40,7 @@ namespace Npgsql.NodaTime
         {
             _dateTimeZoneProvider = DateTimeZoneProviders.Tzdb;
             _convertInfinityDateTime = convertInfinityDateTime;
+            _bclHandler = new BclTimestampTzHandler(postgresType, convertInfinityDateTime);
         }
 
         #region Read
@@ -122,5 +125,14 @@ namespace Npgsql.NodaTime
             => Write(value.ToInstant(), buf, parameter);
 
         #endregion Write
+
+        DateTimeOffset INpgsqlSimpleTypeHandler<DateTimeOffset>.Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription)
+            => _bclHandler.Read<DateTimeOffset>(buf, len, fieldDescription);
+
+        int INpgsqlSimpleTypeHandler<DateTimeOffset>.ValidateAndGetLength(DateTimeOffset value, NpgsqlParameter parameter)
+            => _bclHandler.ValidateAndGetLength(value, parameter);
+
+        void INpgsqlSimpleTypeHandler<DateTimeOffset>.Write(DateTimeOffset value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+            => _bclHandler.Write(value, buf, parameter);
     }
 }

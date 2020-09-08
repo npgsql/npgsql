@@ -68,8 +68,9 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        internal override TAny Read<TAny>(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-            => Read<TAny>(buf, len, false, fieldDescription).Result;
+        /// <inheritdoc />
+        public override TRequestedArray Read<TRequestedArray>(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
+            => Read<TRequestedArray>(buf, len, false, fieldDescription).Result;
 
         /// <inheritdoc />
         protected internal override async ValueTask<TAny> Read<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
