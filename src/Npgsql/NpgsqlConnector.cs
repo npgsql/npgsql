@@ -1127,7 +1127,28 @@ namespace Npgsql
                             (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock))))
                         {
                             originalTimeoutException = e;
-                            CancelRequest();
+                            try
+                            {
+                                CancelRequest(true);
+                            }
+                            catch (Exception)
+                            {
+                                // Unable to cancel a query, so we break the connection
+                                var tempException = originalTimeoutException;
+                                originalTimeoutException = null;
+
+                                if (CurrentReader != null)
+                                {
+                                    // The reader cleanup will call EndUserAction
+                                    await CurrentReader.Cleanup(async);
+                                }
+                                else
+                                {
+                                    EndUserAction();
+                                }
+
+                                throw Break(tempException);
+                            }
                         }
                         catch (NpgsqlException e) when (!(originalTimeoutException is null) && (e.InnerException is TimeoutException ||
                             (e.InnerException is IOException io && (io.InnerException as SocketException)?.SocketErrorCode ==
@@ -1136,6 +1157,17 @@ namespace Npgsql
                             // Cancel request is send, but we were unable to read a response from PG due to timeout
                             var tempException = originalTimeoutException;
                             originalTimeoutException = null;
+
+                            if (CurrentReader != null)
+                            {
+                                // The reader cleanup will call EndUserAction
+                                await CurrentReader.Cleanup(async);
+                            }
+                            else
+                            {
+                                EndUserAction();
+                            }
+
                             throw Break(tempException);
                         }
                         catch (PostgresException e) when (!(originalTimeoutException is null)
@@ -1378,7 +1410,7 @@ namespace Npgsql
         /// <summary>
         /// Creates another connector and sends a cancel request through it for this connector.
         /// </summary>
-        internal void CancelRequest()
+        internal void CancelRequest(bool allowedToThrowExceptions)
         {
             if (BackendProcessId == 0)
                 throw new NpgsqlException("Cancellation not supported on this database (no BackendKeyData was received during connection)");
@@ -1395,7 +1427,11 @@ namespace Npgsql
                 {
                     var socketException = e.InnerException as SocketException;
                     if (socketException == null || socketException.SocketErrorCode != SocketError.ConnectionReset)
+                    {
                         Log.Debug("Exception caught while attempting to cancel command", e, Id);
+                        if (allowedToThrowExceptions)
+                            throw;
+                    }   
                 }
             }
         }
