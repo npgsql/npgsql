@@ -179,8 +179,8 @@ jobs:
 #      - name: Create VSIX
 #        run: msbuild src\VSIX\VSIX.csproj -p:Configuration=Release -v:Minimal
 
-      - name: Create MSI
-        run: msbuild src\MSI\MSI.wixproj -p:Configuration=Release -v:Minimal
+#      - name: Create MSI
+#        run: msbuild src\MSI\MSI.wixproj -p:Configuration=Release -v:Minimal
 
       - name: Upload artifacts (nupkg)
         uses: actions/upload-artifact@v1
@@ -194,11 +194,11 @@ jobs:
 #          name: Npgsql.vsix
 #          path: src/VSIX/bin/Release/Npgsql.vsix
 
-      - name: Upload artifacts (msi)
-        uses: actions/upload-artifact@v1
-        with:
-          name: Npgsql.msi
-          path: src/MSI/bin/Release/en-us/Npgsql.msi
+#      - name: Upload artifacts (msi)
+#        uses: actions/upload-artifact@v1
+#        with:
+#          name: Npgsql.msi
+#          path: src/MSI/bin/Release/en-us/Npgsql.msi
 
       - name: Publish packages to MyGet (vnext)
         if: startsWith(github.ref, 'refs/heads/') && startsWith(github.ref, 'refs/heads/hotfix/') == false
