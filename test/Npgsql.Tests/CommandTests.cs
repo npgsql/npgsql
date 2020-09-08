@@ -164,7 +164,7 @@ namespace Npgsql.Tests
                 .TypeOf<NpgsqlException>()
                 .With.InnerException.TypeOf<TimeoutException>()
                 );
-            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
         }
 
 // Timeout for async queries is not supported for .net 4.6.1
@@ -183,7 +183,7 @@ namespace Npgsql.Tests
                 .TypeOf<NpgsqlException>()
                 .With.InnerException.TypeOf<TimeoutException>()
                 );
-            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
         }
 #endif
 
