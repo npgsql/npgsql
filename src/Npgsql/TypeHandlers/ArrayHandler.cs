@@ -53,7 +53,8 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        internal override TRequestedArray Read<TRequestedArray>(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
+        /// <inheritdoc />
+        public override TRequestedArray Read<TRequestedArray>(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             => Read<TRequestedArray>(buf, len, false, fieldDescription).GetAwaiter().GetResult();
 
         /// <inheritdoc />

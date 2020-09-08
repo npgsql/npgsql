@@ -39,7 +39,10 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// </remarks>
     public class IntervalHandler : NpgsqlSimpleTypeHandlerWithPsv<TimeSpan, NpgsqlTimeSpan>
     {
-        internal IntervalHandler(PostgresType postgresType) : base(postgresType) {}
+        /// <summary>
+        /// Constructs an <see cref="IntervalHandler"/>
+        /// </summary>
+        public IntervalHandler(PostgresType postgresType) : base(postgresType) {}
 
         /// <inheritdoc />
         public override TimeSpan Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
