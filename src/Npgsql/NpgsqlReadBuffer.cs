@@ -197,27 +197,30 @@ namespace Npgsql
 
                     NpgsqlEventSource.Log.BytesRead(totalRead);
                 }
-                // We have a special case when reading async notifications - a timeout may be normal
-                // shouldn't be fatal
-                // Note that mono throws SocketException with the wrong error (see #1330)
-                catch (IOException e) when (
-                    dontBreakOnTimeouts && (e.InnerException as SocketException)?.SocketErrorCode ==
-                       (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock)
-                )
-                {
-                    throw new TimeoutException("Timeout while reading from stream");
-                }
-                catch (OperationCanceledException e)
-                {
-                    if (dontBreakOnTimeouts)
-                        throw new TimeoutException("Timeout while reading from stream");
-                    else
-                        throw Connector.Break(new NpgsqlException("Exception while reading from stream",
-                            new TimeoutException("Timeout during reading attempt", e)));
-                }
                 catch (Exception e)
                 {
-                    throw Connector.Break(new NpgsqlException("Exception while reading from stream", e));
+                    var dontBreak = false;
+
+                    // We have a special case when reading async notifications - a timeout may be normal
+                    // shouldn't be fatal
+                    switch (e)
+                    {
+                    case OperationCanceledException _:
+                        Debug.Assert(async);
+                        e = new TimeoutException("Timeout during reading attempt");
+                        dontBreak = dontBreakOnTimeouts;
+                        break;
+                    // Note that mono throws SocketException with the wrong error (see #1330)
+                    case IOException _ when (e.InnerException as SocketException)?.SocketErrorCode ==
+                                            (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock):
+                        Debug.Assert(!async);
+                        e = new TimeoutException("Timeout during reading attempt");
+                        dontBreak = dontBreakOnTimeouts;
+                        break;
+                    }
+
+                    var exception = new NpgsqlException("Exception while reading from stream", e);
+                    throw dontBreak ? exception : Connector.Break(exception);
                 }
             }
         }

@@ -1873,7 +1873,7 @@ namespace Npgsql
                         }
                         return true;
                     }
-                    catch (TimeoutException)
+                    catch (NpgsqlException e) when (e.InnerException is TimeoutException)
                     {
                         if (!timeoutForKeepalive)  // We really timed out
                             return false;
