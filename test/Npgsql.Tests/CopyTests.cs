@@ -52,8 +52,7 @@ namespace Npgsql.Tests
                     }
 
                     var e = Assert.Throws<NpgsqlException>(() => writer.Complete());
-                    Assert.That(e.InnerException, Is.TypeOf<TimeoutException>()
-                        .With.InnerException.TypeOf<IOException>());
+                    Assert.That(e.InnerException, Is.TypeOf<TimeoutException>());
                 }
             }
         }

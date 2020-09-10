@@ -163,9 +163,6 @@ namespace Npgsql.Tests
             Assert.That(() => cmd.ExecuteNonQuery(), Throws.Exception
                 .TypeOf<NpgsqlException>()
                 .With.InnerException.TypeOf<TimeoutException>()
-                .With.InnerException.InnerException.TypeOf<IOException>()
-                .With.InnerException.InnerException.InnerException.TypeOf<SocketException>()
-                .With.InnerException.InnerException.InnerException.Property(nameof(SocketException.SocketErrorCode)).EqualTo(isMono ? SocketError.WouldBlock : SocketError.TimedOut)
                 );
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
         }
@@ -185,7 +182,6 @@ namespace Npgsql.Tests
             Assert.That(async () => await cmd.ExecuteNonQueryAsync(), Throws.Exception
                 .TypeOf<NpgsqlException>()
                 .With.InnerException.TypeOf<TimeoutException>()
-                .With.InnerException.InnerException.TypeOf<OperationCanceledException>()
                 );
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
         }
