@@ -1131,6 +1131,12 @@ namespace Npgsql
                     }
                     throw;
                 }
+                catch (NpgsqlException e) when (readingNotifications2 && e.InnerException is TimeoutException timeout)
+                {
+                    // We have a special case when reading async notifications - a timeout may be normal
+                    // shouldn't be fatal
+                    throw timeout;
+                }
                 catch (NpgsqlException)
                 {
                     // An ErrorResponse isn't followed by ReadyForQuery
