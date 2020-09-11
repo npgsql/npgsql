@@ -1143,12 +1143,13 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         if (connector.Settings.MaxAutoPrepare > 0)
                         {
                             var numPrepared = 0;
+                            var now = DateTime.UtcNow;
                             foreach (var statement in _statements)
                             {
                                 // If this statement isn't prepared, see if it gets implicitly prepared.
                                 // Note that this may return null (not enough usages for automatic preparation).
                                 if (!statement.IsPrepared)
-                                    statement.PreparedStatement = connector.PreparedStatementManager.TryGetAutoPrepared(statement);
+                                    statement.PreparedStatement = connector.PreparedStatementManager.TryGetAutoPrepared(statement, now);
                                 if (statement.PreparedStatement is PreparedStatement pStatement)
                                 {
                                     numPrepared++;

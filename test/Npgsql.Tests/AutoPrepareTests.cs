@@ -382,7 +382,7 @@ namespace Npgsql.Tests
 
             await using var connection = new NpgsqlConnection(builder.ToString());
             await connection.OpenAsync();
-            for (var i = 0; i < 10; i++)
+            for (var i = 0; i < 100; i++)
             {
                 using var command = connection.CreateCommand();
                 command.CommandText = string.Join("", Enumerable.Range(0, 100).Select(n => $"SELECT {n};"));
