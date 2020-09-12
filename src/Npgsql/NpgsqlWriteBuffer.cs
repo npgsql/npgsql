@@ -139,18 +139,25 @@ namespace Npgsql
                 else
                     Underlying.Write(Buffer, 0, WritePosition);
             }
-            // Note that mono throws SocketException with the wrong error (see #1330)
-            catch (IOException e) when ((e.InnerException as SocketException)?.SocketErrorCode ==
-                    (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock))
-            {
-                throw Connector.Break(new NpgsqlException("Exception while writing to stream", new TimeoutException("Timeout during writing attempt", e)));
-            }
-            catch (OperationCanceledException e)
-            {
-                throw Connector.Break(new NpgsqlException("Exception while writing to stream", new TimeoutException("Timeout during writing attempt", e)));
-            }
             catch (Exception e)
             {
+                switch (e)
+                {
+                case OperationCanceledException _:
+                    Debug.Assert(async);
+                    e = new TimeoutException("Timeout during writing attempt");
+                    break;
+                case IOException _:
+                    // Note that mono throws SocketException with the wrong error (see #1330)
+                    if ((e.InnerException as SocketException)?.SocketErrorCode ==
+                        (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock))
+                    {
+                        Debug.Assert(!async);
+                        e = new TimeoutException("Timeout during writing attempt");
+                    }
+                    break;
+                }
+
                 throw Connector.Break(new NpgsqlException("Exception while writing to stream", e));
             }
 
@@ -165,18 +172,25 @@ namespace Npgsql
                 else
                     Underlying.Flush();
             }
-            // Note that mono throws SocketException with the wrong error (see #1330)
-            catch (IOException e) when ((e.InnerException as SocketException)?.SocketErrorCode ==
-                    (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock))
-            {
-                throw Connector.Break(new NpgsqlException("Exception while writing to stream", new TimeoutException("Timeout during flushing attempt", e)));
-            }
-            catch (OperationCanceledException e)
-            {
-                throw Connector.Break(new NpgsqlException("Exception while flushing stream", new TimeoutException("Timeout during flushing attempt", e)));
-            }
             catch (Exception e)
             {
+                switch (e)
+                {
+                case OperationCanceledException _:
+                    Debug.Assert(async);
+                    e = new TimeoutException("Timeout during flushing attempt");
+                    break;
+                case IOException _:
+                    // Note that mono throws SocketException with the wrong error (see #1330)
+                    if ((e.InnerException as SocketException)?.SocketErrorCode ==
+                        (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock))
+                    {
+                        Debug.Assert(!async);
+                        e = new TimeoutException("Timeout during flushing attempt");
+                    }
+                    break;
+                }
+
                 throw Connector.Break(new NpgsqlException("Exception while flushing stream", e));
             }
 
