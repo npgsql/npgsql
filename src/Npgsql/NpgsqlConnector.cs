@@ -1700,6 +1700,12 @@ namespace Npgsql
 
             lock (this)
             {
+                if (State == ConnectorState.Broken)
+                {
+                    // Most of the time it's due to keepalive failing, so we return the original error
+                    throw _breakReason;
+                }
+
                 if (!_userLock!.Wait(0))
                 {
                     var currentCommand = _currentCommand;
@@ -1830,7 +1836,7 @@ namespace Npgsql
                 Log.Error("Keepalive failure", e, Id);
                 try
                 {
-                    Break(e);
+                    Break(new NpgsqlException("Connection is broken due to keepalive failure, check logs for more information."));
                 }
                 catch (Exception e2)
                 {
