@@ -28,14 +28,14 @@ namespace Npgsql
         /// </summary>
         /// <param name="message">The error message that explains the reason for the exception.</param>
         /// <param name="innerException">The exception that is the cause of the current exception, or a null reference (<string>Nothing</string> in Visual Basic) if no inner exception is specified.</param>
-        public NpgsqlException(string message, Exception innerException) 
+        public NpgsqlException(string? message, Exception? innerException)
             : base(message, innerException) {}
 
         /// <summary>
         /// Initializes a new instance of the <see cref="NpgsqlException"/> class with a specified error message.
         /// </summary>
         /// <param name="message">The message that describes the error.</param>
-        public NpgsqlException(string message)
+        public NpgsqlException(string? message)
             : base(message) { }
 
         /// <summary>
@@ -46,7 +46,7 @@ namespace Npgsql
             InnerException is IOException || InnerException is SocketException || InnerException is TimeoutException;
 
         #region Serialization
-        
+
         /// <summary>
         /// Initializes a new instance of the <see cref="NpgsqlException"/> class with serialized data.
         /// </summary>

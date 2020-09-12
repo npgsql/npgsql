@@ -1536,6 +1536,13 @@ namespace Npgsql
 
             lock (this)
             {
+                if (State == ConnectorState.Broken)
+                {
+                    // Most of the time it's due to keepalive failing
+                    throw new NpgsqlException("The connection was broken due to a keepalive failure, " +
+                                              "check the logs for the original exception");
+                }
+
                 if (!_userLock!.Wait(0))
                 {
                     var currentCommand = _currentCommand;
