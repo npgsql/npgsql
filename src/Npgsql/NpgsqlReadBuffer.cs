@@ -208,14 +208,14 @@ namespace Npgsql
                     case OperationCanceledException _:
                         Debug.Assert(async);
                         e = new TimeoutException("Timeout during reading attempt");
-                        dontBreak = dontBreakOnTimeouts;
+                        dontBreak = true;
                         break;
                     // Note that mono throws SocketException with the wrong error (see #1330)
                     case IOException _ when (e.InnerException as SocketException)?.SocketErrorCode ==
                                             (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock):
                         Debug.Assert(!async);
                         e = new TimeoutException("Timeout during reading attempt");
-                        dontBreak = dontBreakOnTimeouts;
+                        dontBreak = true;
                         break;
                     }
 
