@@ -1703,7 +1703,7 @@ namespace Npgsql
                 if (State == ConnectorState.Broken)
                 {
                     // Most of the time it's due to keepalive failing, so we return the original error
-                    throw _breakReason;
+                    throw _breakReason!;
                 }
 
                 if (!_userLock!.Wait(0))
