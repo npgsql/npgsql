@@ -1104,6 +1104,7 @@ namespace Npgsql
                                     NpgsqlEventSource.Log.CommandFailed();
                                     throw error;
                                 }
+                                // Just in case if we were successful in sending a cancellation, but the query is already completed
                                 originalTimeoutException = null;
 
                                 break;
@@ -1124,70 +1125,21 @@ namespace Npgsql
                         }
                         catch (NpgsqlException e) when (!readingNotifications2 && e.InnerException is TimeoutException && originalTimeoutException is null)
                         {
-                            originalTimeoutException = e;
+                            // We have got a timeout while not reading the async notifications - trying to cancel a query
                             try
                             {
                                 CancelRequest(true);
+                                originalTimeoutException = e;
                             }
                             catch (Exception)
                             {
-                                // Unable to cancel a query, so we break the connection
-                                var tempException = originalTimeoutException;
-                                originalTimeoutException = null;
-
-                                if (CurrentReader != null)
-                                {
-                                    // The reader cleanup will call EndUserAction
-                                    await CurrentReader.Cleanup(async);
-                                }
-                                else
-                                {
-                                    EndUserAction();
-                                }
-
-                                throw Break(tempException);
+                                // Unable to cancel the query, so we break the connection
+                                throw Break(e);
                             }
-                        }
-                        catch (NpgsqlException e) when (!readingNotifications2 && e.InnerException is TimeoutException && !(originalTimeoutException is null))
-                        {
-                            // Cancel request is send, but we were unable to read a response from PG due to timeout
-                            var tempException = originalTimeoutException;
-                            originalTimeoutException = null;
-
-                            if (CurrentReader != null)
-                            {
-                                // The reader cleanup will call EndUserAction
-                                await CurrentReader.Cleanup(async);
-                            }
-                            else
-                            {
-                                EndUserAction();
-                            }
-
-                            throw Break(tempException);
-                        }
-                        catch (PostgresException e) when (!(originalTimeoutException is null)
-                            && e.SqlState == PostgresErrorCodes.QueryCanceled)
-                        {
-                            var tempException = originalTimeoutException;
-                            originalTimeoutException = null;
-                            error = null;
-
-                            if (CurrentReader != null)
-                            {
-                                // The reader cleanup will call EndUserAction
-                                await CurrentReader.Cleanup(async);
-                            }
-                            else
-                            {
-                                EndUserAction();
-                            }
-
-                            throw tempException;
                         }
                     }
                 }
-                catch (PostgresException)
+                catch (PostgresException e)
                 {
                     if (CurrentReader != null)
                     {
@@ -1198,7 +1150,21 @@ namespace Npgsql
                     {
                         EndUserAction();
                     }
+
+                    // We failed because of a timeout, and the cancellation was successful
+                    if (!(originalTimeoutException is null) && e.SqlState == PostgresErrorCodes.QueryCanceled)
+                    {
+                        var tempException = originalTimeoutException;
+                        originalTimeoutException = null;
+                        throw tempException;
+                    }
+
                     throw;
+                }
+                catch (NpgsqlException e) when (!readingNotifications2 && e.InnerException is TimeoutException && !(originalTimeoutException is null))
+                {
+                    // Cancel request is send, but we were unable to read a response from PG due to timeout
+                    throw Break(originalTimeoutException);
                 }
                 catch (NpgsqlException)
                 {
