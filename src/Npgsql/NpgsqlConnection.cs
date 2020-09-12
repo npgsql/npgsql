@@ -1346,7 +1346,7 @@ namespace Npgsql
             CheckReady();
 
             Log.Debug($"Starting to wait (timeout={timeout})...", Connector!.Id);
-            return Connector!.Wait(timeout);
+            return Connector!.Wait(false, timeout, CancellationToken.None).GetAwaiter().GetResult();
         }
 
         /// <summary>
@@ -1391,7 +1391,8 @@ namespace Npgsql
             CheckReady();
 
             Log.Debug("Starting to wait asynchronously...", Connector!.Id);
-            return Connector!.WaitAsync(timeout, cancellationToken);
+            using (NoSynchronizationContextScope.Enter())
+                return Connector!.Wait(true, timeout, cancellationToken);
         }
 
         /// <summary>
