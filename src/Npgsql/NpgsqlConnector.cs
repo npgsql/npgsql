@@ -1122,7 +1122,7 @@ namespace Npgsql
                             Debug.Assert(msg != null, "Message is null for code: " + messageCode);
                             return msg;
                         }
-                        catch (NpgsqlException e) when (e.InnerException is TimeoutException && originalTimeoutException is null)
+                        catch (NpgsqlException e) when (!readingNotifications2 && e.InnerException is TimeoutException && originalTimeoutException is null)
                         {
                             originalTimeoutException = e;
                             try
@@ -1148,7 +1148,7 @@ namespace Npgsql
                                 throw Break(tempException);
                             }
                         }
-                        catch (NpgsqlException e) when (e.InnerException is TimeoutException && !(originalTimeoutException is null))
+                        catch (NpgsqlException e) when (!readingNotifications2 && e.InnerException is TimeoutException && !(originalTimeoutException is null))
                         {
                             // Cancel request is send, but we were unable to read a response from PG due to timeout
                             var tempException = originalTimeoutException;
