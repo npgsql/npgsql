@@ -208,7 +208,7 @@ namespace Npgsql
                     {
                     case OperationCanceledException _:
                         Debug.Assert(async);
-                        e = new TimeoutException();
+                        e = new TimeoutException("Timeout during reading attempt");
                         dontBreak = dontBreakOnTimeouts;
                         break;
                     case IOException _:
@@ -216,7 +216,7 @@ namespace Npgsql
                             (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock))
                         {
                             Debug.Assert(!async);
-                            e = new TimeoutException();
+                            e = new TimeoutException("Timeout during reading attempt");
                             dontBreak = dontBreakOnTimeouts;
                         }
                         break;
