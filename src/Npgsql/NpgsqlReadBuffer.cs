@@ -203,7 +203,6 @@ namespace Npgsql
 
                     // We have a special case when reading async notifications - a timeout may be normal
                     // shouldn't be fatal
-                    // Note that mono throws SocketException with the wrong error (see #1330)
                     switch (e)
                     {
                     case OperationCanceledException _:
@@ -212,6 +211,7 @@ namespace Npgsql
                         dontBreak = dontBreakOnTimeouts;
                         break;
                     case IOException _:
+                        // Note that mono throws SocketException with the wrong error (see #1330)
                         if ((e.InnerException as SocketException)?.SocketErrorCode ==
                             (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock))
                         {
