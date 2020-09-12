@@ -71,22 +71,22 @@ namespace Npgsql.NodaTime
             buf.WriteInt32(totalDaysSinceEra - 730119);
         }
 
-        NpgsqlDate INpgsqlSimpleTypeHandler<NpgsqlDate>.Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription)
+        NpgsqlDate INpgsqlSimpleTypeHandler<NpgsqlDate>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
             => _bclHandler.Read<NpgsqlDate>(buf, len, fieldDescription);
 
-        int INpgsqlSimpleTypeHandler<NpgsqlDate>.ValidateAndGetLength(NpgsqlDate value, NpgsqlParameter parameter)
+        int INpgsqlSimpleTypeHandler<NpgsqlDate>.ValidateAndGetLength(NpgsqlDate value, NpgsqlParameter? parameter)
             => _bclHandler.ValidateAndGetLength(value, parameter);
 
-        void INpgsqlSimpleTypeHandler<NpgsqlDate>.Write(NpgsqlDate value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        void INpgsqlSimpleTypeHandler<NpgsqlDate>.Write(NpgsqlDate value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => _bclHandler.Write(value, buf, parameter);
 
-        DateTime INpgsqlSimpleTypeHandler<DateTime>.Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription)
+        DateTime INpgsqlSimpleTypeHandler<DateTime>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
             => _bclHandler.Read<DateTime>(buf, len, fieldDescription);
 
-        int INpgsqlSimpleTypeHandler<DateTime>.ValidateAndGetLength(DateTime value, NpgsqlParameter parameter)
+        int INpgsqlSimpleTypeHandler<DateTime>.ValidateAndGetLength(DateTime value, NpgsqlParameter? parameter)
             => _bclHandler.ValidateAndGetLength(value, parameter);
 
-        void INpgsqlSimpleTypeHandler<DateTime>.Write(DateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        void INpgsqlSimpleTypeHandler<DateTime>.Write(DateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => _bclHandler.Write(value, buf, parameter);
     }
 }

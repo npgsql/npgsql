@@ -60,22 +60,22 @@ namespace Npgsql.NodaTime
             buf.WriteInt32(value.Years * 12 + value.Months); // months
         }
 
-        NpgsqlTimeSpan INpgsqlSimpleTypeHandler<NpgsqlTimeSpan>.Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription)
+        NpgsqlTimeSpan INpgsqlSimpleTypeHandler<NpgsqlTimeSpan>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
             => _bclHandler.Read<NpgsqlTimeSpan>(buf, len, fieldDescription);
 
-        int INpgsqlSimpleTypeHandler<NpgsqlTimeSpan>.ValidateAndGetLength(NpgsqlTimeSpan value, NpgsqlParameter parameter)
+        int INpgsqlSimpleTypeHandler<NpgsqlTimeSpan>.ValidateAndGetLength(NpgsqlTimeSpan value, NpgsqlParameter? parameter)
             => _bclHandler.ValidateAndGetLength(value, parameter);
 
-        void INpgsqlSimpleTypeHandler<NpgsqlTimeSpan>.Write(NpgsqlTimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        void INpgsqlSimpleTypeHandler<NpgsqlTimeSpan>.Write(NpgsqlTimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => _bclHandler.Write(value, buf, parameter);
 
-        TimeSpan INpgsqlSimpleTypeHandler<TimeSpan>.Read(NpgsqlReadBuffer buf, int len, FieldDescription fieldDescription)
+        TimeSpan INpgsqlSimpleTypeHandler<TimeSpan>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
             => _bclHandler.Read<TimeSpan>(buf, len, fieldDescription);
 
-        int INpgsqlSimpleTypeHandler<TimeSpan>.ValidateAndGetLength(TimeSpan value, NpgsqlParameter parameter)
+        int INpgsqlSimpleTypeHandler<TimeSpan>.ValidateAndGetLength(TimeSpan value, NpgsqlParameter? parameter)
             => ((INpgsqlSimpleTypeHandler<TimeSpan>)_bclHandler).ValidateAndGetLength(value, parameter);
 
-        void INpgsqlSimpleTypeHandler<TimeSpan>.Write(TimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter parameter)
+        void INpgsqlSimpleTypeHandler<TimeSpan>.Write(TimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => ((INpgsqlSimpleTypeHandler<TimeSpan>)_bclHandler).Write(value, buf, parameter);
     }
 }
