@@ -1838,7 +1838,7 @@ namespace Npgsql
                 {
                     if (e is NpgsqlException npgException)
                         e = new NpgsqlException("The connection was broken due to a keepalive failure, the original exception message: " + npgException.Message,
-                            npgException.InnerException);
+                            npgException.InnerException!);
                     else
                         e = new NpgsqlException("The connection was broken due to a keepalive failure", e);
 
