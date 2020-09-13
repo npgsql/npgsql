@@ -1128,7 +1128,7 @@ namespace Npgsql
                             // We have got a timeout while not reading the async notifications - trying to cancel a query
                             try
                             {
-                                CancelRequest(true);
+                                CancelRequest(throwExceptions: true);
                                 originalTimeoutException = e;
                             }
                             catch (Exception)
@@ -1372,7 +1372,7 @@ namespace Npgsql
         /// <summary>
         /// Creates another connector and sends a cancel request through it for this connector.
         /// </summary>
-        internal void CancelRequest(bool allowedToThrowExceptions)
+        internal void CancelRequest(bool throwExceptions = false)
         {
             if (BackendProcessId == 0)
                 throw new NpgsqlException("Cancellation not supported on this database (no BackendKeyData was received during connection)");
@@ -1391,7 +1391,7 @@ namespace Npgsql
                     if (socketException == null || socketException.SocketErrorCode != SocketError.ConnectionReset)
                     {
                         Log.Debug("Exception caught while attempting to cancel command", e, Id);
-                        if (allowedToThrowExceptions)
+                        if (throwExceptions)
                             throw;
                     }   
                 }

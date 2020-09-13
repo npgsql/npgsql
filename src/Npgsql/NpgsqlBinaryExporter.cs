@@ -355,7 +355,7 @@ namespace Npgsql
         /// <summary>
         /// Cancels an ongoing export.
         /// </summary>
-        public void Cancel() => _connector.CancelRequest(false);
+        public void Cancel() => _connector.CancelRequest();
 
         /// <summary>
         /// Completes that binary export and sets the connection back to idle state

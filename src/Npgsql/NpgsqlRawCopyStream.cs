@@ -358,7 +358,7 @@ namespace Npgsql
             }
             else
             {
-                _connector.CancelRequest(false);
+                _connector.CancelRequest();
             }
         }
 
