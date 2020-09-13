@@ -130,15 +130,21 @@ namespace Npgsql
 
             switch (pStatement.State)
             {
-                case PreparedState.Prepared:
-                case PreparedState.BeingPrepared:
+            case PreparedState.Prepared:
+            case PreparedState.BeingPrepared:
                 // The statement has already been prepared (explicitly or automatically), or has been selected
                 // for preparation (earlier identical statement in the same command).
                 // We just need to check that the parameter types correspond, since prepared statements are
                 // only keyed by SQL (to prevent pointless allocations). If we have a mismatch, simply run unprepared.
-                return pStatement.DoParametersMatch(statement.InputParameters)
-                    ? pStatement
-                    : null;
+                if (!pStatement.DoParametersMatch(statement.InputParameters))
+                    return null;
+                // Prevent this statement from being replaced within this batch
+                pStatement.LastUsed = DateTime.MaxValue;
+                return pStatement;
+
+            case PreparedState.Unprepared:
+                // The statement is being replaced by an earlier statement in this same batch.
+                return null;
             }
 
             if (++pStatement.Usages < UsagesBeforePrepare)
@@ -183,12 +189,13 @@ namespace Npgsql
                 var lru = _autoPrepared[oldestIndex];
                 pStatement.Name = lru.Name;
                 pStatement.StatementBeingReplaced = lru;
+                lru.State = PreparedState.BeingUnprepared;
                 _autoPrepared[oldestIndex] = pStatement;
             }
 
             RemoveCandidate(pStatement);
 
-            // Make sure this statement is replaced by a later statement in the same batch.
+            // Make sure this statement isn't replaced by a later statement in the same batch.
             pStatement.LastUsed = DateTime.MaxValue;
 
             // Note that the parameter types are only set at the moment of preparation - in the candidate phase
