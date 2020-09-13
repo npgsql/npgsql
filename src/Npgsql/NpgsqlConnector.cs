@@ -1123,19 +1123,25 @@ namespace Npgsql
                             Debug.Assert(msg != null, "Message is null for code: " + messageCode);
                             return msg;
                         }
-                        catch (NpgsqlException e) when (!readingNotifications2 && e.InnerException is TimeoutException && originalTimeoutException is null)
+                        catch (NpgsqlException e) when (!readingNotifications2 && e.InnerException is TimeoutException)
                         {
-                            // We have got a timeout while not reading the async notifications - trying to cancel a query
-                            try
+                            if (originalTimeoutException is null)
                             {
-                                CancelRequest(throwExceptions: true);
-                                originalTimeoutException = e;
+                                // We have got a timeout while not reading the async notifications - trying to cancel a query
+                                try
+                                {
+                                    CancelRequest(throwExceptions: true);
+                                    originalTimeoutException = e;
+                                }
+                                catch (Exception)
+                                {
+                                    // Unable to cancel the query, so we break the connection
+                                    throw Break(e);
+                                }
                             }
-                            catch (Exception)
-                            {
-                                // Unable to cancel the query, so we break the connection
-                                throw Break(e);
-                            }
+                            // Cancel request is send, but we were unable to read a response from PG due to timeout
+                            else
+                                throw Break(originalTimeoutException);
                         }
                     }
                 }
@@ -1160,11 +1166,6 @@ namespace Npgsql
                     }
 
                     throw;
-                }
-                catch (NpgsqlException e) when (!readingNotifications2 && e.InnerException is TimeoutException && !(originalTimeoutException is null))
-                {
-                    // Cancel request is send, but we were unable to read a response from PG due to timeout
-                    throw Break(originalTimeoutException);
                 }
                 catch (NpgsqlException)
                 {
