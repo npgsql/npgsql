@@ -552,7 +552,7 @@ namespace Npgsql
         {
             Debug.Assert(_copyMode);
             Debug.Assert(WritePosition == 0);
-            WriteByte((byte)BackendMessageCode.CopyData);
+            WriteByte(FrontendMessageCode.CopyData);
             // Leave space for the message length
             WriteInt32(0);
         }

@@ -89,7 +89,7 @@ namespace Npgsql
         static NpgsqlConnectionStringBuilder()
         {
             var properties = typeof(NpgsqlConnectionStringBuilder)
-                .GetProperties()
+                .GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
                 .Where(p => p.GetCustomAttribute<NpgsqlConnectionStringPropertyAttribute>() != null)
                 .ToArray();
 
@@ -1253,6 +1253,30 @@ namespace Npgsql
         bool _loadTableComposites;
 
         /// <summary>
+        /// Set the replication mode of the connection
+        /// </summary>
+        /// <remarks>
+        /// This property and its corresponding enum are intentionally kept internal as they
+        /// should not be set by users or even be visible in their connection strings.
+        /// Replication connections are a special kind of connection that is encapsulated in
+        /// <see cref="Replication.Physical.NpgsqlPhysicalReplicationConnection"/>
+        /// and <see cref="Replication.Logical.NpgsqlLogicalReplicationConnection"/>.
+        /// </remarks>
+
+        [NpgsqlConnectionStringProperty]
+        [DisplayName("Replication Mode")]
+        internal ReplicationMode ReplicationMode
+        {
+            get => _replicationMode;
+            set
+            {
+                _replicationMode = value;
+                SetValue(nameof(ReplicationMode), value);
+            }
+        }
+        ReplicationMode _replicationMode;
+
+        /// <summary>
         /// Set PostgreSQL configuration parameter default values for the connection.
         /// </summary>
         [Category("Advanced")]
@@ -1698,5 +1722,31 @@ namespace Npgsql
         Require,
     }
 
+    /// <summary>
+    /// Specifies whether the connection shall be initialized as a physical or
+    /// logical replication connection
+    /// </summary>
+    /// <remarks>
+    /// This enum and its corresponding property are intentionally kept internal as they
+    /// should not be set by users or even be visible in their connection strings.
+    /// Replication connections are a special kind of connection that is encapsulated in
+    /// <see cref="Replication.Physical.NpgsqlPhysicalReplicationConnection"/>
+    /// and <see cref="Replication.Logical.NpgsqlLogicalReplicationConnection"/>.
+    /// </remarks>
+    enum ReplicationMode
+    {
+        /// <summary>
+        /// Replication disabled. This is the default
+        /// </summary>
+        Off,
+        /// <summary>
+        /// Physical replication enabled
+        /// </summary>
+        Physical,
+        /// <summary>
+        /// Logical replication enabled
+        /// </summary>
+        Logical
+    }
     #endregion
 }

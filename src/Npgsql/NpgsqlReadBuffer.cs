@@ -505,6 +505,9 @@ namespace Npgsql
 
         public ValueTask<int> ReadAsync(Memory<byte> output, CancellationToken cancellationToken = default)
         {
+            if (output.Length == 0)
+                return new ValueTask<int>(0);
+
             var readFromBuffer = Math.Min(ReadBytesLeft, output.Length);
             if (readFromBuffer > 0)
             {
@@ -512,9 +515,6 @@ namespace Npgsql
                 ReadPosition += readFromBuffer;
                 return new ValueTask<int>(readFromBuffer);
             }
-
-            if (output.Length == 0)
-                return new ValueTask<int>(0);
 
             return ReadAsyncLong();
 
@@ -550,6 +550,44 @@ namespace Npgsql
         /// contain the entire string and its terminator.
         /// </summary>
         public string ReadNullTerminatedString() => ReadNullTerminatedString(TextEncoding);
+
+        /// <summary>
+        /// Seeks the first null terminator (\0) and returns the string up to it
+        /// or up to <see paramref="maxLength"/> whichever comes first.
+        /// </summary>
+        /// <param name="maxLength">The maximum length in bytes that is read.</param>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests.
+        /// The default value is <see cref="CancellationToken.None"/>.</param>
+        internal async Task<string> ReadNullTerminatedStringDefensive(int maxLength, CancellationToken cancellationToken = default)
+        {
+            var myPosition = ReadPosition;
+            var reachedNullTermination = false;
+            for (var i = 0; i <= maxLength; i++)
+            {
+                myPosition = ReadPosition + i;
+                if (myPosition > ReadPosition + ReadBytesLeft)
+                {
+                    await Ensure(i, true, cancellationToken);
+                    // Ensure changes ReadPosition so we need to reset myPosition
+                    myPosition = ReadPosition + i;
+                }
+
+                if (Buffer[myPosition] != 0)
+                    continue;
+
+                reachedNullTermination = true;
+                break;
+            }
+
+            Debug.Assert(myPosition >= ReadPosition);
+            // Hack: There's a theoretical danger that the chunck we try to decode ends
+            // in the middle of a surrogate pair because of maxLength. For current use
+            // cases of this method this doesn't seem very realistic but that's why it's
+            // internal for now.
+            var result = TextEncoding.GetString(Buffer, ReadPosition, myPosition - ReadPosition);
+            ReadPosition = reachedNullTermination ? 1 + myPosition : myPosition;
+            return result;
+        }
 
         /// <summary>
         /// Seeks the first null terminator (\0) and returns the string up to it. The buffer must already
