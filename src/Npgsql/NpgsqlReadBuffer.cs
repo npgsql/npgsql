@@ -117,12 +117,6 @@ namespace Npgsql
 
         #region I/O
 
-        /// <summary>
-        /// Ensures that <paramref name="count"/> bytes are available in the buffer, and if
-        /// not, reads from the socket until enough is available.
-        /// </summary>
-        public Task Ensure(int count, bool async) => Ensure(count, async, dontBreakOnTimeouts: false);
-
         internal void Ensure(int count)
         {
             if (count <= ReadBytesLeft)
@@ -130,7 +124,11 @@ namespace Npgsql
             Ensure(count, false).GetAwaiter().GetResult();
         }
 
-        internal Task Ensure(int count, bool async, bool dontBreakOnTimeouts)
+        /// <summary>
+        /// Ensures that <paramref name="count"/> bytes are available in the buffer, and if
+        /// not, reads from the socket until enough is available.
+        /// </summary>
+        public Task Ensure(int count, bool async)
         {
             return count <= ReadBytesLeft ? Task.CompletedTask : EnsureLong();
 

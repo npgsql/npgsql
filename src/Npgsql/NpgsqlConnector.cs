@@ -1046,7 +1046,7 @@ namespace Npgsql
                     {
                         try
                         {
-                            await ReadBuffer.Ensure(5, async, readingNotifications2);
+                            await ReadBuffer.Ensure(5, async);
                             messageCode = (BackendMessageCode) ReadBuffer.ReadByte();
                             PGUtil.ValidateBackendMessageCode(messageCode);
                             len = ReadBuffer.ReadInt32() - 4; // Transmitted length includes itself
