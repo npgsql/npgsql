@@ -1125,23 +1125,21 @@ namespace Npgsql
                         }
                         catch (NpgsqlException e) when (!readingNotifications2 && e.InnerException is TimeoutException)
                         {
-                            if (originalTimeoutException is null)
-                            {
-                                // We have got a timeout while not reading the async notifications - trying to cancel a query
-                                try
-                                {
-                                    CancelRequest(throwExceptions: true);
-                                    originalTimeoutException = e;
-                                }
-                                catch (Exception)
-                                {
-                                    // Unable to cancel the query, so we break the connection
-                                    throw Break(e);
-                                }
-                            }
                             // Cancel request is send, but we were unable to read a response from PG due to timeout
-                            else
+                            if (!(originalTimeoutException is null))
                                 throw Break(originalTimeoutException);
+
+                            // We have got a timeout while not reading the async notifications - trying to cancel a query
+                            try
+                            {
+                                CancelRequest(throwExceptions: true);
+                                originalTimeoutException = e;
+                            }
+                            catch (Exception)
+                            {
+                                // Unable to cancel the query, so we break the connection
+                                throw Break(e);
+                            }
                         }
                     }
                 }
