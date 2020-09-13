@@ -1013,6 +1013,10 @@ namespace Npgsql
                 return ReadMessageLong(dataRowLoadingMode, readingNotifications2: false);
             }
 
+            // Just in case if we were successful in sending a cancellation, but the query is already completed (and the response is already in the buffer)
+            if (messageCode == BackendMessageCode.ReadyForQuery)
+                originalTimeoutException = null;
+
             return new ValueTask<IBackendMessage?>(ParseServerMessage(ReadBuffer, messageCode, len, false));
 
             async ValueTask<IBackendMessage?> ReadMessageLong(
