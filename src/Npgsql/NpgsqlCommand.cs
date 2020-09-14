@@ -1207,16 +1207,25 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                             if (connector.Settings.MaxAutoPrepare > 0)
                             {
                                 var numPrepared = 0;
+
+                                // prepared statements carrying exactly this LRU timestamp are protected from eviction in the code below
+                                var now = DateTime.UtcNow;
+
+                                // mark already prepared statements which are used in this batch, preventing them from being evicted in the second loop
+                                foreach (var statement in _statements)
+                                    if(!statement.IsPrepared)
+                                        statement.PreparedStatement = connector.PreparedStatementManager.FindAndMarkAutoPrepared(statement, now);
+
                                 foreach (var statement in _statements)
                                 {
                                     // If this statement isn't prepared, see if it gets implicitly prepared.
                                     // Note that this may return null (not enough usages for automatic preparation).
                                     if (!statement.IsPrepared)
-                                        statement.PreparedStatement = connector.PreparedStatementManager.TryGetAutoPrepared(statement);
+                                        statement.PreparedStatement = connector.PreparedStatementManager.TryGetAutoPrepared(statement, now);
                                     if (statement.PreparedStatement is PreparedStatement pStatement)
                                     {
                                         numPrepared++;
-                                        if (pStatement?.State == PreparedState.NotPrepared)
+                                        if (pStatement.State == PreparedState.NotPrepared)
                                         {
                                             pStatement.State = PreparedState.BeingPrepared;
                                             statement.IsPreparing = true;
