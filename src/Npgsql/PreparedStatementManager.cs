@@ -86,10 +86,23 @@ namespace Npgsql
             }
 
             // Statement hasn't been prepared yet
-            return BySql[sql] = PreparedStatement.CreateExplicit(this, sql, NextPreparedStatementName(), statement.InputParameters, statementBeingReplaced);
+            return BySql[sql] = PreparedStatement.CreateExplicit(
+                this, sql, NextPreparedStatementName(), statement.InputParameters, statementBeingReplaced);
         }
 
-        internal PreparedStatement? TryGetAutoPrepared(NpgsqlStatement statement)
+        internal PreparedStatement? FindAndMarkAutoPrepared(NpgsqlStatement statement, DateTime now)
+        {
+            if (BySql.TryGetValue(statement.SQL, out var pStatement)
+                && pStatement.State == PreparedState.Prepared
+                && pStatement.DoParametersMatch(statement.InputParameters))
+            {
+                pStatement.LastUsed = now;
+                return pStatement;
+            }
+            return null;
+        }
+
+        internal PreparedStatement? TryGetAutoPrepared(NpgsqlStatement statement, DateTime now)
         {
             var sql = statement.SQL;
             if (!BySql.TryGetValue(sql, out var pStatement))
@@ -136,16 +149,17 @@ namespace Npgsql
                 // for preparation (earlier identical statement in the same command).
                 // We just need to check that the parameter types correspond, since prepared statements are
                 // only keyed by SQL (to prevent pointless allocations). If we have a mismatch, simply run unprepared.
-                return pStatement.DoParametersMatch(statement.InputParameters)
-                    ? pStatement
-                    : null;
+                if(!pStatement.DoParametersMatch(statement.InputParameters))
+                    return null;
+                pStatement.LastUsed = now;
+                return pStatement;
             }
 
             if (++pStatement.Usages < UsagesBeforePrepare)
             {
                 // Statement still hasn't passed the usage threshold, no automatic preparation.
                 // Return null for unprepared execution.
-                pStatement.LastUsed = DateTime.UtcNow;
+                pStatement.LastUsed = now;
                 return null;
             }
 
@@ -173,10 +187,10 @@ namespace Npgsql
                     }
                 }
 
-                if (oldestIndex == -1)
+                if (oldestTimestamp == now)
                 {
                     // We're here if we couldn't find a prepared statement to replace, because all of them are already
-                    // being prepared in this batch.
+                    // being prepared/used in this batch.
                     return null;
                 }
 
@@ -188,8 +202,8 @@ namespace Npgsql
 
             RemoveCandidate(pStatement);
 
-            // Make sure this statement is replaced by a later statement in the same batch.
-            pStatement.LastUsed = DateTime.MaxValue;
+            // Make sure this statement is not replaced by a later statement in the same batch.
+            pStatement.LastUsed = now;
 
             // Note that the parameter types are only set at the moment of preparation - in the candidate phase
             // there's no differentiation between overloaded statements, which are a pretty rare case, saving
