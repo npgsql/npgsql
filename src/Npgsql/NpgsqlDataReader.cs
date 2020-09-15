@@ -828,7 +828,7 @@ namespace Npgsql
         /// <summary>
         /// Closes the <see cref="NpgsqlDataReader"/> reader, allowing a new command to be executed.
         /// </summary>
-        public override void Close() => Close(connectionClosing: false, async: true, cancellationToken: default).GetAwaiter().GetResult();
+        public override void Close() => Close(connectionClosing: false, async: false, cancellationToken: default).GetAwaiter().GetResult();
 
         /// <summary>
         /// Closes the <see cref="NpgsqlDataReader"/> reader, allowing a new command to be executed.
