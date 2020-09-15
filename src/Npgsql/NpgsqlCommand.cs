@@ -1144,6 +1144,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         {
                             var numPrepared = 0;
 
+                            // prepared statements carrying exactly this LRU timestamp are protected from eviction in the code below
                             var now = DateTime.UtcNow;
 
                             // mark already prepared statements which are used in this batch, preventing them from being evicted in the second loop
