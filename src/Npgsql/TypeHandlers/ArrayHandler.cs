@@ -56,7 +56,7 @@ namespace Npgsql.TypeHandlers
 
         /// <inheritdoc />
         public override TRequestedArray Read<TRequestedArray>(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-            => Read<TRequestedArray>(buf, len, false, fieldDescription).GetAwaiter().GetResult();
+            => Read<TRequestedArray>(buf, len, false, default, fieldDescription).GetAwaiter().GetResult();
 
         /// <inheritdoc />
         protected internal override async ValueTask<TRequestedArray> Read<TRequestedArray>(NpgsqlReadBuffer buf, int len, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription = null)
