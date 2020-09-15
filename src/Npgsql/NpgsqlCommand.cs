@@ -1143,9 +1143,25 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 if (conn.TryGetBoundConnector(out var connector))
                 {
                     connector.StartUserAction(this);
+
+                    CancellationTokenSource? cts = null;
+
                     try
                     {
-                        using var _ = cancellationToken.Register(cmd => ((NpgsqlCommand)cmd!).Cancel(), this);
+                        if (cancellationToken.CanBeCanceled)
+                            cts = new CancellationTokenSource();
+
+                        using var _ = cancellationToken.Register(cmd =>
+                        {
+                            try
+                            {
+                                ((NpgsqlCommand)cmd!).Cancel();
+                            }
+                            catch
+                            {
+                                cts!.Cancel();
+                            }
+                        }, this);
 
                         ValidateParameters(connector.TypeMapper);
 
@@ -1235,7 +1251,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         reader.Init(this, behavior, _statements, sendTask);
                         connector.CurrentReader = reader;
                         if (async)
-                            await reader.NextResultAsync(cancellationToken);
+                            await reader.NextResultAsync(cts?.Token ?? default);
                         else
                             reader.NextResult();
                         return reader;
@@ -1245,6 +1261,10 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         connector.CurrentReader = null;
                         conn.Connector?.EndUserAction();
                         throw;
+                    }
+                    finally
+                    {
+                        cts?.Dispose();
                     }
                 }
                 else
