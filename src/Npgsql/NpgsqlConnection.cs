@@ -823,11 +823,9 @@ namespace Npgsql
         {
             if (_disposed)
                 return;
-#if !NET461 && !NETSTANDARD2_0
+
             await CloseAsync();
-#else
-            await CloseAsync();
-#endif
+
             _disposed = true;
         }
 
