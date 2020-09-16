@@ -1014,6 +1014,7 @@ namespace Npgsql
             }
 
             // Just in case if we were successful in sending a cancellation, but the query is already completed (and the response is already in the buffer)
+            // Same thing is done below for the cases, when RFQ is not in the buffer
             if (messageCode == BackendMessageCode.ReadyForQuery)
                 originalTimeoutException = null;
 
@@ -1109,6 +1110,7 @@ namespace Npgsql
                                     throw error;
                                 }
                                 // Just in case if we were successful in sending a cancellation, but the query is already completed
+                                // Do not move it into the ParseServerMessage, as we're not checking there for an error like above
                                 originalTimeoutException = null;
 
                                 break;
