@@ -210,7 +210,7 @@ namespace Npgsql
 
         bool _sendResetOnClose;
 
-        NpgsqlException? originalTimeoutException = null;
+        NpgsqlException? _originalTimeoutException = null;
 
         /// <summary>
         /// If pooled, the pool index on which this connector will be returned to the pool.
@@ -1016,7 +1016,7 @@ namespace Npgsql
             // Just in case if we were successful in sending a cancellation, but the query is already completed (and the response is already in the buffer)
             // Same thing is done below for the cases, when RFQ is not in the buffer
             if (messageCode == BackendMessageCode.ReadyForQuery)
-                originalTimeoutException = null;
+                _originalTimeoutException = null;
 
             return new ValueTask<IBackendMessage?>(ParseServerMessage(ReadBuffer, messageCode, len, false));
 
@@ -1111,7 +1111,7 @@ namespace Npgsql
                                 }
                                 // Just in case if we were successful in sending a cancellation, but the query is already completed
                                 // Do not move it into the ParseServerMessage, as we're not checking there for an error like above
-                                originalTimeoutException = null;
+                                _originalTimeoutException = null;
 
                                 break;
 
@@ -1132,14 +1132,14 @@ namespace Npgsql
                         catch (NpgsqlException e) when (!readingNotifications2 && e.InnerException is TimeoutException)
                         {
                             // Cancel request is send, but we were unable to read a response from PG due to timeout
-                            if (!(originalTimeoutException is null))
-                                throw Break(originalTimeoutException);
+                            if (!(_originalTimeoutException is null))
+                                throw Break(_originalTimeoutException);
 
                             // We have got a timeout while not reading the async notifications - trying to cancel a query
                             try
                             {
                                 CancelRequest(throwExceptions: true);
-                                originalTimeoutException = e;
+                                _originalTimeoutException = e;
                             }
                             catch (Exception)
                             {
@@ -1162,10 +1162,10 @@ namespace Npgsql
                     }
 
                     // We failed because of a timeout, and the cancellation was successful
-                    if (!(originalTimeoutException is null) && e.SqlState == PostgresErrorCodes.QueryCanceled)
+                    if (!(_originalTimeoutException is null) && e.SqlState == PostgresErrorCodes.QueryCanceled)
                     {
-                        var tempException = originalTimeoutException;
-                        originalTimeoutException = null;
+                        var tempException = _originalTimeoutException;
+                        _originalTimeoutException = null;
                         throw tempException;
                     }
 
