@@ -42,8 +42,12 @@ namespace Npgsql
         /// Specifies whether the exception is considered transient, that is, whether retrying the operation could
         /// succeed (e.g. a network error or a timeout).
         /// </summary>
-        public virtual bool IsTransient =>
-            InnerException is IOException || InnerException is SocketException || InnerException is TimeoutException;
+#if NET461 || NETSTANDARD2_0 || NETSTANDARD2_1 || NETCOREAPP3_0
+        public virtual bool IsTransient
+#else
+        public override bool IsTransient
+#endif
+            => InnerException is IOException || InnerException is SocketException || InnerException is TimeoutException;
 
         #region Serialization
 

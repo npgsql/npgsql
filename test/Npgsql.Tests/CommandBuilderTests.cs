@@ -923,10 +923,6 @@ CONSTRAINT PK_test_Cod PRIMARY KEY (Cod)
 
                 daDataAdapter.Update(dtTable);
             }
-            catch (Exception ex)
-            {
-                throw ex;
-            }
             finally
             {
                 conn.ExecuteNonQuery("DROP TABLE IF EXISTS Test");

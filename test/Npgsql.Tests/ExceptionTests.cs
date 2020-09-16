@@ -253,7 +253,7 @@ $$ LANGUAGE 'plpgsql';");
             }
         }
 
-#pragma warning disable MSLIB0003
+#pragma warning disable SYSLIB0011
 #pragma warning disable 618
         [Test]
         public void Serialization()

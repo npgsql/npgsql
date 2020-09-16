@@ -253,7 +253,11 @@ namespace Npgsql
         /// See http://www.postgresql.org/docs/current/static/errcodes-appendix.html
         /// </remarks>
         [PublicAPI]
+#if NET461 || NETSTANDARD2_0 || NETSTANDARD2_1 || NETCOREAPP3_0
         public string SqlState { get; }
+#else
+        public override string SqlState { get; }
+#endif
 
         /// <summary>
         /// The SQLSTATE code for the error.

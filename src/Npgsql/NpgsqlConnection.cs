@@ -408,7 +408,7 @@ namespace Npgsql
         /// </summary>
         /// <value>The name of the current database or the name of the database to be
         /// used after a connection is opened. The default value is the empty string.</value>
-        public override string? Database => Settings.Database ?? Settings.Username;
+        public override string Database => Settings.Database ?? Settings.Username ?? "";
 
         /// <summary>
         /// Gets the string identifying the database server (host and port)

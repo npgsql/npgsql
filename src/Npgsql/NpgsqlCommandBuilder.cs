@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Data;
 using System.Data.Common;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using NpgsqlTypes;
 
@@ -43,6 +44,7 @@ namespace Npgsql
         ///   <PermissionSet>
         ///   <IPermission class="System.Security.Permissions.FileIOPermission, mscorlib, Version=2.0.3600.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" version="1" PathDiscovery="*AllFiles*" />
         ///   </PermissionSet>
+        [AllowNull]
         public override string QuotePrefix
         {
             get => base.QuotePrefix;
@@ -69,6 +71,7 @@ namespace Npgsql
         ///   <PermissionSet>
         ///   <IPermission class="System.Security.Permissions.FileIOPermission, mscorlib, Version=2.0.3600.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" version="1" PathDiscovery="*AllFiles*" />
         ///   </PermissionSet>
+        [AllowNull]
         public override string QuoteSuffix
         {
             get => base.QuoteSuffix;
