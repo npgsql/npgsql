@@ -212,6 +212,8 @@ namespace Npgsql
 
         NpgsqlException? _originalTimeoutException = null;
 
+        static readonly TimeSpan TimeoutAfterCancellation = TimeSpan.FromSeconds(2);
+
         /// <summary>
         /// If pooled, the pool index on which this connector will be returned to the pool.
         /// </summary>
@@ -1045,7 +1047,7 @@ namespace Npgsql
 
                 try
                 {
-                    ReadBuffer.Timeout = TimeSpan.FromMilliseconds(UserTimeout);
+                    ReadBuffer.Timeout = _originalTimeoutException is null ? TimeSpan.FromMilliseconds(UserTimeout) : TimeoutAfterCancellation;
 
                     while (true)
                     {
