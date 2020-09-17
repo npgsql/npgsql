@@ -15,7 +15,7 @@ namespace Npgsql.Logging
             get
             {
                 _providerRetrieved = true;
-                return _provider!;
+                return _provider;
             }
             set
             {
@@ -32,11 +32,9 @@ namespace Npgsql.Logging
         /// </summary>
         public static bool IsParameterLoggingEnabled { get; set; }
 
-        static INpgsqlLoggingProvider? _provider;
+        static INpgsqlLoggingProvider _provider = new NoOpLoggingProvider();
         static bool _providerRetrieved;
 
         internal static NpgsqlLogger CreateLogger(string name) => Provider.CreateLogger("Npgsql." + name);
-
-        static NpgsqlLogManager() => Provider = new NoOpLoggingProvider();
     }
 }
