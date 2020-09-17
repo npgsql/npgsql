@@ -1134,7 +1134,7 @@ namespace Npgsql
                         catch (NpgsqlException e) when (!readingNotifications2 && e.InnerException is TimeoutException)
                         {
                             // Cancel request is send, but we were unable to read a response from PG due to timeout
-                            if (!(_originalTimeoutException is null))
+                            if (_originalTimeoutException != null)
                                 throw Break(_originalTimeoutException);
 
                             // We have got a timeout while not reading the async notifications - trying to cancel a query
