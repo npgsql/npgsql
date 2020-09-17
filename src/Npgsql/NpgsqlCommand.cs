@@ -1035,7 +1035,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             using var reader = await ExecuteReaderAsync(CommandBehavior.Default, async, cancellationToken);
             while (async ? await reader.NextResultAsync(cancellationToken) : reader.NextResult()) ;
 
-            reader.Close();
+            await reader.CloseAsync();
 
             return reader.RecordsAffected;
         }
@@ -1295,7 +1295,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 // specified. However, close here as well in case of an error before the reader was even instantiated
                 // (e.g. write I/O error)
                 if ((behavior & CommandBehavior.CloseConnection) == CommandBehavior.CloseConnection)
-                    conn.Close();
+                    await conn.CloseAsync();
                 throw;
             }
 

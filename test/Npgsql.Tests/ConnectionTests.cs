@@ -54,7 +54,7 @@ namespace Npgsql.Tests
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
             Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
 
-            conn.Close();
+            await conn.CloseAsync();
             Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
             Assert.That(eventClosed, Is.True);
@@ -71,7 +71,7 @@ namespace Npgsql.Tests
             conn.Open();
 
             using (var conn2 = await OpenConnectionAsync())
-                conn2.ExecuteNonQuery($"SELECT pg_terminate_backend({conn.ProcessID})");
+                await conn2.ExecuteNonQueryAsync($"SELECT pg_terminate_backend({conn.ProcessID})");
 
             // Allow some time for the pg_terminate to kill our connection
             using (var cmd = CreateSleepCommand(conn, 10))
@@ -177,7 +177,7 @@ namespace Npgsql.Tests
                 // Do this again, since with multiplexing the very first connection attempt is done via
                 // the non-multiplexing path, to surface any exceptions.
                 NpgsqlConnection.ClearPool(conn);
-                conn.Close();
+                await conn.CloseAsync();
                 getPasswordDelegateWasCalled = false;
                 conn.Open();
                 Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
@@ -302,7 +302,7 @@ namespace Npgsql.Tests
             var dbName = GetUniqueIdentifier(nameof(FailConnectThenSucceed));
             using (var conn1 = await OpenConnectionAsync())
             {
-                conn1.ExecuteNonQuery($"DROP DATABASE IF EXISTS \"{dbName}\"");
+                await conn1.ExecuteNonQueryAsync($"DROP DATABASE IF EXISTS \"{dbName}\"");
                 try
                 {
                     var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
@@ -319,10 +319,10 @@ namespace Npgsql.Tests
                         );
                         Assert.That(conn2.FullState, Is.EqualTo(ConnectionState.Closed));
 
-                        conn1.ExecuteNonQuery($"CREATE DATABASE \"{dbName}\" TEMPLATE template0");
+                        await conn1.ExecuteNonQueryAsync($"CREATE DATABASE \"{dbName}\" TEMPLATE template0");
 
                         conn2.Open();
-                        conn2.Close();
+                        await conn2.CloseAsync();
                     }
                 }
                 finally
@@ -608,11 +608,11 @@ namespace Npgsql.Tests
             {
                 conn.Open();
                 var connectorId = conn.ProcessID;
-                conn.Close();
+                await conn.CloseAsync();
 
                 // Use another connection to kill the connector currently in the pool
                 using (var conn2 = await OpenConnectionAsync())
-                    conn2.ExecuteNonQuery($"SELECT pg_terminate_backend({connectorId})");
+                    await conn2.ExecuteNonQueryAsync($"SELECT pg_terminate_backend({connectorId})");
 
                 // Allow some time for the terminate to occur
                 Thread.Sleep(2000);
@@ -692,7 +692,7 @@ namespace Npgsql.Tests
                 using (var reader = await cmd.ExecuteReaderAsync())
                 {
                     reader.Read();
-                    conn.Close();
+                    await conn.CloseAsync();
                     Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
                     Assert.That(reader.IsClosed);
                 }
@@ -737,7 +737,7 @@ namespace Npgsql.Tests
                 {
                     connection.Open();
                     command.Connection = connection;
-                    var tx = connection.BeginTransaction();
+                    var tx = await connection.BeginTransactionAsync();
                     await command.ExecuteScalarAsync();
                     await tx.CommitAsync();
                 }
@@ -1034,7 +1034,7 @@ LANGUAGE 'plpgsql'");
 
                 // Make sure conn2 picks up the new type after a pooled close
                 var connId = conn2.ProcessID;
-                conn2.Close();
+                await conn2.CloseAsync();
                 conn2.Open();
                 Assert.That(conn2.ProcessID, Is.EqualTo(connId), "Didn't get the same connector back");
                 conn2.TypeMapper.MapEnum<ReloadTypesEnum>();
@@ -1081,7 +1081,7 @@ LANGUAGE 'plpgsql'");
             for (var i = 0; i < 255; i++)
             {
                 using (var conn = await OpenConnectionAsync())
-                    conn.BeginTransaction();
+                    await conn.BeginTransactionAsync();
             }
             using (var conn = await OpenConnectionAsync())
                 Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
@@ -1104,7 +1104,7 @@ LANGUAGE 'plpgsql'");
             using (var conn = await OpenConnectionAsync())
             {
                 processId = conn.Connector!.BackendProcessId;
-                conn.BeginTransaction();
+                await conn.BeginTransactionAsync();
                 await conn.ExecuteNonQueryAsync("SELECT 1");
                 Assert.That(conn.Connector.TransactionStatus, Is.EqualTo(TransactionStatus.InTransactionBlock));
             }
@@ -1126,9 +1126,9 @@ LANGUAGE 'plpgsql'");
                 var connectorId = conn.ProcessID;
 
                 using (var conn2 = await OpenConnectionAsync())
-                    conn2.ExecuteNonQuery($"SELECT pg_terminate_backend({connectorId})");
+                    await conn2.ExecuteNonQueryAsync($"SELECT pg_terminate_backend({connectorId})");
 
-                conn.Close();
+                await conn.CloseAsync();
             }
         }
 
@@ -1277,7 +1277,7 @@ CREATE TABLE record ()");
                 Assert.That(conn.Connector.ReadBuffer.Size, Is.GreaterThan(size1));
 
                 var processId = conn.ProcessID;
-                conn.Close();
+                await conn.CloseAsync();
                 conn.Open();
                 Assert.That(conn.ProcessID, Is.EqualTo(processId));
                 Assert.That(conn.Connector.ReadBuffer.Size, Is.EqualTo(csb.ReadBufferSize));
@@ -1393,7 +1393,7 @@ CREATE TABLE record ()");
 
             var pgpassFile = Path.GetTempFileName();
             using var _ = Defer(() => File.Delete(pgpassFile));
-            File.WriteAllText(pgpassFile, $"*:*:*:{builder.Username}:{builder.Password}");
+            await File.WriteAllTextAsync(pgpassFile, $"*:*:*:{builder.Username}:{builder.Password}");
             using var __ = SetEnvironmentVariable("PGPASSFILE", pgpassFile);
 
             builder.Password = null;

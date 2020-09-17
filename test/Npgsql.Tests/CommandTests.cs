@@ -40,7 +40,7 @@ namespace Npgsql.Tests
                     using (var cmd = new NpgsqlCommand(sql, conn))
                     {
                         if (prepare && !IsMultiplexing)
-                            cmd.Prepare();
+                            await cmd.PrepareAsync();
                         using (var reader = await cmd.ExecuteReaderAsync())
                         {
                             var numResultSets = queries.Count(q => q);
@@ -71,7 +71,7 @@ namespace Npgsql.Tests
                     cmd.Parameters.Add(p1);
                     cmd.Parameters.Add(p2);
                     if (prepare == PrepareOrNot.Prepared)
-                        cmd.Prepare();
+                        await cmd.PrepareAsync();
                     p1.Value = 8;
                     p2.Value = "foo";
                     using (var reader = await cmd.ExecuteReaderAsync())
@@ -98,7 +98,7 @@ namespace Npgsql.Tests
                 using (var cmd = new NpgsqlCommand("SELECT 1; SELECT 2", conn))
                 {
                     if (prepare == PrepareOrNot.Prepared)
-                        cmd.Prepare();
+                        await cmd.PrepareAsync();
                     using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SingleRow))
                     {
                         Assert.That(reader.Read(), Is.True);
@@ -319,7 +319,7 @@ namespace Npgsql.Tests
         {
             using (var conn = await OpenConnectionAsync())
             {
-                using (var t = conn.BeginTransaction())
+                using (var t = await conn.BeginTransactionAsync())
                 {
                     await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
 
@@ -335,7 +335,7 @@ namespace Npgsql.Tests
                     while (dr.Read())
                         i++;
                     Assert.AreEqual(3, i);
-                    dr.Close();
+                    await dr.CloseAsync();
 
                     i = 0;
                     command.CommandText = "FETCH BACKWARD 1 IN TE";
@@ -343,7 +343,7 @@ namespace Npgsql.Tests
                     while (dr2.Read())
                         i++;
                     Assert.AreEqual(1, i);
-                    dr2.Close();
+                    await dr2.CloseAsync();
 
                     command.CommandText = "close te;";
                     command.ExecuteNonQuery();
@@ -355,7 +355,7 @@ namespace Npgsql.Tests
         public async Task CursorMoveRecordsAffected()
         {
             using (var connection = await OpenConnectionAsync())
-            using (var transaction = connection.BeginTransaction())
+            using (var transaction = await connection.BeginTransactionAsync())
             {
                 var command = new NpgsqlCommand("DECLARE curs CURSOR FOR SELECT * FROM (VALUES (1), (2), (3)) as t", connection);
                 command.ExecuteNonQuery();
@@ -390,7 +390,7 @@ namespace Npgsql.Tests
                 var reader = await cmd.ExecuteReaderAsync(CommandBehavior.CloseConnection);
                 var wasClosed = false;
                 reader.ReaderClosed += (sender, args) => { wasClosed = true; };
-                conn.Close();
+                await conn.CloseAsync();
                 Assert.That(wasClosed, Is.True);
             }
         }
@@ -419,7 +419,7 @@ namespace Npgsql.Tests
                 using (var cmd = new NpgsqlCommand("SELECT 1, 2 UNION SELECT 3, 4", conn))
                 {
                     if (prepare == PrepareOrNot.Prepared)
-                        cmd.Prepare();
+                        await cmd.PrepareAsync();
 
                     using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SingleRow))
                     {
@@ -784,7 +784,7 @@ LANGUAGE 'plpgsql' VOLATILE;";
                 cmd.CommandText = "SELECT @p::TIMESTAMP";
                 cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Unknown) { Value = "2008-1-1" });
                 if (prepare == PrepareOrNot.Prepared)
-                    cmd.Prepare();
+                    await cmd.PrepareAsync();
                 using (var reader = await cmd.ExecuteReaderAsync())
                 {
                     reader.Read();
@@ -814,11 +814,11 @@ LANGUAGE 'plpgsql' VOLATILE;";
             using (var cmd = new NpgsqlCommand("SELECT 1", conn1))
             {
                 if (prepare == PrepareOrNot.Prepared)
-                    cmd.Prepare();
+                    await cmd.PrepareAsync();
                 cmd.Connection = conn2;
                 Assert.That(cmd.IsPrepared, Is.False);
                 if (prepare == PrepareOrNot.Prepared)
-                    cmd.Prepare();
+                    await cmd.PrepareAsync();
                 Assert.That(await cmd.ExecuteScalarAsync(), Is.EqualTo(1));
             }
         }
@@ -874,7 +874,7 @@ LANGUAGE 'plpgsql' VOLATILE;";
             cmd.CommandText = sb.ToString();
 
             if (prepare == PrepareOrNot.Prepared)
-                cmd.Prepare();
+                await cmd.PrepareAsync();
 
             await cmd.ExecuteNonQueryAsync();
         }

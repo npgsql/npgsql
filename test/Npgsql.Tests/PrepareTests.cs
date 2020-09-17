@@ -71,14 +71,14 @@ namespace Npgsql.Tests
                     if(async)
                         await cmd.PrepareAsync();
                     else
-                        cmd.Prepare();
+                        await cmd.PrepareAsync();
 
                     AssertNumPreparedStatements(conn, 1);
 
                     if (async)
                         await cmd.UnprepareAsync();
                     else
-                        cmd.Unprepare();
+                        await cmd.UnprepareAsync();
 
                     AssertNumPreparedStatements(conn, 0);
                     Assert.That(cmd.IsPrepared, Is.False);

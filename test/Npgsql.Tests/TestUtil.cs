@@ -80,7 +80,7 @@ namespace Npgsql.Tests
             if (async)
                 await conn.ExecuteNonQueryAsync($"CREATE EXTENSION IF NOT EXISTS {extension}");
             else
-                conn.ExecuteNonQuery($"CREATE EXTENSION IF NOT EXISTS {extension}");
+                await conn.ExecuteNonQueryAsync($"CREATE EXTENSION IF NOT EXISTS {extension}");
 
             conn.ReloadTypes();
         }

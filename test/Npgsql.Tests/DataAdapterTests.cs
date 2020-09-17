@@ -111,7 +111,7 @@ namespace Npgsql.Tests
 
                 Assert.AreEqual(4, dr2[0]);
                 Assert.AreEqual(7.3000000M, dr2[1]);
-                dr2.Close();
+                await dr2.CloseAsync();
             }
         }
 
@@ -592,7 +592,7 @@ INSERT INTO {table} (interval) VALUES ('1 hour'::INTERVAL);");
                 {
                     var dt = new DataTable();
                     dt.Load(dr);
-                    dr.Close();
+                    await dr.CloseAsync();
 
                     Assert.AreEqual(5, dt.Columns[0].MaxLength);
                     Assert.AreEqual(5, dt.Columns[1].MaxLength);

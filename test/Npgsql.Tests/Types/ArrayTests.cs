@@ -513,7 +513,7 @@ namespace Npgsql.Tests.Types
             using (var conn = await OpenConnectionAsync())
             {
                 TestUtil.MinimumPgVersion(conn, "11.0", "Arrays of domains were introduced in PostgreSQL 11");
-                conn.ExecuteNonQuery("CREATE DOMAIN pg_temp.posint AS integer CHECK (VALUE > 0);");
+                await conn.ExecuteNonQueryAsync("CREATE DOMAIN pg_temp.posint AS integer CHECK (VALUE > 0);");
                 conn.ReloadTypes();
                 using (var cmd = new NpgsqlCommand("SELECT @p1::posint[], @p2::posint[][]", conn))
                 {
@@ -549,8 +549,8 @@ namespace Npgsql.Tests.Types
             using (var conn = await OpenConnectionAsync())
             {
                 TestUtil.MinimumPgVersion(conn, "11.0", "Domains over arrays were introduced in PostgreSQL 11");
-                conn.ExecuteNonQuery("CREATE DOMAIN pg_temp.int_array_1d  AS int[] CHECK(array_length(VALUE, 1) = 4);" +
-                                     "CREATE DOMAIN pg_temp.int_array_2d  AS int[][] CHECK(array_length(VALUE, 2) = 2);");
+                await conn.ExecuteNonQueryAsync("CREATE DOMAIN pg_temp.int_array_1d  AS int[] CHECK(array_length(VALUE, 1) = 4);" +
+                                                "CREATE DOMAIN pg_temp.int_array_2d  AS int[][] CHECK(array_length(VALUE, 2) = 2);");
                 conn.ReloadTypes();
                 using (var cmd = new NpgsqlCommand("SELECT @p1::int_array_1d, @p2::int_array_2d", conn))
                 {

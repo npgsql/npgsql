@@ -292,7 +292,7 @@ namespace Npgsql.Tests
         public async Task Bug2046()
         {
             var expected = 64.27245f;
-            using (var conn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
             using (var cmd = new NpgsqlCommand("SELECT @p = 64.27245::real, 64.27245::real, @p", conn))
             {
                 cmd.Parameters.AddWithValue("p", expected);
@@ -1152,11 +1152,11 @@ CREATE TEMP TABLE ""OrganisatieQmo_Organisatie_QueryModelObjects_Imp""
             // write buffer size must be 8192 for this test to work
             // so guard against changes to the default / a change in the test harness
             builder.WriteBufferSize = 8192;
-            using var conn = OpenConnection(builder.ConnectionString);
+            using var conn = await OpenConnectionAsync(builder.ConnectionString);
 
             try
             {
-                conn.ExecuteNonQuery("CREATE TABLE bug_2849 (col1 text, col2 text)");
+                await conn.ExecuteNonQueryAsync("CREATE TABLE bug_2849 (col1 text, col2 text)");
 
                 using (var binaryImporter = conn.BeginBinaryImport("COPY bug_2849 FROM STDIN (FORMAT BINARY);"))
                 {
@@ -1178,7 +1178,7 @@ CREATE TEMP TABLE ""OrganisatieQmo_Organisatie_QueryModelObjects_Imp""
             }
             finally
             {
-                conn.ExecuteNonQuery("DROP TABLE IF EXISTS bug_2849");
+                await conn.ExecuteNonQueryAsync("DROP TABLE IF EXISTS bug_2849");
             }
         }
 
@@ -1189,11 +1189,11 @@ CREATE TEMP TABLE ""OrganisatieQmo_Organisatie_QueryModelObjects_Imp""
             // write buffer size must be 8192 for this test to work
             // so guard against changes to the default / a change in the test harness
             builder.WriteBufferSize = 8192;
-            using var conn = OpenConnection(builder.ConnectionString);
+            using var conn = await OpenConnectionAsync(builder.ConnectionString);
 
             try
             {
-                conn.ExecuteNonQuery("CREATE TABLE bug_2849 (col1 text, col2 text)");
+                await conn.ExecuteNonQueryAsync("CREATE TABLE bug_2849 (col1 text, col2 text)");
 
                 using (var binaryImporter = conn.BeginBinaryImport("COPY bug_2849 FROM STDIN (FORMAT BINARY);"))
                 {
@@ -1215,7 +1215,7 @@ CREATE TEMP TABLE ""OrganisatieQmo_Organisatie_QueryModelObjects_Imp""
             }
             finally
             {
-                conn.ExecuteNonQuery("DROP TABLE IF EXISTS bug_2849");
+                await conn.ExecuteNonQueryAsync("DROP TABLE IF EXISTS bug_2849");
             }
         }
 

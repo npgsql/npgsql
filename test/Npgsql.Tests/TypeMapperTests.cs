@@ -167,7 +167,7 @@ CHECK
         public async Task StringToCitext()
         {
             using (CreateTempPool(ConnectionString, out var connectionString))
-            using (var conn = OpenConnection(connectionString))
+            using (var conn = await OpenConnectionAsync(connectionString))
             {
                 await EnsureExtensionAsync(conn, "citext");
 

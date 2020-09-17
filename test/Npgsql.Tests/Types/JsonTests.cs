@@ -30,8 +30,8 @@ namespace Npgsql.Tests.Types
                         Assert.That(reader.GetString(i), Is.EqualTo(value));
                         Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(string)));
 
-                        using (var textReader = reader.GetTextReader(i))
-                            Assert.That(textReader.ReadToEnd(), Is.EqualTo(value));
+                        using (var textReader = await reader.GetTextReaderAsync(i))
+                            Assert.That(await textReader.ReadToEndAsync(), Is.EqualTo(value));
                     }
                 }
             }
@@ -58,8 +58,8 @@ namespace Npgsql.Tests.Types
                         Assert.That(reader.GetString(i), Is.EqualTo(value));
                         Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(string)));
 
-                        using (var textReader = reader.GetTextReader(i))
-                            Assert.That(textReader.ReadToEnd(), Is.EqualTo(value));
+                        using (var textReader = await reader.GetTextReaderAsync(i))
+                            Assert.That(await textReader.ReadToEndAsync(), Is.EqualTo(value));
                     }
                 }
             }
@@ -73,7 +73,7 @@ namespace Npgsql.Tests.Types
             var expectedString = NpgsqlDbType.Equals(NpgsqlDbType.Jsonb) ? "{\"p\": 1}"
                                     : "{\"p\":1}";
 
-            using var conn = OpenConnection();
+            using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand(@"SELECT @p1, @p2, @p3", conn);
 
             cmd.Parameters.Add(new NpgsqlParameter<string>("p1", NpgsqlDbType) { Value = expected });
@@ -95,7 +95,7 @@ namespace Npgsql.Tests.Types
             var expectedString = NpgsqlDbType.Equals(NpgsqlDbType.Jsonb) ? "{\"p\": 1}"
                                     : "{\"p\":1}";
 
-            using var conn = OpenConnection();
+            using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand(@"SELECT @p1", conn);
 
             cmd.Parameters.Add(new NpgsqlParameter<ArraySegment<char>>("p1", NpgsqlDbType) { Value = new ArraySegment<char>(expected.ToCharArray()) });

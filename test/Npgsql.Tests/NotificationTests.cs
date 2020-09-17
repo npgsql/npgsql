@@ -100,16 +100,16 @@ namespace Npgsql.Tests
         [Timeout(10000)]
         public async Task WaitAsync()
         {
-            using (var conn = OpenConnection())
-            using (var notifyingConn = OpenConnection())
+            using (var conn = await OpenConnectionAsync())
+            using (var notifyingConn = await OpenConnectionAsync())
             {
                 var receivedNotification = false;
-                conn.ExecuteNonQuery("LISTEN notifytest");
-                notifyingConn.ExecuteNonQuery("NOTIFY notifytest");
+                await conn.ExecuteNonQueryAsync("LISTEN notifytest");
+                await notifyingConn.ExecuteNonQueryAsync("NOTIFY notifytest");
                 conn.Notification += (o, e) => receivedNotification = true;
                 await conn.WaitAsync();
                 Assert.IsTrue(receivedNotification);
-                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+                Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
             }
         }
 
@@ -140,16 +140,16 @@ namespace Npgsql.Tests
                 KeepAlive = 1,
                 Pooling = false
             };
-            using (var conn = OpenConnection(csb))
-            using (var notifyingConn = OpenConnection())
+            using (var conn = await OpenConnectionAsync(csb))
+            using (var notifyingConn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("LISTEN notifytest");
+                await conn.ExecuteNonQueryAsync("LISTEN notifytest");
 #pragma warning disable 4014
                 Task.Delay(2000).ContinueWith(t => notifyingConn.ExecuteNonQuery("NOTIFY notifytest"));
 #pragma warning restore 4014
                 await conn.WaitAsync();
                 //Assert.That(TestLoggerSink.Records, Has.Some.With.Property("EventId").EqualTo(new EventId(NpgsqlEventId.Keepalive)));
-                Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+                Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
             }
         }
 

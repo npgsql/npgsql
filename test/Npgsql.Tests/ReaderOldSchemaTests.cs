@@ -205,7 +205,7 @@ SELECT 1 AS some_other_column, 2";
                 using (var cmd = new NpgsqlCommand(query, conn))
                 {
                     if (prepare == PrepareOrNot.Prepared)
-                        cmd.Prepare();
+                        await cmd.PrepareAsync();
                     using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly))
                     {
                         Assert.That(reader.Read(), Is.False);

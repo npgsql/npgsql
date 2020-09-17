@@ -559,7 +559,7 @@ $$ LANGUAGE SQL;
             using (var cmd = new NpgsqlCommand(query, conn))
             {
                 cmd.Parameters.AddWithValue("@p", NpgsqlDbType.Integer, answer);
-                cmd.Prepare();
+                await cmd.PrepareAsync();
                 Assert.That(conn.Connector!.PreparedStatementManager.NumPrepared, Is.EqualTo(1));
 
                 var ex = Assert.Throws<NpgsqlException>(() =>

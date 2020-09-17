@@ -130,27 +130,27 @@ namespace Npgsql.Tests
                     sb.Append($"INSERT INTO {table} (int) VALUES ({i});");
                 var cmd = new NpgsqlCommand(sb.ToString(), conn);
                 var reader = await cmd.ExecuteReaderAsync(Behavior);
-                reader.Close();
+                await reader.CloseAsync();
                 Assert.That(reader.RecordsAffected, Is.EqualTo(15));
 
                 cmd = new NpgsqlCommand($"SELECT * FROM {table}", conn);
                 reader = await cmd.ExecuteReaderAsync(Behavior);
-                reader.Close();
+                await reader.CloseAsync();
                 Assert.That(reader.RecordsAffected, Is.EqualTo(-1));
 
                 cmd = new NpgsqlCommand($"UPDATE {table} SET int=int+1 WHERE int > 10", conn);
                 reader = await cmd.ExecuteReaderAsync(Behavior);
-                reader.Close();
+                await reader.CloseAsync();
                 Assert.That(reader.RecordsAffected, Is.EqualTo(4));
 
                 cmd = new NpgsqlCommand($"UPDATE {table} SET int=8 WHERE int=666", conn);
                 reader = await cmd.ExecuteReaderAsync(Behavior);
-                reader.Close();
+                await reader.CloseAsync();
                 Assert.That(reader.RecordsAffected, Is.EqualTo(0));
 
                 cmd = new NpgsqlCommand($"DELETE FROM {table} WHERE int > 10", conn);
                 reader = await cmd.ExecuteReaderAsync(Behavior);
-                reader.Close();
+                await reader.CloseAsync();
                 Assert.That(reader.RecordsAffected, Is.EqualTo(4));
             }
         }
@@ -425,7 +425,7 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
 
             using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE TYPE pg_temp.my_enum AS ENUM ('one')");
+                await conn.ExecuteNonQueryAsync("CREATE TYPE pg_temp.my_enum AS ENUM ('one')");
                 conn.ReloadTypes();
                 using (var cmd = new NpgsqlCommand("SELECT 'one'::my_enum", conn))
                 using (var reader = await cmd.ExecuteReaderAsync(Behavior))
@@ -444,7 +444,7 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
 
             using (var conn = await OpenConnectionAsync())
             {
-                conn.ExecuteNonQuery("CREATE DOMAIN pg_temp.my_domain AS VARCHAR(10)");
+                await conn.ExecuteNonQueryAsync("CREATE DOMAIN pg_temp.my_domain AS VARCHAR(10)");
                 conn.ReloadTypes();
                 using (var cmd = new NpgsqlCommand("SELECT 'one'::my_domain", conn))
                 using (var reader = await cmd.ExecuteReaderAsync(Behavior))
@@ -660,7 +660,7 @@ LANGUAGE 'plpgsql';
                 using (var cmd = new NpgsqlCommand($"SELECT {function}()", conn))
                 {
                     if (prepare == PrepareOrNot.Prepared)
-                        cmd.Prepare();
+                        await cmd.PrepareAsync();
                     Assert.That(async () => await cmd.ExecuteReaderAsync(Behavior), Throws.Exception.TypeOf<PostgresException>());
                 }
             }
@@ -685,7 +685,7 @@ LANGUAGE 'plpgsql';
                 using (var cmd = new NpgsqlCommand($"SELECT 1; SELECT {function}()", conn))
                 {
                     if (prepare == PrepareOrNot.Prepared)
-                        cmd.Prepare();
+                        await cmd.PrepareAsync();
                     using (var reader = await cmd.ExecuteReaderAsync(Behavior))
                         Assert.That(() => reader.NextResult(), Throws.Exception.TypeOf<PostgresException>());
                 }
@@ -862,13 +862,13 @@ LANGUAGE 'plpgsql';
             using (var dr = await command.ExecuteReaderAsync(Behavior))
             {
                 dr.Read();
-                dr.Close();
+                await dr.CloseAsync();
 
                 using (var upd = conn.CreateCommand())
                 {
                     upd.CommandText = "SELECT 1";
                     if (prepare == PrepareOrNot.Prepared)
-                        upd.Prepare();
+                        await upd.PrepareAsync();
                 }
             }
         }
@@ -915,7 +915,7 @@ LANGUAGE 'plpgsql';
 
                 var command = new NpgsqlCommand($"SELECT 1; SELECT * FROM {table} WHERE name='does_not_exist'", conn);
                 if (prepare == PrepareOrNot.Prepared)
-                    command.Prepare();
+                    await command.PrepareAsync();
                 using (var reader = await command.ExecuteReaderAsync(Behavior))
                 {
                     Assert.That(reader.HasRows, Is.True);
@@ -930,7 +930,7 @@ LANGUAGE 'plpgsql';
 
                 command.CommandText = $"SELECT * FROM {table}";
                 if (prepare == PrepareOrNot.Prepared)
-                    command.Prepare();
+                    await command.PrepareAsync();
                 using (var reader = await command.ExecuteReaderAsync(Behavior))
                 {
                     reader.Read();
@@ -939,17 +939,17 @@ LANGUAGE 'plpgsql';
 
                 command.CommandText = "SELECT 1";
                 if (prepare == PrepareOrNot.Prepared)
-                    command.Prepare();
+                    await command.PrepareAsync();
                 using (var reader = await command.ExecuteReaderAsync(Behavior))
                 {
                     reader.Read();
-                    reader.Close();
+                    await reader.CloseAsync();
                     Assert.That(() => reader.HasRows, Throws.Exception.TypeOf<InvalidOperationException>());
                 }
 
                 command.CommandText = $"INSERT INTO {table} (name) VALUES ('foo'); SELECT * FROM {table}";
                 if (prepare == PrepareOrNot.Prepared)
-                    command.Prepare();
+                    await command.PrepareAsync();
                 using (var reader = await command.ExecuteReaderAsync())
                 {
                     Assert.That(reader.HasRows, Is.True);
@@ -1185,12 +1185,12 @@ LANGUAGE plpgsql VOLATILE";
                     {
                         Assert.That(stream.CanSeek, Is.EqualTo(Behavior == CommandBehavior.Default));
                         Assert.That(stream.Length, Is.EqualTo(expected.Length));
-                        stream.Read(actual, 0, 2);
+                        await stream.ReadAsync(actual, 0, 2);
                         Assert.That(actual[0], Is.EqualTo(expected[0]));
                         Assert.That(actual[1], Is.EqualTo(expected[1]));
                         Assert.That(async () => await streamGetter(reader, 0),
                             Throws.Exception.TypeOf<InvalidOperationException>());
-                        stream.Read(actual, 2, 1);
+                        await stream.ReadAsync(actual, 2, 1);
                         Assert.That(actual[2], Is.EqualTo(expected[2]));
                     }
 
@@ -1356,13 +1356,13 @@ LANGUAGE plpgsql VOLATILE";
                     reader.Read();
 
                     var textReader = await textReaderGetter(reader, 0);
-                    textReader.Read(actual, 0, 2);
+                    await textReader.ReadAsync(actual, 0, 2);
                     Assert.That(actual[0], Is.EqualTo(expected[0]));
                     Assert.That(actual[1], Is.EqualTo(expected[1]));
                     Assert.That(async () => await textReaderGetter(reader, 0),
                         Throws.Exception.TypeOf<InvalidOperationException>(),
                         "Sequential text reader twice on same column");
-                    textReader.Read(actual, 2, 1);
+                    await textReader.ReadAsync(actual, 2, 1);
                     Assert.That(actual[2], Is.EqualTo(expected[2]));
                     textReader.Dispose();
 
@@ -1387,7 +1387,7 @@ LANGUAGE plpgsql VOLATILE";
             using (var reader = await cmd.ExecuteReaderAsync(Behavior))
             {
                 reader.Read();
-                var textReader = reader.GetTextReader(0);
+                var textReader = await reader.GetTextReaderAsync(0);
                 // ReSharper disable once UnusedVariable
                 var v = reader.GetValue(1);
                 Assert.That(() => textReader.Peek(), Throws.Exception.TypeOf<ObjectDisposedException>());
@@ -1402,7 +1402,7 @@ LANGUAGE plpgsql VOLATILE";
             using (var reader = await cmd.ExecuteReaderAsync(Behavior))
             {
                 reader.Read();
-                var tr1 = reader.GetTextReader(0);
+                var tr1 = await reader.GetTextReaderAsync(0);
                 reader.Read();
                 Assert.That(() => tr1.Peek(), Throws.Exception.TypeOf<ObjectDisposedException>());
             }
