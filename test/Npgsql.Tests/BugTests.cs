@@ -1237,7 +1237,8 @@ CREATE TEMP TABLE ""OrganisatieQmo_Organisatie_QueryModelObjects_Imp""
             }
             finally
             {
-                conn.ExecuteNonQuery("DROP FUNCTION IF EXISTS f_test()");
+                using var conn2 = OpenConnection();
+                conn2.ExecuteNonQuery("DROP FUNCTION IF EXISTS f_test()");
             }
         }
 

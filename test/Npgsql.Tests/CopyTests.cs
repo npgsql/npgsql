@@ -17,12 +17,13 @@ namespace Npgsql.Tests
         #region issue 2257
 
         [Test, Description("Reproduce #2257")]
+        [Timeout(10000)]
         public async Task Issue2257()
         {
             if (IsMultiplexing)
                 Assert.Ignore("Multiplexing: fails");
 
-            using (var conn = OpenConnection(new NpgsqlConnectionStringBuilder(ConnectionString) { CommandTimeout = 3 }))
+            using (var conn = OpenConnection(new NpgsqlConnectionStringBuilder(ConnectionString) { CommandTimeout = 30 }))
             {
                 await using var _ = await GetTempTableName(conn, out var table1);
                 await using var __ = await GetTempTableName(conn, out var table2);
@@ -31,27 +32,26 @@ namespace Npgsql.Tests
                 using (var cmd = conn.CreateCommand())
                 {
                     cmd.CommandText = $"CREATE TABLE {table1} AS SELECT * FROM generate_series(1, {rowCount}) id";
-                    // Creating table can take some time, so we set quite large timeout
-                    cmd.CommandTimeout = 30;
                     await cmd.ExecuteNonQueryAsync();
                     cmd.CommandText = $"ALTER TABLE {table1} ADD CONSTRAINT {table1}_pk PRIMARY KEY (id)";
                     await cmd.ExecuteNonQueryAsync();
                     cmd.CommandText = $"CREATE TABLE {table2} (master_id integer NOT NULL REFERENCES {table1} (id))";
-                    // We need to fail with timeout while calling writer.Complete() and conn.BeginBinaryImport reuses timeout from previous command
-                    // so we set default timeout here
-                    cmd.CommandTimeout = 3;
                     await cmd.ExecuteNonQueryAsync();
                 }
 
                 using (var writer = conn.BeginBinaryImport($"COPY {table2} FROM STDIN BINARY"))
                 {
-                    for (var i = 1; i <= rowCount; ++i)
+                    writer.Timeout = 3;
+                    var e = Assert.Throws<NpgsqlException>(() =>
                     {
-                        writer.StartRow();
-                        writer.Write(i);
-                    }
+                        for (var i = 1; i <= rowCount; ++i)
+                        {
+                            writer.StartRow();
+                            writer.Write(i);
+                        }
 
-                    var e = Assert.Throws<NpgsqlException>(() => writer.Complete());
+                        writer.Complete();
+                    });
                     Assert.That(e.InnerException, Is.TypeOf<TimeoutException>());
                 }
             }
@@ -650,8 +650,9 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
         public async Task ErrorDuringImport()
         {
             using (var conn = await OpenConnectionAsync())
+            using (var conn2 = await OpenConnectionAsync())
             {
-                await using var _ = await CreateTempTable(conn, "foo INT, CONSTRAINT uq UNIQUE(foo)", out var table);
+                await using var _ = await CreateTempTable(conn2, "foo INT, CONSTRAINT uq UNIQUE(foo)", out var table);
 
                 var writer = conn.BeginBinaryImport($"COPY {table} (foo) FROM STDIN BINARY");
                 writer.StartRow();
@@ -661,7 +662,6 @@ INSERT INTO {table} (bits, bitarray) VALUES (B'101', ARRAY[B'101', B'111'])");
                 Assert.That(() => writer.Complete(), Throws.Exception
                     .TypeOf<PostgresException>()
                     .With.Property(nameof(PostgresException.SqlState)).EqualTo("23505"));
-                Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
             }
         }
 
