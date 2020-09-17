@@ -210,6 +210,11 @@ namespace Npgsql
 
         bool _sendResetOnClose;
 
+        /// <summary>
+        /// Just because we've send a cancellation request, it still may take multiple reads (where we return some message to the NpgsqlDataReader)
+        /// until we finally get a PG cancellation error.
+        /// So, we save the original timeout exception until we get the PG cancellation error, fail with the timeout (or read the RFQ).
+        /// </summary>
         NpgsqlException? _originalTimeoutException = null;
 
         /// <summary>
@@ -1046,6 +1051,7 @@ namespace Npgsql
 
                 try
                 {
+                    // Read the documentation for the _originalTimeoutException
                     ReadBuffer.Timeout = _originalTimeoutException is null ? TimeSpan.FromMilliseconds(UserTimeout) : CancellationReadTimeout;
 
                     while (true)
