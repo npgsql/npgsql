@@ -901,6 +901,29 @@ namespace Npgsql
         }
         int _internalCommandTimeout;
 
+        /// <summary>
+        /// The time to wait (in seconds) while trying to read a response for a cancellation request for a timed out query, before terminating the attempt and generating an error.
+        /// Defaults to 2 seconds.
+        /// </summary>
+        [Category("Timeouts")]
+        [Description("The time to wait (in seconds) while trying to read a response for a cancellation request for a timed out query, before terminating the attempt and generating an error. Set to zero for infinity.")]
+        [DisplayName("Cancellation Read Timeout")]
+        [NpgsqlConnectionStringProperty]
+        [DefaultValue(2)]
+        public int CancellationReadTimeout
+        {
+            get => _cancellationReadTimeout;
+            set
+            {
+                if (value < 0)
+                    throw new ArgumentOutOfRangeException(nameof(value), value, "CancellationReadTimeout can't be negative");
+
+                _cancellationReadTimeout = value;
+                SetValue(nameof(CancellationReadTimeout), value);
+            }
+        }
+        int _cancellationReadTimeout;
+
         #endregion
 
         #region Properties - Entity Framework
