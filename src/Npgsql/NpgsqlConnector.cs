@@ -213,7 +213,7 @@ namespace Npgsql
         /// <summary>
         /// Just because we've send a cancellation request, it still may take multiple reads (where we return some message to the NpgsqlDataReader)
         /// until we finally get a PG cancellation error.
-        /// So, we save the original timeout exception until we get the PG cancellation error, fail with the timeout (or read the RFQ).
+        /// So, we save the original timeout exception until we get the PG cancellation error, fail with the timeout or read the RFQ.
         /// </summary>
         NpgsqlException? _originalTimeoutException = null;
 
