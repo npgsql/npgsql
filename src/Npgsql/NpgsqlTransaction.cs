@@ -207,14 +207,22 @@ namespace Npgsql
         /// Creates a transaction save point.
         /// </summary>
         /// <param name="name">The name of the savepoint.</param>
+#if NET461 || NETSTANDARD2_0 || NETSTANDARD2_1 || NETCOREAPP3_0
         public void Save(string name) => Save(name, false).GetAwaiter().GetResult();
+#else
+        public override void Save(string name) => Save(name, false).GetAwaiter().GetResult();
+#endif
 
         /// <summary>
         /// Creates a transaction save point.
         /// </summary>
         /// <param name="name">The name of the savepoint.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+#if NET461 || NETSTANDARD2_0 || NETSTANDARD2_1 || NETCOREAPP3_0
         public Task SaveAsync(string name, CancellationToken cancellationToken = default)
+#else
+        public override Task SaveAsync(string name, CancellationToken cancellationToken = default)
+#endif
         {
             if (cancellationToken.IsCancellationRequested)
                 return Task.FromCanceled(cancellationToken);
@@ -245,14 +253,23 @@ namespace Npgsql
         /// Rolls back a transaction from a pending savepoint state.
         /// </summary>
         /// <param name="name">The name of the savepoint.</param>
-        public void Rollback(string name) => Rollback(name, false).GetAwaiter().GetResult();
+#if NET461 || NETSTANDARD2_0 || NETSTANDARD2_1 || NETCOREAPP3_0
+        public void Rollback(string name)
+#else
+        public override void Rollback(string name)
+#endif
+            => Rollback(name, false).GetAwaiter().GetResult();
 
         /// <summary>
         /// Rolls back a transaction from a pending savepoint state.
         /// </summary>
         /// <param name="name">The name of the savepoint.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+#if NET461 || NETSTANDARD2_0 || NETSTANDARD2_1 || NETCOREAPP3_0
         public Task RollbackAsync(string name, CancellationToken cancellationToken = default)
+#else
+        public override Task RollbackAsync(string name, CancellationToken cancellationToken = default)
+#endif
         {
             if (cancellationToken.IsCancellationRequested)
                 return Task.FromCanceled(cancellationToken);
@@ -283,14 +300,22 @@ namespace Npgsql
         /// Releases a transaction from a pending savepoint state.
         /// </summary>
         /// <param name="name">The name of the savepoint.</param>
+#if NET461 || NETSTANDARD2_0 || NETSTANDARD2_1 || NETCOREAPP3_0
         public void Release(string name) => Release(name, false).GetAwaiter().GetResult();
+#else
+        public override void Release(string name) => Release(name, false).GetAwaiter().GetResult();
+#endif
 
         /// <summary>
         /// Releases a transaction from a pending savepoint state.
         /// </summary>
         /// <param name="name">The name of the savepoint.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+#if NET461 || NETSTANDARD2_0 || NETSTANDARD2_1 || NETCOREAPP3_0
         public Task ReleaseAsync(string name, CancellationToken cancellationToken = default)
+#else
+        public override Task ReleaseAsync(string name, CancellationToken cancellationToken = default)
+#endif
         {
             if (cancellationToken.IsCancellationRequested)
                 return Task.FromCanceled(cancellationToken);

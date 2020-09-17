@@ -50,7 +50,7 @@ namespace Npgsql.Schema
         /// <inheritdoc cref="DbColumn.BaseCatalogName" />
         public new string BaseCatalogName
         {
-            get => base.BaseCatalogName;
+            get => base.BaseCatalogName!;
             protected internal set => base.BaseCatalogName = value;
         }
 
@@ -71,7 +71,7 @@ namespace Npgsql.Schema
         /// <inheritdoc cref="DbColumn.BaseServerName" />
         public new string BaseServerName
         {
-            get => base.BaseServerName;
+            get => base.BaseServerName!;
             protected internal set => base.BaseServerName = value;
         }
 
@@ -176,7 +176,7 @@ namespace Npgsql.Schema
         /// <inheritdoc cref="DbColumn.DataTypeName" />
         public new string DataTypeName
         {
-            get => base.DataTypeName;
+            get => base.DataTypeName!;
             protected internal set => base.DataTypeName = value;
         }
 

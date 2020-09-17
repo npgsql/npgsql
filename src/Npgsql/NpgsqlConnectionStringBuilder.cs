@@ -178,6 +178,9 @@ namespace Npgsql
         public void Add(KeyValuePair<string, object?> item)
             => this[item.Key] = item.Value!;
 
+        void IDictionary<string, object?>.Add(string keyword, object? value)
+            => this[keyword] = value;
+
         /// <summary>
         /// Removes the entry with the specified key from the DbConnectionStringBuilder instance.
         /// </summary>
@@ -1491,12 +1494,12 @@ namespace Npgsql
         #region IDictionary<string, object>
 
         /// <summary>
-        /// Gets an ICollection{string} containing the keys of the <see cref="NpgsqlConnectionStringBuilder"/>.
+        /// Gets an <see cref="ICollection" /> containing the keys of the <see cref="NpgsqlConnectionStringBuilder"/>.
         /// </summary>
-        public new ICollection<string> Keys => base.Keys.Cast<string>().ToArray();
+        public new ICollection<string> Keys => base.Keys.Cast<string>().ToArray()!;
 
         /// <summary>
-        /// Gets an ICollection{string} containing the values in the <see cref="NpgsqlConnectionStringBuilder"/>.
+        /// Gets an <see cref="ICollection" /> containing the values in the <see cref="NpgsqlConnectionStringBuilder"/>.
         /// </summary>
         public new ICollection<object?> Values => base.Values.Cast<object?>().ToArray();
 
@@ -1529,7 +1532,7 @@ namespace Npgsql
         #endregion IDictionary<string, object>
 
         #region ICustomTypeDescriptor
-
+#nullable disable
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
         protected override void GetProperties(Hashtable propertyDescriptors)
         {
@@ -1548,7 +1551,7 @@ namespace Npgsql
                 propertyDescriptors.Remove(o.DisplayName);
         }
 #pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
-
+#nullable enable
         #endregion
 
         internal static readonly string[] EmptyStringArray = new string[0];

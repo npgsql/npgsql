@@ -7,6 +7,8 @@ using NLog.Filters;
 using NpgsqlTypes;
 using NUnit.Framework;
 
+#pragma warning disable 8602 // Warning should be removable after rc2 (https://github.com/dotnet/runtime/pull/42215)
+
 namespace Npgsql.Tests
 {
     public class SchemaTests : TestBase

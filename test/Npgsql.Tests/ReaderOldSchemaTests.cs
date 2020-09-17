@@ -32,8 +32,10 @@ CREATE TABLE {table} (
                 using (var dr = command.ExecuteReader(CommandBehavior.KeyInfo))
                 {
                     dr.Read();
-                    var keyColumns =
-                        dr.GetSchemaTable()!.Rows.Cast<DataRow>().Where(r => (bool)r["IsKey"]).ToArray();
+                    DataRow[] keyColumns =
+#pragma warning disable 8602 // Warning should be removable after rc2 (https://github.com/dotnet/runtime/pull/42215)
+                        dr.GetSchemaTable()!.Rows.Cast<DataRow>().Where(r => (bool)r["IsKey"]).ToArray()!;
+#pragma warning restore 8602
                     Assert.That(keyColumns, Has.Length.EqualTo(2));
                     Assert.That(keyColumns.Count(c => (string)c["ColumnName"] == "field_pk1"), Is.EqualTo(1));
                     Assert.That(keyColumns.Count(c => (string)c["ColumnName"] == "field_pk2"), Is.EqualTo(1));
@@ -54,7 +56,9 @@ CREATE TABLE {table} (
                     {
                         dr.Read();
                         var metadata = dr.GetSchemaTable()!;
-                        var key = metadata.Rows.Cast<DataRow>().Single(r => (bool)r["IsKey"]);
+#pragma warning disable 8602 // Warning should be removable after rc2 (https://github.com/dotnet/runtime/pull/42215)
+                        var key = metadata.Rows.Cast<DataRow>().Single(r => (bool)r["IsKey"])!;
+#pragma warning restore 8602
                         Assert.That(key["ColumnName"], Is.EqualTo("id"));
                     }
                 }
@@ -73,9 +77,11 @@ CREATE TABLE {table} (
                 using (var dr = command.ExecuteReader(CommandBehavior.KeyInfo))
                 {
                     var metadata = dr.GetSchemaTable()!;
+#pragma warning disable 8602 // Warning should be removable after rc2 (https://github.com/dotnet/runtime/pull/42215)
                     Assert.That(metadata.Rows.Cast<DataRow>()
                         .Where(r => ((string)r["ColumnName"]).Contains("serial"))
                         .All(r => (bool)r["IsAutoIncrement"]));
+#pragma warning restore 8602
                 }
             }
         }

@@ -66,7 +66,7 @@ namespace Npgsql
         /// <summary>
         /// Create row updated event.
         /// </summary>
-        protected override RowUpdatedEventArgs CreateRowUpdatedEvent(DataRow dataRow, IDbCommand command,
+        protected override RowUpdatedEventArgs CreateRowUpdatedEvent(DataRow dataRow, IDbCommand? command,
                                                                      System.Data.StatementType statementType,
                                                                      DataTableMapping tableMapping)
             => new NpgsqlRowUpdatedEventArgs(dataRow, command, statementType, tableMapping);
@@ -74,7 +74,7 @@ namespace Npgsql
         /// <summary>
         /// Create row updating event.
         /// </summary>
-        protected override RowUpdatingEventArgs CreateRowUpdatingEvent(DataRow dataRow, IDbCommand command,
+        protected override RowUpdatingEventArgs CreateRowUpdatingEvent(DataRow dataRow, IDbCommand? command,
                                                                        System.Data.StatementType statementType,
                                                                        DataTableMapping tableMapping)
             => new NpgsqlRowUpdatingEventArgs(dataRow, command, statementType, tableMapping);
@@ -105,36 +105,36 @@ namespace Npgsql
         /// <summary>
         /// Delete command.
         /// </summary>
-        public new NpgsqlCommand DeleteCommand
+        public new NpgsqlCommand? DeleteCommand
         {
-            get => (NpgsqlCommand)base.DeleteCommand;
+            get => (NpgsqlCommand?)base.DeleteCommand;
             set => base.DeleteCommand = value;
         }
 
         /// <summary>
         /// Select command.
         /// </summary>
-        public new NpgsqlCommand SelectCommand
+        public new NpgsqlCommand? SelectCommand
         {
-            get => (NpgsqlCommand)base.SelectCommand;
+            get => (NpgsqlCommand?)base.SelectCommand;
             set => base.SelectCommand = value;
         }
 
         /// <summary>
         /// Update command.
         /// </summary>
-        public new NpgsqlCommand UpdateCommand
+        public new NpgsqlCommand? UpdateCommand
         {
-            get => (NpgsqlCommand)base.UpdateCommand;
+            get => (NpgsqlCommand?)base.UpdateCommand;
             set => base.UpdateCommand = value;
         }
 
         /// <summary>
         /// Insert command.
         /// </summary>
-        public new NpgsqlCommand InsertCommand
+        public new NpgsqlCommand? InsertCommand
         {
-            get => (NpgsqlCommand)base.InsertCommand;
+            get => (NpgsqlCommand?)base.InsertCommand;
             set => base.InsertCommand = value;
         }
     }
@@ -143,14 +143,14 @@ namespace Npgsql
 
     public class NpgsqlRowUpdatingEventArgs : RowUpdatingEventArgs
     {
-        public NpgsqlRowUpdatingEventArgs(DataRow dataRow, IDbCommand command, System.Data.StatementType statementType,
+        public NpgsqlRowUpdatingEventArgs(DataRow dataRow, IDbCommand? command, System.Data.StatementType statementType,
                                           DataTableMapping tableMapping)
             : base(dataRow, command, statementType, tableMapping) {}
     }
 
     public class NpgsqlRowUpdatedEventArgs : RowUpdatedEventArgs
     {
-        public NpgsqlRowUpdatedEventArgs(DataRow dataRow, IDbCommand command, System.Data.StatementType statementType,
+        public NpgsqlRowUpdatedEventArgs(DataRow dataRow, IDbCommand? command, System.Data.StatementType statementType,
                                          DataTableMapping tableMapping)
             : base(dataRow, command, statementType, tableMapping) {}
     }
