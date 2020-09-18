@@ -1190,58 +1190,38 @@ LANGUAGE plpgsql VOLATILE";
         [Test]
         public async Task GetStream([Values(true, false)] bool isAsync)
         {
-            await GetStream(
-                Enumerable.Range(0, 8 * 1024).ToArray(),
-                value => MemoryMarshal.AsBytes<int>(value).ToArray());
-            await GetStream(
-                0xDEADBEEFL,
-                value => BitConverter.GetBytes(
-                    BitConverter.IsLittleEndian
-                        ? BinaryPrimitives.ReverseEndianness(value)
-                        : value));
+            var binary = MemoryMarshal
+                .AsBytes<int>(Enumerable.Range(0, 1024).ToArray())
+                .ToArray();
+            await GetStream(binary, binary, "bytea");
 
-            async Task GetStream<T>(T value, Func<T, ReadOnlyMemory<byte>> getExpected)
+            var bigint = 0xDEADBEEFL;
+            var bigintBinary = BitConverter.GetBytes(
+                BitConverter.IsLittleEndian
+                ? BinaryPrimitives.ReverseEndianness(bigint)
+                : bigint);
+            await GetStream(bigint, bigintBinary);
+
+            async Task GetStream<T>(T value, byte[] expected, string? dataType = null)
             {
                 var streamGetter = BuildStreamGetter(isAsync);
-                var expected = getExpected(value).ToArray();
                 var actual = new byte[expected.Length];
-                var median = actual.Length / 2;
 
                 using var conn = await OpenConnectionAsync();
-                using var cmd = new NpgsqlCommand($"SELECT @p, @p", conn) { Parameters = { new NpgsqlParameter("p", value) } };
+                using var cmd = new NpgsqlCommand($"SELECT @p, @p", conn) { Parameters = { new NpgsqlParameter("p", value) { DataTypeName = dataType } } };
                 using var reader = await cmd.ExecuteReaderAsync(Behavior);
 
                 await reader.ReadAsync();
 
-                using (var stream = await streamGetter(reader, 0))
-                {
-                    Assert.That(stream.CanSeek, Is.EqualTo(Behavior == CommandBehavior.Default));
-                    Assert.That(stream.Length, Is.EqualTo(expected.Length));
+                using var stream = await streamGetter(reader, 0);
+                Assert.That(stream.CanSeek, Is.EqualTo(Behavior == CommandBehavior.Default));
+                Assert.That(stream.Length, Is.EqualTo(expected.Length));
 
-                    await stream.ReadAsync(actual, 0, median);
-                    for (var i = 0; i < median; i++)
-                        Assert.That(actual[i], Is.EqualTo(expected[i]));
+                var position = 0;
+                while (position < actual.Length)
+                    position += await stream.ReadAsync(actual, position, actual.Length - position);
 
-                    await stream.ReadAsync(actual, median, actual.Length - median);
-                    for (var i = 0; i < median; i++)
-                        Assert.That(actual[i], Is.EqualTo(expected[i]));
-                }
-
-                if (IsSequential)
-                {
-                    Assert.That(() => reader.GetBytes(0, 0, actual, median, 1),
-                        Throws.Exception.TypeOf<InvalidOperationException>(), "Seek back sequential");
-                }
-                else
-                {
-                    Assert.That(reader.GetBytes(0, 0, actual, median, 1), Is.EqualTo(1));
-                    Assert.That(actual[median], Is.EqualTo(expected[median]));
-                }
-
-                using (var stream = await streamGetter(reader, 1))
-                {
-                    Assert.That(stream.ReadByte(), Is.EqualTo(expected[0]));
-                }
+                Assert.That(actual, Is.EqualTo(expected));
             }
         }
 
