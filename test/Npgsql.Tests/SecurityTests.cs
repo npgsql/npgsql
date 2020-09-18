@@ -173,7 +173,8 @@ namespace Npgsql.Tests
             {
                 var cts = new CancellationTokenSource(1000).Token;
                 Assert.That(async () => await cmd.ExecuteNonQueryAsync(cts), Throws.Exception
-                    .TypeOf<OperationCanceledException>());
+                    .TypeOf<PostgresException>()
+                    .With.Property(nameof(PostgresException.SqlState)).EqualTo("57014"));
             }
         }
 
