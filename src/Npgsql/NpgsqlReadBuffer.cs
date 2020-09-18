@@ -205,7 +205,8 @@ namespace Npgsql
                 }
                 catch (Exception e)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
+                    if (cancellationToken.IsCancellationRequested)
+                        throw Connector.Break(e);
 
                     // We have a special case when reading async notifications - a timeout may be normal
                     // shouldn't be fatal

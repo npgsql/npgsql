@@ -1145,6 +1145,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     connector.StartUserAction(this);
 
                     CancellationTokenSource? cts = null;
+                    var cancellationRequested = false;
 
                     try
                     {
@@ -1155,7 +1156,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         {
                             try
                             {
-                                ((NpgsqlCommand)cmd!).Cancel();
+                                cancellationRequested = true;
+                                ((NpgsqlCommand)cmd!).Cancel(true);
                             }
                             catch
                             {
@@ -1256,10 +1258,15 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                             reader.NextResult();
                         return reader;
                     }
-                    catch
+                    catch (Exception e)
                     {
                         connector.CurrentReader = null;
                         conn.Connector?.EndUserAction();
+
+                        // We were successful with a cancellation request - replacing it
+                        if (cancellationRequested && e is PostgresException pgException && pgException.SqlState == PostgresErrorCodes.QueryCanceled)
+                            throw new OperationCanceledException();
+
                         throw;
                     }
                     finally
@@ -1351,7 +1358,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// Attempts to cancel the execution of a <see cref="NpgsqlCommand">NpgsqlCommand</see>.
         /// </summary>
         /// <remarks>As per the specs, no exception will be thrown by this method in case of failure</remarks>
-        public override void Cancel()
+        public override void Cancel() => Cancel(false);
+
+        void Cancel(bool throwExceptions)
         {
             if (State != CommandState.InProgress)
                 return;
@@ -1362,7 +1371,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             if (connector == null)
                 return;
 
-            connector.CancelRequest();
+            connector.CancelRequest(throwExceptions);
         }
 
         #endregion Cancel
