@@ -27,11 +27,10 @@ namespace Npgsql
         /// </summary>
         internal string UserFacingConnectionString { get; }
 
-        readonly string _connectionString;
-
         readonly int _max;
         readonly int _min;
         readonly bool _autoPrepare;
+        readonly TimeSpan _connectionLifetime;
         volatile int _numConnectors;
 
         public bool IsBootstrapped { get; set; }
@@ -129,8 +128,7 @@ namespace Npgsql
             _max = settings.MaxPoolSize;
             _min = settings.MinPoolSize;
             _autoPrepare = settings.MaxAutoPrepare > 0;
-
-            _connectionString = connString;
+            _connectionLifetime = TimeSpan.FromSeconds(settings.ConnectionLifetime);
 
             UserFacingConnectionString = settings.PersistSecurityInfo
                 ? connString
@@ -285,11 +283,10 @@ namespace Npgsql
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         bool CheckIdleConnector([NotNullWhen(true)] NpgsqlConnector? connector)
         {
-
             if (connector is null)
                 return false;
 
-            // Only decrement when the connector has a value. 
+            // Only decrement when the connector has a value.
             Interlocked.Decrement(ref _idleCount);
 
             // An connector could be broken because of a keepalive that occurred while it was
@@ -298,6 +295,13 @@ namespace Npgsql
             // if keepalive isn't turned on.
             if (connector.IsBroken)
             {
+                CloseConnector(connector);
+                return false;
+            }
+
+            if (_connectionLifetime != TimeSpan.Zero && DateTime.UtcNow > connector.OpenTimestamp + _connectionLifetime)
+            {
+                Log.Debug("Connection has exceeded its maximum lifetime and will be closed.", connector.Id);
                 CloseConnector(connector);
                 return false;
             }
