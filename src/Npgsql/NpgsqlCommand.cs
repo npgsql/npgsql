@@ -1035,7 +1035,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             using var reader = await ExecuteReaderAsync(CommandBehavior.Default, async, cancellationToken);
             while (async ? await reader.NextResultAsync(cancellationToken) : reader.NextResult()) ;
 
-            await reader.CloseAsync();
+            reader.Close();
 
             return reader.RecordsAffected;
         }

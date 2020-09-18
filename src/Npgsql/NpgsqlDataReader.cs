@@ -906,7 +906,7 @@ namespace Npgsql
                 // If the reader is being closed as part of the connection closing, we don't apply
                 // the reader's CommandBehavior.CloseConnection
                 if (_behavior.HasFlag(CommandBehavior.CloseConnection) && !connectionClosing)
-                    await _connection.CloseAsync();
+                    await _connection.Close(async);
 
                 Connector.ReaderCompleted.SetResult(null);
             }

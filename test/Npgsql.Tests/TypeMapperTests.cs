@@ -184,7 +184,7 @@ CHECK
                 using (var cmd = new NpgsqlCommand("SELECT @p = 'hello'::citext", conn))
                 {
                     cmd.Parameters.AddWithValue("p", "HeLLo");
-                    Assert.That(cmd.ExecuteScalar(), Is.True);
+                    Assert.That(await cmd.ExecuteScalarAsync(), Is.True);
                 }
             }
         }

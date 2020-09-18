@@ -313,7 +313,7 @@ namespace Npgsql.Tests
                 }
                 // Connection now in failed transaction state, and a custom timeout is in place
                 await conn.CloseAsync();
-                conn.Open();
+                await conn.OpenAsync();
                 await conn.BeginTransactionAsync();
                 Assert.That(conn.ProcessID, Is.EqualTo(backendProcessId));
                 Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
