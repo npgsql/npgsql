@@ -1051,8 +1051,7 @@ namespace Npgsql
 
                 try
                 {
-                    // Read the documentation for the _originalTimeoutException
-                    ReadBuffer.Timeout = _originalTimeoutException is null ? TimeSpan.FromMilliseconds(UserTimeout) : CancellationReadTimeout;
+                    ReadBuffer.Timeout = TimeSpan.FromMilliseconds(UserTimeout);
 
                     while (true)
                     {
