@@ -211,11 +211,12 @@ namespace Npgsql
         bool _sendResetOnClose;
 
         /// <summary>
-        /// Just because we've send a cancellation request, it still may take multiple reads (where we return some message to the NpgsqlDataReader)
-        /// until we finally get a PG cancellation error.
-        /// So, we save the original timeout exception until we get the PG cancellation error, fail with another timeout or read the RFQ.
+        /// Contains the timeout exception caught when executing a command (when
+        /// <see cref="NpgsqlCommand.CommandTimeout"/> is reached). Gets rethrown later when the query is successfully
+        /// cancelled.
         /// </summary>
-        NpgsqlException? _originalTimeoutException = null;
+        NpgsqlException? _originalTimeoutException;
+
         ConnectorPool? _pool;
 
         /// <summary>
@@ -340,7 +341,6 @@ namespace Npgsql
         int ConnectionTimeout => Settings.Timeout;
         bool IntegratedSecurity => Settings.IntegratedSecurity;
         internal bool ConvertInfinityDateTime => Settings.ConvertInfinityDateTime;
-        TimeSpan CancellationReadTimeout => TimeSpan.FromSeconds(Settings.CancellationReadTimeout);
 
         int InternalCommandTimeout
         {
@@ -1147,7 +1147,7 @@ namespace Npgsql
                             {
                                 CancelRequest(throwExceptions: true);
                                 _originalTimeoutException = e;
-                                ReadBuffer.Timeout = CancellationReadTimeout;
+                                ReadBuffer.Timeout = TimeSpan.FromSeconds(Settings.HardCommandTimeout);
                             }
                             catch (Exception)
                             {
@@ -1406,7 +1406,7 @@ namespace Npgsql
                         Log.Debug("Exception caught while attempting to cancel command", e, Id);
                         if (throwExceptions)
                             throw;
-                    }   
+                    }
                 }
             }
         }

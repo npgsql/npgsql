@@ -906,23 +906,23 @@ namespace Npgsql
         /// Defaults to 2 seconds.
         /// </summary>
         [Category("Timeouts")]
-        [Description("The time to wait (in seconds) while trying to read a response for a cancellation request for a timed out query, before terminating the attempt and generating an error. Set to zero for infinity.")]
+        [Description("After Command Timeout is reached and command cancellation is attempted, Npgsql waits for this additional timeout (in seconds) before breaking the connection. Defaults to 2, set to zero for infinity.")]
         [DisplayName("Cancellation Read Timeout")]
         [NpgsqlConnectionStringProperty]
         [DefaultValue(2)]
-        public int CancellationReadTimeout
+        public int HardCommandTimeout
         {
-            get => _cancellationReadTimeout;
+            get => _hardCommandTimeout;
             set
             {
                 if (value < 0)
-                    throw new ArgumentOutOfRangeException(nameof(value), value, "CancellationReadTimeout can't be negative");
+                    throw new ArgumentOutOfRangeException(nameof(value), value, $"{nameof(HardCommandTimeout)} can't be negative");
 
-                _cancellationReadTimeout = value;
-                SetValue(nameof(CancellationReadTimeout), value);
+                _hardCommandTimeout = value;
+                SetValue(nameof(HardCommandTimeout), value);
             }
         }
-        int _cancellationReadTimeout;
+        int _hardCommandTimeout;
 
         #endregion
 
