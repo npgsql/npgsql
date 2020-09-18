@@ -1009,6 +1009,11 @@ namespace Npgsql
             case BackendMessageCode.ErrorResponse:
                 ReadBuffer.ReadPosition--;
                 return ReadMessageLong(dataRowLoadingMode, readingNotifications2: false);
+            case BackendMessageCode.ReadyForQuery:
+                // Just in case if we were successful in sending a cancellation, but the query is already completed (and the response is already in the buffer)
+                // Same thing is done below for the cases, when RFQ is not in the buffer
+                _originalTimeoutException = null;
+                break;
             }
 
             PGUtil.ValidateBackendMessageCode(messageCode);
@@ -1018,11 +1023,6 @@ namespace Npgsql
                 ReadBuffer.ReadPosition -= 5;
                 return ReadMessageLong(dataRowLoadingMode, readingNotifications2: false);
             }
-
-            // Just in case if we were successful in sending a cancellation, but the query is already completed (and the response is already in the buffer)
-            // Same thing is done below for the cases, when RFQ is not in the buffer
-            if (messageCode == BackendMessageCode.ReadyForQuery)
-                _originalTimeoutException = null;
 
             return new ValueTask<IBackendMessage?>(ParseServerMessage(ReadBuffer, messageCode, len, false));
 
