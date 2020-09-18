@@ -1,6 +1,9 @@
 ﻿using System;
+using System.Buffers.Binary;
 using System.Data;
 using System.IO;
+using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
@@ -1167,45 +1170,77 @@ LANGUAGE plpgsql VOLATILE";
         }
 
         [Test]
-        public async Task GetStream([Values(true, false)] bool isAsync)
+        public async Task GetStreamSecondTimeThrows([Values(true, false)] bool isAsync)
         {
+            var expected = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8 };
             var streamGetter = BuildStreamGetter(isAsync);
 
-            using (var conn = await OpenConnectionAsync())
+            using var conn = await OpenConnectionAsync();
+            using var cmd = new NpgsqlCommand($"SELECT {EncodeByteaHex(expected)}::bytea", conn);
+            using var reader = await cmd.ExecuteReaderAsync(Behavior);
+
+            await reader.ReadAsync();
+
+            using var stream = await streamGetter(reader, 0);
+
+            Assert.That(async () => await streamGetter(reader, 0),
+                Throws.Exception.TypeOf<InvalidOperationException>());
+        }
+
+        [Test]
+        public async Task GetStream([Values(true, false)] bool isAsync)
+        {
+            await GetStream(
+                Enumerable.Range(0, 8 * 1024).ToArray(),
+                value => MemoryMarshal.AsBytes<int>(value).ToArray());
+            await GetStream(
+                0xDEADBEEFL,
+                value => BitConverter.GetBytes(
+                    BitConverter.IsLittleEndian
+                        ? BinaryPrimitives.ReverseEndianness(value)
+                        : value));
+
+            async Task GetStream<T>(T value, Func<T, ReadOnlyMemory<byte>> getExpected)
             {
-                // TODO: This is too small to actually test any interesting sequential behavior
-                byte[] expected = { 1, 2, 3, 4, 5 };
+                var streamGetter = BuildStreamGetter(isAsync);
+                var expected = getExpected(value).ToArray();
                 var actual = new byte[expected.Length];
-                using (var cmd = new NpgsqlCommand($"SELECT {EncodeByteaHex(expected)}::bytea, {EncodeByteaHex(expected)}::bytea", conn))
-                using (var reader = await cmd.ExecuteReaderAsync(Behavior))
+                var median = actual.Length / 2;
+
+                using var conn = await OpenConnectionAsync();
+                using var cmd = new NpgsqlCommand($"SELECT @p, @p", conn) { Parameters = { new NpgsqlParameter("p", value) } };
+                using var reader = await cmd.ExecuteReaderAsync(Behavior);
+
+                await reader.ReadAsync();
+
+                using (var stream = await streamGetter(reader, 0))
                 {
-                    reader.Read();
+                    Assert.That(stream.CanSeek, Is.EqualTo(Behavior == CommandBehavior.Default));
+                    Assert.That(stream.Length, Is.EqualTo(expected.Length));
 
-                    using (var stream = await streamGetter(reader, 0))
-                    {
-                        Assert.That(stream.CanSeek, Is.EqualTo(Behavior == CommandBehavior.Default));
-                        Assert.That(stream.Length, Is.EqualTo(expected.Length));
-                        stream.Read(actual, 0, 2);
-                        Assert.That(actual[0], Is.EqualTo(expected[0]));
-                        Assert.That(actual[1], Is.EqualTo(expected[1]));
-                        Assert.That(async () => await streamGetter(reader, 0),
-                            Throws.Exception.TypeOf<InvalidOperationException>());
-                        stream.Read(actual, 2, 1);
-                        Assert.That(actual[2], Is.EqualTo(expected[2]));
-                    }
+                    await stream.ReadAsync(actual, 0, median);
+                    for (var i = 0; i < median; i++)
+                        Assert.That(actual[i], Is.EqualTo(expected[i]));
 
-                    if (IsSequential)
-                        Assert.That(() => reader.GetBytes(0, 0, actual, 4, 1), Throws.Exception.TypeOf<InvalidOperationException>(), "Seek back sequential");
-                    else
-                    {
-                        Assert.That(reader.GetBytes(0, 0, actual, 4, 1), Is.EqualTo(1));
-                        Assert.That(actual[4], Is.EqualTo(expected[0]));
-                    }
+                    await stream.ReadAsync(actual, median, actual.Length - median);
+                    for (var i = 0; i < median; i++)
+                        Assert.That(actual[i], Is.EqualTo(expected[i]));
+                }
 
-                    using (var stream2 = await streamGetter(reader, 1))
-                    {
-                        Assert.That(stream2.ReadByte(), Is.EqualTo(1));
-                    }
+                if (IsSequential)
+                {
+                    Assert.That(() => reader.GetBytes(0, 0, actual, median, 1),
+                        Throws.Exception.TypeOf<InvalidOperationException>(), "Seek back sequential");
+                }
+                else
+                {
+                    Assert.That(reader.GetBytes(0, 0, actual, median, 1), Is.EqualTo(1));
+                    Assert.That(actual[median], Is.EqualTo(expected[median]));
+                }
+
+                using (var stream = await streamGetter(reader, 1))
+                {
+                    Assert.That(stream.ReadByte(), Is.EqualTo(expected[0]));
                 }
             }
         }
