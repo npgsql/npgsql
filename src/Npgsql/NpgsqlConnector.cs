@@ -210,6 +210,12 @@ namespace Npgsql
 
         bool _sendResetOnClose;
 
+        /// <summary>
+        /// Just because we've send a cancellation request, it still may take multiple reads (where we return some message to the NpgsqlDataReader)
+        /// until we finally get a PG cancellation error.
+        /// So, we save the original timeout exception until we get the PG cancellation error, fail with another timeout or read the RFQ.
+        /// </summary>
+        NpgsqlException? _originalTimeoutException = null;
         ConnectorPool? _pool;
 
         /// <summary>
@@ -334,6 +340,7 @@ namespace Npgsql
         int ConnectionTimeout => Settings.Timeout;
         bool IntegratedSecurity => Settings.IntegratedSecurity;
         internal bool ConvertInfinityDateTime => Settings.ConvertInfinityDateTime;
+        TimeSpan CancellationReadTimeout => TimeSpan.FromSeconds(Settings.CancellationReadTimeout);
 
         int InternalCommandTimeout
         {
@@ -1003,6 +1010,11 @@ namespace Npgsql
             case BackendMessageCode.ErrorResponse:
                 ReadBuffer.ReadPosition--;
                 return ReadMessageLong(dataRowLoadingMode, readingNotifications2: false);
+            case BackendMessageCode.ReadyForQuery:
+                // Just in case if we were successful in sending a cancellation, but the query is already completed (and the response is already in the buffer)
+                // Same thing is done below for the cases, when RFQ is not in the buffer
+                _originalTimeoutException = null;
+                break;
             }
 
             PGUtil.ValidateBackendMessageCode(messageCode);
@@ -1044,83 +1056,108 @@ namespace Npgsql
 
                     while (true)
                     {
-                        await ReadBuffer.Ensure(5, async, readingNotifications2);
-                        messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
-                        PGUtil.ValidateBackendMessageCode(messageCode);
-                        len = ReadBuffer.ReadInt32() - 4; // Transmitted length includes itself
-
-                        if ((messageCode == BackendMessageCode.DataRow &&
-                             dataRowLoadingMode2 != DataRowLoadingMode.NonSequential) ||
-                            messageCode == BackendMessageCode.CopyData)
+                        try
                         {
-                            if (dataRowLoadingMode2 == DataRowLoadingMode.Skip)
+                            await ReadBuffer.Ensure(5, async);
+                            messageCode = (BackendMessageCode) ReadBuffer.ReadByte();
+                            PGUtil.ValidateBackendMessageCode(messageCode);
+                            len = ReadBuffer.ReadInt32() - 4; // Transmitted length includes itself
+
+                            if ((messageCode == BackendMessageCode.DataRow &&
+                                 dataRowLoadingMode2 != DataRowLoadingMode.NonSequential) ||
+                                messageCode == BackendMessageCode.CopyData)
                             {
-                                await ReadBuffer.Skip(len, async);
+                                if (dataRowLoadingMode2 == DataRowLoadingMode.Skip)
+                                {
+                                    await ReadBuffer.Skip(len, async);
+                                    continue;
+                                }
+                            }
+                            else if (len > ReadBuffer.ReadBytesLeft)
+                            {
+                                if (len > ReadBuffer.Size)
+                                {
+                                    var oversizeBuffer = ReadBuffer.AllocateOversize(len);
+
+                                    if (_origReadBuffer == null)
+                                        _origReadBuffer = ReadBuffer;
+                                    else
+                                        ReadBuffer.Dispose();
+
+                                    ReadBuffer = oversizeBuffer;
+                                }
+
+                                await ReadBuffer.Ensure(len, async);
+                            }
+
+                            var msg = ParseServerMessage(ReadBuffer, messageCode, len, isReadingPrependedMessage);
+
+                            switch (messageCode)
+                            {
+                            case BackendMessageCode.ErrorResponse:
+                                Debug.Assert(msg == null);
+
+                                // An ErrorResponse is (almost) always followed by a ReadyForQuery. Save the error
+                                // and throw it as an exception when the ReadyForQuery is received (next).
+                                error = PostgresException.Load(ReadBuffer, Settings.IncludeErrorDetails);
+
+                                if (State == ConnectorState.Connecting)
+                                {
+                                    // During the startup/authentication phase, an ErrorResponse isn't followed by
+                                    // an RFQ. Instead, the server closes the connection immediately
+                                    throw error;
+                                }
+
                                 continue;
+
+                            case BackendMessageCode.ReadyForQuery:
+                                if (error != null)
+                                {
+                                    NpgsqlEventSource.Log.CommandFailed();
+                                    throw error;
+                                }
+                                // Just in case if we were successful in sending a cancellation, but the query is already completed
+                                // Do not move it into the ParseServerMessage, as we're not checking there for an error like above
+                                _originalTimeoutException = null;
+
+                                break;
+
+                            // Asynchronous messages which can come anytime, they have already been handled
+                            // in ParseServerMessage. Read the next message.
+                            case BackendMessageCode.NoticeResponse:
+                            case BackendMessageCode.NotificationResponse:
+                            case BackendMessageCode.ParameterStatus:
+                                Debug.Assert(msg == null);
+                                if (!readingNotifications2)
+                                    continue;
+                                return null;
                             }
+
+                            Debug.Assert(msg != null, "Message is null for code: " + messageCode);
+                            return msg;
                         }
-                        else if (len > ReadBuffer.ReadBytesLeft)
+                        catch (NpgsqlException e) when (!readingNotifications2 && e.InnerException is TimeoutException)
                         {
-                            if (len > ReadBuffer.Size)
+                            // Cancel request is send, but we were unable to read a response from PG due to timeout
+                            if (_originalTimeoutException != null)
+                                throw Break(_originalTimeoutException);
+
+                            // We have got a timeout while not reading the async notifications - trying to cancel a query
+                            try
                             {
-                                var oversizeBuffer = ReadBuffer.AllocateOversize(len);
-
-                                if (_origReadBuffer == null)
-                                    _origReadBuffer = ReadBuffer;
-                                else
-                                    ReadBuffer.Dispose();
-
-                                ReadBuffer = oversizeBuffer;
+                                CancelRequest(throwExceptions: true);
+                                _originalTimeoutException = e;
+                                ReadBuffer.Timeout = CancellationReadTimeout;
                             }
-
-                            await ReadBuffer.Ensure(len, async);
+                            catch (Exception)
+                            {
+                                // Unable to cancel the query, so we break the connection
+                                throw Break(e);
+                            }
                         }
-
-                        var msg = ParseServerMessage(ReadBuffer, messageCode, len, isReadingPrependedMessage);
-
-                        switch (messageCode)
-                        {
-                        case BackendMessageCode.ErrorResponse:
-                            Debug.Assert(msg == null);
-
-                            // An ErrorResponse is (almost) always followed by a ReadyForQuery. Save the error
-                            // and throw it as an exception when the ReadyForQuery is received (next).
-                            error = PostgresException.Load(ReadBuffer, Settings.IncludeErrorDetails);
-
-                            if (State == ConnectorState.Connecting)
-                            {
-                                // During the startup/authentication phase, an ErrorResponse isn't followed by
-                                // an RFQ. Instead, the server closes the connection immediately
-                                throw error;
-                            }
-
-                            continue;
-
-                        case BackendMessageCode.ReadyForQuery:
-                            if (error != null)
-                            {
-                                NpgsqlEventSource.Log.CommandFailed();
-                                throw error;
-                            }
-
-                            break;
-
-                        // Asynchronous messages which can come anytime, they have already been handled
-                        // in ParseServerMessage. Read the next message.
-                        case BackendMessageCode.NoticeResponse:
-                        case BackendMessageCode.NotificationResponse:
-                        case BackendMessageCode.ParameterStatus:
-                            Debug.Assert(msg == null);
-                            if (!readingNotifications2)
-                                continue;
-                            return null;
-                        }
-
-                        Debug.Assert(msg != null, "Message is null for code: " + messageCode);
-                        return msg;
                     }
                 }
-                catch (PostgresException)
+                catch (PostgresException e)
                 {
                     if (CurrentReader != null)
                     {
@@ -1131,6 +1168,15 @@ namespace Npgsql
                     {
                         EndUserAction();
                     }
+
+                    // We failed because of a timeout, and the cancellation was successful
+                    if (!(_originalTimeoutException is null) && e.SqlState == PostgresErrorCodes.QueryCanceled)
+                    {
+                        var tempException = _originalTimeoutException;
+                        _originalTimeoutException = null;
+                        throw tempException;
+                    }
+
                     throw;
                 }
                 catch (NpgsqlException)
@@ -1339,7 +1385,7 @@ namespace Npgsql
         /// <summary>
         /// Creates another connector and sends a cancel request through it for this connector.
         /// </summary>
-        internal void CancelRequest()
+        internal void CancelRequest(bool throwExceptions = false)
         {
             if (BackendProcessId == 0)
                 throw new NpgsqlException("Cancellation not supported on this database (no BackendKeyData was received during connection)");
@@ -1356,7 +1402,11 @@ namespace Npgsql
                 {
                     var socketException = e.InnerException as SocketException;
                     if (socketException == null || socketException.SocketErrorCode != SocketError.ConnectionReset)
+                    {
                         Log.Debug("Exception caught while attempting to cancel command", e, Id);
+                        if (throwExceptions)
+                            throw;
+                    }   
                 }
             }
         }
@@ -1702,12 +1752,6 @@ namespace Npgsql
 
             lock (this)
             {
-                if (State == ConnectorState.Broken)
-                {
-                    // Most of the time it's due to keepalive failing, so we return the original error
-                    throw _breakReason!;
-                }
-
                 if (!_userLock!.Wait(0))
                 {
                     var currentCommand = _currentCommand;
@@ -1838,12 +1882,7 @@ namespace Npgsql
                 Log.Error("Keepalive failure", e, Id);
                 try
                 {
-                    Break(e is NpgsqlException npgsqlException
-                        ? new NpgsqlException(
-                            "The connection was broken due to a keepalive failure, the original exception message: " +
-                            npgsqlException.Message,
-                            npgsqlException.InnerException)
-                        : new NpgsqlException("The connection was broken due to a keepalive failure", e));
+                    Break(e);
                 }
                 catch (Exception e2)
                 {

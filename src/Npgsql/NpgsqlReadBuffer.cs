@@ -117,12 +117,6 @@ namespace Npgsql
 
         #region I/O
 
-        /// <summary>
-        /// Ensures that <paramref name="count"/> bytes are available in the buffer, and if
-        /// not, reads from the socket until enough is available.
-        /// </summary>
-        public Task Ensure(int count, bool async) => Ensure(count, async, dontBreakOnTimeouts: false);
-
         internal void Ensure(int count)
         {
             if (count <= ReadBytesLeft)
@@ -130,7 +124,11 @@ namespace Npgsql
             Ensure(count, false).GetAwaiter().GetResult();
         }
 
-        internal Task Ensure(int count, bool async, bool dontBreakOnTimeouts)
+        /// <summary>
+        /// Ensures that <paramref name="count"/> bytes are available in the buffer, and if
+        /// not, reads from the socket until enough is available.
+        /// </summary>
+        public Task Ensure(int count, bool async)
         {
             return count <= ReadBytesLeft ? Task.CompletedTask : EnsureLong();
 
@@ -199,28 +197,19 @@ namespace Npgsql
                 }
                 catch (Exception e)
                 {
-                    var dontBreak = false;
-
                     // We have a special case when reading async notifications - a timeout may be normal
                     // shouldn't be fatal
                     switch (e)
                     {
                     case OperationCanceledException _:
-                        Debug.Assert(async);
-                        e = new TimeoutException("Timeout during reading attempt");
-                        dontBreak = dontBreakOnTimeouts;
-                        break;
                     // Note that mono throws SocketException with the wrong error (see #1330)
                     case IOException _ when (e.InnerException as SocketException)?.SocketErrorCode ==
                                             (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock):
-                        Debug.Assert(!async);
-                        e = new TimeoutException("Timeout during reading attempt");
-                        dontBreak = dontBreakOnTimeouts;
-                        break;
+                        Debug.Assert(e is OperationCanceledException ? async : !async);
+                        throw new NpgsqlException("Exception while reading from stream", new TimeoutException("Timeout during reading attempt"));
                     }
 
-                    var exception = new NpgsqlException("Exception while reading from stream", e);
-                    throw dontBreak ? exception : Connector.Break(exception);
+                    throw Connector.Break(new NpgsqlException("Exception while reading from stream", e));
                 }
             }
         }

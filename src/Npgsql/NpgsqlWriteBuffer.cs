@@ -144,17 +144,11 @@ namespace Npgsql
                 switch (e)
                 {
                 case OperationCanceledException _:
-                    Debug.Assert(async);
-                    e = new TimeoutException("Timeout during writing attempt");
-                    break;
                 // Note that mono throws SocketException with the wrong error (see #1330)
                 case IOException _ when (e.InnerException as SocketException)?.SocketErrorCode ==
-                                        (Type.GetType("Mono.Runtime") == null
-                                            ? SocketError.TimedOut
-                                            : SocketError.WouldBlock):
-                    Debug.Assert(!async);
-                    e = new TimeoutException("Timeout during writing attempt");
-                    break;
+                                            (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock):
+                    Debug.Assert(e is OperationCanceledException ? async : !async);
+                    throw Connector.Break(new NpgsqlException("Exception while writing to stream", new TimeoutException("Timeout during writing attempt")));
                 }
 
                 throw Connector.Break(new NpgsqlException("Exception while writing to stream", e));
@@ -176,16 +170,10 @@ namespace Npgsql
                 switch (e)
                 {
                 case OperationCanceledException _:
-                    Debug.Assert(async);
-                    e = new TimeoutException("Timeout during flushing attempt");
-                    break;
-
                 // Note that mono throws SocketException with the wrong error (see #1330)
                 case IOException _ when (e.InnerException as SocketException)?.SocketErrorCode ==
-                                        (Type.GetType("Mono.Runtime") == null
-                                            ? SocketError.TimedOut
-                                            : SocketError.WouldBlock):
-                    Debug.Assert(!async);
+                                            (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock):
+                    Debug.Assert(e is OperationCanceledException ? async : !async);
                     e = new TimeoutException("Timeout during flushing attempt");
                     break;
                 }
