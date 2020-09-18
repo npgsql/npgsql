@@ -216,13 +216,13 @@ namespace Npgsql
         /// So, we save the original timeout exception until we get the PG cancellation error, fail with another timeout or read the RFQ.
         /// </summary>
         NpgsqlException? _originalTimeoutException = null;
+        ConnectorPool? _pool;
 
         /// <summary>
-        /// If pooled, the pool index on which this connector will be returned to the pool.
+        /// Contains the UTC timestamp when this connector was opened, used to implement
+        /// <see cref="NpgsqlConnectionStringBuilder.ConnectionLifetime"/>.
         /// </summary>
-        internal int PoolIndex { get; set; } = int.MaxValue;
-
-        ConnectorPool? _pool;
+        internal DateTime OpenTimestamp { get; private set; }
 
         internal int ClearCounter { get; set; }
 
@@ -447,6 +447,7 @@ namespace Npgsql
                     GenerateResetMessage();
                 }
 
+                OpenTimestamp = DateTime.UtcNow;
                 Log.Trace($"Opened connection to {Host}:{Port}");
 
                 if (Settings.Multiplexing)
