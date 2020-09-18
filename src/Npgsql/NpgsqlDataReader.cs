@@ -1176,9 +1176,7 @@ namespace Npgsql
         ValueTask<Stream> GetStream(int ordinal, bool async, CancellationToken cancellationToken = default)
         {
             var field = CheckRowAndGetField(ordinal);
-            return field.Handler is ByteaHandler
-                ? GetStreamInternal(field, ordinal, async, cancellationToken)
-                : throw new InvalidCastException($"The GetStream method is not supported for type {field.Handler.PgDisplayName}");
+            return GetStreamInternal(field, ordinal, async, cancellationToken);
         }
 
         ValueTask<Stream> GetStreamInternal(FieldDescription field, int ordinal, bool async, CancellationToken cancellationToken = default)
