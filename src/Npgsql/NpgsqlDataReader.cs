@@ -1374,10 +1374,10 @@ namespace Npgsql
                 return Task.FromCanceled<T>(cancellationToken);
 
             if (typeof(T) == typeof(Stream))
-                return Unsafe.As<Task<T>>(GetStreamAsync(ordinal, cancellationToken));
+                return (Task<T>)(object)(GetStreamAsync(ordinal, cancellationToken));
 
             if (typeof(T) == typeof(TextReader))
-                return Unsafe.As<Task<T>>(GetStreamAsync(ordinal, cancellationToken));
+                return (Task<T>)(object)(GetStreamAsync(ordinal, cancellationToken));
 
             // In non-sequential, we know that the column is already buffered - no I/O will take place
             if (!_isSequential)
