@@ -270,15 +270,15 @@ namespace Npgsql
 
         ValueTask<IBackendMessage> ReadMessage(bool async, CancellationToken cancellationToken)
         {
-            return _isSequential ? ReadMessageSequential(async) : Connector.ReadMessage(async, cancellationToken);
+            return _isSequential ? ReadMessageSequential(async) : Connector.ReadMessage(async, cancellationToken: cancellationToken);
 
             async ValueTask<IBackendMessage> ReadMessageSequential(bool async2)
             {
-                var msg = await Connector.ReadMessage(async2, cancellationToken, DataRowLoadingMode.Sequential);
+                var msg = await Connector.ReadMessage(async2, DataRowLoadingMode.Sequential, cancellationToken: cancellationToken);
                 if (msg.Code == BackendMessageCode.DataRow)
                 {
                     // Make sure that the datarow's column count is already buffered
-                    await Connector.ReadBuffer.Ensure(2, async, cancellationToken);
+                    await Connector.ReadBuffer.Ensure(2, async, cancellationToken: cancellationToken);
                     return msg;
                 }
                 return msg;
@@ -342,7 +342,7 @@ namespace Npgsql
                     await ConsumeRow(async, cancellationToken);
                     while (true)
                     {
-                        var completedMsg = await Connector.ReadMessage(async, cancellationToken, DataRowLoadingMode.Skip);
+                        var completedMsg = await Connector.ReadMessage(async, DataRowLoadingMode.Skip, cancellationToken: cancellationToken);
                         switch (completedMsg.Code)
                         {
                         case BackendMessageCode.CompletedResponse:
@@ -386,7 +386,7 @@ namespace Npgsql
 
                     if (statement.IsPrepared)
                     {
-                        Expect<BindCompleteMessage>(await Connector.ReadMessage(async, cancellationToken), Connector);
+                        Expect<BindCompleteMessage>(await Connector.ReadMessage(async, cancellationToken: cancellationToken), Connector);
                         RowDescription = statement.Description;
                     }
                     else // Non-prepared/preparing flow
@@ -398,15 +398,15 @@ namespace Npgsql
                             Debug.Assert(pStatement.Description == null);
                             if (pStatement.StatementBeingReplaced != null)
                             {
-                                Expect<CloseCompletedMessage>(await Connector.ReadMessage(async,cancellationToken), Connector);
+                                Expect<CloseCompletedMessage>(await Connector.ReadMessage(async, cancellationToken: cancellationToken), Connector);
                                 pStatement.StatementBeingReplaced.CompleteUnprepare();
                                 pStatement.StatementBeingReplaced = null;
                             }
                         }
 
-                        Expect<ParseCompleteMessage>(await Connector.ReadMessage(async, cancellationToken), Connector);
-                        Expect<BindCompleteMessage>(await Connector.ReadMessage(async, cancellationToken), Connector);
-                        msg = await Connector.ReadMessage(async, cancellationToken);
+                        Expect<ParseCompleteMessage>(await Connector.ReadMessage(async, cancellationToken: cancellationToken), Connector);
+                        Expect<BindCompleteMessage>(await Connector.ReadMessage(async, cancellationToken: cancellationToken), Connector);
+                        msg = await Connector.ReadMessage(async, cancellationToken: cancellationToken);
 
                         RowDescription = statement.Description = msg.Code switch
                         {
@@ -452,7 +452,7 @@ namespace Npgsql
                         // If output parameters are present and this is the first row of the first resultset,
                         // we must always read it in non-sequential mode because it will be traversed twice (once
                         // here for the parameters, then as a regular row).
-                        msg = await Connector.ReadMessage(async, cancellationToken);
+                        msg = await Connector.ReadMessage(async, cancellationToken: cancellationToken);
                         ProcessMessage(msg);
                         if (msg.Code == BackendMessageCode.DataRow)
                             PopulateOutputParameters();
@@ -476,7 +476,7 @@ namespace Npgsql
                 }
 
                 // There are no more queries, we're done. Read the RFQ.
-                ProcessMessage(Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async, cancellationToken), Connector));
+                ProcessMessage(Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async, cancellationToken: cancellationToken), Connector));
                 RowDescription = null;
                 return false;
             }
@@ -588,9 +588,9 @@ namespace Npgsql
                     }
                     else
                     {
-                        Expect<ParseCompleteMessage>(await Connector.ReadMessage(async, cancellationToken), Connector);
-                        Expect<ParameterDescriptionMessage>(await Connector.ReadMessage(async, cancellationToken), Connector);
-                        var msg = await Connector.ReadMessage(async, cancellationToken);
+                        Expect<ParseCompleteMessage>(await Connector.ReadMessage(async, cancellationToken: cancellationToken), Connector);
+                        Expect<ParameterDescriptionMessage>(await Connector.ReadMessage(async, cancellationToken: cancellationToken), Connector);
+                        var msg = await Connector.ReadMessage(async, cancellationToken: cancellationToken);
                         switch (msg.Code)
                         {
                         case BackendMessageCode.NoData:
@@ -614,7 +614,7 @@ namespace Npgsql
                 // There are no more queries, we're done. Read to the RFQ.
                 if (!_statements.All(s => s.IsPrepared))
                 {
-                    ProcessMessage(Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async, cancellationToken), Connector));
+                    ProcessMessage(Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async, cancellationToken: cancellationToken), Connector));
                     RowDescription = null;
                 }
 
@@ -1415,7 +1415,7 @@ namespace Npgsql
                     var writtenBytes = Buffer.ReadPosition - position;
                     var remainingBytes = ColumnLen - writtenBytes;
                     if (remainingBytes > 0)
-                        Buffer.Skip(remainingBytes, false, default).GetAwaiter().GetResult();
+                        Buffer.Skip(remainingBytes, false, cancellationToken: default).GetAwaiter().GetResult();
                 }
                 throw;
             }
@@ -1454,10 +1454,10 @@ namespace Npgsql
                     : typeof(T) == typeof(object)
                         ? ColumnLen <= Buffer.ReadBytesLeft
                             ? (T)field.Handler.ReadAsObject(Buffer, ColumnLen, field)
-                            : (T)await field.Handler.ReadAsObject(Buffer, ColumnLen, async, cancellationToken, field)
+                            : (T)await field.Handler.ReadAsObject(Buffer, ColumnLen, async, field, cancellationToken: cancellationToken)
                         : ColumnLen <= Buffer.ReadBytesLeft
                             ? field.Handler.Read<T>(Buffer, ColumnLen, field)
-                            : await field.Handler.Read<T>(Buffer, ColumnLen, async, cancellationToken, field);
+                            : await field.Handler.Read<T>(Buffer, ColumnLen, async, field, cancellationToken: cancellationToken);
             }
             catch
             {
@@ -1466,7 +1466,7 @@ namespace Npgsql
                     var writtenBytes = Buffer.ReadPosition - position;
                     var remainingBytes = ColumnLen - writtenBytes;
                     if (remainingBytes > 0)
-                        await Buffer.Skip(remainingBytes, async, cancellationToken);
+                        await Buffer.Skip(remainingBytes, async, cancellationToken: cancellationToken);
                 }
                 throw;
             }
@@ -1504,7 +1504,7 @@ namespace Npgsql
             try
             {
                 result = _isSequential
-                    ? fieldDescription.Handler.ReadAsObject(Buffer, ColumnLen, false, default, fieldDescription).GetAwaiter().GetResult()
+                    ? fieldDescription.Handler.ReadAsObject(Buffer, ColumnLen, false, fieldDescription, cancellationToken: default).GetAwaiter().GetResult()
                     : fieldDescription.Handler.ReadAsObject(Buffer, ColumnLen, fieldDescription);
             }
             catch
@@ -1514,7 +1514,7 @@ namespace Npgsql
                     var writtenBytes = Buffer.ReadPosition - position;
                     var remainingBytes = ColumnLen - writtenBytes;
                     if (remainingBytes > 0)
-                        Buffer.Skip(remainingBytes, false, default).GetAwaiter().GetResult();
+                        Buffer.Skip(remainingBytes, false, cancellationToken: default).GetAwaiter().GetResult();
                 }
                 throw;
             }
@@ -1570,7 +1570,7 @@ namespace Npgsql
                     var writtenBytes = Buffer.ReadPosition - position;
                     var remainingBytes = ColumnLen - writtenBytes;
                     if (remainingBytes > 0)
-                        Buffer.Skip(remainingBytes, false, default).GetAwaiter().GetResult();
+                        Buffer.Skip(remainingBytes, false, cancellationToken: default).GetAwaiter().GetResult();
                 }
                 throw;
             }
@@ -1882,18 +1882,18 @@ namespace Npgsql
             // TODO: Simplify by better initializing _columnLen/_posInColumn
             var remainingInColumn = ColumnLen == -1 ? 0 : ColumnLen - PosInColumn;
             if (remainingInColumn > 0)
-                await Buffer.Skip(remainingInColumn, async, cancellationToken);
+                await Buffer.Skip(remainingInColumn, async, cancellationToken: cancellationToken);
 
             // Skip over unwanted fields
             for (; _column < column - 1; _column++)
             {
-                await Buffer.Ensure(4, async, cancellationToken);
+                await Buffer.Ensure(4, async, cancellationToken: cancellationToken);
                 var len = Buffer.ReadInt32();
                 if (len != -1)
-                    await Buffer.Skip(len, async, cancellationToken);
+                    await Buffer.Skip(len, async, cancellationToken: cancellationToken);
             }
 
-            await Buffer.Ensure(4, async, cancellationToken);
+            await Buffer.Ensure(4, async, cancellationToken: cancellationToken);
             ColumnLen = Buffer.ReadInt32();
             PosInColumn = 0;
             _column = column;
@@ -1923,7 +1923,7 @@ namespace Npgsql
 
                 if (posInColumn2 > PosInColumn)
                 {
-                    await Buffer.Skip(posInColumn2 - PosInColumn, async2, cancellationToken2);
+                    await Buffer.Skip(posInColumn2 - PosInColumn, async2, cancellationToken: cancellationToken);
                     PosInColumn = posInColumn2;
                 }
             }
@@ -1956,15 +1956,15 @@ namespace Npgsql
                 // Skip to end of column if needed
                 var remainingInColumn = ColumnLen == -1 ? 0 : ColumnLen - PosInColumn;
                 if (remainingInColumn > 0)
-                    await Buffer.Skip(remainingInColumn, async2, cancellationToken2);
+                    await Buffer.Skip(remainingInColumn, async2, cancellationToken: cancellationToken);
 
                 // Skip over the remaining columns in the row
                 for (; _column < _numColumns - 1; _column++)
                 {
-                    await Buffer.Ensure(4, async2, cancellationToken2);
+                    await Buffer.Ensure(4, async2, cancellationToken: cancellationToken);
                     var len = Buffer.ReadInt32();
                     if (len != -1)
-                        await Buffer.Skip(len, async2, cancellationToken2);
+                        await Buffer.Skip(len, async2, cancellationToken: cancellationToken);
                 }
             }
         }

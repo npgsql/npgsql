@@ -32,17 +32,17 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
             _nameTranslator = nameTranslator;
         }
 
-        public override ValueTask<T> Read(NpgsqlReadBuffer buffer, int length, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription = null)
+        public override ValueTask<T> Read(NpgsqlReadBuffer buffer, int length, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
         {
             Initialize();
 
             return _constructorHandler is null
                 ? ReadUsingMemberHandlers()
-                : _constructorHandler.Read(buffer, async, cancellationToken);
+                : _constructorHandler.Read(buffer, async, cancellationToken: cancellationToken);
 
             async ValueTask<T> ReadUsingMemberHandlers()
             {
-                await buffer.Ensure(sizeof(int), async, cancellationToken);
+                await buffer.Ensure(sizeof(int), async, cancellationToken: cancellationToken);
 
                 var fieldCount = buffer.ReadInt32();
                 if (fieldCount != _memberHandlers.Length)

@@ -122,7 +122,7 @@ namespace Npgsql
                 if (cancellationToken.IsCancellationRequested)
                     return Task.FromCanceled<int>(cancellationToken);
                 using (NoSynchronizationContextScope.Enter())
-                    return ReadAsync(new Memory<byte>(buffer, offset, count), cancellationToken).AsTask();
+                    return ReadAsync(new Memory<byte>(buffer, offset, count), cancellationToken: cancellationToken).AsTask();
             }
 
 #if !NET461 && !NETSTANDARD2_0
@@ -147,7 +147,7 @@ namespace Npgsql
 #if !NET461 && !NETSTANDARD2_0
             public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
 #else
-            public ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+            public ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
 #endif
             {
                 CheckDisposed();
@@ -161,11 +161,11 @@ namespace Npgsql
                     return new ValueTask<int>(0);
 
                 using (NoSynchronizationContextScope.Enter())
-                    return ReadLong(buffer.Slice(0, count), cancellationToken);
+                    return ReadLong(buffer.Slice(0, count), cancellationToken: cancellationToken);
 
                 async ValueTask<int> ReadLong(Memory<byte> buffer, CancellationToken cancellationToken = default)
                 {
-                    var read = await _buf.ReadAsync(buffer, cancellationToken);
+                    var read = await _buf.ReadAsync(buffer, cancellationToken: cancellationToken);
                     _read += read;
                     return read;
                 }
@@ -197,9 +197,9 @@ namespace Npgsql
                 if (leftToSkip > 0)
                 {
                     if (async)
-                        await _buf.Skip(leftToSkip, async, default);
+                        await _buf.Skip(leftToSkip, async, cancellationToken: default);
                     else
-                        _buf.Skip(leftToSkip, async, default).GetAwaiter().GetResult();
+                        _buf.Skip(leftToSkip, async, cancellationToken: default).GetAwaiter().GetResult();
                 }
                 IsDisposed = true;
             }

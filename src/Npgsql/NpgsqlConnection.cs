@@ -1388,7 +1388,7 @@ namespace Npgsql
             CheckReady();
 
             Log.Debug("Starting to wait asynchronously...", Connector!.Id);
-            return Connector!.WaitAsync(cancellationToken);
+            return Connector!.WaitAsync(cancellationToken: cancellationToken);
         }
 
         #endregion

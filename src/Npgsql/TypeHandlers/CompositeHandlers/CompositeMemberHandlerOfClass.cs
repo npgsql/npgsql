@@ -55,7 +55,7 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
             if (_set == null)
                 ThrowHelper.ThrowInvalidOperationException_NoPropertySetter(typeof(TComposite), MemberInfo);
 
-            await buffer.Ensure(sizeof(uint) + sizeof(int), async, cancellationToken);
+            await buffer.Ensure(sizeof(uint) + sizeof(int), async, cancellationToken: cancellationToken);
 
             var oid = buffer.ReadUInt32();
             Debug.Assert(oid == PostgresType.OID);
@@ -66,7 +66,7 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
 
             var value = NullableHandler<TMember>.Exists
                 ? await NullableHandler<TMember>.ReadAsync(_handler, buffer, length, async, cancellationToken)
-                : await _handler.Read<TMember>(buffer, length, async, cancellationToken);
+                : await _handler.Read<TMember>(buffer, length, async, cancellationToken: cancellationToken);
 
             _set(composite, value);
         }

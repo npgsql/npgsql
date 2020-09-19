@@ -121,14 +121,14 @@ namespace Npgsql
         {
             if (count <= ReadBytesLeft)
                 return;
-            Ensure(count, false, default).GetAwaiter().GetResult();
+            Ensure(count, false, cancellationToken: default).GetAwaiter().GetResult();
         }
 
         /// <summary>
         /// Ensures that <paramref name="count"/> bytes are available in the buffer, and if
         /// not, reads from the socket until enough is available.
         /// </summary>
-        public Task Ensure(int count, bool async, CancellationToken cancellationToken)
+        public Task Ensure(int count, bool async, CancellationToken cancellationToken = default)
         {
             return count <= ReadBytesLeft ? Task.CompletedTask : EnsureLong();
 
@@ -229,9 +229,9 @@ namespace Npgsql
             }
         }
 
-        internal void ReadMore() => ReadMore(false, default).GetAwaiter().GetResult();
+        internal void ReadMore() => ReadMore(false, cancellationToken: default).GetAwaiter().GetResult();
 
-        internal Task ReadMore(bool async, CancellationToken cancellationToken) => Ensure(ReadBytesLeft + 1, async, cancellationToken);
+        internal Task ReadMore(bool async, CancellationToken cancellationToken = default) => Ensure(ReadBytesLeft + 1, async, cancellationToken: cancellationToken);
 
         internal NpgsqlReadBuffer AllocateOversize(int count)
         {
@@ -257,7 +257,7 @@ namespace Npgsql
         /// <summary>
         /// Skip a given number of bytes.
         /// </summary>
-        public async Task Skip(long len, bool async, CancellationToken cancellationToken)
+        public async Task Skip(long len, bool async, CancellationToken cancellationToken = default)
         {
             Debug.Assert(len >= 0);
 
@@ -267,11 +267,11 @@ namespace Npgsql
                 while (len > Size)
                 {
                     Clear();
-                    await Ensure(Size, async, cancellationToken);
+                    await Ensure(Size, async, cancellationToken: cancellationToken);
                     len -= Size;
                 }
                 Clear();
-                await Ensure((int)len, async, cancellationToken);
+                await Ensure((int) len, async, cancellationToken: cancellationToken);
             }
 
             ReadPosition += (int)len;
@@ -466,7 +466,7 @@ namespace Npgsql
             }
         }
 
-        public ValueTask<int> ReadAsync(Memory<byte> output, CancellationToken cancellationToken)
+        public ValueTask<int> ReadAsync(Memory<byte> output, CancellationToken cancellationToken = default)
         {
             var readFromBuffer = Math.Min(ReadBytesLeft, output.Length);
             if (readFromBuffer > 0)
@@ -487,7 +487,7 @@ namespace Npgsql
                 Clear();
                 try
                 {
-                    var read = await Underlying.ReadAsync(output, cancellationToken);
+                    var read = await Underlying.ReadAsync(output, cancellationToken: cancellationToken);
                     if (read == 0)
                         throw new EndOfStreamException();
                     return read;

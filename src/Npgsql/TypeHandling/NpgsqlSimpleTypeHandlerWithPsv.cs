@@ -63,7 +63,7 @@ namespace Npgsql.TypeHandling
         /// memory, sync or async I/O will be performed as specified by <paramref name="async"/>.
         /// </summary>
         internal override async ValueTask<object> ReadPsvAsObject(NpgsqlReadBuffer buf, int len, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription = null)
-            => (await Read<TPsv>(buf, len, async, cancellationToken, fieldDescription))!;
+            => (await Read<TPsv>(buf, len, async, fieldDescription, cancellationToken: cancellationToken))!;
 
         #endregion Read
 

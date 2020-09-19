@@ -609,14 +609,14 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         {
                             if (pStatement.StatementBeingReplaced != null)
                             {
-                                Expect<CloseCompletedMessage>(await connector.ReadMessage(async, cancellationToken), connector);
+                                Expect<CloseCompletedMessage>(await connector.ReadMessage(async, cancellationToken: cancellationToken), connector);
                                 pStatement.StatementBeingReplaced.CompleteUnprepare();
                                 pStatement.StatementBeingReplaced = null;
                             }
 
-                            Expect<ParseCompleteMessage>(await connector.ReadMessage(async, cancellationToken), connector);
-                            Expect<ParameterDescriptionMessage>(await connector.ReadMessage(async, cancellationToken), connector);
-                            var msg = await connector.ReadMessage(async, cancellationToken);
+                            Expect<ParseCompleteMessage>(await connector.ReadMessage(async, cancellationToken: cancellationToken), connector);
+                            Expect<ParameterDescriptionMessage>(await connector.ReadMessage(async, cancellationToken: cancellationToken), connector);
+                            var msg = await connector.ReadMessage(async, cancellationToken: cancellationToken);
                             switch (msg.Code)
                             {
                             case BackendMessageCode.RowDescription:
@@ -655,7 +655,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         }
                     }
 
-                    Expect<ReadyForQueryMessage>(await connector.ReadMessage(async, cancellationToken), connector);
+                    Expect<ReadyForQueryMessage>(await connector.ReadMessage(async, cancellationToken: cancellationToken), connector);
 
                     if (async)
                         await sendTask;
@@ -702,11 +702,11 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 foreach (var statement in _statements)
                     if (statement.PreparedStatement?.State == PreparedState.BeingUnprepared)
                     {
-                        Expect<CloseCompletedMessage>(await connector.ReadMessage(async, cancellationToken), connector);
+                        Expect<CloseCompletedMessage>(await connector.ReadMessage(async, cancellationToken: cancellationToken), connector);
                         statement.PreparedStatement.CompleteUnprepare();
                         statement.PreparedStatement = null;
                     }
-                Expect<ReadyForQueryMessage>(await connector.ReadMessage(async, cancellationToken), connector);
+                Expect<ReadyForQueryMessage>(await connector.ReadMessage(async, cancellationToken: cancellationToken), connector);
                 if (async)
                     await sendTask;
                 else

@@ -10,9 +10,9 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
         public CompositeParameterHandler(NpgsqlTypeHandler handler, ParameterInfo parameterInfo)
             : base(handler, parameterInfo) { }
 
-        public override ValueTask<object?> Read(NpgsqlReadBuffer buffer, bool async, CancellationToken cancellationToken)
+        public override ValueTask<object?> Read(NpgsqlReadBuffer buffer, bool async, CancellationToken cancellationToken = default)
         {
-            var task = Read<T>(buffer, async, cancellationToken);
+            var task = Read<T>(buffer, async, cancellationToken: cancellationToken);
             return task.IsCompleted
                 ? new ValueTask<object?>(task.Result)
                 : AwaitTask();

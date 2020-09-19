@@ -51,7 +51,7 @@ namespace Npgsql.TypeHandling
 
         static async ValueTask<T?> ReadAsync<T>(NpgsqlTypeHandler handler, NpgsqlReadBuffer buffer, int columnLength, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription)
             where T : struct
-            => await handler.Read<T>(buffer, columnLength, async, cancellationToken, fieldDescription);
+            => await handler.Read<T>(buffer, columnLength, async, fieldDescription, cancellationToken: cancellationToken);
 
         static int ValidateAndGetLength<T>(NpgsqlTypeHandler handler, T? value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             where T : struct

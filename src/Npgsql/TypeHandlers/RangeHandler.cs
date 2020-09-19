@@ -69,15 +69,15 @@ namespace Npgsql.TypeHandlers
 
         /// <inheritdoc />
         public override TAny Read<TAny>(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-            => Read<TAny>(buf, len, false, default, fieldDescription).Result;
+            => Read<TAny>(buf, len, false, fieldDescription, cancellationToken: default).Result;
 
         /// <inheritdoc />
-        public override ValueTask<NpgsqlRange<TElement>> Read(NpgsqlReadBuffer buf, int len, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription = null)
-            => DoRead<TElement>(buf, len, async, cancellationToken, fieldDescription);
+        public override ValueTask<NpgsqlRange<TElement>> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
+            => DoRead<TElement>(buf, len, async, fieldDescription, cancellationToken: cancellationToken);
 
-        private protected async ValueTask<NpgsqlRange<TAny>> DoRead<TAny>(NpgsqlReadBuffer buf, int len, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription)
+        private protected async ValueTask<NpgsqlRange<TAny>> DoRead<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken = default)
         {
-            await buf.Ensure(1, async, cancellationToken);
+            await buf.Ensure(1, async, cancellationToken: cancellationToken);
 
             var flags = (RangeFlags)buf.ReadByte();
             if ((flags & RangeFlags.Empty) != 0)
@@ -210,8 +210,8 @@ namespace Npgsql.TypeHandlers
         public RangeHandler(PostgresType rangePostgresType, NpgsqlTypeHandler elementHandler)
             : base(rangePostgresType, elementHandler, new[] { typeof(NpgsqlRange<TElement1>), typeof(NpgsqlRange<TElement2>) }) {}
 
-        ValueTask<NpgsqlRange<TElement2>> INpgsqlTypeHandler<NpgsqlRange<TElement2>>.Read(NpgsqlReadBuffer buf, int len, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription)
-            => DoRead<TElement2>(buf, len, async, cancellationToken, fieldDescription);
+        ValueTask<NpgsqlRange<TElement2>> INpgsqlTypeHandler<NpgsqlRange<TElement2>>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
+            => DoRead<TElement2>(buf, len, async, fieldDescription, cancellationToken: cancellationToken);
 
         /// <inheritdoc />
         public int ValidateAndGetLength(NpgsqlRange<TElement2> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)

@@ -34,28 +34,28 @@ namespace Npgsql.NetTopologySuite
 
         #region Read
 
-        public override ValueTask<Geometry> Read(NpgsqlReadBuffer buf, int len, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription = null)
+        public override ValueTask<Geometry> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
             => ReadCore<Geometry>(buf, len);
 
-        ValueTask<Point> INpgsqlTypeHandler<Point>.Read(NpgsqlReadBuffer buf, int len, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription)
+        ValueTask<Point> INpgsqlTypeHandler<Point>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken = default)
             => ReadCore<Point>(buf, len);
 
-        ValueTask<LineString> INpgsqlTypeHandler<LineString>.Read(NpgsqlReadBuffer buf, int len, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription)
+        ValueTask<LineString> INpgsqlTypeHandler<LineString>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken = default)
             => ReadCore<LineString>(buf, len);
 
-        ValueTask<Polygon> INpgsqlTypeHandler<Polygon>.Read(NpgsqlReadBuffer buf, int len, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription)
+        ValueTask<Polygon> INpgsqlTypeHandler<Polygon>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken = default)
             => ReadCore<Polygon>(buf, len);
 
-        ValueTask<MultiPoint> INpgsqlTypeHandler<MultiPoint>.Read(NpgsqlReadBuffer buf, int len, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription)
+        ValueTask<MultiPoint> INpgsqlTypeHandler<MultiPoint>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken = default)
             => ReadCore<MultiPoint>(buf, len);
 
-        ValueTask<MultiLineString> INpgsqlTypeHandler<MultiLineString>.Read(NpgsqlReadBuffer buf, int len, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription)
+        ValueTask<MultiLineString> INpgsqlTypeHandler<MultiLineString>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken = default)
             => ReadCore<MultiLineString>(buf, len);
 
-        ValueTask<MultiPolygon> INpgsqlTypeHandler<MultiPolygon>.Read(NpgsqlReadBuffer buf, int len, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription)
+        ValueTask<MultiPolygon> INpgsqlTypeHandler<MultiPolygon>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken = default)
             => ReadCore<MultiPolygon>(buf, len);
 
-        ValueTask<GeometryCollection> INpgsqlTypeHandler<GeometryCollection>.Read(NpgsqlReadBuffer buf, int len, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription)
+        ValueTask<GeometryCollection> INpgsqlTypeHandler<GeometryCollection>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken = default)
             => ReadCore<GeometryCollection>(buf, len);
 
         ValueTask<T> ReadCore<T>(NpgsqlReadBuffer buf, int len)

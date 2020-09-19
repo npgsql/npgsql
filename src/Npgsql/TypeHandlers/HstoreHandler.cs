@@ -124,38 +124,38 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        async ValueTask<T> ReadInto<T>(T dictionary, int numElements, NpgsqlReadBuffer buf, bool async, CancellationToken cancellationToken)
+        async ValueTask<T> ReadInto<T>(T dictionary, int numElements, NpgsqlReadBuffer buf, bool async, CancellationToken cancellationToken = default)
             where T : IDictionary<string, string?>
         {
             for (var i = 0; i < numElements; i++)
             {
-                await buf.Ensure(4, async, cancellationToken);
+                await buf.Ensure(4, async, cancellationToken: cancellationToken);
                 var keyLen = buf.ReadInt32();
                 Debug.Assert(keyLen != -1);
-                var key = await _textHandler.Read(buf, keyLen, async, cancellationToken);
+                var key = await _textHandler.Read(buf, keyLen, async, cancellationToken: cancellationToken);
 
-                await buf.Ensure(4, async, cancellationToken);
+                await buf.Ensure(4, async, cancellationToken: cancellationToken);
                 var valueLen = buf.ReadInt32();
 
                 dictionary[key] = valueLen == -1
                     ? null
-                    : await _textHandler.Read(buf, valueLen, async, cancellationToken);
+                    : await _textHandler.Read(buf, valueLen, async, cancellationToken: cancellationToken);
             }
             return dictionary;
         }
 
         /// <inheritdoc />
-        public override async ValueTask<Dictionary<string, string?>> Read(NpgsqlReadBuffer buf, int len, bool async, CancellationToken cancellationToken,
-            FieldDescription? fieldDescription = null)
+        public override async ValueTask<Dictionary<string, string?>> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null,
+            CancellationToken cancellationToken = default)
         {
-            await buf.Ensure(4, async, cancellationToken);
+            await buf.Ensure(4, async, cancellationToken: cancellationToken);
             var numElements = buf.ReadInt32();
-            return await ReadInto(new Dictionary<string, string?>(numElements), numElements, buf, async, cancellationToken);
+            return await ReadInto(new Dictionary<string, string?>(numElements), numElements, buf, async, cancellationToken: cancellationToken);
         }
 
         ValueTask<IDictionary<string, string?>> INpgsqlTypeHandler<IDictionary<string, string?>>.Read(
-            NpgsqlReadBuffer buf, int len, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription)
-            => new ValueTask<IDictionary<string, string?>>(Read(buf, len, async, cancellationToken, fieldDescription).Result);
+            NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
+            => new ValueTask<IDictionary<string, string?>>(Read(buf, len, async, fieldDescription, cancellationToken: cancellationToken).Result);
 
         #endregion
 
@@ -173,11 +173,11 @@ namespace Npgsql.TypeHandlers
             => Write((IDictionary<string, string?>)value, buf, lengthCache, parameter, async);
 
         async ValueTask<ImmutableDictionary<string, string?>> INpgsqlTypeHandler<ImmutableDictionary<string, string?>>.Read(
-            NpgsqlReadBuffer buf, int len, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription)
+            NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
         {
-            await buf.Ensure(4, async, cancellationToken);
+            await buf.Ensure(4, async, cancellationToken: cancellationToken);
             var numElements = buf.ReadInt32();
-            return (await ReadInto(ImmutableDictionary<string, string?>.Empty.ToBuilder(), numElements, buf, async, cancellationToken))
+            return (await ReadInto(ImmutableDictionary<string, string?>.Empty.ToBuilder(), numElements, buf, async, cancellationToken: cancellationToken))
                 .ToImmutable();
         }
 

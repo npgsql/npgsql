@@ -131,11 +131,11 @@ namespace Npgsql
             // Otherwise we need to read in a new CopyData row (the docs specify that there's a CopyData
             // message per row).
             if (_column == NumColumns)
-                _leftToReadInDataMsg = Expect<CopyDataMessage>(await _connector.ReadMessage(async, cancellationToken), _connector).Length;
+                _leftToReadInDataMsg = Expect<CopyDataMessage>(await _connector.ReadMessage(async, cancellationToken: cancellationToken), _connector).Length;
             else if (_column != -1)
                 throw new InvalidOperationException("Already in the middle of a row");
 
-            await _buf.Ensure(2, async, cancellationToken);
+            await _buf.Ensure(2, async, cancellationToken: cancellationToken);
             _leftToReadInDataMsg -= 2;
 
             var numColumns = _buf.ReadInt16();
@@ -269,7 +269,7 @@ namespace Npgsql
                         : await NullableHandler<T>.ReadAsync(handler, _buf, _columnLen, async, cancellationToken)
                     : _columnLen <= _buf.ReadBytesLeft
                         ? handler.Read<T>(_buf, _columnLen)
-                        : await handler.Read<T>(_buf, _columnLen, async, cancellationToken);
+                        : await handler.Read<T>(_buf, _columnLen, async, cancellationToken: cancellationToken);
 
                 _leftToReadInDataMsg -= _columnLen;
                 _columnLen = int.MinValue;   // Mark that the (next) column length hasn't been read yet
@@ -316,7 +316,7 @@ namespace Npgsql
         {
             await ReadColumnLenIfNeeded(async, cancellationToken);
             if (_columnLen != -1)
-                await _buf.Skip(_columnLen, async, cancellationToken);
+                await _buf.Skip(_columnLen, async, cancellationToken: cancellationToken);
 
             _columnLen = int.MinValue;
             _column++;
@@ -330,7 +330,7 @@ namespace Npgsql
         {
             if (_columnLen == int.MinValue)
             {
-                await _buf.Ensure(4, async, cancellationToken);
+                await _buf.Ensure(4, async, cancellationToken: cancellationToken);
                 _columnLen = _buf.ReadInt32();
                 _leftToReadInDataMsg -= 4;
             }
@@ -378,8 +378,8 @@ namespace Npgsql
                 // Read to the end
                 _connector.SkipUntil(BackendMessageCode.CopyDone);
                 // We intentionally do not pass a CancellationToken since we don't want to cancel cleanup
-                Expect<CommandCompleteMessage>(await _connector.ReadMessage(async, default), _connector);
-                Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async, default), _connector);
+                Expect<CommandCompleteMessage>(await _connector.ReadMessage(async, cancellationToken: default), _connector);
+                Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async, cancellationToken: default), _connector);
             }
 
             var connector = _connector;

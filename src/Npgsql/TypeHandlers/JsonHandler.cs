@@ -224,11 +224,11 @@ namespace Npgsql.TypeHandlers
         }
 
         /// <inheritdoc />
-        protected internal override async ValueTask<T> Read<T>(NpgsqlReadBuffer buf, int byteLen, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription = null)
+        protected internal override async ValueTask<T> Read<T>(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
         {
             if (_isJsonb)
             {
-                await buf.Ensure(1, async, cancellationToken);
+                await buf.Ensure(1, async, cancellationToken: cancellationToken);
                 var version = buf.ReadByte();
                 if (version != JsonbProtocolVersion)
                     throw new NotSupportedException($"Don't know how to decode JSONB with wire format {version}, your connection is now broken");
@@ -241,20 +241,20 @@ namespace Npgsql.TypeHandlers
                 typeof(T) == typeof(char)               ||
                 typeof(T) == typeof(byte[]))
             {
-                return await _textHandler.Read<T>(buf, byteLen, async, cancellationToken, fieldDescription);
+                return await _textHandler.Read<T>(buf, byteLen, async, fieldDescription, cancellationToken: cancellationToken);
             }
 
             // See #2818 for possibly returning a JsonDocument directly over our internal buffer, rather
             // than deserializing to string.
-            var s = await _textHandler.Read(buf, byteLen, async, cancellationToken, fieldDescription);
+            var s = await _textHandler.Read(buf, byteLen, async, fieldDescription, cancellationToken: cancellationToken);
             return typeof(T) == typeof(JsonDocument)
                 ? (T)(object)JsonDocument.Parse(s)
                 : JsonSerializer.Deserialize<T>(s, _serializerOptions)!;
         }
 
         /// <inheritdoc />
-        public override ValueTask<string> Read(NpgsqlReadBuffer buf, int len, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription = null)
-            => Read<string>(buf, len, async, cancellationToken, fieldDescription);
+        public override ValueTask<string> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
+            => Read<string>(buf, len, async, fieldDescription, cancellationToken: cancellationToken);
 
         /// <inheritdoc />
         public TextReader GetTextReader(Stream stream)

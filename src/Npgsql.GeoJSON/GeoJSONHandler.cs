@@ -125,34 +125,34 @@ namespace Npgsql.GeoJSON
 
         #region Read
 
-        public override ValueTask<GeoJSONObject> Read(NpgsqlReadBuffer buf, int len, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription = null)
+        public override ValueTask<GeoJSONObject> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
             => ReadGeometry(buf, async, cancellationToken);
 
-        async ValueTask<Point> INpgsqlTypeHandler<Point>.Read(NpgsqlReadBuffer buf, int len, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription)
+        async ValueTask<Point> INpgsqlTypeHandler<Point>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken = default)
             => (Point)await ReadGeometry(buf, async, cancellationToken);
 
-        async ValueTask<LineString> INpgsqlTypeHandler<LineString>.Read(NpgsqlReadBuffer buf, int len, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription)
+        async ValueTask<LineString> INpgsqlTypeHandler<LineString>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken = default)
             => (LineString)await ReadGeometry(buf, async, cancellationToken);
 
-        async ValueTask<Polygon> INpgsqlTypeHandler<Polygon>.Read(NpgsqlReadBuffer buf, int len, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription)
+        async ValueTask<Polygon> INpgsqlTypeHandler<Polygon>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken = default)
             => (Polygon)await ReadGeometry(buf, async, cancellationToken);
 
-        async ValueTask<MultiPoint> INpgsqlTypeHandler<MultiPoint>.Read(NpgsqlReadBuffer buf, int len, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription)
+        async ValueTask<MultiPoint> INpgsqlTypeHandler<MultiPoint>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken = default)
             => (MultiPoint)await ReadGeometry(buf, async, cancellationToken);
 
-        async ValueTask<MultiLineString> INpgsqlTypeHandler<MultiLineString>.Read(NpgsqlReadBuffer buf, int len, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription)
+        async ValueTask<MultiLineString> INpgsqlTypeHandler<MultiLineString>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken = default)
             => (MultiLineString)await ReadGeometry(buf, async, cancellationToken);
 
-        async ValueTask<MultiPolygon> INpgsqlTypeHandler<MultiPolygon>.Read(NpgsqlReadBuffer buf, int len, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription)
+        async ValueTask<MultiPolygon> INpgsqlTypeHandler<MultiPolygon>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken = default)
             => (MultiPolygon)await ReadGeometry(buf, async, cancellationToken);
 
-        async ValueTask<GeometryCollection> INpgsqlTypeHandler<GeometryCollection>.Read(NpgsqlReadBuffer buf, int len, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription)
+        async ValueTask<GeometryCollection> INpgsqlTypeHandler<GeometryCollection>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken = default)
             => (GeometryCollection)await ReadGeometry(buf, async, cancellationToken);
 
-        async ValueTask<IGeoJSONObject> INpgsqlTypeHandler<IGeoJSONObject>.Read(NpgsqlReadBuffer buf, int len, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription)
+        async ValueTask<IGeoJSONObject> INpgsqlTypeHandler<IGeoJSONObject>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken = default)
             => await ReadGeometry(buf, async, cancellationToken);
 
-        async ValueTask<IGeometryObject> INpgsqlTypeHandler<IGeometryObject>.Read(NpgsqlReadBuffer buf, int len, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription)
+        async ValueTask<IGeometryObject> INpgsqlTypeHandler<IGeometryObject>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken = default)
             => (IGeometryObject)await ReadGeometry(buf, async, cancellationToken);
 
         async ValueTask<GeoJSONObject> ReadGeometry(NpgsqlReadBuffer buf, bool async, CancellationToken cancellationToken)
@@ -166,7 +166,7 @@ namespace Npgsql.GeoJSON
 
         async ValueTask<GeoJSONObject> ReadGeometryCore(NpgsqlReadBuffer buf, bool async, CancellationToken cancellationToken, BoundingBoxBuilder? boundingBox)
         {
-            await buf.Ensure(SizeOfHeader, async, cancellationToken);
+            await buf.Ensure(SizeOfHeader, async, cancellationToken: cancellationToken);
             var littleEndian = buf.ReadByte() > 0;
             var type = (EwkbGeometryType)buf.ReadUInt32(littleEndian);
 
@@ -175,7 +175,7 @@ namespace Npgsql.GeoJSON
 
             if (HasSrid(type))
             {
-                await buf.Ensure(4, async, cancellationToken);
+                await buf.Ensure(4, async, cancellationToken: cancellationToken);
                 crs = GetCrs(buf.ReadInt32(littleEndian));
             }
 
@@ -183,7 +183,7 @@ namespace Npgsql.GeoJSON
             {
             case EwkbGeometryType.Point:
                 {
-                    await buf.Ensure(SizeOfPoint(type), async, cancellationToken);
+                    await buf.Ensure(SizeOfPoint(type), async, cancellationToken: cancellationToken);
                     var position = ReadPosition(buf, type, littleEndian);
                     boundingBox?.Accumulate(position);
                     geometry = new Point(position);
@@ -192,11 +192,11 @@ namespace Npgsql.GeoJSON
 
             case EwkbGeometryType.LineString:
                 {
-                    await buf.Ensure(SizeOfLength, async, cancellationToken);
+                    await buf.Ensure(SizeOfLength, async, cancellationToken: cancellationToken);
                     var coordinates = new Position[buf.ReadInt32(littleEndian)];
                     for (var i = 0; i < coordinates.Length; ++i)
                     {
-                        await buf.Ensure(SizeOfPoint(type), async, cancellationToken);
+                        await buf.Ensure(SizeOfPoint(type), async, cancellationToken: cancellationToken);
                         var position = ReadPosition(buf, type, littleEndian);
                         boundingBox?.Accumulate(position);
                         coordinates[i] = position;
@@ -207,14 +207,14 @@ namespace Npgsql.GeoJSON
 
             case EwkbGeometryType.Polygon:
                 {
-                    await buf.Ensure(SizeOfLength, async, cancellationToken);
+                    await buf.Ensure(SizeOfLength, async, cancellationToken: cancellationToken);
                     var lines = new LineString[buf.ReadInt32(littleEndian)];
                     for (var i = 0; i < lines.Length; ++i)
                     {
                         var coordinates = new Position[buf.ReadInt32(littleEndian)];
                         for (var j = 0; j < coordinates.Length; ++j)
                         {
-                            await buf.Ensure(SizeOfPoint(type), async, cancellationToken);
+                            await buf.Ensure(SizeOfPoint(type), async, cancellationToken: cancellationToken);
                             var position = ReadPosition(buf, type, littleEndian);
                             boundingBox?.Accumulate(position);
                             coordinates[j] = position;
@@ -227,12 +227,12 @@ namespace Npgsql.GeoJSON
 
             case EwkbGeometryType.MultiPoint:
                 {
-                    await buf.Ensure(SizeOfLength, async, cancellationToken);
+                    await buf.Ensure(SizeOfLength, async, cancellationToken: cancellationToken);
                     var points = new Point[buf.ReadInt32(littleEndian)];
                     for (var i = 0; i < points.Length; ++i)
                     {
-                        await buf.Ensure(SizeOfHeader + SizeOfPoint(type), async, cancellationToken);
-                        await buf.Skip(SizeOfHeader, async, cancellationToken);
+                        await buf.Ensure(SizeOfHeader + SizeOfPoint(type), async, cancellationToken: cancellationToken);
+                        await buf.Skip(SizeOfHeader, async, cancellationToken: cancellationToken);
                         var position = ReadPosition(buf, type, littleEndian);
                         boundingBox?.Accumulate(position);
                         points[i] = new Point(position);
@@ -243,16 +243,16 @@ namespace Npgsql.GeoJSON
 
             case EwkbGeometryType.MultiLineString:
                 {
-                    await buf.Ensure(SizeOfLength, async, cancellationToken);
+                    await buf.Ensure(SizeOfLength, async, cancellationToken: cancellationToken);
                     var lines = new LineString[buf.ReadInt32(littleEndian)];
                     for (var i = 0; i < lines.Length; ++i)
                     {
-                        await buf.Ensure(SizeOfHeaderWithLength, async, cancellationToken);
-                        await buf.Skip(SizeOfHeader, async, cancellationToken);
+                        await buf.Ensure(SizeOfHeaderWithLength, async, cancellationToken: cancellationToken);
+                        await buf.Skip(SizeOfHeader, async, cancellationToken: cancellationToken);
                         var coordinates = new Position[buf.ReadInt32(littleEndian)];
                         for (var j = 0; j < coordinates.Length; ++j)
                         {
-                            await buf.Ensure(SizeOfPoint(type), async, cancellationToken);
+                            await buf.Ensure(SizeOfPoint(type), async, cancellationToken: cancellationToken);
                             var position = ReadPosition(buf, type, littleEndian);
                             boundingBox?.Accumulate(position);
                             coordinates[j] = position;
@@ -265,19 +265,19 @@ namespace Npgsql.GeoJSON
 
             case EwkbGeometryType.MultiPolygon:
                 {
-                    await buf.Ensure(SizeOfLength, async, cancellationToken);
+                    await buf.Ensure(SizeOfLength, async, cancellationToken: cancellationToken);
                     var polygons = new Polygon[buf.ReadInt32(littleEndian)];
                     for (var i = 0; i < polygons.Length; ++i)
                     {
-                        await buf.Ensure(SizeOfHeaderWithLength, async, cancellationToken);
-                        await buf.Skip(SizeOfHeader, async, cancellationToken);
+                        await buf.Ensure(SizeOfHeaderWithLength, async, cancellationToken: cancellationToken);
+                        await buf.Skip(SizeOfHeader, async, cancellationToken: cancellationToken);
                         var lines = new LineString[buf.ReadInt32(littleEndian)];
                         for (var j = 0; j < lines.Length; ++j)
                         {
                             var coordinates = new Position[buf.ReadInt32(littleEndian)];
                             for (var k = 0; k < coordinates.Length; ++k)
                             {
-                                await buf.Ensure(SizeOfPoint(type), async, cancellationToken);
+                                await buf.Ensure(SizeOfPoint(type), async, cancellationToken: cancellationToken);
                                 var position = ReadPosition(buf, type, littleEndian);
                                 boundingBox?.Accumulate(position);
                                 coordinates[k] = position;
@@ -292,7 +292,7 @@ namespace Npgsql.GeoJSON
 
             case EwkbGeometryType.GeometryCollection:
                 {
-                    await buf.Ensure(SizeOfLength, async, cancellationToken);
+                    await buf.Ensure(SizeOfLength, async, cancellationToken: cancellationToken);
                     var elements = new IGeometryObject[buf.ReadInt32(littleEndian)];
                     for (var i = 0; i < elements.Length; ++i)
                         elements[i] = (IGeometryObject)await ReadGeometryCore(buf, async, cancellationToken, boundingBox);
