@@ -1560,7 +1560,7 @@ namespace Npgsql
             try
             {
                 return _isSequential
-                    ? fieldDescription.Handler.ReadPsvAsObject(Buffer, ColumnLen, false, default, fieldDescription).GetAwaiter().GetResult()
+                    ? fieldDescription.Handler.ReadPsvAsObject(Buffer, ColumnLen, false, fieldDescription, cancellationToken: default).GetAwaiter().GetResult()
                     : fieldDescription.Handler.ReadPsvAsObject(Buffer, ColumnLen, fieldDescription);
             }
             catch

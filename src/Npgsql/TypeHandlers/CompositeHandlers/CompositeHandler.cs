@@ -52,7 +52,7 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
                 {
                     var composite = new ByReference<T> { Value = _constructor() };
                     foreach (var member in _memberHandlers)
-                        await member.Read(composite, buffer, async, cancellationToken);
+                        await member.Read(composite, buffer, async, cancellationToken: cancellationToken);
 
                     return composite.Value;
                 }
@@ -60,7 +60,7 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
                 {
                     var composite = _constructor();
                     foreach (var member in _memberHandlers)
-                        await member.Read(composite, buffer, async, cancellationToken);
+                        await member.Read(composite, buffer, async, cancellationToken: cancellationToken);
 
                     return composite;
                 }

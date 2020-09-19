@@ -38,12 +38,12 @@ namespace Npgsql.LegacyPostgis
                 srid = buf.ReadUInt32(le);
             }
 
-            var geom = await DoRead(buf, (WkbIdentifier)(id & 7), le, async, cancellationToken);
+            var geom = await DoRead(buf, (WkbIdentifier) (id & 7), le, async, cancellationToken: cancellationToken);
             geom.SRID = srid;
             return geom;
         }
 
-        async ValueTask<PostgisGeometry> DoRead(NpgsqlReadBuffer buf, WkbIdentifier id, bool le, bool async, CancellationToken cancellationToken)
+        async ValueTask<PostgisGeometry> DoRead(NpgsqlReadBuffer buf, WkbIdentifier id, bool le, bool async, CancellationToken cancellationToken = default)
         {
             switch (id)
             {
@@ -148,7 +148,7 @@ namespace Npgsql.LegacyPostgis
                     var elemLe = buf.ReadByte() != 0;
                     var elemId = (WkbIdentifier)(buf.ReadUInt32(le) & 7);
 
-                    g[i] = await DoRead(buf, elemId, elemLe, async, cancellationToken);
+                    g[i] = await DoRead(buf, elemId, elemLe, async, cancellationToken: cancellationToken);
                 }
                 return new PostgisGeometryCollection(g);
             }
@@ -162,19 +162,19 @@ namespace Npgsql.LegacyPostgis
 
         #region Read concrete types
 
-        async ValueTask<PostgisPoint> INpgsqlTypeHandler<PostgisPoint>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken = default)
+        async ValueTask<PostgisPoint> INpgsqlTypeHandler<PostgisPoint>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
             => (PostgisPoint)await Read(buf, len, async, fieldDescription, cancellationToken: cancellationToken);
-        async ValueTask<PostgisMultiPoint> INpgsqlTypeHandler<PostgisMultiPoint>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken = default)
+        async ValueTask<PostgisMultiPoint> INpgsqlTypeHandler<PostgisMultiPoint>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
             => (PostgisMultiPoint)await Read(buf, len, async, fieldDescription, cancellationToken: cancellationToken);
-        async ValueTask<PostgisLineString> INpgsqlTypeHandler<PostgisLineString>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken = default)
+        async ValueTask<PostgisLineString> INpgsqlTypeHandler<PostgisLineString>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
             => (PostgisLineString)await Read(buf, len, async, fieldDescription, cancellationToken: cancellationToken);
-        async ValueTask<PostgisMultiLineString> INpgsqlTypeHandler<PostgisMultiLineString>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken = default)
+        async ValueTask<PostgisMultiLineString> INpgsqlTypeHandler<PostgisMultiLineString>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
             => (PostgisMultiLineString)await Read(buf, len, async, fieldDescription, cancellationToken: cancellationToken);
-        async ValueTask<PostgisPolygon> INpgsqlTypeHandler<PostgisPolygon>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken = default)
+        async ValueTask<PostgisPolygon> INpgsqlTypeHandler<PostgisPolygon>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
             => (PostgisPolygon)await Read(buf, len, async, fieldDescription, cancellationToken: cancellationToken);
-        async ValueTask<PostgisMultiPolygon> INpgsqlTypeHandler<PostgisMultiPolygon>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken = default)
+        async ValueTask<PostgisMultiPolygon> INpgsqlTypeHandler<PostgisMultiPolygon>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
             => (PostgisMultiPolygon)await Read(buf, len, async, fieldDescription, cancellationToken: cancellationToken);
-        async ValueTask<PostgisGeometryCollection> INpgsqlTypeHandler<PostgisGeometryCollection>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken = default)
+        async ValueTask<PostgisGeometryCollection> INpgsqlTypeHandler<PostgisGeometryCollection>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
             => (PostgisGeometryCollection)await Read(buf, len, async, fieldDescription, cancellationToken: cancellationToken);
 
         #endregion

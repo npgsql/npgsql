@@ -87,10 +87,10 @@ namespace Npgsql.TypeHandlers
             var upperBound = default(TAny);
 
             if ((flags & RangeFlags.LowerBoundInfinite) == 0)
-                lowerBound = await _elementHandler.ReadWithLength<TAny>(buf, async, cancellationToken);
+                lowerBound = await _elementHandler.ReadWithLength<TAny>(buf, async, cancellationToken: cancellationToken);
 
             if ((flags & RangeFlags.UpperBoundInfinite) == 0)
-                upperBound = await _elementHandler.ReadWithLength<TAny>(buf, async, cancellationToken);
+                upperBound = await _elementHandler.ReadWithLength<TAny>(buf, async, cancellationToken: cancellationToken);
 
             return new NpgsqlRange<TAny>(lowerBound, upperBound, flags);
         }

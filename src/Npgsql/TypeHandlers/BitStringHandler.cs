@@ -286,7 +286,7 @@ namespace Npgsql.TypeHandlers
                     return (TRequestedArray)(object)await ReadArray<BitArray>(buf, async, cancellationToken: cancellationToken);
 
                 if (ArrayTypeInfo<TRequestedArray>.IsList)
-                    return (TRequestedArray)(object)await ReadList<BitArray>(buf, async, cancellationToken);
+                    return (TRequestedArray)(object)await ReadList<BitArray>(buf, async, cancellationToken: cancellationToken);
             }
 
             if (ArrayTypeInfo<TRequestedArray>.ElementType == typeof(bool))
@@ -295,7 +295,7 @@ namespace Npgsql.TypeHandlers
                     return (TRequestedArray)(object)await ReadArray<bool>(buf, async, cancellationToken: cancellationToken);
 
                 if (ArrayTypeInfo<TRequestedArray>.IsList)
-                    return (TRequestedArray)(object)await ReadList<bool>(buf, async, cancellationToken);
+                    return (TRequestedArray)(object)await ReadList<bool>(buf, async, cancellationToken: cancellationToken);
             }
 
             return await base.Read<TRequestedArray>(buf, len, async, fieldDescription, cancellationToken: cancellationToken);

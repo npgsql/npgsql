@@ -79,14 +79,14 @@ namespace Npgsql.TypeHandling
         /// Reads a column as the type handler's provider-specific type. If it is not already entirely in
         /// memory, sync or async I/O will be performed as specified by <paramref name="async"/>.
         /// </summary>
-        internal virtual ValueTask<object> ReadPsvAsObject(NpgsqlReadBuffer buf, int len, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription = null)
+        internal virtual ValueTask<object> ReadPsvAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
             => ReadAsObject(buf, len, async, fieldDescription, cancellationToken: cancellationToken);
 
         /// <summary>
         /// Reads a value from the buffer, assuming our read position is at the value's preceding length.
         /// If the length is -1 (null), this method will return the default value.
         /// </summary>
-        internal async ValueTask<TAny> ReadWithLength<TAny>(NpgsqlReadBuffer buf, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription = null)
+        internal async ValueTask<TAny> ReadWithLength<TAny>(NpgsqlReadBuffer buf, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
         {
             await buf.Ensure(4, async, cancellationToken: cancellationToken);
             var len = buf.ReadInt32();

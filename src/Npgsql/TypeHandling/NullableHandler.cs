@@ -9,7 +9,7 @@ using Npgsql.BackendMessages;
 namespace Npgsql.TypeHandling
 {
     delegate T ReadDelegate<T>(NpgsqlTypeHandler handler, NpgsqlReadBuffer buffer, int columnLength, FieldDescription? fieldDescription = null);
-    delegate ValueTask<T> ReadAsyncDelegate<T>(NpgsqlTypeHandler handler, NpgsqlReadBuffer buffer, int columnLen, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription = null);
+    delegate ValueTask<T> ReadAsyncDelegate<T>(NpgsqlTypeHandler handler, NpgsqlReadBuffer buffer, int columnLen, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default);
 
     delegate int ValidateAndGetLengthDelegate<T>(NpgsqlTypeHandler handler, T value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter);
     delegate Task WriteAsyncDelegate<T>(NpgsqlTypeHandler handler, T value, NpgsqlWriteBuffer buffer, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async);
@@ -49,7 +49,7 @@ namespace Npgsql.TypeHandling
             where T : struct
             => handler.Read<T>(buffer, columnLength, fieldDescription);
 
-        static async ValueTask<T?> ReadAsync<T>(NpgsqlTypeHandler handler, NpgsqlReadBuffer buffer, int columnLength, bool async, CancellationToken cancellationToken, FieldDescription? fieldDescription)
+        static async ValueTask<T?> ReadAsync<T>(NpgsqlTypeHandler handler, NpgsqlReadBuffer buffer, int columnLength, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken = default)
             where T : struct
             => await handler.Read<T>(buffer, columnLength, async, fieldDescription, cancellationToken: cancellationToken);
 

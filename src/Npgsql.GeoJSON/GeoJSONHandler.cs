@@ -126,45 +126,45 @@ namespace Npgsql.GeoJSON
         #region Read
 
         public override ValueTask<GeoJSONObject> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
-            => ReadGeometry(buf, async, cancellationToken);
+            => ReadGeometry(buf, async, cancellationToken: cancellationToken);
 
-        async ValueTask<Point> INpgsqlTypeHandler<Point>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken = default)
-            => (Point)await ReadGeometry(buf, async, cancellationToken);
+        async ValueTask<Point> INpgsqlTypeHandler<Point>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
+            => (Point)await ReadGeometry(buf, async, cancellationToken: cancellationToken);
 
-        async ValueTask<LineString> INpgsqlTypeHandler<LineString>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken = default)
-            => (LineString)await ReadGeometry(buf, async, cancellationToken);
+        async ValueTask<LineString> INpgsqlTypeHandler<LineString>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
+            => (LineString)await ReadGeometry(buf, async, cancellationToken: cancellationToken);
 
-        async ValueTask<Polygon> INpgsqlTypeHandler<Polygon>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken = default)
-            => (Polygon)await ReadGeometry(buf, async, cancellationToken);
+        async ValueTask<Polygon> INpgsqlTypeHandler<Polygon>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
+            => (Polygon)await ReadGeometry(buf, async, cancellationToken: cancellationToken);
 
-        async ValueTask<MultiPoint> INpgsqlTypeHandler<MultiPoint>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken = default)
-            => (MultiPoint)await ReadGeometry(buf, async, cancellationToken);
+        async ValueTask<MultiPoint> INpgsqlTypeHandler<MultiPoint>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
+            => (MultiPoint)await ReadGeometry(buf, async, cancellationToken: cancellationToken);
 
-        async ValueTask<MultiLineString> INpgsqlTypeHandler<MultiLineString>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken = default)
-            => (MultiLineString)await ReadGeometry(buf, async, cancellationToken);
+        async ValueTask<MultiLineString> INpgsqlTypeHandler<MultiLineString>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
+            => (MultiLineString)await ReadGeometry(buf, async, cancellationToken: cancellationToken);
 
-        async ValueTask<MultiPolygon> INpgsqlTypeHandler<MultiPolygon>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken = default)
-            => (MultiPolygon)await ReadGeometry(buf, async, cancellationToken);
+        async ValueTask<MultiPolygon> INpgsqlTypeHandler<MultiPolygon>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
+            => (MultiPolygon)await ReadGeometry(buf, async, cancellationToken: cancellationToken);
 
-        async ValueTask<GeometryCollection> INpgsqlTypeHandler<GeometryCollection>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken = default)
-            => (GeometryCollection)await ReadGeometry(buf, async, cancellationToken);
+        async ValueTask<GeometryCollection> INpgsqlTypeHandler<GeometryCollection>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
+            => (GeometryCollection)await ReadGeometry(buf, async, cancellationToken: cancellationToken);
 
-        async ValueTask<IGeoJSONObject> INpgsqlTypeHandler<IGeoJSONObject>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken = default)
-            => await ReadGeometry(buf, async, cancellationToken);
+        async ValueTask<IGeoJSONObject> INpgsqlTypeHandler<IGeoJSONObject>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
+            => await ReadGeometry(buf, async, cancellationToken: cancellationToken);
 
-        async ValueTask<IGeometryObject> INpgsqlTypeHandler<IGeometryObject>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken = default)
-            => (IGeometryObject)await ReadGeometry(buf, async, cancellationToken);
+        async ValueTask<IGeometryObject> INpgsqlTypeHandler<IGeometryObject>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
+            => (IGeometryObject)await ReadGeometry(buf, async, cancellationToken: cancellationToken);
 
-        async ValueTask<GeoJSONObject> ReadGeometry(NpgsqlReadBuffer buf, bool async, CancellationToken cancellationToken)
+        async ValueTask<GeoJSONObject> ReadGeometry(NpgsqlReadBuffer buf, bool async, CancellationToken cancellationToken = default)
         {
             var boundingBox = BoundingBox ? new BoundingBoxBuilder() : null;
-            var geometry = await ReadGeometryCore(buf, async, cancellationToken, boundingBox);
+            var geometry = await ReadGeometryCore(buf, async, boundingBox, cancellationToken: cancellationToken);
 
             geometry.BoundingBoxes = boundingBox?.Build();
             return geometry;
         }
 
-        async ValueTask<GeoJSONObject> ReadGeometryCore(NpgsqlReadBuffer buf, bool async, CancellationToken cancellationToken, BoundingBoxBuilder? boundingBox)
+        async ValueTask<GeoJSONObject> ReadGeometryCore(NpgsqlReadBuffer buf, bool async, BoundingBoxBuilder? boundingBox, CancellationToken cancellationToken = default)
         {
             await buf.Ensure(SizeOfHeader, async, cancellationToken: cancellationToken);
             var littleEndian = buf.ReadByte() > 0;
@@ -295,7 +295,7 @@ namespace Npgsql.GeoJSON
                     await buf.Ensure(SizeOfLength, async, cancellationToken: cancellationToken);
                     var elements = new IGeometryObject[buf.ReadInt32(littleEndian)];
                     for (var i = 0; i < elements.Length; ++i)
-                        elements[i] = (IGeometryObject)await ReadGeometryCore(buf, async, cancellationToken, boundingBox);
+                        elements[i] = (IGeometryObject)await ReadGeometryCore(buf, async, boundingBox, cancellationToken: cancellationToken);
                     geometry = new GeometryCollection(elements);
                     break;
                 }

@@ -51,10 +51,10 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
             _handler = handler;
         }
 
-        public override ValueTask Read(TComposite composite, NpgsqlReadBuffer buffer, bool async, CancellationToken cancellationToken)
+        public override ValueTask Read(TComposite composite, NpgsqlReadBuffer buffer, bool async, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 
-        public override async ValueTask Read(ByReference<TComposite> composite, NpgsqlReadBuffer buffer, bool async, CancellationToken cancellationToken)
+        public override async ValueTask Read(ByReference<TComposite> composite, NpgsqlReadBuffer buffer, bool async, CancellationToken cancellationToken = default)
         {
             if (_set == null)
                 ThrowHelper.ThrowInvalidOperationException_NoPropertySetter(typeof(TComposite), MemberInfo);
