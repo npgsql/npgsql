@@ -454,20 +454,20 @@ namespace Npgsql.GeoJSON
         int INpgsqlTypeHandler<IGeometryObject>.ValidateAndGetLength(IGeometryObject value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLength((GeoJSONObject)value, ref lengthCache, parameter);
 
-        public override Task Write(GeoJSONObject value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        public override Task Write(GeoJSONObject value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
             => value.Type switch
             {
-                GeoJSONObjectType.Point              => Write((Point)value, buf, lengthCache, parameter, async),
-                GeoJSONObjectType.LineString         => Write((LineString)value, buf, lengthCache, parameter, async),
-                GeoJSONObjectType.Polygon            => Write((Polygon)value, buf, lengthCache, parameter, async),
-                GeoJSONObjectType.MultiPoint         => Write((MultiPoint)value, buf, lengthCache, parameter, async),
-                GeoJSONObjectType.MultiLineString    => Write((MultiLineString)value, buf, lengthCache, parameter, async),
-                GeoJSONObjectType.MultiPolygon       => Write((MultiPolygon)value, buf, lengthCache, parameter, async),
-                GeoJSONObjectType.GeometryCollection => Write((GeometryCollection)value, buf, lengthCache, parameter, async),
+                GeoJSONObjectType.Point              => Write((Point)value, buf, lengthCache, parameter, async, cancellationToken),
+                GeoJSONObjectType.LineString         => Write((LineString)value, buf, lengthCache, parameter, async, cancellationToken),
+                GeoJSONObjectType.Polygon            => Write((Polygon)value, buf, lengthCache, parameter, async, cancellationToken),
+                GeoJSONObjectType.MultiPoint         => Write((MultiPoint)value, buf, lengthCache, parameter, async, cancellationToken),
+                GeoJSONObjectType.MultiLineString    => Write((MultiLineString)value, buf, lengthCache, parameter, async, cancellationToken),
+                GeoJSONObjectType.MultiPolygon       => Write((MultiPolygon)value, buf, lengthCache, parameter, async, cancellationToken),
+                GeoJSONObjectType.GeometryCollection => Write((GeometryCollection)value, buf, lengthCache, parameter, async, cancellationToken),
                 _                                    => throw UnknownPostGisType()
             };
 
-        public async Task Write(Point value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        public async Task Write(Point value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             var type = EwkbGeometryType.Point;
             var size = SizeOfHeader;
@@ -479,7 +479,7 @@ namespace Npgsql.GeoJSON
             }
 
             if (buf.WriteSpaceLeft < size)
-                await buf.Flush(async);
+                await buf.Flush(async, cancellationToken);
 
             buf.WriteByte(0); // Most significant byte first
             buf.WriteInt32((int)type);
@@ -487,10 +487,10 @@ namespace Npgsql.GeoJSON
             if (srid != 0)
                 buf.WriteInt32(srid);
 
-            await WritePosition(value.Coordinates, buf, async);
+            await WritePosition(value.Coordinates, buf, async, cancellationToken);
         }
 
-        public async Task Write(LineString value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        public async Task Write(LineString value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             var type = EwkbGeometryType.LineString;
             var size = SizeOfHeader;
@@ -502,7 +502,7 @@ namespace Npgsql.GeoJSON
             }
 
             if (buf.WriteSpaceLeft < size)
-                await buf.Flush(async);
+                await buf.Flush(async, cancellationToken);
 
             var coordinates = value.Coordinates;
 
@@ -514,10 +514,10 @@ namespace Npgsql.GeoJSON
                 buf.WriteInt32(srid);
 
             for (var i = 0; i < coordinates.Count; ++i)
-                await WritePosition(coordinates[i], buf, async);
+                await WritePosition(coordinates[i], buf, async, cancellationToken);
         }
 
-        public async Task Write(Polygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        public async Task Write(Polygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             var type = EwkbGeometryType.Polygon;
             var size = SizeOfHeader;
@@ -529,7 +529,7 @@ namespace Npgsql.GeoJSON
             }
 
             if (buf.WriteSpaceLeft < size)
-                await buf.Flush(async);
+                await buf.Flush(async, cancellationToken);
 
             var lines = value.Coordinates;
 
@@ -543,15 +543,15 @@ namespace Npgsql.GeoJSON
             for (var i = 0; i < lines.Count; ++i)
             {
                 if (buf.WriteSpaceLeft < 4)
-                    await buf.Flush(async);
+                    await buf.Flush(async, cancellationToken);
                 var coordinates = lines[i].Coordinates;
                 buf.WriteInt32(coordinates.Count);
                 for (var j = 0; j < coordinates.Count; ++j)
-                    await WritePosition(coordinates[j], buf, async);
+                    await WritePosition(coordinates[j], buf, async, cancellationToken);
             }
         }
 
-        public async Task Write(MultiPoint value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        public async Task Write(MultiPoint value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             var type = EwkbGeometryType.MultiPoint;
             var size = SizeOfHeader;
@@ -563,7 +563,7 @@ namespace Npgsql.GeoJSON
             }
 
             if (buf.WriteSpaceLeft < size)
-                await buf.Flush(async);
+                await buf.Flush(async, cancellationToken);
 
             var coordinates = value.Coordinates;
 
@@ -575,10 +575,10 @@ namespace Npgsql.GeoJSON
                 buf.WriteInt32(srid);
 
             for (var i = 0; i < coordinates.Count; ++i)
-                await Write(coordinates[i], buf, lengthCache, parameter, async);
+                await Write(coordinates[i], buf, lengthCache, parameter, async, cancellationToken);
         }
 
-        public async Task Write(MultiLineString value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        public async Task Write(MultiLineString value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             var type = EwkbGeometryType.MultiLineString;
             var size = SizeOfHeader;
@@ -590,7 +590,7 @@ namespace Npgsql.GeoJSON
             }
 
             if (buf.WriteSpaceLeft < size)
-                await buf.Flush(async);
+                await buf.Flush(async, cancellationToken);
 
             var coordinates = value.Coordinates;
 
@@ -602,10 +602,10 @@ namespace Npgsql.GeoJSON
                 buf.WriteInt32(srid);
 
             for (var i = 0; i < coordinates.Count; ++i)
-                await Write(coordinates[i], buf, lengthCache, parameter, async);
+                await Write(coordinates[i], buf, lengthCache, parameter, async, cancellationToken);
         }
 
-        public async Task Write(MultiPolygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        public async Task Write(MultiPolygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             var type = EwkbGeometryType.MultiPolygon;
             var size = SizeOfHeader;
@@ -617,7 +617,7 @@ namespace Npgsql.GeoJSON
             }
 
             if (buf.WriteSpaceLeft < size)
-                await buf.Flush(async);
+                await buf.Flush(async, cancellationToken);
 
             var coordinates = value.Coordinates;
 
@@ -628,10 +628,10 @@ namespace Npgsql.GeoJSON
             if (srid != 0)
                 buf.WriteInt32(srid);
             for (var i = 0; i < coordinates.Count; ++i)
-                await Write(coordinates[i], buf, lengthCache, parameter, async);
+                await Write(coordinates[i], buf, lengthCache, parameter, async, cancellationToken);
         }
 
-        public async Task Write(GeometryCollection value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        public async Task Write(GeometryCollection value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             var type = EwkbGeometryType.GeometryCollection;
             var size = SizeOfHeader;
@@ -643,7 +643,7 @@ namespace Npgsql.GeoJSON
             }
 
             if (buf.WriteSpaceLeft < size)
-                await buf.Flush(async);
+                await buf.Flush(async, cancellationToken);
 
             var geometries = value.Geometries;
 
@@ -655,20 +655,20 @@ namespace Npgsql.GeoJSON
                 buf.WriteInt32(srid);
 
             for (var i = 0; i < geometries.Count; ++i)
-                await Write((GeoJSONObject)geometries[i], buf, lengthCache, parameter, async);
+                await Write((GeoJSONObject) geometries[i], buf, lengthCache, parameter, async, cancellationToken);
         }
 
-        Task INpgsqlTypeHandler<IGeoJSONObject>.Write(IGeoJSONObject value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
-            => Write((GeoJSONObject)value, buf, lengthCache, parameter, async);
+        Task INpgsqlTypeHandler<IGeoJSONObject>.Write(IGeoJSONObject value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken)
+            => Write((GeoJSONObject)value, buf, lengthCache, parameter, async, cancellationToken);
 
-        Task INpgsqlTypeHandler<IGeometryObject>.Write(IGeometryObject value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
-            => Write((GeoJSONObject)value, buf, lengthCache, parameter, async);
+        Task INpgsqlTypeHandler<IGeometryObject>.Write(IGeometryObject value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken)
+            => Write((GeoJSONObject)value, buf, lengthCache, parameter, async, cancellationToken);
 
-        static async Task WritePosition(IPosition coordinate, NpgsqlWriteBuffer buf, bool async)
+        static async Task WritePosition(IPosition coordinate, NpgsqlWriteBuffer buf, bool async, CancellationToken cancellationToken = default)
         {
             var altitude = coordinate.Altitude;
             if (buf.WriteSpaceLeft < SizeOfPoint(altitude.HasValue))
-                await buf.Flush(async);
+                await buf.Flush(async, cancellationToken);
             buf.WriteDouble(coordinate.Longitude);
             buf.WriteDouble(coordinate.Latitude);
             if (altitude.HasValue)

@@ -75,18 +75,18 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
             Set(composite, value);
         }
 
-        public override async Task Write(TComposite composite, NpgsqlWriteBuffer buffer, NpgsqlLengthCache? lengthCache, bool async)
+        public override async Task Write(TComposite composite, NpgsqlWriteBuffer buffer, NpgsqlLengthCache? lengthCache, bool async, CancellationToken cancellationToken = default)
         {
             if (_get == null)
                 ThrowHelper.ThrowInvalidOperationException_NoPropertyGetter(typeof(TComposite), MemberInfo);
 
             if (buffer.WriteSpaceLeft < sizeof(int))
-                await buffer.Flush(async);
+                await buffer.Flush(async, cancellationToken);
 
             buffer.WriteUInt32(PostgresType.OID);
             await (NullableHandler<TMember>.Exists
-                ? NullableHandler<TMember>.WriteAsync(_handler, _get(ref composite), buffer, lengthCache, null, async)
-                : _handler.WriteWithLengthInternal(_get(ref composite), buffer, lengthCache, null, async));
+                ? NullableHandler<TMember>.WriteAsync(_handler, _get(ref composite), buffer, lengthCache, null, async, cancellationToken)
+                : _handler.WriteWithLengthInternal(_get(ref composite), buffer, lengthCache, null, async, cancellationToken));
         }
 
         public override int ValidateAndGetLength(TComposite composite, ref NpgsqlLengthCache? lengthCache)

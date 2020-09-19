@@ -49,6 +49,7 @@ namespace Npgsql.TypeHandling
         /// <param name="async">
         /// If I/O will be necessary (i.e. the buffer is full), determines whether it will be done synchronously or asynchronously.
         /// </param>
-        Task Write(T value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async);
+        /// <param name="cancellationToken">The <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
+        Task Write(T value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default);
     }
 }

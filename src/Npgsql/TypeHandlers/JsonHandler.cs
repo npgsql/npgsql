@@ -133,33 +133,33 @@ namespace Npgsql.TypeHandlers
         }
 
         /// <inheritdoc />
-        protected override async Task WriteWithLength<TAny>(TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        protected override async Task WriteWithLength<TAny>(TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             buf.WriteInt32(ValidateAndGetLength(value, ref lengthCache, parameter));
 
             if (_isJsonb)
             {
                 if (buf.WriteSpaceLeft < 1)
-                    await buf.Flush(async);
+                    await buf.Flush(async, cancellationToken);
                 buf.WriteByte(JsonbProtocolVersion);
             }
 
             if (typeof(TAny) == typeof(string))
-                await _textHandler.Write((string)(object)value!, buf, lengthCache, parameter, async);
+                await _textHandler.Write((string)(object)value!, buf, lengthCache, parameter, async, cancellationToken);
             else if (typeof(TAny) == typeof(char[]))
-                await _textHandler.Write((char[])(object)value!, buf, lengthCache, parameter, async);
+                await _textHandler.Write((char[])(object)value!, buf, lengthCache, parameter, async, cancellationToken);
             else if (typeof(TAny) == typeof(ArraySegment<char>))
-                await _textHandler.Write((ArraySegment<char>)(object)value!, buf, lengthCache, parameter, async);
+                await _textHandler.Write((ArraySegment<char>)(object)value!, buf, lengthCache, parameter, async, cancellationToken);
             else if (typeof(TAny) == typeof(char))
-                await _textHandler.Write((char)(object)value!, buf, lengthCache, parameter, async);
+                await _textHandler.Write((char)(object)value!, buf, lengthCache, parameter, async, cancellationToken);
             else if (typeof(TAny) == typeof(byte[]))
-                await _textHandler.Write((byte[])(object)value!, buf, lengthCache, parameter, async);
+                await _textHandler.Write((byte[])(object)value!, buf, lengthCache, parameter, async, cancellationToken);
             else if (typeof(TAny) == typeof(JsonDocument))
             {
                 var data = parameter?.ConvertedValue != null
                     ? (byte[])parameter.ConvertedValue
                     : SerializeJsonDocument((JsonDocument)(object)value!);
-                await buf.WriteBytesRaw(data, async);
+                await buf.WriteBytesRaw(data, async, cancellationToken);
             }
             else
             {
@@ -168,7 +168,7 @@ namespace Npgsql.TypeHandlers
                     ? (string)parameter.ConvertedValue
                     : JsonSerializer.Serialize(value!, value!.GetType(), _serializerOptions);
 
-                await _textHandler.Write(s, buf, lengthCache, parameter, async);
+                await _textHandler.Write(s, buf, lengthCache, parameter, async, cancellationToken);
             }
         }
 
@@ -177,16 +177,16 @@ namespace Npgsql.TypeHandlers
             => ValidateAndGetLength<string>(value, ref lengthCache, parameter);
 
         /// <inheritdoc />
-        public override async Task Write(string value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        public override async Task Write(string value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             if (_isJsonb)
             {
                 if (buf.WriteSpaceLeft < 1)
-                    await buf.Flush(async);
+                    await buf.Flush(async, cancellationToken);
                 buf.WriteByte(JsonbProtocolVersion);
             }
 
-            await _textHandler.Write(value, buf, lengthCache, parameter, async);
+            await _textHandler.Write(value, buf, lengthCache, parameter, async, cancellationToken);
         }
 
         /// <inheritdoc />
@@ -204,22 +204,22 @@ namespace Npgsql.TypeHandlers
             };
 
         /// <inheritdoc />
-        protected internal override async Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        protected internal override async Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             // We call into WriteWithLength<T> below, which assumes it as at least enough write space for the length
             if (buf.WriteSpaceLeft < 4)
-                await buf.Flush(async);
+                await buf.Flush(async, cancellationToken);
 
             await (value switch
             {
-                DBNull _                  => base.WriteObjectWithLength(value, buf, lengthCache, parameter, async),
-                string s                  => WriteWithLength(s, buf, lengthCache, parameter, async),
-                char[] s                  => WriteWithLength(s, buf, lengthCache, parameter, async),
-                ArraySegment<char> s      => WriteWithLength(s, buf, lengthCache, parameter, async),
-                char s                    => WriteWithLength(s, buf, lengthCache, parameter, async),
-                byte[] s                  => WriteWithLength(s, buf, lengthCache, parameter, async),
-                JsonDocument jsonDocument => WriteWithLength(jsonDocument, buf, lengthCache, parameter, async),
-                _                         => WriteWithLength(value, buf, lengthCache, parameter, async),
+                DBNull _                  => base.WriteObjectWithLength(value, buf, lengthCache, parameter, async, cancellationToken),
+                string s                  => WriteWithLength(s, buf, lengthCache, parameter, async, cancellationToken),
+                char[] s                  => WriteWithLength(s, buf, lengthCache, parameter, async, cancellationToken),
+                ArraySegment<char> s      => WriteWithLength(s, buf, lengthCache, parameter, async, cancellationToken),
+                char s                    => WriteWithLength(s, buf, lengthCache, parameter, async, cancellationToken),
+                byte[] s                  => WriteWithLength(s, buf, lengthCache, parameter, async, cancellationToken),
+                JsonDocument jsonDocument => WriteWithLength(jsonDocument, buf, lengthCache, parameter, async, cancellationToken),
+                _                         => WriteWithLength(value, buf, lengthCache, parameter, async, cancellationToken),
             });
         }
 

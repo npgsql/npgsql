@@ -156,7 +156,7 @@ namespace Npgsql.TypeHandling
         /// <summary>
         /// In the vast majority of cases writing a parameter to the buffer won't need to perform I/O.
         /// </summary>
-        internal sealed override Task WriteWithLengthInternal<TAny>([AllowNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        internal sealed override Task WriteWithLengthInternal<TAny>([AllowNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             if (value == null || typeof(TAny) == typeof(DBNull))
             {
@@ -181,7 +181,7 @@ namespace Npgsql.TypeHandling
                 if (value == null || typeof(TAny) == typeof(DBNull))
                 {
                     if (buf.WriteSpaceLeft < 4)
-                        await buf.Flush(async);
+                        await buf.Flush(async, cancellationToken);
                     buf.WriteInt32(-1);
                     return;
                 }
@@ -189,7 +189,7 @@ namespace Npgsql.TypeHandling
                 typedHandler = (INpgsqlSimpleTypeHandler<TAny>)this;
                 elementLen = typedHandler.ValidateAndGetLength(value, parameter);
                 if (buf.WriteSpaceLeft < 4 + elementLen)
-                    await buf.Flush(async);
+                    await buf.Flush(async, cancellationToken);
                 buf.WriteInt32(elementLen);
                 typedHandler.Write(value, buf, parameter);
             }
@@ -198,7 +198,7 @@ namespace Npgsql.TypeHandling
         /// <summary>
         /// Simple type handlers override <see cref="Write(TDefault,NpgsqlWriteBuffer,NpgsqlParameter)"/> instead of this.
         /// </summary>
-        public sealed override Task Write(TDefault value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        public sealed override Task Write(TDefault value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
 
         /// <summary>
@@ -222,10 +222,10 @@ namespace Npgsql.TypeHandling
         /// Called to write the value of a non-generic <see cref="NpgsqlParameter"/>.
         /// Type handlers generally don't need to override this.
         /// </summary>
-        protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
             => value is DBNull  // For null just go through the default WriteWithLengthInternal
-                ? WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async)
-                : _nonGenericWriteWithLength(this, value, buf, lengthCache, parameter, async);
+                ? WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken)
+                : _nonGenericWriteWithLength(this, value, buf, lengthCache, parameter, async, cancellationToken);
 
         #endregion
 

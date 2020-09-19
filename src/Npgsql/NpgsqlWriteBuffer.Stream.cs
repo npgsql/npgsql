@@ -55,15 +55,15 @@ namespace Npgsql
                 => throw new NotSupportedException();
 
             public override void Write(byte[] buffer, int offset, int count)
-                => Write(buffer, offset, count, CancellationToken.None, false);
+                => Write(buffer, offset, count, false);
 
             public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
             {
                 using (NoSynchronizationContextScope.Enter())
-                    return Write(buffer, offset, count, cancellationToken, true);
+                    return Write(buffer, offset, count, true, cancellationToken);
             }
 
-            Task Write(byte[] buffer, int offset, int count, CancellationToken cancellationToken, bool async)
+            Task Write(byte[] buffer, int offset, int count, bool async, CancellationToken cancellationToken = default)
             {
                 CheckDisposed();
 
@@ -82,7 +82,7 @@ namespace Npgsql
                 {
                     var left = _buf.WriteSpaceLeft;
                     if (left == 0)
-                        return WriteLong(buffer, offset, count, async);
+                        return WriteLong(buffer, offset, count, async, cancellationToken);
 
                     var slice = Math.Min(count, left);
                     _buf.WriteBytes(buffer, offset, slice);
@@ -93,14 +93,14 @@ namespace Npgsql
                 return Task.CompletedTask;
             }
 
-            async Task WriteLong(byte[] buffer, int offset, int count, bool async)
+            async Task WriteLong(byte[] buffer, int offset, int count, bool async, CancellationToken cancellationToken = default)
             {
                 while (count > 0)
                 {
                     var left = _buf.WriteSpaceLeft;
                     if (left == 0)
                     {
-                        await _buf.Flush(async);
+                        await _buf.Flush(async, cancellationToken);
                         continue;
                     }
                     var slice = Math.Min(count, left);

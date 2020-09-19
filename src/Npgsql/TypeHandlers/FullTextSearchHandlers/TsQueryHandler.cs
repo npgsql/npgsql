@@ -174,12 +174,12 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
         }
 
         /// <inheritdoc />
-        public override async Task Write(NpgsqlTsQuery query, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        public override async Task Write(NpgsqlTsQuery query, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             var numTokens = GetTokenCount(query);
 
             if (buf.WriteSpaceLeft < 4)
-                await buf.Flush(async);
+                await buf.Flush(async, cancellationToken);
             buf.WriteInt32(numTokens);
 
             if (numTokens == 0)
@@ -190,10 +190,10 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             while (_stack.Count > 0)
             {
                 if (buf.WriteSpaceLeft < 2)
-                    await buf.Flush(async);
+                    await buf.Flush(async, cancellationToken);
 
                 if (_stack.Peek().Kind == NpgsqlTsQuery.NodeKind.Lexeme && buf.WriteSpaceLeft < MaxSingleTokenBytes)
-                    await buf.Flush(async);
+                    await buf.Flush(async, cancellationToken);
 
                 var node = _stack.Pop();
                 buf.WriteByte(node.Kind == NpgsqlTsQuery.NodeKind.Lexeme ? (byte)1 : (byte)2);
@@ -267,24 +267,24 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             => ValidateAndGetLength((NpgsqlTsQuery)value, ref lengthCache, parameter);
 
         /// <inheritdoc />
-        public Task Write(NpgsqlTsQueryOr value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
-            => Write((NpgsqlTsQuery)value, buf, lengthCache, parameter, async);
+        public Task Write(NpgsqlTsQueryOr value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+            => Write((NpgsqlTsQuery)value, buf, lengthCache, parameter, async, cancellationToken);
 
         /// <inheritdoc />
-        public Task Write(NpgsqlTsQueryAnd value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
-            => Write((NpgsqlTsQuery)value, buf, lengthCache, parameter, async);
+        public Task Write(NpgsqlTsQueryAnd value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+            => Write((NpgsqlTsQuery)value, buf, lengthCache, parameter, async, cancellationToken);
 
         /// <inheritdoc />
-        public Task Write(NpgsqlTsQueryNot value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
-            => Write((NpgsqlTsQuery)value, buf, lengthCache, parameter, async);
+        public Task Write(NpgsqlTsQueryNot value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+            => Write((NpgsqlTsQuery)value, buf, lengthCache, parameter, async, cancellationToken);
 
         /// <inheritdoc />
-        public Task Write(NpgsqlTsQueryLexeme value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
-            => Write((NpgsqlTsQuery)value, buf, lengthCache, parameter, async);
+        public Task Write(NpgsqlTsQueryLexeme value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+            => Write((NpgsqlTsQuery)value, buf, lengthCache, parameter, async, cancellationToken);
 
         /// <inheritdoc />
-        public Task Write(NpgsqlTsQueryEmpty value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
-            => Write((NpgsqlTsQuery)value, buf, lengthCache, parameter, async);
+        public Task Write(NpgsqlTsQueryEmpty value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+            => Write((NpgsqlTsQuery)value, buf, lengthCache, parameter, async, cancellationToken);
 
         /// <inheritdoc />
         public Task Write(
@@ -292,8 +292,9 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             NpgsqlWriteBuffer buf,
             NpgsqlLengthCache? lengthCache,
             NpgsqlParameter? parameter,
-            bool async)
-            => Write((NpgsqlTsQuery)value, buf, lengthCache, parameter, async);
+            bool async,
+            CancellationToken cancellationToken = default)
+            => Write((NpgsqlTsQuery)value, buf, lengthCache, parameter, async, cancellationToken);
 
         #endregion Write
     }

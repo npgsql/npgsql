@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics.CodeAnalysis;
+using System.Threading;
 using System.Threading.Tasks;
 using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
@@ -512,8 +513,8 @@ namespace Npgsql
             return len;
         }
 
-        internal virtual Task WriteWithLength(NpgsqlWriteBuffer buf, bool async)
-            => Handler!.WriteObjectWithLength(_value!, buf, LengthCache, this, async);
+        internal virtual Task WriteWithLength(NpgsqlWriteBuffer buf, bool async, CancellationToken cancellationToken = default)
+            => Handler!.WriteObjectWithLength(_value!, buf, LengthCache, this, async, cancellationToken);
 
         /// <inheritdoc />
         public override void ResetDbType()

@@ -79,7 +79,7 @@ namespace Npgsql.Benchmarks.TypeHandlers
 
                 cache.Rewind();
 
-                _handler.WriteWithLengthInternal(_value, _writeBuffer, cache, null, false);
+                _handler.WriteWithLengthInternal(_value, _writeBuffer, cache, null, false, cancellationToken);
                 Buffer.BlockCopy(_writeBuffer.Buffer, 0, _readBuffer.Buffer, 0, _elementSize);
 
                 _readBuffer.FilledBytes = _elementSize;
@@ -98,7 +98,7 @@ namespace Npgsql.Benchmarks.TypeHandlers
         public void Write()
         {
             _writeBuffer.WritePosition = 0;
-            _handler.WriteWithLengthInternal(_value, _writeBuffer, null, null, false);
+            _handler.WriteWithLengthInternal(_value, _writeBuffer, null, null, false, cancellationToken);
         }
     }
 }

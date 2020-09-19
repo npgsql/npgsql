@@ -109,7 +109,7 @@ namespace Npgsql.TypeHandling
         /// <summary>
         /// Called to write the value of a generic <see cref="NpgsqlParameter{T}"/>.
         /// </summary>
-        internal abstract Task WriteWithLengthInternal<TAny>([AllowNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async);
+        internal abstract Task WriteWithLengthInternal<TAny>([AllowNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Responsible for validating that a value represents a value of the correct and which can be
@@ -139,7 +139,8 @@ namespace Npgsql.TypeHandling
         /// information relevant to the write process (e.g. <see cref="NpgsqlParameter.Size"/>).
         /// </param>
         /// <param name="async">If I/O is required to read the full length of the value, whether it should be performed synchronously or asynchronously.</param>
-        protected internal abstract Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async);
+        /// <param name="cancellationToken">The <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
+        protected internal abstract Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default);
 
         #endregion Write
 
@@ -174,7 +175,7 @@ namespace Npgsql.TypeHandling
 
         #region Code generation for non-generic writing
 
-        internal delegate Task NonGenericWriteWithLength(NpgsqlTypeHandler handler, object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async);
+        internal delegate Task NonGenericWriteWithLength(NpgsqlTypeHandler handler, object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken);
 
         internal static NonGenericWriteWithLength GenerateNonGenericWriteMethod(Type handlerType, Type interfaceType)
         {
@@ -185,13 +186,14 @@ namespace Npgsql.TypeHandling
 
             Expression? ifElseExpression = null;
 
-            // NpgsqlTypeHandler handler, object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async
+            // NpgsqlTypeHandler handler, object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter parameter, bool async, CancellationToken cancellationToken
             var handlerParam = Expression.Parameter(typeof(NpgsqlTypeHandler), "handler");
             var valueParam = Expression.Parameter(typeof(object), "value");
             var bufParam = Expression.Parameter(typeof(NpgsqlWriteBuffer), "buf");
             var lengthCacheParam = Expression.Parameter(typeof(NpgsqlLengthCache), "lengthCache");
             var parameterParam = Expression.Parameter(typeof(NpgsqlParameter), "parameter");
             var asyncParam = Expression.Parameter(typeof(bool), "async");
+            var cancellationTokenParam = Expression.Parameter(typeof(CancellationToken), "cancellationToken");
 
             var resultVariable = Expression.Variable(typeof(Task), "result");
 
@@ -216,7 +218,8 @@ namespace Npgsql.TypeHandling
                             bufParam,
                             lengthCacheParam,
                             parameterParam,
-                            asyncParam
+                            asyncParam,
+                            cancellationTokenParam
                         )
                     ),
                     // If this is the first interface we're looking at, the else clause throws.
@@ -234,7 +237,7 @@ namespace Npgsql.TypeHandling
                     new[] { resultVariable },
                     ifElseExpression, resultVariable
                 ),
-                handlerParam, valueParam, bufParam, lengthCacheParam, parameterParam, asyncParam
+                handlerParam, valueParam, bufParam, lengthCacheParam, parameterParam, asyncParam, cancellationTokenParam
             ).Compile();
         }
 

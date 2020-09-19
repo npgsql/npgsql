@@ -37,8 +37,8 @@ namespace Npgsql.TypeHandlers
         public override int ValidateAndGetLength(T value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => _wrappedHandler.ValidateAndGetLength(value, ref lengthCache, parameter);
 
-        public override Task Write(T value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
-           => _wrappedHandler.Write(value!, buf, lengthCache, parameter, async);
+        public override Task Write(T value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+           => _wrappedHandler.Write(value!, buf, lengthCache, parameter, async, cancellationToken);
     }
 
     class MappedEnumTypeHandlerFactory<T> : NpgsqlTypeHandlerFactory<T>

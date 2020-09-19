@@ -67,17 +67,17 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
             }
         }
 
-        public override async Task Write(T value, NpgsqlWriteBuffer buffer, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        public override async Task Write(T value, NpgsqlWriteBuffer buffer, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             Initialize();
 
             if (buffer.WriteSpaceLeft < sizeof(int))
-                await buffer.Flush(async);
+                await buffer.Flush(async, cancellationToken);
 
             buffer.WriteInt32(_memberHandlers.Length);
 
             foreach (var member in _memberHandlers)
-                await member.Write(value, buffer, lengthCache, async);
+                await member.Write(value, buffer, lengthCache, async, cancellationToken);
         }
 
         public override int ValidateAndGetLength(T value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)

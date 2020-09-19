@@ -132,7 +132,7 @@ namespace Npgsql.TypeHandlers
             return totalLen;
         }
 
-        internal override Task WriteWithLengthInternal<TAny>([AllowNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        internal override Task WriteWithLengthInternal<TAny>([AllowNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             if (buf.WriteSpaceLeft < 4)
                 return WriteWithLengthLong();
@@ -148,7 +148,7 @@ namespace Npgsql.TypeHandlers
             async Task WriteWithLengthLong()
             {
                 if (buf.WriteSpaceLeft < 4)
-                    await buf.Flush(async);
+                    await buf.Flush(async, cancellationToken);
 
                 if (value == null || typeof(TAny) == typeof(DBNull))
                 {
@@ -164,7 +164,7 @@ namespace Npgsql.TypeHandlers
                 if (this is INpgsqlTypeHandler<TAny> typedHandler)
                 {
                     buf.WriteInt32(typedHandler.ValidateAndGetLength(value, ref lengthCache, parameter));
-                    return typedHandler.Write(value, buf, lengthCache, parameter, async);
+                    return typedHandler.Write(value, buf, lengthCache, parameter, async, cancellationToken);
                 }
                 else
                     throw new InvalidCastException($"Can't write CLR type {typeof(TAny)} to database type {PgDisplayName}");
@@ -172,13 +172,13 @@ namespace Npgsql.TypeHandlers
         }
 
         /// <inheritdoc />
-        public override Task Write(NpgsqlRange<TElement> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
-            => Write(value, buf, lengthCache, parameter, async);
+        public override Task Write(NpgsqlRange<TElement> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+            => Write(value, buf, lengthCache, parameter, async, cancellationToken);
 
-        private protected async Task Write<TAny>(NpgsqlRange<TAny> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        private protected async Task Write<TAny>(NpgsqlRange<TAny> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             if (buf.WriteSpaceLeft < 1)
-                await buf.Flush(async);
+                await buf.Flush(async, cancellationToken);
 
             buf.WriteByte((byte)value.Flags);
 
@@ -186,10 +186,10 @@ namespace Npgsql.TypeHandlers
                 return;
 
             if (!value.LowerBoundInfinite)
-                await _elementHandler.WriteWithLengthInternal(value.LowerBound, buf, lengthCache, null, async);
+                await _elementHandler.WriteWithLengthInternal(value.LowerBound, buf, lengthCache, null, async, cancellationToken);
 
             if (!value.UpperBoundInfinite)
-                await _elementHandler.WriteWithLengthInternal(value.UpperBound, buf, lengthCache, null, async);
+                await _elementHandler.WriteWithLengthInternal(value.UpperBound, buf, lengthCache, null, async, cancellationToken);
         }
 
         #endregion
@@ -218,7 +218,7 @@ namespace Npgsql.TypeHandlers
             => ValidateAndGetLength<TElement2>(value, ref lengthCache, parameter);
 
         /// <inheritdoc />
-        public Task Write(NpgsqlRange<TElement2> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
-            => Write<TElement2>(value, buf, lengthCache, parameter, async);
+        public Task Write(NpgsqlRange<TElement2> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+            => Write<TElement2>(value, buf, lengthCache, parameter, async, cancellationToken);
     }
 }

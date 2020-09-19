@@ -168,7 +168,7 @@ namespace Npgsql
                 try
                 {
                     // Value is too big, flush.
-                    await FlushAsync(true);
+                    await FlushAsync(true, cancellationToken);
 
                     if (buffer.Length <= _writeBuf.WriteSpaceLeft)
                     {
@@ -177,7 +177,7 @@ namespace Npgsql
                     }
 
                     // Value is too big even after a flush - bypass the buffer and write directly.
-                    await _writeBuf.DirectWrite(buffer, true);
+                    await _writeBuf.DirectWrite(buffer, true, cancellationToken);
                 }
                 catch (Exception e)
                 {
@@ -195,13 +195,13 @@ namespace Npgsql
             if (cancellationToken.IsCancellationRequested)
                 return Task.FromCanceled(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
-                return FlushAsync(true);
+                return FlushAsync(true, cancellationToken);
         }
 
-        Task FlushAsync(bool async)
+        Task FlushAsync(bool async, CancellationToken cancellationToken = default)
         {
             CheckDisposed();
-            return _writeBuf.Flush(async);
+            return _writeBuf.Flush(async, cancellationToken);
         }
 
         #endregion

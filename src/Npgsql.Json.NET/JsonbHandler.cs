@@ -59,7 +59,7 @@ namespace Npgsql.Json.NET
             return base.ValidateAndGetLength(serialized, ref lengthCache, parameter);
         }
 
-        protected override Task WriteWithLength<T2>(T2 value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        protected override Task WriteWithLength<T2>(T2 value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             if (typeof(T2) == typeof(string) ||
                 typeof(T2) == typeof(char[]) ||
@@ -67,14 +67,14 @@ namespace Npgsql.Json.NET
                 typeof(T2) == typeof(char) ||
                 typeof(T2) == typeof(byte[]))
             {
-                return base.WriteWithLength(value, buf, lengthCache, parameter, async);
+                return base.WriteWithLength(value, buf, lengthCache, parameter, async, cancellationToken);
             }
 
             // User POCO, read serialized representation from the validation phase
             var serialized = parameter?.ConvertedValue != null
                 ? (string)parameter.ConvertedValue
                 : JsonConvert.SerializeObject(value, _settings);
-            return base.WriteWithLength(serialized, buf, lengthCache, parameter, async);
+            return base.WriteWithLength(serialized, buf, lengthCache, parameter, async, cancellationToken);
         }
 
         protected override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
@@ -92,7 +92,7 @@ namespace Npgsql.Json.NET
             return ValidateAndGetLength(value, ref lengthCache, parameter);
         }
 
-        protected override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        protected override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             if (value is DBNull ||
                 value is string ||
@@ -101,10 +101,10 @@ namespace Npgsql.Json.NET
                 value is char ||
                 value is byte[])
             {
-                return base.WriteObjectWithLength(value, buf, lengthCache, parameter, async);
+                return base.WriteObjectWithLength(value, buf, lengthCache, parameter, async, cancellationToken);
             }
 
-            return WriteWithLength(value, buf, lengthCache, parameter, async);
+            return WriteWithLength(value, buf, lengthCache, parameter, async, cancellationToken);
         }
     }
 }

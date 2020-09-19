@@ -102,7 +102,7 @@ namespace Npgsql
 
         #region I/O
 
-        public async Task Flush(bool async)
+        public async Task Flush(bool async, CancellationToken cancellationToken = default)
         {
             if (_copyMode)
             {
@@ -118,67 +118,90 @@ namespace Npgsql
             } else if (WritePosition == 0)
                 return;
 
-            var timeoutCt = CancellationToken.None;
-            if (async && Timeout > TimeSpan.Zero)
-            {
-                // We reuse the timeout's cancellation token source as long as it hasn't fired, but once it has
-                // there's no way to reset it (see https://github.com/dotnet/runtime/issues/4694)
-                _timeoutCts.CancelAfter(Timeout);
-                if (_timeoutCts.IsCancellationRequested)
-                {
-                    _timeoutCts.Dispose();
-                    _timeoutCts = new CancellationTokenSource(Timeout);
-                }
-                timeoutCt = _timeoutCts.Token;
-            }
+            CancellationTokenSource? combinedCts = null;
 
             try
             {
-                if (async)
-                    await Underlying.WriteAsync(Buffer, 0, WritePosition, timeoutCt);
-                else
-                    Underlying.Write(Buffer, 0, WritePosition);
-            }
-            catch (Exception e)
-            {
-                switch (e)
+                var finalCt = cancellationToken;
+                if (async && Timeout > TimeSpan.Zero)
                 {
-                case OperationCanceledException _:
-                // Note that mono throws SocketException with the wrong error (see #1330)
-                case IOException _ when (e.InnerException as SocketException)?.SocketErrorCode ==
-                                            (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock):
-                    Debug.Assert(e is OperationCanceledException ? async : !async);
-                    throw Connector.Break(new NpgsqlException("Exception while writing to stream", new TimeoutException("Timeout during writing attempt")));
+                    // We reuse the timeout's cancellation token source as long as it hasn't fired, but once it has
+                    // there's no way to reset it (see https://github.com/dotnet/runtime/issues/4694)
+                    _timeoutCts.CancelAfter(Timeout);
+                    if (_timeoutCts.IsCancellationRequested)
+                    {
+                        _timeoutCts.Dispose();
+                        _timeoutCts = new CancellationTokenSource(Timeout);
+                    }
+                    finalCt = _timeoutCts.Token;
+
+                    if (cancellationToken.CanBeCanceled)
+                    {
+                        combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _timeoutCts.Token);
+                        finalCt = combinedCts.Token;
+                    }
                 }
 
-                throw Connector.Break(new NpgsqlException("Exception while writing to stream", e));
-            }
-
-            try
-            {
-                if (async)
+                try
                 {
-                    await Underlying.FlushAsync(timeoutCt);
-                    // Resetting cancellation token source, so we can use it again
-                    _timeoutCts.CancelAfter(-1);
+                    if (async)
+                        await Underlying.WriteAsync(Buffer, 0, WritePosition, finalCt);
+                    else
+                        Underlying.Write(Buffer, 0, WritePosition);
                 }
-                else
-                    Underlying.Flush();
-            }
-            catch (Exception e)
-            {
-                switch (e)
+                catch (Exception e)
                 {
-                case OperationCanceledException _:
-                // Note that mono throws SocketException with the wrong error (see #1330)
-                case IOException _ when (e.InnerException as SocketException)?.SocketErrorCode ==
-                                            (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock):
-                    Debug.Assert(e is OperationCanceledException ? async : !async);
-                    e = new TimeoutException("Timeout during flushing attempt");
-                    break;
+                    switch (e)
+                    {
+                    // User requested the cancellation
+                    case OperationCanceledException _ when (cancellationToken.IsCancellationRequested):
+                        throw Connector.Break(e);
+                    // Read timeout
+                    case OperationCanceledException _:
+                    // Note that mono throws SocketException with the wrong error (see #1330)
+                    case IOException _ when (e.InnerException as SocketException)?.SocketErrorCode ==
+                                                (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock):
+                        Debug.Assert(e is OperationCanceledException ? async : !async);
+                        throw Connector.Break(new NpgsqlException("Exception while writing to stream", new TimeoutException("Timeout during writing attempt")));
+                    }
+
+                    throw Connector.Break(new NpgsqlException("Exception while writing to stream", e));
                 }
 
-                throw Connector.Break(new NpgsqlException("Exception while flushing stream", e));
+                try
+                {
+                    if (async)
+                    {
+                        await Underlying.FlushAsync(finalCt);
+                        // Resetting cancellation token source, so we can use it again
+                        _timeoutCts.CancelAfter(-1);
+                    }
+                    else
+                        Underlying.Flush();
+                }
+                catch (Exception e)
+                {
+                    switch (e)
+                    {
+                    // User requested the cancellation
+                    case OperationCanceledException _ when (cancellationToken.IsCancellationRequested):
+                        throw Connector.Break(e);
+                    // Read timeout
+                    case OperationCanceledException _:
+                    // Note that mono throws SocketException with the wrong error (see #1330)
+                    case IOException _ when (e.InnerException as SocketException)?.SocketErrorCode ==
+                                                (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock):
+                        Debug.Assert(e is OperationCanceledException ? async : !async);
+                        e = new TimeoutException("Timeout during flushing attempt");
+                        break;
+                    }
+
+                    throw Connector.Break(new NpgsqlException("Exception while flushing stream", e));
+                }
+            }
+            finally
+            {
+                combinedCts?.Dispose();
             }
 
             NpgsqlEventSource.Log.BytesWritten(WritePosition);
@@ -233,9 +256,9 @@ namespace Npgsql
             }
         }
 
-        internal async Task DirectWrite(ReadOnlyMemory<byte> memory, bool async)
+        internal async Task DirectWrite(ReadOnlyMemory<byte> memory, bool async, CancellationToken cancellationToken = default)
         {
-            await Flush(async);
+            await Flush(async, cancellationToken);
 
             if (_copyMode)
             {
@@ -247,7 +270,7 @@ namespace Npgsql
                 WriteInt32(memory.Length + 4);
                 WritePosition = 5;
                 _copyMode = false;
-                await Flush(async);
+                await Flush(async, cancellationToken);
                 _copyMode = true;
                 WriteCopyDataHeader();  // And ready the buffer after the direct write completes
             }
@@ -257,7 +280,7 @@ namespace Npgsql
             try
             {
                 if (async)
-                    await Underlying.WriteAsync(memory);
+                    await Underlying.WriteAsync(memory, cancellationToken);
                 else
                     Underlying.Write(memory.Span);
             }
@@ -359,10 +382,10 @@ namespace Npgsql
         static void ThrowNotSpaceLeft()
             => throw new InvalidOperationException("There is not enough space left in the buffer.");
 
-        public Task WriteString(string s, int byteLen, bool async)
-            => WriteString(s, s.Length, byteLen, async);
+        public Task WriteString(string s, int byteLen, bool async, CancellationToken cancellationToken = default)
+            => WriteString(s, s.Length, byteLen, async, cancellationToken);
 
-        public Task WriteString(string s, int charLen, int byteLen, bool async)
+        public Task WriteString(string s, int charLen, int byteLen, bool async, CancellationToken cancellationToken = default)
         {
             if (byteLen <= WriteSpaceLeft)
             {
@@ -378,7 +401,7 @@ namespace Npgsql
                 {
                     // String can fit entirely in an empty buffer. Flush and retry rather than
                     // going into the partial writing flow below (which requires ToCharArray())
-                    await Flush(async);
+                    await Flush(async, cancellationToken);
                     WriteString(s, charLen);
                 }
                 else
@@ -389,14 +412,14 @@ namespace Npgsql
                         WriteStringChunked(s, charPos, charLen - charPos, true, out var charsUsed, out var completed);
                         if (completed)
                             break;
-                        await Flush(async);
+                        await Flush(async, cancellationToken);
                         charPos += charsUsed;
                     }
                 }
             }
         }
 
-        internal Task WriteChars(char[] chars, int offset, int charLen, int byteLen, bool async)
+        internal Task WriteChars(char[] chars, int offset, int charLen, int byteLen, bool async, CancellationToken cancellationToken = default)
         {
             if (byteLen <= WriteSpaceLeft)
             {
@@ -412,7 +435,7 @@ namespace Npgsql
                 {
                     // String can fit entirely in an empty buffer. Flush and retry rather than
                     // going into the partial writing flow below (which requires ToCharArray())
-                    await Flush(async);
+                    await Flush(async, cancellationToken);
                     WriteChars(chars, offset, charLen);
                 }
                 else
@@ -424,7 +447,7 @@ namespace Npgsql
                         WriteStringChunked(chars, charPos + offset, charLen - charPos, true, out var charsUsed, out var completed);
                         if (completed)
                             break;
-                        await Flush(async);
+                        await Flush(async, cancellationToken);
                         charPos += charsUsed;
                     }
                 }
@@ -454,7 +477,7 @@ namespace Npgsql
         public void WriteBytes(byte[] buf, int offset, int count)
             => WriteBytes(new ReadOnlySpan<byte>(buf, offset, count));
 
-        public Task WriteBytesRaw(byte[] bytes, bool async)
+        public Task WriteBytesRaw(byte[] bytes, bool async, CancellationToken cancellationToken = default)
         {
             if (bytes.Length <= WriteSpaceLeft)
             {
@@ -469,7 +492,7 @@ namespace Npgsql
                 {
                     // value can fit entirely in an empty buffer. Flush and retry rather than
                     // going into the partial writing flow below
-                    await Flush(async);
+                    await Flush(async, cancellationToken);
                     WriteBytes(bytes);
                 }
                 else
@@ -478,7 +501,7 @@ namespace Npgsql
                     do
                     {
                         if (WriteSpaceLeft == 0)
-                            await Flush(async);
+                            await Flush(async, cancellationToken);
                         var writeLen = Math.Min(remaining, WriteSpaceLeft);
                         var offset = bytes.Length - remaining;
                         WriteBytes(bytes, offset, writeLen);

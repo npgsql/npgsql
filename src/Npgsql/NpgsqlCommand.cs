@@ -595,7 +595,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             {
                 using (connector.StartUserAction())
                 {
-                    var sendTask = SendPrepare(connector, async);
+                    var sendTask = SendPrepare(connector, async, cancellationToken);
 
                     // Loop over statements, skipping those that are already prepared (because they were persisted)
                     var isFirst = true;
@@ -702,7 +702,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             Log.Debug("Closing command's prepared statements", connector.Id);
             using (connector.StartUserAction())
             {
-                var sendTask = SendClose(connector, async);
+                var sendTask = SendClose(connector, async, cancellationToken);
                 foreach (var statement in _statements)
                     if (statement.PreparedStatement?.State == PreparedState.BeingUnprepared)
                     {
@@ -844,7 +844,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 SynchronizationContext.SetSynchronizationContext(null);
         }
 
-        internal Task Write(NpgsqlConnector connector, bool async)
+        internal Task Write(NpgsqlConnector connector, bool async, CancellationToken cancellationToken = default)
         {
             return (_behavior & CommandBehavior.SchemaOnly) == 0
                 ? WriteExecute(connector, async)
@@ -867,16 +867,16 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                         // We may have a prepared statement that replaces an existing statement - close the latter first.
                         if (pStatement?.StatementBeingReplaced != null)
-                            await connector.WriteClose(StatementOrPortal.Statement, pStatement.StatementBeingReplaced.Name!, async);
+                            await connector.WriteClose(StatementOrPortal.Statement, pStatement.StatementBeingReplaced.Name!, async, cancellationToken);
 
-                        await connector.WriteParse(statement.SQL, statement.StatementName, statement.InputParameters, async);
+                        await connector.WriteParse(statement.SQL, statement.StatementName, statement.InputParameters, async, cancellationToken);
 
                         await connector.WriteBind(
                             statement.InputParameters, string.Empty, statement.StatementName, AllResultTypesAreUnknown,
                             i == 0 ? UnknownResultTypeList : null,
-                            async);
+                            async, cancellationToken);
 
-                        await connector.WriteDescribe(StatementOrPortal.Portal, string.Empty, async);
+                        await connector.WriteDescribe(StatementOrPortal.Portal, string.Empty, async, cancellationToken);
                     }
                     else
                     {
@@ -884,16 +884,16 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         await connector.WriteBind(
                             statement.InputParameters, string.Empty, statement.StatementName, AllResultTypesAreUnknown,
                             i == 0 ? UnknownResultTypeList : null,
-                            async);
+                            async, cancellationToken);
                     }
 
-                    await connector.WriteExecute(0, async);
+                    await connector.WriteExecute(0, async, cancellationToken);
 
                     if (pStatement != null)
                         pStatement.LastUsed = DateTime.UtcNow;
                 }
 
-                await connector.WriteSync(async);
+                await connector.WriteSync(async, cancellationToken);
             }
 
             async Task WriteExecuteSchemaOnly(NpgsqlConnector connector, bool async)
@@ -909,17 +909,17 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         continue;   // Prepared, we already have the RowDescription
                     Debug.Assert(statement.PreparedStatement == null);
 
-                    await connector.WriteParse(statement.SQL, string.Empty, statement.InputParameters, async);
-                    await connector.WriteDescribe(StatementOrPortal.Statement, statement.StatementName, async);
+                    await connector.WriteParse(statement.SQL, string.Empty, statement.InputParameters, async, cancellationToken);
+                    await connector.WriteDescribe(StatementOrPortal.Statement, statement.StatementName, async, cancellationToken);
                     wroteSomething = true;
                 }
 
                 if (wroteSomething)
-                    await connector.WriteSync(async);
+                    await connector.WriteSync(async, cancellationToken);
             }
         }
 
-        async Task SendDeriveParameters(NpgsqlConnector connector, bool async)
+        async Task SendDeriveParameters(NpgsqlConnector connector, bool async, CancellationToken cancellationToken = default)
         {
             BeginSend(connector);
 
@@ -929,17 +929,17 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                 var statement = _statements[i];
 
-                await connector.WriteParse(statement.SQL, string.Empty, EmptyParameters, async);
-                await connector.WriteDescribe(StatementOrPortal.Statement, string.Empty, async);
+                await connector.WriteParse(statement.SQL, string.Empty, EmptyParameters, async, cancellationToken);
+                await connector.WriteDescribe(StatementOrPortal.Statement, string.Empty, async, cancellationToken);
             }
 
-            await connector.WriteSync(async);
-            await connector.Flush(async);
+            await connector.WriteSync(async, cancellationToken);
+            await connector.Flush(async, cancellationToken);
 
             CleanupSend();
         }
 
-        async Task SendPrepare(NpgsqlConnector connector, bool async)
+        async Task SendPrepare(NpgsqlConnector connector, bool async, CancellationToken cancellationToken = default)
         {
             BeginSend(connector);
 
@@ -958,14 +958,14 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 // We may have a prepared statement that replaces an existing statement - close the latter first.
                 var statementToClose = pStatement!.StatementBeingReplaced;
                 if (statementToClose != null)
-                    await connector.WriteClose(StatementOrPortal.Statement, statementToClose.Name!, async);
+                    await connector.WriteClose(StatementOrPortal.Statement, statementToClose.Name!, async, cancellationToken);
 
-                await connector.WriteParse(statement.SQL, pStatement.Name!, statement.InputParameters, async);
-                await connector.WriteDescribe(StatementOrPortal.Statement, pStatement.Name!, async);
+                await connector.WriteParse(statement.SQL, pStatement.Name!, statement.InputParameters, async, cancellationToken);
+                await connector.WriteDescribe(StatementOrPortal.Statement, pStatement.Name!, async, cancellationToken);
             }
 
-            await connector.WriteSync(async);
-            await connector.Flush(async);
+            await connector.WriteSync(async, cancellationToken);
+            await connector.Flush(async, cancellationToken);
 
             CleanupSend();
         }
@@ -984,7 +984,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             return async;
         }
 
-        async Task SendClose(NpgsqlConnector connector, bool async)
+        async Task SendClose(NpgsqlConnector connector, bool async, CancellationToken cancellationToken = default)
         {
             BeginSend(connector);
 
@@ -996,12 +996,12 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     SynchronizationContext.SetSynchronizationContext(SingleThreadSynchronizationContext);
                 }
 
-                await connector.WriteClose(StatementOrPortal.Statement, statement.StatementName, async);
+                await connector.WriteClose(StatementOrPortal.Statement, statement.StatementName, async, cancellationToken);
                 statement.PreparedStatement!.State = PreparedState.BeingUnprepared;
             }
 
-            await connector.WriteSync(async);
-            await connector.Flush(async);
+            await connector.WriteSync(async, cancellationToken);
+            await connector.Flush(async, cancellationToken);
 
             CleanupSend();
         }
@@ -1226,7 +1226,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         // to prevents a dependency on the thread pool (which would also trigger deadlocks).
                         // The WriteBuffer notifies this command when the first buffer flush occurs, so that the
                         // send functions can switch to the special async mode when needed.
-                        var sendTask = NonMultiplexingWriteWrapper(connector, async);
+                        //TODO: pass the token only if the cancellation was not successful
+                        var sendTask = NonMultiplexingWriteWrapper(connector, async, CancellationToken.None);
 
                         // The following is a hack. It raises an exception if one was thrown in the first phases
                         // of the send (i.e. in parts of the send that executed synchronously). Exceptions may
@@ -1238,6 +1239,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         var reader = connector.DataReader;
                         reader.Init(this, behavior, _statements, sendTask);
                         connector.CurrentReader = reader;
+                        //TODO: pass the token only if the cancellation was not successful
                         if (async)
                             await reader.NextResultAsync(CancellationToken.None);
                         else
@@ -1299,11 +1301,11 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 throw;
             }
 
-            async Task NonMultiplexingWriteWrapper(NpgsqlConnector connector, bool async)
+            async Task NonMultiplexingWriteWrapper(NpgsqlConnector connector, bool async, CancellationToken cancellationToken2)
             {
                 BeginSend(connector);
-                await Write(connector, async);
-                await connector.Flush(async);
+                await Write(connector, async, cancellationToken2);
+                await connector.Flush(async, cancellationToken2);
                 CleanupSend();
             }
         }

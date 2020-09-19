@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
@@ -90,12 +91,12 @@ namespace Npgsql.TypeHandlers.NetworkHandlers
             };
 
         /// <inheritdoc />
-        protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
             => value switch {
-                DBNull _ => WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async),
-                IPAddress ip => WriteWithLengthInternal(ip, buf, lengthCache, parameter, async),
-                ValueTuple<IPAddress, int> tup => WriteWithLengthInternal(tup, buf, lengthCache, parameter, async),
-                NpgsqlInet inet => WriteWithLengthInternal(inet, buf, lengthCache, parameter, async),
+                DBNull _ => WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken),
+                IPAddress ip => WriteWithLengthInternal(ip, buf, lengthCache, parameter, async, cancellationToken),
+                ValueTuple<IPAddress, int> tup => WriteWithLengthInternal(tup, buf, lengthCache, parameter, async, cancellationToken),
+                NpgsqlInet inet => WriteWithLengthInternal(inet, buf, lengthCache, parameter, async, cancellationToken),
                 _ => throw new InvalidCastException($"Can't write CLR type {value.GetType().Name} to database type {PgDisplayName}")
             };
 
