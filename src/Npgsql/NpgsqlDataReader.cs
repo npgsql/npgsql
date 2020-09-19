@@ -893,7 +893,7 @@ namespace Npgsql
                 }
                 catch (OperationCanceledException)
                 {
-                    // We cancelled the task, because the cancellation was not successful - ignore the exception
+                    // We've cancelled the task, because the cancellation request from the NpgsqlCommand was not successful - ignoring the exception
                 }
             }
 
