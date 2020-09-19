@@ -827,13 +827,13 @@ namespace Npgsql
 #endif
         {
             using (NoSynchronizationContextScope.Enter())
-                return new ValueTask(Close(connectionClosing: false, async: true, cancellationToken: default));
+                return new ValueTask(Close(connectionClosing: false, async: true));
         }
 
         /// <summary>
         /// Closes the <see cref="NpgsqlDataReader"/> reader, allowing a new command to be executed.
         /// </summary>
-        public override void Close() => Close(connectionClosing: false, async: false, cancellationToken: default).GetAwaiter().GetResult();
+        public override void Close() => Close(connectionClosing: false, async: false).GetAwaiter().GetResult();
 
         /// <summary>
         /// Closes the <see cref="NpgsqlDataReader"/> reader, allowing a new command to be executed.
@@ -843,9 +843,9 @@ namespace Npgsql
 #else
         public Task CloseAsync()
 #endif
-            => Close(connectionClosing: false, async: true, cancellationToken: default);
+            => Close(connectionClosing: false, async: true);
 
-        internal async Task Close(bool connectionClosing, bool async, CancellationToken cancellationToken = default)
+        internal async Task Close(bool connectionClosing, bool async)
         {
             if (State == ReaderState.Closed)
                 return;
@@ -857,7 +857,7 @@ namespace Npgsql
             case ConnectorState.Executing:
             case ConnectorState.Connecting:
                 if (State != ReaderState.Consumed)
-                    await Consume(async, cancellationToken);
+                    await Consume(async);
                 break;
             case ConnectorState.Closed:
             case ConnectorState.Broken:
@@ -1330,7 +1330,7 @@ namespace Npgsql
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The returned object.</returns>
         public override TextReader GetTextReader(int ordinal)
-            => GetTextReader(ordinal, false, default).Result;
+            => GetTextReader(ordinal, false).Result;
 
         /// <summary>
         /// Retrieves data as a <see cref="TextReader"/>.

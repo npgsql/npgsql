@@ -297,7 +297,7 @@ namespace Npgsql
         {
             get
             {
-                ReadColumnLenIfNeeded(false, default).GetAwaiter().GetResult();
+                ReadColumnLenIfNeeded(false).GetAwaiter().GetResult();
                 return _columnLen == -1;
             }
         }
