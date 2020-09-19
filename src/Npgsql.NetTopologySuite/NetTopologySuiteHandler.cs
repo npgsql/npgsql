@@ -138,25 +138,25 @@ namespace Npgsql.NetTopologySuite
         public override Task Write(Geometry value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
             => WriteCore(value, buf);
 
-        Task INpgsqlTypeHandler<Point>.Write(Point value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+        Task INpgsqlTypeHandler<Point>.Write(Point value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken)
             => WriteCore(value, buf);
 
-        Task INpgsqlTypeHandler<LineString>.Write(LineString value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+        Task INpgsqlTypeHandler<LineString>.Write(LineString value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken)
             => WriteCore(value, buf);
 
-        Task INpgsqlTypeHandler<Polygon>.Write(Polygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+        Task INpgsqlTypeHandler<Polygon>.Write(Polygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken)
             => WriteCore(value, buf);
 
-        Task INpgsqlTypeHandler<MultiPoint>.Write(MultiPoint value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+        Task INpgsqlTypeHandler<MultiPoint>.Write(MultiPoint value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToke)
             => WriteCore(value, buf);
 
-        Task INpgsqlTypeHandler<MultiLineString>.Write(MultiLineString value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+        Task INpgsqlTypeHandler<MultiLineString>.Write(MultiLineString value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken)
             => WriteCore(value, buf);
 
-        Task INpgsqlTypeHandler<MultiPolygon>.Write(MultiPolygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+        Task INpgsqlTypeHandler<MultiPolygon>.Write(MultiPolygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken)
             => WriteCore(value, buf);
 
-        Task INpgsqlTypeHandler<GeometryCollection>.Write(GeometryCollection value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+        Task INpgsqlTypeHandler<GeometryCollection>.Write(GeometryCollection value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken)
             => WriteCore(value, buf);
 
         Task WriteCore(Geometry value, NpgsqlWriteBuffer buf)
