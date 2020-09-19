@@ -90,7 +90,7 @@ namespace Npgsql.TypeHandling
 
         /// <inheritdoc />
         public override TAny Read<TAny>(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-            => Read<TAny>(buf, len, false, fieldDescription, cancellationToken: default).Result;
+            => Read<TAny>(buf, len, false, fieldDescription).Result;
 
         // Since TAny isn't constrained to class? or struct (C# doesn't have a non-nullable constraint that doesn't limit us to either struct or class),
         // we must use the bang operator here to tell the compiler that a null value will never returned.

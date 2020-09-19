@@ -29,7 +29,7 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
 
             var args = new object?[Handlers.Length];
             foreach (var handler in Handlers)
-                args[handler.Position] = await handler.Read(buffer, async, cancellationToken: cancellationToken);
+                args[handler.Position] = await handler.Read(buffer, async, cancellationToken);
 
             return (TComposite)ConstructorInfo.Invoke(args);
         }

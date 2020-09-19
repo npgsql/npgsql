@@ -40,14 +40,14 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
             foreach (var handler in Handlers)
                 switch (handler.Position)
                 {
-                    case 0: args.Argument1 = await handler.Read<T1>(buffer, async, cancellationToken: cancellationToken); break;
-                    case 1: args.Argument2 = await handler.Read<T2>(buffer, async, cancellationToken: cancellationToken); break;
-                    case 2: args.Argument3 = await handler.Read<T3>(buffer, async, cancellationToken: cancellationToken); break;
-                    case 3: args.Argument4 = await handler.Read<T4>(buffer, async, cancellationToken: cancellationToken); break;
-                    case 4: args.Argument5 = await handler.Read<T5>(buffer, async, cancellationToken: cancellationToken); break;
-                    case 5: args.Argument6 = await handler.Read<T6>(buffer, async, cancellationToken: cancellationToken); break;
-                    case 6: args.Argument7 = await handler.Read<T7>(buffer, async, cancellationToken: cancellationToken); break;
-                    case 7: args.Argument8 = await handler.Read<T8>(buffer, async, cancellationToken: cancellationToken); break;
+                    case 0: args.Argument1 = await handler.Read<T1>(buffer, async, cancellationToken); break;
+                    case 1: args.Argument2 = await handler.Read<T2>(buffer, async, cancellationToken); break;
+                    case 2: args.Argument3 = await handler.Read<T3>(buffer, async, cancellationToken); break;
+                    case 3: args.Argument4 = await handler.Read<T4>(buffer, async, cancellationToken); break;
+                    case 4: args.Argument5 = await handler.Read<T5>(buffer, async, cancellationToken); break;
+                    case 5: args.Argument6 = await handler.Read<T6>(buffer, async, cancellationToken); break;
+                    case 6: args.Argument7 = await handler.Read<T7>(buffer, async, cancellationToken); break;
+                    case 7: args.Argument8 = await handler.Read<T8>(buffer, async, cancellationToken); break;
                 }
 
             return _constructor(args);

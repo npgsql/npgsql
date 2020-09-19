@@ -230,7 +230,7 @@ namespace Npgsql
             if (!CanRead)
                 throw new InvalidOperationException("Stream not open for reading");
 
-            var count = ReadCore(span.Length, false, default).GetAwaiter().GetResult();
+            var count = ReadCore(span.Length, false).GetAwaiter().GetResult();
             if (count > 0)
                 _readBuf.ReadBytes(span.Slice(0, count));
             return count;
@@ -245,7 +245,7 @@ namespace Npgsql
             CheckDisposed();
             if (!CanRead)
                 throw new InvalidOperationException("Stream not open for reading");
-
+            cancellationToken.ThrowIfCancellationRequested();
             using (NoSynchronizationContextScope.Enter())
                 return ReadAsyncInternal();
 
@@ -258,7 +258,7 @@ namespace Npgsql
             }
         }
 
-        async ValueTask<int> ReadCore(int count, bool async, CancellationToken cancellationToken)
+        async ValueTask<int> ReadCore(int count, bool async, CancellationToken cancellationToken = default)
         {
             if (_isConsumed)
                 return 0;
@@ -270,7 +270,7 @@ namespace Npgsql
                 {
                     // We've consumed the current DataMessage (or haven't yet received the first),
                     // read the next message
-                    msg = await _connector.ReadMessage(async, cancellationToken: cancellationToken);
+                    msg = await _connector.ReadMessage(async, cancellationToken);
                 }
                 catch
                 {
@@ -284,8 +284,8 @@ namespace Npgsql
                     _leftToReadInDataMsg = ((CopyDataMessage)msg).Length;
                     break;
                 case BackendMessageCode.CopyDone:
-                    Expect<CommandCompleteMessage>(await _connector.ReadMessage(async, cancellationToken: cancellationToken), _connector);
-                    Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async, cancellationToken: cancellationToken), _connector);
+                    Expect<CommandCompleteMessage>(await _connector.ReadMessage(async, cancellationToken), _connector);
+                    Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async, cancellationToken), _connector);
                     _isConsumed = true;
                     return 0;
                 default:
@@ -381,7 +381,7 @@ namespace Npgsql
                     await _connector.WriteCopyDone(async);
                     await _connector.Flush(async);
                     Expect<CommandCompleteMessage>(await _connector.ReadMessage(async, cancellationToken: default), _connector);
-                    Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async, cancellationToken: default), _connector);
+                    Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async, cancellationToken : default), _connector);
                 }
                 else
                 {
@@ -389,7 +389,7 @@ namespace Npgsql
                     {
                         if (_leftToReadInDataMsg > 0)
                         {
-                            await _readBuf.Skip(_leftToReadInDataMsg, async, default);
+                            await _readBuf.Skip(_leftToReadInDataMsg, async);
                         }
                         _connector.SkipUntil(BackendMessageCode.ReadyForQuery);
                     }

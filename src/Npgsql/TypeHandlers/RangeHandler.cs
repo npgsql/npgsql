@@ -69,11 +69,11 @@ namespace Npgsql.TypeHandlers
 
         /// <inheritdoc />
         public override TAny Read<TAny>(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-            => Read<TAny>(buf, len, false, fieldDescription, cancellationToken: default).Result;
+            => Read<TAny>(buf, len, false, fieldDescription).Result;
 
         /// <inheritdoc />
         public override ValueTask<NpgsqlRange<TElement>> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
-            => DoRead<TElement>(buf, len, async, fieldDescription, cancellationToken: cancellationToken);
+            => DoRead<TElement>(buf, len, async, fieldDescription, cancellationToken);
 
         private protected async ValueTask<NpgsqlRange<TAny>> DoRead<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken = default)
         {

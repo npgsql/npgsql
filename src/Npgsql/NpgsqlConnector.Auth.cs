@@ -17,11 +17,11 @@ namespace Npgsql
 {
     partial class NpgsqlConnector
     {
-        async Task Authenticate(string username, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
+        async Task Authenticate(string username, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken = default)
         {
             Log.Trace("Authenticating...", Id);
 
-            var msg = Expect<AuthenticationRequestMessage>(await ReadMessage(async, cancellationToken: cancellationToken), this);
+            var msg = Expect<AuthenticationRequestMessage>(await ReadMessage(async, cancellationToken), this);
             timeout.Check();
             switch (msg.AuthRequestType)
             {
@@ -53,7 +53,7 @@ namespace Npgsql
             }
         }
 
-        async Task AuthenticateCleartext(string username, bool async, CancellationToken cancellationToken)
+        async Task AuthenticateCleartext(string username, bool async, CancellationToken cancellationToken = default)
         {
             var passwd = GetPassword(username);
             if (passwd == null)
@@ -64,10 +64,10 @@ namespace Npgsql
 
             await WritePassword(encoded, async);
             await Flush(async);
-            Expect<AuthenticationRequestMessage>(await ReadMessage(async, cancellationToken: cancellationToken), this);
+            Expect<AuthenticationRequestMessage>(await ReadMessage(async, cancellationToken), this);
         }
 
-        async Task AuthenticateSASL(List<string> mechanisms, string username, bool async, CancellationToken cancellationToken)
+        async Task AuthenticateSASL(List<string> mechanisms, string username, bool async, CancellationToken cancellationToken = default)
         {
             // At the time of writing PostgreSQL only supports SCRAM-SHA-256 and SCRAM-SHA-256-PLUS
             var supportsSha256 = mechanisms.Contains("SCRAM-SHA-256");
@@ -164,7 +164,7 @@ namespace Npgsql
             await WriteSASLInitialResponse(mechanism, PGUtil.UTF8Encoding.GetBytes($"{cbindFlag},,n=*,r={clientNonce}"), async);
             await Flush(async);
 
-            var saslContinueMsg = Expect<AuthenticationSASLContinueMessage>(await ReadMessage(async, cancellationToken: cancellationToken), this);
+            var saslContinueMsg = Expect<AuthenticationSASLContinueMessage>(await ReadMessage(async, cancellationToken), this);
             if (saslContinueMsg.AuthRequestType != AuthenticationRequestType.AuthenticationSASLContinue)
                 throw new NpgsqlException("[SASL] AuthenticationSASLFinal message expected");
             var firstServerMsg = AuthenticationSCRAMServerFirstMessage.Load(saslContinueMsg.Payload);
@@ -197,7 +197,7 @@ namespace Npgsql
             await WriteSASLResponse(Encoding.UTF8.GetBytes(messageStr), async);
             await Flush(async);
 
-            var saslFinalServerMsg = Expect<AuthenticationSASLFinalMessage>(await ReadMessage(async, cancellationToken: cancellationToken), this);
+            var saslFinalServerMsg = Expect<AuthenticationSASLFinalMessage>(await ReadMessage(async, cancellationToken), this);
             if (saslFinalServerMsg.AuthRequestType != AuthenticationRequestType.AuthenticationSASLFinal)
                 throw new NpgsqlException("[SASL] AuthenticationSASLFinal message expected");
 
@@ -205,7 +205,7 @@ namespace Npgsql
             if (scramFinalServerMsg.ServerSignature != Convert.ToBase64String(serverSignature))
                 throw new NpgsqlException("[SCRAM] Unable to verify server signature");
 
-            var okMsg = Expect<AuthenticationRequestMessage>(await ReadMessage(async, cancellationToken: cancellationToken), this);
+            var okMsg = Expect<AuthenticationRequestMessage>(await ReadMessage(async, cancellationToken), this);
             if (okMsg.AuthRequestType != AuthenticationRequestType.AuthenticationOk)
                 throw new NpgsqlException("[SASL] Expected AuthenticationOK message");
 
@@ -253,7 +253,7 @@ namespace Npgsql
             }
         }
 
-        async Task AuthenticateMD5(string username, byte[] salt, bool async, CancellationToken cancellationToken)
+        async Task AuthenticateMD5(string username, byte[] salt, bool async, CancellationToken cancellationToken = default)
         {
             var passwd = GetPassword(username);
             if (passwd == null)
@@ -297,7 +297,7 @@ namespace Npgsql
 
             await WritePassword(result, async);
             await Flush(async);
-            Expect<AuthenticationRequestMessage>(await ReadMessage(async, cancellationToken: cancellationToken), this);
+            Expect<AuthenticationRequestMessage>(await ReadMessage(async, cancellationToken), this);
         }
 
         async Task AuthenticateGSS(bool async)
@@ -385,17 +385,17 @@ namespace Npgsql
                 _leftToWrite -= count;
             }
 
-            public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+            public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken = default)
                 => Read(buffer, offset, count, true, cancellationToken);
 
             public override int Read(byte[] buffer, int offset, int count)
-                => Read(buffer, offset, count, false, default).GetAwaiter().GetResult();
+                => Read(buffer, offset, count, false).GetAwaiter().GetResult();
 
-            async Task<int> Read(byte[] buffer, int offset, int count, bool async, CancellationToken cancellationToken)
+            async Task<int> Read(byte[] buffer, int offset, int count, bool async, CancellationToken cancellationToken = default)
             {
                 if (_leftToRead == 0)
                 {
-                    var response = Expect<AuthenticationRequestMessage>(await _connector.ReadMessage(async, cancellationToken: cancellationToken), _connector);
+                    var response = Expect<AuthenticationRequestMessage>(await _connector.ReadMessage(async, cancellationToken), _connector);
                     if (response.AuthRequestType == AuthenticationRequestType.AuthenticationOk)
                         throw new AuthenticationCompleteException();
                     var gssMsg = response as AuthenticationGSSContinueMessage;

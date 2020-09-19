@@ -241,7 +241,7 @@ namespace Npgsql.TypeHandlers
                 typeof(T) == typeof(char)               ||
                 typeof(T) == typeof(byte[]))
             {
-                return await _textHandler.Read<T>(buf, byteLen, async, fieldDescription, cancellationToken: cancellationToken);
+                return await _textHandler.Read<T>(buf, byteLen, async, fieldDescription, cancellationToken);
             }
 
             // See #2818 for possibly returning a JsonDocument directly over our internal buffer, rather
@@ -254,7 +254,7 @@ namespace Npgsql.TypeHandlers
 
         /// <inheritdoc />
         public override ValueTask<string> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
-            => Read<string>(buf, len, async, fieldDescription, cancellationToken: cancellationToken);
+            => Read<string>(buf, len, async, fieldDescription, cancellationToken);
 
         /// <inheritdoc />
         public TextReader GetTextReader(Stream stream)

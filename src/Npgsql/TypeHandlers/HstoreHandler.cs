@@ -145,17 +145,17 @@ namespace Npgsql.TypeHandlers
         }
 
         /// <inheritdoc />
-        public override async ValueTask<Dictionary<string, string?>> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null,
-            CancellationToken cancellationToken = default)
+        public override async ValueTask<Dictionary<string, string?>> Read(NpgsqlReadBuffer buf, int len, bool async,
+            FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
         {
             await buf.Ensure(4, async, cancellationToken);
             var numElements = buf.ReadInt32();
-            return await ReadInto(new Dictionary<string, string?>(numElements), numElements, buf, async, cancellationToken: cancellationToken);
+            return await ReadInto(new Dictionary<string, string?>(numElements), numElements, buf, async, cancellationToken);
         }
 
         ValueTask<IDictionary<string, string?>> INpgsqlTypeHandler<IDictionary<string, string?>>.Read(
             NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
-            => new ValueTask<IDictionary<string, string?>>(Read(buf, len, async, fieldDescription, cancellationToken: cancellationToken).Result);
+            => new ValueTask<IDictionary<string, string?>>(Read(buf, len, async, fieldDescription, cancellationToken).Result);
 
         #endregion
 

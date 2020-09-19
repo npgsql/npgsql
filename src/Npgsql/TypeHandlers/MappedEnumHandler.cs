@@ -32,7 +32,7 @@ namespace Npgsql.TypeHandlers
         }
 
         public override ValueTask<T> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
-            => _wrappedHandler.Read<T>(buf, len, async, fieldDescription, cancellationToken: cancellationToken);
+            => _wrappedHandler.Read<T>(buf, len, async, fieldDescription, cancellationToken);
 
         public override int ValidateAndGetLength(T value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => _wrappedHandler.ValidateAndGetLength(value, ref lengthCache, parameter);

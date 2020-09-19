@@ -126,13 +126,13 @@ namespace Npgsql.TypeHandlers
 
         internal override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
             => fieldDescription?.TypeModifier == 1
-                ? (object)await Read<bool>(buf, len, async, fieldDescription, cancellationToken: cancellationToken)
-                : await Read<BitArray>(buf, len, async, fieldDescription, cancellationToken: cancellationToken);
+                ? (object)await Read<bool>(buf, len, async, fieldDescription, cancellationToken)
+                : await Read<BitArray>(buf, len, async, fieldDescription, cancellationToken);
 
         internal override object ReadAsObject(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             => fieldDescription?.TypeModifier == 1
-                ? (object)Read<bool>(buf, len, false, fieldDescription, cancellationToken: default).Result
-                : Read<BitArray>(buf, len, false, fieldDescription, cancellationToken: default).Result;
+                ? (object)Read<bool>(buf, len, false, fieldDescription).Result
+                : Read<BitArray>(buf, len, false, fieldDescription).Result;
 
         #endregion
 
@@ -302,7 +302,7 @@ namespace Npgsql.TypeHandlers
         }
 
         internal override object ReadAsObject(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-            => ReadAsObject(buf, len, false, fieldDescription, cancellationToken: default).Result;
+            => ReadAsObject(buf, len, false, fieldDescription).Result;
 
         internal override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
             => fieldDescription?.TypeModifier == 1

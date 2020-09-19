@@ -80,7 +80,7 @@ namespace Npgsql.TypeHandling
         /// memory, sync or async I/O will be performed as specified by <paramref name="async"/>.
         /// </summary>
         internal virtual ValueTask<object> ReadPsvAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
-            => ReadAsObject(buf, len, async, fieldDescription, cancellationToken: cancellationToken);
+            => ReadAsObject(buf, len, async, fieldDescription, cancellationToken);
 
         /// <summary>
         /// Reads a value from the buffer, assuming our read position is at the value's preceding length.
@@ -93,8 +93,8 @@ namespace Npgsql.TypeHandling
             return len == -1
                ? default!
                : NullableHandler<TAny>.Exists
-                   ? await NullableHandler<TAny>.ReadAsync(this, buf, len, async, fieldDescription, cancellationToken: cancellationToken)
-                   : await Read<TAny>(buf, len, async, fieldDescription, cancellationToken: cancellationToken);
+                   ? await NullableHandler<TAny>.ReadAsync(this, buf, len, async, fieldDescription, cancellationToken)
+                   : await Read<TAny>(buf, len, async, fieldDescription, cancellationToken);
         }
 
         #endregion

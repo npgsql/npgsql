@@ -121,7 +121,7 @@ namespace Npgsql
         {
             if (count <= ReadBytesLeft)
                 return;
-            Ensure(count, false, default).GetAwaiter().GetResult();
+            Ensure(count, false).GetAwaiter().GetResult();
         }
 
         /// <summary>
@@ -229,7 +229,7 @@ namespace Npgsql
             }
         }
 
-        internal void ReadMore() => ReadMore(false, default).GetAwaiter().GetResult();
+        internal void ReadMore() => ReadMore(false).GetAwaiter().GetResult();
 
         internal Task ReadMore(bool async, CancellationToken cancellationToken = default) => Ensure(ReadBytesLeft + 1, async, cancellationToken);
 
@@ -271,7 +271,7 @@ namespace Npgsql
                     len -= Size;
                 }
                 Clear();
-                await Ensure((int) len, async, cancellationToken);
+                await Ensure((int)len, async, cancellationToken);
             }
 
             ReadPosition += (int)len;
@@ -487,7 +487,7 @@ namespace Npgsql
                 Clear();
                 try
                 {
-                    var read = await Underlying.ReadAsync(output, cancellationToken: cancellationToken);
+                    var read = await Underlying.ReadAsync(output, cancellationToken);
                     if (read == 0)
                         throw new EndOfStreamException();
                     return read;

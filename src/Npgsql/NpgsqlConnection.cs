@@ -673,7 +673,7 @@ namespace Npgsql
         /// Releases the connection. If the connection is pooled, it will be returned to the pool and made available for re-use.
         /// If it is non-pooled, the physical connection will be closed.
         /// </summary>
-        public override void Close() => Close(false, default);
+        public override void Close() => Close(async: false);
 
         /// <summary>
         /// Releases the connection. If the connection is pooled, it will be returned to the pool and made available for re-use.
@@ -686,10 +686,10 @@ namespace Npgsql
 #endif
         {
             using (NoSynchronizationContextScope.Enter())
-                return Close(true, default);
+                return Close(async: true);
         }
 
-        internal Task Close(bool async, CancellationToken cancellationToken)
+        internal Task Close(bool async, CancellationToken cancellationToken = default)
         {
             // Even though NpgsqlConnection isn't thread safe we'll make sure this part is.
             // Because we really don't want double returns to the pool.
@@ -823,9 +823,7 @@ namespace Npgsql
         {
             if (_disposed)
                 return;
-
             await CloseAsync();
-
             _disposed = true;
         }
 
@@ -1388,7 +1386,7 @@ namespace Npgsql
             CheckReady();
 
             Log.Debug("Starting to wait asynchronously...", Connector!.Id);
-            return Connector!.WaitAsync(cancellationToken: cancellationToken);
+            return Connector!.WaitAsync(cancellationToken);
         }
 
         #endregion

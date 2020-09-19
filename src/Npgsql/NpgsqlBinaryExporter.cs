@@ -106,7 +106,7 @@ namespace Npgsql
         /// The number of columns in the row. -1 if there are no further rows.
         /// Note: This will currently be the same value for all rows, but this may change in the future.
         /// </returns>
-        public int StartRow() => StartRow(false, default).GetAwaiter().GetResult();
+        public int StartRow() => StartRow(false).GetAwaiter().GetResult();
 
         /// <summary>
         /// Starts reading a single row, must be invoked before reading any columns.
@@ -117,11 +117,13 @@ namespace Npgsql
         /// </returns>
         public ValueTask<int> StartRowAsync(CancellationToken cancellationToken = default)
         {
+            if (cancellationToken.IsCancellationRequested)
+                return new ValueTask<int>(Task.FromCanceled<int>(cancellationToken));
             using (NoSynchronizationContextScope.Enter())
                 return StartRow(true, cancellationToken);
         }
 
-        async ValueTask<int> StartRow(bool async, CancellationToken cancellationToken)
+        async ValueTask<int> StartRow(bool async, CancellationToken cancellationToken = default)
         {
             CheckDisposed();
             if (_isConsumed)
@@ -131,7 +133,7 @@ namespace Npgsql
             // Otherwise we need to read in a new CopyData row (the docs specify that there's a CopyData
             // message per row).
             if (_column == NumColumns)
-                _leftToReadInDataMsg = Expect<CopyDataMessage>(await _connector.ReadMessage(async, cancellationToken: cancellationToken), _connector).Length;
+                _leftToReadInDataMsg = Expect<CopyDataMessage>(await _connector.ReadMessage(async, cancellationToken), _connector).Length;
             else if (_column != -1)
                 throw new InvalidOperationException("Already in the middle of a row");
 
@@ -142,9 +144,9 @@ namespace Npgsql
             if (numColumns == -1)
             {
                 Debug.Assert(_leftToReadInDataMsg == 0);
-                Expect<CopyDoneMessage>(await _connector.ReadMessage(async, cancellationToken: cancellationToken), _connector);
-                Expect<CommandCompleteMessage>(await _connector.ReadMessage(async, cancellationToken: cancellationToken), _connector);
-                Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async, cancellationToken: cancellationToken), _connector);
+                Expect<CopyDoneMessage>(await _connector.ReadMessage(async, cancellationToken), _connector);
+                Expect<CommandCompleteMessage>(await _connector.ReadMessage(async, cancellationToken), _connector);
+                Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async, cancellationToken), _connector);
                 _column = -1;
                 _isConsumed = true;
                 return -1;
@@ -166,7 +168,7 @@ namespace Npgsql
         /// specify the type.
         /// </typeparam>
         /// <returns>The value of the column</returns>
-        public T Read<T>() => Read<T>(false, default).GetAwaiter().GetResult();
+        public T Read<T>() => Read<T>(false).GetAwaiter().GetResult();
 
         /// <summary>
         /// Reads the current column, returns its value and moves ahead to the next column.
@@ -180,11 +182,13 @@ namespace Npgsql
         /// <returns>The value of the column</returns>
         public ValueTask<T> ReadAsync<T>(CancellationToken cancellationToken = default)
         {
+            if (cancellationToken.IsCancellationRequested)
+                return new ValueTask<T>(Task.FromCanceled<T>(cancellationToken));
             using (NoSynchronizationContextScope.Enter())
                 return Read<T>(true, cancellationToken);
         }
 
-        ValueTask<T> Read<T>(bool async, CancellationToken cancellationToken)
+        ValueTask<T> Read<T>(bool async, CancellationToken cancellationToken = default)
         {
             CheckDisposed();
             if (_column == -1 || _column == NumColumns)
@@ -211,7 +215,7 @@ namespace Npgsql
         /// </param>
         /// <typeparam name="T">The .NET type of the column to be read.</typeparam>
         /// <returns>The value of the column</returns>
-        public T Read<T>(NpgsqlDbType type) => Read<T>(type, false, default).GetAwaiter().GetResult();
+        public T Read<T>(NpgsqlDbType type) => Read<T>(type, false).GetAwaiter().GetResult();
 
         /// <summary>
         /// Reads the current column, returns its value according to <paramref name="type"/> and
@@ -229,11 +233,13 @@ namespace Npgsql
         /// <returns>The value of the column</returns>
         public ValueTask<T> ReadAsync<T>(NpgsqlDbType type, CancellationToken cancellationToken = default)
         {
+            if (cancellationToken.IsCancellationRequested)
+                return new ValueTask<T>(Task.FromCanceled<T>(cancellationToken));
             using (NoSynchronizationContextScope.Enter())
                 return Read<T>(type, true, cancellationToken);
         }
 
-        ValueTask<T> Read<T>(NpgsqlDbType type, bool async, CancellationToken cancellationToken)
+        ValueTask<T> Read<T>(NpgsqlDbType type, bool async, CancellationToken cancellationToken = default)
         {
             CheckDisposed();
             if (_column == -1 || _column == NumColumns)
@@ -246,7 +252,7 @@ namespace Npgsql
             return DoRead<T>(handler, async, cancellationToken);
         }
 
-        async ValueTask<T> DoRead<T>(NpgsqlTypeHandler handler, bool async, CancellationToken cancellationToken)
+        async ValueTask<T> DoRead<T>(NpgsqlTypeHandler handler, bool async, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -299,7 +305,7 @@ namespace Npgsql
         /// <summary>
         /// Skips the current column without interpreting its value.
         /// </summary>
-        public void Skip() => Skip(false, default).GetAwaiter().GetResult();
+        public void Skip() => Skip(false).GetAwaiter().GetResult();
 
         /// <summary>
         /// Skips the current column without interpreting its value.
@@ -312,7 +318,7 @@ namespace Npgsql
                 return Skip(true, cancellationToken);
         }
 
-        async Task Skip(bool async, CancellationToken cancellationToken)
+        async Task Skip(bool async, CancellationToken cancellationToken = default)
         {
             await ReadColumnLenIfNeeded(async, cancellationToken);
             if (_columnLen != -1)
@@ -326,7 +332,7 @@ namespace Npgsql
 
         #region Utilities
 
-        async Task ReadColumnLenIfNeeded(bool async, CancellationToken cancellationToken)
+        async Task ReadColumnLenIfNeeded(bool async, CancellationToken cancellationToken = default)
         {
             if (_columnLen == int.MinValue)
             {

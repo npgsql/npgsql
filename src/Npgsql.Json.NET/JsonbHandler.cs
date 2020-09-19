@@ -36,10 +36,10 @@ namespace Npgsql.Json.NET
                 typeof(T) == typeof(char)               ||
                 typeof(T) == typeof(byte[]))
             {
-                return await base.Read<T>(buf, len, async, fieldDescription, cancellationToken: cancellationToken);
+                return await base.Read<T>(buf, len, async, fieldDescription, cancellationToken);
             }
 
-            return JsonConvert.DeserializeObject<T>(await base.Read<string>(buf, len, async, fieldDescription, cancellationToken: cancellationToken), _settings);
+            return JsonConvert.DeserializeObject<T>(await base.Read<string>(buf, len, async, fieldDescription, cancellationToken), _settings);
         }
 
         protected override int ValidateAndGetLength<T2>(T2 value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)

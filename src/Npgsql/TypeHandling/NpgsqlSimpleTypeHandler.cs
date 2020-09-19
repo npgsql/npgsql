@@ -73,7 +73,7 @@ namespace Npgsql.TypeHandling
         /// <param name="cancellationToken">The <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
         /// <returns>The fully-read value.</returns>
         public sealed override ValueTask<TDefault> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
-            => Read<TDefault>(buf, len, async, fieldDescription, cancellationToken: cancellationToken);
+            => Read<TDefault>(buf, len, async, fieldDescription, cancellationToken);
 
         /// <summary>
         /// Reads a value of type <typeparamref name="TDefault"/> with the given length from the provided buffer,

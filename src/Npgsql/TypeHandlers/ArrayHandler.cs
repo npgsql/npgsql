@@ -56,7 +56,7 @@ namespace Npgsql.TypeHandlers
 
         /// <inheritdoc />
         public override TRequestedArray Read<TRequestedArray>(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-            => Read<TRequestedArray>(buf, len, false, fieldDescription, cancellationToken: default).GetAwaiter().GetResult();
+            => Read<TRequestedArray>(buf, len, false, fieldDescription).GetAwaiter().GetResult();
 
         /// <inheritdoc />
         protected internal override async ValueTask<TRequestedArray> Read<TRequestedArray>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
@@ -270,7 +270,7 @@ namespace Npgsql.TypeHandlers
             =>  await ReadArray<TElement>(buf, async, cancellationToken: cancellationToken);
 
         internal override object ReadAsObject(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-            => ReadArray<TElement>(buf, false, cancellationToken: default).GetAwaiter().GetResult();
+            => ReadArray<TElement>(buf, false).GetAwaiter().GetResult();
 
         #endregion
 
@@ -503,7 +503,7 @@ namespace Npgsql.TypeHandlers
         }
 
         internal override object ReadPsvAsObject(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-            => ReadPsvAsObject(buf, len, false, fieldDescription, cancellationToken: default).GetAwaiter().GetResult();
+            => ReadPsvAsObject(buf, len, false, fieldDescription).GetAwaiter().GetResult();
 
         internal override async ValueTask<object> ReadPsvAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
             => await ReadArray<TElementPsv>(buf, async, cancellationToken: cancellationToken);

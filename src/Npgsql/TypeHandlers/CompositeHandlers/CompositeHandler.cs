@@ -38,7 +38,7 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
 
             return _constructorHandler is null
                 ? ReadUsingMemberHandlers()
-                : _constructorHandler.Read(buffer, async, cancellationToken: cancellationToken);
+                : _constructorHandler.Read(buffer, async, cancellationToken);
 
             async ValueTask<T> ReadUsingMemberHandlers()
             {
@@ -52,7 +52,7 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
                 {
                     var composite = new ByReference<T> { Value = _constructor() };
                     foreach (var member in _memberHandlers)
-                        await member.Read(composite, buffer, async, cancellationToken: cancellationToken);
+                        await member.Read(composite, buffer, async, cancellationToken);
 
                     return composite.Value;
                 }
@@ -60,7 +60,7 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
                 {
                     var composite = _constructor();
                     foreach (var member in _memberHandlers)
-                        await member.Read(composite, buffer, async, cancellationToken: cancellationToken);
+                        await member.Read(composite, buffer, async, cancellationToken);
 
                     return composite;
                 }

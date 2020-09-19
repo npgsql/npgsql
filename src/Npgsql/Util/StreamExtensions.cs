@@ -30,7 +30,7 @@ namespace Npgsql.Util
             var sharedBuffer = ArrayPool<byte>.Shared.Rent(buffer.Length);
             try
             {
-                var result = await stream.ReadAsync(sharedBuffer, 0, buffer.Length, cancellationToken: cancellationToken);
+                var result = await stream.ReadAsync(sharedBuffer, 0, buffer.Length, cancellationToken);
                 new Span<byte>(sharedBuffer, 0, result).CopyTo(buffer.Span);
                 return result;
             }
@@ -60,7 +60,7 @@ namespace Npgsql.Util
             buffer.Span.CopyTo(sharedBuffer);
             try
             {
-                await stream.WriteAsync(sharedBuffer, 0, buffer.Length, cancellationToken: cancellationToken);
+                await stream.WriteAsync(sharedBuffer, 0, buffer.Length, cancellationToken);
             }
             finally
             {

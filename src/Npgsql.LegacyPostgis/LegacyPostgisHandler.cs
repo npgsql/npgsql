@@ -38,7 +38,7 @@ namespace Npgsql.LegacyPostgis
                 srid = buf.ReadUInt32(le);
             }
 
-            var geom = await DoRead(buf, (WkbIdentifier) (id & 7), le, async, cancellationToken: cancellationToken);
+            var geom = await DoRead(buf, (WkbIdentifier)(id & 7), le, async, cancellationToken);
             geom.SRID = srid;
             return geom;
         }
@@ -148,7 +148,7 @@ namespace Npgsql.LegacyPostgis
                     var elemLe = buf.ReadByte() != 0;
                     var elemId = (WkbIdentifier)(buf.ReadUInt32(le) & 7);
 
-                    g[i] = await DoRead(buf, elemId, elemLe, async, cancellationToken: cancellationToken);
+                    g[i] = await DoRead(buf, elemId, elemLe, async, cancellationToken);
                 }
                 return new PostgisGeometryCollection(g);
             }
