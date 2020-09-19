@@ -1450,7 +1450,7 @@ namespace Npgsql
                 return NullableHandler<T>.Exists
                     ? ColumnLen <= Buffer.ReadBytesLeft
                         ? NullableHandler<T>.Read(field.Handler, Buffer, ColumnLen, field)
-                        : await NullableHandler<T>.ReadAsync(field.Handler, Buffer, ColumnLen, async, cancellationToken, field)
+                        : await NullableHandler<T>.ReadAsync(field.Handler, Buffer, ColumnLen, async, field, cancellationToken: cancellationToken)
                     : typeof(T) == typeof(object)
                         ? ColumnLen <= Buffer.ReadBytesLeft
                             ? (T)field.Handler.ReadAsObject(Buffer, ColumnLen, field)

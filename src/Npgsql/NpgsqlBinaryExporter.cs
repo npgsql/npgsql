@@ -266,7 +266,7 @@ namespace Npgsql
                 var result = NullableHandler<T>.Exists
                     ? _columnLen <= _buf.ReadBytesLeft
                         ? NullableHandler<T>.Read(handler, _buf, _columnLen)
-                        : await NullableHandler<T>.ReadAsync(handler, _buf, _columnLen, async, cancellationToken)
+                        : await NullableHandler<T>.ReadAsync(handler, _buf, _columnLen, async, cancellationToken: cancellationToken)
                     : _columnLen <= _buf.ReadBytesLeft
                         ? handler.Read<T>(_buf, _columnLen)
                         : await handler.Read<T>(_buf, _columnLen, async, cancellationToken: cancellationToken);

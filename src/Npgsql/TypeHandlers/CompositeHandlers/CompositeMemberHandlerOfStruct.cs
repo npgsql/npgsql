@@ -69,7 +69,7 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
                 return;
 
             var value = NullableHandler<TMember>.Exists
-                ? await NullableHandler<TMember>.ReadAsync(_handler, buffer, length, async, cancellationToken, null)
+                ? await NullableHandler<TMember>.ReadAsync(_handler, buffer, length, async, cancellationToken: cancellationToken)
                 : await _handler.Read<TMember>(buffer, length, async, cancellationToken: cancellationToken);
 
             Set(composite, value);

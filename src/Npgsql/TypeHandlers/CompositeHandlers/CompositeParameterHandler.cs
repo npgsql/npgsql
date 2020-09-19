@@ -28,7 +28,7 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
                 return default!;
 
             return NullableHandler<T>.Exists
-                ? await NullableHandler<T>.ReadAsync(Handler, buffer, length, async, cancellationToken)
+                ? await NullableHandler<T>.ReadAsync(Handler, buffer, length, async, cancellationToken: cancellationToken)
                 : await Handler.Read<T>(buffer, length, async, cancellationToken: cancellationToken);
         }
 
