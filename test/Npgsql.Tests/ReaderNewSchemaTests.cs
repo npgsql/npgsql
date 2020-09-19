@@ -56,7 +56,7 @@ namespace Npgsql.Tests
             using var cmd = new NpgsqlCommand($"SELECT foo, foo AS foobar, 8 AS bar, 8, '8'::VARCHAR(10) FROM {table}", conn);
             await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo);
 
-            var columns = reader.GetColumnSchema();
+            var columns = async ? await reader.GetColumnSchemaAsync() : reader.GetColumnSchema();
             Assert.That(columns[0].BaseColumnName, Is.EqualTo("foo"));
             Assert.That(columns[1].BaseColumnName, Is.EqualTo("foo"));
             Assert.That(columns[2].BaseColumnName, Is.Null);
