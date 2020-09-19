@@ -140,63 +140,11 @@ namespace Npgsql
             set => base.InsertCommand = value;
         }
 
-        internal async Task<int> FillAsync(DataTable dataTable)
+        // Temporary implementation, waiting for official support in System.Data via https://github.com/dotnet/runtime/issues/22109
+        internal Task<int> FillAsync(DataTable dataTable)
         {
-            var command = SelectCommand;
-            var activeConnection = command?.Connection ?? throw new InvalidOperationException("Connection required");
-            var originalState = ConnectionState.Closed;
-
-            try
-            {
-                originalState = activeConnection.State;
-                if (ConnectionState.Closed == originalState)
-                    await activeConnection.OpenAsync();
-
-                var behavior = CommandBehavior.SequentialAccess;
-                using var dataReader = await command.ExecuteReaderAsync(behavior);
-
-                return await FillAsync(dataTable, dataReader);
-            }
-            finally
-            {
-                if (ConnectionState.Closed == originalState)
-                    activeConnection.Close();
-            }
-        }
-
-        async Task<int> FillAsync(DataTable dataTable, NpgsqlDataReader dataReader)
-        {
-            dataTable.BeginLoadData();
-            try
-            {
-                var rowsAdded = 0;
-                var count = dataReader.FieldCount;
-                var columnCollection = dataTable.Columns;
-                for (var i = 0; i < count; ++i)
-                {
-                    var fieldName = dataReader.GetName(i);
-                    if (!columnCollection.Contains(fieldName))
-                    {
-                        var fieldType = dataReader.GetFieldType(i);
-                        var dataColumn = new DataColumn(fieldName, fieldType);
-                        columnCollection.Add(dataColumn);
-                    }
-                }
-
-                var values = new object[count];
-
-                while (await dataReader.ReadAsync())
-                {
-                    dataReader.GetValues(values);
-                    dataTable.LoadDataRow(values, true);
-                    rowsAdded++;
-                }
-                return rowsAdded;
-            }
-            finally
-            {
-                dataTable.EndLoadData();
-            }
+            var result = Fill(dataTable);
+            return Task.FromResult(result);
         }
     }
 
