@@ -6,6 +6,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
@@ -58,13 +59,13 @@ namespace Npgsql.TypeHandlers
             => Read<TRequestedArray>(buf, len, false, fieldDescription).GetAwaiter().GetResult();
 
         /// <inheritdoc />
-        protected internal override async ValueTask<TRequestedArray> Read<TRequestedArray>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
+        protected internal override async ValueTask<TRequestedArray> Read<TRequestedArray>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
         {
             if (ArrayTypeInfo<TRequestedArray>.IsArray)
-                return (TRequestedArray)(object)await ArrayTypeInfo<TRequestedArray>.ReadArrayFunc(this, buf, async);
+                return (TRequestedArray)(object)await ArrayTypeInfo<TRequestedArray>.ReadArrayFunc(this, buf, async, cancellationToken);
 
             if (ArrayTypeInfo<TRequestedArray>.IsList)
-                return await ArrayTypeInfo<TRequestedArray>.ReadListFunc(this, buf, async);
+                return await ArrayTypeInfo<TRequestedArray>.ReadListFunc(this, buf, async, cancellationToken);
 
             throw new InvalidCastException(fieldDescription == null
                 ? $"Can't cast database type to {typeof(TRequestedArray).Name}"
@@ -75,9 +76,9 @@ namespace Npgsql.TypeHandlers
         /// <summary>
         /// Reads an array of element type <typeparamref name="TRequestedElement"/> from the given buffer <paramref name="buf"/>.
         /// </summary>
-        protected async ValueTask<Array> ReadArray<TRequestedElement>(NpgsqlReadBuffer buf, bool async, int expectedDimensions = 0)
+        protected async ValueTask<Array> ReadArray<TRequestedElement>(NpgsqlReadBuffer buf, bool async, int expectedDimensions = 0, CancellationToken cancellationToken = default)
         {
-            await buf.Ensure(12, async);
+            await buf.Ensure(12, async, cancellationToken);
             var dimensions = buf.ReadInt32();
             var containsNulls = buf.ReadInt32() == 1;
             buf.ReadUInt32(); // Element OID. Ignored.
@@ -93,20 +94,20 @@ namespace Npgsql.TypeHandlers
 
             if (dimensions == 1)
             {
-                await buf.Ensure(8, async);
+                await buf.Ensure(8, async, cancellationToken);
                 var arrayLength = buf.ReadInt32();
 
                 buf.ReadInt32(); // Lower bound
 
                 var oneDimensional = new TRequestedElement[arrayLength];
                 for (var i = 0; i < oneDimensional.Length; i++)
-                    oneDimensional[i] = await ElementHandler.ReadWithLength<TRequestedElement>(buf, async);
+                    oneDimensional[i] = await ElementHandler.ReadWithLength<TRequestedElement>(buf, async, cancellationToken: cancellationToken);
 
                 return oneDimensional;
             }
 
             var dimLengths = new int[dimensions];
-            await buf.Ensure(dimensions * 8, async);
+            await buf.Ensure(dimensions * 8, async, cancellationToken);
 
             for (var i = 0; i < dimensions; i++)
             {
@@ -121,7 +122,7 @@ namespace Npgsql.TypeHandlers
             var indices = new int[dimensions];
             while (true)
             {
-                var element = await ElementHandler.ReadWithLength<TRequestedElement>(buf, async);
+                var element = await ElementHandler.ReadWithLength<TRequestedElement>(buf, async, cancellationToken: cancellationToken);
                 result.SetValue(element, indices);
 
                 // TODO: Overly complicated/inefficient...
@@ -144,9 +145,9 @@ namespace Npgsql.TypeHandlers
         /// <summary>
         /// Reads a generic list containing elements of type <typeparamref name="TRequestedElement"/> from the given buffer <paramref name="buf"/>.
         /// </summary>
-        protected async ValueTask<List<TRequestedElement>> ReadList<TRequestedElement>(NpgsqlReadBuffer buf, bool async)
+        protected async ValueTask<List<TRequestedElement>> ReadList<TRequestedElement>(NpgsqlReadBuffer buf, bool async, CancellationToken cancellationToken = default)
         {
-            await buf.Ensure(12, async);
+            await buf.Ensure(12, async, cancellationToken);
             var dimensions = buf.ReadInt32();
             var containsNulls = buf.ReadInt32() == 1;
             buf.ReadUInt32(); // Element OID. Ignored.
@@ -158,13 +159,13 @@ namespace Npgsql.TypeHandlers
             if (ElementTypeInfo<TRequestedElement>.IsNonNullable && containsNulls)
                 throw new InvalidOperationException(ReadNonNullableCollectionWithNullsExceptionMessage);
 
-            await buf.Ensure(8, async);
+            await buf.Ensure(8, async, cancellationToken);
             var length = buf.ReadInt32();
             buf.ReadInt32(); // We don't care about the lower bounds
 
             var list = new List<TRequestedElement>(length);
             for (var i = 0; i < length; i++)
-                list.Add(await ElementHandler.ReadWithLength<TRequestedElement>(buf, async));
+                list.Add(await ElementHandler.ReadWithLength<TRequestedElement>(buf, async, cancellationToken: cancellationToken));
             return list;
         }
 
@@ -191,8 +192,8 @@ namespace Npgsql.TypeHandlers
             public static readonly bool IsList;
             public static readonly Type? ElementType;
 
-            public static readonly Func<ArrayHandler, NpgsqlReadBuffer, bool, ValueTask<Array>> ReadArrayFunc = default!;
-            public static readonly Func<ArrayHandler, NpgsqlReadBuffer, bool, ValueTask<TArrayOrList>> ReadListFunc = default!;
+            public static readonly Func<ArrayHandler, NpgsqlReadBuffer, bool, CancellationToken, ValueTask<Array>> ReadArrayFunc = default!;
+            public static readonly Func<ArrayHandler, NpgsqlReadBuffer, bool, CancellationToken, ValueTask<TArrayOrList>> ReadListFunc = default!;
             // ReSharper restore StaticMemberInGenericType
 
             public static bool IsArrayOrList => IsArray || IsList;
@@ -216,28 +217,29 @@ namespace Npgsql.TypeHandlers
                 var arrayHandlerParam = Expression.Parameter(typeof(ArrayHandler), "arrayHandler");
                 var bufferParam = Expression.Parameter(typeof(NpgsqlReadBuffer), "buf");
                 var asyncParam = Expression.Parameter(typeof(bool), "async");
+                var cancellationTokenParam = Expression.Parameter(typeof(CancellationToken), "cancellationToken");
 
                 if (IsArray)
                 {
                     ReadArrayFunc = Expression
-                        .Lambda<Func<ArrayHandler, NpgsqlReadBuffer, bool, ValueTask<Array>>>(
+                        .Lambda<Func<ArrayHandler, NpgsqlReadBuffer, bool, CancellationToken, ValueTask<Array>>>(
                             Expression.Call(
                                 arrayHandlerParam,
                                 ReadArrayMethod.MakeGenericMethod(ElementType),
-                                bufferParam, asyncParam, Expression.Constant(type.GetArrayRank())),
-                            arrayHandlerParam, bufferParam, asyncParam)
+                                bufferParam, asyncParam, Expression.Constant(type.GetArrayRank()), cancellationTokenParam),
+                            arrayHandlerParam, bufferParam, asyncParam, cancellationTokenParam)
                         .Compile();
                 }
 
                 if (IsList)
                 {
                     ReadListFunc = Expression
-                        .Lambda<Func<ArrayHandler, NpgsqlReadBuffer, bool, ValueTask<TArrayOrList>>>(
+                        .Lambda<Func<ArrayHandler, NpgsqlReadBuffer, bool, CancellationToken, ValueTask<TArrayOrList>>>(
                             Expression.Call(
                                 arrayHandlerParam,
                                 ReadListMethod.MakeGenericMethod(ElementType),
-                                bufferParam, asyncParam),
-                            arrayHandlerParam, bufferParam, asyncParam)
+                                bufferParam, asyncParam, cancellationTokenParam),
+                            arrayHandlerParam, bufferParam, asyncParam, cancellationTokenParam)
                         .Compile();
                 }
             }
@@ -264,8 +266,8 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        internal override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
-            =>  await ReadArray<TElement>(buf, async);
+        internal override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
+            =>  await ReadArray<TElement>(buf, async, cancellationToken: cancellationToken);
 
         internal override object ReadAsObject(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             => ReadArray<TElement>(buf, false).GetAwaiter().GetResult();
@@ -487,23 +489,23 @@ namespace Npgsql.TypeHandlers
         public ArrayHandlerWithPsv(PostgresType arrayPostgresType, NpgsqlTypeHandler elementHandler)
             : base(arrayPostgresType, elementHandler) { }
 
-        protected internal override async ValueTask<TRequestedArray> Read<TRequestedArray>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
+        protected internal override async ValueTask<TRequestedArray> Read<TRequestedArray>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
         {
             if (ArrayTypeInfo<TRequestedArray>.ElementType == typeof(TElementPsv))
             {
                 if (ArrayTypeInfo<TRequestedArray>.IsArray)
-                    return (TRequestedArray)(object)await ReadArray<TElementPsv>(buf, async, typeof(TRequestedArray).GetArrayRank());
+                    return (TRequestedArray)(object)await ReadArray<TElementPsv>(buf, async, typeof(TRequestedArray).GetArrayRank(), cancellationToken);
 
                 if (ArrayTypeInfo<TRequestedArray>.IsList)
-                    return (TRequestedArray)(object)await ReadList<TElementPsv>(buf, async);
+                    return (TRequestedArray)(object)await ReadList<TElementPsv>(buf, async, cancellationToken);
             }
-            return await base.Read<TRequestedArray>(buf, len, async, fieldDescription);
+            return await base.Read<TRequestedArray>(buf, len, async, fieldDescription, cancellationToken);
         }
 
         internal override object ReadPsvAsObject(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             => ReadPsvAsObject(buf, len, false, fieldDescription).GetAwaiter().GetResult();
 
-        internal override async ValueTask<object> ReadPsvAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
-            => await ReadArray<TElementPsv>(buf, async);
+        internal override async ValueTask<object> ReadPsvAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
+            => await ReadArray<TElementPsv>(buf, async, cancellationToken: cancellationToken);
     }
 }

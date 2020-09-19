@@ -145,9 +145,9 @@ namespace Npgsql
             }
 
 #if !NET461 && !NETSTANDARD2_0
-            public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+            public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
 #else
-            public ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+            public ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
 #endif
             {
                 CheckDisposed();
@@ -161,11 +161,11 @@ namespace Npgsql
                     return new ValueTask<int>(0);
 
                 using (NoSynchronizationContextScope.Enter())
-                    return ReadLong(buffer.Slice(0, count));
+                    return ReadLong(buffer.Slice(0, count), cancellationToken);
 
-                async ValueTask<int> ReadLong(Memory<byte> buffer)
+                async ValueTask<int> ReadLong(Memory<byte> buffer, CancellationToken cancellationToken = default)
                 {
-                    var read = await _buf.ReadAsync(buffer);
+                    var read = await _buf.ReadAsync(buffer, cancellationToken);
                     _read += read;
                     return read;
                 }

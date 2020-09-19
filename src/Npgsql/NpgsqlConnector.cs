@@ -422,17 +422,17 @@ namespace Npgsql
                 await Flush(async);
                 timeout.Check();
 
-                await Authenticate(username, timeout, async);
+                await Authenticate(username, timeout, async, cancellationToken);
 
                 // We treat BackendKeyData as optional because some PostgreSQL-like database
                 // don't send it (CockroachDB, CrateDB)
-                var msg = await ReadMessage(async);
+                var msg = await ReadMessage(async, cancellationToken);
                 if (msg.Code == BackendMessageCode.BackendKeyData)
                 {
                     var keyDataMsg = (BackendKeyDataMessage)msg;
                     BackendProcessId = keyDataMsg.BackendProcessId;
                     _backendSecretKey = keyDataMsg.BackendSecretKey;
-                    msg = await ReadMessage(async);
+                    msg = await ReadMessage(async, cancellationToken);
                 }
                 if (msg.Code != BackendMessageCode.ReadyForQuery)
                     throw new NpgsqlException($"Received backend message {msg.Code} while expecting ReadyForQuery. Please file a bug.");
@@ -592,7 +592,7 @@ namespace Npgsql
                     WriteSslRequest();
                     await Flush(async);
 
-                    await ReadBuffer.Ensure(1, async);
+                    await ReadBuffer.Ensure(1, async, cancellationToken);
                     var response = (char)ReadBuffer.ReadByte();
                     timeout.Check();
 
@@ -979,26 +979,30 @@ namespace Npgsql
 
         #region Backend message processing
 
-        internal IBackendMessage ReadMessage(DataRowLoadingMode dataRowLoadingMode=DataRowLoadingMode.NonSequential)
-            => ReadMessage(false, dataRowLoadingMode).GetAwaiter().GetResult()!;
+        internal IBackendMessage ReadMessage(DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential)
+            => ReadMessage(false, dataRowLoadingMode, cancellationToken: default).GetAwaiter().GetResult()!;
 
-        internal ValueTask<IBackendMessage> ReadMessage(bool async, DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential)
-            => DoReadMessage(async, dataRowLoadingMode)!;
+        internal ValueTask<IBackendMessage> ReadMessage(bool async, CancellationToken cancellationToken = default)
+            => DoReadMessage(async, DataRowLoadingMode.NonSequential, cancellationToken: cancellationToken)!;
 
-        internal ValueTask<IBackendMessage?> ReadMessageWithNotifications(bool async)
-            => DoReadMessage(async, DataRowLoadingMode.NonSequential, true);
+        internal ValueTask<IBackendMessage> ReadMessage(bool async, DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential, CancellationToken cancellationToken = default)
+            => DoReadMessage(async, dataRowLoadingMode, cancellationToken: cancellationToken)!;
+
+        internal ValueTask<IBackendMessage?> ReadMessageWithNotifications(bool async, CancellationToken cancellationToken = default)
+            => DoReadMessage(async, DataRowLoadingMode.NonSequential, true, cancellationToken: cancellationToken);
 
         ValueTask<IBackendMessage?> DoReadMessage(
             bool async,
             DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential,
-            bool readingNotifications = false)
+            bool readingNotifications = false,
+            CancellationToken cancellationToken = default)
         {
             if (_pendingPrependedResponses > 0 ||
                 dataRowLoadingMode != DataRowLoadingMode.NonSequential ||
                 readingNotifications ||
                 ReadBuffer.ReadBytesLeft < 5)
             {
-                return ReadMessageLong(dataRowLoadingMode, readingNotifications);
+                return ReadMessageLong(dataRowLoadingMode, readingNotifications, cancellationToken2: cancellationToken);
             }
 
             var messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
@@ -1009,7 +1013,7 @@ namespace Npgsql
             case BackendMessageCode.ParameterStatus:
             case BackendMessageCode.ErrorResponse:
                 ReadBuffer.ReadPosition--;
-                return ReadMessageLong(dataRowLoadingMode, readingNotifications2: false);
+                return ReadMessageLong(dataRowLoadingMode, readingNotifications2: false, cancellationToken2: cancellationToken);
             case BackendMessageCode.ReadyForQuery:
                 // Just in case if we were successful in sending a cancellation, but the query is already completed (and the response is already in the buffer)
                 // Same thing is done below for the cases, when RFQ is not in the buffer
@@ -1022,7 +1026,7 @@ namespace Npgsql
             if (len > ReadBuffer.ReadBytesLeft)
             {
                 ReadBuffer.ReadPosition -= 5;
-                return ReadMessageLong(dataRowLoadingMode, readingNotifications2: false);
+                return ReadMessageLong(dataRowLoadingMode, readingNotifications2: false, cancellationToken2: cancellationToken);
             }
 
             return new ValueTask<IBackendMessage?>(ParseServerMessage(ReadBuffer, messageCode, len, false));
@@ -1030,7 +1034,8 @@ namespace Npgsql
             async ValueTask<IBackendMessage?> ReadMessageLong(
                 DataRowLoadingMode dataRowLoadingMode2,
                 bool readingNotifications2,
-                bool isReadingPrependedMessage = false)
+                bool isReadingPrependedMessage = false,
+                CancellationToken cancellationToken2 = default)
             {
                 // First read the responses of any prepended messages.
                 if (_pendingPrependedResponses > 0 && !isReadingPrependedMessage)
@@ -1040,7 +1045,7 @@ namespace Npgsql
                         // TODO: There could be room for optimization here, rather than the async call(s)
                         ReadBuffer.Timeout = TimeSpan.FromMilliseconds(InternalCommandTimeout);
                         for (; _pendingPrependedResponses > 0; _pendingPrependedResponses--)
-                            await ReadMessageLong(DataRowLoadingMode.Skip, false, true);
+                            await ReadMessageLong(DataRowLoadingMode.Skip, false, true, cancellationToken2);
                     }
                     catch (PostgresException e)
                     {
@@ -1058,7 +1063,7 @@ namespace Npgsql
                     {
                         try
                         {
-                            await ReadBuffer.Ensure(5, async);
+                            await ReadBuffer.Ensure(5, async, cancellationToken);
                             messageCode = (BackendMessageCode) ReadBuffer.ReadByte();
                             PGUtil.ValidateBackendMessageCode(messageCode);
                             len = ReadBuffer.ReadInt32() - 4; // Transmitted length includes itself
@@ -1069,7 +1074,7 @@ namespace Npgsql
                             {
                                 if (dataRowLoadingMode2 == DataRowLoadingMode.Skip)
                                 {
-                                    await ReadBuffer.Skip(len, async);
+                                    await ReadBuffer.Skip(len, async, cancellationToken);
                                     continue;
                                 }
                             }
@@ -1087,7 +1092,7 @@ namespace Npgsql
                                     ReadBuffer = oversizeBuffer;
                                 }
 
-                                await ReadBuffer.Ensure(len, async);
+                                await ReadBuffer.Ensure(len, async, cancellationToken);
                             }
 
                             var msg = ParseServerMessage(ReadBuffer, messageCode, len, isReadingPrependedMessage);
@@ -1298,11 +1303,11 @@ namespace Npgsql
 
         #region Transactions
 
-        internal Task Rollback(bool async)
+        internal Task Rollback(bool async, CancellationToken cancellationToken = default)
         {
             Log.Debug("Rolling back transaction", Id);
             using (StartUserAction())
-                return ExecuteInternalCommand(PregeneratedMessages.RollbackTransaction, async);
+                return ExecuteInternalCommand(PregeneratedMessages.RollbackTransaction, async, cancellationToken);
         }
 
         internal bool InTransaction
@@ -1445,7 +1450,7 @@ namespace Npgsql
         /// Closes ongoing operations, i.e. an open reader exists or a COPY operation still in progress, as
         /// part of a connection close.
         /// </summary>
-        internal async Task CloseOngoingOperations(bool async)
+        internal async Task CloseOngoingOperations(bool async, CancellationToken cancellationToken = default)
         {
             var reader = CurrentReader;
             var copyOperation = CurrentCopyOperation;
@@ -1671,7 +1676,7 @@ namespace Npgsql
         /// (e.g. prepared statements), resetting parameters to their defaults, and resetting client-side
         /// state
         /// </summary>
-        internal async Task Reset(bool async)
+        internal async Task Reset(bool async, CancellationToken cancellationToken = default)
         {
             Debug.Assert(IsReady);
 
@@ -1701,7 +1706,7 @@ namespace Npgsql
                 break;
             case TransactionStatus.InTransactionBlock:
             case TransactionStatus.InFailedTransactionBlock:
-                await Rollback(async);
+                await Rollback(async, cancellationToken);
                 ClearTransaction();
                 break;
             default:
@@ -1941,7 +1946,7 @@ namespace Npgsql
 
                     while (true)
                     {
-                        var msg = ReadMessage(false).Result;
+                        var msg = ReadMessage(false, CancellationToken.None).Result;
                         if (msg == null)
                         {
                             receivedNotification = true;
@@ -1980,13 +1985,13 @@ namespace Npgsql
             }
         }
 
-        public Task WaitAsync(CancellationToken cancellationToken)
+        public Task WaitAsync(CancellationToken cancellationToken = default)
         {
             using (NoSynchronizationContextScope.Enter())
                 return DoWaitAsync(cancellationToken);
         }
 
-        async Task DoWaitAsync(CancellationToken cancellationToken)
+        async Task DoWaitAsync(CancellationToken cancellationToken = default)
         {
             var keepaliveSent = false;
             var keepaliveLock = new SemaphoreSlim(1, 1);
@@ -2023,6 +2028,7 @@ namespace Npgsql
                     while (true)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
+                        // Intentional, as this method would be rewritten
                         var msg = await ReadMessageWithNotifications(true);
                         if (!keepaliveSent)
                         {
@@ -2047,7 +2053,8 @@ namespace Npgsql
                                 while (msg == null)
                                 {
                                     receivedNotification = true;
-                                    msg = await ReadMessage(true);
+                                    // Intentional, as this method would be rewritten
+                                    msg = await ReadMessage(true, CancellationToken.None);
                                 }
 
                                 if (msg.Code != expectedMessageCode)
@@ -2060,6 +2067,7 @@ namespace Npgsql
                                     expectedMessageCode = BackendMessageCode.DataRow;
                                     break;
                                 case BackendMessageCode.DataRow:
+                                    // Intentional, as this method would be rewritten
                                     // DataRow is usually consumed by a reader, here we have to skip it manually.
                                     await ReadBuffer.Skip(((DataRowMessage)msg).Length, true);
                                     expectedMessageCode = BackendMessageCode.CompletedResponse;
@@ -2074,7 +2082,8 @@ namespace Npgsql
 
                                 if (!finishedKeepalive)
                                 {
-                                    msg = await ReadMessage(true);
+                                    // Intentional, as this method would be rewritten
+                                    msg = await ReadMessage(true, CancellationToken.None);
                                     continue;
                                 }
 
@@ -2119,17 +2128,17 @@ namespace Npgsql
         internal void ExecuteInternalCommand(string query)
             => ExecuteInternalCommand(query, false).GetAwaiter().GetResult();
 
-        internal async Task ExecuteInternalCommand(string query, bool async)
+        internal async Task ExecuteInternalCommand(string query, bool async, CancellationToken cancellationToken = default)
         {
             Log.Trace($"Executing internal command: {query}", Id);
 
             await WriteQuery(query, async);
             await Flush(async);
-            Expect<CommandCompleteMessage>(await ReadMessage(async), this);
-            Expect<ReadyForQueryMessage>(await ReadMessage(async), this);
+            Expect<CommandCompleteMessage>(await ReadMessage(async, cancellationToken), this);
+            Expect<ReadyForQueryMessage>(await ReadMessage(async, cancellationToken), this);
         }
 
-        internal async Task ExecuteInternalCommand(byte[] data, bool async)
+        internal async Task ExecuteInternalCommand(byte[] data, bool async, CancellationToken cancellationToken = default)
         {
             Debug.Assert(State != ConnectorState.Ready, "Forgot to start a user action...");
 
@@ -2137,8 +2146,8 @@ namespace Npgsql
 
             await WritePregenerated(data, async);
             await Flush(async);
-            Expect<CommandCompleteMessage>(await ReadMessage(async), this);
-            Expect<ReadyForQueryMessage>(await ReadMessage(async), this);
+            Expect<CommandCompleteMessage>(await ReadMessage(async, cancellationToken), this);
+            Expect<ReadyForQueryMessage>(await ReadMessage(async, cancellationToken), this);
         }
 
         #endregion
