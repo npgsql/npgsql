@@ -1777,7 +1777,7 @@ namespace Npgsql
         /// </summary>
         /// <returns></returns>
 #if !NET461 && !NETSTANDARD2_0 && !NETSTANDARD2_1 && !NETCOREAPP3_0
-        public /*new*/ Task<ReadOnlyCollection<NpgsqlDbColumn>> GetColumnSchemaAsync(CancellationToken cancellationToken = default)
+        public new Task<ReadOnlyCollection<NpgsqlDbColumn>> GetColumnSchemaAsync(CancellationToken cancellationToken = default)
 #else
         public Task<ReadOnlyCollection<NpgsqlDbColumn>> GetColumnSchemaAsync(CancellationToken cancellationToken = default)
 #endif
@@ -1818,23 +1818,24 @@ namespace Npgsql
         /// <summary>
         /// Asynchronously returns a System.Data.DataTable that describes the column metadata of the DataReader.
         /// </summary>
-#nullable disable
 #if !NET461 && !NETSTANDARD2_0 && !NETSTANDARD2_1 && !NETCOREAPP3_0
-        public /*override*/ Task<DataTable> GetSchemaTableAsync(CancellationToken cancellationToken = default)
+        public override Task<DataTable?> GetSchemaTableAsync(CancellationToken cancellationToken = default)
 #else
-        public Task<DataTable> GetSchemaTableAsync(CancellationToken cancellationToken = default)
+        public Task<DataTable?> GetSchemaTableAsync(CancellationToken cancellationToken = default)
 #endif
-#nullable restore
         {
             if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled<DataTable>(cancellationToken);
+                return Task.FromCanceled<DataTable?>(cancellationToken);
 
             using (NoSynchronizationContextScope.Enter())
                 return GetSchemaTable(cancellationToken);
         }
 
-        async Task<DataTable> GetSchemaTable(CancellationToken cancellationToken = default)
-        { 
+        async Task<DataTable?> GetSchemaTable(CancellationToken cancellationToken = default)
+        {
+            if (FieldCount == 0) // No resultset
+                return null;
+
             var table = GetEmptySchemaTable();
 
             foreach (var column in await GetColumnSchemaAsync(cancellationToken))
