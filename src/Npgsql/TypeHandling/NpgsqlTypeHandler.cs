@@ -93,7 +93,7 @@ namespace Npgsql.TypeHandling
             return len == -1
                ? default!
                : NullableHandler<TAny>.Exists
-                   ? await NullableHandler<TAny>.ReadAsync(this, buf, len, async, cancellationToken, fieldDescription)
+                   ? await NullableHandler<TAny>.ReadAsync(this, buf, len, async, fieldDescription, cancellationToken: cancellationToken)
                    : await Read<TAny>(buf, len, async, fieldDescription, cancellationToken: cancellationToken);
         }
 
