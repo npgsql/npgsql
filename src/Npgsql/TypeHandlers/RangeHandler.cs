@@ -77,7 +77,7 @@ namespace Npgsql.TypeHandlers
 
         private protected async ValueTask<NpgsqlRange<TAny>> DoRead<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken = default)
         {
-            await buf.Ensure(1, async, cancellationToken: cancellationToken);
+            await buf.Ensure(1, async, cancellationToken);
 
             var flags = (RangeFlags)buf.ReadByte();
             if ((flags & RangeFlags.Empty) != 0)
@@ -211,7 +211,7 @@ namespace Npgsql.TypeHandlers
             : base(rangePostgresType, elementHandler, new[] { typeof(NpgsqlRange<TElement1>), typeof(NpgsqlRange<TElement2>) }) {}
 
         ValueTask<NpgsqlRange<TElement2>> INpgsqlTypeHandler<NpgsqlRange<TElement2>>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
-            => DoRead<TElement2>(buf, len, async, fieldDescription, cancellationToken: cancellationToken);
+            => DoRead<TElement2>(buf, len, async, fieldDescription, cancellationToken);
 
         /// <inheritdoc />
         public int ValidateAndGetLength(NpgsqlRange<TElement2> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)

@@ -135,7 +135,7 @@ namespace Npgsql
             else if (_column != -1)
                 throw new InvalidOperationException("Already in the middle of a row");
 
-            await _buf.Ensure(2, async, cancellationToken: cancellationToken);
+            await _buf.Ensure(2, async, cancellationToken);
             _leftToReadInDataMsg -= 2;
 
             var numColumns = _buf.ReadInt16();
@@ -316,7 +316,7 @@ namespace Npgsql
         {
             await ReadColumnLenIfNeeded(async, cancellationToken);
             if (_columnLen != -1)
-                await _buf.Skip(_columnLen, async, cancellationToken: cancellationToken);
+                await _buf.Skip(_columnLen, async, cancellationToken);
 
             _columnLen = int.MinValue;
             _column++;
@@ -330,7 +330,7 @@ namespace Npgsql
         {
             if (_columnLen == int.MinValue)
             {
-                await _buf.Ensure(4, async, cancellationToken: cancellationToken);
+                await _buf.Ensure(4, async, cancellationToken);
                 _columnLen = _buf.ReadInt32();
                 _leftToReadInDataMsg -= 4;
             }

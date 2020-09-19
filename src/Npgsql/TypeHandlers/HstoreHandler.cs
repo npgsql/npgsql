@@ -129,12 +129,12 @@ namespace Npgsql.TypeHandlers
         {
             for (var i = 0; i < numElements; i++)
             {
-                await buf.Ensure(4, async, cancellationToken: cancellationToken);
+                await buf.Ensure(4, async, cancellationToken);
                 var keyLen = buf.ReadInt32();
                 Debug.Assert(keyLen != -1);
                 var key = await _textHandler.Read(buf, keyLen, async, cancellationToken: cancellationToken);
 
-                await buf.Ensure(4, async, cancellationToken: cancellationToken);
+                await buf.Ensure(4, async, cancellationToken);
                 var valueLen = buf.ReadInt32();
 
                 dictionary[key] = valueLen == -1
@@ -148,7 +148,7 @@ namespace Npgsql.TypeHandlers
         public override async ValueTask<Dictionary<string, string?>> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null,
             CancellationToken cancellationToken = default)
         {
-            await buf.Ensure(4, async, cancellationToken: cancellationToken);
+            await buf.Ensure(4, async, cancellationToken);
             var numElements = buf.ReadInt32();
             return await ReadInto(new Dictionary<string, string?>(numElements), numElements, buf, async, cancellationToken: cancellationToken);
         }
@@ -175,9 +175,9 @@ namespace Npgsql.TypeHandlers
         async ValueTask<ImmutableDictionary<string, string?>> INpgsqlTypeHandler<ImmutableDictionary<string, string?>>.Read(
             NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
         {
-            await buf.Ensure(4, async, cancellationToken: cancellationToken);
+            await buf.Ensure(4, async, cancellationToken);
             var numElements = buf.ReadInt32();
-            return (await ReadInto(ImmutableDictionary<string, string?>.Empty.ToBuilder(), numElements, buf, async, cancellationToken: cancellationToken))
+            return (await ReadInto(ImmutableDictionary<string, string?>.Empty.ToBuilder(), numElements, buf, async, cancellationToken))
                 .ToImmutable();
         }
 

@@ -54,7 +54,7 @@ namespace Npgsql.TypeHandlers
                 pos += toRead;
                 if (pos == len)
                     break;
-                await buf.ReadMore(async, cancellationToken: cancellationToken);
+                await buf.ReadMore(async, cancellationToken);
             }
             return bytes;
         }

@@ -197,9 +197,9 @@ namespace Npgsql
                 if (leftToSkip > 0)
                 {
                     if (async)
-                        await _buf.Skip(leftToSkip, async, cancellationToken: default);
+                        await _buf.Skip(leftToSkip, async, default);
                     else
-                        _buf.Skip(leftToSkip, async, cancellationToken: default).GetAwaiter().GetResult();
+                        _buf.Skip(leftToSkip, async, default).GetAwaiter().GetResult();
                 }
                 IsDisposed = true;
             }

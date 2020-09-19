@@ -59,7 +59,7 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
             if (_set == null)
                 ThrowHelper.ThrowInvalidOperationException_NoPropertySetter(typeof(TComposite), MemberInfo);
 
-            await buffer.Ensure(sizeof(uint) + sizeof(int), async, cancellationToken: cancellationToken);
+            await buffer.Ensure(sizeof(uint) + sizeof(int), async, cancellationToken);
 
             var oid = buffer.ReadUInt32();
             Debug.Assert(oid == PostgresType.OID);

@@ -29,12 +29,12 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
         /// <inheritdoc />
         public override async ValueTask<NpgsqlPolygon> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
         {
-            await buf.Ensure(4, async, cancellationToken: cancellationToken);
+            await buf.Ensure(4, async, cancellationToken);
             var numPoints = buf.ReadInt32();
             var result = new NpgsqlPolygon(numPoints);
             for (var i = 0; i < numPoints; i++)
             {
-                await buf.Ensure(16, async, cancellationToken: cancellationToken);
+                await buf.Ensure(16, async, cancellationToken);
                 result.Add(new NpgsqlPoint(buf.ReadDouble(), buf.ReadDouble()));
             }
             return result;

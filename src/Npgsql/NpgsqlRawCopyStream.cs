@@ -298,7 +298,7 @@ namespace Npgsql
             // If our buffer is empty, read in more. Otherwise return whatever is there, even if the
             // user asked for more (normal socket behavior)
             if (_readBuf.ReadBytesLeft == 0)
-                await _readBuf.ReadMore(async, cancellationToken: cancellationToken);
+                await _readBuf.ReadMore(async, cancellationToken);
 
             Debug.Assert(_readBuf.ReadBytesLeft > 0);
 
@@ -389,7 +389,7 @@ namespace Npgsql
                     {
                         if (_leftToReadInDataMsg > 0)
                         {
-                            await _readBuf.Skip(_leftToReadInDataMsg, async, cancellationToken: default);
+                            await _readBuf.Skip(_leftToReadInDataMsg, async, default);
                         }
                         _connector.SkipUntil(BackendMessageCode.ReadyForQuery);
                     }

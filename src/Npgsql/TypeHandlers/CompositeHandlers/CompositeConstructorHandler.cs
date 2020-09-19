@@ -21,7 +21,7 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
 
         public virtual async ValueTask<TComposite> Read(NpgsqlReadBuffer buffer, bool async, CancellationToken cancellationToken = default)
         {
-            await buffer.Ensure(sizeof(int), async, cancellationToken: cancellationToken);
+            await buffer.Ensure(sizeof(int), async, cancellationToken);
 
             var fieldCount = buffer.ReadInt32();
             if (fieldCount != Handlers.Length)

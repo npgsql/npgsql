@@ -228,7 +228,7 @@ namespace Npgsql.TypeHandlers
         {
             if (_isJsonb)
             {
-                await buf.Ensure(1, async, cancellationToken: cancellationToken);
+                await buf.Ensure(1, async, cancellationToken);
                 var version = buf.ReadByte();
                 if (version != JsonbProtocolVersion)
                     throw new NotSupportedException($"Don't know how to decode JSONB with wire format {version}, your connection is now broken");
@@ -246,7 +246,7 @@ namespace Npgsql.TypeHandlers
 
             // See #2818 for possibly returning a JsonDocument directly over our internal buffer, rather
             // than deserializing to string.
-            var s = await _textHandler.Read(buf, byteLen, async, fieldDescription, cancellationToken: cancellationToken);
+            var s = await _textHandler.Read(buf, byteLen, async, fieldDescription, cancellationToken);
             return typeof(T) == typeof(JsonDocument)
                 ? (T)(object)JsonDocument.Parse(s)
                 : JsonSerializer.Deserialize<T>(s, _serializerOptions)!;

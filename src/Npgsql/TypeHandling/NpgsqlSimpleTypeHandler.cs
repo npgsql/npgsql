@@ -87,7 +87,7 @@ namespace Npgsql.TypeHandling
         /// <returns>The fully-read value.</returns>
         protected internal sealed override async ValueTask<TAny> Read<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
         {
-            await buf.Ensure(len, async, cancellationToken: cancellationToken);
+            await buf.Ensure(len, async, cancellationToken);
             return Read<TAny>(buf, len, fieldDescription);
         }
 

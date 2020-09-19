@@ -31,7 +31,7 @@ namespace Npgsql.TypeHandlers
 
         protected internal override async ValueTask<TAny> Read<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
         {
-            var s = await base.Read(buf, len, async, fieldDescription, cancellationToken: cancellationToken);
+            var s = await base.Read(buf, len, async, fieldDescription, cancellationToken);
             if (typeof(TAny) == typeof(string))
                 return (TAny)(object)s;
 
@@ -46,7 +46,7 @@ namespace Npgsql.TypeHandlers
         }
 
         public override ValueTask<string> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
-            => base.Read(buf, len, async, fieldDescription, cancellationToken: cancellationToken);
+            => base.Read(buf, len, async, fieldDescription, cancellationToken);
 
         #endregion
 

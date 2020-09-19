@@ -42,7 +42,7 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
 
             async ValueTask<T> ReadUsingMemberHandlers()
             {
-                await buffer.Ensure(sizeof(int), async, cancellationToken: cancellationToken);
+                await buffer.Ensure(sizeof(int), async, cancellationToken);
 
                 var fieldCount = buffer.ReadInt32();
                 if (fieldCount != _memberHandlers.Length)

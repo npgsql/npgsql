@@ -88,7 +88,7 @@ namespace Npgsql.TypeHandling
         /// </summary>
         internal async ValueTask<TAny> ReadWithLength<TAny>(NpgsqlReadBuffer buf, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
         {
-            await buf.Ensure(4, async, cancellationToken: cancellationToken);
+            await buf.Ensure(4, async, cancellationToken);
             var len = buf.ReadInt32();
             return len == -1
                ? default!

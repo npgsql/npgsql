@@ -278,7 +278,7 @@ namespace Npgsql
                 if (msg.Code == BackendMessageCode.DataRow)
                 {
                     // Make sure that the datarow's column count is already buffered
-                    await Connector.ReadBuffer.Ensure(2, async, cancellationToken: cancellationToken);
+                    await Connector.ReadBuffer.Ensure(2, async, cancellationToken);
                     return msg;
                 }
                 return msg;
@@ -1415,7 +1415,7 @@ namespace Npgsql
                     var writtenBytes = Buffer.ReadPosition - position;
                     var remainingBytes = ColumnLen - writtenBytes;
                     if (remainingBytes > 0)
-                        Buffer.Skip(remainingBytes, false, cancellationToken: default).GetAwaiter().GetResult();
+                        Buffer.Skip(remainingBytes, false, default).GetAwaiter().GetResult();
                 }
                 throw;
             }
@@ -1466,7 +1466,7 @@ namespace Npgsql
                     var writtenBytes = Buffer.ReadPosition - position;
                     var remainingBytes = ColumnLen - writtenBytes;
                     if (remainingBytes > 0)
-                        await Buffer.Skip(remainingBytes, async, cancellationToken: cancellationToken);
+                        await Buffer.Skip(remainingBytes, async, cancellationToken);
                 }
                 throw;
             }
@@ -1514,7 +1514,7 @@ namespace Npgsql
                     var writtenBytes = Buffer.ReadPosition - position;
                     var remainingBytes = ColumnLen - writtenBytes;
                     if (remainingBytes > 0)
-                        Buffer.Skip(remainingBytes, false, cancellationToken: default).GetAwaiter().GetResult();
+                        Buffer.Skip(remainingBytes, false, default).GetAwaiter().GetResult();
                 }
                 throw;
             }
@@ -1570,7 +1570,7 @@ namespace Npgsql
                     var writtenBytes = Buffer.ReadPosition - position;
                     var remainingBytes = ColumnLen - writtenBytes;
                     if (remainingBytes > 0)
-                        Buffer.Skip(remainingBytes, false, cancellationToken: default).GetAwaiter().GetResult();
+                        Buffer.Skip(remainingBytes, false, default).GetAwaiter().GetResult();
                 }
                 throw;
             }
@@ -1882,18 +1882,18 @@ namespace Npgsql
             // TODO: Simplify by better initializing _columnLen/_posInColumn
             var remainingInColumn = ColumnLen == -1 ? 0 : ColumnLen - PosInColumn;
             if (remainingInColumn > 0)
-                await Buffer.Skip(remainingInColumn, async, cancellationToken: cancellationToken);
+                await Buffer.Skip(remainingInColumn, async, cancellationToken);
 
             // Skip over unwanted fields
             for (; _column < column - 1; _column++)
             {
-                await Buffer.Ensure(4, async, cancellationToken: cancellationToken);
+                await Buffer.Ensure(4, async, cancellationToken);
                 var len = Buffer.ReadInt32();
                 if (len != -1)
-                    await Buffer.Skip(len, async, cancellationToken: cancellationToken);
+                    await Buffer.Skip(len, async, cancellationToken);
             }
 
-            await Buffer.Ensure(4, async, cancellationToken: cancellationToken);
+            await Buffer.Ensure(4, async, cancellationToken);
             ColumnLen = Buffer.ReadInt32();
             PosInColumn = 0;
             _column = column;
@@ -1923,7 +1923,7 @@ namespace Npgsql
 
                 if (posInColumn2 > PosInColumn)
                 {
-                    await Buffer.Skip(posInColumn2 - PosInColumn, async2, cancellationToken: cancellationToken);
+                    await Buffer.Skip(posInColumn2 - PosInColumn, async2, cancellationToken);
                     PosInColumn = posInColumn2;
                 }
             }
@@ -1956,15 +1956,15 @@ namespace Npgsql
                 // Skip to end of column if needed
                 var remainingInColumn = ColumnLen == -1 ? 0 : ColumnLen - PosInColumn;
                 if (remainingInColumn > 0)
-                    await Buffer.Skip(remainingInColumn, async2, cancellationToken: cancellationToken);
+                    await Buffer.Skip(remainingInColumn, async2, cancellationToken);
 
                 // Skip over the remaining columns in the row
                 for (; _column < _numColumns - 1; _column++)
                 {
-                    await Buffer.Ensure(4, async2, cancellationToken: cancellationToken);
+                    await Buffer.Ensure(4, async2, cancellationToken);
                     var len = Buffer.ReadInt32();
                     if (len != -1)
-                        await Buffer.Skip(len, async2, cancellationToken: cancellationToken);
+                        await Buffer.Skip(len, async2, cancellationToken);
                 }
             }
         }

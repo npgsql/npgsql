@@ -20,7 +20,7 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
 
         public async ValueTask<T> Read<T>(NpgsqlReadBuffer buffer, bool async, CancellationToken cancellationToken = default)
         {
-            await buffer.Ensure(sizeof(uint) + sizeof(int), async, cancellationToken: cancellationToken);
+            await buffer.Ensure(sizeof(uint) + sizeof(int), async, cancellationToken);
 
             var oid = buffer.ReadUInt32();
             var length = buffer.ReadInt32();

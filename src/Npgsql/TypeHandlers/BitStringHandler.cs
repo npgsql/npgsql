@@ -51,7 +51,7 @@ namespace Npgsql.TypeHandlers
         /// <inheritdoc />
         public override async ValueTask<BitArray> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
         {
-            await buf.Ensure(4, async, cancellationToken: cancellationToken);
+            await buf.Ensure(4, async, cancellationToken);
             var numBits = buf.ReadInt32();
             var result = new BitArray(numBits);
             var bytesLeft = len - 4;  // Remove leading number of bits
@@ -83,13 +83,13 @@ namespace Npgsql.TypeHandlers
                     break;
 
                 Debug.Assert(buf.ReadBytesLeft == 0);
-                await buf.Ensure(Math.Min(bytesLeft, buf.Size), async, cancellationToken: cancellationToken);
+                await buf.Ensure(Math.Min(bytesLeft, buf.Size), async, cancellationToken);
             }
 
             if (bitNo < result.Length)
             {
                 var remainder = result.Length - bitNo;
-                await buf.Ensure(1, async, cancellationToken: cancellationToken);
+                await buf.Ensure(1, async, cancellationToken);
                 var lastChunk = buf.ReadByte();
                 for (var i = 7; i >= 8 - remainder; i--)
                     result[bitNo++] = (lastChunk & (1 << i)) != 0;
@@ -103,7 +103,7 @@ namespace Npgsql.TypeHandlers
             if (len > 4 + 4)
                 throw new InvalidCastException("Can't read PostgreSQL bitstring with more than 32 bits into BitVector32");
 
-            await buf.Ensure(4 + 4, async, cancellationToken: cancellationToken);
+            await buf.Ensure(4 + 4, async, cancellationToken);
 
             var numBits = buf.ReadInt32();
             return numBits == 0
@@ -113,7 +113,7 @@ namespace Npgsql.TypeHandlers
 
         async ValueTask<bool> INpgsqlTypeHandler<bool>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
         {
-            await buf.Ensure(5, async, cancellationToken: cancellationToken);
+            await buf.Ensure(5, async, cancellationToken);
             var bitLen = buf.ReadInt32();
             if (bitLen != 1)
                 throw new InvalidCastException("Can't convert a BIT(N) type to bool, only BIT(1)");
@@ -286,7 +286,7 @@ namespace Npgsql.TypeHandlers
                     return (TRequestedArray)(object)await ReadArray<BitArray>(buf, async, cancellationToken: cancellationToken);
 
                 if (ArrayTypeInfo<TRequestedArray>.IsList)
-                    return (TRequestedArray)(object)await ReadList<BitArray>(buf, async, cancellationToken: cancellationToken);
+                    return (TRequestedArray)(object)await ReadList<BitArray>(buf, async, cancellationToken);
             }
 
             if (ArrayTypeInfo<TRequestedArray>.ElementType == typeof(bool))
@@ -295,10 +295,10 @@ namespace Npgsql.TypeHandlers
                     return (TRequestedArray)(object)await ReadArray<bool>(buf, async, cancellationToken: cancellationToken);
 
                 if (ArrayTypeInfo<TRequestedArray>.IsList)
-                    return (TRequestedArray)(object)await ReadList<bool>(buf, async, cancellationToken: cancellationToken);
+                    return (TRequestedArray)(object)await ReadList<bool>(buf, async, cancellationToken);
             }
 
-            return await base.Read<TRequestedArray>(buf, len, async, fieldDescription, cancellationToken: cancellationToken);
+            return await base.Read<TRequestedArray>(buf, len, async, fieldDescription, cancellationToken);
         }
 
         internal override object ReadAsObject(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)

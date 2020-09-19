@@ -592,7 +592,7 @@ namespace Npgsql
                     WriteSslRequest();
                     await Flush(async);
 
-                    await ReadBuffer.Ensure(1, async, cancellationToken: cancellationToken);
+                    await ReadBuffer.Ensure(1, async, cancellationToken);
                     var response = (char)ReadBuffer.ReadByte();
                     timeout.Check();
 
@@ -887,7 +887,7 @@ namespace Npgsql
                     {
                         commandsRead++;
 
-                        await ReadBuffer.Ensure(5, true, cancellationToken: default);
+                        await ReadBuffer.Ensure(5, true, default);
 
                         // We have a resultset for the command - hand back control to the command (which will
                         // return it to the user)
@@ -1060,7 +1060,7 @@ namespace Npgsql
                     {
                         try
                         {
-                            await ReadBuffer.Ensure(5, async, cancellationToken: cancellationToken);
+                            await ReadBuffer.Ensure(5, async, cancellationToken);
                             messageCode = (BackendMessageCode) ReadBuffer.ReadByte();
                             PGUtil.ValidateBackendMessageCode(messageCode);
                             len = ReadBuffer.ReadInt32() - 4; // Transmitted length includes itself
@@ -1071,7 +1071,7 @@ namespace Npgsql
                             {
                                 if (dataRowLoadingMode2 == DataRowLoadingMode.Skip)
                                 {
-                                    await ReadBuffer.Skip(len, async, cancellationToken: cancellationToken);
+                                    await ReadBuffer.Skip(len, async, cancellationToken);
                                     continue;
                                 }
                             }
@@ -1089,7 +1089,7 @@ namespace Npgsql
                                     ReadBuffer = oversizeBuffer;
                                 }
 
-                                await ReadBuffer.Ensure(len, async, cancellationToken: cancellationToken);
+                                await ReadBuffer.Ensure(len, async, cancellationToken);
                             }
 
                             var msg = ParseServerMessage(ReadBuffer, messageCode, len, isReadingPrependedMessage);
@@ -2063,7 +2063,7 @@ namespace Npgsql
                                     break;
                                 case BackendMessageCode.DataRow:
                                     // DataRow is usually consumed by a reader, here we have to skip it manually.
-                                    await ReadBuffer.Skip(((DataRowMessage) msg).Length, true, cancellationToken: cancellationToken);
+                                    await ReadBuffer.Skip(((DataRowMessage) msg).Length, true, cancellationToken);
                                     expectedMessageCode = BackendMessageCode.CompletedResponse;
                                     break;
                                 case BackendMessageCode.CompletedResponse:

@@ -85,7 +85,7 @@ namespace Npgsql.TypeHandling
                     : $"Can't cast database type {fieldDescription.Handler.PgDisplayName} to {typeof(TAny).Name}"
                 );
 
-            return asTypedHandler.Read(buf, len, async, fieldDescription, cancellationToken: cancellationToken);
+            return asTypedHandler.Read(buf, len, async, fieldDescription, cancellationToken);
         }
 
         /// <inheritdoc />

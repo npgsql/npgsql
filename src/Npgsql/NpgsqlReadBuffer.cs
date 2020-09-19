@@ -121,7 +121,7 @@ namespace Npgsql
         {
             if (count <= ReadBytesLeft)
                 return;
-            Ensure(count, false, cancellationToken: default).GetAwaiter().GetResult();
+            Ensure(count, false, default).GetAwaiter().GetResult();
         }
 
         /// <summary>
@@ -229,9 +229,9 @@ namespace Npgsql
             }
         }
 
-        internal void ReadMore() => ReadMore(false, cancellationToken: default).GetAwaiter().GetResult();
+        internal void ReadMore() => ReadMore(false, default).GetAwaiter().GetResult();
 
-        internal Task ReadMore(bool async, CancellationToken cancellationToken = default) => Ensure(ReadBytesLeft + 1, async, cancellationToken: cancellationToken);
+        internal Task ReadMore(bool async, CancellationToken cancellationToken = default) => Ensure(ReadBytesLeft + 1, async, cancellationToken);
 
         internal NpgsqlReadBuffer AllocateOversize(int count)
         {
@@ -267,11 +267,11 @@ namespace Npgsql
                 while (len > Size)
                 {
                     Clear();
-                    await Ensure(Size, async, cancellationToken: cancellationToken);
+                    await Ensure(Size, async, cancellationToken);
                     len -= Size;
                 }
                 Clear();
-                await Ensure((int) len, async, cancellationToken: cancellationToken);
+                await Ensure((int) len, async, cancellationToken);
             }
 
             ReadPosition += (int)len;

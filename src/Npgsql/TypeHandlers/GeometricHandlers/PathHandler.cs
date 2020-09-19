@@ -30,7 +30,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
         /// <inheritdoc />
         public override async ValueTask<NpgsqlPath> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
         {
-            await buf.Ensure(5, async, cancellationToken: cancellationToken);
+            await buf.Ensure(5, async, cancellationToken);
             var open = buf.ReadByte() switch
             {
                 1 => false,
@@ -42,7 +42,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
             var result = new NpgsqlPath(numPoints, open);
             for (var i = 0; i < numPoints; i++)
             {
-                await buf.Ensure(16, async, cancellationToken: cancellationToken);
+                await buf.Ensure(16, async, cancellationToken);
                 result.Add(new NpgsqlPoint(buf.ReadDouble(), buf.ReadDouble()));
             }
             return result;

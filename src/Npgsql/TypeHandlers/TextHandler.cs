@@ -90,7 +90,7 @@ namespace Npgsql.TypeHandlers
                 {
                     // The string's byte representation can fit in our read buffer, read it.
                     while (buf.ReadBytesLeft < byteLen)
-                        await buf.ReadMore(async, cancellationToken: cancellationToken);
+                        await buf.ReadMore(async, cancellationToken);
                     return buf.ReadString(byteLen);
                 }
 
@@ -109,7 +109,7 @@ namespace Npgsql.TypeHandlers
                     pos += len;
                     if (pos < byteLen)
                     {
-                        await buf.ReadMore(async, cancellationToken: cancellationToken);
+                        await buf.ReadMore(async, cancellationToken);
                         continue;
                     }
                     break;
@@ -124,7 +124,7 @@ namespace Npgsql.TypeHandlers
             {
                 // The string's byte representation can fit in our read buffer, read it.
                 while (buf.ReadBytesLeft < byteLen)
-                    await buf.ReadMore(async, cancellationToken: cancellationToken);
+                    await buf.ReadMore(async, cancellationToken);
                 return buf.ReadChars(byteLen);
             }
 
@@ -138,7 +138,7 @@ namespace Npgsql.TypeHandlers
                 pos += len;
                 if (pos < byteLen)
                 {
-                    await buf.ReadMore(async, cancellationToken: cancellationToken);
+                    await buf.ReadMore(async, cancellationToken);
                     continue;
                 }
                 break;
@@ -151,7 +151,7 @@ namespace Npgsql.TypeHandlers
             // Make sure we have enough bytes in the buffer for a single character
             var maxBytes = Math.Min(buf.TextEncoding.GetMaxByteCount(1), len);
             while (buf.ReadBytesLeft < maxBytes)
-                await buf.ReadMore(async, cancellationToken: cancellationToken);
+                await buf.ReadMore(async, cancellationToken);
 
             var decoder = buf.TextEncoding.GetDecoder();
             decoder.Convert(buf.Buffer, buf.ReadPosition, maxBytes, _singleCharArray, 0, 1, true, out var bytesUsed, out var charsUsed, out _);
@@ -182,7 +182,7 @@ namespace Npgsql.TypeHandlers
                 {
                     // The bytes can fit in our read buffer, read it.
                     while (buf.ReadBytesLeft < byteLen)
-                        await buf.ReadMore(async, cancellationToken: cancellationToken);
+                        await buf.ReadMore(async, cancellationToken);
                     buf.ReadBytes(bytes, 0, byteLen);
                     return bytes;
                 }
@@ -200,7 +200,7 @@ namespace Npgsql.TypeHandlers
                     pos += len;
                     if (pos < byteLen)
                     {
-                        await buf.ReadMore(async, cancellationToken: cancellationToken);
+                        await buf.ReadMore(async, cancellationToken);
                         continue;
                     }
                     break;

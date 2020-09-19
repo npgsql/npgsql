@@ -37,7 +37,7 @@ namespace Npgsql.TypeHandlers
                         : $"The field '{fieldDescription.Name}' has a type currently unknown to Npgsql (OID {fieldDescription.TypeOID}). You can retrieve it as a string by marking it as unknown, please see the FAQ."
                 );
 
-            return base.Read(buf, byteLen, async, fieldDescription, cancellationToken: cancellationToken);
+            return base.Read(buf, byteLen, async, fieldDescription, cancellationToken);
         }
 
         #endregion Read

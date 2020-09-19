@@ -78,7 +78,7 @@ namespace Npgsql.TypeHandlers
         /// </summary>
         protected async ValueTask<Array> ReadArray<TRequestedElement>(NpgsqlReadBuffer buf, bool async, int expectedDimensions = 0, CancellationToken cancellationToken = default)
         {
-            await buf.Ensure(12, async, cancellationToken: cancellationToken);
+            await buf.Ensure(12, async, cancellationToken);
             var dimensions = buf.ReadInt32();
             var containsNulls = buf.ReadInt32() == 1;
             buf.ReadUInt32(); // Element OID. Ignored.
@@ -94,7 +94,7 @@ namespace Npgsql.TypeHandlers
 
             if (dimensions == 1)
             {
-                await buf.Ensure(8, async, cancellationToken: cancellationToken);
+                await buf.Ensure(8, async, cancellationToken);
                 var arrayLength = buf.ReadInt32();
 
                 buf.ReadInt32(); // Lower bound
@@ -107,7 +107,7 @@ namespace Npgsql.TypeHandlers
             }
 
             var dimLengths = new int[dimensions];
-            await buf.Ensure(dimensions * 8, async, cancellationToken: cancellationToken);
+            await buf.Ensure(dimensions * 8, async, cancellationToken);
 
             for (var i = 0; i < dimensions; i++)
             {
@@ -147,7 +147,7 @@ namespace Npgsql.TypeHandlers
         /// </summary>
         protected async ValueTask<List<TRequestedElement>> ReadList<TRequestedElement>(NpgsqlReadBuffer buf, bool async, CancellationToken cancellationToken = default)
         {
-            await buf.Ensure(12, async, cancellationToken: cancellationToken);
+            await buf.Ensure(12, async, cancellationToken);
             var dimensions = buf.ReadInt32();
             var containsNulls = buf.ReadInt32() == 1;
             buf.ReadUInt32(); // Element OID. Ignored.
@@ -159,7 +159,7 @@ namespace Npgsql.TypeHandlers
             if (ElementTypeInfo<TRequestedElement>.IsNonNullable && containsNulls)
                 throw new InvalidOperationException(ReadNonNullableCollectionWithNullsExceptionMessage);
 
-            await buf.Ensure(8, async, cancellationToken: cancellationToken);
+            await buf.Ensure(8, async, cancellationToken);
             var length = buf.ReadInt32();
             buf.ReadInt32(); // We don't care about the lower bounds
 
@@ -494,12 +494,12 @@ namespace Npgsql.TypeHandlers
             if (ArrayTypeInfo<TRequestedArray>.ElementType == typeof(TElementPsv))
             {
                 if (ArrayTypeInfo<TRequestedArray>.IsArray)
-                    return (TRequestedArray)(object)await ReadArray<TElementPsv>(buf, async, typeof(TRequestedArray).GetArrayRank(), cancellationToken: cancellationToken);
+                    return (TRequestedArray)(object)await ReadArray<TElementPsv>(buf, async, typeof(TRequestedArray).GetArrayRank(), cancellationToken);
 
                 if (ArrayTypeInfo<TRequestedArray>.IsList)
-                    return (TRequestedArray)(object)await ReadList<TElementPsv>(buf, async, cancellationToken: cancellationToken);
+                    return (TRequestedArray)(object)await ReadList<TElementPsv>(buf, async, cancellationToken);
             }
-            return await base.Read<TRequestedArray>(buf, len, async, fieldDescription, cancellationToken: cancellationToken);
+            return await base.Read<TRequestedArray>(buf, len, async, fieldDescription, cancellationToken);
         }
 
         internal override object ReadPsvAsObject(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
