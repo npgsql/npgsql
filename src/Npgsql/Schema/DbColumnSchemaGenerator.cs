@@ -124,16 +124,13 @@ ORDER BY attnum";
                     async ? TransactionScopeAsyncFlowOption.Enabled : TransactionScopeAsyncFlowOption.Suppress);
                 using var connection = (NpgsqlConnection)((ICloneable)_connection).Clone();
 
-                if (async)
-                    await connection.OpenAsync(cancellationToken);
-                else
-                    connection.Open();
-
+                await connection.Open(async, cancellationToken);
+                
                 using var cmd = new NpgsqlCommand(query, connection);
                 using var reader = async ? await cmd.ExecuteReaderAsync(cancellationToken) : cmd.ExecuteReader();
                 while (async ? await reader.ReadAsync(cancellationToken): reader.Read())
                 {
-                    var column = await LoadColumnDefinition(reader, _connection.Connector!.TypeMapper.DatabaseInfo, oldQueryMode, async, cancellationToken);
+                    var column = LoadColumnDefinition(reader, _connection.Connector!.TypeMapper.DatabaseInfo, oldQueryMode);
                     for (var ordinal = 0; ordinal < fields.Count; ordinal++)
                     {
                         var field = fields[ordinal];
@@ -178,37 +175,38 @@ ORDER BY attnum";
             return result.AsReadOnly()!;
         }
 
-        async ValueTask<NpgsqlDbColumn> LoadColumnDefinition(NpgsqlDataReader reader, NpgsqlDatabaseInfo databaseInfo, bool oldQueryMode, bool async, CancellationToken cancellationToken = default)
+        NpgsqlDbColumn LoadColumnDefinition(NpgsqlDataReader reader, NpgsqlDatabaseInfo databaseInfo, bool oldQueryMode)
         {
             // We don't set ColumnName here. It should always contain the column alias rather than
             // the table column name (i.e. in case of "SELECT foo AS foo_alias"). It will be set later.
             var column = new NpgsqlDbColumn
             {
-                AllowDBNull = !await reader.GetFieldValue<bool>("attnotnull", async, cancellationToken),
+                AllowDBNull = !reader.GetBoolean(reader.GetOrdinal("attnotnull")),
                 BaseCatalogName = _connection.Database!,
-                BaseSchemaName = await reader.GetFieldValue<string>("nspname", async, cancellationToken),
+                BaseSchemaName = reader.GetString(reader.GetOrdinal("nspname")),
                 BaseServerName = _connection.Host!,
-                BaseTableName = await reader.GetFieldValue<string>("relname", async, cancellationToken),
-                BaseColumnName = await reader.GetFieldValue<string>("attname", async, cancellationToken),
-                ColumnAttributeNumber = await reader.GetFieldValue<short>("attnum", async, cancellationToken),
-                IsKey = await reader.GetFieldValue<bool>("isprimarykey", async, cancellationToken),
-                IsReadOnly = !await reader.GetFieldValue<bool>("is_updatable", async, cancellationToken),
-                IsUnique = await reader.GetFieldValue<bool>("isunique", async, cancellationToken),
+                BaseTableName = reader.GetString(reader.GetOrdinal("relname")),
+                BaseColumnName = reader.GetString(reader.GetOrdinal("attname")),
+                ColumnAttributeNumber = reader.GetInt16(reader.GetOrdinal("attnum")),
+                IsKey = reader.GetBoolean(reader.GetOrdinal("isprimarykey")),
+                IsReadOnly = !reader.GetBoolean(reader.GetOrdinal("is_updatable")),
+                IsUnique = reader.GetBoolean(reader.GetOrdinal("isunique")),
 
-                TableOID = await reader.GetFieldValue<uint>("attrelid", async, cancellationToken),
-                TypeOID = await reader.GetFieldValue<uint>("typoid", async, cancellationToken)
+                TableOID = reader.GetFieldValue<uint>(reader.GetOrdinal("attrelid")),
+                TypeOID = reader.GetFieldValue<uint>(reader.GetOrdinal("typoid"))
             };
 
             column.PostgresType = databaseInfo.ByOID[column.TypeOID];
             column.DataTypeName = column.PostgresType.DisplayName; // Facets do not get included
 
-            column.DefaultValue = await reader.IsDBNull("default", async, cancellationToken) ? null : await reader.GetFieldValue<string>("default", async, cancellationToken);
+            var defaultValueOrdinal = reader.GetOrdinal("default");
+            column.DefaultValue = reader.IsDBNull(defaultValueOrdinal) ? null : reader.GetString(defaultValueOrdinal);
 
             column.IsAutoIncrement =
-                !oldQueryMode && await reader.GetFieldValue<bool>("isidentity", async, cancellationToken) ||
+                !oldQueryMode && reader.GetBoolean(reader.GetOrdinal("isidentity")) ||
                 column.DefaultValue != null && column.DefaultValue.StartsWith("nextval(");
 
-            ColumnPostConfig(column, await reader.GetFieldValue<int>("typmod", async, cancellationToken));
+            ColumnPostConfig(column, reader.GetInt32(reader.GetOrdinal("typmod")));
 
             return column;
         }

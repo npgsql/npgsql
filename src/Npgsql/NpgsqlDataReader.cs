@@ -1501,11 +1501,6 @@ namespace Npgsql
             }
         }
 
-        internal Task<T> GetFieldValue<T>(string name, bool async, CancellationToken cancellationToken = default)
-            => async
-                ? GetFieldValueAsync<T>(GetOrdinal(name), cancellationToken)
-                : Task.FromResult(GetFieldValue<T>(GetOrdinal(name)));
-
         #endregion
 
         #region GetValue
@@ -1664,11 +1659,6 @@ namespace Npgsql
             }
         }
 
-        internal Task<bool> IsDBNull(string name, bool async, CancellationToken cancellationToken = default)
-            => async
-                ? IsDBNullAsync(GetOrdinal(name), cancellationToken)
-                : Task.FromResult(IsDBNull(GetOrdinal(name)));
-
         #endregion
 
         #region Other public accessors
@@ -1765,7 +1755,7 @@ namespace Npgsql
         /// </summary>
         /// <returns></returns>
         public ReadOnlyCollection<NpgsqlDbColumn> GetColumnSchema()
-            => GetColumnSchema(false).GetAwaiter().GetResult();
+            => GetColumnSchema(async: false).GetAwaiter().GetResult();
 
 #if !NET461
         ReadOnlyCollection<DbColumn> IDbColumnSchemaGenerator.GetColumnSchema()
@@ -1785,7 +1775,7 @@ namespace Npgsql
             if (cancellationToken.IsCancellationRequested)
                 return Task.FromCanceled<ReadOnlyCollection<NpgsqlDbColumn>>(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
-                return GetColumnSchema(true, cancellationToken).AsTask();
+                return GetColumnSchema(async: true, cancellationToken).AsTask();
         }
 
         ValueTask<ReadOnlyCollection<NpgsqlDbColumn>> GetColumnSchema(bool async, CancellationToken cancellationToken = default)
@@ -1801,20 +1791,8 @@ namespace Npgsql
         /// Returns a System.Data.DataTable that describes the column metadata of the DataReader.
         /// </summary>
         public override DataTable? GetSchemaTable()
-        {
-            if (FieldCount == 0) // No resultset
-                return null;
-
-            var table = GetEmptySchemaTable();
-
-            foreach (var column in GetColumnSchema())
-            {
-                AddColumnToSchemaTable(table, column);
-            }
-
-            return table;
-        }
-
+            => GetSchemaTable(async: false).GetAwaiter().GetResult();
+        
         /// <summary>
         /// Asynchronously returns a System.Data.DataTable that describes the column metadata of the DataReader.
         /// </summary>
@@ -1828,26 +1806,14 @@ namespace Npgsql
                 return Task.FromCanceled<DataTable?>(cancellationToken);
 
             using (NoSynchronizationContextScope.Enter())
-                return GetSchemaTable(cancellationToken);
+                return GetSchemaTable(async: true, cancellationToken);
         }
 
-        async Task<DataTable?> GetSchemaTable(CancellationToken cancellationToken = default)
+        async Task<DataTable?> GetSchemaTable(bool async, CancellationToken cancellationToken = default)
         {
             if (FieldCount == 0) // No resultset
                 return null;
 
-            var table = GetEmptySchemaTable();
-
-            foreach (var column in await GetColumnSchemaAsync(cancellationToken))
-            {
-                AddColumnToSchemaTable(table, column);
-            }
-
-            return table;
-        }
-
-        static DataTable GetEmptySchemaTable()
-        {
             var table = new DataTable("SchemaTable");
 
             // Note: column order is important to match SqlClient's, some ADO.NET users appear
@@ -1877,38 +1843,39 @@ namespace Npgsql
             table.Columns.Add("IsReadOnly", typeof(bool));
             table.Columns.Add("ProviderSpecificDataType", typeof(Type));
             table.Columns.Add("DataTypeName", typeof(string));
+
+            foreach (var column in await GetColumnSchema(async, cancellationToken))
+            {
+                var row = table.NewRow();
+
+                row["ColumnName"] = column.ColumnName;
+                row["ColumnOrdinal"] = column.ColumnOrdinal ?? -1;
+                row["ColumnSize"] = column.ColumnSize ?? -1;
+                row["NumericPrecision"] = column.NumericPrecision ?? 0;
+                row["NumericScale"] = column.NumericScale ?? 0;
+                row["IsUnique"] = column.IsUnique == true;
+                row["IsKey"] = column.IsKey == true;
+                row["BaseServerName"] = "";
+                row["BaseCatalogName"] = column.BaseCatalogName;
+                row["BaseColumnName"] = column.BaseColumnName;
+                row["BaseSchemaName"] = column.BaseSchemaName;
+                row["BaseTableName"] = column.BaseTableName;
+                row["DataType"] = column.DataType;
+                row["AllowDBNull"] = (object?)column.AllowDBNull ?? DBNull.Value;
+                row["ProviderType"] = column.NpgsqlDbType ?? NpgsqlDbType.Unknown;
+                row["IsAliased"] = column.IsAliased == true;
+                row["IsExpression"] = column.IsExpression == true;
+                row["IsIdentity"] = column.IsIdentity == true;
+                row["IsAutoIncrement"] = column.IsAutoIncrement == true;
+                row["IsRowVersion"] = false;
+                row["IsHidden"] = column.IsHidden == true;
+                row["IsLong"] = column.IsLong == true;
+                row["DataTypeName"] = column.DataTypeName;
+
+                table.Rows.Add(row);
+            }
+
             return table;
-        }
-
-        static void AddColumnToSchemaTable(DataTable table, NpgsqlDbColumn column)
-        {
-            var row = table.NewRow();
-
-            row["ColumnName"] = column.ColumnName;
-            row["ColumnOrdinal"] = column.ColumnOrdinal ?? -1;
-            row["ColumnSize"] = column.ColumnSize ?? -1;
-            row["NumericPrecision"] = column.NumericPrecision ?? 0;
-            row["NumericScale"] = column.NumericScale ?? 0;
-            row["IsUnique"] = column.IsUnique == true;
-            row["IsKey"] = column.IsKey == true;
-            row["BaseServerName"] = "";
-            row["BaseCatalogName"] = column.BaseCatalogName;
-            row["BaseColumnName"] = column.BaseColumnName;
-            row["BaseSchemaName"] = column.BaseSchemaName;
-            row["BaseTableName"] = column.BaseTableName;
-            row["DataType"] = column.DataType;
-            row["AllowDBNull"] = (object?)column.AllowDBNull ?? DBNull.Value;
-            row["ProviderType"] = column.NpgsqlDbType ?? NpgsqlDbType.Unknown;
-            row["IsAliased"] = column.IsAliased == true;
-            row["IsExpression"] = column.IsExpression == true;
-            row["IsIdentity"] = column.IsIdentity == true;
-            row["IsAutoIncrement"] = column.IsAutoIncrement == true;
-            row["IsRowVersion"] = false;
-            row["IsHidden"] = column.IsHidden == true;
-            row["IsLong"] = column.IsLong == true;
-            row["DataTypeName"] = column.DataTypeName;
-
-            table.Rows.Add(row);
         }
 
         #endregion Schema metadata table

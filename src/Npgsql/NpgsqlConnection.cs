@@ -202,7 +202,7 @@ namespace Npgsql
             _pool = PoolManager.GetOrAdd(_connectionString, _pool);
         }
 
-        Task Open(bool async, CancellationToken cancellationToken)
+        internal Task Open(bool async, CancellationToken cancellationToken)
         {
             CheckClosed();
             Debug.Assert(Connector == null);
@@ -1612,7 +1612,7 @@ namespace Npgsql
                 return Task.FromCanceled<DataTable>(cancellationToken);
 
             using (NoSynchronizationContextScope.Enter())
-                return NpgsqlSchema.GetSchemaAsync(this, collectionName, null, async: true, cancellationToken).AsTask();
+                return NpgsqlSchema.GetSchemaAsync(this, collectionName, null, async: true, cancellationToken);
         }
 
         /// <summary>
@@ -1630,7 +1630,7 @@ namespace Npgsql
 #else
         public Task<DataTable> GetSchemaAsync(string collectionName, string?[] restrictions, CancellationToken cancellationToken = default)
 #endif
-            => NpgsqlSchema.GetSchemaAsync(this, collectionName, restrictions, async: true, cancellationToken).AsTask();
+            => NpgsqlSchema.GetSchemaAsync(this, collectionName, restrictions, async: true, cancellationToken);
 
         #endregion Schema operations
 

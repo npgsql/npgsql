@@ -11,9 +11,7 @@ namespace Npgsql.Tests
     /// This tests the .NET Framework DbDataReader schema/metadata API, which returns DataTable.
     /// For the new CoreCLR API, see <see cref="ReaderNewSchemaTests"/>.
     /// </summary>
-    [TestFixture(false)] // Sync
-    [TestFixture(true)] // Async
-    public class ReaderOldSchemaTests : TestBase
+    public class ReaderOldSchemaTests : SyncOrAsyncTestBase
     {
         [Test]
         public async Task PrimaryKeyFieldsMetadataSupport()
@@ -32,7 +30,7 @@ CREATE TABLE {table} (
             using var command = new NpgsqlCommand($"SELECT * FROM {table}", conn);
             using var dr = command.ExecuteReader(CommandBehavior.KeyInfo);
             dr.Read();
-            var dataTable = async ? await dr.GetSchemaTableAsync() : dr.GetSchemaTable();
+            var dataTable = await GetSchemaTable(dr);
 #pragma warning disable 8602 // Warning should be removable after rc2 (https://github.com/dotnet/runtime/pull/42215)
             DataRow[] keyColumns =
                 dataTable!.Rows.Cast<DataRow>().Where(r => (bool)r["IsKey"]).ToArray()!;
@@ -51,7 +49,7 @@ CREATE TABLE {table} (
             using var command = new NpgsqlCommand($"SELECT * FROM {table}", conn);
             using var dr = command.ExecuteReader(CommandBehavior.KeyInfo);
             dr.Read();
-            var metadata = async ? await dr.GetSchemaTableAsync() : dr.GetSchemaTable();
+            var metadata = await GetSchemaTable(dr);
 #pragma warning disable 8602 // Warning should be removable after rc2 (https://github.com/dotnet/runtime/pull/42215)
             var key = metadata!.Rows.Cast<DataRow>().Single(r => (bool)r["IsKey"])!;
 #pragma warning restore 8602
@@ -67,9 +65,9 @@ CREATE TABLE {table} (
             var command = new NpgsqlCommand($"SELECT * FROM {table}", conn);
 
             using var dr = command.ExecuteReader(CommandBehavior.KeyInfo);
-            var metadata = async ? await dr.GetSchemaTableAsync()! : dr.GetSchemaTable()!;
+            var metadata = await GetSchemaTable(dr);
 #pragma warning disable 8602 // Warning should be removable after rc2 (https://github.com/dotnet/runtime/pull/42215)
-            Assert.That(metadata.Rows.Cast<DataRow>()
+            Assert.That(metadata!.Rows.Cast<DataRow>()
                 .Where(r => ((string)r["ColumnName"]).Contains("serial"))
                 .All(r => (bool)r["IsAutoIncrement"]));
 #pragma warning restore 8602
@@ -89,7 +87,7 @@ CREATE OR REPLACE VIEW {view} (id, int2) AS SELECT id, int2 + int2 AS int2 FROM 
             var command = new NpgsqlCommand($"SELECT * FROM {view}", conn);
 
             using var dr = command.ExecuteReader();
-            var metadata = async ? await dr.GetSchemaTableAsync() : dr.GetSchemaTable();
+            var metadata = await GetSchemaTable(dr);
 
             foreach (var r in metadata!.Rows.OfType<DataRow>())
             {
@@ -123,7 +121,7 @@ CREATE OR REPLACE VIEW {view} (id, int2) AS SELECT id, int2 + int2 AS int2 FROM 
 
             using var cmd = new NpgsqlCommand($"SELECT * FROM {table}", conn);
             using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo);
-            using var metadata = async ? await reader.GetSchemaTableAsync() : reader.GetSchemaTable();
+            using var metadata = await GetSchemaTable(reader);
             foreach (var row in metadata!.Rows.OfType<DataRow>())
             {
                 var isNullable = (bool)row["AllowDBNull"];
@@ -147,7 +145,7 @@ CREATE OR REPLACE VIEW {view} (id, int2) AS SELECT id, int2 + int2 AS int2 FROM 
             using var reader = await cmd.ExecuteReaderAsync();
             reader.NextResult();
             // We're no longer on a result
-            var table = async ? await reader.GetSchemaTableAsync() : reader.GetSchemaTable();
+            var table = await GetSchemaTable(reader);
             Assert.That(table, Is.Null);
         }
 
@@ -157,7 +155,7 @@ CREATE OR REPLACE VIEW {view} (id, int2) AS SELECT id, int2 + int2 AS int2 FROM 
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT 1::NUMERIC AS result", conn);
             using var reader = await cmd.ExecuteReaderAsync();
-            var schemaTable = async ? await reader.GetSchemaTableAsync() : reader.GetSchemaTable();
+            var schemaTable = await GetSchemaTable(reader);
             foreach (var myField in schemaTable!.Rows.OfType<DataRow>())
             {
                 Assert.That(myField["NumericScale"], Is.EqualTo(0));
@@ -185,11 +183,11 @@ SELECT 1 AS some_other_column, 2";
             using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SchemaOnly))
             {
                 Assert.That(reader.Read(), Is.False);
-                var t = async ? await reader.GetSchemaTableAsync() : reader.GetSchemaTable();
+                var t = await GetSchemaTable(reader);
                 Assert.That(t!.Rows[0]["ColumnName"], Is.EqualTo("some_column"));
                 Assert.That(reader.NextResult(), Is.True);
                 Assert.That(reader.Read(), Is.False);
-                t = async ? await reader.GetSchemaTableAsync() : reader.GetSchemaTable();
+                t = await GetSchemaTable(reader);
                 Assert.That(t!.Rows[0]["ColumnName"], Is.EqualTo("some_other_column"));
                 Assert.That(t.Rows[1]["ColumnName"], Is.EqualTo("?column?"));
                 Assert.That(reader.NextResult(), Is.False);
@@ -217,7 +215,7 @@ SELECT 1 AS some_other_column, 2";
             var cmd = new NpgsqlCommand("SELECT Cod as CodAlias, Descr as DescrAlias, Date FROM data", conn);
 
             using var dr = cmd.ExecuteReader(CommandBehavior.SchemaOnly | CommandBehavior.KeyInfo);
-            var dt = async ? await dr.GetSchemaTableAsync() : dr.GetSchemaTable();
+            var dt = await GetSchemaTable(dr);
 
             Assert.That(dt!.Rows[0]["BaseColumnName"].ToString(), Is.EqualTo("cod"));
             Assert.That(dt.Rows[0]["ColumnName"].ToString(), Is.EqualTo("codalias"));
@@ -227,8 +225,9 @@ SELECT 1 AS some_other_column, 2";
             Assert.That(dt.Rows[2]["ColumnName"].ToString(), Is.EqualTo("date"));
         }
 
-        readonly bool async;
-        public ReaderOldSchemaTests(bool async)
-            => this.async = async;
+        public ReaderOldSchemaTests(ExecutionMode executionMode) : base(executionMode) { }
+
+        private async Task<DataTable?> GetSchemaTable(NpgsqlDataReader dr) => IsAsync ? await dr.GetSchemaTableAsync() : dr.GetSchemaTable();
+
     }
 }

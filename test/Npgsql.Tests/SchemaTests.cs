@@ -11,17 +11,13 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests
 {
-    [TestFixture(false)] // Sync
-    [TestFixture(true)] // Async
-    public class SchemaTests : TestBase
+    public class SchemaTests : SyncOrAsyncTestBase
     {
         [Test]
         public async Task MetaDataCollectionNames()
         {
             using var conn = OpenConnection();
-            var metaDataCollections = async
-                ? await conn.GetSchemaAsync(DbMetaDataCollectionNames.MetaDataCollections)
-                : conn.GetSchema(DbMetaDataCollectionNames.MetaDataCollections);
+            var metaDataCollections = await GetSchema(conn, DbMetaDataCollectionNames.MetaDataCollections);
             Assert.That(metaDataCollections.Rows, Has.Count.GreaterThan(0));
             foreach (var row in metaDataCollections.Rows.OfType<DataRow>())
             {
@@ -34,16 +30,12 @@ namespace Npgsql.Tests
         public async Task NoParameter()
         {
             using var conn = OpenConnection();
-            var dataTable1 = async
-                ? await conn.GetSchemaAsync()
-                : conn.GetSchema();
+            var dataTable1 = await GetSchema(conn);
             var collections1 = dataTable1.Rows
                 .Cast<DataRow>()
                 .Select(r => (string)r["CollectionName"])
                 .ToList();
-            var dataTable2 = async
-                ? await conn.GetSchemaAsync(DbMetaDataCollectionNames.MetaDataCollections)
-                : conn.GetSchema(DbMetaDataCollectionNames.MetaDataCollections);
+            var dataTable2 = await GetSchema(conn, DbMetaDataCollectionNames.MetaDataCollections);
             var collections2 = dataTable2.Rows
                 .Cast<DataRow>()
                 .Select(r => (string)r["CollectionName"])
@@ -55,57 +47,43 @@ namespace Npgsql.Tests
         public async Task CaseInsensitiveCollectionName()
         {
             using var conn = OpenConnection();
-            var dataTable1 = async
-                ? await conn.GetSchemaAsync(DbMetaDataCollectionNames.MetaDataCollections)
-                : conn.GetSchema(DbMetaDataCollectionNames.MetaDataCollections);
+            var dataTable1 = await GetSchema(conn, DbMetaDataCollectionNames.MetaDataCollections);
             var collections1 = dataTable1.Rows
                 .Cast<DataRow>()
                 .Select(r => (string)r["CollectionName"])
                 .ToList();
 
-            var dataTable2 = async
-                ? await conn.GetSchemaAsync("METADATACOLLECTIONS")
-                : conn.GetSchema("METADATACOLLECTIONS");
+            var dataTable2 = await GetSchema(conn, "METADATACOLLECTIONS");
             var collections2 = dataTable2.Rows
                 .Cast<DataRow>()
                 .Select(r => (string)r["CollectionName"])
                 .ToList();
 
-            var dataTable3 = async
-                ? await conn.GetSchemaAsync("metadatacollections")
-                : conn.GetSchema("metadatacollections");
+            var dataTable3 = await GetSchema(conn, "metadatacollections");
             var collections3 = dataTable3.Rows
                 .Cast<DataRow>()
                 .Select(r => (string)r["CollectionName"])
                 .ToList();
 
-            var dataTable4 = async
-                ? await conn.GetSchemaAsync("MetaDataCollections")
-                : conn.GetSchema("MetaDataCollections");
+            var dataTable4 = await GetSchema(conn, "MetaDataCollections");
             var collections4 = dataTable4.Rows
                 .Cast<DataRow>()
                 .Select(r => (string)r["CollectionName"])
                 .ToList();
 
-            var dataTable5 = async
-                ? await conn.GetSchemaAsync("METADATACOLLECTIONS", null!)
-                : conn.GetSchema("METADATACOLLECTIONS", null!);
+            var dataTable5 = await GetSchema(conn, "METADATACOLLECTIONS", null!);
             var collections5 = dataTable5.Rows
                 .Cast<DataRow>()
                 .Select(r => (string)r["CollectionName"])
                 .ToList();
 
-            var dataTable6 = async
-                ? await conn.GetSchemaAsync("metadatacollections", null!)
-                : conn.GetSchema("metadatacollections", null!);
+            var dataTable6 = await GetSchema(conn, "metadatacollections", null!);
             var collections6 = dataTable6.Rows
                 .Cast<DataRow>()
                 .Select(r => (string)r["CollectionName"])
                 .ToList();
 
-            var dataTable7 = async
-                ? await conn.GetSchemaAsync("MetaDataCollections", null!)
-                : conn.GetSchema("MetaDataCollections", null!);
+            var dataTable7 = await GetSchema(conn, "MetaDataCollections", null!);
             var collections7 = dataTable7.Rows
                 .Cast<DataRow>()
                 .Select(r => (string)r["CollectionName"])
@@ -123,18 +101,14 @@ namespace Npgsql.Tests
         public async Task DataSourceInformation()
         {
             using var conn = OpenConnection();
-            var dataTable = async
-                ? await conn.GetSchemaAsync(DbMetaDataCollectionNames.MetaDataCollections)
-                : conn.GetSchema(DbMetaDataCollectionNames.MetaDataCollections);
+            var dataTable = await GetSchema(conn, DbMetaDataCollectionNames.MetaDataCollections);
             var metadata = dataTable.Rows
                 .Cast<DataRow>()
                 .Single(r => r["CollectionName"].Equals("DataSourceInformation"));
             Assert.That(metadata["NumberOfRestrictions"], Is.Zero);
             Assert.That(metadata["NumberOfIdentifierParts"], Is.Zero);
 
-            var dataSourceInfo = async
-                ? await conn.GetSchemaAsync(DbMetaDataCollectionNames.DataSourceInformation)
-                : conn.GetSchema(DbMetaDataCollectionNames.DataSourceInformation);
+            var dataSourceInfo = await GetSchema(conn, DbMetaDataCollectionNames.DataSourceInformation);
             var row = dataSourceInfo.Rows.Cast<DataRow>().Single();
 
             Assert.That(row["DataSourceProductName"], Is.EqualTo("Npgsql"));
@@ -160,18 +134,14 @@ namespace Npgsql.Tests
             conn.TypeMapper.MapEnum<TestEnum>();
             conn.TypeMapper.MapComposite<TestComposite>();
 
-            var dataTable = async
-                ? await conn.GetSchemaAsync(DbMetaDataCollectionNames.MetaDataCollections)
-                : conn.GetSchema(DbMetaDataCollectionNames.MetaDataCollections);
+            var dataTable = await GetSchema(conn, DbMetaDataCollectionNames.MetaDataCollections);
             var metadata = dataTable.Rows
                 .Cast<DataRow>()
                 .Single(r => r["CollectionName"].Equals("DataTypes"));
             Assert.That(metadata["NumberOfRestrictions"], Is.Zero);
             Assert.That(metadata["NumberOfIdentifierParts"], Is.Zero);
 
-            var dataTypes = async
-                ? await conn.GetSchemaAsync(DbMetaDataCollectionNames.DataTypes)
-                : conn.GetSchema(DbMetaDataCollectionNames.DataTypes);
+            var dataTypes = await GetSchema(conn, DbMetaDataCollectionNames.DataTypes);
 
             var intRow = dataTypes.Rows.Cast<DataRow>().Single(r => r["TypeName"].Equals("integer"));
             Assert.That(intRow["DataType"], Is.EqualTo("System.Int32"));
@@ -230,9 +200,7 @@ namespace Npgsql.Tests
         public async Task Restrictions()
         {
             using var conn = OpenConnection();
-            var restrictions = async
-                ? await conn.GetSchemaAsync(DbMetaDataCollectionNames.Restrictions)
-                : conn.GetSchema(DbMetaDataCollectionNames.Restrictions);
+            var restrictions = await GetSchema(conn, DbMetaDataCollectionNames.Restrictions);
             Assert.That(restrictions.Rows, Has.Count.GreaterThan(0));
         }
 
@@ -240,9 +208,7 @@ namespace Npgsql.Tests
         public async Task ReservedWords()
         {
             using var conn = OpenConnection();
-            var reservedWords = async
-                ? await conn.GetSchemaAsync(DbMetaDataCollectionNames.ReservedWords)
-                : conn.GetSchema(DbMetaDataCollectionNames.ReservedWords);
+            var reservedWords = await GetSchema(conn, DbMetaDataCollectionNames.ReservedWords);
             Assert.That(reservedWords.Rows, Has.Count.GreaterThan(0));
         }
 
@@ -250,9 +216,7 @@ namespace Npgsql.Tests
         public async Task ForeignKeys()
         {
             using var conn = OpenConnection();
-            var dt = async
-                ? await conn.GetSchemaAsync("ForeignKeys")
-                : conn.GetSchema("ForeignKeys");
+            var dt = await GetSchema(conn, "ForeignKeys");
             Assert.IsNotNull(dt);
         }
 
@@ -260,9 +224,7 @@ namespace Npgsql.Tests
         public async Task ParameterMarkerFormats()
         {
             using var conn = OpenConnection();
-            var dt = async
-                ? await conn.GetSchemaAsync("DataSourceInformation")
-                : conn.GetSchema("DataSourceInformation");
+            var dt = await GetSchema(conn, "DataSourceInformation");
             var parameterMarkerFormat = (string)dt.Rows[0]["ParameterMarkerFormat"];
 
             conn.ExecuteNonQuery("CREATE TEMP TABLE data (int INTEGER)");
@@ -282,9 +244,7 @@ namespace Npgsql.Tests
         {
             using var conn = OpenConnection();
             conn.ExecuteNonQuery(@"CREATE TEMP TABLE data (explicit_both NUMERIC(10,2), explicit_precision NUMERIC(10), implicit_both NUMERIC, integer INTEGER, text TEXT)");
-            var dataTable = async
-                ? await conn.GetSchemaAsync("Columns")
-                : conn.GetSchema("Columns");
+            var dataTable = await GetSchema(conn, "Columns");
             var rows = dataTable.Rows.Cast<DataRow>().ToList();
 
             var explicitBoth = rows.Single(r => (string)r["column_name"] == "explicit_both");
@@ -314,9 +274,7 @@ namespace Npgsql.Tests
         {
             using (var conn = OpenConnection())
             {
-                var dataTable = async
-                    ? await conn.GetSchemaAsync("Tables")
-                    : conn.GetSchema("Tables");
+                var dataTable = await GetSchema(conn, "Tables");
                 var tables = dataTable.Rows
                     .Cast<DataRow>()
                     .Select(r => (string)r["TABLE_NAME"])
@@ -327,9 +285,7 @@ namespace Npgsql.Tests
 
             using (var conn = OpenConnection())
             {
-                var dataTable = async
-                    ? await conn.GetSchemaAsync("Views")
-                    : conn.GetSchema("Views");
+                var dataTable = await GetSchema(conn, "Views");
                 var views = dataTable.Rows
                     .Cast<DataRow>()
                     .Select(r => (string)r["TABLE_NAME"])
@@ -351,9 +307,7 @@ namespace Npgsql.Tests
                 try
                 {
                     string[] restrictions = { null!, null!, "data" };
-                    var dt = async
-                        ? await conn.GetSchemaAsync("Tables", restrictions)
-                        : conn.GetSchema("Tables", restrictions);
+                    var dt = await GetSchema(conn, "Tables", restrictions);
                     foreach (var row in dt.Rows.OfType<DataRow>())
                     {
                         Assert.That(row["table_name"], Is.EqualTo("data"));
@@ -373,9 +327,7 @@ namespace Npgsql.Tests
                 try
                 {
                     string[] restrictions = { null!, null!, "view" };
-                    var dt = async
-                        ? await conn.GetSchemaAsync("Views", restrictions)
-                        : conn.GetSchema("Views", restrictions);
+                    var dt = await GetSchema(conn, "Views", restrictions);
                     foreach (var row in dt.Rows.OfType<DataRow>())
                     {
                         Assert.That(row["table_name"], Is.EqualTo("view"));
@@ -399,9 +351,7 @@ DROP TABLE IF EXISTS data;
 CREATE TABLE data (id INT, f1 INT);
 ALTER TABLE data ADD PRIMARY KEY (id);");
                 string[] restrictions = { null!, null!, "data" };
-                var dataTable = async
-                    ? await conn.GetSchemaAsync("CONSTRAINTCOLUMNS", restrictions)
-                    : conn.GetSchema("CONSTRAINTCOLUMNS", restrictions);
+                var dataTable = await GetSchema(conn, "CONSTRAINTCOLUMNS", restrictions);
                 var column = dataTable.Rows.Cast<DataRow>().Single();
 
                 Assert.That(column["table_schema"], Is.EqualTo("public"));
@@ -426,9 +376,7 @@ DROP TABLE IF EXISTS data;
 CREATE TABLE data (id1 INT, id2 INT, f1 INT);
 ALTER TABLE data ADD PRIMARY KEY (id1, id2);");
                 string[] restrictions = { null!, null!, "data" };
-                var dataTable = async
-                    ? await conn.GetSchemaAsync("CONSTRAINTCOLUMNS", restrictions)
-                    : conn.GetSchema("CONSTRAINTCOLUMNS", restrictions);
+                var dataTable = await GetSchema(conn, "CONSTRAINTCOLUMNS", restrictions);
                 var columns = dataTable.Rows.Cast<DataRow>()
                     .OrderBy(r => r["ordinal_number"]).ToList();
 
@@ -456,9 +404,7 @@ DROP TABLE IF EXISTS data;
 CREATE TABLE data (f1 INT, f2 INT);
 ALTER TABLE data ADD UNIQUE (f1, f2);");
                 string[] restrictions = { null!, null!, "data" };
-                var dataTable = async
-                    ? await conn.GetSchemaAsync("CONSTRAINTCOLUMNS", restrictions)
-                    : conn.GetSchema("CONSTRAINTCOLUMNS", restrictions);
+                var dataTable = await GetSchema(conn, "CONSTRAINTCOLUMNS", restrictions);
                 var rows = dataTable.Rows.Cast<DataRow>().ToList();
             }
             finally
@@ -481,9 +427,7 @@ CREATE UNIQUE INDEX idx_unique ON data (f1, f2);
                 var database = conn.ExecuteScalar("SELECT current_database()");
 
                 string[] restrictions = { null!, null!, "data" };
-                var dataTable = async
-                    ? await conn.GetSchemaAsync("INDEXES", restrictions)
-                    : conn.GetSchema("INDEXES", restrictions);
+                var dataTable = await GetSchema(conn, "INDEXES", restrictions);
                 var index = dataTable.Rows.Cast<DataRow>().Single();
 
                 Assert.That(index["table_schema"], Is.EqualTo("public"));
@@ -492,7 +436,8 @@ CREATE UNIQUE INDEX idx_unique ON data (f1, f2);
                 Assert.That(index["type_desc"], Is.EqualTo(""));
 
                 string[] indexColumnRestrictions = { null!, null!, "data" };
-                var columns = conn.GetSchema("INDEXCOLUMNS", indexColumnRestrictions).Rows.Cast<DataRow>().ToList();
+                var dataTable2 = await GetSchema(conn, "INDEXCOLUMNS", indexColumnRestrictions);
+                var columns = dataTable2.Rows.Cast<DataRow>().ToList();
 
                 Assert.That(columns.All(r => r["constraint_catalog"].Equals(database)));
                 Assert.That(columns.All(r => r["constraint_schema"].Equals("public")));
@@ -575,12 +520,10 @@ CREATE TABLE types_table
                 var database = conn.ExecuteScalar("SELECT current_database()");
 
                 string[] restrictions = { "npgsql_tests", "public", "types_table", null! };
-                var columnsSchema = async ? await conn.GetSchemaAsync("Columns", restrictions) : conn.GetSchema("Columns", restrictions);
+                var columnsSchema = await GetSchema(conn, "Columns", restrictions);
                 var columns = columnsSchema.Rows.Cast<DataRow>().ToList();
 
-                var dataTypes = async
-                    ? await conn.GetSchemaAsync(DbMetaDataCollectionNames.DataTypes)
-                    : conn.GetSchema(DbMetaDataCollectionNames.DataTypes);
+                var dataTypes = await GetSchema(conn, DbMetaDataCollectionNames.DataTypes);
 
                 columns.ForEach(col => Assert.That(dataTypes.Rows.Cast<DataRow>().Any(row => row["TypeName"].Equals(col["data_type"])), Is.True));
             }
@@ -590,8 +533,15 @@ CREATE TABLE types_table
             }
         }
 
-        readonly bool async;
-        public SchemaTests(bool async)
-            => this.async = async;
+        public SchemaTests(ExecutionMode executionMode) : base(executionMode) { }
+
+        private async Task<DataTable> GetSchema(NpgsqlConnection conn)
+            => IsAsync ? await conn.GetSchemaAsync() : conn.GetSchema();
+
+        private async Task<DataTable> GetSchema(NpgsqlConnection conn, string collectionName)
+            => IsAsync ? await conn.GetSchemaAsync(collectionName) : conn.GetSchema(collectionName);
+
+        private async Task<DataTable> GetSchema(NpgsqlConnection conn, string collectionName, string?[] restrictions)
+            => IsAsync ? await conn.GetSchemaAsync(collectionName, restrictions) : conn.GetSchema(collectionName, restrictions);
     }
 }
