@@ -1377,7 +1377,7 @@ namespace Npgsql
                 return (Task<T>)(object)(GetStreamAsync(ordinal, cancellationToken));
 
             if (typeof(T) == typeof(TextReader))
-                return (Task<T>)(object)(GetStreamAsync(ordinal, cancellationToken));
+                return (Task<T>)(object)(GetTextReaderAsync(ordinal, cancellationToken));
 
             // In non-sequential, we know that the column is already buffered - no I/O will take place
             if (!_isSequential)
