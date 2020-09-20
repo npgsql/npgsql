@@ -373,7 +373,9 @@ namespace Npgsql.Tests
             }.ToString();
             using (var conn = new NpgsqlConnection(connString))
             {
-                Assert.That(async () => await conn.OpenAsync(), Throws.Exception.TypeOf<TimeoutException>());
+                Assert.That(async () => await conn.OpenAsync(), Throws.Exception
+                    .TypeOf<NpgsqlException>()
+                    .With.InnerException.TypeOf<TimeoutException>());
                 Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
             }
         }

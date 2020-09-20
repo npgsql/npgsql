@@ -456,7 +456,7 @@ namespace Npgsql
                     // It is intentionally not awaited and will run as long as the connector is alive.
                     // The CommandsInFlightWriter channel is completed in Cleanup, which should cause this task
                     // to complete.
-                    _ = Task.Run(MultiplexingReadLoop)
+                    _ = Task.Run(MultiplexingReadLoop, CancellationToken.None)
                         .ContinueWith(t =>
                         {
                             // Note that we *must* observe the exception if the task is faulted.
@@ -755,7 +755,7 @@ namespace Npgsql
             }
             else
             {
-                // Note that there aren't any timeoutable or cancellable DNS methods
+                // Note that there aren't any timeout-able or cancellable DNS methods
                 endpoints = (await Dns.GetHostAddressesAsync(Host).WithCancellation(cancellationToken))
                     .Select(a => new IPEndPoint(a, Port)).ToArray();
             }
@@ -778,10 +778,30 @@ namespace Npgsql
                 Log.Trace($"Attempting to connect to {endpoint}");
                 var protocolType = endpoint.AddressFamily == AddressFamily.InterNetwork ? ProtocolType.Tcp : ProtocolType.IP;
                 var socket = new Socket(endpoint.AddressFamily, SocketType.Stream, protocolType);
+                CancellationTokenSource? combinedCts = null;
+                CancellationTokenSource? timeoutCts = null;
                 try
                 {
+                    // .NET 5.0 added cancellation support to ConnectAsync, which allows us to implement real
+                    // cancellation and timeout. On older TFMs, we fake-cancel the operation, i.e. stop waiting
+                    // and raise the exception, but the actual connection task is left running.
+
+// TODO: NET5_0 is here because of https://github.com/dotnet/sdk/issues/13377, remove for 5.0.0-rc2
+#if (NET461 || NETSTANDARD2_0 || NETSTANDARD2_1 || NETCOREAPP3_1) && !NET5_0
                     await socket.ConnectAsync(endpoint)
                         .WithCancellationAndTimeout(perIpTimeout, cancellationToken);
+#else
+                    var finalCt = cancellationToken;
+
+                    if (perIpTimeout.IsSet)
+                    {
+                        timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                        timeoutCts.CancelAfter(perIpTimeout.TimeLeft.Milliseconds);
+                        finalCt = timeoutCts.Token;
+                    }
+
+                    await socket.ConnectAsync(endpoint, finalCt);
+#endif
 
                     SetSocketOptions(socket);
                     _socket = socket;
@@ -789,7 +809,10 @@ namespace Npgsql
                 }
                 catch (Exception e)
                 {
-                    try { socket.Dispose(); }
+                    try
+                    {
+                        socket.Dispose();
+                    }
                     catch
                     {
                         // ignored
@@ -806,6 +829,11 @@ namespace Npgsql
                     {
                         throw new NpgsqlException("Exception while connecting", e);
                     }
+                }
+                finally
+                {
+                    timeoutCts?.Dispose();
+                    combinedCts?.Dispose();
                 }
             }
         }
@@ -2028,8 +2056,8 @@ namespace Npgsql
                     while (true)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
-                        // Intentional, as this method would be rewritten
-                        var msg = await ReadMessageWithNotifications(true);
+                        // TODO: Fully implement cancellation
+                        var msg = await ReadMessageWithNotifications(true, CancellationToken.None);
                         if (!keepaliveSent)
                         {
                             if (msg != null)
@@ -2042,7 +2070,7 @@ namespace Npgsql
 
                         // A keepalive was sent. Consume the response (RowDescription, CommandComplete,
                         // ReadyForQuery) while also keeping track if an async message was received in between.
-                        keepaliveLock.Wait();
+                        await keepaliveLock.WaitAsync(CancellationToken.None);
                         try
                         {
                             var receivedNotification = false;
@@ -2053,7 +2081,7 @@ namespace Npgsql
                                 while (msg == null)
                                 {
                                     receivedNotification = true;
-                                    // Intentional, as this method would be rewritten
+                                    // TODO: Fully implement cancellation
                                     msg = await ReadMessage(true, CancellationToken.None);
                                 }
 
@@ -2067,9 +2095,9 @@ namespace Npgsql
                                     expectedMessageCode = BackendMessageCode.DataRow;
                                     break;
                                 case BackendMessageCode.DataRow:
-                                    // Intentional, as this method would be rewritten
+                                    // TODO: Fully implement cancellation
                                     // DataRow is usually consumed by a reader, here we have to skip it manually.
-                                    await ReadBuffer.Skip(((DataRowMessage)msg).Length, true);
+                                    await ReadBuffer.Skip(((DataRowMessage)msg).Length, true, CancellationToken.None);
                                     expectedMessageCode = BackendMessageCode.CompletedResponse;
                                     break;
                                 case BackendMessageCode.CompletedResponse:
