@@ -1172,11 +1172,8 @@ namespace Npgsql
                 return GetStream(ordinal, true, cancellationToken).AsTask();
         }
 
-        ValueTask<Stream> GetStream(int ordinal, bool async, CancellationToken cancellationToken = default)
-        {
-            var field = CheckRowAndGetField(ordinal);
-            return GetStreamInternal(field, ordinal, async, cancellationToken);
-        }
+        ValueTask<Stream> GetStream(int ordinal, bool async, CancellationToken cancellationToken = default) =>
+            GetStreamInternal(CheckRowAndGetField(ordinal), ordinal, async, cancellationToken);
 
         ValueTask<Stream> GetStreamInternal(FieldDescription field, int ordinal, bool async, CancellationToken cancellationToken = default)
         {
