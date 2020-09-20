@@ -33,6 +33,15 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-nuget-
 
+      - name: Setup .NET Core SDK
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: ${{ env.dotnet_sdk_version }}
+
+      - name: Build
+        run: dotnet build Npgsql.sln --configuration Debug
+        shell: bash
+
       - name: Start PostgreSQL ${{ matrix.pg_major }} (Linux)
         if: startsWith(matrix.os, 'ubuntu')
         run: |
@@ -121,11 +130,6 @@ jobs:
           # Disable trust authentication, requiring MD5 passwords - some tests must fail if a password isn't provided.
           echo "host all npgsql_tests_scram all scram-sha-256" > pgsql/PGDATA/pg_hba.conf
           echo "host all all all md5" >> pgsql/PGDATA/pg_hba.conf
-
-      - name: Setup .NET Core SDK
-        uses: actions/setup-dotnet@v1
-        with:
-          dotnet-version: ${{ env.dotnet_sdk_version }}
 
       # TODO: Once test/Npgsql.Specification.Tests work, switch to just testing on the solution
       - name: Test
