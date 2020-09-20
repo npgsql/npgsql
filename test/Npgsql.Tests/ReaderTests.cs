@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Buffers.Binary;
+using System.Collections;
 using System.Data;
 using System.IO;
 using System.Linq;
@@ -1187,42 +1188,45 @@ LANGUAGE plpgsql VOLATILE";
                 Throws.Exception.TypeOf<InvalidOperationException>());
         }
 
-        [Test]
-        public async Task GetStream([Values(true, false)] bool isAsync)
+        public static IEnumerable GetStreamCases()
         {
             var binary = MemoryMarshal
                 .AsBytes<int>(Enumerable.Range(0, 1024).ToArray())
                 .ToArray();
-            await GetStream(binary, binary, "bytea");
+            yield return (binary, binary);
 
             var bigint = 0xDEADBEEFL;
             var bigintBinary = BitConverter.GetBytes(
                 BitConverter.IsLittleEndian
                 ? BinaryPrimitives.ReverseEndianness(bigint)
                 : bigint);
-            await GetStream(bigint, bigintBinary);
+            yield return (bigint, bigintBinary);
+        }
 
-            async Task GetStream<T>(T value, byte[] expected, string? dataType = null)
-            {
-                var streamGetter = BuildStreamGetter(isAsync);
-                var actual = new byte[expected.Length];
+        [Test]
+        public async Task GetStream<T>(
+            [ValueSource(nameof(GetStreamCases))] (T Generic, byte[] Binary) value,
+            [Values(true, false)] bool isAsync)
+        {
+            var streamGetter = BuildStreamGetter(isAsync);
+            var expected = value.Binary;
+            var actual = new byte[expected.Length];
 
-                using var conn = await OpenConnectionAsync();
-                using var cmd = new NpgsqlCommand($"SELECT @p, @p", conn) { Parameters = { new NpgsqlParameter("p", value) { DataTypeName = dataType } } };
-                using var reader = await cmd.ExecuteReaderAsync(Behavior);
+            using var conn = await OpenConnectionAsync();
+            using var cmd = new NpgsqlCommand("SELECT @p, @p", conn) { Parameters = { new NpgsqlParameter("p", value.Generic) } };
+            using var reader = await cmd.ExecuteReaderAsync(Behavior);
 
-                await reader.ReadAsync();
+            await reader.ReadAsync();
 
-                using var stream = await streamGetter(reader, 0);
-                Assert.That(stream.CanSeek, Is.EqualTo(Behavior == CommandBehavior.Default));
-                Assert.That(stream.Length, Is.EqualTo(expected.Length));
+            using var stream = await streamGetter(reader, 0);
+            Assert.That(stream.CanSeek, Is.EqualTo(Behavior == CommandBehavior.Default));
+            Assert.That(stream.Length, Is.EqualTo(expected.Length));
 
-                var position = 0;
-                while (position < actual.Length)
-                    position += await stream.ReadAsync(actual, position, actual.Length - position);
+            var position = 0;
+            while (position < actual.Length)
+                position += await stream.ReadAsync(actual, position, actual.Length - position);
 
-                Assert.That(actual, Is.EqualTo(expected));
-            }
+            Assert.That(actual, Is.EqualTo(expected));
         }
 
         [Test]
