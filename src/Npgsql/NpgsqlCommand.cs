@@ -1312,7 +1312,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 }
                 catch (OperationCanceledException e)
                 {
-                    // User requested the cancellation - ignoring the exception, as it's working as expected
+                    // User requested the cancellation - ignoring the exception, as it's working as expected,
+                    // user will get the same exception from the read buffer
+                    // and this exception can only be seen while closing the reader/connection
                     if (cancellationToken2.IsCancellationRequested)
                         return;
 
