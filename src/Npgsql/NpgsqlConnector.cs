@@ -795,15 +795,9 @@ namespace Npgsql
 
                     if (perIpTimeout.IsSet)
                     {
-                        timeoutCts = new CancellationTokenSource(perIpTimeout.TimeLeft.Milliseconds);
+                        timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                        timeoutCts.CancelAfter(perIpTimeout.TimeLeft.Milliseconds);
                         finalCt = timeoutCts.Token;
-
-                        if (cancellationToken.CanBeCanceled)
-                        {
-                            combinedCts = CancellationTokenSource.CreateLinkedTokenSource(
-                                cancellationToken, timeoutCts.Token);
-                            finalCt = combinedCts.Token;
-                        }
                     }
 
                     await socket.ConnectAsync(endpoint, finalCt);
