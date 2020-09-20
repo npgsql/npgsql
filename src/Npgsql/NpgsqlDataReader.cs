@@ -8,7 +8,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -1173,13 +1172,8 @@ namespace Npgsql
                 return GetStream(ordinal, true, cancellationToken).AsTask();
         }
 
-        ValueTask<Stream> GetStream(int ordinal, bool async, CancellationToken cancellationToken = default)
-        {
-            var field = CheckRowAndGetField(ordinal);
-            return field.Handler is ByteaHandler
-                ? GetStreamInternal(field, ordinal, async, cancellationToken)
-                : throw new InvalidCastException($"The GetStream method is not supported for type {field.Handler.PgDisplayName}");
-        }
+        ValueTask<Stream> GetStream(int ordinal, bool async, CancellationToken cancellationToken = default) =>
+            GetStreamInternal(CheckRowAndGetField(ordinal), ordinal, async, cancellationToken);
 
         ValueTask<Stream> GetStreamInternal(FieldDescription field, int ordinal, bool async, CancellationToken cancellationToken = default)
         {
