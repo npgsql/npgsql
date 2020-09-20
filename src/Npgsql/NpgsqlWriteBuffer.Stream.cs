@@ -41,7 +41,7 @@ namespace Npgsql
             public override void Flush()
                 => CheckDisposed();
 
-            public override Task FlushAsync(CancellationToken cancellationToken)
+            public override Task FlushAsync(CancellationToken cancellationToken = default)
             {
                 CheckDisposed();
                 return cancellationToken.IsCancellationRequested
@@ -51,13 +51,13 @@ namespace Npgsql
             public override int Read(byte[] buffer, int offset, int count)
                 => throw new NotSupportedException();
 
-            public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+            public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken = default)
                 => throw new NotSupportedException();
 
             public override void Write(byte[] buffer, int offset, int count)
                 => Write(buffer, offset, count, false);
 
-            public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+            public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken = default)
             {
                 using (NoSynchronizationContextScope.Enter())
                     return Write(buffer, offset, count, true, cancellationToken);
