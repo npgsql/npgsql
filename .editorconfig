@@ -48,9 +48,6 @@ csharp_indent_switch_labels = false
 
 # Code analysis rules
 
-# Code files
-[*.{cs,vb}]
-
 # Reliability Rules
 
 # CA2016: Forward the 'CancellationToken' parameter to methods that take one
