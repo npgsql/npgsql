@@ -2062,7 +2062,8 @@ namespace Npgsql
                     while (true)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
-                        var msg = await ReadMessageWithNotifications(true, cancellationToken);
+                        // TODO: Fully implement cancellation
+                        var msg = await ReadMessageWithNotifications(true, CancellationToken.None);
                         if (!keepaliveSent)
                         {
                             if (msg != null)
@@ -2086,7 +2087,7 @@ namespace Npgsql
                                 while (msg == null)
                                 {
                                     receivedNotification = true;
-                                    // Intentional, as this method would be rewritten
+                                    // TODO: Fully implement cancellation
                                     msg = await ReadMessage(true, CancellationToken.None);
                                 }
 
@@ -2100,9 +2101,9 @@ namespace Npgsql
                                     expectedMessageCode = BackendMessageCode.DataRow;
                                     break;
                                 case BackendMessageCode.DataRow:
-                                    // Intentional, as this method would be rewritten
+                                    // TODO: Fully implement cancellation
                                     // DataRow is usually consumed by a reader, here we have to skip it manually.
-                                    await ReadBuffer.Skip(((DataRowMessage)msg).Length, true, cancellationToken);
+                                    await ReadBuffer.Skip(((DataRowMessage)msg).Length, true, CancellationToken.None);
                                     expectedMessageCode = BackendMessageCode.CompletedResponse;
                                     break;
                                 case BackendMessageCode.CompletedResponse:
