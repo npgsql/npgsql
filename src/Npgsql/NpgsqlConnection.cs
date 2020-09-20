@@ -226,15 +226,15 @@ namespace Npgsql
                 // If we've never connected with this connection string, open a physical connector in order to generate
                 // any exception (bad user/password, IP address...). This reproduces the standard error behavior.
                 if (!_pool.IsBootstrapped)
-                    return BootstrapMultiplexing();
+                    return BootstrapMultiplexing(cancellationToken);
 
                 CompleteOpen();
                 return Task.CompletedTask;
             }
 
-            return OpenAsync();
+            return OpenAsync(cancellationToken);
 
-            async Task OpenAsync()
+            async Task OpenAsync(CancellationToken cancellationToken2)
             {
                 NpgsqlConnector? connector = null;
                 try
@@ -250,7 +250,7 @@ namespace Npgsql
                             _userFacingConnectionString = Settings.ToStringWithoutPassword();
 
                         connector = new NpgsqlConnector(this);
-                        await connector.Open(timeout, async, cancellationToken);
+                        await connector.Open(timeout, async, cancellationToken2);
                     }
                     else
                     {
@@ -269,14 +269,14 @@ namespace Npgsql
                             }
                             else
                             {
-                                connector = await _pool.Rent(this, timeout, async, cancellationToken);
+                                connector = await _pool.Rent(this, timeout, async, cancellationToken2);
                                 ConnectorBindingScope = ConnectorBindingScope.Connection;
                                 Connector = connector;
                                 EnlistTransaction(Transaction.Current);
                             }
                         }
                         else
-                            connector = await _pool.Rent(this, timeout, async, cancellationToken);
+                            connector = await _pool.Rent(this, timeout, async, cancellationToken2);
                     }
 
                     ConnectorBindingScope = ConnectorBindingScope.Connection;
@@ -310,12 +310,12 @@ namespace Npgsql
                 }
             }
 
-            async Task BootstrapMultiplexing()
+            async Task BootstrapMultiplexing(CancellationToken cancellationToken2)
             {
                 try
                 {
                     var timeout = new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout));
-                    await _pool!.BootstrapMultiplexing(this, timeout, async, cancellationToken);
+                    await _pool!.BootstrapMultiplexing(this, timeout, async, cancellationToken2);
                     CompleteOpen();
                 }
                 catch

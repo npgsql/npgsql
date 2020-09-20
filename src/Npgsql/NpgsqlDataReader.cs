@@ -1352,7 +1352,7 @@ namespace Npgsql
             if (field.Handler is ITextReaderHandler handler)
                 return handler.GetTextReader(async
                     ? await GetStreamInternal(field, ordinal, true, cancellationToken)
-                    : GetStreamInternal(field, ordinal, false).Result);
+                    : GetStreamInternal(field, ordinal, false, CancellationToken.None).Result);
 
             throw new InvalidCastException($"The GetTextReader method is not supported for type {field.Handler.PgDisplayName}");
         }
