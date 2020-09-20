@@ -1310,12 +1310,12 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     await connector.Flush(async, cancellationToken2);
                     CleanupSend();
                 }
-                catch (OperationCanceledException) when (cancellationToken2.IsCancellationRequested)
-                {
-                    // User requested the cancellation - ignoring the exception, as it's working as expected
-                }
                 catch (OperationCanceledException e)
                 {
+                    // User requested the cancellation - ignoring the exception, as it's working as expected
+                    if (cancellationToken2.IsCancellationRequested)
+                        return;
+
                     // This should never happen, as the only case when we should be able to recieve this exception is through the cancellation token,
                     // which was not cancelled
                     throw new NpgsqlException("Unexpected exception from the send task - please file a bug", e);
