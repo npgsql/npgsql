@@ -884,17 +884,10 @@ namespace Npgsql
             // on .NET Framework.
             if (_sendTask != null)
             {
-                try
-                {
-                    if (async)
-                        await _sendTask;
-                    else
-                        _sendTask.GetAwaiter().GetResult();
-                }
-                catch (OperationCanceledException)
-                {
-                    // We've cancelled the task, because the cancellation request from the NpgsqlCommand was not successful - ignoring the exception
-                }
+                if (async)
+                    await _sendTask;
+                else
+                    _sendTask.GetAwaiter().GetResult();
             }
 
             State = ReaderState.Closed;
