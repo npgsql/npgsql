@@ -1147,9 +1147,27 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 if (conn.TryGetBoundConnector(out var connector))
                 {
                     connector.StartUserAction(this);
+
+                    CancellationTokenSource? cts = null;
+
                     try
                     {
-                        using var _ = cancellationToken.Register(cmd => ((NpgsqlCommand)cmd!).Cancel(), this);
+                        if (cancellationToken.CanBeCanceled)
+                            cts = new CancellationTokenSource();
+
+                        using var _ = cancellationToken.Register(cmd =>
+                        {
+                            try
+                            {
+                                ((NpgsqlCommand)cmd!).Cancel(true);
+                                // Setting the timeout for the case, when reading the response for the cancellation request took too long
+                                cts!.CancelAfter(connector.Settings.HardCommandTimeout);
+                            }
+                            catch
+                            {
+                                cts!.Cancel();
+                            }
+                        }, this);
 
                         ValidateParameters(connector.TypeMapper);
 
@@ -1226,8 +1244,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         // to prevents a dependency on the thread pool (which would also trigger deadlocks).
                         // The WriteBuffer notifies this command when the first buffer flush occurs, so that the
                         // send functions can switch to the special async mode when needed.
-                        //TODO: pass the token only if the cancellation was not successful
-                        var sendTask = NonMultiplexingWriteWrapper(connector, async, CancellationToken.None);
+                        var sendTask = NonMultiplexingWriteWrapper(connector, async, cts?.Token ?? cancellationToken);
 
                         // The following is a hack. It raises an exception if one was thrown in the first phases
                         // of the send (i.e. in parts of the send that executed synchronously). Exceptions may
@@ -1239,9 +1256,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         var reader = connector.DataReader;
                         reader.Init(this, behavior, _statements, sendTask);
                         connector.CurrentReader = reader;
-                        //TODO: pass the token only if the cancellation was not successful
                         if (async)
-                            await reader.NextResultAsync(CancellationToken.None);
+                            await reader.NextResultAsync(cts?.Token ?? cancellationToken);
                         else
                             reader.NextResult();
                         return reader;
@@ -1251,6 +1267,10 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         connector.CurrentReader = null;
                         conn.Connector?.EndUserAction();
                         throw;
+                    }
+                    finally
+                    {
+                        cts?.Dispose();
                     }
                 }
                 else
@@ -1337,7 +1357,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// Attempts to cancel the execution of a <see cref="NpgsqlCommand">NpgsqlCommand</see>.
         /// </summary>
         /// <remarks>As per the specs, no exception will be thrown by this method in case of failure</remarks>
-        public override void Cancel()
+        public override void Cancel() => Cancel(false);
+
+        void Cancel(bool throwExceptions)
         {
             if (State != CommandState.InProgress)
                 return;
@@ -1348,7 +1370,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             if (connector == null)
                 return;
 
-            connector.CancelRequest();
+            connector.CancelRequest(throwExceptions);
         }
 
         #endregion Cancel
