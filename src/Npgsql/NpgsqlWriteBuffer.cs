@@ -120,84 +120,58 @@ namespace Npgsql
 
             CancellationTokenSource? combinedCts = null;
 
+            var finalCt = cancellationToken;
+            if (async && Timeout > TimeSpan.Zero)
+            {
+                // We reuse the timeout's cancellation token source as long as it hasn't fired, but once it has
+                // there's no way to reset it (see https://github.com/dotnet/runtime/issues/4694)
+                _timeoutCts.CancelAfter(Timeout);
+                if (_timeoutCts.IsCancellationRequested)
+                {
+                    _timeoutCts.Dispose();
+                    _timeoutCts = new CancellationTokenSource(Timeout);
+                }
+                finalCt = _timeoutCts.Token;
+
+                if (cancellationToken.CanBeCanceled)
+                {
+                    combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _timeoutCts.Token);
+                    finalCt = combinedCts.Token;
+                }
+            }
+
             try
             {
-                var finalCt = cancellationToken;
-                if (async && Timeout > TimeSpan.Zero)
+                if (async)
                 {
-                    // We reuse the timeout's cancellation token source as long as it hasn't fired, but once it has
-                    // there's no way to reset it (see https://github.com/dotnet/runtime/issues/4694)
-                    _timeoutCts.CancelAfter(Timeout);
-                    if (_timeoutCts.IsCancellationRequested)
-                    {
-                        _timeoutCts.Dispose();
-                        _timeoutCts = new CancellationTokenSource(Timeout);
-                    }
-                    finalCt = _timeoutCts.Token;
-
-                    if (cancellationToken.CanBeCanceled)
-                    {
-                        combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _timeoutCts.Token);
-                        finalCt = combinedCts.Token;
-                    }
+                    await Underlying.WriteAsync(Buffer, 0, WritePosition, finalCt);
+                    await Underlying.FlushAsync(finalCt);
+                    // Resetting cancellation token source, so we can use it again
+                    _timeoutCts.CancelAfter(-1);
+                }
+                else
+                {
+                    Underlying.Write(Buffer, 0, WritePosition);
+                    Underlying.Flush();
+                }  
+            }
+            catch (Exception e)
+            {
+                switch (e)
+                {
+                // User requested the cancellation
+                case OperationCanceledException _ when (cancellationToken.IsCancellationRequested):
+                    throw Connector.Break(e);
+                // Read timeout
+                case OperationCanceledException _:
+                // Note that mono throws SocketException with the wrong error (see #1330)
+                case IOException _ when (e.InnerException as SocketException)?.SocketErrorCode ==
+                                            (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock):
+                    Debug.Assert(e is OperationCanceledException ? async : !async);
+                    throw Connector.Break(new NpgsqlException("Exception while writing to stream", new TimeoutException("Timeout during writing attempt")));
                 }
 
-                try
-                {
-                    if (async)
-                        await Underlying.WriteAsync(Buffer, 0, WritePosition, finalCt);
-                    else
-                        Underlying.Write(Buffer, 0, WritePosition);
-                }
-                catch (Exception e)
-                {
-                    switch (e)
-                    {
-                    // User requested the cancellation
-                    case OperationCanceledException _ when (cancellationToken.IsCancellationRequested):
-                        throw Connector.Break(e);
-                    // Read timeout
-                    case OperationCanceledException _:
-                    // Note that mono throws SocketException with the wrong error (see #1330)
-                    case IOException _ when (e.InnerException as SocketException)?.SocketErrorCode ==
-                                                (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock):
-                        Debug.Assert(e is OperationCanceledException ? async : !async);
-                        throw Connector.Break(new NpgsqlException("Exception while writing to stream", new TimeoutException("Timeout during writing attempt")));
-                    }
-
-                    throw Connector.Break(new NpgsqlException("Exception while writing to stream", e));
-                }
-
-                try
-                {
-                    if (async)
-                    {
-                        await Underlying.FlushAsync(finalCt);
-                        // Resetting cancellation token source, so we can use it again
-                        _timeoutCts.CancelAfter(-1);
-                    }
-                    else
-                        Underlying.Flush();
-                }
-                catch (Exception e)
-                {
-                    switch (e)
-                    {
-                    // User requested the cancellation
-                    case OperationCanceledException _ when (cancellationToken.IsCancellationRequested):
-                        throw Connector.Break(e);
-                    // Read timeout
-                    case OperationCanceledException _:
-                    // Note that mono throws SocketException with the wrong error (see #1330)
-                    case IOException _ when (e.InnerException as SocketException)?.SocketErrorCode ==
-                                                (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock):
-                        Debug.Assert(e is OperationCanceledException ? async : !async);
-                        e = new TimeoutException("Timeout during flushing attempt");
-                        break;
-                    }
-
-                    throw Connector.Break(new NpgsqlException("Exception while flushing stream", e));
-                }
+                throw Connector.Break(new NpgsqlException("Exception while writing to stream", e));
             }
             finally
             {
