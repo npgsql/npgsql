@@ -79,17 +79,17 @@ namespace Npgsql.TypeHandlers
         {
             await buf.Ensure(1, async, cancellationToken);
 
-            var flags = (RangeFlags)buf.ReadByte();
-            if ((flags & RangeFlags.Empty) != 0)
-                return NpgsqlRange<TAny>.Empty;
+            var flags = (NpgsqlRangeFlags)buf.ReadByte();
+            if (flags.HasFlag(NpgsqlRangeFlags.Empty))
+                return NpgsqlRange.Empty<TAny>();
 
             var lowerBound = default(TAny);
             var upperBound = default(TAny);
 
-            if ((flags & RangeFlags.LowerBoundInfinite) == 0)
+            if (!flags.HasFlag(NpgsqlRangeFlags.LowerBoundInfinite))
                 lowerBound = await _elementHandler.ReadWithLength<TAny>(buf, async, cancellationToken: cancellationToken);
 
-            if ((flags & RangeFlags.UpperBoundInfinite) == 0)
+            if (!flags.HasFlag(NpgsqlRangeFlags.UpperBoundInfinite))
                 upperBound = await _elementHandler.ReadWithLength<TAny>(buf, async, cancellationToken: cancellationToken);
 
             return new NpgsqlRange<TAny>(lowerBound, upperBound, flags);
@@ -107,22 +107,12 @@ namespace Npgsql.TypeHandlers
         {
             var totalLen = 1;
             var lengthCachePos = lengthCache?.Position ?? 0;
-            if (!value.IsEmpty)
-            {
-                if (!value.LowerBoundInfinite)
-                {
-                    totalLen += 4;
-                    if (!(value.LowerBound is null) && typeof(TElement) != typeof(DBNull))
-                        totalLen += _elementHandler.ValidateAndGetLength(value.LowerBound, ref lengthCache, null);
-                }
 
-                if (!value.UpperBoundInfinite)
-                {
-                    totalLen += 4;
-                    if (!(value.UpperBound is null) && typeof(TElement) != typeof(DBNull))
-                        totalLen += _elementHandler.ValidateAndGetLength(value.UpperBound, ref lengthCache, null);
-                }
-            }
+            if (!value.Flags.HasFlag(NpgsqlRangeFlags.LowerBoundInfinite))
+                totalLen += 4 + _elementHandler.ValidateAndGetLength(value.LowerBoundInternal!, ref lengthCache, null);
+
+            if (!value.Flags.HasFlag(NpgsqlRangeFlags.UpperBoundInfinite))
+                totalLen += 4 + _elementHandler.ValidateAndGetLength(value.UpperBoundInternal!, ref lengthCache, null);
 
             // If we're traversing an already-populated length cache, rewind to first element slot so that
             // the elements' handlers can access their length cache values
@@ -185,11 +175,11 @@ namespace Npgsql.TypeHandlers
             if (value.IsEmpty)
                 return;
 
-            if (!value.LowerBoundInfinite)
-                await _elementHandler.WriteWithLengthInternal(value.LowerBound, buf, lengthCache, null, async);
+            if (!value.Flags.HasFlag(NpgsqlRangeFlags.LowerBoundInfinite))
+                await _elementHandler.WriteWithLengthInternal(value.LowerBoundInternal!, buf, lengthCache, null, async);
 
-            if (!value.UpperBoundInfinite)
-                await _elementHandler.WriteWithLengthInternal(value.UpperBound, buf, lengthCache, null, async);
+            if (!value.Flags.HasFlag(NpgsqlRangeFlags.UpperBoundInfinite))
+                await _elementHandler.WriteWithLengthInternal(value.UpperBoundInternal!, buf, lengthCache, null, async);
         }
 
         #endregion

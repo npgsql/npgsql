@@ -24,7 +24,7 @@ namespace Npgsql.Tests
             using (var conn = OpenConnection(connectionString))
             using (var cmd = new NpgsqlCommand("SELECT @p", conn))
             {
-                var range = new NpgsqlRange<int>(8, true, false, 0, false, true);
+                var range = new NpgsqlRange<int>(8, NpgsqlRangeBound.Infinite<int>());
                 var parameters = new[]
                 {
                     // Base
