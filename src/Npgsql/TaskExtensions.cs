@@ -64,7 +64,7 @@ namespace Npgsql
             return await task;
         }
 
-#if !NET // i.e. >= NET5_0
+#if !NET // i.e. < NET5_0
         /// <summary>
         /// Allows you to cancel awaiting for a non-cancellable task.
         /// </summary>
