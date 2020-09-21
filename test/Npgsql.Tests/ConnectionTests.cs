@@ -1384,19 +1384,22 @@ CREATE TABLE record ()");
         [NonParallelizable]
         public async Task UsePgPassFile()
         {
-            var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
-            {
-                IntegratedSecurity = false
-            };
+            using var resetPassword = SetEnvironmentVariable("PGPASSWORD", null);
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
 
-            var pgpassFile = Path.GetTempFileName();
-            using var _ = Defer(() => File.Delete(pgpassFile));
-            File.WriteAllText(pgpassFile, $"*:*:*:{builder.Username}:{builder.Password}");
-            using var __ = SetEnvironmentVariable("PGPASSFILE", pgpassFile);
+            var password = builder.Password;
+            var passFile = Path.GetTempFileName();
 
-            builder.Password = null;
-            using var ___ = CreateTempPool(builder.ConnectionString, out var connectionString);
-            using var ____ = await OpenConnectionAsync(connectionString);
+            builder.Password = password;
+            builder.Passfile = passFile;
+
+            using var deletePassFile = Defer(() => File.Delete(passFile));
+
+            File.WriteAllText(passFile, $"*:*:*:{builder.Username}:{password}");
+
+            using var passFileVariable = SetEnvironmentVariable("PGPASSFILE", passFile);
+            using var pool = CreateTempPool(builder.ConnectionString, out var connectionString);
+            using var conn = await OpenConnectionAsync(connectionString);
         }
 
         [Test]
@@ -1406,6 +1409,7 @@ CREATE TABLE record ()");
             if (IsMultiplexing)
                 Assert.Ignore();
 
+            using var resetPassword = SetEnvironmentVariable("PGPASSWORD", null);
             var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
 
             var password = builder.Password;
