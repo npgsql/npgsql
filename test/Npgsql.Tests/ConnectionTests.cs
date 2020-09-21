@@ -1380,8 +1380,6 @@ CREATE TABLE record ()");
                     : original));
         }
 
-        #region pgpass
-
         [Test]
         [NonParallelizable]
         public async Task UsePgPassFile()
@@ -1401,7 +1399,55 @@ CREATE TABLE record ()");
             using var ____ = await OpenConnectionAsync(connectionString);
         }
 
-        #endregion
+        [Test]
+        [NonParallelizable]
+        public void PasswordSourcePrecendence()
+        {
+            if (IsMultiplexing)
+                Assert.Ignore();
+
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
+
+            var password = builder.Password;
+            var passwordBad = password + "_bad";
+
+            var passFile = Path.GetTempFileName();
+            var passFileBad = passFile + "_bad";
+
+            using var deletePassFile = Defer(() => File.Delete(passFile));
+            using var deletePassFileBad = Defer(() => File.Delete(passFileBad));
+
+            File.WriteAllText(passFile, $"*:*:*:{builder.Username}:{password}");
+            File.WriteAllText(passFileBad, $"*:*:*:{builder.Username}:{passwordBad}");
+
+            using (var passFileVariable = SetEnvironmentVariable("PGPASSFILE", passFileBad))
+            {
+                // Password from the connection string goes first
+                using (var passwordVariable = SetEnvironmentVariable("PGPASSWORD", passwordBad))
+                    Assert.That(OpenConnection(password, passFileBad), Throws.Nothing);
+
+                // Password from the environment variable goes second
+                using (var passwordVariable = SetEnvironmentVariable("PGPASSWORD", password))
+                    Assert.That(OpenConnection(password: null, passFileBad), Throws.Nothing);
+
+                // Passfile from the connection string goes third
+                Assert.That(OpenConnection(password: null, passFile: passFile), Throws.Nothing);
+            }
+
+            // Passfile from the environment variable goes fourth
+            using (var passFileVariable = SetEnvironmentVariable("PGPASSFILE", passFile))
+                Assert.That(OpenConnection(password: null, passFile: null), Throws.Nothing);
+
+            Func<ValueTask> OpenConnection(string? password, string? passFile) => async () =>
+            {
+                builder.Password = password;
+                builder.Passfile = passFile;
+                builder.Pooling = false;
+                builder.IntegratedSecurity = false;
+
+                using var connection = await OpenConnectionAsync(builder.ToString());
+            };
+        }
 
         public ConnectionTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
     }
