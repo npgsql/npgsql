@@ -42,8 +42,7 @@ namespace Npgsql
         /// Specifies whether the exception is considered transient, that is, whether retrying the operation could
         /// succeed (e.g. a network error or a timeout).
         /// </summary>
-// TODO: NET5_0 is here because of https://github.com/dotnet/sdk/issues/13377, remove for 5.0.0-rc2
-#if (NET461 || NETSTANDARD2_0 || NETSTANDARD2_1 || NETCOREAPP3_1) && !NET5_0
+#if !NET // i.e. >= NET5_0
         public virtual bool IsTransient
 #else
         public override bool IsTransient

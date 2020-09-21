@@ -786,8 +786,7 @@ namespace Npgsql
                     // cancellation and timeout. On older TFMs, we fake-cancel the operation, i.e. stop waiting
                     // and raise the exception, but the actual connection task is left running.
 
-// TODO: NET5_0 is here because of https://github.com/dotnet/sdk/issues/13377, remove for 5.0.0-rc2
-#if (NET461 || NETSTANDARD2_0 || NETSTANDARD2_1 || NETCOREAPP3_1) && !NET5_0
+#if !NET // i.e. >= NET5_0
                     await socket.ConnectAsync(endpoint)
                         .WithCancellationAndTimeout(perIpTimeout, cancellationToken);
 #else

@@ -253,8 +253,7 @@ namespace Npgsql
         /// See http://www.postgresql.org/docs/current/static/errcodes-appendix.html
         /// </remarks>
         [PublicAPI]
-// TODO: NET5_0 is here because of https://github.com/dotnet/sdk/issues/13377, remove for 5.0.0-rc2
-#if (NET461 || NETSTANDARD2_0 || NETSTANDARD2_1 || NETCOREAPP3_1) && !NET5_0
+#if !NET // i.e. >= NET5_0
         public string SqlState { get; }
 #else
         public override string SqlState { get; }
