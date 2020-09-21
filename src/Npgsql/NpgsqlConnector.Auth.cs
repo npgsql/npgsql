@@ -62,8 +62,8 @@ namespace Npgsql
             var encoded = new byte[Encoding.UTF8.GetByteCount(passwd) + 1];
             Encoding.UTF8.GetBytes(passwd, 0, passwd.Length, encoded, 0);
 
-            await WritePassword(encoded, async);
-            await Flush(async);
+            await WritePassword(encoded, async, cancellationToken);
+            await Flush(async, cancellationToken);
             Expect<AuthenticationRequestMessage>(await ReadMessage(async, cancellationToken), this);
         }
 
@@ -161,8 +161,8 @@ namespace Npgsql
             // Assumption: the write buffer is big enough to contain all our outgoing messages
             var clientNonce = GetNonce();
 
-            await WriteSASLInitialResponse(mechanism, PGUtil.UTF8Encoding.GetBytes($"{cbindFlag},,n=*,r={clientNonce}"), async);
-            await Flush(async);
+            await WriteSASLInitialResponse(mechanism, PGUtil.UTF8Encoding.GetBytes($"{cbindFlag},,n=*,r={clientNonce}"), async, cancellationToken);
+            await Flush(async, cancellationToken);
 
             var saslContinueMsg = Expect<AuthenticationSASLContinueMessage>(await ReadMessage(async, cancellationToken), this);
             if (saslContinueMsg.AuthRequestType != AuthenticationRequestType.AuthenticationSASLContinue)
@@ -194,8 +194,8 @@ namespace Npgsql
 
             var messageStr = $"{clientFinalMessageWithoutProof},p={clientProof}";
 
-            await WriteSASLResponse(Encoding.UTF8.GetBytes(messageStr), async);
-            await Flush(async);
+            await WriteSASLResponse(Encoding.UTF8.GetBytes(messageStr), async, cancellationToken);
+            await Flush(async, cancellationToken);
 
             var saslFinalServerMsg = Expect<AuthenticationSASLFinalMessage>(await ReadMessage(async, cancellationToken), this);
             if (saslFinalServerMsg.AuthRequestType != AuthenticationRequestType.AuthenticationSASLFinal)
@@ -295,8 +295,8 @@ namespace Npgsql
                 result[result.Length - 1] = 0;
             }
 
-            await WritePassword(result, async);
-            await Flush(async);
+            await WritePassword(result, async, cancellationToken);
+            await Flush(async, cancellationToken);
             Expect<AuthenticationRequestMessage>(await ReadMessage(async, cancellationToken), this);
         }
 
@@ -352,13 +352,13 @@ namespace Npgsql
                 _connector = connector;
             }
 
-            public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
-                => Write(buffer, offset, count, true);
+            public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken = default)
+                => Write(buffer, offset, count, true, cancellationToken);
 
             public override void Write(byte[] buffer, int offset, int count)
                 => Write(buffer, offset, count, false).GetAwaiter().GetResult();
 
-            async Task Write(byte[] buffer, int offset, int count, bool async)
+            async Task Write(byte[] buffer, int offset, int count, bool async, CancellationToken cancellationToken = default)
             {
                 if (_leftToWrite == 0)
                 {
@@ -380,8 +380,8 @@ namespace Npgsql
 
                 if (count > _leftToWrite)
                     throw new NpgsqlException($"NegotiateStream trying to write {count} bytes but according to frame header we only have {_leftToWrite} left!");
-                await _connector.WritePassword(buffer, offset, count, async);
-                await _connector.Flush(async);
+                await _connector.WritePassword(buffer, offset, count, async, cancellationToken);
+                await _connector.Flush(async, cancellationToken);
                 _leftToWrite -= count;
             }
 

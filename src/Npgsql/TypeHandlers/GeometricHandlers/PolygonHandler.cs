@@ -49,16 +49,16 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
             => 4 + value.Count * 16;
 
         /// <inheritdoc />
-        public override async Task Write(NpgsqlPolygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        public override async Task Write(NpgsqlPolygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             if (buf.WriteSpaceLeft < 4)
-                await buf.Flush(async);
+                await buf.Flush(async, cancellationToken);
             buf.WriteInt32(value.Count);
 
             foreach (var p in value)
             {
                 if (buf.WriteSpaceLeft < 16)
-                    await buf.Flush(async);
+                    await buf.Flush(async, cancellationToken);
                 buf.WriteDouble(p.X);
                 buf.WriteDouble(p.Y);
             }

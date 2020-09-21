@@ -268,41 +268,41 @@ namespace Npgsql.TypeHandlers
             => value.Length;
 
         /// <inheritdoc />
-        public override Task Write(string value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
-            => WriteString(value, buf, lengthCache!, parameter, async);
+        public override Task Write(string value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+            => WriteString(value, buf, lengthCache!, parameter, async, cancellationToken);
 
         /// <inheritdoc />
-        public virtual Task Write(char[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        public virtual Task Write(char[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             var charLen = parameter == null || parameter.Size <= 0 || parameter.Size >= value.Length
                 ? value.Length
                 : parameter.Size;
-            return buf.WriteChars(value, 0, charLen, lengthCache!.GetLast(), async);
+            return buf.WriteChars(value, 0, charLen, lengthCache!.GetLast(), async, cancellationToken);
         }
 
         /// <inheritdoc />
-        public virtual Task Write(ArraySegment<char> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
-            => value.Array is null ? Task.CompletedTask : buf.WriteChars(value.Array, value.Offset, value.Count, lengthCache!.GetLast(), async);
+        public virtual Task Write(ArraySegment<char> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+            => value.Array is null ? Task.CompletedTask : buf.WriteChars(value.Array, value.Offset, value.Count, lengthCache!.GetLast(), async, cancellationToken);
 
-        Task WriteString(string str, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter? parameter, bool async)
+        Task WriteString(string str, NpgsqlWriteBuffer buf, NpgsqlLengthCache lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             var charLen = parameter == null || parameter.Size <= 0 || parameter.Size >= str.Length
                 ? str.Length
                 : parameter.Size;
-            return buf.WriteString(str, charLen, lengthCache!.GetLast(), async);
+            return buf.WriteString(str, charLen, lengthCache!.GetLast(), async, cancellationToken);
         }
 
         /// <inheritdoc />
-        public Task Write(char value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        public Task Write(char value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             _singleCharArray[0] = value;
             var len = _encoding.GetByteCount(_singleCharArray);
-            return buf.WriteChars(_singleCharArray, 0, 1, len, async);
+            return buf.WriteChars(_singleCharArray, 0, 1, len, async, cancellationToken);
         }
 
         /// <inheritdoc />
-        public Task Write(byte[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
-            => buf.WriteBytesRaw(value, async);
+        public Task Write(byte[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+            => buf.WriteBytesRaw(value, async, cancellationToken);
 
         #endregion
 

@@ -101,24 +101,24 @@ namespace Npgsql.TypeHandlers
             => ValidateAndGetLength(value, ref lengthCache, parameter);
 
         /// <inheritdoc />
-        public async Task Write(IDictionary<string, string?> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        public async Task Write(IDictionary<string, string?> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             if (buf.WriteSpaceLeft < 4)
-                await buf.Flush(async);
+                await buf.Flush(async, cancellationToken);
             buf.WriteInt32(value.Count);
             if (value.Count == 0)
                 return;
 
             foreach (var kv in value)
             {
-                await _textHandler.WriteWithLengthInternal(kv.Key, buf, lengthCache, parameter, async);
-                await _textHandler.WriteWithLengthInternal(kv.Value, buf, lengthCache, parameter, async);
+                await _textHandler.WriteWithLengthInternal(kv.Key, buf, lengthCache, parameter, async, cancellationToken);
+                await _textHandler.WriteWithLengthInternal(kv.Value, buf, lengthCache, parameter, async, cancellationToken);
             }
         }
 
         /// <inheritdoc />
-        public override Task Write(Dictionary<string, string?> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
-            => Write(value, buf, lengthCache, parameter, async);
+        public override Task Write(Dictionary<string, string?> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+            => Write(value, buf, lengthCache, parameter, async, cancellationToken);
 
         #endregion
 
@@ -169,8 +169,8 @@ namespace Npgsql.TypeHandlers
 
         /// <inheritdoc />
         public Task Write(ImmutableDictionary<string, string?> value,
-            NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
-            => Write((IDictionary<string, string?>)value, buf, lengthCache, parameter, async);
+            NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+            => Write((IDictionary<string, string?>)value, buf, lengthCache, parameter, async, cancellationToken);
 
         async ValueTask<ImmutableDictionary<string, string?>> INpgsqlTypeHandler<ImmutableDictionary<string, string?>>.Read(
             NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)

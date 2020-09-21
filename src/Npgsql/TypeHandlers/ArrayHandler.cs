@@ -374,7 +374,7 @@ namespace Npgsql.TypeHandlers
             return len;
         }
 
-        internal override Task WriteWithLengthInternal<TAny>([AllowNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        internal override Task WriteWithLengthInternal<TAny>([AllowNull] TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             if (buf.WriteSpaceLeft < 4)
                 return WriteWithLengthLong();
@@ -383,7 +383,7 @@ namespace Npgsql.TypeHandlers
 
             async Task WriteWithLengthLong()
             {
-                await buf.Flush(async);
+                await buf.Flush(async, cancellationToken);
                 await WriteWithLength();
             }
 
@@ -398,10 +398,10 @@ namespace Npgsql.TypeHandlers
                 buf.WriteInt32(ValidateAndGetLength(value, ref lengthCache, parameter));
 
                 if (value is ICollection<TElement> list)
-                    return WriteGeneric(list, buf, lengthCache, async);
+                    return WriteGeneric(list, buf, lengthCache, async, cancellationToken);
 
                 if (value is ICollection nonGeneric)
-                    return WriteNonGeneric(nonGeneric, buf, lengthCache, async);
+                    return WriteNonGeneric(nonGeneric, buf, lengthCache, async, cancellationToken);
 
                 throw CantWriteTypeException(value.GetType());
             }
@@ -410,12 +410,12 @@ namespace Npgsql.TypeHandlers
         // The default WriteObjectWithLength casts the type handler to INpgsqlTypeHandler<T>, but that's not sufficient for
         // us (need to handle many types of T, e.g. int[], int[,]...)
         /// <inheritdoc />
-        protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
             => value is DBNull
-                ? WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async)
-                : WriteWithLengthInternal(value, buf, lengthCache, parameter, async);
+                ? WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken)
+                : WriteWithLengthInternal(value, buf, lengthCache, parameter, async, cancellationToken);
 
-        async Task WriteGeneric(ICollection<TElement> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, bool async)
+        async Task WriteGeneric(ICollection<TElement> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, bool async, CancellationToken cancellationToken = default)
         {
             var len =
                 4 +    // dimensions
@@ -424,7 +424,7 @@ namespace Npgsql.TypeHandlers
                 1 * 8; // number of dimensions (1) * (length + lower bound)
             if (buf.WriteSpaceLeft < len)
             {
-                await buf.Flush(async);
+                await buf.Flush(async, cancellationToken);
                 Debug.Assert(buf.WriteSpaceLeft >= len, "Buffer too small for header");
             }
 
@@ -435,10 +435,10 @@ namespace Npgsql.TypeHandlers
             buf.WriteInt32(LowerBound); // We don't map .NET lower bounds to PG
 
             foreach (var element in value)
-                await ElementHandler.WriteWithLengthInternal(element, buf, lengthCache, null, async);
+                await ElementHandler.WriteWithLengthInternal(element, buf, lengthCache, null, async, cancellationToken);
         }
 
-        async Task WriteNonGeneric(ICollection value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, bool async)
+        async Task WriteNonGeneric(ICollection value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, bool async, CancellationToken cancellationToken = default)
         {
             var asArray = value as Array;
             var dimensions = asArray?.Rank ?? 1;
@@ -451,7 +451,7 @@ namespace Npgsql.TypeHandlers
 
             if (buf.WriteSpaceLeft < len)
             {
-                await buf.Flush(async);
+                await buf.Flush(async, cancellationToken);
                 Debug.Assert(buf.WriteSpaceLeft >= len, "Buffer too small for header");
             }
 
@@ -473,7 +473,7 @@ namespace Npgsql.TypeHandlers
             }
 
             foreach (var element in value)
-                await ElementHandler.WriteObjectWithLength(element ?? DBNull.Value, buf, lengthCache, null, async);
+                await ElementHandler.WriteObjectWithLength(element ?? DBNull.Value, buf, lengthCache, null, async, cancellationToken);
         }
 
         #endregion

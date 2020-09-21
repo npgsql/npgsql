@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Data;
 using System.Diagnostics.CodeAnalysis;
+using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
@@ -94,7 +95,7 @@ namespace Npgsql
             return len;
         }
 
-        internal override Task WriteWithLength(NpgsqlWriteBuffer buf, bool async)
-            => Handler!.WriteWithLengthInternal(TypedValue, buf, LengthCache, this, async);
+        internal override Task WriteWithLength(NpgsqlWriteBuffer buf, bool async, CancellationToken cancellationToken = default)
+            => Handler!.WriteWithLengthInternal(TypedValue, buf, LengthCache, this, async, cancellationToken);
     }
 }

@@ -159,11 +159,11 @@ namespace Npgsql.TypeHandlers
         }
 
         /// <inheritdoc />
-        public override async Task Write(BitArray value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        public override async Task Write(BitArray value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             // Initial bitlength byte
             if (buf.WriteSpaceLeft < 4)
-                await buf.Flush(async);
+                await buf.Flush(async, cancellationToken);
             buf.WriteInt32(value.Length);
 
             var byteLen = (value.Length + 7) / 8;
@@ -182,15 +182,15 @@ namespace Npgsql.TypeHandlers
 
                 if (pos == byteLen)
                     return;
-                await buf.Flush(async);
+                await buf.Flush(async, cancellationToken);
             }
         }
 
         /// <inheritdoc />
-        public async Task Write(BitVector32 value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        public async Task Write(BitVector32 value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             if (buf.WriteSpaceLeft < 8)
-                await buf.Flush(async);
+                await buf.Flush(async, cancellationToken);
 
             if (value.Data == 0)
                 buf.WriteInt32(0);
@@ -202,20 +202,20 @@ namespace Npgsql.TypeHandlers
         }
 
         /// <inheritdoc />
-        public async Task Write(bool value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        public async Task Write(bool value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             if (buf.WriteSpaceLeft < 5)
-                await buf.Flush(async);
+                await buf.Flush(async, cancellationToken);
             buf.WriteInt32(1);
             buf.WriteByte(value ? (byte)0x80 : (byte)0);
         }
 
         /// <inheritdoc />
-        public async Task Write(string value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        public async Task Write(string value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             // Initial bitlength byte
             if (buf.WriteSpaceLeft < 4)
-                await buf.Flush(async);
+                await buf.Flush(async, cancellationToken);
             buf.WriteInt32(value.Length);
 
             var pos = 0;
@@ -242,13 +242,13 @@ namespace Npgsql.TypeHandlers
 
                 if (bytePos >= byteLen - 1)
                     break;
-                await buf.Flush(async);
+                await buf.Flush(async, cancellationToken);
             }
 
             if (pos < value.Length)
             {
                 if (buf.WriteSpaceLeft < 1)
-                    await buf.Flush(async);
+                    await buf.Flush(async, cancellationToken);
 
                 var remainder = value.Length - pos;
                 var lastChunk = 0;

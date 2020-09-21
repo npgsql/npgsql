@@ -107,10 +107,10 @@ namespace Npgsql
             if (cancellationToken.IsCancellationRequested)
                 return Task.FromCanceled(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
-                return StartRow(true);
+                return StartRow(true, cancellationToken);
         }
 
-        async Task StartRow(bool async)
+        async Task StartRow(bool async, CancellationToken cancellationToken = default)
         {
             CheckReady();
 
@@ -118,7 +118,7 @@ namespace Npgsql
                 ThrowHelper.ThrowInvalidOperationException_BinaryImportParametersMismatch(NumColumns, _column);
 
             if (_buf.WriteSpaceLeft < 2)
-                await _buf.Flush(async);
+                await _buf.Flush(async, cancellationToken);
             _buf.WriteInt16(NumColumns);
 
             _column = 0;
@@ -150,10 +150,10 @@ namespace Npgsql
             if (cancellationToken.IsCancellationRequested)
                 return Task.FromCanceled(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
-                return Write(value, true);
+                return Write(value, true, cancellationToken);
         }
 
-        Task Write<T>([AllowNull] T value, bool async)
+        Task Write<T>([AllowNull] T value, bool async, CancellationToken cancellationToken = default)
         {
             CheckColumnIndex();
 
@@ -166,7 +166,7 @@ namespace Npgsql
                     : new NpgsqlParameter<T>();
             }
 
-            return Write(value, p, async);
+            return Write(value, p, async, cancellationToken);
         }
 
         /// <summary>
@@ -200,10 +200,10 @@ namespace Npgsql
             if (cancellationToken.IsCancellationRequested)
                 return Task.FromCanceled(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
-                return Write(value, npgsqlDbType, true);
+                return Write(value, npgsqlDbType, true, cancellationToken);
         }
 
-        Task Write<T>([AllowNull] T value, NpgsqlDbType npgsqlDbType, bool async)
+        Task Write<T>([AllowNull] T value, NpgsqlDbType npgsqlDbType, bool async, CancellationToken cancellationToken = default)
         {
             CheckColumnIndex();
 
@@ -220,7 +220,7 @@ namespace Npgsql
             if (npgsqlDbType != p.NpgsqlDbType)
                 throw new InvalidOperationException($"Can't change {nameof(p.NpgsqlDbType)} from {p.NpgsqlDbType} to {npgsqlDbType}");
 
-            return Write(value, p, async);
+            return Write(value, p, async, cancellationToken);
         }
 
         /// <summary>
@@ -250,10 +250,10 @@ namespace Npgsql
             if (cancellationToken.IsCancellationRequested)
                 return Task.FromCanceled(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
-                return Write(value, dataTypeName, true);
+                return Write(value, dataTypeName, true, cancellationToken);
         }
 
-        Task Write<T>([AllowNull] T value, string dataTypeName, bool async)
+        Task Write<T>([AllowNull] T value, string dataTypeName, bool async, CancellationToken cancellationToken = default)
         {
             CheckColumnIndex();
 
@@ -270,10 +270,10 @@ namespace Npgsql
             //if (dataTypeName!= p.DataTypeName)
             //    throw new InvalidOperationException($"Can't change {nameof(p.DataTypeName)} from {p.DataTypeName} to {dataTypeName}");
 
-            return Write(value, p, async);
+            return Write(value, p, async, cancellationToken);
         }
 
-        async Task Write<T>([AllowNull] T value, NpgsqlParameter param, bool async)
+        async Task Write<T>([AllowNull] T value, NpgsqlParameter param, bool async, CancellationToken cancellationToken = default)
         {
             CheckReady();
             if (_column == -1)
@@ -281,7 +281,7 @@ namespace Npgsql
 
             if (value == null || value is DBNull)
             {
-                await WriteNull(async);
+                await WriteNull(async, cancellationToken);
                 return;
             }
 
@@ -301,7 +301,7 @@ namespace Npgsql
             param.ResolveHandler(_connector.TypeMapper);
             param.ValidateAndGetLength();
             param.LengthCache?.Rewind();
-            await param.WriteWithLength(_buf, async);
+            await param.WriteWithLength(_buf, async, cancellationToken);
             param.LengthCache?.Clear();
             _column++;
         }
@@ -319,17 +319,17 @@ namespace Npgsql
             if (cancellationToken.IsCancellationRequested)
                 return Task.FromCanceled(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
-                return WriteNull(true);
+                return WriteNull(true, cancellationToken);
         }
 
-        async Task WriteNull(bool async)
+        async Task WriteNull(bool async, CancellationToken cancellationToken = default)
         {
             CheckReady();
             if (_column == -1)
                 throw new InvalidOperationException("A row hasn't been started");
 
             if (_buf.WriteSpaceLeft < 4)
-                await _buf.Flush(async);
+                await _buf.Flush(async, cancellationToken);
 
             _buf.WriteInt32(-1);
             _column++;
@@ -341,7 +341,7 @@ namespace Npgsql
         /// on each value.
         /// </summary>
         /// <param name="values">An array of column values to be written as a single row</param>
-        public void WriteRow(params object[] values) => WriteRow(false, values).GetAwaiter().GetResult();
+        public void WriteRow(params object[] values) => WriteRow(false, CancellationToken.None, values).GetAwaiter().GetResult();
 
         /// <summary>
         /// Writes an entire row of columns.
@@ -355,14 +355,14 @@ namespace Npgsql
             if (cancellationToken.IsCancellationRequested)
                 return Task.FromCanceled(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
-                return WriteRow(true, values);
+                return WriteRow(true, cancellationToken, values);
         }
 
-        async Task WriteRow(bool async, params object[] values)
+        async Task WriteRow(bool async, CancellationToken cancellationToken = default, params object[] values)
         {
-            await StartRow(async);
+            await StartRow(async, cancellationToken);
             foreach (var value in values)
-                await Write(value, async);
+                await Write(value, async, cancellationToken);
         }
 
         void CheckColumnIndex()
@@ -403,11 +403,11 @@ namespace Npgsql
 
             try
             {
-                await WriteTrailer(async);
-                await _buf.Flush(async);
+                await WriteTrailer(async, cancellationToken);
+                await _buf.Flush(async, cancellationToken);
                 _buf.EndCopyMode();
-                await _connector.WriteCopyDone(async);
-                await _connector.Flush(async);
+                await _connector.WriteCopyDone(async, cancellationToken);
+                await _connector.Flush(async, cancellationToken);
                 var cmdComplete = Expect<CommandCompleteMessage>(await _connector.ReadMessage(async, cancellationToken), _connector);
                 Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async, cancellationToken), _connector);
                 _state = ImporterState.Committed;
@@ -443,8 +443,8 @@ namespace Npgsql
             _state = ImporterState.Cancelled;
             _buf.Clear();
             _buf.EndCopyMode();
-            await _connector.WriteCopyFail(async);
-            await _connector.Flush(async);
+            await _connector.WriteCopyFail(async, cancellationToken);
+            await _connector.Flush(async, cancellationToken);
             try
             {
                 var msg = await _connector.ReadMessage(async, cancellationToken);
@@ -518,10 +518,10 @@ namespace Npgsql
         }
 #pragma warning restore CS8625
 
-        async Task WriteTrailer(bool async)
+        async Task WriteTrailer(bool async, CancellationToken cancellationToken = default)
         {
             if (_buf.WriteSpaceLeft < 2)
-                await _buf.Flush(async);
+                await _buf.Flush(async, cancellationToken);
             _buf.WriteInt16(-1);
         }
 

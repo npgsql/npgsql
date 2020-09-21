@@ -208,20 +208,20 @@ namespace Npgsql.LegacyPostgis
         public int ValidateAndGetLength(byte[] value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => value.Length;
 
-        public override async Task Write(PostgisGeometry value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        public override async Task Write(PostgisGeometry value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             // Common header
             if (value.SRID == 0)
             {
                 if (buf.WriteSpaceLeft < 5)
-                    await buf.Flush(async);
+                    await buf.Flush(async, cancellationToken);
                 buf.WriteByte(0); // We choose to ouput only XDR structure
                 buf.WriteInt32((int)value.Identifier);
             }
             else
             {
                 if (buf.WriteSpaceLeft < 9)
-                    await buf.Flush(async);
+                    await buf.Flush(async, cancellationToken);
                 buf.WriteByte(0);
                 buf.WriteInt32((int) ((uint)value.Identifier | (uint)EwkbModifiers.HasSRID));
                 buf.WriteInt32((int) value.SRID);
@@ -231,7 +231,7 @@ namespace Npgsql.LegacyPostgis
             {
             case WkbIdentifier.Point:
                 if (buf.WriteSpaceLeft < 16)
-                    await buf.Flush(async);
+                    await buf.Flush(async, cancellationToken);
                 var p = (PostgisPoint)value;
                 buf.WriteDouble(p.X);
                 buf.WriteDouble(p.Y);
@@ -240,12 +240,12 @@ namespace Npgsql.LegacyPostgis
             case WkbIdentifier.LineString:
                 var l = (PostgisLineString)value;
                 if (buf.WriteSpaceLeft < 4)
-                    await buf.Flush(async);
+                    await buf.Flush(async, cancellationToken);
                 buf.WriteInt32(l.PointCount);
                 for (var ipts = 0; ipts < l.PointCount; ipts++)
                 {
                     if (buf.WriteSpaceLeft < 16)
-                        await buf.Flush(async);
+                        await buf.Flush(async, cancellationToken);
                     buf.WriteDouble(l[ipts].X);
                     buf.WriteDouble(l[ipts].Y);
                 }
@@ -254,17 +254,17 @@ namespace Npgsql.LegacyPostgis
             case WkbIdentifier.Polygon:
                 var pol = (PostgisPolygon)value;
                 if (buf.WriteSpaceLeft < 4)
-                    await buf.Flush(async);
+                    await buf.Flush(async, cancellationToken);
                 buf.WriteInt32(pol.RingCount);
                 for (var irng = 0; irng < pol.RingCount; irng++)
                 {
                     if (buf.WriteSpaceLeft < 4)
-                        await buf.Flush(async);
+                        await buf.Flush(async, cancellationToken);
                     buf.WriteInt32(pol[irng].Length);
                     for (var ipts = 0; ipts < pol[irng].Length; ipts++)
                     {
                         if (buf.WriteSpaceLeft < 16)
-                            await buf.Flush(async);
+                            await buf.Flush(async, cancellationToken);
                         buf.WriteDouble(pol[irng][ipts].X);
                         buf.WriteDouble(pol[irng][ipts].Y);
                     }
@@ -274,12 +274,12 @@ namespace Npgsql.LegacyPostgis
             case WkbIdentifier.MultiPoint:
                 var mp = (PostgisMultiPoint)value;
                 if (buf.WriteSpaceLeft < 4)
-                    await buf.Flush(async);
+                    await buf.Flush(async, cancellationToken);
                 buf.WriteInt32(mp.PointCount);
                 for (var ipts = 0; ipts < mp.PointCount; ipts++)
                 {
                     if (buf.WriteSpaceLeft < 21)
-                        await buf.Flush(async);
+                        await buf.Flush(async, cancellationToken);
                     buf.WriteByte(0);
                     buf.WriteInt32((int)WkbIdentifier.Point);
                     buf.WriteDouble(mp[ipts].X);
@@ -290,19 +290,19 @@ namespace Npgsql.LegacyPostgis
             case WkbIdentifier.MultiLineString:
                 var ml = (PostgisMultiLineString)value;
                 if (buf.WriteSpaceLeft < 4)
-                    await buf.Flush(async);
+                    await buf.Flush(async, cancellationToken);
                 buf.WriteInt32(ml.LineCount);
                 for (var irng = 0; irng < ml.LineCount; irng++)
                 {
                     if (buf.WriteSpaceLeft < 9)
-                        await buf.Flush(async);
+                        await buf.Flush(async, cancellationToken);
                     buf.WriteByte(0);
                     buf.WriteInt32((int)WkbIdentifier.LineString);
                     buf.WriteInt32(ml[irng].PointCount);
                     for (var ipts = 0; ipts < ml[irng].PointCount; ipts++)
                     {
                         if (buf.WriteSpaceLeft < 16)
-                            await buf.Flush(async);
+                            await buf.Flush(async, cancellationToken);
                         buf.WriteDouble(ml[irng][ipts].X);
                         buf.WriteDouble(ml[irng][ipts].Y);
                     }
@@ -312,24 +312,24 @@ namespace Npgsql.LegacyPostgis
             case WkbIdentifier.MultiPolygon:
                 var mpl = (PostgisMultiPolygon)value;
                 if (buf.WriteSpaceLeft < 4)
-                    await buf.Flush(async);
+                    await buf.Flush(async, cancellationToken);
                 buf.WriteInt32(mpl.PolygonCount);
                 for (var ipol = 0; ipol < mpl.PolygonCount; ipol++)
                 {
                     if (buf.WriteSpaceLeft < 9)
-                        await buf.Flush(async);
+                        await buf.Flush(async, cancellationToken);
                     buf.WriteByte(0);
                     buf.WriteInt32((int)WkbIdentifier.Polygon);
                     buf.WriteInt32(mpl[ipol].RingCount);
                     for (var irng = 0; irng < mpl[ipol].RingCount; irng++)
                     {
                         if (buf.WriteSpaceLeft < 4)
-                            await buf.Flush(async);
+                            await buf.Flush(async, cancellationToken);
                         buf.WriteInt32(mpl[ipol][irng].Length);
                         for (var ipts = 0; ipts < mpl[ipol][irng].Length; ipts++)
                         {
                             if (buf.WriteSpaceLeft < 16)
-                                await buf.Flush(async);
+                                await buf.Flush(async, cancellationToken);
                             buf.WriteDouble(mpl[ipol][irng][ipts].X);
                             buf.WriteDouble(mpl[ipol][irng][ipts].Y);
                         }
@@ -340,11 +340,11 @@ namespace Npgsql.LegacyPostgis
             case WkbIdentifier.GeometryCollection:
                 var coll = (PostgisGeometryCollection)value;
                 if (buf.WriteSpaceLeft < 4)
-                    await buf.Flush(async);
+                    await buf.Flush(async, cancellationToken);
                 buf.WriteInt32(coll.GeometryCount);
 
                 foreach (var x in coll)
-                    await Write(x, buf, lengthCache, null, async);
+                    await Write(x, buf, lengthCache, null, async, cancellationToken);
                 return;
 
             default:
@@ -352,26 +352,26 @@ namespace Npgsql.LegacyPostgis
             }
         }
 
-        public Task Write(PostgisPoint value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
-            => Write((PostgisGeometry)value, buf, lengthCache, parameter, async);
+        public Task Write(PostgisPoint value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+            => Write((PostgisGeometry)value, buf, lengthCache, parameter, async, cancellationToken);
 
-        public Task Write(PostgisMultiPoint value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
-            => Write((PostgisGeometry)value, buf, lengthCache, parameter, async);
+        public Task Write(PostgisMultiPoint value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+            => Write((PostgisGeometry)value, buf, lengthCache, parameter, async, cancellationToken);
 
-        public Task Write(PostgisPolygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
-            => Write((PostgisGeometry)value, buf, lengthCache, parameter, async);
+        public Task Write(PostgisPolygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+            => Write((PostgisGeometry)value, buf, lengthCache, parameter, async, cancellationToken);
 
-        public Task Write(PostgisMultiPolygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
-            => Write((PostgisGeometry)value, buf, lengthCache, parameter, async);
+        public Task Write(PostgisMultiPolygon value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+            => Write((PostgisGeometry)value, buf, lengthCache, parameter, async, cancellationToken);
 
-        public Task Write(PostgisLineString value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
-            => Write((PostgisGeometry)value, buf, lengthCache, parameter, async);
+        public Task Write(PostgisLineString value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+            => Write((PostgisGeometry)value, buf, lengthCache, parameter, async, cancellationToken);
 
-        public Task Write(PostgisMultiLineString value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
-            => Write((PostgisGeometry)value, buf, lengthCache, parameter, async);
+        public Task Write(PostgisMultiLineString value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+            => Write((PostgisGeometry)value, buf, lengthCache, parameter, async, cancellationToken);
 
-        public Task Write(PostgisGeometryCollection value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
-            => Write((PostgisGeometry)value, buf, lengthCache, parameter, async);
+        public Task Write(PostgisGeometryCollection value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+            => Write((PostgisGeometry)value, buf, lengthCache, parameter, async, cancellationToken);
 
         #endregion Write
     }

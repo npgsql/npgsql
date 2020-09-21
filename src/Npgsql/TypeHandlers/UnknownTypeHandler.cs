@@ -63,10 +63,10 @@ namespace Npgsql.TypeHandlers
             return base.ValidateAndGetLength(converted, ref lengthCache, parameter);
         }
 
-        protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             if (value is DBNull)
-                return base.WriteObjectWithLength(DBNull.Value, buf, lengthCache, parameter, async);
+                return base.WriteObjectWithLength(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken);
 
             var convertedValue = value is string asString
                 ? asString
@@ -76,13 +76,13 @@ namespace Npgsql.TypeHandlers
                 return WriteWithLengthLong();
 
             buf.WriteInt32(ValidateObjectAndGetLength(value, ref lengthCache, parameter));
-            return base.Write(convertedValue, buf, lengthCache, parameter, async);
+            return base.Write(convertedValue, buf, lengthCache, parameter, async, cancellationToken);
 
             async Task WriteWithLengthLong()
             {
-                await buf.Flush(async);
+                await buf.Flush(async, cancellationToken);
                 buf.WriteInt32(ValidateObjectAndGetLength(value!, ref lengthCache, parameter));
-                await base.Write(convertedValue, buf, lengthCache, parameter, async);
+                await base.Write(convertedValue, buf, lengthCache, parameter, async, cancellationToken);
             }
         }
 

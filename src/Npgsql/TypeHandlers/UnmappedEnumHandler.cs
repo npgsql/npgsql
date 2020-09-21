@@ -75,40 +75,40 @@ namespace Npgsql.TypeHandlers
         }
 
         // TODO: This boxes the enum (again)
-        protected override Task WriteWithLength<TAny>(TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
-            => WriteObjectWithLength(value!, buf, lengthCache, parameter, async);
+        protected override Task WriteWithLength<TAny>(TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+            => WriteObjectWithLength(value!, buf, lengthCache, parameter, async, cancellationToken);
 
-        protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        protected internal override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             if (value is DBNull)
-                return WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async);
+                return WriteWithLengthInternal(DBNull.Value, buf, lengthCache, parameter, async, cancellationToken);
 
             if (buf.WriteSpaceLeft < 4)
                 return WriteWithLengthLong();
 
             buf.WriteInt32(ValidateAndGetLength(value, ref lengthCache, parameter));
-            return Write(value, buf, lengthCache, parameter, async);
+            return Write(value, buf, lengthCache, parameter, async, cancellationToken);
 
             async Task WriteWithLengthLong()
             {
-                await buf.Flush(async);
+                await buf.Flush(async, cancellationToken);
                 buf.WriteInt32(ValidateAndGetLength(value!, ref lengthCache, parameter));
-                await Write(value!, buf, lengthCache, parameter, async);
+                await Write(value!, buf, lengthCache, parameter, async, cancellationToken);
             }
         }
 
-        internal Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        internal Task Write(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             var type = value.GetType();
             if (type == typeof(string))
-                return base.Write((string)value, buf, lengthCache, parameter, async);
+                return base.Write((string)value, buf, lengthCache, parameter, async, cancellationToken);
             if (_resolvedType != type)
                 Map(type);
 
             // TODO: Avoid boxing
             if (!_enumToLabel.TryGetValue((Enum)value, out var str))
                 throw new InvalidCastException($"Can't write value {value} as enum {type}");
-            return base.Write(str, buf, lengthCache, parameter, async);
+            return base.Write(str, buf, lengthCache, parameter, async, cancellationToken);
         }
 
         #endregion

@@ -76,14 +76,14 @@ namespace Npgsql.TypeHandlers
             => ValidateAndGetLength(value.Count, parameter);
 
         /// <inheritdoc />
-        public override Task Write(byte[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
-            => Write(value, buf, 0, ValidateAndGetLength(value.Length, parameter), async);
+        public override Task Write(byte[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+            => Write(value, buf, 0, ValidateAndGetLength(value.Length, parameter), async, cancellationToken);
 
         /// <inheritdoc />
-        public Task Write(ArraySegment<byte> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
-            => value.Array is null ? Task.CompletedTask : Write(value.Array, buf, value.Offset, ValidateAndGetLength(value.Count, parameter), async);
+        public Task Write(ArraySegment<byte> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+            => value.Array is null ? Task.CompletedTask : Write(value.Array, buf, value.Offset, ValidateAndGetLength(value.Count, parameter), async, cancellationToken);
 
-        async Task Write(byte[] value, NpgsqlWriteBuffer buf, int offset, int count, bool async)
+        async Task Write(byte[] value, NpgsqlWriteBuffer buf, int offset, int count, bool async, CancellationToken cancellationToken = default)
         {
             // The entire segment fits in our buffer, copy it as usual.
             if (count <= buf.WriteSpaceLeft)
@@ -94,8 +94,8 @@ namespace Npgsql.TypeHandlers
 
             // The segment is larger than our buffer. Flush whatever is currently in the buffer and
             // write the array directly to the socket.
-            await buf.Flush(async);
-            await buf.DirectWrite(new ReadOnlyMemory<byte>(value, offset, count), async);
+            await buf.Flush(async, cancellationToken);
+            await buf.DirectWrite(new ReadOnlyMemory<byte>(value, offset, count), async, cancellationToken);
         }
 
 #if !NETSTANDARD2_0 && !NET461
@@ -108,7 +108,7 @@ namespace Npgsql.TypeHandlers
             => ValidateAndGetLength(value.Length, parameter);
 
         /// <inheritdoc />
-        public async Task Write(ReadOnlyMemory<byte> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        public async Task Write(ReadOnlyMemory<byte> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             if (parameter != null && parameter.Size > 0 && parameter.Size < value.Length)
                 value = value.Slice(0, parameter.Size);
@@ -122,12 +122,12 @@ namespace Npgsql.TypeHandlers
 
             // The segment is larger than our buffer. Perform a direct write, flushing whatever is currently in the buffer
             // and then writing the array directly to the socket.
-            await buf.DirectWrite(value, async);
+            await buf.DirectWrite(value, async, cancellationToken);
         }
 
         /// <inheritdoc />
-        public Task Write(Memory<byte> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
-            => Write((ReadOnlyMemory<byte>)value, buf, lengthCache, parameter, async);
+        public Task Write(Memory<byte> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
+            => Write((ReadOnlyMemory<byte>)value, buf, lengthCache, parameter, async, cancellationToken);
 
         ValueTask<ReadOnlyMemory<byte>> INpgsqlTypeHandler<ReadOnlyMemory<byte>>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
             => throw new NotSupportedException("Only writing ReadOnlyMemory<byte> to PostgreSQL bytea is supported, no reading.");

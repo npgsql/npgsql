@@ -419,7 +419,7 @@ namespace Npgsql
                 if (Settings.Database == null)
                     Settings.Database = username;
                 WriteStartupMessage(username);
-                await Flush(async);
+                await Flush(async, cancellationToken);
                 timeout.Check();
 
                 await Authenticate(username, timeout, async, cancellationToken);
@@ -590,7 +590,7 @@ namespace Npgsql
                 if (SslMode == SslMode.Require || SslMode == SslMode.Prefer)
                 {
                     WriteSslRequest();
-                    await Flush(async);
+                    await Flush(async, cancellationToken);
 
                     await ReadBuffer.Ensure(1, async, cancellationToken);
                     var response = (char)ReadBuffer.ReadByte();
@@ -2160,8 +2160,8 @@ namespace Npgsql
         {
             Log.Trace($"Executing internal command: {query}", Id);
 
-            await WriteQuery(query, async);
-            await Flush(async);
+            await WriteQuery(query, async, cancellationToken);
+            await Flush(async, cancellationToken);
             Expect<CommandCompleteMessage>(await ReadMessage(async, cancellationToken), this);
             Expect<ReadyForQueryMessage>(await ReadMessage(async, cancellationToken), this);
         }
@@ -2172,8 +2172,8 @@ namespace Npgsql
 
             Log.Trace($"Executing internal pregenerated command", Id);
 
-            await WritePregenerated(data, async);
-            await Flush(async);
+            await WritePregenerated(data, async, cancellationToken);
+            await Flush(async, cancellationToken);
             Expect<CommandCompleteMessage>(await ReadMessage(async, cancellationToken), this);
             Expect<ReadyForQueryMessage>(await ReadMessage(async, cancellationToken), this);
         }

@@ -77,16 +77,16 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             => 4 + value.Sum(l => Encoding.UTF8.GetByteCount(l.Text) + 1 + 2 + l.Count * 2);
 
         /// <inheritdoc />
-        public override async Task Write(NpgsqlTsVector vector, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        public override async Task Write(NpgsqlTsVector vector, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             if (buf.WriteSpaceLeft < 4)
-                await buf.Flush(async);
+                await buf.Flush(async, cancellationToken);
             buf.WriteInt32(vector.Count);
 
             foreach (var lexeme in vector)
             {
                 if (buf.WriteSpaceLeft < MaxSingleLexemeBytes)
-                    await buf.Flush(async);
+                    await buf.Flush(async, cancellationToken);
 
                 buf.WriteString(lexeme.Text);
                 buf.WriteByte(0);

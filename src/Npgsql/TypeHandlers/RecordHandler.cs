@@ -65,7 +65,7 @@ namespace Npgsql.TypeHandlers
         public override int ValidateAndGetLength(object[] value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => throw new NotSupportedException("Can't write record types");
 
-        public override Task Write(object[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        public override Task Write(object[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
             => throw new NotSupportedException("Can't write record types");
 
         #endregion
