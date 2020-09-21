@@ -1160,8 +1160,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                             try
                             {
                                 ((NpgsqlCommand)cmd!).Cancel(true);
-                                // Setting the timeout for the case, when reading the response for the cancellation request took too long
-                                cts!.CancelAfter(connector.Settings.HardCommandTimeout);
                             }
                             catch
                             {
