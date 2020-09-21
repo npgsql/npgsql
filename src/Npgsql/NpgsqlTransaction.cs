@@ -207,8 +207,7 @@ namespace Npgsql
         /// Creates a transaction save point.
         /// </summary>
         /// <param name="name">The name of the savepoint.</param>
-// TODO: NET5_0 is here because of https://github.com/dotnet/sdk/issues/13377, remove for 5.0.0-rc2
-#if (NET461 || NETSTANDARD2_0 || NETSTANDARD2_1 || NETCOREAPP3_1) && !NET5_0
+#if !NET // i.e. >= NET5_0
         public void Save(string name) => Save(name, false).GetAwaiter().GetResult();
 #else
         public override void Save(string name) => Save(name, false).GetAwaiter().GetResult();
@@ -219,8 +218,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="name">The name of the savepoint.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
-// TODO: NET5_0 is here because of https://github.com/dotnet/sdk/issues/13377, remove for 5.0.0-rc2
-#if (NET461 || NETSTANDARD2_0 || NETSTANDARD2_1 || NETCOREAPP3_1) && !NET5_0
+#if !NET // i.e. >= NET5_0
         public Task SaveAsync(string name, CancellationToken cancellationToken = default)
 #else
         public override Task SaveAsync(string name, CancellationToken cancellationToken = default)
@@ -255,8 +253,7 @@ namespace Npgsql
         /// Rolls back a transaction from a pending savepoint state.
         /// </summary>
         /// <param name="name">The name of the savepoint.</param>
-// TODO: NET5_0 is here because of https://github.com/dotnet/sdk/issues/13377, remove for 5.0.0-rc2
-#if (NET461 || NETSTANDARD2_0 || NETSTANDARD2_1 || NETCOREAPP3_1) && !NET5_0
+#if !NET // i.e. >= NET5_0
         public void Rollback(string name)
 #else
         public override void Rollback(string name)
@@ -268,8 +265,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="name">The name of the savepoint.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
-// TODO: NET5_0 is here because of https://github.com/dotnet/sdk/issues/13377, remove for 5.0.0-rc2
-#if (NET461 || NETSTANDARD2_0 || NETSTANDARD2_1 || NETCOREAPP3_1) && !NET5_0
+#if !NET // i.e. >= NET5_0
         public Task RollbackAsync(string name, CancellationToken cancellationToken = default)
 #else
         public override Task RollbackAsync(string name, CancellationToken cancellationToken = default)
@@ -304,8 +300,7 @@ namespace Npgsql
         /// Releases a transaction from a pending savepoint state.
         /// </summary>
         /// <param name="name">The name of the savepoint.</param>
-// TODO: NET5_0 is here because of https://github.com/dotnet/sdk/issues/13377, remove for 5.0.0-rc2
-#if (NET461 || NETSTANDARD2_0 || NETSTANDARD2_1 || NETCOREAPP3_1) && !NET5_0
+#if !NET // i.e. >= NET5_0
         public void Release(string name) => Release(name, false).GetAwaiter().GetResult();
 #else
         public override void Release(string name) => Release(name, false).GetAwaiter().GetResult();
@@ -316,8 +311,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="name">The name of the savepoint.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
-// TODO: NET5_0 is here because of https://github.com/dotnet/sdk/issues/13377, remove for 5.0.0-rc2
-#if (NET461 || NETSTANDARD2_0 || NETSTANDARD2_1 || NETCOREAPP3_1) && !NET5_0
+#if !NET // i.e. >= NET5_0
         public Task ReleaseAsync(string name, CancellationToken cancellationToken = default)
 #else
         public override Task ReleaseAsync(string name, CancellationToken cancellationToken = default)
