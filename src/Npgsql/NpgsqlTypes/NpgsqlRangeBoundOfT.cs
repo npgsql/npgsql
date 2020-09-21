@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 
 namespace NpgsqlTypes
@@ -39,7 +40,9 @@ namespace NpgsqlTypes
         /// <summary>Determines whether this instance and another specified <see cref="NpgsqlRange{T}"/> have the same value.</summary>
         /// <param name="other">The range to compare to this instance.</param>
         /// <returns><see langword="true"/> if <paramref name="other"/> has the same value as this instance; otherwise, <see langword="false"/>.</returns>
-        public bool Equals(NpgsqlRangeBound<T> other) => Flags == other.Flags && NpgsqlRangeBound.Equals(ValueInternal, other.ValueInternal);
+        public bool Equals(NpgsqlRangeBound<T> other) =>
+            Flags == other.Flags &&
+            EqualityComparer<T>.Default.Equals(ValueInternal!, other.ValueInternal!);
 
         /// <inheritdoc/>
         public override bool Equals(object? other) => other is NpgsqlRangeBound<T> bound && Equals(bound);

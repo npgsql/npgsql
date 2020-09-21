@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 
 namespace NpgsqlTypes
@@ -50,7 +51,7 @@ namespace NpgsqlTypes
             if (lowerBound.IsInfinite || upperBound.IsInfinite)
                 return;
 
-            var difference = NpgsqlRangeBound.Compare(LowerBoundInternal, UpperBoundInternal);
+            var difference = Comparer<T>.Default.Compare(LowerBoundInternal!, UpperBoundInternal!);
             if (difference > 0)
                 throw new ArgumentException("The upper bound cannot be less that the lower bound.", nameof(upperBound));
         }
@@ -75,8 +76,8 @@ namespace NpgsqlTypes
         /// <returns><see langword="true"/> if <paramref name="other"/> has the same value as this instance; otherwise, <see langword="false"/>.</returns>
         public bool Equals(NpgsqlRange<T> other) =>
             Flags == other.Flags &&
-            NpgsqlRangeBound.Equals(LowerBoundInternal, other.LowerBoundInternal) &&
-            NpgsqlRangeBound.Equals(UpperBoundInternal, other.UpperBoundInternal);
+            EqualityComparer<T>.Default.Equals(LowerBoundInternal!, other.LowerBoundInternal!) &&
+            EqualityComparer<T>.Default.Equals(UpperBoundInternal!, other.UpperBoundInternal!);
 
         /// <inheritdoc/>
         public override bool Equals(object? obj) => obj is NpgsqlRange<T> other && Equals(other);

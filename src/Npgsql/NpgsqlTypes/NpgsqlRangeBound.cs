@@ -27,13 +27,5 @@ namespace NpgsqlTypes
         /// <returns>An infinite bound.</returns>
         public static NpgsqlRangeBound<T> Infinite<T>() =>
             new NpgsqlRangeBound<T>(default, NpgsqlRangeBoundFlags.Infinity);
-
-        internal static bool Equals<T>([AllowNull] T left, [AllowNull] T right) =>
-            left is null ? right is null : right is { } &&
-            EqualityComparer<T>.Default.Equals(left, right);
-
-        internal static int Compare<T>([AllowNull] T left, [AllowNull] T right) =>
-            left is null ? right is null ? 0 : -1 :
-            right is null ? 1 : Comparer<T>.Default.Compare(left, right);
     }
 }
