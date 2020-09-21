@@ -1375,6 +1375,12 @@ namespace Npgsql
             if (cancellationToken.IsCancellationRequested)
                 return Task.FromCanceled<T>(cancellationToken);
 
+            if (typeof(T) == typeof(Stream))
+                return (Task<T>)(object)(GetStreamAsync(ordinal, cancellationToken));
+
+            if (typeof(T) == typeof(TextReader))
+                return (Task<T>)(object)(GetTextReaderAsync(ordinal, cancellationToken));
+
             // In non-sequential, we know that the column is already buffered - no I/O will take place
             if (!_isSequential)
                 return Task.FromResult(GetFieldValue<T>(ordinal));
@@ -1391,6 +1397,12 @@ namespace Npgsql
         /// <returns>The column to be retrieved.</returns>
         public override T GetFieldValue<T>(int ordinal)
         {
+            if (typeof(T) == typeof(Stream))
+                return (T)(object)GetStream(ordinal);
+
+            if (typeof(T) == typeof(TextReader))
+                return (T)(object)GetTextReader(ordinal);
+
             if (_isSequential)
                 return GetFieldValueSequential<T>(ordinal, false).GetAwaiter().GetResult();
 
