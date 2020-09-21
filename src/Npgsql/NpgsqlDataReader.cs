@@ -884,10 +884,17 @@ namespace Npgsql
             // on .NET Framework.
             if (_sendTask != null)
             {
-                if (async)
-                    await _sendTask;
-                else
-                    _sendTask.GetAwaiter().GetResult();
+                try
+                {
+                    if (async)
+                        await _sendTask;
+                    else
+                        _sendTask.GetAwaiter().GetResult();
+                }
+                catch (Exception e)
+                {
+                    Log.Debug("Exception caught while sending the request", e, Connector.Id);
+                }
             }
 
             State = ReaderState.Closed;

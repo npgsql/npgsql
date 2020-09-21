@@ -1303,25 +1303,10 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
             async Task NonMultiplexingWriteWrapper(NpgsqlConnector connector, bool async, CancellationToken cancellationToken2)
             {
-                try
-                {
-                    BeginSend(connector);
-                    await Write(connector, async, cancellationToken2);
-                    await connector.Flush(async, cancellationToken2);
-                    CleanupSend();
-                }
-                catch (OperationCanceledException e)
-                {
-                    // User requested the cancellation - ignoring the exception, as it's working as expected,
-                    // user will get the same exception from the read buffer
-                    // and this exception can only be seen while closing the reader/connection
-                    if (cancellationToken2.IsCancellationRequested)
-                        return;
-
-                    // This should never happen, as the only case when we should be able to recieve this exception is through the cancellation token,
-                    // which was not cancelled
-                    throw new NpgsqlException("Unexpected exception from the send task - please file a bug", e);
-                }
+                BeginSend(connector);
+                await Write(connector, async, cancellationToken2);
+                await connector.Flush(async, cancellationToken2);
+                CleanupSend();
             }
         }
 
