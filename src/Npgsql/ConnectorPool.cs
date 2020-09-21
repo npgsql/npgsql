@@ -129,11 +129,6 @@ namespace Npgsql
             _min = settings.MinPoolSize;
             _autoPrepare = settings.MaxAutoPrepare > 0;
             _connectionLifetime = TimeSpan.FromSeconds(settings.ConnectionLifetime);
-
-            UserFacingConnectionString = settings.PersistSecurityInfo
-                ? connString
-                : settings.ToStringWithoutPassword();
-
             _connectors = new NpgsqlConnector[_max];
 
             // TODO: Validate multiplexing options are set only when Multiplexing is on
