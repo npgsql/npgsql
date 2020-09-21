@@ -15,17 +15,12 @@ namespace Npgsql
     /// </summary>
     static class NpgsqlSchema
     {
-        public static DataTable GetSchema(NpgsqlConnection conn, string? collectionName, string?[]? restrictions)
-            => GetSchemaAsync(conn, collectionName, restrictions, false).GetAwaiter().GetResult();
-
-        public static Task<DataTable> GetSchemaAsync(NpgsqlConnection conn, string? collectionName, string?[]? restrictions, bool async = true, CancellationToken cancellationToken = default)
+        public static Task<DataTable> GetSchema(NpgsqlConnection conn, string? collectionName, string?[]? restrictions, bool async = true, CancellationToken cancellationToken = default)
         {
             if (collectionName is null)
                 throw new ArgumentNullException(nameof(collectionName));
             if (collectionName.Length == 0)
                 throw new ArgumentException("Collection name cannot be empty.", nameof(collectionName));
-
-            cancellationToken.ThrowIfCancellationRequested();
 
             return collectionName.ToUpperInvariant() switch
             {

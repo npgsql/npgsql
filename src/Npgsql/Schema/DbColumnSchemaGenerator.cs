@@ -93,7 +93,7 @@ ORDER BY attnum";
 
         #endregion Column queries
 
-        internal async ValueTask<ReadOnlyCollection<NpgsqlDbColumn>> GetColumnSchemaAsync(bool async, CancellationToken cancellationToken = default)
+        internal async Task<ReadOnlyCollection<NpgsqlDbColumn>> GetColumnSchemaAsync(bool async, CancellationToken cancellationToken = default)
         {
             // This is mainly for Amazon Redshift
             var oldQueryMode = _connection.PostgreSqlVersion < new Version(8, 2);

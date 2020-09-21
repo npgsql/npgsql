@@ -2,23 +2,20 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests
 {
-    [TestFixture(ExecutionMode.Synchronous)]
-    [TestFixture(ExecutionMode.Asynchronous)]
+    [TestFixture(SyncOrAsync.Sync)]
+    [TestFixture(SyncOrAsync.Async)]
     public abstract class SyncOrAsyncTestBase : TestBase
     {
-        protected bool IsAsync => ExecutionMode == ExecutionMode.Asynchronous;
+        protected bool IsAsync => SyncOrAsync == SyncOrAsync.Async;
 
-        protected ExecutionMode ExecutionMode { get; }
+        protected SyncOrAsync SyncOrAsync { get; }
 
-        protected SyncOrAsyncTestBase(ExecutionMode executionMode)
-        {
-            ExecutionMode = executionMode;
-        }
+        protected SyncOrAsyncTestBase(SyncOrAsync syncOrAsync) => SyncOrAsync = syncOrAsync;
     }
 
-    public enum ExecutionMode
+    public enum SyncOrAsync
     {
-        Synchronous,
-        Asynchronous
+        Sync,
+        Async
     }
 }

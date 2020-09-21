@@ -533,7 +533,7 @@ CREATE TABLE types_table
             }
         }
 
-        public SchemaTests(ExecutionMode executionMode) : base(executionMode) { }
+        public SchemaTests(SyncOrAsync syncOrAsync) : base(syncOrAsync) { }
 
         private async Task<DataTable> GetSchema(NpgsqlConnection conn)
             => IsAsync ? await conn.GetSchemaAsync() : conn.GetSchema();

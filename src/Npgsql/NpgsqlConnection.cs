@@ -1582,7 +1582,7 @@ namespace Npgsql
         /// </param>
         /// <returns>The collection specified.</returns>
         public override DataTable GetSchema(string? collectionName, string?[]? restrictions)
-            => NpgsqlSchema.GetSchema(this, collectionName, restrictions);
+            => NpgsqlSchema.GetSchema(this, collectionName, restrictions, async: false).GetAwaiter().GetResult();
 
         /// <summary>
         /// Asynchronously returns the supported collections
@@ -1594,7 +1594,7 @@ namespace Npgsql
 #else
         public Task<DataTable> GetSchemaAsync(CancellationToken cancellationToken = default)
 #endif
-            => GetSchemaAsync("MetaDataCollections", cancellationToken);
+            => GetSchemaAsync("MetaDataCollections", null, cancellationToken);
 
         /// <summary>
         /// Asynchronously returns the schema collection specified by the collection name.
@@ -1607,13 +1607,7 @@ namespace Npgsql
 #else
         public Task<DataTable> GetSchemaAsync(string collectionName, CancellationToken cancellationToken = default)
 #endif
-        {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled<DataTable>(cancellationToken);
-
-            using (NoSynchronizationContextScope.Enter())
-                return NpgsqlSchema.GetSchemaAsync(this, collectionName, null, async: true, cancellationToken);
-        }
+            => GetSchemaAsync(collectionName, null, cancellationToken);
 
         /// <summary>
         /// Asynchronously returns the schema collection specified by the collection name filtered by the restrictions.
@@ -1626,11 +1620,17 @@ namespace Npgsql
         /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is None.</param>
         /// <returns>The collection specified.</returns>
 #if NET // i.e. >= NET5_0
-        public override Task<DataTable> GetSchemaAsync(string collectionName, string?[] restrictions, CancellationToken cancellationToken = default)
+        public override Task<DataTable> GetSchemaAsync(string collectionName, string?[]? restrictions, CancellationToken cancellationToken = default)
 #else
-        public Task<DataTable> GetSchemaAsync(string collectionName, string?[] restrictions, CancellationToken cancellationToken = default)
+        public Task<DataTable> GetSchemaAsync(string collectionName, string?[]? restrictions, CancellationToken cancellationToken = default)
 #endif
-            => NpgsqlSchema.GetSchemaAsync(this, collectionName, restrictions, async: true, cancellationToken);
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled<DataTable>(cancellationToken);
+
+            using (NoSynchronizationContextScope.Enter())
+                return NpgsqlSchema.GetSchema(this, collectionName, restrictions, async: true, cancellationToken);
+        }
 
         #endregion Schema operations
 

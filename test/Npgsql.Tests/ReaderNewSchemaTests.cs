@@ -762,7 +762,7 @@ CREATE TABLE {table2} (foo INTEGER)");
             public int Foo { get; set; }
         }
 
-        public ReaderNewSchemaTests(ExecutionMode executionMode) : base(executionMode) { }
+        public ReaderNewSchemaTests(SyncOrAsync syncOrAsync) : base(syncOrAsync) { }
 
         private async Task<ReadOnlyCollection<Schema.NpgsqlDbColumn>> GetColumnSchema(NpgsqlDataReader reader)
             => IsAsync ? await reader.GetColumnSchemaAsync() : reader.GetColumnSchema();

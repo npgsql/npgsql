@@ -1775,12 +1775,12 @@ namespace Npgsql
             if (cancellationToken.IsCancellationRequested)
                 return Task.FromCanceled<ReadOnlyCollection<NpgsqlDbColumn>>(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
-                return GetColumnSchema(async: true, cancellationToken).AsTask();
+                return GetColumnSchema(async: true, cancellationToken);
         }
 
-        ValueTask<ReadOnlyCollection<NpgsqlDbColumn>> GetColumnSchema(bool async, CancellationToken cancellationToken = default)
+        Task<ReadOnlyCollection<NpgsqlDbColumn>> GetColumnSchema(bool async, CancellationToken cancellationToken = default)
             => RowDescription == null || RowDescription.Fields.Count == 0
-                ? new ValueTask<ReadOnlyCollection<NpgsqlDbColumn>>(new List<NpgsqlDbColumn>().AsReadOnly())
+                ? Task.FromResult(new List<NpgsqlDbColumn>().AsReadOnly())
                 : new DbColumnSchemaGenerator(_connection, RowDescription, _behavior.HasFlag(CommandBehavior.KeyInfo))
                     .GetColumnSchemaAsync(async, cancellationToken);
         #endregion

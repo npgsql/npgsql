@@ -225,9 +225,8 @@ SELECT 1 AS some_other_column, 2";
             Assert.That(dt.Rows[2]["ColumnName"].ToString(), Is.EqualTo("date"));
         }
 
-        public ReaderOldSchemaTests(ExecutionMode executionMode) : base(executionMode) { }
+        public ReaderOldSchemaTests(SyncOrAsync syncOrAsync) : base(syncOrAsync) { }
 
         private async Task<DataTable?> GetSchemaTable(NpgsqlDataReader dr) => IsAsync ? await dr.GetSchemaTableAsync() : dr.GetSchemaTable();
-
     }
 }

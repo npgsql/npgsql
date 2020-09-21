@@ -141,17 +141,9 @@ namespace Npgsql
             set => base.InsertCommand = value;
         }
 
-        internal Task<int> Fill(DataTable dataTable, bool async, CancellationToken cancellationToken = default)
-        {
-            if (async)
-                return FillAsync(dataTable, cancellationToken);
-            else
-                return Task.FromResult(Fill(dataTable));
-        }
-
         // Temporary implementation, waiting for official support in System.Data via https://github.com/dotnet/runtime/issues/22109
-        async Task<int> FillAsync(DataTable dataTable, CancellationToken cancellationToken = default)
-        {
+        internal async Task<int> Fill(DataTable dataTable, bool async, CancellationToken cancellationToken = default)
+        { 
             var command = SelectCommand;
             var activeConnection = command?.Connection ?? throw new InvalidOperationException("Connection required");
             var originalState = ConnectionState.Closed;
@@ -160,12 +152,11 @@ namespace Npgsql
             {
                 originalState = activeConnection.State;
                 if (ConnectionState.Closed == originalState)
-                    await activeConnection.OpenAsync(cancellationToken);
+                    await activeConnection.Open(async, cancellationToken);
 
-                var behavior = CommandBehavior.SequentialAccess;
-                using var dataReader = await command.ExecuteReaderAsync(behavior, cancellationToken);
+                using var dataReader = await command.ExecuteReader(CommandBehavior.Default, async, cancellationToken);
 
-                return await FillAsync(dataTable, dataReader);
+                return await Fill(dataTable, dataReader, async, cancellationToken);
             }
             finally
             {
@@ -174,7 +165,7 @@ namespace Npgsql
             }
         }
 
-        async Task<int> FillAsync(DataTable dataTable, NpgsqlDataReader dataReader, CancellationToken cancellationToken = default)
+        async Task<int> Fill(DataTable dataTable, NpgsqlDataReader dataReader, bool async, CancellationToken cancellationToken = default)
         {
             dataTable.BeginLoadData();
             try
@@ -195,7 +186,7 @@ namespace Npgsql
 
                 var values = new object[count];
 
-                while (await dataReader.ReadAsync(cancellationToken))
+                while (async ? await dataReader.ReadAsync(cancellationToken) : dataReader.Read())
                 {
                     dataReader.GetValues(values);
                     dataTable.LoadDataRow(values, true);
