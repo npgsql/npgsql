@@ -893,6 +893,7 @@ namespace Npgsql
                 }
                 catch (Exception e)
                 {
+                    // TODO: think of a better way to handle exceptios, see #1323 and #3163
                     Log.Debug("Exception caught while sending the request", e, Connector.Id);
                 }
             }
