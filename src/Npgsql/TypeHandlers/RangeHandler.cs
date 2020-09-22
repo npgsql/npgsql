@@ -25,7 +25,7 @@ namespace Npgsql.TypeHandlers
     /// A type handler for PostgreSQL range types.
     /// </summary>
     /// <remarks>
-    /// See http://www.postgresql.org/docs/current/static/rangetypes.html.
+    /// See https://www.postgresql.org/docs/current/static/rangetypes.html.
     ///
     /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
@@ -200,7 +200,7 @@ namespace Npgsql.TypeHandlers
     /// </summary>
     /// <remarks>
     /// Introduced in PostgreSQL 9.2.
-    /// http://www.postgresql.org/docs/current/static/rangetypes.html
+    /// https://www.postgresql.org/docs/current/static/rangetypes.html
     /// </remarks>
     /// <typeparam name="TElement1">the main range subtype</typeparam>
     /// <typeparam name="TElement2">an alternative range subtype</typeparam>

@@ -12,7 +12,7 @@ namespace Npgsql.Tests.Types
     /// Tests on the PostgreSQL bytea type
     /// </summary>
     /// <summary>
-    /// http://www.postgresql.org/docs/current/static/datatype-binary.html
+    /// https://www.postgresql.org/docs/current/static/datatype-binary.html
     /// </summary>
     public class ByteaTests : MultiplexingTestBase
     {

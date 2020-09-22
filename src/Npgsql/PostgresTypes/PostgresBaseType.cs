@@ -42,7 +42,7 @@ namespace Npgsql.PostgresTypes
                 return new PostgresFacets(typeModifier - 4, null, null);  // Max length
             case "numeric":
             case "decimal":
-                // See http://stackoverflow.com/questions/3350148/where-are-numeric-precision-and-scale-for-a-field-found-in-the-pg-catalog-tables
+                // See https://stackoverflow.com/questions/3350148/where-are-numeric-precision-and-scale-for-a-field-found-in-the-pg-catalog-tables
                 var precision = ((typeModifier - 4) >> 16) & 65535;
                 var scale = (typeModifier - 4) & 65535;
                 return new PostgresFacets(null, precision, scale == 0 ? (int?)null : scale);

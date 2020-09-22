@@ -17,7 +17,7 @@ namespace Npgsql.Tests.Types
     /// Tests on PostgreSQL arrays
     /// </summary>
     /// <remarks>
-    /// http://www.postgresql.org/docs/current/static/arrays.html
+    /// https://www.postgresql.org/docs/current/static/arrays.html
     /// </remarks>
     public class ArrayTests : MultiplexingTestBase
     {

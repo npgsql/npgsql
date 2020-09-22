@@ -10,7 +10,7 @@ namespace Npgsql
     /// initiates a "fast" database shutdown).
     /// </summary>
     /// <remarks>
-    /// http://www.postgresql.org/docs/current/static/protocol-flow.html#PROTOCOL-ASYNC
+    /// https://www.postgresql.org/docs/current/static/protocol-flow.html#PROTOCOL-ASYNC
     /// </remarks>
     public sealed class PostgresNotice
     {
@@ -35,7 +35,7 @@ namespace Npgsql
         /// </summary>
         /// <remarks>
         /// Always present.
-        /// See http://www.postgresql.org/docs/current/static/errcodes-appendix.html
+        /// See https://www.postgresql.org/docs/current/static/errcodes-appendix.html
         /// </remarks>
         [PublicAPI]
         public string SqlState { get; set; }
@@ -45,7 +45,7 @@ namespace Npgsql
         /// </summary>
         /// <remarks>
         /// Always present.
-        /// See http://www.postgresql.org/docs/current/static/errcodes-appendix.html
+        /// See https://www.postgresql.org/docs/current/static/errcodes-appendix.html
         /// </remarks>
         [PublicAPI, Obsolete("Use SqlState instead")]
         public string Code => SqlState;

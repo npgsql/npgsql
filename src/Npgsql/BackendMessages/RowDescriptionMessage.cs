@@ -13,7 +13,7 @@ namespace Npgsql.BackendMessages
     /// A RowDescription message sent from the backend.
     /// </summary>
     /// <remarks>
-    /// See http://www.postgresql.org/docs/current/static/protocol-message-formats.html
+    /// See https://www.postgresql.org/docs/current/static/protocol-message-formats.html
     /// </remarks>
     sealed class RowDescriptionMessage : IBackendMessage
     {
@@ -132,7 +132,7 @@ namespace Npgsql.BackendMessages
 
     /// <summary>
     /// A descriptive record on a single field received from PostgreSQL.
-    /// See RowDescription in http://www.postgresql.org/docs/current/static/protocol-message-formats.html
+    /// See RowDescription in https://www.postgresql.org/docs/current/static/protocol-message-formats.html
     /// </summary>
     public sealed class FieldDescription
     {

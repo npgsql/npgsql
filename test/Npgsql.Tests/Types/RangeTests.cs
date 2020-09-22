@@ -9,7 +9,7 @@ using NUnit.Framework;
 namespace Npgsql.Tests.Types
 {
     /// <remarks>
-    /// http://www.postgresql.org/docs/current/static/rangetypes.html
+    /// https://www.postgresql.org/docs/current/static/rangetypes.html
     /// </remarks>
     class RangeTests : MultiplexingTestBase
     {

@@ -12,7 +12,7 @@ namespace Npgsql.Tests.Types
     /// Tests on the PostgreSQL BitString type
     /// </summary>
     /// <remarks>
-    /// http://www.postgresql.org/docs/current/static/datatype-bit.html
+    /// https://www.postgresql.org/docs/current/static/datatype-bit.html
     /// </remarks>
     public class BitStringTests : MultiplexingTestBase
     {

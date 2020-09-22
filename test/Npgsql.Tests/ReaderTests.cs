@@ -113,7 +113,7 @@ namespace Npgsql.Tests
                     cmd.CommandText = $"INSERT INTO {table} (int) VALUES (1)";
                     using (var reader = await cmd.ExecuteReaderAsync(Behavior))
                     {
-                        // Note MSDN docs that seem to say we should case -1 in this case: http://msdn.microsoft.com/en-us/library/system.data.idatarecord.fieldcount(v=vs.110).aspx
+                        // Note MSDN docs that seem to say we should case -1 in this case: https://msdn.microsoft.com/en-us/library/system.data.idatarecord.fieldcount(v=vs.110).aspx
                         // But SqlClient returns 0
                         Assert.That(() => reader.FieldCount, Is.EqualTo(0));
 

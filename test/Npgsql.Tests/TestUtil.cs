@@ -261,7 +261,7 @@ namespace Npgsql.Tests
 
         /// <summary>
         /// Utility to generate a bytea literal in Postgresql hex format
-        /// See http://www.postgresql.org/docs/current/static/datatype-binary.html
+        /// See https://www.postgresql.org/docs/current/static/datatype-binary.html
         /// </summary>
         internal static string EncodeByteaHex(ICollection<byte> buf)
         {

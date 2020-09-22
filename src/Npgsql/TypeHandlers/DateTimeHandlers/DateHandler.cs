@@ -12,7 +12,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// A factory for type handlers for the PostgreSQL date data type.
     /// </summary>
     /// <remarks>
-    /// See http://www.postgresql.org/docs/current/static/datatype-datetime.html.
+    /// See https://www.postgresql.org/docs/current/static/datatype-datetime.html.
     ///
     /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
@@ -30,7 +30,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// A type handler for the PostgreSQL date data type.
     /// </summary>
     /// <remarks>
-    /// See http://www.postgresql.org/docs/current/static/datatype-datetime.html.
+    /// See https://www.postgresql.org/docs/current/static/datatype-datetime.html.
     ///
     /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.

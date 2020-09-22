@@ -18,7 +18,7 @@ namespace Npgsql.TypeHandlers
     /// A type handler for the PostgreSQL bit string data type.
     /// </summary>
     /// <remarks>
-    /// See http://www.postgresql.org/docs/current/static/datatype-bit.html.
+    /// See https://www.postgresql.org/docs/current/static/datatype-bit.html.
     ///
     /// Note that for BIT(1), this handler will return a bool by default, to align with SQLClient
     /// (see discussion https://github.com/npgsql/npgsql/pull/362#issuecomment-59622101).

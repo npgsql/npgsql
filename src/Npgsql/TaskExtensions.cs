@@ -52,7 +52,7 @@ namespace Npgsql
         /// Allows you to cancel awaiting for a non-cancellable task.
         /// </summary>
         /// <remarks>
-        /// Read http://blogs.msdn.com/b/pfxteam/archive/2012/10/05/how-do-i-cancel-non-cancelable-async-operations.aspx
+        /// Read https://blogs.msdn.com/b/pfxteam/archive/2012/10/05/how-do-i-cancel-non-cancelable-async-operations.aspx
         /// and be very careful with this.
         /// </remarks>
         internal static async Task<T> WithCancellation<T>(this Task<T> task, CancellationToken cancellationToken)
@@ -70,7 +70,7 @@ namespace Npgsql
         /// Allows you to cancel awaiting for a non-cancellable task.
         /// </summary>
         /// <remarks>
-        /// Read http://blogs.msdn.com/b/pfxteam/archive/2012/10/05/how-do-i-cancel-non-cancelable-async-operations.aspx
+        /// Read https://blogs.msdn.com/b/pfxteam/archive/2012/10/05/how-do-i-cancel-non-cancelable-async-operations.aspx
         /// and be very careful with this.
         /// </remarks>
         internal static async Task WithCancellation(this Task task, CancellationToken cancellationToken)

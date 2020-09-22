@@ -19,7 +19,7 @@ namespace Npgsql.TypeHandlers
     /// Extend from <see cref="ArrayHandler{TElement}"/> instead.
     /// </summary>
     /// <remarks>
-    /// http://www.postgresql.org/docs/current/static/arrays.html.
+    /// https://www.postgresql.org/docs/current/static/arrays.html.
     ///
     /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
@@ -252,7 +252,7 @@ namespace Npgsql.TypeHandlers
     /// Base class for all type handlers which handle PostgreSQL arrays.
     /// </summary>
     /// <remarks>
-    /// http://www.postgresql.org/docs/current/static/arrays.html.
+    /// https://www.postgresql.org/docs/current/static/arrays.html.
     ///
     /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
@@ -480,7 +480,7 @@ namespace Npgsql.TypeHandlers
     }
 
     /// <remarks>
-    /// http://www.postgresql.org/docs/current/static/arrays.html
+    /// https://www.postgresql.org/docs/current/static/arrays.html
     /// </remarks>
     /// <typeparam name="TElement">The .NET type contained as an element within this array</typeparam>
     /// <typeparam name="TElementPsv">The .NET provider-specific type contained as an element within this array</typeparam>

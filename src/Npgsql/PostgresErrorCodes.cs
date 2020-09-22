@@ -6,7 +6,7 @@ namespace Npgsql
     /// Provides constants for PostgreSQL error codes.
     /// </summary>
     /// <remarks>
-    /// See http://www.postgresql.org/docs/current/static/errcodes-appendix.html
+    /// See https://www.postgresql.org/docs/current/static/errcodes-appendix.html
     /// </remarks>
     public static class PostgresErrorCodes
     {

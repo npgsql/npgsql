@@ -15,7 +15,7 @@ namespace Npgsql
     /// a PostgreSQL table. Initiated by <see cref="NpgsqlConnection.BeginBinaryImport"/>
     /// </summary>
     /// <remarks>
-    /// See http://www.postgresql.org/docs/current/static/sql-copy.html.
+    /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
     /// </remarks>
     public sealed class NpgsqlBinaryImporter : ICancelable, IAsyncDisposable
     {

@@ -13,7 +13,7 @@ namespace Npgsql.Tests.Types
     /// Tests on PostgreSQL numeric types
     /// </summary>
     /// <summary>
-    /// http://www.postgresql.org/docs/current/static/datatype-numeric.html
+    /// https://www.postgresql.org/docs/current/static/datatype-numeric.html
     /// </summary>
     public class NumericTypeTests : MultiplexingTestBase
     {

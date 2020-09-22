@@ -19,7 +19,7 @@ namespace Npgsql.TypeHandlers
     /// Type handler for PostgreSQL record types.
     /// </summary>
     /// <remarks>
-    /// http://www.postgresql.org/docs/current/static/datatype-pseudo.html
+    /// https://www.postgresql.org/docs/current/static/datatype-pseudo.html
     ///
     /// Encoding (identical to composite):
     /// A 32-bit integer with the number of columns, then for each column:
