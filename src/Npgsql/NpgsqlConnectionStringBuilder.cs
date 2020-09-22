@@ -902,27 +902,27 @@ namespace Npgsql
         int _internalCommandTimeout;
 
         /// <summary>
-        /// The time to wait (in seconds) while trying to read a response for a cancellation request for a timed out query, before terminating the attempt and generating an error.
+        /// The time to wait (in seconds) while trying to read a response for a cancellation request for a timed out or cancelled query, before terminating the attempt and generating an error.
         /// Defaults to 2 seconds.
         /// </summary>
         [Category("Timeouts")]
-        [Description("After Command Timeout is reached and command cancellation is attempted, Npgsql waits for this additional timeout (in seconds) before breaking the connection. Defaults to 2, set to zero for infinity.")]
-        [DisplayName("Cancellation Read Timeout")]
+        [Description("After Command Timeout is reached (or user supplied cancellation token is cancelled) and command cancellation is attempted, Npgsql waits for this additional timeout (in seconds) before breaking the connection. Defaults to 2, set to zero for infinity.")]
+        [DisplayName("Cancellation Timeout")]
         [NpgsqlConnectionStringProperty]
         [DefaultValue(2)]
-        public int HardCommandTimeout
+        public int CancellationTimeout
         {
-            get => _hardCommandTimeout;
+            get => _cancellationTimeout;
             set
             {
                 if (value < 0)
-                    throw new ArgumentOutOfRangeException(nameof(value), value, $"{nameof(HardCommandTimeout)} can't be negative");
+                    throw new ArgumentOutOfRangeException(nameof(value), value, $"{nameof(CancellationTimeout)} can't be negative");
 
-                _hardCommandTimeout = value;
-                SetValue(nameof(HardCommandTimeout), value);
+                _cancellationTimeout = value;
+                SetValue(nameof(CancellationTimeout), value);
             }
         }
-        int _hardCommandTimeout;
+        int _cancellationTimeout;
 
         #endregion
 

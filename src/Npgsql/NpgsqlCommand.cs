@@ -1149,23 +1149,30 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     connector.StartUserAction(this);
 
                     CancellationTokenSource? cts = null;
+                    CancellationTokenRegistration? registration = null;
+                    var finalCt = CancellationToken.None;
+                    var cancellationTimeout = connector.Settings.CancellationTimeout;
 
                     try
                     {
                         if (cancellationToken.CanBeCanceled)
-                            cts = new CancellationTokenSource();
-
-                        using var _ = cancellationToken.Register(cmd =>
                         {
-                            try
+                            cts = new CancellationTokenSource();
+                            registration = cancellationToken.Register(cmd =>
                             {
-                                ((NpgsqlCommand)cmd!).Cancel(true);
-                            }
-                            catch
-                            {
-                                cts!.Cancel();
-                            }
-                        }, this);
+                                try
+                                {
+                                    ((NpgsqlCommand)cmd!).Cancel(true);
+                                    if (cancellationTimeout > 0)
+                                        cts!.CancelAfter(cancellationTimeout * 1000);
+                                }
+                                catch
+                                {
+                                    cts!.Cancel();
+                                }
+                            }, this);
+                            finalCt = cts.Token;
+                        }
 
                         ValidateParameters(connector.TypeMapper);
 
@@ -1242,7 +1249,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         // to prevents a dependency on the thread pool (which would also trigger deadlocks).
                         // The WriteBuffer notifies this command when the first buffer flush occurs, so that the
                         // send functions can switch to the special async mode when needed.
-                        var sendTask = NonMultiplexingWriteWrapper(connector, async, cts?.Token ?? cancellationToken);
+                        var sendTask = NonMultiplexingWriteWrapper(connector, async, finalCt);
 
                         // The following is a hack. It raises an exception if one was thrown in the first phases
                         // of the send (i.e. in parts of the send that executed synchronously). Exceptions may
@@ -1255,7 +1262,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         reader.Init(this, behavior, _statements, sendTask);
                         connector.CurrentReader = reader;
                         if (async)
-                            await reader.NextResultAsync(cts?.Token ?? cancellationToken);
+                            await reader.NextResultAsync(finalCt);
                         else
                             reader.NextResult();
                         return reader;
@@ -1268,6 +1275,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     }
                     finally
                     {
+                        registration?.Dispose();
                         cts?.Dispose();
                     }
                 }
