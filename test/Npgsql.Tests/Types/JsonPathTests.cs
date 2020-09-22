@@ -1,6 +1,7 @@
 ﻿using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
+using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests.Types
 {
@@ -20,6 +21,8 @@ namespace Npgsql.Tests.Types
         public async Task Read(string query, string expected)
         {
             using var conn = await OpenConnectionAsync();
+            MinimumPgVersion(conn, "12.0", "The jsonpath type was introduced in PostgreSQL 12");
+
             using var cmd = new NpgsqlCommand("SELECT " + query, conn);
             using var rdr = await cmd.ExecuteReaderAsync();
 
@@ -33,6 +36,8 @@ namespace Npgsql.Tests.Types
         public async Task Write(string query, string expected)
         {
             using var conn = await OpenConnectionAsync();
+            MinimumPgVersion(conn, "12.0", "The jsonpath type was introduced in PostgreSQL 12");
+
             using var cmd = new NpgsqlCommand("SELECT @p, @p::text = " + query, conn) { Parameters = { new NpgsqlParameter("p", NpgsqlDbType.JsonPath) { Value = expected } } };
             using var rdr = await cmd.ExecuteReaderAsync();
 
