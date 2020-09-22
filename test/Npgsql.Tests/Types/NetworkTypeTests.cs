@@ -13,7 +13,7 @@ namespace Npgsql.Tests.Types
     /// Tests on PostgreSQL numeric types
     /// </summary>
     /// <remarks>
-    /// http://www.postgresql.org/docs/current/static/datatype-net-types.html
+    /// https://www.postgresql.org/docs/current/static/datatype-net-types.html
     /// </remarks>
     class NetworkTypeTests : MultiplexingTestBase
     {
@@ -263,7 +263,7 @@ namespace Npgsql.Tests.Types
         [Test]
         public async Task TestNpgsqlSpecificTypesCLRTypesNpgsqlInet()
         {
-            // Please, check http://pgfoundry.org/forum/message.php?msg_id=1005483
+            // Please, check https://pgfoundry.org/forum/message.php?msg_id=1005483
             // for a discussion where an NpgsqlInet type isn't shown in a datagrid
             // This test tries to check if the type returned is an IPAddress when using
             // the GetValue() of NpgsqlDataReader and NpgsqlInet when using GetProviderValue();

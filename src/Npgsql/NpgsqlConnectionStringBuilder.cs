@@ -933,7 +933,7 @@ namespace Npgsql
         /// PostgreSQL defaults to "template1".
         /// </summary>
         /// <remarks>
-        /// http://www.postgresql.org/docs/current/static/manage-ag-templatedbs.html
+        /// https://www.postgresql.org/docs/current/static/manage-ag-templatedbs.html
         /// </remarks>
         [Category("Entity Framework")]
         [Description("The database template to specify when creating a database in Entity Framework. If not specified, PostgreSQL defaults to \"template1\".")]

@@ -1052,7 +1052,7 @@ namespace Npgsql
         /// only supports years from 1 to 1999. If you require years outside this range use this accessor.
         /// The standard <see cref="DbDataReader.GetProviderSpecificValue"/> method will also return this type, but has
         /// the disadvantage of boxing the value.
-        /// See http://www.postgresql.org/docs/current/static/datatype-datetime.html
+        /// See https://www.postgresql.org/docs/current/static/datatype-datetime.html
         /// </remarks>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
@@ -1065,7 +1065,7 @@ namespace Npgsql
         /// PostgreSQL's interval type has has a resolution of 1 microsecond and ranges from
         /// -178000000 to 178000000 years, while .NET's TimeSpan has a resolution of 100 nanoseconds
         /// and ranges from roughly -29247 to 29247 years.
-        /// See http://www.postgresql.org/docs/current/static/datatype-datetime.html
+        /// See https://www.postgresql.org/docs/current/static/datatype-datetime.html
         /// </remarks>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
@@ -1082,7 +1082,7 @@ namespace Npgsql
         /// range use this accessor.
         /// The standard ADO.NET <see cref="DbDataReader.GetProviderSpecificValue"/> method will also return this
         /// type, but has the disadvantage of boxing the value.
-        /// See http://www.postgresql.org/docs/current/static/datatype-datetime.html
+        /// See https://www.postgresql.org/docs/current/static/datatype-datetime.html
         /// </remarks>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
@@ -1099,7 +1099,7 @@ namespace Npgsql
         /// only supports years from 1 to 1999. If you require years outside this range use this accessor.
         /// The standard <see cref="DbDataReader.GetProviderSpecificValue"/> method will also return this type, but has
         /// the disadvantage of boxing the value.
-        /// See http://www.postgresql.org/docs/current/static/datatype-datetime.html
+        /// See https://www.postgresql.org/docs/current/static/datatype-datetime.html
         /// </remarks>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>

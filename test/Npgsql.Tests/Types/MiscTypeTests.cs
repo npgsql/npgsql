@@ -74,7 +74,7 @@ namespace Npgsql.Tests.Types
         }
 
         /// <summary>
-        /// http://www.postgresql.org/docs/current/static/datatype-boolean.html
+        /// https://www.postgresql.org/docs/current/static/datatype-boolean.html
         /// </summary>
         [Test, Description("Roundtrips a bool")]
         public async Task Bool()
@@ -113,7 +113,7 @@ namespace Npgsql.Tests.Types
         }
 
         /// <summary>
-        /// http://www.postgresql.org/docs/current/static/datatype-uuid.html
+        /// https://www.postgresql.org/docs/current/static/datatype-uuid.html
         /// </summary>
         [Test, Description("Roundtrips a UUID")]
         public async Task Uuid()

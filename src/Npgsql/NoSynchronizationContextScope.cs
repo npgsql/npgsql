@@ -13,7 +13,7 @@ namespace Npgsql
     /// (see https://github.com/npgsql/npgsql/issues/1593)
     /// </summary>
     /// <remarks>
-    /// http://stackoverflow.com/a/28307965/640325
+    /// https://stackoverflow.com/a/28307965/640325
     /// </remarks>
     static class NoSynchronizationContextScope
     {

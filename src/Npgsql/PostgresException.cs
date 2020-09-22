@@ -19,8 +19,8 @@ namespace Npgsql
     /// and purely Npgsql-related issues which aren't related to the server will be raised
     /// via the standard CLR exceptions (e.g. <see cref="ArgumentException" />).
     ///
-    /// See http://www.postgresql.org/docs/current/static/errcodes-appendix.html,
-    /// http://www.postgresql.org/docs/current/static/protocol-error-fields.html
+    /// See https://www.postgresql.org/docs/current/static/errcodes-appendix.html,
+    /// https://www.postgresql.org/docs/current/static/protocol-error-fields.html
     /// </remarks>
     [Serializable]
     public sealed class PostgresException : NpgsqlException
@@ -250,7 +250,7 @@ namespace Npgsql
         /// <remarks>
         /// Always present.
         /// Constants are defined in <seealso cref="PostgresErrorCodes"/>.
-        /// See http://www.postgresql.org/docs/current/static/errcodes-appendix.html
+        /// See https://www.postgresql.org/docs/current/static/errcodes-appendix.html
         /// </remarks>
         [PublicAPI]
 #if !NET // i.e. >= NET5_0
@@ -265,7 +265,7 @@ namespace Npgsql
         /// <remarks>
         /// Always present.
         /// Constants are defined in <seealso cref="PostgresErrorCodes"/>.
-        /// See http://www.postgresql.org/docs/current/static/errcodes-appendix.html
+        /// See https://www.postgresql.org/docs/current/static/errcodes-appendix.html
         /// </remarks>
         [PublicAPI, Obsolete("Use SqlState instead")]
         public string Code => SqlState;

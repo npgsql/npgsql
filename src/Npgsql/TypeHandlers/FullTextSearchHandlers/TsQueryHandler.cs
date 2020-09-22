@@ -19,7 +19,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
     /// A type handler for the PostgreSQL tsquery data type.
     /// </summary>
     /// <remarks>
-    /// See http://www.postgresql.org/docs/current/static/datatype-textsearch.html.
+    /// See https://www.postgresql.org/docs/current/static/datatype-textsearch.html.
     ///
     /// The type handler API allows customizing Npgsql's behavior in powerful ways. However, although it is public, it
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.

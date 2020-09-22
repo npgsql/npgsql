@@ -7,7 +7,7 @@ using Npgsql.TypeMapping;
 namespace Npgsql.TypeHandlers
 {
     /// <remarks>
-    /// http://www.postgresql.org/docs/current/static/datatype-boolean.html
+    /// https://www.postgresql.org/docs/current/static/datatype-boolean.html
     /// </remarks>
     [TypeMapping("void")]
     class VoidHandler : NpgsqlSimpleTypeHandler<DBNull>

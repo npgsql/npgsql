@@ -8,7 +8,7 @@ namespace Npgsql.Tests.Types
     /// Tests on PostgreSQL geometric types
     /// </summary>
     /// <remarks>
-    /// http://www.postgresql.org/docs/current/static/datatype-geometric.html
+    /// https://www.postgresql.org/docs/current/static/datatype-geometric.html
     /// </remarks>
     class GeometricTypeTests : MultiplexingTestBase
     {

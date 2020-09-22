@@ -992,7 +992,7 @@ INSERT INTO {table} (field_text, field_int4) VALUES ('HELLO', 1)");
             }
         }
 
-        [Test, IssueLink("http://stackoverflow.com/questions/37431054/08p01-insufficient-data-left-in-message-for-nullable-datetime/37431464")]
+        [Test, IssueLink("https://stackoverflow.com/questions/37431054/08p01-insufficient-data-left-in-message-for-nullable-datetime/37431464")]
         public async Task WriteNullValues()
         {
             using (var conn = await OpenConnectionAsync())

@@ -12,7 +12,7 @@ namespace Npgsql.Tests.Types
     /// Tests on PostgreSQL text
     /// </summary>
     /// <remarks>
-    /// http://www.postgresql.org/docs/current/static/datatype-character.html
+    /// https://www.postgresql.org/docs/current/static/datatype-character.html
     /// </remarks>
     public class TextTests : MultiplexingTestBase
     {
