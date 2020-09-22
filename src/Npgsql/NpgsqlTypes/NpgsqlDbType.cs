@@ -370,7 +370,7 @@ namespace NpgsqlTypes
         Json = 35,
 
         /// <summary>
-        /// Corresponds to the PostgreSQL "jsonb" type, a field storing JSON in an optimized binary
+        /// Corresponds to the PostgreSQL "jsonb" type, a field storing JSON in an optimized binary.
         /// format.
         /// </summary>
         /// <remarks>
@@ -379,6 +379,17 @@ namespace NpgsqlTypes
         /// </remarks>
         [BuiltInPostgresType("jsonb", 3802)]
         Jsonb = 36,
+
+        /// <summary>
+        /// Corresponds to the PostgreSQL "jsonpath" type, a field storing JSON path in text format.
+        /// format.
+        /// </summary>
+        /// <remarks>
+        /// Supported since PostgreSQL 12.
+        /// See https://www.postgresql.org/docs/current/datatype-json.html#DATATYPE-JSONPATH
+        /// </remarks>
+        [BuiltInPostgresType("jsonpath", 4072)]
+        JsonPath = 57,
 
         #endregion
 
