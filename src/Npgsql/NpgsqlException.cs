@@ -42,7 +42,7 @@ namespace Npgsql
         /// Specifies whether the exception is considered transient, that is, whether retrying the operation could
         /// succeed (e.g. a network error or a timeout).
         /// </summary>
-#if NET // i.e. >= NET5_0
+#if NET
         public override bool IsTransient
 #else
         public virtual bool IsTransient

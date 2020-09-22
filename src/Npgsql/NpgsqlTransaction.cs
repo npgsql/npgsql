@@ -207,7 +207,7 @@ namespace Npgsql
         /// Creates a transaction save point.
         /// </summary>
         /// <param name="name">The name of the savepoint.</param>
-#if NET // i.e. >= NET5_0
+#if NET
         public override void Save(string name) => Save(name, false).GetAwaiter().GetResult();
 #else
         public void Save(string name) => Save(name, false).GetAwaiter().GetResult();
@@ -218,7 +218,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="name">The name of the savepoint.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
-#if NET // i.e. >= NET5_0
+#if NET
         public override Task SaveAsync(string name, CancellationToken cancellationToken = default)
 #else
         public Task SaveAsync(string name, CancellationToken cancellationToken = default)
@@ -253,7 +253,7 @@ namespace Npgsql
         /// Rolls back a transaction from a pending savepoint state.
         /// </summary>
         /// <param name="name">The name of the savepoint.</param>
-#if NET // i.e. >= NET5_0
+#if NET
         public override void Rollback(string name)
 #else
         public void Rollback(string name)
@@ -265,7 +265,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="name">The name of the savepoint.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
-#if NET // i.e. >= NET5_0
+#if NET
         public override Task RollbackAsync(string name, CancellationToken cancellationToken = default)
 #else
         public Task RollbackAsync(string name, CancellationToken cancellationToken = default)
@@ -300,7 +300,7 @@ namespace Npgsql
         /// Releases a transaction from a pending savepoint state.
         /// </summary>
         /// <param name="name">The name of the savepoint.</param>
-#if NET // i.e. >= NET5_0
+#if NET
         public override void Release(string name) => Release(name, false).GetAwaiter().GetResult();
 #else
         public void Release(string name) => Release(name, false).GetAwaiter().GetResult();
@@ -311,7 +311,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="name">The name of the savepoint.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
-#if NET // i.e. >= NET5_0
+#if NET
         public override Task ReleaseAsync(string name, CancellationToken cancellationToken = default)
 #else
         public Task ReleaseAsync(string name, CancellationToken cancellationToken = default)
