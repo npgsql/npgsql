@@ -607,16 +607,17 @@ namespace Npgsql
                     case 'S':
                         var clientCertificates = new X509CertificateCollection();
                         var certPath = Settings.ClientCertificate ?? PostgresEnvironment.SslCert;
-                        var certPathExists = true;
 
-                        if (certPath is null)
+                        if (certPath is null && PostgresEnvironment.SslCertDefault is { } certPathDefault && File.Exists(certPathDefault))
+                            certPath = certPathDefault;
+
+                        if (certPath != null)
                         {
-                            certPath = PostgresEnvironment.SslCertDefault;
-                            certPathExists = File.Exists(certPath);
-                        }
+                            var certKey = Settings.ClientCertificateKey ?? PostgresEnvironment.SslKey;
+                            var cert = new X509Certificate(certPath, certKey);
 
-                        if (certPathExists)
-                            clientCertificates.Add(new X509Certificate(certPath!));
+                            clientCertificates.Add(cert);
+                        }
 
                         ProvideClientCertificatesCallback?.Invoke(clientCertificates);
 
