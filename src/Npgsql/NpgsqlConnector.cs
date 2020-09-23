@@ -614,26 +614,23 @@ namespace Npgsql
                         if (certPath != null)
                         {
                             var certKey = Settings.ClientCertificateKey ?? PostgresEnvironment.SslKey;
-                            var cert = new X509Certificate(certPath, certKey);
+                            var cert = new X509Certificate2(certPath, certKey);
 
                             clientCertificates.Add(cert);
                         }
 
                         ProvideClientCertificatesCallback?.Invoke(clientCertificates);
 
-                        RemoteCertificateValidationCallback certificateValidationCallback;
-                        if (Settings.TrustServerCertificate)
-                            certificateValidationCallback = (sender, certificate, chain, errors) => true;
-                        else if (UserCertificateValidationCallback != null)
-                            certificateValidationCallback = UserCertificateValidationCallback;
-                        else
-                            certificateValidationCallback = DefaultUserCertificateValidationCallback;
-
+                        var certificateValidationCallback =
+                            (Settings.TrustServerCertificate) ? SslTrustServerValidation :
+                            (Settings.RootCertificate ?? PostgresEnvironment.SslCertRoot) is { } certRootPath ? SslRootValidation(certRootPath) :
+                            (UserCertificateValidationCallback is { } userValidation) ? userValidation : SslDefaultValidation;
                         var sslStream = new SslStream(_stream, leaveInnerStreamOpen: false, certificateValidationCallback);
-                        if (async)
-                            await sslStream.AuthenticateAsClientAsync(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, Settings.CheckCertificateRevocation);
-                        else
-                            sslStream.AuthenticateAsClient(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, Settings.CheckCertificateRevocation);
+
+                        await sslStream
+                            .AuthenticateAsClientAsync(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, Settings.CheckCertificateRevocation)
+                            .ConfigureAwait(!async);
+
                         _stream = sslStream;
                         timeout.Check();
                         ReadBuffer.Clear();  // Reset to empty after reading single SSL char
@@ -1406,10 +1403,23 @@ namespace Npgsql
         /// </summary>
         internal bool IsScramPlus { get; private set; }
 
-#pragma warning disable CA1801 // Review unused parameters
-        static bool DefaultUserCertificateValidationCallback(object sender, X509Certificate? certificate, X509Chain? chain, SslPolicyErrors sslPolicyErrors)
+        static readonly RemoteCertificateValidationCallback SslDefaultValidation =
+            (sender, certificate, chain, sslPolicyErrors)
             => sslPolicyErrors == SslPolicyErrors.None;
-#pragma warning restore CA1801 // Review unused parameters
+
+        static readonly RemoteCertificateValidationCallback SslTrustServerValidation =
+            (sender, certificate, chain, sslPolicyErrors)
+            => true;
+
+        static RemoteCertificateValidationCallback SslRootValidation(string certRootPath) =>
+            (sender, certificate, chain, sslPolicyErrors) =>
+            {
+                if (certificate is null || chain is null)
+                    return false;
+
+                chain.ChainPolicy.ExtraStore.Add(new X509Certificate2(certRootPath));
+                return chain.Build(certificate as X509Certificate2 ?? new X509Certificate2(certificate));
+            };
 
         #endregion SSL
 
