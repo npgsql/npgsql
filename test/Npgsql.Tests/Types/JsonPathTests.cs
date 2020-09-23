@@ -38,12 +38,10 @@ namespace Npgsql.Tests.Types
             using var conn = await OpenConnectionAsync();
             MinimumPgVersion(conn, "12.0", "The jsonpath type was introduced in PostgreSQL 12");
 
-            using var cmd = new NpgsqlCommand($"SELECT @p, @p::text = {query}::text", conn) { Parameters = { new NpgsqlParameter("p", NpgsqlDbType.JsonPath) { Value = expected } } };
+            using var cmd = new NpgsqlCommand($"SELECT 'Passed' WHERE @p::text = {query}::text", conn) { Parameters = { new NpgsqlParameter("p", NpgsqlDbType.JsonPath) { Value = expected } } };
             using var rdr = await cmd.ExecuteReaderAsync();
 
-            rdr.Read();
-            Assert.That(rdr.GetFieldValue<string>(0), Is.EqualTo(expected));
-            Assert.That(rdr.GetFieldValue<bool>(1));
+            Assert.True(rdr.Read());
         }
     }
 }
