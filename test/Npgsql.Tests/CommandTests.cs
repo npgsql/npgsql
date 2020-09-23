@@ -268,7 +268,7 @@ namespace Npgsql.Tests
         public async Task CancelAsync()
         {
             if (IsMultiplexing)
-                return;
+                Assert.Ignore("Async cancellation isn't supported with multiplexing yet.");
 
             using (var conn = await OpenConnectionAsync())
             using (var cmd = CreateSleepCommand(conn, 5))
