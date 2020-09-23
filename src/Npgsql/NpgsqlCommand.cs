@@ -1170,22 +1170,19 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                             {
                                 var cmd = (NpgsqlCommand)o!;
                                 var cn = cmd._boundConnector!;
-                                lock (cn)
-                                {
-                                    // No point in doing anything, if the connection is already broken
-                                    if (cn.IsBroken)
-                                        return;
+                                // No point in doing anything, if the connection is already broken
+                                if (cn.IsBroken)
+                                    return;
 
-                                    try
-                                    {
-                                        cmd.Cancel(true);
-                                        if (cn.Settings.CancellationTimeout > 0)
-                                            cn.CommandCts.CancelAfter(cn.Settings.CancellationTimeout * 1000);
-                                    }
-                                    catch
-                                    {
-                                        cn.CommandCts.Cancel();
-                                    }
+                                try
+                                {
+                                    cmd.Cancel(true);
+                                    if (cn.Settings.CancellationTimeout > 0)
+                                        cn.CommandCts.CancelAfter(cn.Settings.CancellationTimeout * 1000);
+                                }
+                                catch
+                                {
+                                    cn.CommandCts.Cancel();
                                 }
                             }, this);
                             finalCt = connector.CommandCts.Token;
