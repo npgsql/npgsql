@@ -12,8 +12,8 @@ namespace Npgsql.Tests.Types
 
         static readonly object[] ReadWriteCases = new[]
         {
-            new object[] { "'$'::text", "$" },
-            new object[] { "'$\"varname\"'::text", "$\"varname\"" },
+            new object[] { "'$'", "$" },
+            new object[] { "'$\"varname\"'", "$\"varname\"" },
         };
 
         [Test]
@@ -23,7 +23,7 @@ namespace Npgsql.Tests.Types
             using var conn = await OpenConnectionAsync();
             MinimumPgVersion(conn, "12.0", "The jsonpath type was introduced in PostgreSQL 12");
 
-            using var cmd = new NpgsqlCommand("SELECT " + query, conn);
+            using var cmd = new NpgsqlCommand($"SELECT {query}::jsonpath", conn);
             using var rdr = await cmd.ExecuteReaderAsync();
 
             rdr.Read();
@@ -38,7 +38,7 @@ namespace Npgsql.Tests.Types
             using var conn = await OpenConnectionAsync();
             MinimumPgVersion(conn, "12.0", "The jsonpath type was introduced in PostgreSQL 12");
 
-            using var cmd = new NpgsqlCommand("SELECT @p, @p::text = " + query, conn) { Parameters = { new NpgsqlParameter("p", NpgsqlDbType.JsonPath) { Value = expected } } };
+            using var cmd = new NpgsqlCommand($"SELECT @p, @p::text = {query}::text", conn) { Parameters = { new NpgsqlParameter("p", NpgsqlDbType.JsonPath) { Value = expected } } };
             using var rdr = await cmd.ExecuteReaderAsync();
 
             rdr.Read();
