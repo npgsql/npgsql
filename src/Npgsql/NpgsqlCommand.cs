@@ -1164,16 +1164,16 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                             registration = cancellationToken.Register(o =>
                             {
-                                (var cmd, var cn) = (Tuple<NpgsqlCommand, NpgsqlConnector>)o;
+                                (var cmd, var cn) = (Tuple<NpgsqlCommand, NpgsqlConnector>)o!;
                                 try
                                 {
-                                    cmd!.Cancel(true);
-                                    if (cn!.Settings.CancellationTimeout > 0)
-                                        cn!.CommandCts.CancelAfter(cn!.Settings.CancellationTimeout * 1000);
+                                    cmd.Cancel(true);
+                                    if (cn.Settings.CancellationTimeout > 0)
+                                        cn.CommandCts.CancelAfter(cn.Settings.CancellationTimeout * 1000);
                                 }
                                 catch
                                 {
-                                    cn!.CommandCts.Cancel();
+                                    cn.CommandCts.Cancel();
                                 }
                             }, Tuple.Create(this, connector));
                             finalCt = connector.CommandCts.Token;
