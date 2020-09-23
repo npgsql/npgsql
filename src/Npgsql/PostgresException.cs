@@ -253,10 +253,10 @@ namespace Npgsql
         /// See https://www.postgresql.org/docs/current/static/errcodes-appendix.html
         /// </remarks>
         [PublicAPI]
-#if !NET // i.e. >= NET5_0
-        public string SqlState { get; }
-#else
+#if NET
         public override string SqlState { get; }
+#else
+        public string SqlState { get; }
 #endif
 
         /// <summary>
