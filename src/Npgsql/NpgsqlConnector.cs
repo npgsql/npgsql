@@ -227,6 +227,8 @@ namespace Npgsql
 
         internal int ClearCounter { get; set; }
 
+        internal CancellationTokenSource CommandCts = new CancellationTokenSource();
+
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlConnector));
 
         #endregion

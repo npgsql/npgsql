@@ -1148,30 +1148,35 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 {
                     connector.StartUserAction(this);
 
-                    CancellationTokenSource? cts = null;
                     CancellationTokenRegistration? registration = null;
-                    var finalCt = CancellationToken.None;
-                    var cancellationTimeout = connector.Settings.CancellationTimeout;
 
                     try
                     {
+                        var finalCt = CancellationToken.None;
+
                         if (cancellationToken.CanBeCanceled)
                         {
-                            cts = new CancellationTokenSource();
-                            registration = cancellationToken.Register(cmd =>
+                            if (connector.CommandCts.IsCancellationRequested)
                             {
+                                connector.CommandCts.Dispose();
+                                connector.CommandCts = new CancellationTokenSource();
+                            }
+
+                            registration = cancellationToken.Register(o =>
+                            {
+                                (var cmd, var cn) = (Tuple<NpgsqlCommand, NpgsqlConnector>)o;
                                 try
                                 {
-                                    ((NpgsqlCommand)cmd!).Cancel(true);
-                                    if (cancellationTimeout > 0)
-                                        cts!.CancelAfter(cancellationTimeout * 1000);
+                                    cmd!.Cancel(true);
+                                    if (cn!.Settings.CancellationTimeout > 0)
+                                        cn!.CommandCts.CancelAfter(cn!.Settings.CancellationTimeout * 1000);
                                 }
                                 catch
                                 {
-                                    cts!.Cancel();
+                                    cn!.CommandCts.Cancel();
                                 }
-                            }, this);
-                            finalCt = cts.Token;
+                            }, Tuple.Create(this, connector));
+                            finalCt = connector.CommandCts.Token;
                         }
 
                         ValidateParameters(connector.TypeMapper);
@@ -1275,8 +1280,11 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     }
                     finally
                     {
-                        registration?.Dispose();
-                        cts?.Dispose();
+                        if (registration.HasValue)
+                        {
+                            registration.Value.Dispose();
+                            connector.CommandCts.CancelAfter(-1);
+                        }
                     }
                 }
                 else
