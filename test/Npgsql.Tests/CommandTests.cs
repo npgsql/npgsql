@@ -265,27 +265,20 @@ namespace Npgsql.Tests
         }
 
         [Test, Description("Cancels an async query with the cancellation token")]
-        [Ignore("Flaky on CoreCLR")]
         public async Task CancelAsync()
         {
-            var cancellationSource = new CancellationTokenSource();
             using (var conn = await OpenConnectionAsync())
             using (var cmd = CreateSleepCommand(conn))
             {
-                // ReSharper disable once MethodSupportsCancellation
-                _ = Task.Factory.StartNew(() =>
-                {
-                    Thread.Sleep(300);
-                    cancellationSource.Cancel();
-                });
+                var cancellationSource = new CancellationTokenSource(300);
                 var t = cmd.ExecuteNonQueryAsync(cancellationSource.Token);
-                Assert.That(async () => await t.ConfigureAwait(false), Throws.Exception.TypeOf<NpgsqlException>());
+                Assert.That(async () => await t.ConfigureAwait(false), Throws.Exception.TypeOf<PostgresException>());
 
-                // Since cancellation triggers an NpgsqlException and not a TaskCanceledException, the task's state
+                // Since cancellation triggers a PostgresException and not a TaskCanceledException, the task's state
                 // is Faulted and not Canceled. This isn't amazing, but we have to choose between this and the
                 // principle of always raising server/network errors as NpgsqlException for easy catching.
                 Assert.That(t.IsFaulted);
-                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
             }
         }
 

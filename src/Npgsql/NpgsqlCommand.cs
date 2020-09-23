@@ -40,6 +40,8 @@ namespace Npgsql
         /// </summary>
         NpgsqlConnector? _connectorPreparedOn;
 
+        volatile NpgsqlConnector? _boundConnector;
+
         string _commandText;
         CommandBehavior _behavior;
         int? _timeout;
@@ -1156,6 +1158,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                         if (cancellationToken.CanBeCanceled)
                         {
+                            _boundConnector = connector;
+
                             if (connector.CommandCts.IsCancellationRequested)
                             {
                                 connector.CommandCts.Dispose();
@@ -1164,7 +1168,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                             registration = cancellationToken.Register(o =>
                             {
-                                (var cmd, var cn) = (Tuple<NpgsqlCommand, NpgsqlConnector>)o!;
+                                var cmd = (NpgsqlCommand)o!;
+                                var cn = cmd._boundConnector;
                                 try
                                 {
                                     cmd.Cancel(true);
@@ -1175,7 +1180,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                                 {
                                     cn.CommandCts.Cancel();
                                 }
-                            }, Tuple.Create(this, connector));
+                            }, this);
                             finalCt = connector.CommandCts.Token;
                         }
 
@@ -1284,6 +1289,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         {
                             registration.Value.Dispose();
                             connector.CommandCts.CancelAfter(-1);
+                            _boundConnector = null;
                         }
                     }
                 }
