@@ -267,8 +267,11 @@ namespace Npgsql.Tests
         [Test, Description("Cancels an async query with the cancellation token")]
         public async Task CancelAsync()
         {
+            if (IsMultiplexing)
+                return;
+
             using (var conn = await OpenConnectionAsync())
-            using (var cmd = CreateSleepCommand(conn))
+            using (var cmd = CreateSleepCommand(conn, 5))
             {
                 var cancellationSource = new CancellationTokenSource(300);
                 var t = cmd.ExecuteNonQueryAsync(cancellationSource.Token);
