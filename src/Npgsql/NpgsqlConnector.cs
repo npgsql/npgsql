@@ -522,7 +522,8 @@ namespace Npgsql
             // being set up (even if its empty)
             TypeMapper = new ConnectorTypeMapper(this);
 
-            if (forceReload || !NpgsqlDatabaseInfo.Cache.TryGetValue(ConnectionString, out var database))
+            var key = (Settings.Host, Settings.Port, Settings.Database);
+            if (forceReload || !NpgsqlDatabaseInfo.Cache.TryGetValue(key, out var database))
             {
                 var hasSemaphore = async
                     ? await DatabaseInfoSemaphore.WaitAsync(timeout.TimeLeft, cancellationToken)
@@ -534,9 +535,9 @@ namespace Npgsql
 
                 try
                 {
-                    if (forceReload || !NpgsqlDatabaseInfo.Cache.TryGetValue(ConnectionString, out database))
+                    if (forceReload || !NpgsqlDatabaseInfo.Cache.TryGetValue(key, out database))
                     {
-                        NpgsqlDatabaseInfo.Cache[ConnectionString] = database = await NpgsqlDatabaseInfo.Load(Connection,
+                        NpgsqlDatabaseInfo.Cache[key] = database = await NpgsqlDatabaseInfo.Load(Connection,
                             timeout, async);
                     }
                 }
