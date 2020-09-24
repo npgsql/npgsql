@@ -605,14 +605,14 @@ namespace Npgsql
                             throw new NpgsqlException("SSL connection requested. No SSL enabled connection from this host is configured.");
                         break;
                     case 'S':
-                        var clientCertificates = new X509CertificateCollection();
+                        var clientCertificates = new X509Certificate2Collection();
                         var certPath = Settings.ClientCertificate ?? PostgresEnvironment.SslCert;
 
                         if (certPath is null && PostgresEnvironment.SslCertDefault is { } certPathDefault && File.Exists(certPathDefault))
                             certPath = certPathDefault;
 
                         if (certPath != null)
-                            clientCertificates.Add(new X509Certificate2(certPath, Settings.ClientCertificateKey ?? PostgresEnvironment.SslKey));
+                            clientCertificates.Import(certPath, Settings.ClientCertificateKey ?? PostgresEnvironment.SslKey);
 
                         ProvideClientCertificatesCallback?.Invoke(clientCertificates);
 
@@ -622,9 +622,10 @@ namespace Npgsql
                             (UserCertificateValidationCallback is { } userValidation) ? userValidation : SslDefaultValidation;
                         var sslStream = new SslStream(_stream, leaveInnerStreamOpen: false, certificateValidationCallback);
 
-                        await sslStream
-                            .AuthenticateAsClientAsync(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, Settings.CheckCertificateRevocation)
-                            .ConfigureAwait(!async);
+                        if (async)
+                            await sslStream.AuthenticateAsClientAsync(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, Settings.CheckCertificateRevocation);
+                        else
+                            sslStream.AuthenticateAsClient(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, Settings.CheckCertificateRevocation);
 
                         _stream = sslStream;
                         timeout.Check();
