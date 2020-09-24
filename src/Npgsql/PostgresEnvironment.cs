@@ -19,6 +19,12 @@ namespace Npgsql
 
         public static string? SslCertDefault => GetDefaultFilePath("postgresql.crt");
 
+        public static string? SslCertRoot => Environment.GetEnvironmentVariable("PGSSLROOTCERT");
+
+        public static string? SslCertRootDefault => GetDefaultFilePath("root.crt");
+
+        public static string? SslKey => Environment.GetEnvironmentVariable("PGSSLKEY");
+
         public static string? ClientEncoding => Environment.GetEnvironmentVariable("PGCLIENTENCODING");
 
         public static string? TimeZone => Environment.GetEnvironmentVariable("PGTZ");

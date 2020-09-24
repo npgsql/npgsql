@@ -560,6 +560,42 @@ namespace Npgsql
         string? _clientCertificate;
 
         /// <summary>
+        /// Key for a client certificate to be sent to the server.
+        /// </summary>
+        [Category("Security")]
+        [Description("Key for a client certificate to be sent to the server.")]
+        [DisplayName("Client Certificate Key")]
+        [NpgsqlConnectionStringProperty]
+        public string? ClientCertificateKey
+        {
+            get => _clientCertificateKey;
+            set
+            {
+                _clientCertificateKey = value;
+                SetValue(nameof(ClientCertificateKey), value);
+            }
+        }
+        string? _clientCertificateKey;
+
+        /// <summary>
+        /// Location of a CA certificate used to validate the server certificate.
+        /// </summary>
+        [Category("Security")]
+        [Description("Location of a CA certificate used to validate the server certificate.")]
+        [DisplayName("Root Certificate")]
+        [NpgsqlConnectionStringProperty]
+        public string? RootCertificate
+        {
+            get => _rootCertificate;
+            set
+            {
+                _rootCertificate = value;
+                SetValue(nameof(RootCertificate), value);
+            }
+        }
+        string? _rootCertificate;
+
+        /// <summary>
         /// Whether to check the certificate revocation list during authentication.
         /// False by default.
         /// </summary>

@@ -565,6 +565,7 @@ namespace Npgsql
 
         async Task RawOpen(NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
         {
+            var cert = default(X509Certificate2?);
             try
             {
                 if (async)
@@ -607,34 +608,31 @@ namespace Npgsql
                             throw new NpgsqlException("SSL connection requested. No SSL enabled connection from this host is configured.");
                         break;
                     case 'S':
-                        var clientCertificates = new X509CertificateCollection();
+                        var clientCertificates = new X509Certificate2Collection();
                         var certPath = Settings.ClientCertificate ?? PostgresEnvironment.SslCert;
-                        var certPathExists = true;
 
-                        if (certPath is null)
+                        if (certPath is null && PostgresEnvironment.SslCertDefault is { } certPathDefault && File.Exists(certPathDefault))
+                            certPath = certPathDefault;
+
+                        if (certPath != null)
                         {
-                            certPath = PostgresEnvironment.SslCertDefault;
-                            certPathExists = File.Exists(certPath);
+                            cert = new X509Certificate2(certPath, Settings.ClientCertificateKey ?? PostgresEnvironment.SslKey);
+                            clientCertificates.Add(cert);
                         }
-
-                        if (certPathExists)
-                            clientCertificates.Add(new X509Certificate(certPath!));
 
                         ProvideClientCertificatesCallback?.Invoke(clientCertificates);
 
-                        RemoteCertificateValidationCallback certificateValidationCallback;
-                        if (Settings.TrustServerCertificate)
-                            certificateValidationCallback = (sender, certificate, chain, errors) => true;
-                        else if (UserCertificateValidationCallback != null)
-                            certificateValidationCallback = UserCertificateValidationCallback;
-                        else
-                            certificateValidationCallback = DefaultUserCertificateValidationCallback;
-
+                        var certificateValidationCallback =
+                            (Settings.TrustServerCertificate) ? SslTrustServerValidation :
+                            (Settings.RootCertificate ?? PostgresEnvironment.SslCertRoot ?? PostgresEnvironment.SslCertRootDefault) is { } certRootPath ? SslRootValidation(certRootPath) :
+                            (UserCertificateValidationCallback is { } userValidation) ? userValidation : SslDefaultValidation;
                         var sslStream = new SslStream(_stream, leaveInnerStreamOpen: false, certificateValidationCallback);
+
                         if (async)
                             await sslStream.AuthenticateAsClientAsync(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, Settings.CheckCertificateRevocation);
                         else
                             sslStream.AuthenticateAsClient(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, Settings.CheckCertificateRevocation);
+
                         _stream = sslStream;
                         timeout.Check();
                         ReadBuffer.Clear();  // Reset to empty after reading single SSL char
@@ -650,25 +648,26 @@ namespace Npgsql
             }
             catch
             {
-#pragma warning disable CS8625
-                try { _stream?.Dispose(); } catch {
-                    // ignored
-                }
-                _stream = null;
-                try { _baseStream?.Dispose(); }
-                catch
+                DisposeSafe(ref _stream);
+                DisposeSafe(ref _baseStream);
+                DisposeSafe(ref _socket);
+
+                void DisposeSafe<T>(ref T disposable)
+                    where T : class, IDisposable
                 {
-                    // ignored
+                    try
+                    {
+                        disposable?.Dispose();
+                        disposable = default!;
+                    }
+                    catch
+                    {
+                        // ignored
+                    }
                 }
-                _baseStream = null;
-                try { _socket?.Dispose(); }
-                catch
-                {
-                    // ignored
-                }
-                _socket = null;
+
+                cert?.Dispose();
                 throw;
-#pragma warning restore CS8625
             }
         }
 
@@ -1407,10 +1406,23 @@ namespace Npgsql
         /// </summary>
         internal bool IsScramPlus { get; private set; }
 
-#pragma warning disable CA1801 // Review unused parameters
-        static bool DefaultUserCertificateValidationCallback(object sender, X509Certificate? certificate, X509Chain? chain, SslPolicyErrors sslPolicyErrors)
+        static readonly RemoteCertificateValidationCallback SslDefaultValidation =
+            (sender, certificate, chain, sslPolicyErrors)
             => sslPolicyErrors == SslPolicyErrors.None;
-#pragma warning restore CA1801 // Review unused parameters
+
+        static readonly RemoteCertificateValidationCallback SslTrustServerValidation =
+            (sender, certificate, chain, sslPolicyErrors)
+            => true;
+
+        static RemoteCertificateValidationCallback SslRootValidation(string certRootPath) =>
+            (sender, certificate, chain, sslPolicyErrors) =>
+            {
+                if (certificate is null || chain is null)
+                    return false;
+
+                chain.ChainPolicy.ExtraStore.Add(new X509Certificate2(certRootPath));
+                return chain.Build(certificate as X509Certificate2 ?? new X509Certificate2(certificate));
+            };
 
         #endregion SSL
 
