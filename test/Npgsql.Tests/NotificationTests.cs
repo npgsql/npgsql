@@ -114,7 +114,7 @@ namespace Npgsql.Tests
             }
         }
 
-// Timeouts for async notifications is not supported for .net 4.6.1
+// Timeout for async notifications is not supported for .net 4.6.1
 #if !NET461
         [Test]
         public void WaitAsyncWithTimeout()
