@@ -1446,7 +1446,8 @@ CREATE TABLE record ()");
                 builder.IntegratedSecurity = false;
                 builder.ApplicationName = $"{nameof(PasswordSourcePrecendence)}:{Guid.NewGuid()}";
 
-                using var connection = await OpenConnectionAsync(builder.ToString());
+                using var pool = CreateTempPool(builder.ConnectionString, out var connectionString);
+                using var connection = await OpenConnectionAsync(connectionString);
             };
         }
 
