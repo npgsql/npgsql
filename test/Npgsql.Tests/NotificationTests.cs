@@ -114,6 +114,8 @@ namespace Npgsql.Tests
             }
         }
 
+// Timeouts for async notifications is not supported for .net 4.6.1
+#if !NET461
         [Test]
         public void WaitAsyncWithTimeout()
         {
@@ -121,6 +123,7 @@ namespace Npgsql.Tests
             Assert.That(async () => await conn.WaitAsync(100), Is.EqualTo(false));
             Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
         }
+#endif
 
         [Test, Ignore("Flaky, see #2070")]
         public void WaitWithKeepalive()
