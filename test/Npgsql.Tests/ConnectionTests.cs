@@ -1382,28 +1382,76 @@ CREATE TABLE record ()");
                     : original));
         }
 
-        #region pgpass
-
         [Test]
         [NonParallelizable]
         public async Task UsePgPassFile()
         {
-            var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
-            {
-                IntegratedSecurity = false
-            };
+            using var resetPassword = SetEnvironmentVariable("PGPASSWORD", null);
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
 
-            var pgpassFile = Path.GetTempFileName();
-            using var _ = Defer(() => File.Delete(pgpassFile));
-            File.WriteAllText(pgpassFile, $"*:*:*:{builder.Username}:{builder.Password}");
-            using var __ = SetEnvironmentVariable("PGPASSFILE", pgpassFile);
+            var password = builder.Password;
+            var passFile = Path.GetTempFileName();
 
-            builder.Password = null;
-            using var ___ = CreateTempPool(builder.ConnectionString, out var connectionString);
-            using var ____ = await OpenConnectionAsync(connectionString);
+            builder.Password = password;
+            builder.Passfile = passFile;
+
+            using var deletePassFile = Defer(() => File.Delete(passFile));
+
+            File.WriteAllText(passFile, $"*:*:*:{builder.Username}:{password}");
+
+            using var passFileVariable = SetEnvironmentVariable("PGPASSFILE", passFile);
+            using var pool = CreateTempPool(builder.ConnectionString, out var connectionString);
+            using var conn = await OpenConnectionAsync(connectionString);
         }
 
-        #endregion
+        [Test]
+        [NonParallelizable]
+        public void PasswordSourcePrecendence()
+        {
+            using var resetPassword = SetEnvironmentVariable("PGPASSWORD", null);
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
+
+            var password = builder.Password;
+            var passwordBad = password + "_bad";
+
+            var passFile = Path.GetTempFileName();
+            var passFileBad = passFile + "_bad";
+
+            using var deletePassFile = Defer(() => File.Delete(passFile));
+            using var deletePassFileBad = Defer(() => File.Delete(passFileBad));
+
+            File.WriteAllText(passFile, $"*:*:*:{builder.Username}:{password}");
+            File.WriteAllText(passFileBad, $"*:*:*:{builder.Username}:{passwordBad}");
+
+            using (var passFileVariable = SetEnvironmentVariable("PGPASSFILE", passFileBad))
+            {
+                // Password from the connection string goes first
+                using (var passwordVariable = SetEnvironmentVariable("PGPASSWORD", passwordBad))
+                    Assert.That(OpenConnection(password, passFileBad), Throws.Nothing);
+
+                // Password from the environment variable goes second
+                using (var passwordVariable = SetEnvironmentVariable("PGPASSWORD", password))
+                    Assert.That(OpenConnection(password: null, passFileBad), Throws.Nothing);
+
+                // Passfile from the connection string goes third
+                Assert.That(OpenConnection(password: null, passFile: passFile), Throws.Nothing);
+            }
+
+            // Passfile from the environment variable goes fourth
+            using (var passFileVariable = SetEnvironmentVariable("PGPASSFILE", passFile))
+                Assert.That(OpenConnection(password: null, passFile: null), Throws.Nothing);
+
+            Func<ValueTask> OpenConnection(string? password, string? passFile) => async () =>
+            {
+                builder.Password = password;
+                builder.Passfile = passFile;
+                builder.IntegratedSecurity = false;
+                builder.ApplicationName = $"{nameof(PasswordSourcePrecendence)}:{Guid.NewGuid()}";
+
+                using var pool = CreateTempPool(builder.ConnectionString, out var connectionString);
+                using var connection = await OpenConnectionAsync(connectionString);
+            };
+        }
 
         public ConnectionTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
     }
