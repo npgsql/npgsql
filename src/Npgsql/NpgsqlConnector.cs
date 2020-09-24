@@ -612,18 +612,13 @@ namespace Npgsql
                             certPath = certPathDefault;
 
                         if (certPath != null)
-                        {
-                            var certKey = Settings.ClientCertificateKey ?? PostgresEnvironment.SslKey;
-                            var cert = new X509Certificate2(certPath, certKey);
-
-                            clientCertificates.Add(cert);
-                        }
+                            clientCertificates.Add(new X509Certificate2(certPath, Settings.ClientCertificateKey ?? PostgresEnvironment.SslKey));
 
                         ProvideClientCertificatesCallback?.Invoke(clientCertificates);
 
                         var certificateValidationCallback =
                             (Settings.TrustServerCertificate) ? SslTrustServerValidation :
-                            (Settings.RootCertificate ?? PostgresEnvironment.SslCertRoot) is { } certRootPath ? SslRootValidation(certRootPath) :
+                            (Settings.RootCertificate ?? PostgresEnvironment.SslCertRoot ?? PostgresEnvironment.SslCertRootDefault) is { } certRootPath ? SslRootValidation(certRootPath) :
                             (UserCertificateValidationCallback is { } userValidation) ? userValidation : SslDefaultValidation;
                         var sslStream = new SslStream(_stream, leaveInnerStreamOpen: false, certificateValidationCallback);
 
