@@ -40,8 +40,6 @@ namespace Npgsql
         /// </summary>
         NpgsqlConnector? _connectorPreparedOn;
 
-        volatile NpgsqlConnector? _boundConnector;
-
         string _commandText;
         CommandBehavior _behavior;
         int? _timeout;
@@ -1158,8 +1156,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                         if (cancellationToken.CanBeCanceled)
                         {
-                            _boundConnector = connector;
-
                             if (connector.CommandCts.IsCancellationRequested)
                             {
                                 connector.CommandCts.Dispose();
@@ -1169,23 +1165,19 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                             registration = cancellationToken.Register(o =>
                             {
                                 var cmd = (NpgsqlCommand)o!;
-                                var cn = cmd._boundConnector!;
-                                lock (cn)
-                                {
-                                    // No point in doing anything, if the connection is already broken
-                                    if (cn.IsBroken)
-                                        return;
+                                var cn = cmd.Connection?.Connector;
+                                if (cn is null)
+                                    return;
 
-                                    try
-                                    {
-                                        cmd.Cancel(true);
-                                        if (cn.Settings.CancellationTimeout > 0)
-                                            cn.CommandCts.CancelAfter(cn.Settings.CancellationTimeout * 1000);
-                                    }
-                                    catch
-                                    {
-                                        cn.CommandCts.Cancel();
-                                    }
+                                try
+                                {
+                                    cmd.Cancel(true);
+                                    if (cn.Settings.CancellationTimeout > 0)
+                                        cn.CommandCts.CancelAfter(cn.Settings.CancellationTimeout * 1000);
+                                }
+                                catch
+                                {
+                                    cn.CommandCts.Cancel();
                                 }
                             }, this);
                             finalCt = connector.CommandCts.Token;
@@ -1296,7 +1288,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         {
                             registration.Value.Dispose();
                             connector.CommandCts.CancelAfter(-1);
-                            _boundConnector = null;
                         }
                     }
                 }
