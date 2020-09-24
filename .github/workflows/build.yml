@@ -16,10 +16,11 @@ jobs:
       matrix:
         os: [ ubuntu-20.04, windows-2019 ]
         pg_major: [ 12, 11, 10 ]
+# PostgreSQL 13 is out, but there's no PostGIS binary for Windows yet (http://download.osgeo.org/postgis/windows/)
         include:
           - os: ubuntu-20.04
             pg_major: 13
-            pg_prerelease: prerelease
+            # pg_prerelease: prerelease
 
     steps:
       - name: Checkout
