@@ -127,7 +127,7 @@ ORDER BY attnum";
                 await connection.Open(async, cancellationToken);
                 
                 using var cmd = new NpgsqlCommand(query, connection);
-                using var reader = async ? await cmd.ExecuteReaderAsync(cancellationToken) : cmd.ExecuteReader();
+                using var reader = await cmd.ExecuteReader(CommandBehavior.Default, async, cancellationToken);
                 while (async ? await reader.ReadAsync(cancellationToken): reader.Read())
                 {
                     var column = LoadColumnDefinition(reader, _connection.Connector!.TypeMapper.DatabaseInfo, oldQueryMode);

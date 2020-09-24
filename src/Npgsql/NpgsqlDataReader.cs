@@ -1766,7 +1766,7 @@ namespace Npgsql
         /// Asynchronously returns schema information for the columns in the current resultset.
         /// </summary>
         /// <returns></returns>
-#if NET // i.e. >= NET5_0
+#if NET
         public new Task<ReadOnlyCollection<NpgsqlDbColumn>> GetColumnSchemaAsync(CancellationToken cancellationToken = default)
 #else
         public Task<ReadOnlyCollection<NpgsqlDbColumn>> GetColumnSchemaAsync(CancellationToken cancellationToken = default)
@@ -1783,6 +1783,7 @@ namespace Npgsql
                 ? Task.FromResult(new List<NpgsqlDbColumn>().AsReadOnly())
                 : new DbColumnSchemaGenerator(_connection, RowDescription, _behavior.HasFlag(CommandBehavior.KeyInfo))
                     .GetColumnSchemaAsync(async, cancellationToken);
+
         #endregion
 
         #region Schema metadata table
@@ -1796,7 +1797,7 @@ namespace Npgsql
         /// <summary>
         /// Asynchronously returns a System.Data.DataTable that describes the column metadata of the DataReader.
         /// </summary>
-#if NET // i.e. >= NET5_0
+#if NET
         public override Task<DataTable?> GetSchemaTableAsync(CancellationToken cancellationToken = default)
 #else
         public Task<DataTable?> GetSchemaTableAsync(CancellationToken cancellationToken = default)
