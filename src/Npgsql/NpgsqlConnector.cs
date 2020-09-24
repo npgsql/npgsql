@@ -648,25 +648,17 @@ namespace Npgsql
             }
             catch
             {
-                DisposeSafe(ref _stream);
-                DisposeSafe(ref _baseStream);
-                DisposeSafe(ref _socket);
-
-                void DisposeSafe<T>(ref T disposable)
-                    where T : class, IDisposable
-                {
-                    try
-                    {
-                        disposable?.Dispose();
-                        disposable = default!;
-                    }
-                    catch
-                    {
-                        // ignored
-                    }
-                }
-
                 cert?.Dispose();
+
+                _stream?.Dispose();
+                _stream = null!;
+
+                _baseStream?.Dispose();
+                _baseStream = null!;
+
+                _socket?.Dispose();
+                _socket = null!;
+
                 throw;
             }
         }
