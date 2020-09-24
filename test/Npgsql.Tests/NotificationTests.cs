@@ -162,6 +162,8 @@ namespace Npgsql.Tests
             }
         }
 
+// Cancellation for async notifications is not supported for .net 4.6.1
+#if !NET461
         [Test]
         public void WaitAsyncCancellation()
         {
@@ -181,6 +183,7 @@ namespace Npgsql.Tests
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
             }
         }
+#endif
 
         [Test]
         public void WaitBreaksConnection()
