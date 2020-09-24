@@ -563,6 +563,7 @@ namespace Npgsql
 
         async Task RawOpen(NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
         {
+            var cert = default(X509Certificate2?);
             try
             {
                 if (async)
@@ -612,7 +613,10 @@ namespace Npgsql
                             certPath = certPathDefault;
 
                         if (certPath != null)
-                            clientCertificates.Import(certPath, Settings.ClientCertificateKey ?? PostgresEnvironment.SslKey);
+                        {
+                            cert = new X509Certificate2(certPath, Settings.ClientCertificateKey ?? PostgresEnvironment.SslKey);
+                            clientCertificates.Add(cert);
+                        }
 
                         ProvideClientCertificatesCallback?.Invoke(clientCertificates);
 
@@ -642,25 +646,26 @@ namespace Npgsql
             }
             catch
             {
-#pragma warning disable CS8625
-                try { _stream?.Dispose(); } catch {
-                    // ignored
-                }
-                _stream = null;
-                try { _baseStream?.Dispose(); }
-                catch
+                DisposeSafe(ref _stream);
+                DisposeSafe(ref _baseStream);
+                DisposeSafe(ref _socket);
+
+                void DisposeSafe<T>(ref T disposable)
+                    where T : class, IDisposable
                 {
-                    // ignored
+                    try
+                    {
+                        disposable?.Dispose();
+                        disposable = default!;
+                    }
+                    catch
+                    {
+                        // ignored
+                    }
                 }
-                _baseStream = null;
-                try { _socket?.Dispose(); }
-                catch
-                {
-                    // ignored
-                }
-                _socket = null;
+
+                cert?.Dispose();
                 throw;
-#pragma warning restore CS8625
             }
         }
 
