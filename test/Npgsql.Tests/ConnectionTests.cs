@@ -1406,9 +1406,6 @@ CREATE TABLE record ()");
         [NonParallelizable]
         public void PasswordSourcePrecendence()
         {
-            if (IsMultiplexing)
-                Assert.Ignore();
-
             using var resetPassword = SetEnvironmentVariable("PGPASSWORD", null);
             var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
 
@@ -1446,8 +1443,8 @@ CREATE TABLE record ()");
             {
                 builder.Password = password;
                 builder.Passfile = passFile;
-                builder.Pooling = false;
                 builder.IntegratedSecurity = false;
+                builder.ApplicationName = $"{nameof(PasswordSourcePrecendence)}:{Guid.NewGuid()}";
 
                 using var connection = await OpenConnectionAsync(builder.ToString());
             };
