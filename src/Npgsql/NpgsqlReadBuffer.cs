@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.Buffers.Binary;
 using System.Diagnostics;
 using System.IO;
@@ -28,6 +29,7 @@ namespace Npgsql
         internal Stream Underlying { private get; set; }
 
         readonly Socket? _underlyingSocket;
+        readonly bool _usesArrayPool;
 
         CancellationTokenSource _timeoutCts = new CancellationTokenSource();
 
@@ -95,6 +97,7 @@ namespace Npgsql
             Stream stream,
             Socket? socket,
             int size,
+            bool usesArrayPool,
             Encoding textEncoding,
             Encoding relaxedTextEncoding)
         {
@@ -107,8 +110,9 @@ namespace Npgsql
             Underlying = stream;
             _underlyingSocket = socket;
             _currentTimeout = TimeSpan.Zero;
+            _usesArrayPool = usesArrayPool;
             Size = size;
-            Buffer = new byte[Size];
+            Buffer = usesArrayPool ? ArrayPool<byte>.Shared.Rent(size) : new byte[Size];
             TextEncoding = textEncoding;
             RelaxedTextEncoding = relaxedTextEncoding;
         }
@@ -235,7 +239,7 @@ namespace Npgsql
         internal NpgsqlReadBuffer AllocateOversize(int count)
         {
             Debug.Assert(count > Size);
-            var tempBuf = new NpgsqlReadBuffer(Connector, Underlying, _underlyingSocket, count, TextEncoding, RelaxedTextEncoding);
+            var tempBuf = new NpgsqlReadBuffer(Connector, Underlying, _underlyingSocket, count, usesArrayPool: true, TextEncoding, RelaxedTextEncoding);
             if (_underlyingSocket != null)
                 tempBuf.Timeout = Timeout;
             CopyTo(tempBuf);
@@ -557,8 +561,10 @@ namespace Npgsql
             if (_disposed)
                 return;
 
-            _timeoutCts.Dispose();
+            if (_usesArrayPool)
+                ArrayPool<byte>.Shared.Return(Buffer);
 
+            _timeoutCts.Dispose();
             _disposed = true;
         }
 

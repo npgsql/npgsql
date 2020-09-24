@@ -60,7 +60,7 @@ namespace Npgsql.Tests
         public void SetUp()
         {
             Underlying = new MemoryStream();
-            ReadBuffer = new NpgsqlReadBuffer(null, Underlying, null, NpgsqlReadBuffer.DefaultSize, PGUtil.UTF8Encoding, PGUtil.RelaxedUTF8Encoding);
+            ReadBuffer = new NpgsqlReadBuffer(null, Underlying, null, NpgsqlReadBuffer.DefaultSize, false, PGUtil.UTF8Encoding, PGUtil.RelaxedUTF8Encoding);
         }
 #pragma warning restore CS8625
 

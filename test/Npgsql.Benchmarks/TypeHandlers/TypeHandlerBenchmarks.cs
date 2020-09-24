@@ -50,7 +50,7 @@ namespace Npgsql.Benchmarks.TypeHandlers
         {
             _stream = new EndlessStream();
             _handler = handler ?? throw new ArgumentNullException(nameof(handler));
-            _readBuffer = new NpgsqlReadBuffer(null, _stream, null, NpgsqlReadBuffer.MinimumSize, Encoding.UTF8, PGUtil.RelaxedUTF8Encoding);
+            _readBuffer = new NpgsqlReadBuffer(null, _stream, null, NpgsqlReadBuffer.MinimumSize, false, Encoding.UTF8, PGUtil.RelaxedUTF8Encoding);
             _writeBuffer = new NpgsqlWriteBuffer(null, _stream, null, NpgsqlWriteBuffer.MinimumSize, Encoding.UTF8);
         }
 
