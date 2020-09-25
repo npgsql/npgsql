@@ -1755,25 +1755,62 @@ namespace Npgsql
         /// </summary>
         /// <returns></returns>
         public ReadOnlyCollection<NpgsqlDbColumn> GetColumnSchema()
-            => RowDescription == null || RowDescription.Fields.Count == 0
-                ? new List<NpgsqlDbColumn>().AsReadOnly()
-                : new DbColumnSchemaGenerator(_connection, RowDescription, _behavior.HasFlag(CommandBehavior.KeyInfo))
-                    .GetColumnSchema();
+            => GetColumnSchema(async: false).GetAwaiter().GetResult();
 
 #if !NET461
         ReadOnlyCollection<DbColumn> IDbColumnSchemaGenerator.GetColumnSchema()
             => new ReadOnlyCollection<DbColumn>(GetColumnSchema().Select(c => (DbColumn)c).ToList());
 #endif
 
+        /// <summary>
+        /// Asynchronously returns schema information for the columns in the current resultset.
+        /// </summary>
+        /// <returns></returns>
+#if NET
+        public new Task<ReadOnlyCollection<NpgsqlDbColumn>> GetColumnSchemaAsync(CancellationToken cancellationToken = default)
+#else
+        public Task<ReadOnlyCollection<NpgsqlDbColumn>> GetColumnSchemaAsync(CancellationToken cancellationToken = default)
+#endif
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled<ReadOnlyCollection<NpgsqlDbColumn>>(cancellationToken);
+            using (NoSynchronizationContextScope.Enter())
+                return GetColumnSchema(async: true, cancellationToken);
+        }
+
+        Task<ReadOnlyCollection<NpgsqlDbColumn>> GetColumnSchema(bool async, CancellationToken cancellationToken = default)
+            => RowDescription == null || RowDescription.Fields.Count == 0
+                ? Task.FromResult(new List<NpgsqlDbColumn>().AsReadOnly())
+                : new DbColumnSchemaGenerator(_connection, RowDescription, _behavior.HasFlag(CommandBehavior.KeyInfo))
+                    .GetColumnSchemaAsync(async, cancellationToken);
+
         #endregion
 
         #region Schema metadata table
-
 
         /// <summary>
         /// Returns a System.Data.DataTable that describes the column metadata of the DataReader.
         /// </summary>
         public override DataTable? GetSchemaTable()
+            => GetSchemaTable(async: false).GetAwaiter().GetResult();
+        
+        /// <summary>
+        /// Asynchronously returns a System.Data.DataTable that describes the column metadata of the DataReader.
+        /// </summary>
+#if NET
+        public override Task<DataTable?> GetSchemaTableAsync(CancellationToken cancellationToken = default)
+#else
+        public Task<DataTable?> GetSchemaTableAsync(CancellationToken cancellationToken = default)
+#endif
+        {
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled<DataTable?>(cancellationToken);
+
+            using (NoSynchronizationContextScope.Enter())
+                return GetSchemaTable(async: true, cancellationToken);
+        }
+
+        async Task<DataTable?> GetSchemaTable(bool async, CancellationToken cancellationToken = default)
         {
             if (FieldCount == 0) // No resultset
                 return null;
@@ -1808,7 +1845,7 @@ namespace Npgsql
             table.Columns.Add("ProviderSpecificDataType", typeof(Type));
             table.Columns.Add("DataTypeName", typeof(string));
 
-            foreach (var column in GetColumnSchema())
+            foreach (var column in await GetColumnSchema(async, cancellationToken))
             {
                 var row = table.NewRow();
 

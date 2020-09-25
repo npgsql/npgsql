@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Data;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Transactions;
 using Npgsql.BackendMessages;
 using Npgsql.TypeHandlers;
@@ -90,7 +93,7 @@ ORDER BY attnum";
 
         #endregion Column queries
 
-        internal ReadOnlyCollection<NpgsqlDbColumn> GetColumnSchema()
+        internal async Task<ReadOnlyCollection<NpgsqlDbColumn>> GetColumnSchemaAsync(bool async, CancellationToken cancellationToken = default)
         {
             // This is mainly for Amazon Redshift
             var oldQueryMode = _connection.PostgreSqlVersion < new Version(8, 2);
@@ -116,14 +119,16 @@ ORDER BY attnum";
                     ? GenerateOldColumnsQuery(columnFieldFilter)
                     : GenerateColumnsQuery(_connection.PostgreSqlVersion, columnFieldFilter);
 
-                using var scope = new TransactionScope(TransactionScopeOption.Suppress);
+                using var scope = new TransactionScope(
+                    TransactionScopeOption.Suppress,
+                    async ? TransactionScopeAsyncFlowOption.Enabled : TransactionScopeAsyncFlowOption.Suppress);
                 using var connection = (NpgsqlConnection)((ICloneable)_connection).Clone();
 
-                connection.Open();
-
+                await connection.Open(async, cancellationToken);
+                
                 using var cmd = new NpgsqlCommand(query, connection);
-                using var reader = cmd.ExecuteReader();
-                while (reader.Read())
+                using var reader = await cmd.ExecuteReader(CommandBehavior.Default, async, cancellationToken);
+                while (async ? await reader.ReadAsync(cancellationToken): reader.Read())
                 {
                     var column = LoadColumnDefinition(reader, _connection.Connector!.TypeMapper.DatabaseInfo, oldQueryMode);
                     for (var ordinal = 0; ordinal < fields.Count; ordinal++)

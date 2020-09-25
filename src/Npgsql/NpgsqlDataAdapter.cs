@@ -1,5 +1,8 @@
+using System;
 using System.Data;
 using System.Data.Common;
+using System.Threading;
+using System.Threading.Tasks;
 using JetBrains.Annotations;
 
 namespace Npgsql
@@ -136,6 +139,65 @@ namespace Npgsql
         {
             get => (NpgsqlCommand?)base.InsertCommand;
             set => base.InsertCommand = value;
+        }
+
+        // Temporary implementation, waiting for official support in System.Data via https://github.com/dotnet/runtime/issues/22109
+        internal async Task<int> Fill(DataTable dataTable, bool async, CancellationToken cancellationToken = default)
+        { 
+            var command = SelectCommand;
+            var activeConnection = command?.Connection ?? throw new InvalidOperationException("Connection required");
+            var originalState = ConnectionState.Closed;
+
+            try
+            {
+                originalState = activeConnection.State;
+                if (ConnectionState.Closed == originalState)
+                    await activeConnection.Open(async, cancellationToken);
+
+                using var dataReader = await command.ExecuteReader(CommandBehavior.Default, async, cancellationToken);
+
+                return await Fill(dataTable, dataReader, async, cancellationToken);
+            }
+            finally
+            {
+                if (ConnectionState.Closed == originalState)
+                    activeConnection.Close();
+            }
+        }
+
+        async Task<int> Fill(DataTable dataTable, NpgsqlDataReader dataReader, bool async, CancellationToken cancellationToken = default)
+        {
+            dataTable.BeginLoadData();
+            try
+            {
+                var rowsAdded = 0;
+                var count = dataReader.FieldCount;
+                var columnCollection = dataTable.Columns;
+                for (var i = 0; i < count; ++i)
+                {
+                    var fieldName = dataReader.GetName(i);
+                    if (!columnCollection.Contains(fieldName))
+                    {
+                        var fieldType = dataReader.GetFieldType(i);
+                        var dataColumn = new DataColumn(fieldName, fieldType);
+                        columnCollection.Add(dataColumn);
+                    }
+                }
+
+                var values = new object[count];
+
+                while (async ? await dataReader.ReadAsync(cancellationToken) : dataReader.Read())
+                {
+                    dataReader.GetValues(values);
+                    dataTable.LoadDataRow(values, true);
+                    rowsAdded++;
+                }
+                return rowsAdded;
+            }
+            finally
+            {
+                dataTable.EndLoadData();
+            }
         }
     }
 

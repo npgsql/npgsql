@@ -1032,7 +1032,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         async Task<int> ExecuteNonQuery(bool async, CancellationToken cancellationToken)
         {
-            using var reader = await ExecuteReaderAsync(CommandBehavior.Default, async, cancellationToken);
+            using var reader = await ExecuteReader(CommandBehavior.Default, async, cancellationToken);
             while (async ? await reader.NextResultAsync(cancellationToken) : reader.NextResult()) ;
 
             reader.Close();
@@ -1073,7 +1073,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             if (!Parameters.HasOutputParameters)
                 behavior |= CommandBehavior.SequentialAccess;
 
-            using var reader = await ExecuteReaderAsync(behavior, async, cancellationToken);
+            using var reader = await ExecuteReader(behavior, async, cancellationToken);
             return reader.Read() && reader.FieldCount != 0 ? reader.GetValue(0) : null;
         }
 
@@ -1104,10 +1104,10 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// <param name="behavior">One of the enumeration values that specified the command behavior.</param>
         /// <returns>A task representing the operation.</returns>
         public new NpgsqlDataReader ExecuteReader(CommandBehavior behavior = CommandBehavior.Default)
-            => ExecuteReaderAsync(behavior, async: false, CancellationToken.None).GetAwaiter().GetResult();
+            => ExecuteReader(behavior, async: false, CancellationToken.None).GetAwaiter().GetResult();
 
         /// <summary>
-        /// An asynchronous version of <see cref="ExecuteReader"/>, which executes
+        /// An asynchronous version of <see cref="ExecuteReader(CommandBehavior)"/>, which executes
         /// the <see cref="CommandText"/> against the <see cref="Connection"/>
         /// and returns a <see cref="NpgsqlDataReader"/>.
         /// </summary>
@@ -1130,14 +1130,14 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 return Task.FromCanceled<NpgsqlDataReader>(cancellationToken);
 
             using (NoSynchronizationContextScope.Enter())
-                return ExecuteReaderAsync(behavior, async: true, cancellationToken).AsTask();
+                return ExecuteReader(behavior, async: true, cancellationToken).AsTask();
         }
 
         // TODO: Maybe pool these?
         internal ManualResetValueTaskSource<NpgsqlConnector> ExecutionCompletion { get; }
             = new ManualResetValueTaskSource<NpgsqlConnector>();
 
-        async ValueTask<NpgsqlDataReader> ExecuteReaderAsync(CommandBehavior behavior, bool async, CancellationToken cancellationToken)
+        internal async ValueTask<NpgsqlDataReader> ExecuteReader(CommandBehavior behavior, bool async, CancellationToken cancellationToken)
         {
             var conn = CheckAndGetConnection();
             _behavior = behavior;
