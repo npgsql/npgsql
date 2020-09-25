@@ -1934,8 +1934,16 @@ namespace Npgsql
 
         public async Task<bool> Wait(bool async, int timeout, CancellationToken cancellationToken = default)
         {
+#if NET461
             if (timeout > 0 && IsSecure)
-                throw new NotSupportedException("Wait with timeout isn't supported when SSL is used, see https://github.com/npgsql/npgsql/issues/1501");
+                throw new NotSupportedException("Wait with timeout isn't supported when SSL is used on .NET Framework. Please consider moving to .NET Core or disabling SSL.");
+
+            if (timeout > 0 && async)
+                throw new NotSupportedException("WaitAsync with timeout isn't supported when used on .NET Framework. Please consider moving to .NET Core.");
+
+            if (timeout <= 0 && cancellationToken.CanBeCanceled)
+                throw new NotSupportedException("WaitAsync with cancellation token isn't supported when SSL is used on .NET Framework. Please consider moving to .NET Core or disabling SSL.");
+#endif
 
             using (StartUserAction(ConnectorState.Waiting))
             {

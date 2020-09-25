@@ -114,16 +114,17 @@ namespace Npgsql.Tests
             }
         }
 
-// Timeout for async notifications is not supported for .net 4.6.1
-#if !NET461
         [Test]
         public void WaitAsyncWithTimeout()
         {
             using var conn = OpenConnection();
+#if NET461
+            Assert.That(async () => await conn.WaitAsync(100), Throws.Exception.TypeOf<NotSupportedException>());
+#else
             Assert.That(async () => await conn.WaitAsync(100), Is.EqualTo(false));
             Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
-        }
 #endif
+        }
 
         [Test, Ignore("Flaky, see #2070")]
         public void WaitWithKeepalive()
@@ -165,8 +166,6 @@ namespace Npgsql.Tests
             }
         }
 
-// Cancellation for async notifications is not supported for .net 4.6.1
-#if !NET461
         [Test]
         public void WaitAsyncCancellation()
         {
@@ -181,12 +180,16 @@ namespace Npgsql.Tests
             {
                 conn.ExecuteNonQuery("LISTEN notifytest");
                 var cts = new CancellationTokenSource(1000);
+#if NET461
+                Assert.That(async () => await conn.WaitAsync(cts.Token),
+                    Throws.Exception.TypeOf<NotSupportedException>());
+#else
                 Assert.That(async () => await conn.WaitAsync(cts.Token),
                     Throws.Exception.TypeOf<OperationCanceledException>());
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+#endif
             }
         }
-#endif
 
         [Test]
         public void WaitBreaksConnection()
