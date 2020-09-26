@@ -1943,8 +1943,7 @@ namespace Npgsql
                 if (async)
                     throw new NotSupportedException("WaitAsync with timeout isn't supported when used on .NET Framework. Please consider moving to .NET Core.");
             }
-
-            if (timeout <= 0 && cancellationToken.CanBeCanceled)
+            else if (cancellationToken.CanBeCanceled)
                 throw new NotSupportedException("WaitAsync with cancellation token isn't supported when used on .NET Framework. Please consider moving to .NET Core.");
 #endif
 
