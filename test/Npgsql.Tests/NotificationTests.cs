@@ -107,8 +107,7 @@ namespace Npgsql.Tests
                 conn.ExecuteNonQuery("LISTEN notifytest");
                 notifyingConn.ExecuteNonQuery("NOTIFY notifytest");
                 conn.Notification += (o, e) => receivedNotification = true;
-                var result = await conn.WaitAsync();
-                Assert.IsTrue(result);
+                await conn.WaitAsync(0);
                 Assert.IsTrue(receivedNotification);
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
             }
