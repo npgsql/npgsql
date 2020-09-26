@@ -1945,7 +1945,7 @@ namespace Npgsql
             }
 
             if (timeout <= 0 && cancellationToken.CanBeCanceled)
-                throw new NotSupportedException("WaitAsync with cancellation token isn't supported when SSL is used on .NET Framework. Please consider moving to .NET Core or disabling SSL.");
+                throw new NotSupportedException("WaitAsync with cancellation token isn't supported when used on .NET Framework. Please consider moving to .NET Core.");
 #endif
 
             using var _ = StartUserAction(ConnectorState.Waiting);
