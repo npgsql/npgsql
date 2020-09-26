@@ -1083,7 +1083,7 @@ namespace Npgsql
                     {
                         try
                         {
-                            await ReadBuffer.Ensure(5, async, cancellationToken);
+                            await ReadBuffer.Ensure(5, async, readingNotifications2, cancellationToken);
                             messageCode = (BackendMessageCode) ReadBuffer.ReadByte();
                             PGUtil.ValidateBackendMessageCode(messageCode);
                             len = ReadBuffer.ReadInt32() - 4; // Transmitted length includes itself
@@ -1938,210 +1938,94 @@ namespace Npgsql
 
         #region Wait
 
-        public bool Wait(int timeout)
+        internal async Task<bool> Wait(bool async, int timeout, CancellationToken cancellationToken = default)
         {
-            if ((timeout != 0 && timeout != -1) && IsSecure)
-                throw new NotSupportedException("Wait() with timeout isn't supported when SSL is used, see https://github.com/npgsql/npgsql/issues/1501");
-
-            using (StartUserAction(ConnectorState.Waiting))
+#if NET461
+            if (timeout > 0)
             {
-                // We may have prepended messages in the connection's write buffer - these need to be flushed now.
-                Flush();
+                if (IsSecure)
+                    throw new NotSupportedException("Wait with timeout isn't supported when SSL is used on .NET Framework. Please consider moving to .NET Core or disabling SSL.");
 
-                var keepaliveMs = Settings.KeepAlive * 1000;
+                if (async)
+                    throw new NotSupportedException("WaitAsync with timeout isn't supported when used on .NET Framework. Please consider moving to .NET Core.");
+            }
+            else if (cancellationToken.CanBeCanceled)
+                throw new NotSupportedException("WaitAsync with cancellation token isn't supported when used on .NET Framework. Please consider moving to .NET Core.");
+#endif
+
+            using var _ = StartUserAction(ConnectorState.Waiting);
+            // We may have prepended messages in the connection's write buffer - these need to be flushed now.
+            await Flush(async, cancellationToken);
+
+            var keepaliveMs = Settings.KeepAlive * 1000;
+            while (true)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var timeoutForKeepalive = _isKeepAliveEnabled && (timeout <= 0 || keepaliveMs < timeout);
+                UserTimeout = timeoutForKeepalive ? keepaliveMs : timeout;
+                try
+                {
+                    var msg = await ReadMessageWithNotifications(async, cancellationToken);
+                    if (msg != null)
+                    {
+                        throw Break(
+                            new NpgsqlException($"Received unexpected message of type {msg.Code} while waiting"));
+                    }
+                    return true;
+                }
+                catch (NpgsqlException e) when (e.InnerException is TimeoutException)
+                {
+                    if (!timeoutForKeepalive)  // We really timed out
+                        return false;
+                }
+
+                // Time for a keepalive
+                var keepaliveTime = Stopwatch.StartNew();
+                await WritePregenerated(PregeneratedMessages.KeepAlive, async, cancellationToken);
+                await Flush(async, cancellationToken);
+
+                var receivedNotification = false;
+                var expectedMessageCode = BackendMessageCode.RowDescription;
+
                 while (true)
                 {
-                    var timeoutForKeepalive = _isKeepAliveEnabled && (timeout == 0 || timeout == -1 || keepaliveMs < timeout);
-                    UserTimeout = timeoutForKeepalive ? keepaliveMs : timeout;
-                    try
+                    var msg = await ReadMessage(async, cancellationToken);
+                    if (msg == null)
                     {
-                        var msg = ReadMessageWithNotifications(false).Result;
-                        if (msg != null)
-                        {
-                            throw Break(
-                                new NpgsqlException($"Received unexpected message of type {msg.Code} while waiting"));
-                        }
-                        return true;
-                    }
-                    catch (NpgsqlException e) when (e.InnerException is TimeoutException)
-                    {
-                        if (!timeoutForKeepalive)  // We really timed out
-                            return false;
+                        receivedNotification = true;
+                        continue;
                     }
 
-                    // Time for a keepalive
-                    var keepaliveTime = Stopwatch.StartNew();
-                    WritePregenerated(PregeneratedMessages.KeepAlive);
-                    Flush();
+                    if (msg.Code != expectedMessageCode)
+                        throw new NpgsqlException($"Received unexpected message of type {msg.Code} while expecting {expectedMessageCode} as part of keepalive");
 
-                    var receivedNotification = false;
-                    var expectedMessageCode = BackendMessageCode.RowDescription;
-
-                    while (true)
+                    switch (msg.Code)
                     {
-                        var msg = ReadMessage(false, CancellationToken.None).Result;
-                        if (msg == null)
-                        {
-                            receivedNotification = true;
-                            continue;
-                        }
-
-                        if (msg.Code != expectedMessageCode)
-                            throw new NpgsqlException($"Received unexpected message of type {msg.Code} while expecting {expectedMessageCode} as part of keepalive");
-
-                        switch (msg.Code)
-                        {
-                        case BackendMessageCode.RowDescription:
-                            expectedMessageCode = BackendMessageCode.DataRow;
-                            continue;
-                        case BackendMessageCode.DataRow:
-                            // DataRow is usually consumed by a reader, here we have to skip it manually.
-                            ReadBuffer.Skip(((DataRowMessage)msg).Length);
-                            expectedMessageCode = BackendMessageCode.CompletedResponse;
-                            continue;
-                        case BackendMessageCode.CompletedResponse:
-                            expectedMessageCode = BackendMessageCode.ReadyForQuery;
-                            continue;
-                        case BackendMessageCode.ReadyForQuery:
-                            break;
-                        }
-                        Log.Trace("Performed keepalive", Id);
-
-                        if (receivedNotification)
-                            return true; // Notification was received during the keepalive
+                    case BackendMessageCode.RowDescription:
+                        expectedMessageCode = BackendMessageCode.DataRow;
+                        continue;
+                    case BackendMessageCode.DataRow:
+                        // DataRow is usually consumed by a reader, here we have to skip it manually.
+                        await ReadBuffer.Skip(((DataRowMessage)msg).Length, async, cancellationToken);
+                        expectedMessageCode = BackendMessageCode.CompletedResponse;
+                        continue;
+                    case BackendMessageCode.CompletedResponse:
+                        expectedMessageCode = BackendMessageCode.ReadyForQuery;
+                        continue;
+                    case BackendMessageCode.ReadyForQuery:
                         break;
                     }
+                    Log.Trace("Performed keepalive", Id);
 
-                    if (timeout > 0)
-                        timeout -= (keepaliveMs + (int)keepaliveTime.ElapsedMilliseconds);
+                    if (receivedNotification)
+                        return true; // Notification was received during the keepalive
+                    cancellationToken.ThrowIfCancellationRequested();
+                    break;
                 }
-            }
-        }
 
-        public Task WaitAsync(CancellationToken cancellationToken = default)
-        {
-            using (NoSynchronizationContextScope.Enter())
-                return DoWaitAsync(cancellationToken);
-        }
-
-        async Task DoWaitAsync(CancellationToken cancellationToken = default)
-        {
-            var keepaliveSent = false;
-            var keepaliveLock = new SemaphoreSlim(1, 1);
-
-            TimerCallback performKeepaliveMethod = state =>
-            {
-                if (!keepaliveLock.Wait(0))
-                    return;
-                try
-                {
-                    if (keepaliveSent)
-                        return;
-                    keepaliveSent = true;
-                    WritePregenerated(PregeneratedMessages.KeepAlive);
-                    Flush();
-                }
-                finally
-                {
-                    keepaliveLock.Release();
-                }
-            };
-
-            using (StartUserAction(ConnectorState.Waiting))
-            using (cancellationToken.Register(() => performKeepaliveMethod(null)))
-            {
-                // We may have prepended messages in the connection's write buffer - these need to be flushed now.
-                Flush();
-
-                Timer? keepaliveTimer = null;
-                if (_isKeepAliveEnabled)
-                    keepaliveTimer = new Timer(performKeepaliveMethod, null, Settings.KeepAlive*1000, Timeout.Infinite);
-                try
-                {
-                    while (true)
-                    {
-                        cancellationToken.ThrowIfCancellationRequested();
-                        // TODO: Fully implement cancellation
-                        var msg = await ReadMessageWithNotifications(true, CancellationToken.None);
-                        if (!keepaliveSent)
-                        {
-                            if (msg != null)
-                            {
-                                throw Break(new NpgsqlException(
-                                    $"Received unexpected message of type {msg.Code} while waiting"));
-                            }
-                            return;
-                        }
-
-                        // A keepalive was sent. Consume the response (RowDescription, CommandComplete,
-                        // ReadyForQuery) while also keeping track if an async message was received in between.
-                        await keepaliveLock.WaitAsync(CancellationToken.None);
-                        try
-                        {
-                            var receivedNotification = false;
-                            var expectedMessageCode = BackendMessageCode.RowDescription;
-
-                            while (true)
-                            {
-                                while (msg == null)
-                                {
-                                    receivedNotification = true;
-                                    // TODO: Fully implement cancellation
-                                    msg = await ReadMessage(true, CancellationToken.None);
-                                }
-
-                                if (msg.Code != expectedMessageCode)
-                                    throw new NpgsqlException($"Received unexpected message of type {msg.Code} while expecting {expectedMessageCode} as part of keepalive");
-
-                                var finishedKeepalive = false;
-                                switch (msg.Code)
-                                {
-                                case BackendMessageCode.RowDescription:
-                                    expectedMessageCode = BackendMessageCode.DataRow;
-                                    break;
-                                case BackendMessageCode.DataRow:
-                                    // TODO: Fully implement cancellation
-                                    // DataRow is usually consumed by a reader, here we have to skip it manually.
-                                    await ReadBuffer.Skip(((DataRowMessage)msg).Length, true, CancellationToken.None);
-                                    expectedMessageCode = BackendMessageCode.CompletedResponse;
-                                    break;
-                                case BackendMessageCode.CompletedResponse:
-                                    expectedMessageCode = BackendMessageCode.ReadyForQuery;
-                                    break;
-                                case BackendMessageCode.ReadyForQuery:
-                                    finishedKeepalive = true;
-                                    break;
-                                }
-
-                                if (!finishedKeepalive)
-                                {
-                                    // Intentional, as this method would be rewritten
-                                    msg = await ReadMessage(true, CancellationToken.None);
-                                    continue;
-                                }
-
-                                Log.Trace("Performed keepalive", Id);
-
-                                if (receivedNotification)
-                                    return; // Notification was received during the keepalive
-
-                                cancellationToken.ThrowIfCancellationRequested();
-                                // Keepalive completed without notification, set up the next one and continue waiting
-                                keepaliveTimer!.Change(Settings.KeepAlive*1000, Timeout.Infinite);
-                                keepaliveSent = false;
-                                break;
-                            }
-                        }
-                        finally
-                        {
-                            keepaliveLock.Release();
-                        }
-                    }
-                }
-                finally
-                {
-                    keepaliveTimer?.Dispose();
-                }
+                if (timeout > 0)
+                    timeout -= (keepaliveMs + (int)keepaliveTime.ElapsedMilliseconds);
             }
         }
 

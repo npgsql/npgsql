@@ -124,11 +124,13 @@ namespace Npgsql
             Ensure(count, false).GetAwaiter().GetResult();
         }
 
+        public Task Ensure(int count, bool async, CancellationToken cancellationToken = default) => Ensure(count, async, false, cancellationToken);
+
         /// <summary>
         /// Ensures that <paramref name="count"/> bytes are available in the buffer, and if
         /// not, reads from the socket until enough is available.
         /// </summary>
-        public Task Ensure(int count, bool async, CancellationToken cancellationToken = default)
+        internal Task Ensure(int count, bool async, bool dontBreakOnCancellation, CancellationToken cancellationToken = default)
         {
             return count <= ReadBytesLeft ? Task.CompletedTask : EnsureLong();
 
@@ -209,7 +211,7 @@ namespace Npgsql
                     {
                     // User requested the cancellation
                     case OperationCanceledException _ when (cancellationToken.IsCancellationRequested):
-                        throw Connector.Break(e);
+                        throw dontBreakOnCancellation ? e : Connector.Break(e);
                     // Read timeout
                     case OperationCanceledException _:
                     // Note that mono throws SocketException with the wrong error (see #1330)

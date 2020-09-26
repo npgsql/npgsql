@@ -107,10 +107,22 @@ namespace Npgsql.Tests
                 conn.ExecuteNonQuery("LISTEN notifytest");
                 notifyingConn.ExecuteNonQuery("NOTIFY notifytest");
                 conn.Notification += (o, e) => receivedNotification = true;
-                await conn.WaitAsync();
+                await conn.WaitAsync(0);
                 Assert.IsTrue(receivedNotification);
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
             }
+        }
+
+        [Test]
+        public void WaitAsyncWithTimeout()
+        {
+            using var conn = OpenConnection();
+#if NET461
+            Assert.That(async () => await conn.WaitAsync(100), Throws.Exception.TypeOf<NotSupportedException>());
+#else
+            Assert.That(async () => await conn.WaitAsync(100), Is.EqualTo(false));
+            Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+#endif
         }
 
         [Test, Ignore("Flaky, see #2070")]
@@ -167,9 +179,14 @@ namespace Npgsql.Tests
             {
                 conn.ExecuteNonQuery("LISTEN notifytest");
                 var cts = new CancellationTokenSource(1000);
+#if NET461
+                Assert.That(async () => await conn.WaitAsync(cts.Token),
+                    Throws.Exception.TypeOf<NotSupportedException>());
+#else
                 Assert.That(async () => await conn.WaitAsync(cts.Token),
                     Throws.Exception.TypeOf<OperationCanceledException>());
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+#endif
             }
         }
 
@@ -188,5 +205,21 @@ namespace Npgsql.Tests
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
             }
         }
-   }
+
+        [Test]
+        public void WaitAsyncBreaksConnection()
+        {
+            using (var conn = OpenConnection())
+            {
+                Task.Delay(1000).ContinueWith(t =>
+                {
+                    using (var conn2 = OpenConnection())
+                        conn2.ExecuteNonQuery($"SELECT pg_terminate_backend({conn.ProcessID})");
+                });
+
+                Assert.That(async () => await conn.WaitAsync(), Throws.Exception.TypeOf<PostgresException>());
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+            }
+        }
+    }
 }

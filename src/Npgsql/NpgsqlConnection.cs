@@ -1346,7 +1346,7 @@ namespace Npgsql
             CheckReady();
 
             Log.Debug($"Starting to wait (timeout={timeout})...", Connector!.Id);
-            return Connector!.Wait(timeout);
+            return Connector!.Wait(async: false, timeout, CancellationToken.None).GetAwaiter().GetResult();
         }
 
         /// <summary>
@@ -1374,20 +1374,49 @@ namespace Npgsql
         /// arrives, and exits immediately. The asynchronous message is delivered via the normal events
         /// (<see cref="Notification"/>, <see cref="Notice"/>).
         /// </summary>
+        /// <param name="timeout">
+        /// The time-out value, in milliseconds.
+        /// The default value is 0, which indicates an infinite time-out period.
+        /// Specifying -1 also indicates an infinite time-out period.
+        /// </param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <returns>true if an asynchronous message was received, false if timed out.</returns>
         [PublicAPI]
-        public Task WaitAsync(CancellationToken cancellationToken = default)
+        public Task<bool> WaitAsync(int timeout, CancellationToken cancellationToken = default)
         {
             if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled(cancellationToken);
+                return Task.FromCanceled<bool>(cancellationToken);
             if (Settings.Multiplexing)
                 throw new NotSupportedException($"{nameof(Wait)} isn't supported in multiplexing mode");
 
             CheckReady();
 
             Log.Debug("Starting to wait asynchronously...", Connector!.Id);
-            return Connector!.WaitAsync(cancellationToken);
+            using (NoSynchronizationContextScope.Enter())
+                return Connector!.Wait(async: true, timeout, cancellationToken);
         }
+
+        /// <summary>
+        /// Waits asynchronously until an asynchronous PostgreSQL messages (e.g. a notification)
+        /// arrives, and exits immediately. The asynchronous message is delivered via the normal events
+        /// (<see cref="Notification"/>, <see cref="Notice"/>).
+        /// </summary>
+        /// <param name="timeout">
+        /// The time-out value as <see cref="TimeSpan"/>
+        /// </param>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <returns>true if an asynchronous message was received, false if timed out.</returns>
+        [PublicAPI]
+        public Task<bool> WaitAsync(TimeSpan timeout, CancellationToken cancellationToken = default) => WaitAsync((int)timeout.TotalMilliseconds, cancellationToken);
+
+        /// <summary>
+        /// Waits asynchronously until an asynchronous PostgreSQL messages (e.g. a notification)
+        /// arrives, and exits immediately. The asynchronous message is delivered via the normal events
+        /// (<see cref="Notification"/>, <see cref="Notice"/>).
+        /// </summary>
+        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        [PublicAPI]
+        public Task WaitAsync(CancellationToken cancellationToken = default) => WaitAsync(0, cancellationToken);
 
         #endregion
 
