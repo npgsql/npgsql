@@ -1346,7 +1346,7 @@ namespace Npgsql
             CheckReady();
 
             Log.Debug($"Starting to wait (timeout={timeout})...", Connector!.Id);
-            return Connector!.Wait(false, timeout, CancellationToken.None).GetAwaiter().GetResult();
+            return Connector!.Wait(async: false, timeout, CancellationToken.None).GetAwaiter().GetResult();
         }
 
         /// <summary>
@@ -1380,6 +1380,7 @@ namespace Npgsql
         /// Specifying -1 also indicates an infinite time-out period.
         /// </param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <returns>true if an asynchronous message was received, false if timed out.</returns>
         [PublicAPI]
         public Task<bool> WaitAsync(int timeout, CancellationToken cancellationToken = default)
         {
@@ -1392,7 +1393,7 @@ namespace Npgsql
 
             Log.Debug("Starting to wait asynchronously...", Connector!.Id);
             using (NoSynchronizationContextScope.Enter())
-                return Connector!.Wait(true, timeout, cancellationToken);
+                return Connector!.Wait(async: true, timeout, cancellationToken);
         }
 
         /// <summary>
@@ -1404,6 +1405,7 @@ namespace Npgsql
         /// The time-out value as <see cref="TimeSpan"/>
         /// </param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <returns>true if an asynchronous message was received, false if timed out.</returns>
         [PublicAPI]
         public Task<bool> WaitAsync(TimeSpan timeout, CancellationToken cancellationToken = default) => WaitAsync((int)timeout.TotalMilliseconds, cancellationToken);
 
@@ -1414,7 +1416,7 @@ namespace Npgsql
         /// </summary>
         /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
         [PublicAPI]
-        public Task<bool> WaitAsync(CancellationToken cancellationToken = default) => WaitAsync(0, cancellationToken);
+        public Task WaitAsync(CancellationToken cancellationToken = default) => WaitAsync(0, cancellationToken);
 
         #endregion
 
