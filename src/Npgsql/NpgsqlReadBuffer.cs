@@ -31,29 +31,29 @@ namespace Npgsql
 
         readonly Socket? _underlyingSocket;
 
-        readonly TimeoutCancellationTokenSourceWrapper _timeoutCts;
+        internal TimeoutCancellationTokenSourceWrapper TimeoutCts { get; }
 
         /// <summary>
         /// Timeout for sync and async reads
         /// </summary>
         internal TimeSpan Timeout
         {
-            get => _timeoutCts.Timeout;
+            get => TimeoutCts.Timeout;
             set
             {
-                if (_timeoutCts.Timeout != value)
+                if (TimeoutCts.Timeout != value)
                 {
                     Debug.Assert(_underlyingSocket != null);
 
                     if (value > TimeSpan.Zero)
                     {
                         _underlyingSocket.ReceiveTimeout = (int)value.TotalMilliseconds;
-                        _timeoutCts.Timeout = value;
+                        TimeoutCts.Timeout = value;
                     }
                     else
                     {
                         _underlyingSocket.ReceiveTimeout = -1;
-                        _timeoutCts.Timeout = InfiniteTimeSpan;
+                        TimeoutCts.Timeout = InfiniteTimeSpan;
                     }
                 }
             }
@@ -109,7 +109,7 @@ namespace Npgsql
             Connector = connector;
             Underlying = stream;
             _underlyingSocket = socket;
-            _timeoutCts = new TimeoutCancellationTokenSourceWrapper();
+            TimeoutCts = new TimeoutCancellationTokenSourceWrapper();
             Size = size;
             Buffer = ArrayPool<byte>.Shared.Rent(size);
             TextEncoding = textEncoding;
@@ -160,8 +160,10 @@ namespace Npgsql
                 }
 
                 var finalCt = cancellationToken;
-                if (async && Timeout > TimeSpan.Zero)
-                    finalCt = _timeoutCts.Start(cancellationToken);
+                if (async)
+                    finalCt = Timeout > TimeSpan.Zero
+                        ? TimeoutCts.Start(cancellationToken)
+                        : TimeoutCts.Reset(cancellationToken);
 
                 try
                 {
@@ -185,11 +187,11 @@ namespace Npgsql
                         // Or we consider it not timed out if we have already read everything (count == 0)
                         // In which case we reinitialize it on the next call to EnsureLong()
                         if (async)
-                            _timeoutCts.RestartTimeoutWithoutReset();
+                            TimeoutCts.RestartTimeoutWithoutReset();
 
                     }
 
-                    _timeoutCts.Stop();
+                    TimeoutCts.Stop();
                     NpgsqlEventSource.Log.BytesRead(totalRead);
                 }
                 catch (Exception e)
@@ -198,7 +200,7 @@ namespace Npgsql
                     // Not stopping will cause an assertion failure in debug mode when we call Start() the next time.
                     // We can't stop in a finally block because Connector.Break() will dispose the buffer and the contained
                     // _timeoutCts
-                    _timeoutCts.Stop();
+                    TimeoutCts.Stop();
                     switch (e)
                     {
                     // User requested the cancellation
@@ -549,7 +551,7 @@ namespace Npgsql
 
             ArrayPool<byte>.Shared.Return(Buffer);
 
-            _timeoutCts.Dispose();
+            TimeoutCts.Dispose();
             _disposed = true;
         }
 

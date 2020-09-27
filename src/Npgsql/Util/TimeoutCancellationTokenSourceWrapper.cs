@@ -111,6 +111,11 @@ namespace Npgsql.Util
         public void Cancel() => _cts.Cancel();
 
         /// <summary>
+        /// Cancel the wrapped <see cref="CancellationTokenSource"/> after delay
+        /// </summary>
+        public void CancelAfter(int delay) => _cts.CancelAfter(delay);
+
+        /// <summary>
         /// The <see cref="CancellationToken"/> from the wrapped
         /// <see cref="CancellationTokenSource"/> .
         /// </summary>
