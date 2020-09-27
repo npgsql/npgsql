@@ -1323,11 +1323,11 @@ namespace Npgsql
 
         #region Transactions
 
-        internal Task Rollback(bool async, CancellationToken cancellationToken = default)
+        internal async Task Rollback(bool async, CancellationToken cancellationToken = default)
         {
             Log.Debug("Rolling back transaction", Id);
             using (StartUserAction())
-                return ExecuteInternalCommand(PregeneratedMessages.RollbackTransaction, async, cancellationToken);
+                await ExecuteInternalCommand(PregeneratedMessages.RollbackTransaction, async, cancellationToken);
         }
 
         internal bool InTransaction
