@@ -31,29 +31,29 @@ namespace Npgsql
 
         readonly Socket? _underlyingSocket;
 
-        readonly TimeoutCancellationTokenSourceWrapper _timeoutCts;
+        internal TimeoutCancellationTokenSourceWrapper Cts { get; }
 
         /// <summary>
         /// Timeout for sync and async reads
         /// </summary>
         internal TimeSpan Timeout
         {
-            get => _timeoutCts.Timeout;
+            get => Cts.Timeout;
             set
             {
-                if (_timeoutCts.Timeout != value)
+                if (Cts.Timeout != value)
                 {
                     Debug.Assert(_underlyingSocket != null);
 
                     if (value > TimeSpan.Zero)
                     {
                         _underlyingSocket.ReceiveTimeout = (int)value.TotalMilliseconds;
-                        _timeoutCts.Timeout = value;
+                        Cts.Timeout = value;
                     }
                     else
                     {
                         _underlyingSocket.ReceiveTimeout = -1;
-                        _timeoutCts.Timeout = InfiniteTimeSpan;
+                        Cts.Timeout = InfiniteTimeSpan;
                     }
                 }
             }
@@ -109,7 +109,7 @@ namespace Npgsql
             Connector = connector;
             Underlying = stream;
             _underlyingSocket = socket;
-            _timeoutCts = new TimeoutCancellationTokenSourceWrapper();
+            Cts = new TimeoutCancellationTokenSourceWrapper();
             Size = size;
             Buffer = ArrayPool<byte>.Shared.Rent(size);
             TextEncoding = textEncoding;
@@ -128,16 +128,16 @@ namespace Npgsql
         }
 
         public Task Ensure(int count, bool async, CancellationToken cancellationToken = default)
-            => Ensure(count, async, dontBreakOnCancellation: false, cancellationToken);
+            => Ensure(count, async, readingNotifications: false, cancellationToken);
 
         public Task EnsureAsync(int count, CancellationToken cancellationToken = default)
-            => Ensure(count, async: true, dontBreakOnCancellation: false, cancellationToken);
+            => Ensure(count, async: true, readingNotifications: false, cancellationToken);
 
         /// <summary>
         /// Ensures that <paramref name="count"/> bytes are available in the buffer, and if
         /// not, reads from the socket until enough is available.
         /// </summary>
-        internal Task Ensure(int count, bool async, bool dontBreakOnCancellation, CancellationToken cancellationToken = default)
+        internal Task Ensure(int count, bool async, bool readingNotifications, CancellationToken cancellationToken = default)
         {
             return count <= ReadBytesLeft ? Task.CompletedTask : EnsureLong();
 
@@ -160,13 +160,18 @@ namespace Npgsql
                 }
 
                 var finalCt = cancellationToken;
-                if (async && Timeout > TimeSpan.Zero)
-                    finalCt = _timeoutCts.Start(cancellationToken);
-
-                try
+                if (async)
                 {
-                    var totalRead = 0;
-                    while (count > 0)
+                    finalCt = Timeout > TimeSpan.Zero
+                        ? Cts.Start(cancellationToken)
+                        : Cts.Reset(cancellationToken);
+                }
+
+                var totalRead = 0;
+                var isCancellation = false;
+                while (count > 0)
+                {
+                    try
                     {
                         var toRead = Size - FilledBytes;
                         var read = async
@@ -185,36 +190,66 @@ namespace Npgsql
                         // Or we consider it not timed out if we have already read everything (count == 0)
                         // In which case we reinitialize it on the next call to EnsureLong()
                         if (async)
-                            _timeoutCts.RestartTimeoutWithoutReset();
-
+                            Cts.RestartTimeoutWithoutReset();
                     }
-
-                    _timeoutCts.Stop();
-                    NpgsqlEventSource.Log.BytesRead(totalRead);
-                }
-                catch (Exception e)
-                {
-                    // Stopping twice (in case the previous Stop() call succeeded) doesn't hurt.
-                    // Not stopping will cause an assertion failure in debug mode when we call Start() the next time.
-                    // We can't stop in a finally block because Connector.Break() will dispose the buffer and the contained
-                    // _timeoutCts
-                    _timeoutCts.Stop();
-                    switch (e)
+                    catch (Exception e)
                     {
-                    // User requested the cancellation
-                    case OperationCanceledException _ when (cancellationToken.IsCancellationRequested):
-                        throw dontBreakOnCancellation ? e : Connector.Break(e);
-                    // Read timeout
-                    case OperationCanceledException _:
-                    // Note that mono throws SocketException with the wrong error (see #1330)
-                    case IOException _ when (e.InnerException as SocketException)?.SocketErrorCode ==
-                                            (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock):
-                        Debug.Assert(e is OperationCanceledException ? async : !async);
-                        throw new NpgsqlException("Exception while reading from stream", new TimeoutException("Timeout during reading attempt"));
-                    }
+                        // Stopping twice (in case the previous Stop() call succeeded) doesn't hurt.
+                        // Not stopping will cause an assertion failure in debug mode when we call Start() the next time.
+                        // We can't stop in a finally block because Connector.Break() will dispose the buffer and the contained
+                        // _timeoutCts
+                        Cts.Stop();
+                        switch (e)
+                        {
+                        // User requested the cancellation (at this moment, it should be only WaitAsync)
+                        case OperationCanceledException _ when (cancellationToken.IsCancellationRequested):
+                            Debug.Assert(readingNotifications);
+                            throw;
+                        // Read timeout
+                        case OperationCanceledException _:
+                        // Note that mono throws SocketException with the wrong error (see #1330)
+                        case IOException _ when (e.InnerException as SocketException)?.SocketErrorCode ==
+                                                (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock):
+                            Debug.Assert(e is OperationCanceledException ? async : !async);
 
-                    throw Connector.Break(new NpgsqlException("Exception while reading from stream", e));
+                            if (!isCancellation && !readingNotifications)
+                            {
+                                try
+                                {
+                                    Connector.CancelRequest(throwExceptions: true, requestedByUser: false);
+
+                                    // If the cancellation timeout is negative, we break the connection immediately
+                                    var cancellationTimeout = Connector.Settings.CancellationTimeout;
+                                    if (cancellationTimeout >= 0)
+                                    {
+                                        isCancellation = true;
+
+                                        if (cancellationTimeout > 0)
+                                            Timeout = TimeSpan.FromMilliseconds(cancellationTimeout);
+
+                                        if (async)
+                                            finalCt = Cts.Start(cancellationToken);
+
+                                        continue;
+
+                                    }
+                                }
+                                catch
+                                {
+                                    // Cancellation was not successful - ignoring the exception, and throwing the timeout one
+                                }
+                            }
+
+                            var timeoutException = new NpgsqlException("Exception while reading from stream", new TimeoutException("Timeout during reading attempt"));
+                            throw readingNotifications ? timeoutException : Connector.Break(timeoutException);
+                        default:
+                            throw Connector.Break(new NpgsqlException("Exception while reading from stream", e));
+                        }
+                    }
                 }
+
+                Cts.Stop();
+                NpgsqlEventSource.Log.BytesRead(totalRead);
             }
         }
 
@@ -549,7 +584,7 @@ namespace Npgsql
 
             ArrayPool<byte>.Shared.Return(Buffer);
 
-            _timeoutCts.Dispose();
+            Cts.Dispose();
             _disposed = true;
         }
 

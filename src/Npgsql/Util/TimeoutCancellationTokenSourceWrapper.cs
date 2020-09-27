@@ -85,6 +85,20 @@ namespace Npgsql.Util
         }
 
         /// <summary>
+        /// Reset the wrapper to contain a unstarted and uncancelled <see cref="CancellationTokenSource"/>
+        /// in order make sure the next call to <see cref="Start"/> will not invalidate
+        /// the cancellation token.
+        /// </summary>
+        public void ResetCts()
+        {
+            if (_cts.IsCancellationRequested)
+            {
+                _cts.Dispose();
+                _cts = new CancellationTokenSource();
+            }
+        }
+
+        /// <summary>
         /// Set the timeout on the wrapped <see cref="CancellationTokenSource"/>
         /// to <see cref="System.Threading.Timeout.InfiniteTimeSpan"/>
         /// </summary>
@@ -109,6 +123,11 @@ namespace Npgsql.Util
         /// Cancel the wrapped <see cref="CancellationTokenSource"/>
         /// </summary>
         public void Cancel() => _cts.Cancel();
+
+        /// <summary>
+        /// Cancel the wrapped <see cref="CancellationTokenSource"/> after delay
+        /// </summary>
+        public void CancelAfter(int delay) => _cts.CancelAfter(delay);
 
         /// <summary>
         /// The <see cref="CancellationToken"/> from the wrapped

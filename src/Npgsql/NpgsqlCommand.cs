@@ -1153,36 +1153,14 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 if (conn.TryGetBoundConnector(out var connector))
                 {
                     connector.StartUserAction(this);
+                    connector.ResetCancellation();
 
                     CancellationTokenRegistration? registration = null;
 
                     try
                     {
-                        var finalCt = CancellationToken.None;
-
                         if (cancellationToken.CanBeCanceled)
-                        {
-                            connector.CommandCts.Reset(CancellationToken.None);
-
-                            registration = cancellationToken.Register(o =>
-                            {
-                                var cmd = (NpgsqlCommand)o!;
-                                var cn = cmd.Connection?.Connector;
-                                if (cn is null)
-                                    return;
-
-                                try
-                                {
-                                    cmd.Cancel(true);
-                                    cn.CommandCts.Start();
-                                }
-                                catch
-                                {
-                                    cn.CommandCts.Cancel();
-                                }
-                            }, this);
-                            finalCt = connector.CommandCts.Token;
-                        }
+                            registration = cancellationToken.Register(cmd => ((NpgsqlCommand)cmd!).Cancel(), this);
 
                         ValidateParameters(connector.TypeMapper);
 
@@ -1259,7 +1237,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         // to prevents a dependency on the thread pool (which would also trigger deadlocks).
                         // The WriteBuffer notifies this command when the first buffer flush occurs, so that the
                         // send functions can switch to the special async mode when needed.
-                        var sendTask = NonMultiplexingWriteWrapper(connector, async, finalCt);
+                        var sendTask = NonMultiplexingWriteWrapper(connector, async, CancellationToken.None);
 
                         // The following is a hack. It raises an exception if one was thrown in the first phases
                         // of the send (i.e. in parts of the send that executed synchronously). Exceptions may
@@ -1272,7 +1250,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         reader.Init(this, behavior, _statements, sendTask);
                         connector.CurrentReader = reader;
                         if (async)
-                            await reader.NextResultAsync(finalCt);
+                            await reader.NextResultAsync(CancellationToken.None);
                         else
                             reader.NextResult();
                         return reader;
@@ -1285,11 +1263,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     }
                     finally
                     {
-                        if (registration.HasValue)
-                        {
-                            registration.Value.Dispose();
-                            connector.CommandCts.Stop();
-                        }
+                        registration?.Dispose();
                     }
                 }
                 else
@@ -1376,9 +1350,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// Attempts to cancel the execution of a <see cref="NpgsqlCommand">NpgsqlCommand</see>.
         /// </summary>
         /// <remarks>As per the specs, no exception will be thrown by this method in case of failure</remarks>
-        public override void Cancel() => Cancel(false);
-
-        void Cancel(bool throwExceptions)
+        public override void Cancel()
         {
             if (State != CommandState.InProgress)
                 return;
@@ -1389,7 +1361,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             if (connector == null)
                 return;
 
-            connector.CancelRequest(throwExceptions);
+            connector.CancelRequest();
         }
 
         #endregion Cancel
@@ -1470,7 +1442,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             }
             Log.Debug(sb.ToString(), connector.Id);
             connector.QueryLogStopWatch.Start();
-
         }
 
         /// <summary>
