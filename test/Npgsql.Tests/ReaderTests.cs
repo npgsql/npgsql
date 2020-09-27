@@ -1195,6 +1195,11 @@ LANGUAGE plpgsql VOLATILE";
                 .ToArray();
             yield return (binary, binary);
 
+            var bigBinary = MemoryMarshal
+                .AsBytes<int>(Enumerable.Range(0, 8193).ToArray())
+                .ToArray();
+            yield return (bigBinary, bigBinary);
+
             var bigint = 0xDEADBEEFL;
             var bigintBinary = BitConverter.GetBytes(
                 BitConverter.IsLittleEndian

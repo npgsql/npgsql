@@ -484,7 +484,7 @@ namespace Npgsql
 
             async ValueTask<int> ReadAsyncLong()
             {
-                Debug.Assert(ReadPosition == 0);
+                Debug.Assert(ReadBytesLeft == 0);
                 Clear();
                 try
                 {
