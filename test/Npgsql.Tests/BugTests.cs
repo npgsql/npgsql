@@ -1238,5 +1238,34 @@ CREATE TEMP TABLE ""OrganisatieQmo_Organisatie_QueryModelObjects_Imp""
                 conn.ExecuteNonQuery("DROP FUNCTION IF EXISTS f_test()");
             }
         }
+
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/3117")]
+        public void Bug3117()
+        {
+            const string OkCommand = "SELECT 1";
+            const string ErrorCommand = "SELECT * FROM public.imnotexist";
+            using (var conn = new NpgsqlConnection(ConnectionString))
+            {
+                conn.Open();
+                var okCommand = new NpgsqlCommand(OkCommand, conn);
+                okCommand.Prepare();
+                using (okCommand.ExecuteReader()) { }
+
+                var errorCommand = new NpgsqlCommand(ErrorCommand, conn);
+                Assert.That(() => errorCommand.Prepare(), Throws.Exception
+                    .TypeOf<PostgresException>()
+                    .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.UndefinedTable));
+            }
+
+            using (var conn = new NpgsqlConnection(ConnectionString))
+            {
+                conn.Open();
+                var okCommand = new NpgsqlCommand(OkCommand, conn);
+                okCommand.Prepare();
+                using (okCommand.ExecuteReader()) { }
+                conn.UnprepareAll();
+            }
+        }
     }
 }

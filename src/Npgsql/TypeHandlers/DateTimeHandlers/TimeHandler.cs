@@ -40,7 +40,10 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
     /// </remarks>
     public class TimeHandler : NpgsqlSimpleTypeHandler<TimeSpan>
     {
-        internal TimeHandler(PostgresType postgresType) : base(postgresType) {}
+        /// <summary>
+        /// Constructs a <see cref="TimeHandler"/>.
+        /// </summary>
+        public TimeHandler(PostgresType postgresType) : base(postgresType) {}
 
         // PostgreSQL time resolution == 1 microsecond == 10 ticks
         /// <inheritdoc />

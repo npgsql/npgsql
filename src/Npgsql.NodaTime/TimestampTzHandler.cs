@@ -4,6 +4,7 @@ using NodaTime.TimeZones;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
+using BclTimestampTzHandler = Npgsql.TypeHandlers.DateTimeHandlers.TimestampTzHandler;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
@@ -13,26 +14,47 @@ namespace Npgsql.NodaTime
     {
         // Check for the legacy floating point timestamps feature
         public override NpgsqlTypeHandler<Instant> Create(PostgresType postgresType, NpgsqlConnection conn)
-            => conn.HasIntegerDateTimes
-                ? new TimestampTzHandler(postgresType)
-                : throw new NotSupportedException($"The deprecated floating-point date/time format is not supported by {nameof(Npgsql)}.");
+        {
+            var csb = new NpgsqlConnectionStringBuilder(conn.ConnectionString);
+            return conn.HasIntegerDateTimes
+                ? new TimestampTzHandler(postgresType, csb.ConvertInfinityDateTime)
+                : throw new NotSupportedException(
+                    $"The deprecated floating-point date/time format is not supported by {nameof(Npgsql)}.");
+        }
     }
 
-    class TimestampTzHandler : NpgsqlSimpleTypeHandler<Instant>, INpgsqlSimpleTypeHandler<ZonedDateTime>,
-                               INpgsqlSimpleTypeHandler<OffsetDateTime>
+    sealed class TimestampTzHandler : NpgsqlSimpleTypeHandler<Instant>, INpgsqlSimpleTypeHandler<ZonedDateTime>,
+                              INpgsqlSimpleTypeHandler<OffsetDateTime>, INpgsqlSimpleTypeHandler<DateTimeOffset>
     {
         readonly IDateTimeZoneProvider _dateTimeZoneProvider;
+        readonly BclTimestampTzHandler _bclHandler;
 
-        public TimestampTzHandler(PostgresType postgresType)
-            : base(postgresType) => _dateTimeZoneProvider = DateTimeZoneProviders.Tzdb;
+        /// <summary>
+        /// Whether to convert positive and negative infinity values to Instant.{Max,Min}Value when
+        /// an Instant is requested
+        /// </summary>
+        readonly bool _convertInfinityDateTime;
+
+        public TimestampTzHandler(PostgresType postgresType, bool convertInfinityDateTime)
+            : base(postgresType)
+        {
+            _dateTimeZoneProvider = DateTimeZoneProviders.Tzdb;
+            _convertInfinityDateTime = convertInfinityDateTime;
+            _bclHandler = new BclTimestampTzHandler(postgresType, convertInfinityDateTime);
+        }
 
         #region Read
 
         public override Instant Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
             var value = buf.ReadInt64();
-            if (value == long.MaxValue || value == long.MinValue)
-                throw new NpgsqlSafeReadException(new NotSupportedException("Infinity values not supported for timestamp with time zone"));
+            if (_convertInfinityDateTime)
+            {
+                if (value == long.MaxValue)
+                    return Instant.MaxValue;
+                if (value == long.MinValue)
+                    return Instant.MinValue;
+            }
             return TimestampHandler.Decode(value);
         }
 
@@ -78,7 +100,23 @@ namespace Npgsql.NodaTime
             => 8;
 
         public override void Write(Instant value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
-            => TimestampHandler.WriteInteger(value, buf);
+        {
+            if (_convertInfinityDateTime)
+            {
+                if (value == Instant.MaxValue)
+                {
+                    buf.WriteInt64(long.MaxValue);
+                    return;
+                }
+
+                if (value == Instant.MinValue)
+                {
+                    buf.WriteInt64(long.MinValue);
+                    return;
+                }
+            }
+            TimestampHandler.WriteInteger(value, buf);
+        }
 
         void INpgsqlSimpleTypeHandler<ZonedDateTime>.Write(ZonedDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
             => Write(value.ToInstant(), buf, parameter);
@@ -87,5 +125,14 @@ namespace Npgsql.NodaTime
             => Write(value.ToInstant(), buf, parameter);
 
         #endregion Write
+
+        DateTimeOffset INpgsqlSimpleTypeHandler<DateTimeOffset>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
+            => _bclHandler.Read<DateTimeOffset>(buf, len, fieldDescription);
+
+        int INpgsqlSimpleTypeHandler<DateTimeOffset>.ValidateAndGetLength(DateTimeOffset value, NpgsqlParameter? parameter)
+            => _bclHandler.ValidateAndGetLength(value, parameter);
+
+        void INpgsqlSimpleTypeHandler<DateTimeOffset>.Write(DateTimeOffset value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
+            => _bclHandler.Write(value, buf, parameter);
     }
 }

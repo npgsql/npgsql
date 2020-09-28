@@ -29,12 +29,18 @@ namespace Npgsql.Json.NET
 
         protected override async ValueTask<T> Read<T>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
-            var s = await base.Read<string>(buf, len, async, fieldDescription);
-            if (typeof(T) == typeof(string))
-                return (T)(object)s;
+            if (typeof(T) == typeof(string) ||
+                typeof(T) == typeof(char[]) ||
+                typeof(T) == typeof(ArraySegment<char>) ||
+                typeof(T) == typeof(char) ||
+                typeof(T) == typeof(byte[]))
+            {
+                return await base.Read<T>(buf, len, async, fieldDescription);
+            }
+
             try
             {
-                return JsonConvert.DeserializeObject<T>(s, _settings);
+                return JsonConvert.DeserializeObject<T>(await base.Read<string>(buf, len, async, fieldDescription), _settings);
             }
             catch (Exception e)
             {
@@ -43,36 +49,70 @@ namespace Npgsql.Json.NET
         }
 
         protected override int ValidateAndGetLength<T2>(T2 value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
-            => typeof(T2) == typeof(string)
-                ? base.ValidateAndGetLength(value, ref lengthCache, parameter)
-                : ValidateObjectAndGetLength(value!, ref lengthCache, parameter);
+        {
+            if (typeof(T2) == typeof(string) ||
+                typeof(T2) == typeof(char[]) ||
+                typeof(T2) == typeof(ArraySegment<char>) ||
+                typeof(T2) == typeof(char) ||
+                typeof(T2) == typeof(byte[]))
+            {
+                return base.ValidateAndGetLength(value, ref lengthCache, parameter);
+            }
+
+            var serialized = JsonConvert.SerializeObject(value, _settings);
+            if (parameter != null)
+                parameter.ConvertedValue = serialized;
+            return base.ValidateAndGetLength(serialized, ref lengthCache, parameter);
+        }
 
         protected override Task WriteWithLength<T2>(T2 value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
-            => typeof(T2) == typeof(string)
-                ? base.WriteWithLength(value, buf, lengthCache, parameter, async)
-                : WriteObjectWithLength(value!, buf, lengthCache, parameter, async);
+        {
+            if (typeof(T2) == typeof(string) ||
+                typeof(T2) == typeof(char[]) ||
+                typeof(T2) == typeof(ArraySegment<char>) ||
+                typeof(T2) == typeof(char) ||
+                typeof(T2) == typeof(byte[]))
+            {
+                return base.WriteWithLength(value, buf, lengthCache, parameter, async);
+            }
+
+            // User POCO, read serialized representation from the validation phase
+            var serialized = parameter?.ConvertedValue != null
+                ? (string)parameter.ConvertedValue
+                : JsonConvert.SerializeObject(value, _settings);
+            return base.WriteWithLength(serialized, buf, lengthCache, parameter, async);
+        }
 
         protected override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
-            var s = value as string;
-            if (s == null)
+            if (value is null ||
+                value is DBNull ||
+                value is string ||
+                value is char[] ||
+                value is ArraySegment<char> ||
+                value is char ||
+                value is byte[])
             {
-                s = JsonConvert.SerializeObject(value, _settings);
-                if (parameter != null)
-                    parameter.ConvertedValue = s;
+                return base.ValidateObjectAndGetLength(value!, ref lengthCache, parameter);
             }
-            return base.ValidateAndGetLength(s, ref lengthCache, parameter);
+
+            return ValidateAndGetLength(value, ref lengthCache, parameter);
         }
 
         protected override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
-            if (value is DBNull)
-                return base.WriteObjectWithLength(DBNull.Value, buf, lengthCache, parameter, async);
+            if (value is null ||
+                value is DBNull ||
+                value is string ||
+                value is char[] ||
+                value is ArraySegment<char> ||
+                value is char ||
+                value is byte[])
+            {
+                return base.WriteObjectWithLength(value!, buf, lengthCache, parameter, async);
+            }
 
-            if (parameter?.ConvertedValue != null)
-                value = parameter.ConvertedValue;
-            var s = value as string ?? JsonConvert.SerializeObject(value, _settings);
-            return base.WriteObjectWithLength(s, buf, lengthCache, parameter, async);
+            return WriteWithLength(value, buf, lengthCache, parameter, async);
         }
     }
 }

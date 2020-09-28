@@ -109,7 +109,7 @@ namespace Npgsql
         /// Initializes a new instance of <see cref="NpgsqlConnection"/> with the given connection string.
         /// </summary>
         /// <param name="connectionString">The connection used to open the PostgreSQL database.</param>
-        public NpgsqlConnection(string connectionString) : this()
+        public NpgsqlConnection(string? connectionString) : this()
             => ConnectionString = connectionString;
 
         /// <summary>

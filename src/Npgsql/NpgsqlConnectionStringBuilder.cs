@@ -59,7 +59,7 @@ namespace Npgsql
         /// <summary>
         /// Initializes a new instance of the NpgsqlConnectionStringBuilder class and sets its <see cref="DbConnectionStringBuilder.ConnectionString"/>.
         /// </summary>
-        public NpgsqlConnectionStringBuilder(string connectionString)
+        public NpgsqlConnectionStringBuilder(string? connectionString)
         {
             Init();
             ConnectionString = connectionString;

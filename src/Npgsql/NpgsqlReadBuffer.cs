@@ -372,7 +372,7 @@ namespace Npgsql
 
             async Task<int> ReadBytesLong()
             {
-                Debug.Assert(ReadPosition == 0);
+                Debug.Assert(ReadBytesLeft == 0);
                 Clear();
                 try
                 {

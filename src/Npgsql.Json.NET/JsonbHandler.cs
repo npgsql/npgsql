@@ -49,53 +49,70 @@ namespace Npgsql.Json.NET
         }
 
         protected override int ValidateAndGetLength<T2>(T2 value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
-            => typeof(T2) == typeof(string)
-                ? base.ValidateAndGetLength(value, ref lengthCache, parameter)
-                : ValidateObjectAndGetLength(value!, ref lengthCache, parameter);
+        {
+            if (typeof(T2) == typeof(string) ||
+                typeof(T2) == typeof(char[]) ||
+                typeof(T2) == typeof(ArraySegment<char>) ||
+                typeof(T2) == typeof(char) ||
+                typeof(T2) == typeof(byte[]))
+            {
+                return base.ValidateAndGetLength(value, ref lengthCache, parameter);
+            }
+
+            var serialized = JsonConvert.SerializeObject(value, _settings);
+            if (parameter != null)
+                parameter.ConvertedValue = serialized;
+            return base.ValidateAndGetLength(serialized, ref lengthCache, parameter);
+        }
 
         protected override Task WriteWithLength<T2>(T2 value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
-            => typeof(T2) == typeof(string)
-                ? base.WriteWithLength(value, buf, lengthCache, parameter, async)
-                : WriteObjectWithLength(value!, buf, lengthCache, parameter, async);
+        {
+            if (typeof(T2) == typeof(string) ||
+                typeof(T2) == typeof(char[]) ||
+                typeof(T2) == typeof(ArraySegment<char>) ||
+                typeof(T2) == typeof(char) ||
+                typeof(T2) == typeof(byte[]))
+            {
+                return base.WriteWithLength(value, buf, lengthCache, parameter, async);
+            }
+
+            // User POCO, read serialized representation from the validation phase
+            var serialized = parameter?.ConvertedValue != null
+                ? (string)parameter.ConvertedValue
+                : JsonConvert.SerializeObject(value, _settings);
+            return base.WriteWithLength(serialized, buf, lengthCache, parameter, async);
+        }
 
         protected override int ValidateObjectAndGetLength(object value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
         {
-            switch (value)
+            if (value is null ||
+                value is DBNull ||
+                value is string ||
+                value is char[] ||
+                value is ArraySegment<char> ||
+                value is char ||
+                value is byte[])
             {
-            case string _:
-            case char[] _:
-            case ArraySegment<char> _:
-            case char _:
-            case byte[] _:
-                return base.ValidateObjectAndGetLength(value, ref lengthCache, parameter);
-            default:
-                var serialized = JsonConvert.SerializeObject(value, _settings);
-                if (parameter != null)
-                    parameter.ConvertedValue = serialized;
-                return base.ValidateObjectAndGetLength(serialized, ref lengthCache, parameter);
+                return base.ValidateObjectAndGetLength(value!, ref lengthCache, parameter);
             }
+
+            return ValidateAndGetLength(value, ref lengthCache, parameter);
         }
 
         protected override Task WriteObjectWithLength(object value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
-            if (value is DBNull)
-                return base.WriteObjectWithLength(DBNull.Value, buf, lengthCache, parameter, async);
-
-            switch (value)
+            if (value is null ||
+                value is DBNull ||
+                value is string ||
+                value is char[] ||
+                value is ArraySegment<char> ||
+                value is char ||
+                value is byte[])
             {
-            case string _:
-            case char[] _:
-            case ArraySegment<char> _:
-            case char _:
-            case byte[] _:
-                return base.WriteObjectWithLength(value, buf, lengthCache, parameter, async);
-            default:
-                // User POCO, read serialized representation from the validation phase
-                var serialized = parameter?.ConvertedValue != null
-                    ? (string)parameter.ConvertedValue
-                    : JsonConvert.SerializeObject(value, _settings);
-                return base.WriteObjectWithLength(serialized, buf, lengthCache, parameter, async);
+                return base.WriteObjectWithLength(value!, buf, lengthCache, parameter, async);
             }
+
+            return WriteWithLength(value, buf, lengthCache, parameter, async);
         }
     }
 }

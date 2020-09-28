@@ -3,7 +3,7 @@
   <PropertyGroup>
     <Copyright>Copyright 2020 © The Npgsql Development Team</Copyright>
     <Company>Npgsql</Company>
-    <VersionPrefix>4.1.4</VersionPrefix>
+    <VersionPrefix>4.1.5</VersionPrefix>
     <NoWarn>NU5105</NoWarn>
 
     <PublishRepositoryUrl>true</PublishRepositoryUrl>

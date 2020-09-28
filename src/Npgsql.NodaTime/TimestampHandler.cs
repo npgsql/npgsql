@@ -4,6 +4,7 @@ using NodaTime;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
+using BclTimestampHandler = Npgsql.TypeHandlers.DateTimeHandlers.TimestampHandler;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
@@ -21,7 +22,7 @@ namespace Npgsql.NodaTime
         }
     }
 
-    class TimestampHandler : NpgsqlSimpleTypeHandler<Instant>, INpgsqlSimpleTypeHandler<LocalDateTime>
+    sealed class TimestampHandler : NpgsqlSimpleTypeHandler<Instant>, INpgsqlSimpleTypeHandler<LocalDateTime>, INpgsqlSimpleTypeHandler<DateTime>
     {
         static readonly Instant Instant0 = Instant.FromUtc(1, 1, 1, 0, 0, 0);
         static readonly Instant Instant2000 = Instant.FromUtc(2000, 1, 1, 0, 0, 0);
@@ -33,9 +34,14 @@ namespace Npgsql.NodaTime
         /// an Instant is requested
         /// </summary>
         readonly bool _convertInfinityDateTime;
+        readonly BclTimestampHandler _bclHandler;
 
         internal TimestampHandler(PostgresType postgresType, bool convertInfinityDateTime)
-            : base(postgresType) => _convertInfinityDateTime = convertInfinityDateTime;
+            : base(postgresType)
+        {
+            _convertInfinityDateTime = convertInfinityDateTime;
+            _bclHandler = new BclTimestampHandler(postgresType, convertInfinityDateTime);
+        }
 
         #region Read
 
@@ -167,5 +173,14 @@ namespace Npgsql.NodaTime
         }
 
         #endregion Write
+
+        DateTime INpgsqlSimpleTypeHandler<DateTime>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
+           => _bclHandler.Read(buf, len, fieldDescription);
+
+        int INpgsqlSimpleTypeHandler<DateTime>.ValidateAndGetLength(DateTime value, NpgsqlParameter? parameter)
+            => ((INpgsqlSimpleTypeHandler<DateTime>)_bclHandler).ValidateAndGetLength(value, parameter);
+
+        void INpgsqlSimpleTypeHandler<DateTime>.Write(DateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
+            => ((INpgsqlSimpleTypeHandler<DateTime>)_bclHandler).Write(value, buf, parameter);
     }
 }

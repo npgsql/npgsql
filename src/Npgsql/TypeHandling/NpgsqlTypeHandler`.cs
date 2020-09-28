@@ -87,7 +87,8 @@ namespace Npgsql.TypeHandling
             return asTypedHandler.Read(buf, len, async, fieldDescription);
         }
 
-        internal override TAny Read<TAny>(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
+        /// <inheritdoc />
+        public override TAny Read<TAny>(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             => Read<TAny>(buf, len, false, fieldDescription).Result;
 
         // Since TAny isn't constrained to class? or struct (C# doesn't have a non-nullable constraint that doesn't limit us to either struct or class),

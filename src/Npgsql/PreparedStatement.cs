@@ -9,6 +9,7 @@ namespace Npgsql
     /// Internally represents a statement has been prepared, is in the process of being prepared, or is a
     /// candidate for preparation (i.e. awaiting further usages).
     /// </summary>
+    [DebuggerDisplay("{Name} ({State}): {Sql}")]
     class PreparedStatement
     {
         readonly PreparedStatementManager _manager;
@@ -111,7 +112,8 @@ namespace Npgsql
         internal void CompleteUnprepare()
         {
             _manager.BySql.Remove(Sql);
-            _manager.NumPrepared--;
+            if (IsPrepared || State == PreparedState.BeingUnprepared)
+                _manager.NumPrepared--;
             State = PreparedState.Unprepared;
         }
 
