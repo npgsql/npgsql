@@ -1248,11 +1248,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                         connector.UserTimeout = CommandTimeout * 1000;
 
-                        // If statement logging is enabled, start a StopWatch to log the query's duration time.
-                        var stopWatch = new Stopwatch();
-                        if (Log.IsEnabled(NpgsqlLogLevel.Debug))
-                            stopWatch.Start();
-
                         // We do not wait for the entire send to complete before proceeding to reading -
                         // the sending continues in parallel with the user's reading. Waiting for the
                         // entire send to complete would trigger a deadlock for multi-statement commands,
@@ -1281,10 +1276,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                             reader.NextResult();
 
                         if (Log.IsEnabled(NpgsqlLogLevel.Debug))
-                        {
-                            stopWatch.Stop();
-                            LogQueryDuration(ms: stopWatch.ElapsedMilliseconds);
-                        }
+                            LogQueryDuration();
                         return reader;
                     }
                     catch
@@ -1473,15 +1465,19 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 }
             }
             Log.Debug(sb.ToString(), connector.Id);
+            //Start a StopWatch to log the query's duration time.
+            connector.Stopwatch.Start();
         }
 
         /// <summary>
         /// Logs the query's duration in miliseconds.
         /// </summary>
-        void LogQueryDuration(long ms)
+        void LogQueryDuration()
         {
             var connector = _connection!.Connector!;
-            Log.Debug(msg: $"Query duration: {ms} ms", connectionId: connector.Id);
+            connector.Stopwatch.Stop();
+            Log.Debug(msg: $"Query duration: {connector.Stopwatch.ElapsedMilliseconds} ms", connectionId: connector.Id);
+            connector.Stopwatch.Reset();
         }
 
         /// <summary>
