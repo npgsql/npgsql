@@ -1,0 +1,6 @@
+﻿#nullable enable
+Npgsql.NpgsqlRawPostgisExtensions
+Npgsql.RawPostgis.PostgisRawHandlerFactory
+Npgsql.RawPostgis.PostgisRawHandlerFactory.PostgisRawHandlerFactory() -> void
+override Npgsql.RawPostgis.PostgisRawHandlerFactory.Create(Npgsql.PostgresTypes.PostgresType! postgresType, Npgsql.NpgsqlConnection! conn) -> Npgsql.TypeHandling.NpgsqlTypeHandler<byte[]!>!
+static Npgsql.NpgsqlRawPostgisExtensions.UseRawPostgis(this Npgsql.TypeMapping.INpgsqlTypeMapper! mapper) -> Npgsql.TypeMapping.INpgsqlTypeMapper!
