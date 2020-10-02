@@ -7,6 +7,10 @@
     <TargetFramework Condition="'$(DeveloperBuild)' == 'True'">net5.0</TargetFramework>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="All" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\Npgsql\Npgsql.csproj" />
   </ItemGroup>
+
 </Project>
