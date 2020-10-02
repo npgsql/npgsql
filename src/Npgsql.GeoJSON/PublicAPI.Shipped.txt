@@ -1,0 +1,11 @@
+﻿#nullable enable
+Npgsql.GeoJSON.GeoJSONHandlerFactory
+Npgsql.GeoJSON.GeoJSONHandlerFactory.GeoJSONHandlerFactory(Npgsql.GeoJSON.GeoJSONOptions options = Npgsql.GeoJSON.GeoJSONOptions.None) -> void
+Npgsql.GeoJSON.GeoJSONOptions
+Npgsql.GeoJSON.GeoJSONOptions.BoundingBox = 1 -> Npgsql.GeoJSON.GeoJSONOptions
+Npgsql.GeoJSON.GeoJSONOptions.LongCRS = 4 -> Npgsql.GeoJSON.GeoJSONOptions
+Npgsql.GeoJSON.GeoJSONOptions.None = 0 -> Npgsql.GeoJSON.GeoJSONOptions
+Npgsql.GeoJSON.GeoJSONOptions.ShortCRS = 2 -> Npgsql.GeoJSON.GeoJSONOptions
+Npgsql.NpgsqlGeoJSONExtensions
+override Npgsql.GeoJSON.GeoJSONHandlerFactory.Create(Npgsql.PostgresTypes.PostgresType! postgresType, Npgsql.NpgsqlConnection! conn) -> Npgsql.TypeHandling.NpgsqlTypeHandler<GeoJSON.Net.GeoJSONObject!>!
+static Npgsql.NpgsqlGeoJSONExtensions.UseGeoJson(this Npgsql.TypeMapping.INpgsqlTypeMapper! mapper, Npgsql.GeoJSON.GeoJSONOptions options = Npgsql.GeoJSON.GeoJSONOptions.None, bool geographyAsDefault = false) -> Npgsql.TypeMapping.INpgsqlTypeMapper!

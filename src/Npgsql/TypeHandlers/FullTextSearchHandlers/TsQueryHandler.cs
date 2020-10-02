@@ -8,7 +8,7 @@ using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
-// TODO: Need to work on the nullbility here
+// TODO: Need to work on the nullability here
 #nullable disable
 #pragma warning disable CS8632
 
