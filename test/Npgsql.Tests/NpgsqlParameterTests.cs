@@ -66,6 +66,20 @@ namespace Npgsql.Tests
         }
 
         [Test]
+        public void GivenNpgsqlDbTypeParameter_ShouldReturnDataTypeName()
+        {
+            var p = new NpgsqlParameter("par_field1", NpgsqlDbType.Varchar, 50);
+            Assert.That(p.DataTypeName, Is.EqualTo("varchar"));
+        }
+
+        [Test]
+        public void GivenDbTypeParameter_ShouldReturnDataTypeName()
+        {
+            var p = new NpgsqlParameter("par_field1", DbType.String , 50);
+            Assert.That(p.DataTypeName, Is.EqualTo("text"));
+        }
+
+        [Test]
         public void SettingDbTypeSetsNpgsqlDbType()
         {
             var p = new NpgsqlParameter();
