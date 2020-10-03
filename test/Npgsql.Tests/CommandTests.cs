@@ -308,6 +308,7 @@ namespace Npgsql.Tests
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
         }
 
+#if !NET461 // .NET 4.6.1 doesn't support cancellation tokens on socket operations, so no hard cancellation
         [Test, Description("Cancels an async query with the cancellation token, with unsuccessful PG cancellation (socket break)")]
         public async Task CancelAsyncHard()
         {
@@ -332,6 +333,7 @@ namespace Npgsql.Tests
             Assert.That(postmasterMock.GetPendingCancellationRequest().ProcessId,
                 Is.EqualTo(processId));
         }
+#endif
 
         [Test, Description("Check that cancel only affects the command on which its was invoked")]
         [Explicit("Timing-sensitive")]
