@@ -124,7 +124,11 @@ namespace Npgsql
             Ensure(count, false).GetAwaiter().GetResult();
         }
 
-        public Task Ensure(int count, bool async, CancellationToken cancellationToken = default) => Ensure(count, async, false, cancellationToken);
+        public Task Ensure(int count, bool async, CancellationToken cancellationToken = default)
+            => Ensure(count, async, dontBreakOnCancellation: false, cancellationToken);
+
+        public Task EnsureAsync(int count, CancellationToken cancellationToken = default)
+            => Ensure(count, async: true, dontBreakOnCancellation: false, cancellationToken);
 
         /// <summary>
         /// Ensures that <paramref name="count"/> bytes are available in the buffer, and if

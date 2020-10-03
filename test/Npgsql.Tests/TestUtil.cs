@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using JetBrains.Annotations;
 using NUnit.Framework;
 using NUnit.Framework.Interfaces;
 
@@ -13,6 +13,19 @@ namespace Npgsql.Tests
 {
     public static class TestUtil
     {
+        /// <summary>
+        /// Unless the NPGSQL_TEST_DB environment variable is defined, this is used as the connection string for the
+        /// test database.
+        /// </summary>
+        public const string DefaultConnectionString = "Server=localhost;Username=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;Timeout=0;Command Timeout=0";
+
+        /// <summary>
+        /// The connection string that will be used when opening the connection to the tests database.
+        /// May be overridden in fixtures, e.g. to set special connection parameters
+        /// </summary>
+        public static string ConnectionString { get; }
+            = Environment.GetEnvironmentVariable("NPGSQL_TEST_DB") ?? DefaultConnectionString;
+
         public static bool IsOnBuildServer =>
             Environment.GetEnvironmentVariable("GITHUB_ACTIONS") != null ||
             Environment.GetEnvironmentVariable("CI") != null;
@@ -451,4 +464,21 @@ namespace Npgsql.Tests
         Pooled,
         Unpooled
     }
+
+#if NET461 || NETSTANDARD2_0
+    static class QueueExtensions
+    {
+        public static bool TryDequeue<T>(this Queue<T> queue, out T result)
+        {
+            if (queue.Count == 0)
+            {
+                result = default;
+                return false;
+            }
+
+            result = queue.Dequeue();
+            return true;
+        }
+    }
+#endif
 }

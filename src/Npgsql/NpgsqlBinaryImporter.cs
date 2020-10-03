@@ -68,7 +68,7 @@ namespace Npgsql
                                 nameof(copyFromCommand)));
                     }
                     break;
-                case BackendMessageCode.CompletedResponse:
+                case BackendMessageCode.CommandComplete:
                     throw new InvalidOperationException(
                         "This API only supports import/export from the client, i.e. COPY commands containing TO/FROM STDIN. " +
                         "To import/export with files on your PostgreSQL machine, simply execute the command with ExecuteNonQuery. " +

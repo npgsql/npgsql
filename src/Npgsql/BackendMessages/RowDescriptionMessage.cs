@@ -138,6 +138,22 @@ namespace Npgsql.BackendMessages
     {
 #pragma warning disable CS8618  // Lazy-initialized type
         internal FieldDescription() {}
+
+        internal FieldDescription(uint oid)
+            : this("?", 0, 0, oid, 0, 0, FormatCode.Binary) {}
+
+        internal FieldDescription(
+            string name, uint tableOID, short columnAttributeNumber,
+            uint oid, short typeSize, int typeModifier, FormatCode formatCode)
+        {
+            Name = name;
+            TableOID = tableOID;
+            ColumnAttributeNumber = columnAttributeNumber;
+            TypeOID = oid;
+            TypeSize = typeSize;
+            TypeModifier = typeModifier;
+            FormatCode = formatCode;
+        }
 #pragma warning restore CS8618
 
         internal FieldDescription(FieldDescription source)
@@ -178,7 +194,7 @@ namespace Npgsql.BackendMessages
         /// <summary>
         /// The object ID of the field's data type.
         /// </summary>
-        internal uint TypeOID { get; private set; }
+        internal uint TypeOID { get; set; }
 
         /// <summary>
         /// The data type size (see pg_type.typlen). Note that negative values denote variable-width types.
@@ -205,17 +221,7 @@ namespace Npgsql.BackendMessages
         /// Currently will be zero (text) or one (binary).
         /// In a RowDescription returned from the statement variant of Describe, the format code is not yet known and will always be zero.
         /// </summary>
-        internal FormatCode FormatCode
-        {
-            get => _formatCode;
-            set
-            {
-                _formatCode = value;
-                ResolveHandler();
-            }
-        }
-
-        FormatCode _formatCode;
+        internal FormatCode FormatCode { get; set; }
 
         internal string TypeDisplayName => PostgresType.GetDisplayNameWithFacets(TypeModifier);
 
@@ -232,19 +238,20 @@ namespace Npgsql.BackendMessages
 
         internal Type FieldType => Handler.GetFieldType(this);
 
-        void ResolveHandler()
-        {
-            Handler = IsBinaryFormat
-                ? _typeMapper.GetByOID(TypeOID)
-                : _typeMapper.UnrecognizedTypeHandler;
-        }
+        internal void ResolveHandler()
+            => Handler = IsBinaryFormat ? _typeMapper.GetByOID(TypeOID) : _typeMapper.UnrecognizedTypeHandler;
 
         ConnectorTypeMapper _typeMapper;
 
         internal bool IsBinaryFormat => FormatCode == FormatCode.Binary;
         internal bool IsTextFormat => FormatCode == FormatCode.Text;
 
-        internal FieldDescription Clone() => new FieldDescription(this);
+        internal FieldDescription Clone()
+        {
+            var field =  new FieldDescription(this);
+            field.ResolveHandler();
+            return field;
+        }
 
         /// <summary>
         /// Returns a string that represents the current object.

@@ -1222,7 +1222,7 @@ namespace Npgsql
                     return _rowDescriptionMessage.Load(buf, TypeMapper);
                 case BackendMessageCode.DataRow:
                     return _dataRowMessage.Load(len);
-                case BackendMessageCode.CompletedResponse:
+                case BackendMessageCode.CommandComplete:
                     return _commandCompleteMessage.Load(buf, len);
                 case BackendMessageCode.ReadyForQuery:
                     var rfq = _readyForQueryMessage.Load(buf);
@@ -2008,9 +2008,9 @@ namespace Npgsql
                     case BackendMessageCode.DataRow:
                         // DataRow is usually consumed by a reader, here we have to skip it manually.
                         await ReadBuffer.Skip(((DataRowMessage)msg).Length, async, cancellationToken);
-                        expectedMessageCode = BackendMessageCode.CompletedResponse;
+                        expectedMessageCode = BackendMessageCode.CommandComplete;
                         continue;
-                    case BackendMessageCode.CompletedResponse:
+                    case BackendMessageCode.CommandComplete:
                         expectedMessageCode = BackendMessageCode.ReadyForQuery;
                         continue;
                     case BackendMessageCode.ReadyForQuery:
