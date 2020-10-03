@@ -14,7 +14,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-20.04, windows-2019 ]
+# Temporarily disable Windows because of PG installation issues
+#        os: [ ubuntu-20.04, windows-2019 ]
+        os: [ ubuntu-20.04 ]
         pg_major: [ 12, 11, 10 ]
 # PostgreSQL 13 is out, but there's no PostGIS binary for Windows yet (http://download.osgeo.org/postgis/windows/)
         include:
