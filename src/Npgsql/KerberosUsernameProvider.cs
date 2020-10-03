@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using Npgsql.Logging;
 
 namespace Npgsql
@@ -15,6 +16,7 @@ namespace Npgsql
         static bool _performedDetection;
         static string? _principalWithRealm;
         static string? _principalWithoutRealm;
+        static readonly Regex _clientRegex = new Regex(".*Client:(.*)", RegexOptions.Multiline | RegexOptions.IgnoreCase);
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(KerberosUsernameProvider));
 
@@ -30,7 +32,7 @@ namespace Npgsql
 
         static void DetectUsername()
         {
-            var klistPath = FindInPath("klist");
+            var klistPath = FindKListInPath();
             if (klistPath == null)
             {
                 Log.Debug("klist not found in PATH, skipping Kerberos username detection");
@@ -58,36 +60,30 @@ namespace Npgsql
                 return;
             }
 
-            var line = default(string);
-            for (var i = 0; i < 2; i++)
-                if ((line = process.StandardOutput.ReadLine()) == null)
-                {
-                    Log.Debug("Unexpected output from klist, aborting Kerberos username detection");
-                    return;
-                }
+            var fullPrincipal = GetFullPrincipalFromFirstTicket(process.StandardOutput.ReadToEnd());
 
-            var components = line!.Split(':');
-            if (components.Length != 2)
+            if (fullPrincipal == string.Empty)
             {
                 Log.Debug("Unexpected output from klist, aborting Kerberos username detection");
                 return;
             }
 
-            var principalWithRealm = components[1].Trim();
-            components = principalWithRealm.Split('@');
-            if (components.Length != 2)
-            {
-                Log.Debug($"Badly-formed default principal {principalWithRealm} from klist, aborting Kerberos username detection");
-                return;
-            }
-
-            _principalWithRealm = principalWithRealm;
-            _principalWithoutRealm = components[0];
+            _principalWithRealm = fullPrincipal;
+            _principalWithoutRealm = fullPrincipal.Split('@').FirstOrDefault();
         }
 
-        static string? FindInPath(string name) => Environment.GetEnvironmentVariable("PATH")
+        static string? FindKListInPath() => Environment.GetEnvironmentVariable("PATH")
             ?.Split(Path.PathSeparator)
-            .Select(p => Path.Combine(p, name))
-            .FirstOrDefault(File.Exists);
+            .SelectMany(p => Directory.GetFiles(p, "klist*"))
+            .FirstOrDefault();
+
+        static string GetFullPrincipalFromFirstTicket(string klistOutput)
+        {
+            var firstMatch = _clientRegex.Match(klistOutput);
+
+            return firstMatch.Success
+                ? firstMatch.Groups[1].Value.Trim().Replace(" ", "")
+                : string.Empty;
+        }
     }
 }

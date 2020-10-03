@@ -343,6 +343,7 @@ namespace Npgsql
         int ConnectionTimeout => Settings.Timeout;
         bool IntegratedSecurity => Settings.IntegratedSecurity;
         internal bool ConvertInfinityDateTime => Settings.ConvertInfinityDateTime;
+        internal string? Username;
 
         int InternalCommandTimeout
         {
@@ -530,37 +531,28 @@ namespace Npgsql
             WriteStartup(startupParams);
         }
 
+        string? SetUsername(string? username)
+        {
+            if (username?.Length > 0)
+            {
+                Username = username;
+            }
+            return Username;
+        }
+
         string GetUsername()
         {
-            var username = Settings.Username;
-            if (username?.Length > 0)
-                return username;
-
-            username = PostgresEnvironment.User;
-            if (username?.Length > 0)
-                return username;
-
-#if NET461
-            if (PGUtil.IsWindows && Type.GetType("Mono.Runtime") == null)
+            if (Username?.Length > 0)
             {
-                username = WindowsUsernameProvider.GetUsername(Settings.IncludeRealm);
-                if (username?.Length > 0)
-                    return username;
-            }
-#endif
-
-            if (!PGUtil.IsWindows)
-            {
-                username = KerberosUsernameProvider.GetUsername(Settings.IncludeRealm);
-                if (username?.Length > 0)
-                    return username;
+                return Username;
             }
 
-            username = Environment.UserName;
-            if (username?.Length > 0)
-                return username;
-
-            throw new NpgsqlException("No username could be found, please specify one explicitly");
+            return  SetUsername(Settings.Username) ??
+                    SetUsername(PostgresEnvironment.User) ??
+                    SetUsername(WindowsUsernameProvider.GetUsername(Settings.IncludeRealm)) ??
+                    SetUsername(KerberosUsernameProvider.GetUsername(Settings.IncludeRealm)) ??
+                    SetUsername(Environment.UserName) ??
+                    throw new NpgsqlException("No username could be found, please specify one explicitly");
         }
 
         async Task RawOpen(NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
