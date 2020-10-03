@@ -33,7 +33,16 @@ namespace Npgsql
         /// See the command tag in the CommandComplete message,
         /// https://www.postgresql.org/docs/current/static/protocol-message-formats.html
         /// </remarks>
-        public ulong Rows { get; internal set; }
+        public uint Rows => (uint)LongRows;
+
+        /// <summary>
+        /// The number of rows affected or retrieved.
+        /// </summary>
+        /// <remarks>
+        /// See the command tag in the CommandComplete message,
+        /// https://www.postgresql.org/docs/current/static/protocol-message-formats.html
+        /// </remarks>
+        public ulong LongRows { get; internal set; }
 
         /// <summary>
         /// For an INSERT, the object ID of the inserted row if <see cref="Rows"/> is 1 and
@@ -94,7 +103,7 @@ namespace Npgsql
             SQL = string.Empty;
             StatementType = StatementType.Select;
             _description = null;
-            Rows = 0;
+            LongRows = 0;
             OID = 0;
             InputParameters.Clear();
             PreparedStatement = null;
@@ -103,7 +112,7 @@ namespace Npgsql
         internal void ApplyCommandComplete(CommandCompleteMessage msg)
         {
             StatementType = msg.StatementType;
-            Rows = msg.Rows;
+            LongRows = msg.Rows;
             OID = msg.OID;
         }
 
