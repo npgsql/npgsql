@@ -314,8 +314,7 @@ namespace Npgsql.Tests
             if (IsMultiplexing)
                 return; // Multiplexing, cancellation
 
-            var builder = new NpgsqlConnectionStringBuilder(ConnectionString) { CommandTimeout = 1 };
-            await using var postmasterMock = new PgPostmasterMock(builder.ConnectionString);
+            await using var postmasterMock = new PgPostmasterMock(ConnectionString);
             using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
             await using var conn = await OpenConnectionAsync(connectionString);
 

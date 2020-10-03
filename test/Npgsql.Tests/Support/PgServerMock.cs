@@ -11,7 +11,7 @@ using NUnit.Framework;
 
 namespace Npgsql.Tests.Support
 {
-    public class PgServerMock : IDisposable
+    class PgServerMock : IDisposable
     {
         static readonly Encoding Encoding = PGUtil.UTF8Encoding;
 
