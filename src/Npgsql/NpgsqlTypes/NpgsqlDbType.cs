@@ -1,4 +1,5 @@
 using System;
+using System.Reflection;
 using Npgsql;
 
 #pragma warning disable CA1720
@@ -530,6 +531,19 @@ namespace NpgsqlTypes
         {
             Name = name;
             OID = oid;
+        }
+    }
+
+    /// <summary>
+    /// Defines extension methods for <see cref="NpgsqlDbType"/>.
+    /// </summary>
+    static class NpgsqlDbTypeExtensions
+    {
+        internal static string? GetPostgresTypeName(this NpgsqlDbType type)
+        {
+            return typeof(NpgsqlDbType)
+                .GetMember(type.ToString())[0]
+                .GetCustomAttribute<BuiltInPostgresType>()?.Name;
         }
     }
 }
