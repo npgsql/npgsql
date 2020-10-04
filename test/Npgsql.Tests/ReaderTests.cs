@@ -1073,7 +1073,6 @@ LANGUAGE plpgsql VOLATILE";
             }
         }
 
-
         [Test]
         public async Task NullableScalar()
         {
@@ -1109,6 +1108,49 @@ LANGUAGE plpgsql VOLATILE";
                     Assert.That(reader.GetFieldValue<int?>(1), Is.EqualTo(8));
                 }
             }
+        }
+
+        [Test, Description("Times out an async operation, testing that cancellation occurs successfully")]
+        public async Task ReaderTimeoutAsyncSoft()
+        {
+            if (IsMultiplexing)
+                return; // Multiplexing, cancellation
+
+            await using var conn = await OpenConnectionAsync();
+            await using var _ = GetTempFunctionName(conn, out var function);
+
+            var func =
+                @$"
+create or replace function {function}(val int)
+returns int
+language plpgsql
+as
+$$
+begin
+   if val = 1000 then
+      perform pg_sleep(30);
+   end if;
+   
+   return val;
+end;
+$$;
+                ";
+
+            using var cmd = conn.CreateCommand();
+
+            cmd.CommandText = func;
+            await cmd.ExecuteNonQueryAsync();
+
+            cmd.CommandText = $"SELECT {function}(generate_series) FROM generate_series(1, 5000)";
+            cmd.CommandTimeout = 3;
+            using var reader = await cmd.ExecuteReaderAsync();
+            //var cycle = 0;
+            Assert.That(async () =>
+            {
+                while (await reader.ReadAsync()) { }
+            }, Throws.TypeOf<NpgsqlException>().With.InnerException.TypeOf<TimeoutException>());
+            //Assert.That(cycle, Is.GreaterThan(0));
+            Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
         }
 
         #region GetBytes / GetStream

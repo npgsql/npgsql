@@ -1017,6 +1017,9 @@ namespace Npgsql
             bool readingNotifications = false,
             CancellationToken cancellationToken = default)
         {
+            var len = 0;
+            var messageCode = BackendMessageCode.NoData;
+
             if (_pendingPrependedResponses > 0 ||
                 dataRowLoadingMode != DataRowLoadingMode.NonSequential ||
                 readingNotifications ||
@@ -1025,7 +1028,7 @@ namespace Npgsql
                 return ReadMessageLong(dataRowLoadingMode, readingNotifications, cancellationToken2: cancellationToken);
             }
 
-            var messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
+            messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
             switch (messageCode)
             {
             case BackendMessageCode.NoticeResponse:
@@ -1042,7 +1045,7 @@ namespace Npgsql
             }
 
             PGUtil.ValidateBackendMessageCode(messageCode);
-            var len = ReadBuffer.ReadInt32() - 4; // Transmitted length includes itself
+            len = ReadBuffer.ReadInt32() - 4; // Transmitted length includes itself
             if (len > ReadBuffer.ReadBytesLeft)
             {
                 ReadBuffer.ReadPosition -= 5;
@@ -1078,15 +1081,19 @@ namespace Npgsql
                 try
                 {
                     ReadBuffer.Timeout = TimeSpan.FromMilliseconds(UserTimeout);
+                    var timeoutWhileReadingServerMessage = false;
 
                     while (true)
                     {
                         try
                         {
-                            await ReadBuffer.Ensure(5, async, readingNotifications2, cancellationToken);
-                            messageCode = (BackendMessageCode) ReadBuffer.ReadByte();
-                            PGUtil.ValidateBackendMessageCode(messageCode);
-                            len = ReadBuffer.ReadInt32() - 4; // Transmitted length includes itself
+                            if (!timeoutWhileReadingServerMessage)
+                            {
+                                await ReadBuffer.Ensure(5, async, readingNotifications2, cancellationToken);
+                                messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
+                                PGUtil.ValidateBackendMessageCode(messageCode);
+                                len = ReadBuffer.ReadInt32() - 4; // Transmitted length includes itself
+                            }
 
                             if ((messageCode == BackendMessageCode.DataRow &&
                                  dataRowLoadingMode2 != DataRowLoadingMode.NonSequential) ||
@@ -1112,7 +1119,15 @@ namespace Npgsql
                                     ReadBuffer = oversizeBuffer;
                                 }
 
-                                await ReadBuffer.Ensure(len, async, cancellationToken);
+                                try
+                                {
+                                    await ReadBuffer.Ensure(len, async, cancellationToken);
+                                }
+                                catch
+                                {
+                                    timeoutWhileReadingServerMessage = true;
+                                    throw;
+                                }
                             }
 
                             var msg = ParseServerMessage(ReadBuffer, messageCode, len, isReadingPrependedMessage);
