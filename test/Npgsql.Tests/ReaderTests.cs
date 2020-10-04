@@ -1144,12 +1144,12 @@ $$;
             cmd.CommandText = $"SELECT {function}(generate_series) FROM generate_series(1, 5000)";
             cmd.CommandTimeout = 3;
             using var reader = await cmd.ExecuteReaderAsync();
-            //var cycle = 0;
+            var cycle = 0;
             Assert.That(async () =>
             {
-                while (await reader.ReadAsync()) { }
+                while (await reader.ReadAsync()) { cycle++; }
             }, Throws.TypeOf<NpgsqlException>().With.InnerException.TypeOf<TimeoutException>());
-            //Assert.That(cycle, Is.GreaterThan(0));
+            Assert.That(cycle, Is.GreaterThan(0));
             Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
         }
 
