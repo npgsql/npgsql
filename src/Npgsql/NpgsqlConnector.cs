@@ -231,7 +231,7 @@ namespace Npgsql
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlConnector));
 
-        internal Stopwatch Stopwatch = new Stopwatch();
+        internal Stopwatch QueryLogStopWatch = new Stopwatch();
 
         #endregion
 
