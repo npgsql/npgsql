@@ -1122,8 +1122,9 @@ namespace Npgsql
                                 try
                                 {
                                     await ReadBuffer.Ensure(len, async, cancellationToken);
+                                    timeoutWhileReadingServerMessage = false;
                                 }
-                                catch
+                                catch (NpgsqlException e) when (e.InnerException is TimeoutException)
                                 {
                                     timeoutWhileReadingServerMessage = true;
                                     throw;
