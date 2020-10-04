@@ -1116,6 +1116,10 @@ LANGUAGE plpgsql VOLATILE";
             if (IsMultiplexing)
                 return; // Multiplexing, cancellation
 
+#if NET461
+            Assert.Ignore("Async timeouts aren't supported with .net framework");
+#endif
+
             await using var conn = await OpenConnectionAsync();
             await using var _ = GetTempFunctionName(conn, out var function);
 
