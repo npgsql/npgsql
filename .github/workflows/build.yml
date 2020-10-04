@@ -14,7 +14,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-20.04, windows-2019 ]
+# Temporarily disable Windows because of PG installation issues
+#        os: [ ubuntu-20.04, windows-2019 ]
+        os: [ ubuntu-20.04 ]
         pg_major: [ 12, 11, 10 ]
 # PostgreSQL 13 is out, but there's no PostGIS binary for Windows yet (http://download.osgeo.org/postgis/windows/)
         include:
@@ -27,7 +29,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: NuGet Cache
-        uses: actions/cache@v1
+        uses: actions/cache@v2
         with:
           path: ~/.nuget/packages
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/Directory.Build.targets') }}
@@ -150,13 +152,13 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v1
+        uses: actions/checkout@v2
 
       - name: Setup MSBuild
         uses: warrenbuckley/Setup-MSBuild@v1
 
       - name: NuGet Cache
-        uses: actions/cache@v1
+        uses: actions/cache@v2
         with:
           path: ~/.nuget/packages
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/Directory.Build.targets') }}
@@ -188,29 +190,31 @@ jobs:
 #        run: msbuild src\MSI\MSI.wixproj -p:Configuration=Release -v:Minimal
 
       - name: Upload artifacts (nupkg)
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v2
         with:
           name: Npgsql.nupkgs
           path: nupkgs
 
 #      - name: Upload artifacts (vsix)
-#        uses: actions/upload-artifact@v1
+#        uses: actions/upload-artifact@v2
 #        with:
 #          name: Npgsql.vsix
 #          path: src/VSIX/bin/Release/Npgsql.vsix
 
 #      - name: Upload artifacts (msi)
-#        uses: actions/upload-artifact@v1
+#        uses: actions/upload-artifact@v2
 #        with:
 #          name: Npgsql.msi
 #          path: src/MSI/bin/Release/en-us/Npgsql.msi
 
       - name: Publish packages to MyGet (vnext)
         if: startsWith(github.ref, 'refs/heads/') && startsWith(github.ref, 'refs/heads/hotfix/') == false
-        run: dotnet nuget push nupkgs/*.nupkg --api-key ${{ secrets.MYGET_FEED_TOKEN }} --source https://www.myget.org/F/npgsql-unstable/api/v3/index.json
+        run: dotnet nuget push "*.nupkg" --api-key ${{ secrets.MYGET_FEED_TOKEN }} --source https://www.myget.org/F/npgsql-unstable/api/v3/index.json
+        working-directory: nupkgs
         shell: bash
 
       - name: Publish packages to MyGet (patch)
         if: startsWith(github.ref, 'refs/heads/hotfix/')
-        run: dotnet nuget push **/*.nupkg --api-key ${{ secrets.MYGET_FEED_TOKEN }} --source https://www.myget.org/F/npgsql/api/v3/index.json
+        run: dotnet nuget push "*.nupkg" --api-key ${{ secrets.MYGET_FEED_TOKEN }} --source https://www.myget.org/F/npgsql/api/v3/index.json
+        working-directory: nupkgs
         shell: bash

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.Buffers.Binary;
 using System.Diagnostics;
 using System.IO;
@@ -108,7 +109,7 @@ namespace Npgsql
             _underlyingSocket = socket;
             _currentTimeout = TimeSpan.Zero;
             Size = size;
-            Buffer = new byte[Size];
+            Buffer = ArrayPool<byte>.Shared.Rent(size);
             TextEncoding = textEncoding;
             RelaxedTextEncoding = relaxedTextEncoding;
         }
@@ -559,8 +560,9 @@ namespace Npgsql
             if (_disposed)
                 return;
 
-            _timeoutCts.Dispose();
+            ArrayPool<byte>.Shared.Return(Buffer);
 
+            _timeoutCts.Dispose();
             _disposed = true;
         }
 

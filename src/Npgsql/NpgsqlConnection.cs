@@ -704,10 +704,13 @@ namespace Npgsql
             case ConnectionState.Broken:
                 break;
             case ConnectionState.Closed:
+                Volatile.Write(ref _closing, 0);
                 return Task.CompletedTask;
             case ConnectionState.Connecting:
+                Volatile.Write(ref _closing, 0);
                 throw new InvalidOperationException("Can't close, connection is in state " + FullState);
             default:
+                Volatile.Write(ref _closing, 0);
                 throw new ArgumentOutOfRangeException("Unknown connection state: " + FullState);
             }
 
