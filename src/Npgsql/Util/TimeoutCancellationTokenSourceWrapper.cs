@@ -16,13 +16,15 @@ namespace Npgsql.Util
         public TimeSpan Timeout { get; set; }
         CancellationTokenSource _timeoutCts = new CancellationTokenSource();
 
+        public TimeoutCancellationTokenSourceWrapper() => Timeout = System.Threading.Timeout.InfiniteTimeSpan;
+
         public TimeoutCancellationTokenSourceWrapper(TimeSpan timeout) => Timeout = timeout;
 
         /// <summary>
         /// Set the timeout on the wrapped <see cref="CancellationTokenSource"/>
         /// and make sure that it hasn't been cancelled yet
         /// </summary>
-        public void Start()
+        public CancellationToken Start()
         {
             _timeoutCts.CancelAfter(Timeout);
             if (_timeoutCts.IsCancellationRequested)
@@ -30,6 +32,8 @@ namespace Npgsql.Util
                 _timeoutCts.Dispose();
                 _timeoutCts = new CancellationTokenSource(Timeout);
             }
+
+            return _timeoutCts.Token;
         }
 
         /// <summary>
@@ -60,6 +64,8 @@ namespace Npgsql.Util
         /// been disposed.
         /// </remarks>
         public CancellationToken Token => _timeoutCts.Token;
+
+        public bool IsCancellationRequested => _timeoutCts.IsCancellationRequested;
 
         public void Dispose() => _timeoutCts.Dispose();
     }

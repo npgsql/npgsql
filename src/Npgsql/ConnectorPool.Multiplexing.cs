@@ -68,13 +68,8 @@ namespace Npgsql
             Debug.Assert(_multiplexCommandReader != null);
 
             var timeout = _writeCoalescingDelayTicks / 2;
-            var timeoutToken = CancellationToken.None;
-            TimeoutCancellationTokenSourceWrapper? timeoutTokenSource = null;
-            if (timeout != 0)
-            {
-                timeoutTokenSource = new TimeoutCancellationTokenSourceWrapper(TimeSpan.FromTicks(timeout));
-                timeoutToken = timeoutTokenSource.Token;
-            }
+            var timeoutTokenSource = new TimeoutCancellationTokenSourceWrapper(TimeSpan.FromTicks(timeout));
+            var timeoutToken = timeout == 0 ? CancellationToken.None : timeoutTokenSource.Token;
 
             while (true)
             {
@@ -193,11 +188,7 @@ namespace Npgsql
                     }
                     else
                     {
-                        if (timeoutTokenSource != null)
-                        {
-                            timeoutTokenSource.Start();
-                            timeoutToken = timeoutTokenSource.Token;
-                        }
+                        timeoutToken = timeoutTokenSource.Start();
 
                         try
                         {
@@ -216,7 +207,7 @@ namespace Npgsql
 
                             // The cancellation token (presumably!) has not fired, reset its timer so
                             // we can reuse the cancellation token source instead of reallocating
-                            timeoutTokenSource?.Stop();
+                            timeoutTokenSource.Stop();
 
                             // Increase the timeout slightly for next time: we're under load, so allow more
                             // commands to get coalesced into the same packet (up to the hard limit)

@@ -1158,6 +1158,12 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                         if (cancellationToken.CanBeCanceled)
                         {
+                            if (connector.CommandCts.IsCancellationRequested)
+                            {
+                                connector.CommandCts.Dispose();
+                                connector.CommandCts = new TimeoutCancellationTokenSourceWrapper();
+                            }
+
                             registration = cancellationToken.Register(o =>
                             {
                                 var cmd = (NpgsqlCommand)o!;

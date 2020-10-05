@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Util;
+using static System.Threading.Timeout;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
@@ -30,7 +31,7 @@ namespace Npgsql
 
         readonly Socket? _underlyingSocket;
 
-        TimeoutCancellationTokenSourceWrapper _timeoutCts;
+        readonly TimeoutCancellationTokenSourceWrapper _timeoutCts;
 
         /// <summary>
         /// Timeout for sync and async reads
@@ -44,7 +45,7 @@ namespace Npgsql
                 {
                     Debug.Assert(_underlyingSocket != null);
 
-                    _underlyingSocket.ReceiveTimeout = value == System.Threading.Timeout.InfiniteTimeSpan
+                    _underlyingSocket.ReceiveTimeout = value == InfiniteTimeSpan
                         ? 0
                         : (int)value.TotalMilliseconds;
                     _timeoutCts.Timeout = value;
@@ -102,7 +103,7 @@ namespace Npgsql
             Connector = connector;
             Underlying = stream;
             _underlyingSocket = socket;
-            _timeoutCts = new TimeoutCancellationTokenSourceWrapper(System.Threading.Timeout.InfiniteTimeSpan);
+            _timeoutCts = new TimeoutCancellationTokenSourceWrapper();
             Size = size;
             Buffer = ArrayPool<byte>.Shared.Rent(size);
             TextEncoding = textEncoding;
@@ -153,7 +154,7 @@ namespace Npgsql
                 try
                 {
                     var finalCt = cancellationToken;
-                    if (async && Timeout > System.Threading.Timeout.InfiniteTimeSpan)
+                    if (async && Timeout > TimeSpan.Zero)
                     {
                         _timeoutCts.Start();
                         finalCt = _timeoutCts.Token;
