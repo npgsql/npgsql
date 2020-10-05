@@ -1062,9 +1062,7 @@ namespace Npgsql
                     try
                     {
                         // TODO: There could be room for optimization here, rather than the async call(s)
-                        ReadBuffer.Timeout = InternalCommandTimeout > 0
-                            ? TimeSpan.FromMilliseconds(InternalCommandTimeout)
-                            : Timeout.InfiniteTimeSpan;
+                        ReadBuffer.Timeout = TimeSpan.FromMilliseconds(InternalCommandTimeout);
                         for (; _pendingPrependedResponses > 0; _pendingPrependedResponses--)
                             await ReadMessageLong(DataRowLoadingMode.Skip, false, true, cancellationToken2);
                     }
@@ -1078,9 +1076,7 @@ namespace Npgsql
 
                 try
                 {
-                    ReadBuffer.Timeout = UserTimeout > 0
-                        ? TimeSpan.FromMilliseconds(UserTimeout)
-                        : Timeout.InfiniteTimeSpan;
+                    ReadBuffer.Timeout = TimeSpan.FromMilliseconds(UserTimeout);
 
                     while (true)
                     {
@@ -1175,9 +1171,7 @@ namespace Npgsql
                             {
                                 CancelRequest(throwExceptions: true);
                                 _originalTimeoutException = e;
-                                ReadBuffer.Timeout = Settings.CancellationTimeout > 0
-                                    ? TimeSpan.FromSeconds(Settings.CancellationTimeout)
-                                    : Timeout.InfiniteTimeSpan;
+                                ReadBuffer.Timeout = TimeSpan.FromSeconds(Settings.CancellationTimeout);
                             }
                             catch (Exception)
                             {

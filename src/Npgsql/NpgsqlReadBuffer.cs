@@ -45,10 +45,16 @@ namespace Npgsql
                 {
                     Debug.Assert(_underlyingSocket != null);
 
-                    _underlyingSocket.ReceiveTimeout = value == InfiniteTimeSpan
-                        ? 0
-                        : (int)value.TotalMilliseconds;
-                    _timeoutCts.Timeout = value;
+                    if (value > TimeSpan.Zero)
+                    {
+                        _underlyingSocket.ReceiveTimeout = (int)value.TotalMilliseconds;
+                        _timeoutCts.Timeout = value;
+                    }
+                    else
+                    {
+                        _underlyingSocket.ReceiveTimeout = -1;
+                        _timeoutCts.Timeout = InfiniteTimeSpan;
+                    }
                 }
             }
         }
