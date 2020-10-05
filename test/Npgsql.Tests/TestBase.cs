@@ -9,28 +9,43 @@ namespace Npgsql.Tests
     public abstract class TestBase
     {
         /// <summary>
-        /// Unless the NPGSQL_TEST_DB environment variable is defined, this is used as the connection string for the
-        /// test database.
-        /// </summary>
-        const string DefaultConnectionString = "Server=localhost;Username=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;Timeout=0;Command Timeout=0";
-
-        /// <summary>
         /// The connection string that will be used when opening the connection to the tests database.
         /// May be overridden in fixtures, e.g. to set special connection parameters
         /// </summary>
-        public virtual string ConnectionString { get; }
-            = Environment.GetEnvironmentVariable("NPGSQL_TEST_DB") ?? DefaultConnectionString;
+        public virtual string ConnectionString => TestUtil.ConnectionString;
 
         #region Utilities for use by tests
 
         protected virtual NpgsqlConnection CreateConnection(string? connectionString = null)
             => new NpgsqlConnection(connectionString ?? ConnectionString);
 
+        protected virtual NpgsqlConnection CreateConnection(Action<NpgsqlConnectionStringBuilder> builderAction)
+        {
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
+            builderAction(builder);
+            return new NpgsqlConnection(builder.ConnectionString);
+        }
+
         protected virtual NpgsqlConnection OpenConnection(string? connectionString = null)
             => OpenConnection(connectionString, async: false).GetAwaiter().GetResult();
 
+        protected virtual NpgsqlConnection OpenConnection(Action<NpgsqlConnectionStringBuilder> builderAction)
+        {
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
+            builderAction(builder);
+            return OpenConnection(builder.ConnectionString, async: false).GetAwaiter().GetResult();
+        }
+
         protected virtual ValueTask<NpgsqlConnection> OpenConnectionAsync(string? connectionString = null)
             => OpenConnection(connectionString, async: true);
+
+        protected virtual ValueTask<NpgsqlConnection> OpenConnectionAsync(
+            Action<NpgsqlConnectionStringBuilder> builderAction)
+        {
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString);
+            builderAction(builder);
+            return OpenConnection(builder.ConnectionString, async: true);
+        }
 
         async ValueTask<NpgsqlConnection> OpenConnection(string? connectionString, bool async)
         {
@@ -46,7 +61,7 @@ namespace Npgsql.Tests
             {
                 if (e.SqlState == PostgresErrorCodes.InvalidCatalogName)
                     TestUtil.IgnoreExceptOnBuildServer("Please create a database npgsql_tests, owned by user npgsql_tests");
-                else if (e.SqlState == PostgresErrorCodes.InvalidPassword && connectionString == DefaultConnectionString)
+                else if (e.SqlState == PostgresErrorCodes.InvalidPassword && connectionString == TestUtil.DefaultConnectionString)
                     TestUtil.IgnoreExceptOnBuildServer("Please create a user npgsql_tests as follows: create user npgsql_tests with password 'npgsql_tests'");
                 else
                     throw;

@@ -1424,7 +1424,13 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         internal void FixupRowDescription(RowDescriptionMessage rowDescription, bool isFirst)
         {
             for (var i = 0; i < rowDescription.NumFields; i++)
-                rowDescription[i].FormatCode = (UnknownResultTypeList == null || !isFirst ? AllResultTypesAreUnknown : UnknownResultTypeList[i]) ? FormatCode.Text : FormatCode.Binary;
+            {
+                var field = rowDescription[i];
+                field.FormatCode = (UnknownResultTypeList == null || !isFirst ? AllResultTypesAreUnknown : UnknownResultTypeList[i])
+                    ? FormatCode.Text
+                    : FormatCode.Binary;
+                field.ResolveHandler();
+            }
         }
 
         void LogCommand()

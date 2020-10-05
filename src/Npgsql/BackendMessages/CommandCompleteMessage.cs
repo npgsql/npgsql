@@ -103,6 +103,6 @@ namespace Npgsql.BackendMessages
             return result;
         }
 
-        public BackendMessageCode Code => BackendMessageCode.CompletedResponse;
+        public BackendMessageCode Code => BackendMessageCode.CommandComplete;
     }
 }

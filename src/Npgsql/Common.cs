@@ -14,7 +14,7 @@ namespace Npgsql
         BackendKeyData        = (byte)'K',
         BindComplete          = (byte)'2',
         CloseComplete         = (byte)'3',
-        CompletedResponse     = (byte)'C',
+        CommandComplete       = (byte)'C',
         CopyData              = (byte)'d',
         CopyDone              = (byte)'c',
         CopyBothResponse      = (byte)'W',

@@ -56,7 +56,7 @@ namespace Npgsql.Util
             case BackendMessageCode.BackendKeyData:
             case BackendMessageCode.BindComplete:
             case BackendMessageCode.CloseComplete:
-            case BackendMessageCode.CompletedResponse:
+            case BackendMessageCode.CommandComplete:
             case BackendMessageCode.CopyData:
             case BackendMessageCode.CopyDone:
             case BackendMessageCode.CopyBothResponse:
