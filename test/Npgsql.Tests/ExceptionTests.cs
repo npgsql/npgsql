@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Data;
 using System.IO;
 using System.Net.Sockets;
@@ -231,6 +232,7 @@ $$ LANGUAGE 'plpgsql';");
             PostgresException CreateWithSqlState(string sqlState)
             {
                 var info = CreateSerializationInfo();
+                new Exception().GetObjectData(info, default);
 
                 info.AddValue(nameof(PostgresException.Severity), null);
                 info.AddValue(nameof(PostgresException.InvariantSeverity), null);
@@ -260,28 +262,9 @@ $$ LANGUAGE 'plpgsql';");
         [Test]
         public void Serialization()
         {
-            var info = CreateSerializationInfo();
+            var actual = new PostgresException("message text", "high", "high2", "53300", "detail", "hint", 18, 42, "internal query",
+                "where", "schema", "table", "column", "data type", "constraint", "file", "line", "routine");
 
-            info.AddValue(nameof(PostgresException.Severity), "high");
-            info.AddValue(nameof(PostgresException.InvariantSeverity), "high2");
-            info.AddValue(nameof(PostgresException.SqlState), "53300");
-            info.AddValue(nameof(PostgresException.MessageText), "message");
-            info.AddValue(nameof(PostgresException.Detail), "detail");
-            info.AddValue(nameof(PostgresException.Hint), "hint");
-            info.AddValue(nameof(PostgresException.Position), 18);
-            info.AddValue(nameof(PostgresException.InternalPosition), 42);
-            info.AddValue(nameof(PostgresException.InternalQuery), "query");
-            info.AddValue(nameof(PostgresException.Where), "where");
-            info.AddValue(nameof(PostgresException.SchemaName), "schema");
-            info.AddValue(nameof(PostgresException.TableName), "table");
-            info.AddValue(nameof(PostgresException.ColumnName), "column");
-            info.AddValue(nameof(PostgresException.DataTypeName), "type");
-            info.AddValue(nameof(PostgresException.ConstraintName), "constraint");
-            info.AddValue(nameof(PostgresException.File), "file");
-            info.AddValue(nameof(PostgresException.Line), "line");
-            info.AddValue(nameof(PostgresException.Routine), "routine");
-
-            var actual = new PostgresException(info, default);
             var formatter = new BinaryFormatter();
             var stream = new MemoryStream();
 
@@ -310,30 +293,26 @@ $$ LANGUAGE 'plpgsql';");
             Assert.That(expected.Routine, Is.EqualTo(actual.Routine));
         }
 
-        SerializationInfo CreateSerializationInfo()
-        {
-            var info = new SerializationInfo(typeof(PostgresException), new FormatterConverter());
-            new Exception().GetObjectData(info, default);
-
-            return info;
-        }
+        SerializationInfo CreateSerializationInfo() => new SerializationInfo(typeof(PostgresException), new FormatterConverter());
 #pragma warning restore 618
-#pragma warning restore MSLIB0003
+#pragma warning restore SYSLIB0011
 
         [Test]
         [IssueLink("https://github.com/npgsql/npgsql/issues/3204")]
-        public void JsonNetExceptionMessage()
+        public void BaseExceptionPropertySerialization()
         {
-            // The exception must be thrown and caught to reproduce the problem
-            try
-            {
-                throw new PostgresException("the message", "low", "low2", "XX123");
-            }
-            catch (Exception ex)
-            {
-                var json = Newtonsoft.Json.JsonConvert.SerializeObject(ex);
-                Assert.That(json, Contains.Substring(",\"Message\":\"XX123: the message\","));
-            }
+            var ex = new PostgresException("the message", "low", "low2", "XX123");
+
+            var info = CreateSerializationInfo();
+            ex.GetObjectData(info, default);
+
+            // Check virtual base properties, which can be incorrectly deserialized if overridden, because the base
+            // Exception.GetObjectData() method writes the fields, not the properties (e.g. "_message" instead of "Message").
+            Assert.That(ex.Data, Is.EquivalentTo((IDictionary?)info.GetValue("Data", typeof(IDictionary))));
+            Assert.That(ex.HelpLink, Is.EqualTo(info.GetValue("HelpURL", typeof(string))));
+            Assert.That(ex.Message, Is.EqualTo(info.GetValue("Message", typeof(string))));
+            Assert.That(ex.Source, Is.EqualTo(info.GetValue("Source", typeof(string))));
+            Assert.That(ex.StackTrace, Is.EqualTo(info.GetValue("StackTraceString", typeof(string))));
         }
     }
 }
