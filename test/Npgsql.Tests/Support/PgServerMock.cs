@@ -20,6 +20,7 @@ namespace Npgsql.Tests.Support
         readonly NpgsqlWriteBuffer _writeBuffer;
         bool _disposed;
 
+        const int BackendSecret = 12345;
         internal int ProcessId { get; }
 
         internal PgServerMock(
@@ -58,7 +59,7 @@ namespace Npgsql.Tests.Support
                 { "standard_conforming_strings", "on" }
 
             });
-            WriteBackendKeyData(12345, 67890);
+            WriteBackendKeyData(ProcessId, BackendSecret);
             WriteReadyForQuery();
 
             await FlushAsync();
@@ -200,8 +201,8 @@ namespace Npgsql.Tests.Support
             CheckDisposed();
             _writeBuffer.WriteByte((byte)BackendMessageCode.BackendKeyData);
             _writeBuffer.WriteInt32(4 + 4 + 4);
-            _writeBuffer.WriteInt32(ProcessId);
-            _writeBuffer.WriteInt32(12345);
+            _writeBuffer.WriteInt32(processId);
+            _writeBuffer.WriteInt32(secret);
             return this;
         }
 
