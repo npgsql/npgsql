@@ -41,6 +41,7 @@ namespace Npgsql.Tests
                 Assert.That(ex.InvariantSeverity, Is.EqualTo("ERROR"));
                 Assert.That(ex.SqlState, Is.EqualTo("12345"));
                 Assert.That(ex.Position, Is.EqualTo(0));
+                Assert.That(ex.Message, Is.EqualTo("12345: testexception"));
 
                 var data = ex.Data;
                 Assert.That(data[nameof(PostgresException.Severity)], Is.EqualTo("ERROR"));
@@ -48,6 +49,7 @@ namespace Npgsql.Tests
                 Assert.That(data.Contains(nameof(PostgresException.Position)), Is.False);
 
                 var exString = ex.ToString();
+                Assert.That(exString, Does.StartWith("Npgsql.PostgresException (0x80004005): 12345: testexception"));
                 Assert.That(exString, Contains.Substring(nameof(PostgresException.Severity) + ": ERROR"));
                 Assert.That(exString, Contains.Substring(nameof(PostgresException.SqlState) + ": 12345"));
 
@@ -310,6 +312,25 @@ $$ LANGUAGE 'plpgsql';");
             new Exception().GetObjectData(info, default);
 
             return info;
+        }
+
+#pragma warning restore 618
+#pragma warning restore MSLIB0003
+
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/3204")]
+        public void JsonNetExceptionMessage()
+        {
+            // The exception must be thrown and caught to reproduce the problem
+            try
+            {
+                throw new PostgresException("the message", "low", "low2", "XX123");
+            }
+            catch (Exception ex)
+            {
+                var json = Newtonsoft.Json.JsonConvert.SerializeObject(ex);
+                Assert.That(json, Contains.Substring(",\"Message\":\"XX123: the message\","));
+            }
         }
     }
 }
