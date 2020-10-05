@@ -1110,15 +1110,13 @@ LANGUAGE plpgsql VOLATILE";
             }
         }
 
+// Async timeouts aren't supported with .net framework
+#if !NET461
         [Test, Description("Times out an async operation, testing that cancellation occurs successfully")]
         public async Task ReaderTimeoutAsyncSoft()
         {
             if (IsMultiplexing)
                 return; // Multiplexing, cancellation
-
-#if NET461
-            Assert.Ignore("Async timeouts aren't supported with .net framework");
-#endif
 
             await using var conn = await OpenConnectionAsync();
             await using var _ = GetTempFunctionName(conn, out var function);
@@ -1156,6 +1154,7 @@ $$;
             Assert.That(cycle, Is.GreaterThan(0));
             Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
         }
+#endif
 
         #region GetBytes / GetStream
 
