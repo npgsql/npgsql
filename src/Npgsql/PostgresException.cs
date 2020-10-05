@@ -40,6 +40,7 @@ namespace Npgsql
             string? internalQuery = null, string? where = null, string? schemaName = null, string? tableName = null,
             string? columnName = null, string? dataTypeName = null, string? constraintName = null, string? file = null,
             string? line = null, string? routine = null)
+            : base(sqlState + ": " + messageText)
         {
             MessageText = messageText;
             Severity = severity;
@@ -182,11 +183,6 @@ namespace Npgsql
                     builder.AppendLine().Append("    ").Append(propertyName).Append(": ").Append(propertyValue);
             }
         }
-
-        /// <summary>
-        /// Gets a the PostgreSQL error message and code.
-        /// </summary>
-        public override string Message => SqlState + ": " + MessageText;
 
         /// <summary>
         /// Specifies whether the exception is considered transient, that is, whether retrying the operation could
