@@ -227,7 +227,7 @@ namespace Npgsql
 
         internal int ClearCounter { get; set; }
 
-        internal CancellationTokenSource CommandCts = new CancellationTokenSource();
+        internal TimeoutCancellationTokenSourceWrapper CommandCts;
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlConnector));
 
@@ -298,6 +298,9 @@ namespace Npgsql
             ConnectionString = connectionString;
             PostgresParameters = new Dictionary<string, string>();
             Transaction = new NpgsqlTransaction(this);
+            CommandCts = new TimeoutCancellationTokenSourceWrapper(settings.CancellationTimeout > 0
+                ? TimeSpan.FromSeconds(settings.CancellationTimeout)
+                : Timeout.InfiniteTimeSpan);
 
             CancelLock = new object();
 
@@ -772,7 +775,6 @@ namespace Npgsql
                 var protocolType = endpoint.AddressFamily == AddressFamily.InterNetwork ? ProtocolType.Tcp : ProtocolType.IP;
                 var socket = new Socket(endpoint.AddressFamily, SocketType.Stream, protocolType);
                 CancellationTokenSource? combinedCts = null;
-                CancellationTokenSource? timeoutCts = null;
                 try
                 {
                     // .NET 5.0 added cancellation support to ConnectAsync, which allows us to implement real
@@ -784,9 +786,9 @@ namespace Npgsql
 
                     if (perIpTimeout.IsSet)
                     {
-                        timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                        timeoutCts.CancelAfter(perIpTimeout.TimeLeft.Milliseconds);
-                        finalCt = timeoutCts.Token;
+                        combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                        combinedCts.CancelAfter(perIpTimeout.TimeLeft.Milliseconds);
+                        finalCt = combinedCts.Token;
                     }
 
                     await socket.ConnectAsync(endpoint, finalCt);
@@ -824,7 +826,6 @@ namespace Npgsql
                 }
                 finally
                 {
-                    timeoutCts?.Dispose();
                     combinedCts?.Dispose();
                 }
             }
@@ -1063,7 +1064,9 @@ namespace Npgsql
                     try
                     {
                         // TODO: There could be room for optimization here, rather than the async call(s)
-                        ReadBuffer.Timeout = TimeSpan.FromMilliseconds(InternalCommandTimeout);
+                        ReadBuffer.Timeout = InternalCommandTimeout > 0
+                            ? TimeSpan.FromMilliseconds(InternalCommandTimeout)
+                            : Timeout.InfiniteTimeSpan;
                         for (; _pendingPrependedResponses > 0; _pendingPrependedResponses--)
                             await ReadMessageLong(DataRowLoadingMode.Skip, false, true, cancellationToken2);
                     }
@@ -1077,7 +1080,9 @@ namespace Npgsql
 
                 try
                 {
-                    ReadBuffer.Timeout = TimeSpan.FromMilliseconds(UserTimeout);
+                    ReadBuffer.Timeout = UserTimeout > 0
+                        ? TimeSpan.FromMilliseconds(UserTimeout)
+                        : Timeout.InfiniteTimeSpan;
 
                     while (true)
                     {
@@ -1172,7 +1177,9 @@ namespace Npgsql
                             {
                                 CancelRequest(throwExceptions: true);
                                 _originalTimeoutException = e;
-                                ReadBuffer.Timeout = TimeSpan.FromSeconds(Settings.CancellationTimeout);
+                                ReadBuffer.Timeout = Settings.CancellationTimeout > 0
+                                    ? TimeSpan.FromSeconds(Settings.CancellationTimeout)
+                                    : Timeout.InfiniteTimeSpan;
                             }
                             catch (Exception)
                             {

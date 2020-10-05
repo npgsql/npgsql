@@ -68,8 +68,13 @@ namespace Npgsql
             Debug.Assert(_multiplexCommandReader != null);
 
             var timeout = _writeCoalescingDelayTicks / 2;
-            var timeoutTokenSource = new CancellationTokenSource();
-            var timeoutToken = timeout == 0 ? CancellationToken.None : timeoutTokenSource.Token;
+            var timeoutToken = CancellationToken.None;
+            TimeoutCancellationTokenSourceWrapper? timeoutTokenSource = null;
+            if (timeout != 0)
+            {
+                timeoutTokenSource = new TimeoutCancellationTokenSourceWrapper(TimeSpan.FromTicks(timeout));
+                timeoutToken = timeoutTokenSource.Token;
+            }
 
             while (true)
             {
@@ -188,14 +193,9 @@ namespace Npgsql
                     }
                     else
                     {
-                        // We reuse the timeout's cancellation token source as long as it hasn't fired, but once it has
-                        // there's no way to reset it (see https://github.com/dotnet/runtime/issues/4694)
-                        var timeoutTimeSpan = TimeSpan.FromTicks(timeout);
-                        timeoutTokenSource.CancelAfter(timeoutTimeSpan);
-                        if (timeoutTokenSource.IsCancellationRequested)
+                        if (timeoutTokenSource != null)
                         {
-                            timeoutTokenSource.Dispose();
-                            timeoutTokenSource = new CancellationTokenSource(timeoutTimeSpan);
+                            timeoutTokenSource.Start();
                             timeoutToken = timeoutTokenSource.Token;
                         }
 
@@ -216,7 +216,7 @@ namespace Npgsql
 
                             // The cancellation token (presumably!) has not fired, reset its timer so
                             // we can reuse the cancellation token source instead of reallocating
-                            timeoutTokenSource.CancelAfter(Timeout.Infinite);
+                            timeoutTokenSource?.Stop();
 
                             // Increase the timeout slightly for next time: we're under load, so allow more
                             // commands to get coalesced into the same packet (up to the hard limit)
