@@ -902,7 +902,7 @@ namespace Npgsql
             Connector.CurrentReader = null;
             if (Log.IsEnabled(NpgsqlLogLevel.Debug)) {
                 Connector.QueryLogStopWatch.Stop();
-                Log.Debug($"Query duration time: {Connector.QueryLogStopWatch.ElapsedMilliseconds} ms", Connector.Id);
+                Log.Debug($"Query duration time: {Connector.QueryLogStopWatch.ElapsedMilliseconds}ms", Connector.Id);
                 Connector.QueryLogStopWatch.Reset();
             }
             Connector.EndUserAction();
