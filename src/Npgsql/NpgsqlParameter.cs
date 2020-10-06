@@ -363,13 +363,7 @@ namespace Npgsql
         [PublicAPI]
         public string? DataTypeName
         {
-            get
-            {
-                if (_dataTypeName != null)
-                    return _dataTypeName;
-                else
-                    return NpgsqlDbType.GetPostgresTypeName();
-            }
+            get => _dataTypeName ?? NpgsqlDbType.GetPostgresTypeName();
             set
             {
                 _dataTypeName = value;
