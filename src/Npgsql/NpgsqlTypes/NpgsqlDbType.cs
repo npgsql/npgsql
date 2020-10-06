@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Reflection;
 using Npgsql;
 
@@ -541,8 +542,9 @@ namespace NpgsqlTypes
     {
         internal static string? GetPostgresTypeName(this NpgsqlDbType type)
         {
+            var unmaskedType = type & ~NpgsqlDbType.Array & ~NpgsqlDbType.Range;
             return typeof(NpgsqlDbType)
-                .GetMember(type.ToString())[0]
+                .GetMember(unmaskedType.ToString())?.SingleOrDefault()?
                 .GetCustomAttribute<BuiltInPostgresType>()?.Name;
         }
     }
