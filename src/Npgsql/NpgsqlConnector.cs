@@ -298,7 +298,7 @@ namespace Npgsql
             ConnectionString = connectionString;
             PostgresParameters = new Dictionary<string, string>();
             Transaction = new NpgsqlTransaction(this);
-            CommandCts = new TimeoutCancellationTokenSourceWrapper();
+            CommandCts = new TimeoutCancellationTokenSourceWrapper(TimeSpan.FromSeconds(settings.CancellationTimeout));
 
             CancelLock = new object();
 

@@ -1161,7 +1161,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                             if (connector.CommandCts.IsCancellationRequested)
                             {
                                 connector.CommandCts.Dispose();
-                                connector.CommandCts = new TimeoutCancellationTokenSourceWrapper();
+                                connector.CommandCts = new TimeoutCancellationTokenSourceWrapper(TimeSpan.FromSeconds(connector.Settings.CancellationTimeout));
                             }
 
                             registration = cancellationToken.Register(o =>
