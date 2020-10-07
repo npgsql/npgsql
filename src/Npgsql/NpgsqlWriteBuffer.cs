@@ -121,20 +121,9 @@ namespace Npgsql
             } else if (WritePosition == 0)
                 return;
 
-            CancellationTokenSource? combinedCts = null;
-
             var finalCt = cancellationToken;
             if (async && Timeout > TimeSpan.Zero)
-            {
-                _timeoutCts.Start();
-                finalCt = _timeoutCts.Token;
-
-                if (cancellationToken.CanBeCanceled)
-                {
-                    combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _timeoutCts.Token);
-                    finalCt = combinedCts.Token;
-                }
-            }
+                finalCt = _timeoutCts.Start(cancellationToken);
 
             try
             {
@@ -142,8 +131,6 @@ namespace Npgsql
                 {
                     await Underlying.WriteAsync(Buffer, 0, WritePosition, finalCt);
                     await Underlying.FlushAsync(finalCt);
-                    // Resetting cancellation token source, so we can use it again
-                    _timeoutCts.Stop();
                 }
                 else
                 {
@@ -171,9 +158,9 @@ namespace Npgsql
             }
             finally
             {
-                combinedCts?.Dispose();
+                if (async && Timeout > TimeSpan.Zero)
+                    _timeoutCts.Stop();
             }
-
             NpgsqlEventSource.Log.BytesWritten(WritePosition);
             //NpgsqlEventSource.Log.RequestFailed();
 

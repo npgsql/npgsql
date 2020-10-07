@@ -159,22 +159,11 @@ namespace Npgsql
                     ReadPosition = 0;
                 }
 
-                CancellationTokenSource? combinedCts = null;
-
                 try
                 {
                     var finalCt = cancellationToken;
                     if (async && Timeout > TimeSpan.Zero)
-                    {
-                        _timeoutCts.Start();
-                        finalCt = _timeoutCts.Token;
-
-                        if (cancellationToken.CanBeCanceled)
-                        {
-                            combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _timeoutCts.Token);
-                            finalCt = combinedCts.Token;
-                        }
-                    }
+                        finalCt = _timeoutCts.Start(cancellationToken);
 
                     var totalRead = 0;
                     while (count > 0)
@@ -196,12 +185,8 @@ namespace Npgsql
                         // Or we consider it not timed out if we have already read everything (count == 0)
                         // In which case we reinitialize it on the next call to EnsureLong()
                         if (async)
-                            _timeoutCts.Restart();
+                            _timeoutCts.RestartTimeoutWithoutReset();
                     }
-
-                    // Resetting cancellation token source, so we can use it again
-                    if (async)
-                        _timeoutCts.Stop();
 
                     NpgsqlEventSource.Log.BytesRead(totalRead);
                 }
@@ -225,7 +210,8 @@ namespace Npgsql
                 }
                 finally
                 {
-                    combinedCts?.Dispose();
+                    if (async && Timeout > TimeSpan.Zero)
+                        _timeoutCts.Stop();
                 }
             }
         }

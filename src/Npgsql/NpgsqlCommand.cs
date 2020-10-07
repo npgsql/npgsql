@@ -838,9 +838,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         void BeginSend(NpgsqlConnector connector)
         {
-            connector.WriteBuffer.Timeout = CommandTimeout > 0
-                ? TimeSpan.FromSeconds(CommandTimeout)
-                : Timeout.InfiniteTimeSpan;
+            connector.WriteBuffer.Timeout = TimeSpan.FromSeconds(CommandTimeout);
             connector.WriteBuffer.CurrentCommand = this;
             FlushOccurred = false;
         }
@@ -1164,11 +1162,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                         if (cancellationToken.CanBeCanceled)
                         {
-                            if (connector.CommandCts.IsCancellationRequested)
-                            {
-                                connector.CommandCts.Dispose();
-                                connector.CommandCts = new TimeoutCancellationTokenSourceWrapper(TimeSpan.FromSeconds(connector.Settings.CancellationTimeout));
-                            }
+                            connector.CommandCts.Reset(CancellationToken.None);
 
                             registration = cancellationToken.Register(o =>
                             {
