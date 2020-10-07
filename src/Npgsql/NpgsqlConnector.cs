@@ -227,7 +227,7 @@ namespace Npgsql
 
         internal int ClearCounter { get; set; }
 
-        internal CancellationTokenSource CommandCts = new CancellationTokenSource();
+        internal TimeoutCancellationTokenSourceWrapper CommandCts;
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlConnector));
 
@@ -298,6 +298,7 @@ namespace Npgsql
             ConnectionString = connectionString;
             PostgresParameters = new Dictionary<string, string>();
             Transaction = new NpgsqlTransaction(this);
+            CommandCts = new TimeoutCancellationTokenSourceWrapper();
 
             CancelLock = new object();
 
@@ -772,7 +773,6 @@ namespace Npgsql
                 var protocolType = endpoint.AddressFamily == AddressFamily.InterNetwork ? ProtocolType.Tcp : ProtocolType.IP;
                 var socket = new Socket(endpoint.AddressFamily, SocketType.Stream, protocolType);
                 CancellationTokenSource? combinedCts = null;
-                CancellationTokenSource? timeoutCts = null;
                 try
                 {
                     // .NET 5.0 added cancellation support to ConnectAsync, which allows us to implement real
@@ -784,9 +784,9 @@ namespace Npgsql
 
                     if (perIpTimeout.IsSet)
                     {
-                        timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                        timeoutCts.CancelAfter(perIpTimeout.TimeLeft.Milliseconds);
-                        finalCt = timeoutCts.Token;
+                        combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                        combinedCts.CancelAfter(perIpTimeout.TimeLeft.Milliseconds);
+                        finalCt = combinedCts.Token;
                     }
 
                     await socket.ConnectAsync(endpoint, finalCt);
@@ -824,7 +824,6 @@ namespace Npgsql
                 }
                 finally
                 {
-                    timeoutCts?.Dispose();
                     combinedCts?.Dispose();
                 }
             }
