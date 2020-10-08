@@ -211,15 +211,15 @@ namespace Npgsql
             {
                 switch (value)
                 {
-                    // validate value (required based on base type contract)
-                    case UpdateRowSource.None:
-                    case UpdateRowSource.OutputParameters:
-                    case UpdateRowSource.FirstReturnedRecord:
-                    case UpdateRowSource.Both:
-                        _updateRowSource = value;
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException();
+                // validate value (required based on base type contract)
+                case UpdateRowSource.None:
+                case UpdateRowSource.OutputParameters:
+                case UpdateRowSource.FirstReturnedRecord:
+                case UpdateRowSource.Both:
+                    _updateRowSource = value;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
                 }
             }
         }
@@ -516,11 +516,11 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     var msg = connector.ReadMessage();
                     switch (msg.Code)
                     {
-                        case BackendMessageCode.RowDescription:
-                        case BackendMessageCode.NoData:
-                            break;
-                        default:
-                            throw connector.UnexpectedMessageReceived(msg.Code);
+                    case BackendMessageCode.RowDescription:
+                    case BackendMessageCode.NoData:
+                        break;
+                    default:
+                        throw connector.UnexpectedMessageReceived(msg.Code);
                     }
                 }
 
@@ -1469,6 +1469,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 }
             }
             Log.Debug(sb.ToString(), connector.Id);
+            connector.QueryLogStopWatch.Start();
+
         }
 
         /// <summary>
@@ -1500,13 +1502,13 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 throw new InvalidOperationException("Connection property has not been initialized.");
             switch (_connection.FullState)
             {
-                case ConnectionState.Open:
-                case ConnectionState.Connecting:
-                case ConnectionState.Open | ConnectionState.Executing:
-                case ConnectionState.Open | ConnectionState.Fetching:
-                    return _connection;
-                default:
-                    throw new InvalidOperationException("Connection is not open");
+            case ConnectionState.Open:
+            case ConnectionState.Connecting:
+            case ConnectionState.Open | ConnectionState.Executing:
+            case ConnectionState.Open | ConnectionState.Fetching:
+                return _connection;
+            default:
+                throw new InvalidOperationException("Connection is not open");
             }
         }
 
