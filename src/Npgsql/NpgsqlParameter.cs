@@ -367,7 +367,11 @@ namespace Npgsql
             {
                 if (_dataTypeName != null)
                     return _dataTypeName;
-                throw new NotImplementedException("Infer from others");
+                if (_npgsqlDbType.HasValue)
+                    return GlobalTypeMapper.Instance.ToPgTypeName(_npgsqlDbType.Value);
+                if (_value != null)   // Infer from value
+                    return GlobalTypeMapper.Instance.ToPgTypeName(_value.GetType());
+                throw new InvalidOperationException($"Parameter '{ParameterName}' type not set and no value was supplied");
             }
             set
             {

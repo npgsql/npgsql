@@ -3,6 +3,7 @@
 using NpgsqlTypes;
 using NUnit.Framework;
 using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 
@@ -63,6 +64,20 @@ namespace Npgsql.Tests
                 p2.DataTypeName = "text";
                 Assert.That(() => cmd.ExecuteScalar(), Throws.Exception.TypeOf<InvalidCastException>());
             }
+        }
+
+        [Test]
+        public void Test()
+        {
+            var p = new NpgsqlParameter("p1", NpgsqlDbType.Integer);
+            Assert.That(p.DataTypeName, Is.EqualTo("integer"));
+        }
+
+        [Test]
+        public void Test2()
+        {
+            var p = new NpgsqlParameter("p1", new Dictionary<string, string>());
+            Assert.That(p.DataTypeName, Is.EqualTo("hstore"));
         }
 
         [Test]
