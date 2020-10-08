@@ -131,15 +131,21 @@ namespace Npgsql
                 {
                     await Underlying.WriteAsync(Buffer, 0, WritePosition, finalCt);
                     await Underlying.FlushAsync(finalCt);
+                    _timeoutCts.Stop();
                 }
                 else
                 {
                     Underlying.Write(Buffer, 0, WritePosition);
                     Underlying.Flush();
-                }  
+                }
             }
             catch (Exception e)
             {
+                // Stopping twice (in case the previous Stop() call succeeded) doesn't hurt.
+                // Not stopping will cause an assertion failure in debug mode when we call Start() the next time.
+                // We can't stop in a finally block because Connector.Break() will dispose the buffer and the contained
+                // _timeoutCts
+                _timeoutCts.Stop();
                 switch (e)
                 {
                 // User requested the cancellation
@@ -155,11 +161,6 @@ namespace Npgsql
                 }
 
                 throw Connector.Break(new NpgsqlException("Exception while writing to stream", e));
-            }
-            finally
-            {
-                if (async && Timeout > TimeSpan.Zero)
-                    _timeoutCts.Stop();
             }
             NpgsqlEventSource.Log.BytesWritten(WritePosition);
             //NpgsqlEventSource.Log.RequestFailed();

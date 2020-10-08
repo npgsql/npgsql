@@ -16,8 +16,8 @@ namespace Npgsql.Util
     class TimeoutCancellationTokenSourceWrapper : IDisposable
     {
         public TimeSpan Timeout { get; set; }
-        CancellationTokenSource _timeoutCts = new CancellationTokenSource();
-        CancellationToken _linkedToken;
+        CancellationTokenSource _cts = new CancellationTokenSource();
+        CancellationTokenRegistration _registration;
 
 #if DEBUG
         bool _isRunning;
@@ -39,37 +39,25 @@ namespace Npgsql.Util
 #if DEBUG
             Debug.Assert(!_isRunning);
 #endif
-
-            // If we already wrap a linked token source or we want to wrap a linked token source and the token to
-            // link isn't the same one that's already linked we always have to create a new CancellationTokenSource
-            if ((_linkedToken.CanBeCanceled || cancellationToken.CanBeCanceled) && _linkedToken != cancellationToken)
+            _cts.CancelAfter(Timeout);
+            if (_cts.IsCancellationRequested)
             {
-                _timeoutCts.Dispose();
-                _timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                _timeoutCts.CancelAfter(Timeout);
+                _cts.Dispose();
+                _cts = new CancellationTokenSource(Timeout);
             }
-            else
-            {
-                _timeoutCts.CancelAfter(Timeout);
-                if (_timeoutCts.IsCancellationRequested)
-                {
-                    _timeoutCts.Dispose();
-                    _timeoutCts = new CancellationTokenSource(Timeout);
-                }
-            }
-
-            _linkedToken = cancellationToken;
+            if (cancellationToken.CanBeCanceled)
+                _registration = cancellationToken.Register(cts => ((CancellationTokenSource)cts!).Cancel(), _cts);
 #if DEBUG
             _isRunning = true;
 #endif
-            return _timeoutCts.Token;
+            return _cts.Token;
         }
 
         /// <summary>
         /// Restart the timeout on the wrapped <see cref="CancellationTokenSource"/> without reinitializing it,
         /// even if <see cref="IsCancellationRequested"/> is already set to <see langword="true"/>
         /// </summary>
-        public void RestartTimeoutWithoutReset() => _timeoutCts.CancelAfter(Timeout);
+        public void RestartTimeoutWithoutReset() => _cts.CancelAfter(Timeout);
 
         /// <summary>
         /// Reset the wrapper to contain a unstarted and uncancelled <see cref="CancellationTokenSource"/>
@@ -81,26 +69,19 @@ namespace Npgsql.Util
         /// <returns>The <see cref="CancellationToken"/> from the wrapped <see cref="CancellationTokenSource"/></returns>
         public CancellationToken Reset(CancellationToken cancellationToken = default)
         {
-            if ((_linkedToken.CanBeCanceled || cancellationToken.CanBeCanceled) && _linkedToken != cancellationToken)
+            _registration.Dispose();
+            _cts.CancelAfter(InfiniteTimeSpan);
+            if (_cts.IsCancellationRequested)
             {
-                _timeoutCts.Dispose();
-                _timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                _cts.Dispose();
+                _cts = new CancellationTokenSource();
             }
-            else
-            {
-                _timeoutCts.CancelAfter(InfiniteTimeSpan);
-                if (_timeoutCts.IsCancellationRequested)
-                {
-                    _timeoutCts.Dispose();
-                    _timeoutCts = new CancellationTokenSource();
-                }
-            }
-
-            _linkedToken = cancellationToken;
+            if (cancellationToken.CanBeCanceled)
+                _registration = cancellationToken.Register(cts => ((CancellationTokenSource)cts!).Cancel(), _cts);
 #if DEBUG
             _isRunning = false;
 #endif
-            return _timeoutCts.Token;
+            return _cts.Token;
         }
 
         /// <summary>
@@ -112,15 +93,13 @@ namespace Npgsql.Util
         /// where it's value is <see langword="true"/> if the <see cref="CancellationToken"/>
         /// passed to <see cref="Start"/> gets a cancellation request.
         /// If this is the case it will be resolved upon the next call to <see cref="Start"/>
-        /// or <see cref="Reset"/>
+        /// or <see cref="Reset"/>. Calling <see cref="Stop"/> multiple times or without calling
+        /// <see cref="Start"/> first will do no any harm (besides eating a tiny amount of CPU cycles).
         /// </remarks>
         public void Stop()
         {
-#if DEBUG
-            Debug.Assert(_isRunning);
-#endif
-
-            _timeoutCts.CancelAfter(InfiniteTimeSpan);
+            _cts.CancelAfter(InfiniteTimeSpan);
+            _registration.Dispose();
 #if DEBUG
             _isRunning = false;
 #endif
@@ -129,7 +108,7 @@ namespace Npgsql.Util
         /// <summary>
         /// Cancel the wrapped <see cref="CancellationTokenSource"/>
         /// </summary>
-        public void Cancel() => _timeoutCts.Cancel();
+        public void Cancel() => _cts.Cancel();
 
         /// <summary>
         /// The <see cref="CancellationToken"/> from the wrapped
@@ -142,10 +121,14 @@ namespace Npgsql.Util
         /// cancelled or belongs to a cancellation token source that has
         /// been disposed.
         /// </remarks>
-        public CancellationToken Token => _timeoutCts.Token;
+        public CancellationToken Token => _cts.Token;
 
-        public bool IsCancellationRequested => _timeoutCts.IsCancellationRequested;
+        public bool IsCancellationRequested => _cts.IsCancellationRequested;
 
-        public void Dispose() => _timeoutCts.Dispose();
+        public void Dispose()
+        {
+            _registration.Dispose();
+            _cts.Dispose();
+        }
     }
 }
