@@ -368,7 +368,10 @@ namespace Npgsql
                 if (_dataTypeName != null)
                     return _dataTypeName;
                 if (_npgsqlDbType.HasValue)
-                    return GlobalTypeMapper.Instance.ToPgTypeName(_npgsqlDbType.Value & ~NpgsqlDbType.Array & ~NpgsqlDbType.Range);
+                {
+                    var primitiveNpgsqlType = _npgsqlDbType.Value & ~NpgsqlDbType.Array & ~NpgsqlDbType.Range;
+                    return GlobalTypeMapper.Instance.ToPgTypeName(primitiveNpgsqlType);
+                }
                 if (_value != null)   // Infer from value
                     return GlobalTypeMapper.Instance.ToPgTypeName(_value.GetType());
                 throw new InvalidOperationException($"Parameter '{ParameterName}' type not set and no value was supplied");
