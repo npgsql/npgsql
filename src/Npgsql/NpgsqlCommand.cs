@@ -832,7 +832,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         void BeginSend(NpgsqlConnector connector)
         {
-            connector.WriteBuffer.Timeout = TimeSpan.FromSeconds(CommandTimeout);
+            connector.WriteBuffer.Timeout = CommandTimeout > 0
+                ? TimeSpan.FromSeconds(CommandTimeout)
+                : Timeout.InfiniteTimeSpan;
             connector.WriteBuffer.CurrentCommand = this;
             FlushOccurred = false;
         }
@@ -1159,7 +1161,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                             if (connector.CommandCts.IsCancellationRequested)
                             {
                                 connector.CommandCts.Dispose();
-                                connector.CommandCts = new CancellationTokenSource();
+                                connector.CommandCts = new TimeoutCancellationTokenSourceWrapper(TimeSpan.FromSeconds(connector.Settings.CancellationTimeout));
                             }
 
                             registration = cancellationToken.Register(o =>
@@ -1172,8 +1174,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                                 try
                                 {
                                     cmd.Cancel(true);
-                                    if (cn.Settings.CancellationTimeout > 0)
-                                        cn.CommandCts.CancelAfter(cn.Settings.CancellationTimeout * 1000);
+                                    cn.CommandCts.Start();
                                 }
                                 catch
                                 {
@@ -1287,7 +1288,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         if (registration.HasValue)
                         {
                             registration.Value.Dispose();
-                            connector.CommandCts.CancelAfter(-1);
+                            connector.CommandCts.Stop();
                         }
                     }
                 }
@@ -1424,7 +1425,13 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         internal void FixupRowDescription(RowDescriptionMessage rowDescription, bool isFirst)
         {
             for (var i = 0; i < rowDescription.NumFields; i++)
-                rowDescription[i].FormatCode = (UnknownResultTypeList == null || !isFirst ? AllResultTypesAreUnknown : UnknownResultTypeList[i]) ? FormatCode.Text : FormatCode.Binary;
+            {
+                var field = rowDescription[i];
+                field.FormatCode = (UnknownResultTypeList == null || !isFirst ? AllResultTypesAreUnknown : UnknownResultTypeList[i])
+                    ? FormatCode.Text
+                    : FormatCode.Binary;
+                field.ResolveHandler();
+            }
         }
 
         void LogCommand()

@@ -227,7 +227,7 @@ namespace Npgsql
 
         internal int ClearCounter { get; set; }
 
-        internal CancellationTokenSource CommandCts = new CancellationTokenSource();
+        internal TimeoutCancellationTokenSourceWrapper CommandCts;
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlConnector));
 
@@ -298,6 +298,7 @@ namespace Npgsql
             ConnectionString = connectionString;
             PostgresParameters = new Dictionary<string, string>();
             Transaction = new NpgsqlTransaction(this);
+            CommandCts = new TimeoutCancellationTokenSourceWrapper(TimeSpan.FromSeconds(settings.CancellationTimeout));
 
             CancelLock = new object();
 
@@ -772,7 +773,6 @@ namespace Npgsql
                 var protocolType = endpoint.AddressFamily == AddressFamily.InterNetwork ? ProtocolType.Tcp : ProtocolType.IP;
                 var socket = new Socket(endpoint.AddressFamily, SocketType.Stream, protocolType);
                 CancellationTokenSource? combinedCts = null;
-                CancellationTokenSource? timeoutCts = null;
                 try
                 {
                     // .NET 5.0 added cancellation support to ConnectAsync, which allows us to implement real
@@ -784,9 +784,9 @@ namespace Npgsql
 
                     if (perIpTimeout.IsSet)
                     {
-                        timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                        timeoutCts.CancelAfter(perIpTimeout.TimeLeft.Milliseconds);
-                        finalCt = timeoutCts.Token;
+                        combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                        combinedCts.CancelAfter(perIpTimeout.TimeLeft.Milliseconds);
+                        finalCt = combinedCts.Token;
                     }
 
                     await socket.ConnectAsync(endpoint, finalCt);
@@ -824,7 +824,6 @@ namespace Npgsql
                 }
                 finally
                 {
-                    timeoutCts?.Dispose();
                     combinedCts?.Dispose();
                 }
             }
@@ -1222,7 +1221,7 @@ namespace Npgsql
                     return _rowDescriptionMessage.Load(buf, TypeMapper);
                 case BackendMessageCode.DataRow:
                     return _dataRowMessage.Load(len);
-                case BackendMessageCode.CompletedResponse:
+                case BackendMessageCode.CommandComplete:
                     return _commandCompleteMessage.Load(buf, len);
                 case BackendMessageCode.ReadyForQuery:
                     var rfq = _readyForQueryMessage.Load(buf);
@@ -2008,9 +2007,9 @@ namespace Npgsql
                     case BackendMessageCode.DataRow:
                         // DataRow is usually consumed by a reader, here we have to skip it manually.
                         await ReadBuffer.Skip(((DataRowMessage)msg).Length, async, cancellationToken);
-                        expectedMessageCode = BackendMessageCode.CompletedResponse;
+                        expectedMessageCode = BackendMessageCode.CommandComplete;
                         continue;
-                    case BackendMessageCode.CompletedResponse:
+                    case BackendMessageCode.CommandComplete:
                         expectedMessageCode = BackendMessageCode.ReadyForQuery;
                         continue;
                     case BackendMessageCode.ReadyForQuery:

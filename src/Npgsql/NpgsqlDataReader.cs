@@ -349,7 +349,7 @@ namespace Npgsql
                         var completedMsg = await Connector.ReadMessage(async, DataRowLoadingMode.Skip, cancellationToken);
                         switch (completedMsg.Code)
                         {
-                        case BackendMessageCode.CompletedResponse:
+                        case BackendMessageCode.CommandComplete:
                         case BackendMessageCode.EmptyQueryResponse:
                             ProcessMessage(completedMsg);
                             break;
@@ -440,7 +440,7 @@ namespace Npgsql
                         msg = await ReadMessage(async, cancellationToken);
                         switch (msg.Code)
                         {
-                        case BackendMessageCode.CompletedResponse:
+                        case BackendMessageCode.CommandComplete:
                         case BackendMessageCode.EmptyQueryResponse:
                             break;
                         default:
@@ -470,7 +470,7 @@ namespace Npgsql
                     switch (msg.Code)
                     {
                     case BackendMessageCode.DataRow:
-                    case BackendMessageCode.CompletedResponse:
+                    case BackendMessageCode.CommandComplete:
                         break;
                     default:
                         throw Connector.UnexpectedMessageReceived(msg.Code);
@@ -651,7 +651,7 @@ namespace Npgsql
                 ProcessDataRowMessage((DataRowMessage)msg);
                 return;
 
-            case BackendMessageCode.CompletedResponse:
+            case BackendMessageCode.CommandComplete:
                 var completed = (CommandCompleteMessage)msg;
                 switch (completed.StatementType)
                 {
@@ -1793,7 +1793,7 @@ namespace Npgsql
         /// </summary>
         public override DataTable? GetSchemaTable()
             => GetSchemaTable(async: false).GetAwaiter().GetResult();
-        
+
         /// <summary>
         /// Asynchronously returns a System.Data.DataTable that describes the column metadata of the DataReader.
         /// </summary>

@@ -1,0 +1,229 @@
+using System;
+using System.Buffers.Binary;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net.Sockets;
+using System.Text;
+using System.Threading.Tasks;
+using Npgsql.BackendMessages;
+using Npgsql.Util;
+using NUnit.Framework;
+
+namespace Npgsql.Tests.Support
+{
+    class PgServerMock : IDisposable
+    {
+        static readonly Encoding Encoding = PGUtil.UTF8Encoding;
+
+        readonly NetworkStream _stream;
+        readonly NpgsqlReadBuffer _readBuffer;
+        readonly NpgsqlWriteBuffer _writeBuffer;
+        bool _disposed;
+
+        const int BackendSecret = 12345;
+        internal int ProcessId { get; }
+
+        internal PgServerMock(
+            NetworkStream stream,
+            NpgsqlReadBuffer readBuffer,
+            NpgsqlWriteBuffer writeBuffer,
+            int processId)
+        {
+            ProcessId = processId;
+            _stream = stream;
+            _readBuffer = readBuffer;
+            _writeBuffer = writeBuffer;
+        }
+
+        internal async Task Startup()
+        {
+            // Read and skip the startup message
+            await _readBuffer.EnsureAsync(4);
+            var startupMessageLen = _readBuffer.ReadInt32();
+            await _readBuffer.EnsureAsync(startupMessageLen - 4);
+            _readBuffer.Skip(startupMessageLen - 4);
+
+            WriteAuthenticateOk();
+            WriteParameterStatuses(new Dictionary<string, string>
+            {
+                { "server_version", "13" },
+                { "server_encoding", "UTF8" },
+                { "client_encoding", "UTF8" },
+                { "application_name", "Mock" },
+                { "is_superuser", "on" },
+                { "session_authorization", "foo" },
+                { "DateStyle", "ISO, MDY" },
+                { "IntervalStyle", "postgres" },
+                { "TimeZone", "UTC" },
+                { "integer_datetimes", "on" },
+                { "standard_conforming_strings", "on" }
+
+            });
+            WriteBackendKeyData(ProcessId, BackendSecret);
+            WriteReadyForQuery();
+
+            await FlushAsync();
+        }
+
+        internal async Task ReadMessageType(byte expectedCode)
+        {
+            CheckDisposed();
+
+            await _readBuffer.EnsureAsync(5);
+            var actualCode = _readBuffer.ReadByte();
+            Assert.That(actualCode, Is.EqualTo(expectedCode),
+                $"Expected message of type '{(char)expectedCode}' but got '{(char)actualCode}'");
+            var len = _readBuffer.ReadInt32();
+            _readBuffer.Skip(len - 4);
+        }
+
+        internal Task FlushAsync()
+        {
+            CheckDisposed();
+            return _writeBuffer.Flush(async: true);
+        }
+
+        internal Task WriteScalarResponse(int value)
+            => WriteParseComplete()
+                .WriteBindComplete()
+                .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Int4))
+                .WriteDataRow(BitConverter.GetBytes(BinaryPrimitives.ReverseEndianness(value)))
+                .WriteCommandComplete()
+                .WriteReadyForQuery()
+                .FlushAsync();
+
+        #region Low-level message writing
+
+        internal PgServerMock WriteParseComplete()
+        {
+            CheckDisposed();
+            _writeBuffer.WriteByte((byte)BackendMessageCode.ParseComplete);
+            _writeBuffer.WriteInt32(4);
+            return this;
+        }
+
+        internal PgServerMock WriteBindComplete()
+        {
+            CheckDisposed();
+            _writeBuffer.WriteByte((byte)BackendMessageCode.BindComplete);
+            _writeBuffer.WriteInt32(4);
+            return this;
+        }
+
+        internal PgServerMock WriteRowDescription(params FieldDescription[] fields)
+        {
+            CheckDisposed();
+
+            _writeBuffer.WriteByte((byte)BackendMessageCode.RowDescription);
+            _writeBuffer.WriteInt32(4 + 2 + fields.Sum(f => Encoding.GetByteCount(f.Name) + 1 + 18));
+            _writeBuffer.WriteInt16(fields.Length);
+
+            foreach (var field in fields)
+            {
+                _writeBuffer.WriteNullTerminatedString(field.Name);
+                _writeBuffer.WriteUInt32(field.TableOID);
+                _writeBuffer.WriteInt16(field.ColumnAttributeNumber);
+                _writeBuffer.WriteUInt32(field.TypeOID);
+                _writeBuffer.WriteInt16(field.TypeSize);
+                _writeBuffer.WriteInt32(field.TypeModifier);
+                _writeBuffer.WriteInt16((short)field.FormatCode);
+            }
+
+            return this;
+        }
+
+        internal PgServerMock WriteDataRow(params byte[][] columnValues)
+        {
+            CheckDisposed();
+
+            _writeBuffer.WriteByte((byte)BackendMessageCode.DataRow);
+            _writeBuffer.WriteInt32(4 + 2 + columnValues.Sum(v => 4 + v.Length));
+            _writeBuffer.WriteInt16(columnValues.Length);
+
+            foreach (var field in columnValues)
+            {
+                _writeBuffer.WriteInt32(field.Length);
+                _writeBuffer.WriteBytes(field);
+            }
+
+            return this;
+        }
+
+        internal PgServerMock WriteCommandComplete(string tag = "")
+        {
+            CheckDisposed();
+
+            _writeBuffer.WriteByte((byte)BackendMessageCode.CommandComplete);
+            _writeBuffer.WriteInt32(4 + Encoding.GetByteCount(tag) + 1);
+            _writeBuffer.WriteNullTerminatedString(tag);
+            return this;
+        }
+
+        internal PgServerMock WriteReadyForQuery(TransactionStatus transactionStatus = TransactionStatus.Idle)
+        {
+            CheckDisposed();
+            _writeBuffer.WriteByte((byte)BackendMessageCode.ReadyForQuery);
+            _writeBuffer.WriteInt32(4 + 1);
+            _writeBuffer.WriteByte((byte)transactionStatus);
+            return this;
+        }
+
+        internal PgServerMock WriteAuthenticateOk()
+        {
+            CheckDisposed();
+            _writeBuffer.WriteByte((byte)BackendMessageCode.AuthenticationRequest);
+            _writeBuffer.WriteInt32(4 + 4);
+            _writeBuffer.WriteInt32(0);
+            return this;
+        }
+
+        internal PgServerMock WriteParameterStatuses(Dictionary<string, string> parameters)
+        {
+            foreach (var kv in parameters)
+                WriteParameterStatus(kv.Key, kv.Value);
+            return this;
+        }
+
+        internal PgServerMock WriteParameterStatus(string name, string value)
+        {
+            CheckDisposed();
+
+            _writeBuffer.WriteByte((byte)BackendMessageCode.ParameterStatus);
+            _writeBuffer.WriteInt32(4 + Encoding.GetByteCount(name) + 1 + Encoding.GetByteCount(value) + 1);
+            _writeBuffer.WriteNullTerminatedString(name);
+            _writeBuffer.WriteNullTerminatedString(value);
+
+            return this;
+        }
+
+        internal PgServerMock WriteBackendKeyData(int processId, int secret)
+        {
+            CheckDisposed();
+            _writeBuffer.WriteByte((byte)BackendMessageCode.BackendKeyData);
+            _writeBuffer.WriteInt32(4 + 4 + 4);
+            _writeBuffer.WriteInt32(processId);
+            _writeBuffer.WriteInt32(secret);
+            return this;
+        }
+
+        #endregion Low-level message writing
+
+        void CheckDisposed()
+        {
+            if (_stream is null)
+                throw new ObjectDisposedException(nameof(PgServerMock));
+        }
+
+        public void Dispose()
+        {
+            if (_disposed)
+                return;
+
+            _readBuffer.Dispose();
+            _writeBuffer.Dispose();
+            _stream.Dispose();
+
+            _disposed = true;
+        }
+    }
+}

@@ -47,6 +47,8 @@ namespace Npgsql.TypeMapping
 
                 if (mapping.NpgsqlDbType.HasValue)
                 {
+                    _npgsqlDbTypeToPgTypeName[mapping.NpgsqlDbType.Value] = mapping.PgTypeName;
+
                     foreach (var dbType in mapping.DbTypes)
                         _dbTypeToNpgsqlDbType[dbType] = mapping.NpgsqlDbType.Value;
 
@@ -54,7 +56,10 @@ namespace Npgsql.TypeMapping
                         _npgsqlDbTypeToDbType[mapping.NpgsqlDbType.Value] = mapping.InferredDbType.Value;
 
                     foreach (var clrType in mapping.ClrTypes)
+                    {
                         _typeToNpgsqlDbType[clrType] = mapping.NpgsqlDbType.Value;
+                        _typeToPgTypeName[clrType] = mapping.PgTypeName;
+                    }
                 }
 
                 if (mapping.InferredDbType.HasValue)
@@ -109,6 +114,14 @@ namespace Npgsql.TypeMapping
         readonly Dictionary<DbType, NpgsqlDbType> _dbTypeToNpgsqlDbType = new Dictionary<DbType, NpgsqlDbType>();
         readonly Dictionary<Type, NpgsqlDbType> _typeToNpgsqlDbType = new Dictionary<Type, NpgsqlDbType>();
         readonly Dictionary<Type, DbType> _typeToDbType = new Dictionary<Type, DbType>();
+        readonly Dictionary<NpgsqlDbType, string> _npgsqlDbTypeToPgTypeName = new Dictionary<NpgsqlDbType, string>();
+        readonly Dictionary<Type, string> _typeToPgTypeName = new Dictionary<Type, string>();
+
+        internal string ToPgTypeName(NpgsqlDbType npgsqlDbType)
+            => _npgsqlDbTypeToPgTypeName.TryGetValue(npgsqlDbType, out var pgTypeName) ? pgTypeName : "";
+
+        internal string ToPgTypeName(Type type)
+            => _typeToPgTypeName.TryGetValue(type, out var pgTypeName) ? pgTypeName : "";
 
         internal DbType ToDbType(NpgsqlDbType npgsqlDbType)
             => _npgsqlDbTypeToDbType.TryGetValue(npgsqlDbType, out var dbType) ? dbType : DbType.Object;

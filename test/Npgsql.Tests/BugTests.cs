@@ -1307,5 +1307,15 @@ $$;");
                 conn.UnprepareAll();
             }
         }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3209")]
+        public async Task Bug3209()
+        {
+            await using var conn = CreateConnection();
+            await conn.CloseAsync();
+            await conn.OpenAsync();
+            await conn.CloseAsync();
+            Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
+        }
     }
 }

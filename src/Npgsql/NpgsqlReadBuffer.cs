@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Buffers;
 using System.Buffers.Binary;
 using System.Diagnostics;
 using System.IO;
@@ -8,6 +9,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Util;
+using static System.Threading.Timeout;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
@@ -29,32 +31,33 @@ namespace Npgsql
 
         readonly Socket? _underlyingSocket;
 
-        CancellationTokenSource _timeoutCts = new CancellationTokenSource();
+        readonly TimeoutCancellationTokenSourceWrapper _timeoutCts;
 
         /// <summary>
         /// Timeout for sync and async reads
         /// </summary>
         internal TimeSpan Timeout
         {
-            get => _currentTimeout;
+            get => _timeoutCts.Timeout;
             set
             {
-                if (_currentTimeout != value)
+                if (_timeoutCts.Timeout != value)
                 {
                     Debug.Assert(_underlyingSocket != null);
 
-                    _underlyingSocket.ReceiveTimeout = value > TimeSpan.Zero ? (int)value.TotalMilliseconds : -1;
-                    _currentTimeout = value;
+                    if (value > TimeSpan.Zero)
+                    {
+                        _underlyingSocket.ReceiveTimeout = (int)value.TotalMilliseconds;
+                        _timeoutCts.Timeout = value;
+                    }
+                    else
+                    {
+                        _underlyingSocket.ReceiveTimeout = -1;
+                        _timeoutCts.Timeout = InfiniteTimeSpan;
+                    }
                 }
             }
         }
-
-        /// <summary>
-        /// Contains the current value of the Socket's RecieveTimeout, used to determine whether
-        /// we need to change it when commands are received.
-        /// Also, used as a timeout for async reads.
-        /// </summary>
-        TimeSpan _currentTimeout;
 
         /// <summary>
         /// The total byte length of the buffer.
@@ -106,9 +109,9 @@ namespace Npgsql
             Connector = connector;
             Underlying = stream;
             _underlyingSocket = socket;
-            _currentTimeout = TimeSpan.Zero;
+            _timeoutCts = new TimeoutCancellationTokenSourceWrapper();
             Size = size;
-            Buffer = new byte[Size];
+            Buffer = ArrayPool<byte>.Shared.Rent(size);
             TextEncoding = textEncoding;
             RelaxedTextEncoding = relaxedTextEncoding;
         }
@@ -124,7 +127,11 @@ namespace Npgsql
             Ensure(count, false).GetAwaiter().GetResult();
         }
 
-        public Task Ensure(int count, bool async, CancellationToken cancellationToken = default) => Ensure(count, async, false, cancellationToken);
+        public Task Ensure(int count, bool async, CancellationToken cancellationToken = default)
+            => Ensure(count, async, dontBreakOnCancellation: false, cancellationToken);
+
+        public Task EnsureAsync(int count, CancellationToken cancellationToken = default)
+            => Ensure(count, async: true, dontBreakOnCancellation: false, cancellationToken);
 
         /// <summary>
         /// Ensures that <paramref name="count"/> bytes are available in the buffer, and if
@@ -159,14 +166,7 @@ namespace Npgsql
                     var finalCt = cancellationToken;
                     if (async && Timeout > TimeSpan.Zero)
                     {
-                        // We reuse the timeout's cancellation token source as long as it hasn't fired, but once it has
-                        // there's no way to reset it (see https://github.com/dotnet/runtime/issues/4694)
-                        _timeoutCts.CancelAfter(Timeout);
-                        if (_timeoutCts.IsCancellationRequested)
-                        {
-                            _timeoutCts.Dispose();
-                            _timeoutCts = new CancellationTokenSource(Timeout);
-                        }
+                        _timeoutCts.Start();
                         finalCt = _timeoutCts.Token;
 
                         if (cancellationToken.CanBeCanceled)
@@ -196,12 +196,12 @@ namespace Npgsql
                         // Or we consider it not timed out if we have already read everything (count == 0)
                         // In which case we reinitialize it on the next call to EnsureLong()
                         if (async)
-                            _timeoutCts.CancelAfter(Timeout);
+                            _timeoutCts.Restart();
                     }
 
                     // Resetting cancellation token source, so we can use it again
                     if (async)
-                        _timeoutCts.CancelAfter(-1);
+                        _timeoutCts.Stop();
 
                     NpgsqlEventSource.Log.BytesRead(totalRead);
                 }
@@ -559,8 +559,9 @@ namespace Npgsql
             if (_disposed)
                 return;
 
-            _timeoutCts.Dispose();
+            ArrayPool<byte>.Shared.Return(Buffer);
 
+            _timeoutCts.Dispose();
             _disposed = true;
         }
 

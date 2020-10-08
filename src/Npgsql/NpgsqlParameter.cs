@@ -363,7 +363,16 @@ namespace Npgsql
         [PublicAPI]
         public string? DataTypeName
         {
-            get => _dataTypeName ?? NpgsqlDbType.GetPostgresTypeName();
+            get
+            {
+                if (_dataTypeName != null)
+                    return _dataTypeName;
+                if (_npgsqlDbType.HasValue)
+                    return GlobalTypeMapper.Instance.ToPgTypeName(_npgsqlDbType.Value & ~NpgsqlDbType.Array & ~NpgsqlDbType.Range);
+                if (_value != null)   // Infer from value
+                    return GlobalTypeMapper.Instance.ToPgTypeName(_value.GetType());
+                throw new InvalidOperationException($"Parameter '{ParameterName}' type not set and no value was supplied");
+            }
             set
             {
                 _dataTypeName = value;

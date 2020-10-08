@@ -178,38 +178,27 @@ namespace Npgsql
 
             async ValueTask<NpgsqlConnector> RentAsync()
             {
+                // First, try to open a new physical connector. This will fail if we're at max capacity.
+                connector = await OpenNewConnector(conn, timeout, async, cancellationToken);
+                if (connector != null)
+                    return AssignConnection(conn, connector);
+
+                // We're at max capacity. Block on the idle channel with a timeout.
+                // Note that Channels guarantee fair FIFO behavior to callers of ReadAsync (first-come first-
+                // served), which is crucial to us.
+                using var linkedSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                var finalToken = linkedSource.Token;
+                linkedSource.CancelAfter(timeout.TimeLeft);
+
                 while (true)
                 {
-                    // First, try to open a new physical connector. This will fail if we're at max capacity.
-                    connector = await OpenNewConnector(conn, timeout, async, cancellationToken);
-                    if (connector != null)
-                    {
-                        connector.Connection = conn;
-                        conn.Connector = connector;
-
-                        return connector;
-                    }
-
-                    // We're at max capacity. Block on the idle channel with a timeout.
-                    // Note that Channels guarantee fair FIFO behavior to callers of ReadAsync (first-come first-
-                    // served), which is crucial to us.
-                    var timeoutSource = new CancellationTokenSource(timeout.TimeLeft);
-                    var timeoutToken = timeoutSource.Token;
-                    using var _ = cancellationToken.Register(cts => ((CancellationTokenSource)cts!).Cancel(), timeoutSource);
-
                     try
                     {
                         if (async)
                         {
-                            connector = await _idleConnectorReader.ReadAsync(timeoutToken);
+                            connector = await _idleConnectorReader.ReadAsync(finalToken);
                             if (CheckIdleConnector(connector))
-                            {
-                                // TODO: Duplicated with above
-                                connector.Connection = conn;
-                                conn.Connector = connector;
-
-                                return connector;
-                            }
+                                return AssignConnection(conn, connector);
                         }
                         else
                         {
@@ -219,23 +208,17 @@ namespace Npgsql
 
                             using (SingleThreadSynchronizationContext.Enter())
                             {
-                                connector = _idleConnectorReader.ReadAsync(timeoutToken)
+                                connector = _idleConnectorReader.ReadAsync(finalToken)
                                     .AsTask().GetAwaiter().GetResult();
                                 if (CheckIdleConnector(connector))
-                                {
-                                    // TODO: Duplicated with above
-                                    connector.Connection = conn;
-                                    conn.Connector = connector;
-
-                                    return connector;
-                                }
+                                    return AssignConnection(conn, connector);
                             }
                         }
                     }
                     catch (OperationCanceledException)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
-                        Debug.Assert(timeoutToken.IsCancellationRequested);
+                        Debug.Assert(finalToken.IsCancellationRequested);
                         throw new NpgsqlException(
                             $"The connection pool has been exhausted, either raise MaxPoolSize (currently {_max}) " +
                             $"or Timeout (currently {Settings.Timeout} seconds)");
@@ -246,15 +229,22 @@ namespace Npgsql
                     }
 
                     // If we're here, our waiting attempt on the idle connector channel was released with a null
-                    // (or bad connector). Check again if a new idle connector has appeared since we last checked,
-                    // and loop again.
+                    // (or bad connector). Check again if a new idle connector has appeared since we last checked.
                     if (TryGetIdleConnector(out connector))
-                    {
-                        connector.Connection = conn;
-                        conn.Connector = connector;
+                        return AssignConnection(conn, connector);
 
-                        return connector;
-                    }
+                    // We might have closed a connector in the meantime and no longer be at max capacity
+                    // so try to open a new connector and if that fails, loop again.
+                    connector = await OpenNewConnector(conn, timeout, async, cancellationToken);
+                    if (connector != null)
+                        return AssignConnection(conn, connector);
+                }
+
+                static NpgsqlConnector AssignConnection(NpgsqlConnection connection, NpgsqlConnector connector)
+                {
+                    connector.Connection = connection;
+                    connection.Connector = connector;
+                    return connector;
                 }
             }
         }

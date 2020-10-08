@@ -3,6 +3,7 @@
 using NpgsqlTypes;
 using NUnit.Framework;
 using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 
@@ -69,7 +70,7 @@ namespace Npgsql.Tests
         public void GivenNpgsqlDbTypeParameter_ShouldReturnDataTypeName()
         {
             var p = new NpgsqlParameter("par_field1", NpgsqlDbType.Varchar, 50);
-            Assert.That(p.DataTypeName, Is.EqualTo("varchar"));
+            Assert.That(p.DataTypeName, Is.EqualTo("character varying"));
         }
 
         [Test]
@@ -83,7 +84,7 @@ namespace Npgsql.Tests
         public void GivenArrayNpgsqlDbTypeParameter_ShouldReturnDataTypeName()
         {
             var p = new NpgsqlParameter("int_array", NpgsqlDbType.Array | NpgsqlDbType.Integer);
-            Assert.That(p.DataTypeName, Is.EqualTo("int4"));
+            Assert.That(p.DataTypeName, Is.EqualTo("integer"));
         }
 
         [Test]
@@ -94,10 +95,10 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void GivenExtensionNpgsqlDbTypeParameter_ShouldReturnNullDataTypeName()
+        public void GivenClrTypeParameter_ShouldReturnExpectedDataTypeName()
         {
-            var p = new NpgsqlParameter("extension_type_param", NpgsqlDbType.Hstore);
-            Assert.That(p.DataTypeName, Is.EqualTo(null));
+            var p = new NpgsqlParameter("p1", new Dictionary<string, string>());
+            Assert.That(p.DataTypeName, Is.EqualTo("hstore"));
         }
 
         [Test]

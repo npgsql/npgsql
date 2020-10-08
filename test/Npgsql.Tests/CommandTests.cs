@@ -6,6 +6,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Npgsql.Tests.Support;
 using NpgsqlTypes;
 using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;
@@ -167,23 +168,47 @@ namespace Npgsql.Tests
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
         }
 
-// Timeout for async queries is not supported for .net 4.6.1
-#if !NET461
-        [Test, Description("Checks that CommandTimeout gets enforced for async queries")]
+#if !NET461 // .NET 4.6.1 doesn't support cancellation tokens on socket operations, so no async timeouts
+        [Test, Description("Times out an async operation, testing that cancellation occurs successfully")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/607")]
         [Timeout(10000)]
-        public async Task TimeoutAsync()
+        public async Task TimeoutAsyncSoft()
         {
             if (IsMultiplexing)
                 return; // Multiplexing, Timeout
 
-            using var conn = await OpenConnectionAsync(ConnectionString + ";CommandTimeout=1");
+            using var conn = await OpenConnectionAsync(builder => builder.CommandTimeout = 1);
             using var cmd = CreateSleepCommand(conn, 10);
-            Assert.That(async () => await cmd.ExecuteNonQueryAsync(), Throws.Exception
-                .TypeOf<NpgsqlException>()
-                .With.InnerException.TypeOf<TimeoutException>()
-                );
+            Assert.That(async () => await cmd.ExecuteNonQueryAsync(),
+                Throws.Exception
+                    .TypeOf<NpgsqlException>()
+                    .With.InnerException.TypeOf<TimeoutException>());
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+        }
+
+        [Test, Description("Times out an async operation, with unsuccessful cancellation (socket break)")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/607")]
+        [Timeout(10000)]
+        public async Task TimeoutAsyncHard()
+        {
+            if (IsMultiplexing)
+                return; // Multiplexing, Timeout
+
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString) { CommandTimeout = 1 };
+            await using var postmasterMock = new PgPostmasterMock(builder.ConnectionString);
+            using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
+            await using var conn = await OpenConnectionAsync(connectionString);
+
+            var processId = conn.ProcessID;
+
+            Assert.That(async () => await conn.ExecuteScalarAsync("SELECT 1"),
+                Throws.Exception
+                    .TypeOf<NpgsqlException>()
+                    .With.InnerException.TypeOf<TimeoutException>());
+
+            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+            Assert.That(postmasterMock.GetPendingCancellationRequest().ProcessId,
+                Is.EqualTo(processId));
         }
 #endif
 
@@ -264,26 +289,51 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test, Description("Cancels an async query with the cancellation token")]
-        public async Task CancelAsync()
+        [Test, Description("Cancels an async query with the cancellation token, with successful PG cancellation")]
+        public async Task CancelAsyncSoft()
         {
             if (IsMultiplexing)
-                Assert.Ignore("Async cancellation isn't supported with multiplexing yet.");
+                return; // Multiplexing, cancellation
 
-            using (var conn = await OpenConnectionAsync())
-            using (var cmd = CreateSleepCommand(conn))
-            {
-                var cancellationSource = new CancellationTokenSource(300);
-                var t = cmd.ExecuteNonQueryAsync(cancellationSource.Token);
-                Assert.That(async () => await t.ConfigureAwait(false), Throws.Exception.TypeOf<PostgresException>());
+            await using var conn = await OpenConnectionAsync();
+            using var cmd = CreateSleepCommand(conn);
+            var cancellationSource = new CancellationTokenSource();
+            var t = cmd.ExecuteNonQueryAsync(cancellationSource.Token);
+            cancellationSource.Cancel();
+            Assert.That(async () => await t, Throws.Exception.TypeOf<PostgresException>());
 
-                // Since cancellation triggers a PostgresException and not a TaskCanceledException, the task's state
-                // is Faulted and not Canceled. This isn't amazing, but we have to choose between this and the
-                // principle of always raising server/network errors as NpgsqlException for easy catching.
-                Assert.That(t.IsFaulted);
-                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
-            }
+            // Since cancellation triggers a PostgresException and not a TaskCanceledException, the task's state
+            // is Faulted and not Canceled. This isn't amazing, but we have to choose between this and the
+            // principle of always raising server/network errors as NpgsqlException for easy catching.
+            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
         }
+
+#if !NET461 // .NET 4.6.1 doesn't support cancellation tokens on socket operations, so no hard cancellation
+        [Test, Description("Cancels an async query with the cancellation token, with unsuccessful PG cancellation (socket break)")]
+        public async Task CancelAsyncHard()
+        {
+            if (IsMultiplexing)
+                return; // Multiplexing, cancellation
+
+            await using var postmasterMock = new PgPostmasterMock(ConnectionString);
+            using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
+            await using var conn = await OpenConnectionAsync(connectionString);
+
+            var processId = conn.ProcessID;
+
+            var cancellationSource = new CancellationTokenSource();
+            using var cmd = new NpgsqlCommand("SELECT 1", conn);
+            var t = cmd.ExecuteScalarAsync(cancellationSource.Token);
+            cancellationSource.Cancel();
+            Assert.That(async () => await t, Throws.Exception
+                .TypeOf<OperationCanceledException>()
+                .With.InnerException.Null);
+
+            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+            Assert.That(postmasterMock.GetPendingCancellationRequest().ProcessId,
+                Is.EqualTo(processId));
+        }
+#endif
 
         [Test, Description("Check that cancel only affects the command on which its was invoked")]
         [Explicit("Timing-sensitive")]
