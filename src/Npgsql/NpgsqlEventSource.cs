@@ -114,35 +114,35 @@ namespace Npgsql
                 // overhead by at all times even when counters aren't enabled.
                 // On disable, PollingCounters will stop polling for values so it should be fine to leave them around.
 
-                _bytesWrittenPerSecondCounter = new IncrementingPollingCounter("bytes-written-per-second", this, () => Volatile.Read(ref _bytesWritten))
+                _bytesWrittenPerSecondCounter = new IncrementingPollingCounter("bytes-written-per-second", this, () => Interlocked.Read(ref _bytesWritten))
                 {
                     DisplayName = "Bytes Written",
                     DisplayRateTimeScale = TimeSpan.FromSeconds(1)
                 };
 
-                _bytesReadPerSecondCounter = new IncrementingPollingCounter("bytes-read-per-second", this, () => Volatile.Read(ref _bytesRead))
+                _bytesReadPerSecondCounter = new IncrementingPollingCounter("bytes-read-per-second", this, () => Interlocked.Read(ref _bytesRead))
                 {
                     DisplayName = "Bytes Read",
                     DisplayRateTimeScale = TimeSpan.FromSeconds(1)
                 };
 
-                _commandsPerSecondCounter = new IncrementingPollingCounter("commands-per-second", this, () => Volatile.Read(ref _totalCommands))
+                _commandsPerSecondCounter = new IncrementingPollingCounter("commands-per-second", this, () => Interlocked.Read(ref _totalCommands))
                 {
                     DisplayName = "Command Rate",
                     DisplayRateTimeScale = TimeSpan.FromSeconds(1)
                 };
 
-                _totalCommandsCounter = new PollingCounter("total-commands", this, () => Volatile.Read(ref _totalCommands))
+                _totalCommandsCounter = new PollingCounter("total-commands", this, () => Interlocked.Read(ref _totalCommands))
                 {
                     DisplayName = "Total Commands",
                 };
 
-                _currentCommandsCounter = new PollingCounter("current-commands", this, () => Volatile.Read(ref _currentCommands))
+                _currentCommandsCounter = new PollingCounter("current-commands", this, () => Interlocked.Read(ref _currentCommands))
                 {
                     DisplayName = "Current Commands"
                 };
 
-                _failedCommandsCounter = new PollingCounter("failed-commands", this, () => Volatile.Read(ref _failedCommands))
+                _failedCommandsCounter = new PollingCounter("failed-commands", this, () => Interlocked.Read(ref _failedCommands))
                 {
                     DisplayName = "Failed Commands"
                 };
@@ -150,7 +150,7 @@ namespace Npgsql
                 _preparedCommandsRatioCounter = new PollingCounter(
                     "prepared-commands-ratio",
                     this,
-                    () => (double)Volatile.Read(ref _totalPreparedCommands) / Volatile.Read(ref _totalCommands))
+                    () => (double)Interlocked.Read(ref _totalPreparedCommands) / Interlocked.Read(ref _totalCommands))
                 {
                     DisplayName = "Prepared Commands Ratio",
                     DisplayUnits = "%"
