@@ -175,16 +175,14 @@ namespace Npgsql
             set
             {
                 // TODO: Socket.ReceiveTimeout doesn't work for async.
-                if (value != _currentTimeout)
-                    _socket.ReceiveTimeout = _currentTimeout = value;
+                Debug.Assert(_socket != null);
+
+                if ((_socket != null) && (value != _socket.ReceiveTimeout))
+                {
+                    _socket.ReceiveTimeout = value;
+                }
             }
         }
-
-        /// <summary>
-        /// Contains the current value of the socket's ReceiveTimeout, used to determine whether
-        /// we need to change it when commands are received.
-        /// </summary>
-        int _currentTimeout;
 
         // This is used by NpgsqlCommand, but we place it on the connector because only one instance is needed
         // at any one time (per connection).
@@ -234,9 +232,9 @@ namespace Npgsql
         #region Reusable Message Objects
 
         // Frontend
-        internal readonly BindMessage     BindMessage     = new BindMessage();
+        internal readonly BindMessage BindMessage = new BindMessage();
         internal readonly DescribeMessage DescribeMessage = new DescribeMessage();
-        internal readonly CloseMessage    CloseMessage    = new CloseMessage();
+        internal readonly CloseMessage CloseMessage = new CloseMessage();
         // ParseMessage and QueryMessage depend on the encoding, which isn't known until open-time
         internal ParseMessage ParseMessage;
         internal QueryMessage QueryMessage;
@@ -245,17 +243,17 @@ namespace Npgsql
         PregeneratedMessage _resetWithoutDeallocateMessage;
 
         // Backend
-        readonly CommandCompleteMessage      _commandCompleteMessage      = new CommandCompleteMessage();
-        readonly ReadyForQueryMessage        _readyForQueryMessage        = new ReadyForQueryMessage();
+        readonly CommandCompleteMessage _commandCompleteMessage = new CommandCompleteMessage();
+        readonly ReadyForQueryMessage _readyForQueryMessage = new ReadyForQueryMessage();
         readonly ParameterDescriptionMessage _parameterDescriptionMessage = new ParameterDescriptionMessage();
-        readonly DataRowSequentialMessage    _dataRowSequentialMessage    = new DataRowSequentialMessage();
+        readonly DataRowSequentialMessage _dataRowSequentialMessage = new DataRowSequentialMessage();
         readonly DataRowNonSequentialMessage _dataRowNonSequentialMessage = new DataRowNonSequentialMessage();
 
 
         // Since COPY is rarely used, allocate these lazily
-        CopyInResponseMessage  _copyInResponseMessage;
+        CopyInResponseMessage _copyInResponseMessage;
         CopyOutResponseMessage _copyOutResponseMessage;
-        CopyDataMessage        _copyDataMessage;
+        CopyDataMessage _copyDataMessage;
 
         #endregion
 
@@ -539,54 +537,54 @@ namespace Npgsql
 
                     switch (response)
                     {
-                    default:
-                        throw new NpgsqlException($"Received unknown response {response} for SSLRequest (expecting S or N)");
-                    case 'N':
-                        if (SslMode == SslMode.Require)
-                        {
-                            throw new NpgsqlException("SSL connection requested. No SSL enabled connection from this host is configured.");
-                        }
-                        break;
-                    case 'S':
-                        var clientCertificates = new X509CertificateCollection();
-                        ProvideClientCertificatesCallback?.Invoke(clientCertificates);
+                        default:
+                            throw new NpgsqlException($"Received unknown response {response} for SSLRequest (expecting S or N)");
+                        case 'N':
+                            if (SslMode == SslMode.Require)
+                            {
+                                throw new NpgsqlException("SSL connection requested. No SSL enabled connection from this host is configured.");
+                            }
+                            break;
+                        case 'S':
+                            var clientCertificates = new X509CertificateCollection();
+                            ProvideClientCertificatesCallback?.Invoke(clientCertificates);
 
-                        RemoteCertificateValidationCallback certificateValidationCallback;
-                        if (Settings.TrustServerCertificate)
-                            certificateValidationCallback = (sender, certificate, chain, errors) => true;
-                        else if (UserCertificateValidationCallback != null)
-                            certificateValidationCallback = UserCertificateValidationCallback;
-                        else
-                            certificateValidationCallback = DefaultUserCertificateValidationCallback;
+                            RemoteCertificateValidationCallback certificateValidationCallback;
+                            if (Settings.TrustServerCertificate)
+                                certificateValidationCallback = (sender, certificate, chain, errors) => true;
+                            else if (UserCertificateValidationCallback != null)
+                                certificateValidationCallback = UserCertificateValidationCallback;
+                            else
+                                certificateValidationCallback = DefaultUserCertificateValidationCallback;
 
-                        if (!UseSslStream)
-                        {
-                            var sslStream = new Tls.TlsClientStream(_stream);
-                            await sslStream.PerformInitialHandshake(Host, clientCertificates, certificateValidationCallback, Settings.CheckCertificateRevocation, async);
-                            _stream = sslStream;
-                        }
-                        else
-                        {
-                            var sslStream = new SslStream(_stream, false, certificateValidationCallback);
+                            if (!UseSslStream)
+                            {
+                                var sslStream = new Tls.TlsClientStream(_stream);
+                                await sslStream.PerformInitialHandshake(Host, clientCertificates, certificateValidationCallback, Settings.CheckCertificateRevocation, async);
+                                _stream = sslStream;
+                            }
+                            else
+                            {
+                                var sslStream = new SslStream(_stream, false, certificateValidationCallback);
 #if NETSTANDARD1_3
                             // CoreCLR removed sync methods from SslStream, see https://github.com/dotnet/corefx/pull/4868.
                             // Consider exactly what to do here.
                             sslStream.AuthenticateAsClientAsync(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, Settings.CheckCertificateRevocation).Wait();
 #else
-                            if (async)
-                                await sslStream.AuthenticateAsClientAsync(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, Settings.CheckCertificateRevocation);
-                            else
-                                sslStream.AuthenticateAsClient(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, Settings.CheckCertificateRevocation);
+                                if (async)
+                                    await sslStream.AuthenticateAsClientAsync(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, Settings.CheckCertificateRevocation);
+                                else
+                                    sslStream.AuthenticateAsClient(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, Settings.CheckCertificateRevocation);
 #endif
-                            _stream = sslStream;
-                        }
-                        timeout.Check();
-                        ReadBuffer.Clear();  // Reset to empty after reading single SSL char
-                        ReadBuffer.Underlying = _stream;
-                        WriteBuffer.Underlying = _stream;
-                        IsSecure = true;
-                        Log.Trace("SSL negotiation successful");
-                        break;
+                                _stream = sslStream;
+                            }
+                            timeout.Check();
+                            ReadBuffer.Clear();  // Reset to empty after reading single SSL char
+                            ReadBuffer.Underlying = _stream;
+                            WriteBuffer.Underlying = _stream;
+                            IsSecure = true;
+                            Log.Trace("SSL negotiation successful");
+                            break;
                     }
                 }
 
@@ -648,11 +646,7 @@ namespace Npgsql
             {
                 var endpoint = endpoints[i];
                 Log.Trace($"Attempting to connect to {endpoint}");
-                var protocolType = endpoint.AddressFamily == AddressFamily.InterNetwork ? ProtocolType.Tcp : ProtocolType.IP;
-                var socket = new Socket(endpoint.AddressFamily, SocketType.Stream, protocolType)
-                {
-                    Blocking = false
-                };
+                var socket = GetSocket(endpoint, false);
 
                 try
                 {
@@ -735,8 +729,7 @@ namespace Npgsql
             {
                 var endpoint = endpoints[i];
                 Log.Trace($"Attempting to connect to {endpoint}");
-                var protocolType = endpoint.AddressFamily == AddressFamily.InterNetwork ? ProtocolType.Tcp : ProtocolType.IP;
-                var socket = new Socket(endpoint.AddressFamily, SocketType.Stream, protocolType);
+                var socket = GetSocket(endpoint, true);
 #if NETSTANDARD1_3
                 var connectTask = socket.ConnectAsync(endpoint);
 #else
@@ -792,6 +785,20 @@ namespace Npgsql
                     }
                 }
             }
+        }
+
+        Socket GetSocket(EndPoint endpoint, bool blocking)
+        {
+            var protocolType = endpoint.AddressFamily == AddressFamily.InterNetwork ? ProtocolType.Tcp : ProtocolType.IP;
+            var socket = new Socket(endpoint.AddressFamily, SocketType.Stream, protocolType) {
+                ReceiveTimeout = ConnectionTimeout * 1000,
+                Blocking = blocking,
+            };
+
+            // set UserTimeout here, since it will be used to set ReceiveTimeout later on
+            UserTimeout = socket.ReceiveTimeout;
+
+            return socket;
         }
 
         void SetSocketOptions(Socket socket)
@@ -930,35 +937,35 @@ namespace Npgsql
                 var msg = ParseServerMessage(ReadBuffer, messageCode, len, dataRowLoadingMode, isPrependedMessage);
 
                 switch (messageCode) {
-                case BackendMessageCode.ErrorResponse:
-                    Debug.Assert(msg == null);
+                    case BackendMessageCode.ErrorResponse:
+                        Debug.Assert(msg == null);
 
-                    // An ErrorResponse is (almost) always followed by a ReadyForQuery. Save the error
-                    // and throw it as an exception when the ReadyForQuery is received (next).
-                    error = new PostgresException(ReadBuffer);
+                        // An ErrorResponse is (almost) always followed by a ReadyForQuery. Save the error
+                        // and throw it as an exception when the ReadyForQuery is received (next).
+                        error = new PostgresException(ReadBuffer);
 
-                    if (State == ConnectorState.Connecting) {
-                        // During the startup/authentication phase, an ErrorResponse isn't followed by
-                        // an RFQ. Instead, the server closes the connection immediately
-                        throw error;
-                    }
+                        if (State == ConnectorState.Connecting) {
+                            // During the startup/authentication phase, an ErrorResponse isn't followed by
+                            // an RFQ. Instead, the server closes the connection immediately
+                            throw error;
+                        }
 
-                    continue;
-
-                case BackendMessageCode.ReadyForQuery:
-                    if (error != null)
-                        throw error;
-                    break;
-
-                // Asynchronous messages which can come anytime, they have already been handled
-                // in ParseServerMessage. Read the next message.
-                case BackendMessageCode.NoticeResponse:
-                case BackendMessageCode.NotificationResponse:
-                case BackendMessageCode.ParameterStatus:
-                    Debug.Assert(msg == null);
-                    if (!readingNotifications)
                         continue;
-                    return null;
+
+                    case BackendMessageCode.ReadyForQuery:
+                        if (error != null)
+                            throw error;
+                        break;
+
+                    // Asynchronous messages which can come anytime, they have already been handled
+                    // in ParseServerMessage. Read the next message.
+                    case BackendMessageCode.NoticeResponse:
+                    case BackendMessageCode.NotificationResponse:
+                    case BackendMessageCode.ParameterStatus:
+                        Debug.Assert(msg == null);
+                        if (!readingNotifications)
+                            continue;
+                        return null;
                 }
 
                 Debug.Assert(msg != null, "Message is null for code: " + messageCode);
@@ -1171,14 +1178,14 @@ namespace Npgsql
             {
                 switch (TransactionStatus)
                 {
-                case TransactionStatus.Idle:
-                    return false;
-                case TransactionStatus.Pending:
-                case TransactionStatus.InTransactionBlock:
-                case TransactionStatus.InFailedTransactionBlock:
-                    return true;
-                default:
-                    throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {TransactionStatus} of enum {nameof(TransactionStatus)}. Please file a bug.");
+                    case TransactionStatus.Idle:
+                        return false;
+                    case TransactionStatus.Pending:
+                    case TransactionStatus.InTransactionBlock:
+                    case TransactionStatus.InFailedTransactionBlock:
+                        return true;
+                    default:
+                        throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {TransactionStatus} of enum {nameof(TransactionStatus)}. Please file a bug.");
                 }
             }
         }
@@ -1190,16 +1197,16 @@ namespace Npgsql
             if (newStatus == TransactionStatus) { return; }
 
             switch (newStatus) {
-            case TransactionStatus.Idle:
-                ClearTransaction();
-                break;
-            case TransactionStatus.InTransactionBlock:
-            case TransactionStatus.InFailedTransactionBlock:
-                break;
-            case TransactionStatus.Pending:
-                throw new Exception("Invalid TransactionStatus (should be frontend-only)");
-            default:
-                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {newStatus} of enum {nameof(TransactionStatus)}. Please file a bug.");
+                case TransactionStatus.Idle:
+                    ClearTransaction();
+                    break;
+                case TransactionStatus.InTransactionBlock:
+                case TransactionStatus.InFailedTransactionBlock:
+                    break;
+                case TransactionStatus.Pending:
+                    throw new Exception("Invalid TransactionStatus (should be frontend-only)");
+                default:
+                    throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {newStatus} of enum {nameof(TransactionStatus)}. Please file a bug.");
             }
             TransactionStatus = newStatus;
         }
@@ -1306,9 +1313,9 @@ namespace Npgsql
 
                 switch (State)
                 {
-                case ConnectorState.Broken:
-                case ConnectorState.Closed:
-                    return;
+                    case ConnectorState.Broken:
+                    case ConnectorState.Closed:
+                        return;
                 }
 
                 State = ConnectorState.Closed;
@@ -1465,19 +1472,19 @@ namespace Npgsql
 
             switch (State)
             {
-            case ConnectorState.Ready:
-                break;
-            case ConnectorState.Closed:
-            case ConnectorState.Broken:
-                return;
-            case ConnectorState.Connecting:
-            case ConnectorState.Executing:
-            case ConnectorState.Fetching:
-            case ConnectorState.Copy:
-            case ConnectorState.Waiting:
-                throw new InvalidOperationException("Reset() called on connector with state " + State);
-            default:
-                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {State} of enum {nameof(ConnectorState)}. Please file a bug.");
+                case ConnectorState.Ready:
+                    break;
+                case ConnectorState.Closed:
+                case ConnectorState.Broken:
+                    return;
+                case ConnectorState.Connecting:
+                case ConnectorState.Executing:
+                case ConnectorState.Fetching:
+                case ConnectorState.Copy:
+                case ConnectorState.Waiting:
+                    throw new InvalidOperationException("Reset() called on connector with state " + State);
+                default:
+                    throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {State} of enum {nameof(ConnectorState)}. Please file a bug.");
             }
 
             if (IsInUserAction)
@@ -1497,19 +1504,19 @@ namespace Npgsql
             // Must rollback transaction before sending DISCARD ALL
             switch (TransactionStatus)
             {
-            case TransactionStatus.Idle:
-                break;
-            case TransactionStatus.Pending:
-                // BeginTransaction() was called, but was left in the write buffer and not yet sent to server.
-                // Just clear the transaction state.
-                ClearTransaction();
-                break;
-            case TransactionStatus.InTransactionBlock:
-            case TransactionStatus.InFailedTransactionBlock:
-                Rollback(false, CancellationToken.None);
-                break;
-            default:
-                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {TransactionStatus} of enum {nameof(TransactionStatus)}. Please file a bug.");
+                case TransactionStatus.Idle:
+                    break;
+                case TransactionStatus.Pending:
+                    // BeginTransaction() was called, but was left in the write buffer and not yet sent to server.
+                    // Just clear the transaction state.
+                    ClearTransaction();
+                    break;
+                case TransactionStatus.InTransactionBlock:
+                case TransactionStatus.InFailedTransactionBlock:
+                    Rollback(false, CancellationToken.None);
+                    break;
+                default:
+                    throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {TransactionStatus} of enum {nameof(TransactionStatus)}. Please file a bug.");
             }
 
             if (!Settings.NoResetOnClose && SupportsDiscard)
@@ -1564,19 +1571,19 @@ namespace Npgsql
                     // Check that the connector is ready.
                     switch (State)
                     {
-                    case ConnectorState.Ready:
-                        break;
-                    case ConnectorState.Closed:
-                    case ConnectorState.Broken:
-                        throw new InvalidOperationException("Connection is not open");
-                    case ConnectorState.Executing:
-                    case ConnectorState.Fetching:
-                    case ConnectorState.Waiting:
-                    case ConnectorState.Connecting:
-                    case ConnectorState.Copy:
-                        throw new InvalidOperationException("Internal Npgsql error, please report: acquired both locks and connector is in state " + State);
-                    default:
-                        throw new ArgumentOutOfRangeException(nameof(State), State, "Invalid connector state: " + State);
+                        case ConnectorState.Ready:
+                            break;
+                        case ConnectorState.Closed:
+                        case ConnectorState.Broken:
+                            throw new InvalidOperationException("Connection is not open");
+                        case ConnectorState.Executing:
+                        case ConnectorState.Fetching:
+                        case ConnectorState.Waiting:
+                        case ConnectorState.Connecting:
+                        case ConnectorState.Copy:
+                            throw new InvalidOperationException("Internal Npgsql error, please report: acquired both locks and connector is in state " + State);
+                        default:
+                            throw new ArgumentOutOfRangeException(nameof(State), State, "Invalid connector state: " + State);
                     }
 
                     Debug.Assert(IsReady);
@@ -1729,17 +1736,17 @@ namespace Npgsql
 
                         switch (msg.Code)
                         {
-                        case BackendMessageCode.RowDescription:
-                            expectedMessageCode = BackendMessageCode.DataRow;
-                            continue;
-                        case BackendMessageCode.DataRow:
-                            expectedMessageCode = BackendMessageCode.CompletedResponse;
-                            continue;
-                        case BackendMessageCode.CompletedResponse:
-                            expectedMessageCode = BackendMessageCode.ReadyForQuery;
-                            continue;
-                        case BackendMessageCode.ReadyForQuery:
-                            break;
+                            case BackendMessageCode.RowDescription:
+                                expectedMessageCode = BackendMessageCode.DataRow;
+                                continue;
+                            case BackendMessageCode.DataRow:
+                                expectedMessageCode = BackendMessageCode.CompletedResponse;
+                                continue;
+                            case BackendMessageCode.CompletedResponse:
+                                expectedMessageCode = BackendMessageCode.ReadyForQuery;
+                                continue;
+                            case BackendMessageCode.ReadyForQuery:
+                                break;
                         }
                         Log.Trace("Performed keepalive", Id);
 
@@ -1825,18 +1832,18 @@ namespace Npgsql
                                     var finishedKeepalive = false;
                                     switch (msg.Code)
                                     {
-                                    case BackendMessageCode.RowDescription:
-                                        expectedMessageCode = BackendMessageCode.DataRow;
-                                        break;
-                                    case BackendMessageCode.DataRow:
-                                        expectedMessageCode = BackendMessageCode.CompletedResponse;
-                                        break;
-                                    case BackendMessageCode.CompletedResponse:
-                                        expectedMessageCode = BackendMessageCode.ReadyForQuery;
-                                        break;
-                                    case BackendMessageCode.ReadyForQuery:
-                                        finishedKeepalive = true;
-                                        break;
+                                        case BackendMessageCode.RowDescription:
+                                            expectedMessageCode = BackendMessageCode.DataRow;
+                                            break;
+                                        case BackendMessageCode.DataRow:
+                                            expectedMessageCode = BackendMessageCode.CompletedResponse;
+                                            break;
+                                        case BackendMessageCode.CompletedResponse:
+                                            expectedMessageCode = BackendMessageCode.ReadyForQuery;
+                                            break;
+                                        case BackendMessageCode.ReadyForQuery:
+                                            finishedKeepalive = true;
+                                            break;
                                     }
 
                                     if (!finishedKeepalive)
@@ -1937,13 +1944,13 @@ namespace Npgsql
 
             switch (name)
             {
-            case "server_version":
-                ProcessServerVersion(value);
-                return;
+                case "server_version":
+                    ProcessServerVersion(value);
+                    return;
 
-            case "standard_conforming_strings":
-                UseConformantStrings = (value == "on");
-                return;
+                case "standard_conforming_strings":
+                    UseConformantStrings = (value == "on");
+                    return;
             }
         }
 
