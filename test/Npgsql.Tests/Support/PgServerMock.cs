@@ -77,6 +77,15 @@ namespace Npgsql.Tests.Support
             _readBuffer.Skip(len - 4);
         }
 
+        internal async Task BreakOnRead()
+        {
+            CheckDisposed();
+
+            await _readBuffer.EnsureAsync(1);
+
+            Dispose();
+        }
+
         internal Task FlushAsync()
         {
             CheckDisposed();

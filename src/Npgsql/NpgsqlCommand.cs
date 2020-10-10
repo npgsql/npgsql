@@ -475,6 +475,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 ProcessRawQuery(true);
 
                 var sendTask = SendDeriveParameters(connector, false);
+                if (sendTask.IsFaulted)
+                    sendTask.GetAwaiter().GetResult();
 
                 foreach (var statement in _statements)
                 {
@@ -596,6 +598,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 using (connector.StartUserAction())
                 {
                     var sendTask = SendPrepare(connector, async, cancellationToken);
+                    if (sendTask.IsFaulted)
+                        sendTask.GetAwaiter().GetResult();
 
                     // Loop over statements, skipping those that are already prepared (because they were persisted)
                     var isFirst = true;
@@ -703,6 +707,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             using (connector.StartUserAction())
             {
                 var sendTask = SendClose(connector, async, cancellationToken);
+                if (sendTask.IsFaulted)
+                    sendTask.GetAwaiter().GetResult();
                 foreach (var statement in _statements)
                     if (statement.PreparedStatement?.State == PreparedState.BeingUnprepared)
                     {
