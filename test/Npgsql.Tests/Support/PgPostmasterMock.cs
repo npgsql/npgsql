@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
@@ -20,9 +21,9 @@ namespace Npgsql.Tests.Support
         readonly Socket _socket;
         readonly Task _acceptTask;
         readonly List<PgServerMock> _allServers = new List<PgServerMock>();
-        readonly Queue<PgServerMock> _pendingServers = new Queue<PgServerMock>();
-        readonly Queue<(int ProcessId, int Secret)> _pendingCancellationRequests
-            = new Queue<(int ProcessId, int Secret)>();
+        readonly ConcurrentQueue<PgServerMock> _pendingServers = new ConcurrentQueue<PgServerMock>();
+        readonly ConcurrentQueue<(int ProcessId, int Secret)> _pendingCancellationRequests
+            = new ConcurrentQueue<(int ProcessId, int Secret)>();
         int _processIdCounter;
 
         internal string ConnectionString { get; }
@@ -71,10 +72,11 @@ namespace Npgsql.Tests.Support
                 // This is not a cancellation, "spawn" a new server
                 readBuffer.ReadPosition -= 8;
                 var serverMock = new PgServerMock(stream, readBuffer, writeBuffer, ++_processIdCounter);
-                await serverMock.Startup();
 
                 _allServers.Add(serverMock);
                 _pendingServers.Enqueue(serverMock);
+
+                await serverMock.Startup();
             }
 
             // ReSharper disable once FunctionNeverReturns

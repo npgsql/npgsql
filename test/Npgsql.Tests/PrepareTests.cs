@@ -67,6 +67,7 @@ namespace Npgsql.Tests
             await using var postmasterMock = new PgPostmasterMock(builder.ConnectionString);
             using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
             await using var conn = await OpenConnectionAsync(connectionString);
+            var server = postmasterMock.GetPendingServer();
 
             var sb = new StringBuilder();
             for (var i = 0; i < 400; i++)
@@ -74,7 +75,6 @@ namespace Npgsql.Tests
                 sb.Append($"SELECT {i};");
             }
             using var cmd = new NpgsqlCommand(sb.ToString(), conn);
-            var server = postmasterMock.GetPendingServer();
             var breakTask = server.BreakOnRead();
             try
             {
