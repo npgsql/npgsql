@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Tests.Support;
 using NpgsqlTypes;
@@ -58,9 +59,11 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2925")]
-        [Ignore("Flaky on linux")]
         public async Task Bug2925()
         {
+            if (Type.GetType("Mono.Runtime") != null)
+                Assert.Ignore("Flaky on mono");
+
             var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 WriteBufferSize = NpgsqlWriteBuffer.MinimumSize,
@@ -76,7 +79,10 @@ namespace Npgsql.Tests
                 sb.Append($"SELECT {i};");
             }
             using var cmd = new NpgsqlCommand(sb.ToString(), conn);
-            var breakTask = server.BreakOnRead();
+            // Async read wouldn't complete until async write from prepare is completed (on linux, on windows is ok)
+            // So, to make them run in parallel, we put it in another thread
+            var breakThread = new Thread(server.BreakOnRead);
+            breakThread.Start();
             try
             {
                 Assert.That(() => cmd.Prepare(), Throws.TypeOf<NpgsqlException>()
@@ -85,7 +91,7 @@ namespace Npgsql.Tests
             }
             finally
             {
-                await breakTask;
+                breakThread.Join();
             }
         }
 

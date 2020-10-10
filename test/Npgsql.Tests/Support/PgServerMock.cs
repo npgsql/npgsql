@@ -80,11 +80,11 @@ namespace Npgsql.Tests.Support
             _readBuffer.Skip(len - 4);
         }
 
-        internal async Task BreakOnRead()
+        internal void BreakOnRead()
         {
             CheckDisposed();
 
-            await _readBuffer.EnsureAsync(1);
+            _readBuffer.Ensure(1);
 
             _socket.Close(0);
         }
