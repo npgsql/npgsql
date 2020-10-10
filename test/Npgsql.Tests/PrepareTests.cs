@@ -91,7 +91,7 @@ namespace Npgsql.Tests
             }
             finally
             {
-                breakThread.Join();
+                breakThread.Join(1000);
             }
         }
 
