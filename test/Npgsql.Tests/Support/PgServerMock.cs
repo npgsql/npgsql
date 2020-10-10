@@ -15,6 +15,7 @@ namespace Npgsql.Tests.Support
     {
         static readonly Encoding Encoding = PGUtil.UTF8Encoding;
 
+        readonly Socket _socket;
         readonly NetworkStream _stream;
         readonly NpgsqlReadBuffer _readBuffer;
         readonly NpgsqlWriteBuffer _writeBuffer;
@@ -24,12 +25,14 @@ namespace Npgsql.Tests.Support
         internal int ProcessId { get; }
 
         internal PgServerMock(
+            Socket socket,
             NetworkStream stream,
             NpgsqlReadBuffer readBuffer,
             NpgsqlWriteBuffer writeBuffer,
             int processId)
         {
             ProcessId = processId;
+            _socket = socket;
             _stream = stream;
             _readBuffer = readBuffer;
             _writeBuffer = writeBuffer;
@@ -83,7 +86,7 @@ namespace Npgsql.Tests.Support
 
             await _readBuffer.EnsureAsync(1);
 
-            Dispose();
+            _socket.Close(0);
         }
 
         internal Task FlushAsync()
