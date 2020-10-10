@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
@@ -21,9 +20,9 @@ namespace Npgsql.Tests.Support
         readonly Socket _socket;
         readonly Task _acceptTask;
         readonly List<PgServerMock> _allServers = new List<PgServerMock>();
-        readonly ConcurrentQueue<PgServerMock> _pendingServers = new ConcurrentQueue<PgServerMock>();
-        readonly ConcurrentQueue<(int ProcessId, int Secret)> _pendingCancellationRequests
-            = new ConcurrentQueue<(int ProcessId, int Secret)>();
+        readonly Queue<PgServerMock> _pendingServers = new Queue<PgServerMock>();
+        readonly Queue<(int ProcessId, int Secret)> _pendingCancellationRequests
+            = new Queue<(int ProcessId, int Secret)>();
         int _processIdCounter;
 
         internal string ConnectionString { get; }
