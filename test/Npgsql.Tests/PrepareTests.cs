@@ -58,7 +58,7 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2925")]
-        [Ignore("Flaky")]
+        [Ignore("Flaky on linux")]
         public async Task Bug2925()
         {
             var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
