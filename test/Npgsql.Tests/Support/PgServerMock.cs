@@ -40,10 +40,7 @@ namespace Npgsql.Tests.Support
         internal async Task Startup()
         {
             // Read and skip the startup message
-            await _readBuffer.EnsureAsync(4);
-            var startupMessageLen = _readBuffer.ReadInt32();
-            await _readBuffer.EnsureAsync(startupMessageLen - 4);
-            _readBuffer.Skip(startupMessageLen - 4);
+            await SkipMessage();
 
             WriteAuthenticateOk();
             WriteParameterStatuses(new Dictionary<string, string>
@@ -65,6 +62,14 @@ namespace Npgsql.Tests.Support
             WriteReadyForQuery();
 
             await FlushAsync();
+        }
+
+        internal async Task SkipMessage()
+        {
+            await _readBuffer.EnsureAsync(4);
+            var len = _readBuffer.ReadInt32();
+            await _readBuffer.EnsureAsync(len - 4);
+            _readBuffer.Skip(len - 4);
         }
 
         internal async Task ReadMessageType(byte expectedCode)

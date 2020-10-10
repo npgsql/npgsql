@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 using Npgsql.Util;
+using NUnit.Framework.Constraints;
 
 namespace Npgsql.Tests.Support
 {
@@ -18,14 +20,21 @@ namespace Npgsql.Tests.Support
         static readonly Encoding RelaxedEncoding = PGUtil.RelaxedUTF8Encoding;
 
         readonly Socket _socket;
-        readonly Task _acceptTask;
         readonly List<PgServerMock> _allServers = new List<PgServerMock>();
         readonly Queue<PgServerMock> _pendingServers = new Queue<PgServerMock>();
         readonly Queue<(int ProcessId, int Secret)> _pendingCancellationRequests
             = new Queue<(int ProcessId, int Secret)>();
+        Task? _acceptClientsTask;
         int _processIdCounter;
 
         internal string ConnectionString { get; }
+
+        internal static PgPostmasterMock Start(string? connectionString = null)
+        {
+            var mock = new PgPostmasterMock(connectionString);
+            mock.AcceptClients();
+            return mock;
+        }
 
         internal PgPostmasterMock(string? connectionString = null)
         {
@@ -42,43 +51,64 @@ namespace Npgsql.Tests.Support
             ConnectionString = connectionStringBuilder.ConnectionString;
 
             _socket.Listen(5);
-            _acceptTask = AcceptAndAuthenticate();
         }
 
-        async Task AcceptAndAuthenticate()
+        void AcceptClients()
         {
-            while (true)
+            _acceptClientsTask = DoAcceptClients();
+
+            async Task DoAcceptClients()
             {
-                var clientSocket = await _socket.AcceptAsync();
-
-                var stream = new NetworkStream(clientSocket, true);
-                var readBuffer = new NpgsqlReadBuffer(null!, stream, clientSocket, ReadBufferSize, Encoding, RelaxedEncoding);
-                var writeBuffer = new NpgsqlWriteBuffer(null!, stream, clientSocket, WriteBufferSize, Encoding);
-
-                await readBuffer.EnsureAsync(4);
-                var len = readBuffer.ReadInt32();
-                await readBuffer.EnsureAsync(len - 4);
-
-                if (readBuffer.ReadInt32() == CancelRequestCode)
+                while (true)
                 {
-                    _pendingCancellationRequests.Enqueue((readBuffer.ReadInt32(), readBuffer.ReadInt32()));
-                    readBuffer.Dispose();
-                    writeBuffer.Dispose();
-                    stream.Dispose();
-                    continue;
+                    var serverOrCancellationRequest = await Accept();
+                    if (serverOrCancellationRequest.Server is { } server)
+                    {
+                        _pendingServers.Enqueue(server);
+                        await server.Startup();
+                    }
+                    else
+                        _pendingCancellationRequests.Enqueue(serverOrCancellationRequest.CancellationRequest!.Value);
                 }
 
-                // This is not a cancellation, "spawn" a new server
-                readBuffer.ReadPosition -= 8;
-                var serverMock = new PgServerMock(stream, readBuffer, writeBuffer, ++_processIdCounter);
+                // ReSharper disable once FunctionNeverReturns
+            }
+        }
 
-                _allServers.Add(serverMock);
-                _pendingServers.Enqueue(serverMock);
+        internal async Task<ServerOrCancellationRequest> Accept()
+        {
+            var clientSocket = await _socket.AcceptAsync();
 
-                await serverMock.Startup();
+            var stream = new NetworkStream(clientSocket, true);
+            var readBuffer = new NpgsqlReadBuffer(null!, stream, clientSocket, ReadBufferSize, Encoding,
+                RelaxedEncoding);
+            var writeBuffer = new NpgsqlWriteBuffer(null!, stream, clientSocket, WriteBufferSize, Encoding);
+
+            await readBuffer.EnsureAsync(4);
+            var len = readBuffer.ReadInt32();
+            await readBuffer.EnsureAsync(len - 4);
+
+            if (readBuffer.ReadInt32() == CancelRequestCode)
+            {
+                readBuffer.Dispose();
+                writeBuffer.Dispose();
+                stream.Dispose();
+                return new ServerOrCancellationRequest((readBuffer.ReadInt32(), readBuffer.ReadInt32()));
             }
 
-            // ReSharper disable once FunctionNeverReturns
+            // This is not a cancellation, "spawn" a new server
+            readBuffer.ReadPosition -= 8;
+            var server = new PgServerMock(stream, readBuffer, writeBuffer, ++_processIdCounter);
+            _allServers.Add(server);
+            return new ServerOrCancellationRequest(server);
+        }
+
+        internal async Task<PgServerMock> AcceptServer()
+        {
+            var serverOrCancellationRequest = await Accept();
+            if (serverOrCancellationRequest.Server is null)
+                throw new InvalidOperationException("Expected new server connection but a cancellation request occurred instead");
+            return serverOrCancellationRequest.Server;
         }
 
         internal PgServerMock GetPendingServer()
@@ -97,7 +127,9 @@ namespace Npgsql.Tests.Support
             _socket.Dispose();
             try
             {
-                await _acceptTask;
+                var acceptTask = _acceptClientsTask;
+                if (acceptTask != null)
+                    await acceptTask;
             }
             catch
             {
@@ -107,6 +139,24 @@ namespace Npgsql.Tests.Support
             // Destroy all servers created by this postmaster
             foreach (var server in _allServers)
                 server.Dispose();
+        }
+
+        internal readonly struct ServerOrCancellationRequest
+        {
+            public ServerOrCancellationRequest(PgServerMock server)
+            {
+                Server = server;
+                CancellationRequest = null;
+            }
+
+            public ServerOrCancellationRequest((int ProcessId, int Secret) cancellationRequest)
+            {
+                Server = null;
+                CancellationRequest = cancellationRequest;
+            }
+
+            internal PgServerMock? Server { get; }
+            internal (int ProcessId, int Secret)? CancellationRequest { get; }
         }
     }
 }
