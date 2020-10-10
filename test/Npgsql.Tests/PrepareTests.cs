@@ -58,6 +58,7 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2925")]
+        [Ignore("Flaky")]
         public async Task Bug2925()
         {
             var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
@@ -70,7 +71,7 @@ namespace Npgsql.Tests
             var server = postmasterMock.GetPendingServer();
 
             var sb = new StringBuilder();
-            for (var i = 0; i < 400; i++)
+            for (var i = 0; i < 1000; i++)
             {
                 sb.Append($"SELECT {i};");
             }
