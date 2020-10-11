@@ -71,10 +71,11 @@ namespace Npgsql.Tests.Support
                 // This is not a cancellation, "spawn" a new server
                 readBuffer.ReadPosition -= 8;
                 var serverMock = new PgServerMock(stream, readBuffer, writeBuffer, ++_processIdCounter);
-                await serverMock.Startup();
 
                 _allServers.Add(serverMock);
                 _pendingServers.Enqueue(serverMock);
+
+                await serverMock.Startup();
             }
 
             // ReSharper disable once FunctionNeverReturns

@@ -23,6 +23,8 @@ namespace Npgsql.Tests.Support
         const int BackendSecret = 12345;
         internal int ProcessId { get; }
 
+        internal NpgsqlReadBuffer ReadBuffer => _readBuffer;
+
         internal PgServerMock(
             NetworkStream stream,
             NpgsqlReadBuffer readBuffer,
@@ -91,6 +93,8 @@ namespace Npgsql.Tests.Support
                 .WriteCommandComplete()
                 .WriteReadyForQuery()
                 .FlushAsync();
+
+        internal void Close() => _stream.Close();
 
         #region Low-level message writing
 
