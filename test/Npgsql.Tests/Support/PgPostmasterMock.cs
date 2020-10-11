@@ -70,7 +70,7 @@ namespace Npgsql.Tests.Support
 
                 // This is not a cancellation, "spawn" a new server
                 readBuffer.ReadPosition -= 8;
-                var serverMock = new PgServerMock(clientSocket, stream, readBuffer, writeBuffer, ++_processIdCounter);
+                var serverMock = new PgServerMock(stream, readBuffer, writeBuffer, ++_processIdCounter);
 
                 _allServers.Add(serverMock);
                 _pendingServers.Enqueue(serverMock);

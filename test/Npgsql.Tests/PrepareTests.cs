@@ -2,15 +2,10 @@
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
-using System.Net;
-using System.Net.Sockets;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
-using Npgsql.Tests.Support;
 using NpgsqlTypes;
 using NUnit.Framework;
-using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests
 {
@@ -55,43 +50,6 @@ namespace Npgsql.Tests
                 }
                 AssertNumPreparedStatements(conn, 1);
                 conn.UnprepareAll();
-            }
-        }
-
-        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2925")]
-        public async Task Bug2925()
-        {
-            if (Type.GetType("Mono.Runtime") != null)
-                Assert.Ignore("Flaky on mono");
-
-            var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
-            {
-                WriteBufferSize = NpgsqlWriteBuffer.MinimumSize,
-            };
-            await using var postmasterMock = new PgPostmasterMock(builder.ConnectionString);
-            using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
-            await using var conn = await OpenConnectionAsync(connectionString);
-            var server = postmasterMock.GetPendingServer();
-
-            var sb = new StringBuilder();
-            for (var i = 0; i < 1000; i++)
-            {
-                sb.Append($"SELECT {i};");
-            }
-            using var cmd = new NpgsqlCommand(sb.ToString(), conn);
-            // Async read wouldn't complete until async write from prepare is completed (on linux, on windows is ok)
-            // So, to make them run in parallel, we put it in another thread
-            var breakThread = new Thread(server.BreakOnRead);
-            breakThread.Start();
-            try
-            {
-                Assert.That(() => cmd.Prepare(), Throws.TypeOf<NpgsqlException>()
-                    // NpgsqlException's inner exception can be NetworkException (.net 5) or IOException (.net 4.6.1)
-                    .With.InnerException.InnerException.TypeOf<SocketException>());
-            }
-            finally
-            {
-                breakThread.Join(1000);
             }
         }
 
