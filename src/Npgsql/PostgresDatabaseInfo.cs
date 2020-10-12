@@ -214,6 +214,7 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
                 AllResultTypesAreUnknown = true
             };
 
+            timeout.CheckAndApply(conn.Connector!);
             using var reader = async ? await command.ExecuteReaderAsync() : command.ExecuteReader();
             var byOID = new Dictionary<uint, PostgresType>();
 
@@ -234,8 +235,6 @@ ORDER BY oid{(withEnumSortOrder ? ", enumsortorder" : "")};" : "")}
             // Then load the types
             while (async ? await reader.ReadAsync() : reader.Read())
             {
-                timeout.Check();
-
                 var ns = reader.GetString("nspname");
                 var internalName = reader.GetString("typname");
                 var oid = uint.Parse(reader.GetString("oid"), NumberFormatInfo.InvariantInfo);

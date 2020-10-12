@@ -131,16 +131,32 @@ namespace Npgsql.Util
         internal static NpgsqlTimeout Infinite = new NpgsqlTimeout(TimeSpan.Zero);
 
         internal NpgsqlTimeout(TimeSpan expiration)
-        {
-            _expiration = expiration == TimeSpan.Zero
-                ? DateTime.MaxValue
-                : DateTime.UtcNow + expiration;
-        }
+            => _expiration = expiration == TimeSpan.Zero ? DateTime.MaxValue : DateTime.UtcNow + expiration;
 
         internal void Check()
         {
             if (HasExpired)
                 throw new TimeoutException();
+        }
+
+        internal void CheckAndApply(NpgsqlConnector connector)
+        {
+            if (!IsSet)
+                return;
+
+            var timeLeft = TimeLeft;
+            if (timeLeft > TimeSpan.Zero)
+            {
+                // Set the remaining timeout on the read and write buffers
+                connector.ReadBuffer.Timeout = connector.WriteBuffer.Timeout = timeLeft;
+
+                // Note that we set UserTimeout as well, otherwise the read timeout will get overwritten in ReadMessage
+                // Note also that we must set the read buffer's timeout directly (above), since the SSL handshake
+                // reads data directly from the buffer, without going through ReadMessage.
+                connector.UserTimeout = (int)Math.Ceiling(timeLeft.TotalMilliseconds);
+            }
+
+            Check();
         }
 
         internal bool IsSet => _expiration != DateTime.MaxValue;

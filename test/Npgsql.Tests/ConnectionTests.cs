@@ -8,6 +8,7 @@ using System.Net.Security;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Npgsql.Tests.Support;
 using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;
 using static Npgsql.Util.Statics;
@@ -1452,6 +1453,26 @@ CREATE TABLE record ()");
                 using var connection = await OpenConnectionAsync(connectionString);
             };
         }
+
+#if !NET461 // .NET 4.6.1 doesn't support cancellation tokens on socket operations, so no async timeouts
+        [Test, Description("Simulates a timeout during the authentication phase")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/3227")]
+        [Timeout(10000)]
+        public async Task TimeoutDuringAuthentication()
+        {
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString) { Timeout = 1 };
+            await using var postmasterMock = new PgPostmasterMock(builder.ConnectionString);
+            using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
+
+            var __ = postmasterMock.AcceptServer();
+
+            // The server will accept a connection from the client, but will not respond to the client's authentication
+            // request. This should trigger a timeout
+            Assert.That(async () => await OpenConnectionAsync(connectionString),
+                Throws.Exception.TypeOf<NpgsqlException>()
+                    .With.InnerException.TypeOf<TimeoutException>());
+        }
+#endif
 
         public ConnectionTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
     }

@@ -195,7 +195,7 @@ namespace Npgsql.Tests
                 return; // Multiplexing, Timeout
 
             var builder = new NpgsqlConnectionStringBuilder(ConnectionString) { CommandTimeout = 1 };
-            await using var postmasterMock = new PgPostmasterMock(builder.ConnectionString);
+            await using var postmasterMock = PgPostmasterMock.Start(builder.ConnectionString);
             using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
             await using var conn = await OpenConnectionAsync(connectionString);
 
@@ -315,7 +315,7 @@ namespace Npgsql.Tests
             if (IsMultiplexing)
                 return; // Multiplexing, cancellation
 
-            await using var postmasterMock = new PgPostmasterMock(ConnectionString);
+            await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
             using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
             await using var conn = await OpenConnectionAsync(connectionString);
 

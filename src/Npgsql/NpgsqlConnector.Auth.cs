@@ -21,8 +21,8 @@ namespace Npgsql
         {
             Log.Trace("Authenticating...", Id);
 
+            timeout.CheckAndApply(this);
             var msg = Expect<AuthenticationRequestMessage>(await ReadMessage(async, cancellationToken), this);
-            timeout.Check();
             switch (msg.AuthRequestType)
             {
             case AuthenticationRequestType.AuthenticationOk:

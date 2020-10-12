@@ -423,9 +423,9 @@ namespace Npgsql
                 var username = GetUsername();
                 if (Settings.Database == null)
                     Settings.Database = username;
+                timeout.CheckAndApply(this);
                 WriteStartupMessage(username);
                 await Flush(async, cancellationToken);
-                timeout.Check();
 
                 await Authenticate(username, timeout, async, cancellationToken);
 
@@ -593,6 +593,8 @@ namespace Npgsql
                 ReadBuffer = new NpgsqlReadBuffer(this, _stream, _socket, Settings.ReadBufferSize, TextEncoding, RelaxedTextEncoding);
                 WriteBuffer = new NpgsqlWriteBuffer(this, _stream, _socket, Settings.WriteBufferSize, TextEncoding);
 
+                timeout.CheckAndApply(this);
+
                 if (SslMode == SslMode.Require || SslMode == SslMode.Prefer)
                 {
                     WriteSslRequest();
@@ -600,7 +602,7 @@ namespace Npgsql
 
                     await ReadBuffer.Ensure(1, async, cancellationToken);
                     var response = (char)ReadBuffer.ReadByte();
-                    timeout.Check();
+                    timeout.CheckAndApply(this);
 
                     switch (response)
                     {
@@ -625,10 +627,15 @@ namespace Npgsql
 
                         ProvideClientCertificatesCallback?.Invoke(clientCertificates);
 
-                        var certificateValidationCallback =
-                            (Settings.TrustServerCertificate) ? SslTrustServerValidation :
-                            (Settings.RootCertificate ?? PostgresEnvironment.SslCertRoot ?? PostgresEnvironment.SslCertRootDefault) is { } certRootPath ? SslRootValidation(certRootPath) :
-                            (UserCertificateValidationCallback is { } userValidation) ? userValidation : SslDefaultValidation;
+                        var certificateValidationCallback = Settings.TrustServerCertificate
+                            ? SslTrustServerValidation
+                            : (Settings.RootCertificate ?? PostgresEnvironment.SslCertRoot ?? PostgresEnvironment.SslCertRootDefault) is { } certRootPath
+                                ? SslRootValidation(certRootPath)
+                                : UserCertificateValidationCallback is { } userValidation
+                                    ? userValidation
+                                    : SslDefaultValidation;
+
+                        timeout.CheckAndApply(this);
                         var sslStream = new SslStream(_stream, leaveInnerStreamOpen: false, certificateValidationCallback);
 
                         if (async)
@@ -637,7 +644,6 @@ namespace Npgsql
                             sslStream.AuthenticateAsClient(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, Settings.CheckCertificateRevocation);
 
                         _stream = sslStream;
-                        timeout.Check();
                         ReadBuffer.Clear();  // Reset to empty after reading single SSL char
                         ReadBuffer.Underlying = _stream;
                         WriteBuffer.Underlying = _stream;
@@ -676,8 +682,7 @@ namespace Npgsql
             }
             else
             {
-                // Note that there aren't any timeout-able DNS methods, and we want to use sync-only
-                // methods (not to rely on any TP threads etc.)
+                // Note that there aren't any timeout-able or cancellable DNS methods
                 endpoints = Dns.GetHostAddresses(Host).Select(a => new IPEndPoint(a, Port)).ToArray();
                 timeout.Check();
             }
