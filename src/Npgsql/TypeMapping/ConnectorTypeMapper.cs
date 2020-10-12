@@ -232,7 +232,7 @@ namespace Npgsql.TypeMapping
                 BindType(mapping, _connector, externalCall: false);
 
             // Enums
-            var enumFactory = new UnmappedEnumTypeHandlerFactory(DefaultNameTranslator);
+            var enumFactory = new TextHandlerFactory();
             foreach (var e in DatabaseInfo.EnumTypes.Where(e => !_byOID.ContainsKey(e.OID)))
                 BindType(enumFactory.Create(e, _connector.Connection!), e);
 

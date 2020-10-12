@@ -5,7 +5,6 @@ using Npgsql.NameTranslation;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 using NUnit.Framework;
-using static Npgsql.Util.Statics;
 using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests.Types
@@ -23,51 +22,42 @@ namespace Npgsql.Tests.Types
                 ApplicationName = nameof(UnmappedEnum),
                 Pooling = false
             };
-            using (var conn = await OpenConnectionAsync(csb))
-            await using (var _ = await GetTempTypeName(conn, out var type))
-            {
-                await conn.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
-                conn.ReloadTypes();
 
-                using (var cmd = new NpgsqlCommand("SELECT @scalar1, @scalar2, @scalar3, @scalar4", conn))
+            using var conn = await OpenConnectionAsync(csb);
+
+            await using var _ = await GetTempTypeName(conn, out var type);
+            await conn.ExecuteNonQueryAsync($"CREATE TYPE {type} AS ENUM ('sad', 'ok', 'happy')");
+
+            conn.ReloadTypes();
+
+            using var cmd = new NpgsqlCommand("SELECT @scalar1, @scalar2", conn)
+            {
+                Parameters =
                 {
-                    cmd.Parameters.Add(new NpgsqlParameter
+                    new NpgsqlParameter
                     {
                         ParameterName = "scalar1",
-                        Value = Mood.Happy,
-                        DataTypeName = type
-                    });
-                    cmd.Parameters.Add(new NpgsqlParameter
-                    {
-                        ParameterName = "scalar2",
                         Value = "happy",
                         DataTypeName = type
-                    });
-                    cmd.Parameters.Add(new NpgsqlParameter<Mood>
+                    },
+                    new NpgsqlParameter<string>
                     {
-                        ParameterName = "scalar3",
-                        TypedValue = Mood.Happy,
-                        DataTypeName = type
-                    });
-                    cmd.Parameters.Add(new NpgsqlParameter<string>
-                    {
-                        ParameterName = "scalar4",
+                        ParameterName = "scalar2",
                         TypedValue = "happy",
                         DataTypeName = type
-                    });
-                    using (var reader = await cmd.ExecuteReaderAsync())
-                    {
-                        reader.Read();
-
-                        for (var i = 0; i < 4; i++)
-                        {
-                            Assert.That(reader.GetDataTypeName(i), Is.EqualTo($"public.{type}"));
-                            Assert.That(reader.GetFieldValue<Mood>(i), Is.EqualTo(Mood.Happy));
-                            Assert.That(reader.GetFieldValue<string>(i), Is.EqualTo("happy"));
-                            Assert.That(reader.GetValue(i), Is.EqualTo("happy"));
-                        }
                     }
                 }
+            };
+
+            using var reader = await cmd.ExecuteReaderAsync();
+            reader.Read();
+
+            for (var i = 0; i < 2; i++)
+            {
+                Assert.That(reader.GetDataTypeName(i), Is.EqualTo($"public.{type}"));
+                Assert.Throws<InvalidCastException>(() => reader.GetFieldValue<Mood>(i));
+                Assert.That(reader.GetFieldValue<string>(i), Is.EqualTo("happy"));
+                Assert.That(reader.GetValue(i), Is.EqualTo("happy"));
             }
         }
 
