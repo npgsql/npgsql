@@ -393,6 +393,25 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3106")]
+        public async Task DontAutoPrepareMoreThanMaxStatementsInBatchRandom()
+        {
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                MaxAutoPrepare = 10,
+            };
+
+            await using var connection = new NpgsqlConnection(builder.ToString());
+            await connection.OpenAsync();
+            var random = new Random(1);
+            for (var i = 0; i < 100; i++)
+            {
+                using var command = connection.CreateCommand();
+                command.CommandText = string.Join("", Enumerable.Range(0, 100).Select(n => $"SELECT {random.Next(200)};"));
+                await command.ExecuteNonQueryAsync();
+            }
+        }
+
         [Test]
         public async Task ReplaceAndExecuteWithinSameBatch()
         {

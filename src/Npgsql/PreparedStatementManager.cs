@@ -130,6 +130,9 @@ namespace Npgsql
 
             switch (pStatement.State)
             {
+            case PreparedState.NotPrepared:
+                break;
+
             case PreparedState.Prepared:
             case PreparedState.BeingPrepared:
                 // The statement has already been prepared (explicitly or automatically), or has been selected
@@ -142,9 +145,13 @@ namespace Npgsql
                 pStatement.LastUsed = DateTime.MaxValue;
                 return pStatement;
 
-            case PreparedState.Unprepared:
+            case PreparedState.BeingUnprepared:
                 // The statement is being replaced by an earlier statement in this same batch.
                 return null;
+
+            default:
+                Debug.Fail($"Unexpected {nameof(PreparedState)} in auto-preparation: {pStatement.State}");
+                break;
             }
 
             if (++pStatement.Usages < UsagesBeforePrepare)
