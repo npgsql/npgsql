@@ -674,18 +674,11 @@ namespace Npgsql
 
         void Connect(NpgsqlTimeout timeout)
         {
-            EndPoint[] endpoints;
-
-            if (Path.IsPathRooted(Host))
-            {
-                endpoints = new EndPoint[] { new UnixEndPoint(Path.Combine(Host, $".s.PGSQL.{Port}")) };
-            }
-            else
-            {
-                // Note that there aren't any timeout-able or cancellable DNS methods
-                endpoints = Dns.GetHostAddresses(Host).Select(a => new IPEndPoint(a, Port)).ToArray();
-                timeout.Check();
-            }
+            // Note that there aren't any timeout-able or cancellable DNS methods
+            var endpoints = Path.IsPathRooted(Host)
+                ? new EndPoint[] { new UnixEndPoint(Path.Combine(Host, $".s.PGSQL.{Port}")) }
+                : Dns.GetHostAddresses(Host).Select(a => new IPEndPoint(a, Port)).ToArray();
+            timeout.Check();
 
             // Give each endpoint an equal share of the remaining time
             var perEndpointTimeout = -1;  // Default to infinity
@@ -749,17 +742,11 @@ namespace Npgsql
 
         async Task ConnectAsync(NpgsqlTimeout timeout, CancellationToken cancellationToken)
         {
-            EndPoint[] endpoints;
-            if (!string.IsNullOrEmpty(Host) && Host[0] == '/')
-            {
-                endpoints = new EndPoint[] { new UnixEndPoint(Path.Combine(Host, $".s.PGSQL.{Port}")) };
-            }
-            else
-            {
-                // Note that there aren't any timeout-able or cancellable DNS methods
-                endpoints = (await Dns.GetHostAddressesAsync(Host).WithCancellation(cancellationToken))
-                    .Select(a => new IPEndPoint(a, Port)).ToArray();
-            }
+            // Note that there aren't any timeout-able or cancellable DNS methods
+            var endpoints = Path.IsPathRooted(Host)
+                ? new EndPoint[] { new UnixEndPoint(Path.Combine(Host, $".s.PGSQL.{Port}")) }
+                : (await Dns.GetHostAddressesAsync(Host).WithCancellationAndTimeout(timeout, cancellationToken))
+                .Select(a => new IPEndPoint(a, Port)).ToArray();
 
             // Give each IP an equal share of the remaining time
             var perIpTimespan = default(TimeSpan);

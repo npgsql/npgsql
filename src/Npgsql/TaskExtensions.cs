@@ -64,7 +64,6 @@ namespace Npgsql
             return await task;
         }
 
-#if !NET
         /// <summary>
         /// Allows you to cancel awaiting for a non-cancellable task.
         /// </summary>
@@ -82,18 +81,9 @@ namespace Npgsql
         }
 
         internal static Task<T> WithCancellationAndTimeout<T>(this Task<T> task, NpgsqlTimeout timeout, CancellationToken cancellationToken)
-        {
-            return task
-                .WithCancellation(cancellationToken)
-                .WithTimeout(timeout);
-        }
+            => task.WithCancellation(cancellationToken).WithTimeout(timeout);
 
         internal static Task WithCancellationAndTimeout(this Task task, NpgsqlTimeout timeout, CancellationToken cancellationToken)
-        {
-            return task
-                .WithCancellation(cancellationToken)
-                .WithTimeout(timeout);
-        }
-#endif
+            => task.WithCancellation(cancellationToken).WithTimeout(timeout);
     }
 }
