@@ -159,23 +159,12 @@ namespace Npgsql
                     ReadPosition = 0;
                 }
 
-                CancellationTokenSource? combinedCts = null;
+                var finalCt = cancellationToken;
+                if (async && Timeout > TimeSpan.Zero)
+                    finalCt = _timeoutCts.Start(cancellationToken);
 
                 try
                 {
-                    var finalCt = cancellationToken;
-                    if (async && Timeout > TimeSpan.Zero)
-                    {
-                        _timeoutCts.Start();
-                        finalCt = _timeoutCts.Token;
-
-                        if (cancellationToken.CanBeCanceled)
-                        {
-                            combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _timeoutCts.Token);
-                            finalCt = combinedCts.Token;
-                        }
-                    }
-
                     var totalRead = 0;
                     while (count > 0)
                     {
@@ -196,17 +185,20 @@ namespace Npgsql
                         // Or we consider it not timed out if we have already read everything (count == 0)
                         // In which case we reinitialize it on the next call to EnsureLong()
                         if (async)
-                            _timeoutCts.Restart();
+                            _timeoutCts.RestartTimeoutWithoutReset();
+
                     }
 
-                    // Resetting cancellation token source, so we can use it again
-                    if (async)
-                        _timeoutCts.Stop();
-
+                    _timeoutCts.Stop();
                     NpgsqlEventSource.Log.BytesRead(totalRead);
                 }
                 catch (Exception e)
                 {
+                    // Stopping twice (in case the previous Stop() call succeeded) doesn't hurt.
+                    // Not stopping will cause an assertion failure in debug mode when we call Start() the next time.
+                    // We can't stop in a finally block because Connector.Break() will dispose the buffer and the contained
+                    // _timeoutCts
+                    _timeoutCts.Stop();
                     switch (e)
                     {
                     // User requested the cancellation
@@ -222,10 +214,6 @@ namespace Npgsql
                     }
 
                     throw Connector.Break(new NpgsqlException("Exception while reading from stream", e));
-                }
-                finally
-                {
-                    combinedCts?.Dispose();
                 }
             }
         }

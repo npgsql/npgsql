@@ -184,6 +184,7 @@ namespace Npgsql
         /// The timeout for reading messages that are part of the user's command
         /// (i.e. which aren't internal prepended commands).
         /// </summary>
+        /// <remarks>Precision is milliseconds</remarks>
         internal int UserTimeout { private get; set; }
 
         /// <summary>
@@ -240,6 +241,7 @@ namespace Npgsql
         /// <summary>
         /// The minimum timeout that can be set on internal commands such as COMMIT, ROLLBACK.
         /// </summary>
+        /// <remarks>Precision is seconds</remarks>
         internal const int MinimumInternalCommandTimeout = 3;
 
         #endregion
@@ -347,6 +349,10 @@ namespace Npgsql
         bool IntegratedSecurity => Settings.IntegratedSecurity;
         internal bool ConvertInfinityDateTime => Settings.ConvertInfinityDateTime;
 
+        /// <summary>
+        /// The actual command timeout value that gets set on internal commands.
+        /// </summary>
+        /// <remarks>Precision is milliseconds</remarks>
         int InternalCommandTimeout
         {
             get
@@ -355,6 +361,9 @@ namespace Npgsql
                 if (internalTimeout == -1)
                     return Math.Max(Settings.CommandTimeout, MinimumInternalCommandTimeout) * 1000;
 
+                // Todo: Decide what we really want here
+                // This assertion can easily fail if InternalCommandTimeout is set to 1 or 2 in the connection string
+                // We probably don't want to allow these values but in that case a Debug.Assert is the wrong way to enforce it.
                 Debug.Assert(internalTimeout == 0 || internalTimeout >= MinimumInternalCommandTimeout);
                 return internalTimeout * 1000;
             }

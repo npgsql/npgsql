@@ -121,20 +121,9 @@ namespace Npgsql
             } else if (WritePosition == 0)
                 return;
 
-            CancellationTokenSource? combinedCts = null;
-
             var finalCt = cancellationToken;
             if (async && Timeout > TimeSpan.Zero)
-            {
-                _timeoutCts.Start();
-                finalCt = _timeoutCts.Token;
-
-                if (cancellationToken.CanBeCanceled)
-                {
-                    combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _timeoutCts.Token);
-                    finalCt = combinedCts.Token;
-                }
-            }
+                finalCt = _timeoutCts.Start(cancellationToken);
 
             try
             {
@@ -142,17 +131,21 @@ namespace Npgsql
                 {
                     await Underlying.WriteAsync(Buffer, 0, WritePosition, finalCt);
                     await Underlying.FlushAsync(finalCt);
-                    // Resetting cancellation token source, so we can use it again
                     _timeoutCts.Stop();
                 }
                 else
                 {
                     Underlying.Write(Buffer, 0, WritePosition);
                     Underlying.Flush();
-                }  
+                }
             }
             catch (Exception e)
             {
+                // Stopping twice (in case the previous Stop() call succeeded) doesn't hurt.
+                // Not stopping will cause an assertion failure in debug mode when we call Start() the next time.
+                // We can't stop in a finally block because Connector.Break() will dispose the buffer and the contained
+                // _timeoutCts
+                _timeoutCts.Stop();
                 switch (e)
                 {
                 // User requested the cancellation
@@ -169,11 +162,6 @@ namespace Npgsql
 
                 throw Connector.Break(new NpgsqlException("Exception while writing to stream", e));
             }
-            finally
-            {
-                combinedCts?.Dispose();
-            }
-
             NpgsqlEventSource.Log.BytesWritten(WritePosition);
             //NpgsqlEventSource.Log.RequestFailed();
 
