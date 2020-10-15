@@ -1,12 +1,12 @@
 # FAQ
 
-### <a name="stored_procedures">How can I call a PostgreSQL 11 stored procedure? I tried doing so with CommandType.StoredProcedure and got an error...</a>
+## <a name="stored_procedures">How can I call a PostgreSQL 11 stored procedure? I tried doing so with CommandType.StoredProcedure and got an error...</a>
 
 PostgreSQL 11 stored procedures can be called, but unfortunately not with `CommandType.StoredProcedure`. PostgreSQL has supported stored *functions* for a long while, and since these have acted as replacements for non-existing procedures, Npgsql's `CommandType.StoredProcedure` has been implemented to invoke them; this means that `CommandType.StoredProcedure` translates into `SELECT * FROM my_stored_function()`. The new stored procedures introduce a special invocation syntax - `CALL my_stored_procedure()` - which is incompatible with the existing stored function syntax.
 
 On the brighter side, it's very easy to invoke stored procedures (or functions) yourself - you don't really need `CommandType.StoredProcedure`. Simply create a regular command and set `CommandText` to `CALL my_stored_procedure(@p1, @p2)`, handling parameters like you would any other statement. In fact, with Npgsql and PostgreSQL, `CommandType.StoredProcedure` doesn't really have any added value over constructing the command yourself.
 
-### <a name="unknown_type">I get an exception "The field field1 has a type currently unknown to Npgsql (OID XXXXX). You can retrieve it as a string by marking it as unknown".</a>
+## <a name="unknown_type">I get an exception "The field field1 has a type currently unknown to Npgsql (OID XXXXX). You can retrieve it as a string by marking it as unknown".</a>
 
 Npgsql has to implement support for each PostgreSQL type, and it seems you've stumbled upon an unsupported type.
 
@@ -38,7 +38,7 @@ using (var cmd = new NpgsqlCommand(...)) {
 }
 ```
 
-### <a name="jsonb">I'm trying to write a JSONB type and am getting 'column "XXX" is of type jsonb but expression is of type text'</a>
+## <a name="jsonb">I'm trying to write a JSONB type and am getting 'column "XXX" is of type jsonb but expression is of type text'</a>
 
 When sending a JSONB parameter, you must explicitly specify its type to be JSONB with NpgsqlDbType:
 
@@ -48,7 +48,7 @@ using (var cmd = new NpgsqlCommand("INSERT INTO foo (col) VALUES (@p)", conn)) {
 }
 ```
 
-### I'm trying to apply an Entity Framework 6 migration and I get `Type is not resolved for member 'Npgsql.NpgsqlException,Npgsql'`!
+## I'm trying to apply an Entity Framework 6 migration and I get `Type is not resolved for member 'Npgsql.NpgsqlException,Npgsql'`
 
 Unfortunately, a shortcoming of EF6 requires you to have Npgsql.dll in the Global Assembly Cache (GAC), otherwise you can't see
 migration-triggered exceptions. You can add Npgsql.dll to the GAC by opening a VS Developer Command Prompt as administator and

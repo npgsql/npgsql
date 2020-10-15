@@ -62,4 +62,3 @@ If you prefer to use `geography` everywhere by default, you can also specify tha
 ```c#
 NpgsqlConnection.GlobalTypeMapper.UseGeoJSON(geographyAsDefault: true);
 ```
-

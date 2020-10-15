@@ -2,7 +2,7 @@
 
 PostgreSQL supports [enum types](http://www.postgresql.org/docs/current/static/datatype-enum.html) and [composite types](http://www.postgresql.org/docs/current/static/rowtypes.html) as database columns, and Npgsql supports reading and writing these. This allows you to seamlessly read and write enum and composite values to the database without worrying about conversions.
 
-# Mapping your CLR types
+## Mapping your CLR types
 
 The recommended way to work with enums and composites is to set up a mapping for your CLR types. Doing so provides the following advantages:
 
@@ -51,10 +51,9 @@ using (var reader = cmd.ExecuteReader()) {
 }
 ```
 
-
 Note that your PostgreSQL enum and composites types (`some_enum_type` and `some_composite_type` in the sample above) must be defined in your database before the first connection is created (see `CREATE TYPE`). If you're creating PostgreSQL types within your program, call `NpgsqlConnection.ReloadTypes()` to make sure Npgsql becomes properly aware of them.
 
-# Name Translation
+## Name Translation
 
 CLR type and field names are usually camel case (e.g. `SomeType`), whereas in PostgreSQL they are snake case (e.g. `some_type`). To help make the mapping for enums and composites seamless, pluggable name translators are used translate all names. The default translation scheme is `NpgsqlSnakeCaseNameTranslator`, which maps names like `SomeType` to `some_type`, but you can specify others. The default name translator can be set for all your connections via `NpgsqlConnection.GlobalTypeMapper.DefaultNameTranslator`, or for a specific connection for `NpgsqlConnection.TypeMapper.DefaultNameTranslator`. You also have the option of specifying a name translator when setting up a mapping:
 
@@ -75,7 +74,7 @@ enum SomeEnum {
 }
 ```
 
-# Reading and Writing Dynamically (without CLR types)
+## Reading and Writing Dynamically (without CLR types)
 
 In some cases, it may be desirable to interact with PostgreSQL enums and composites without a pre-existing CLR type - this is useful mainly if your program doesn't know the database schema and types in advance, and needs to interact with any enum/composite type. Note that using CLR types is safer and faster (for composites), and should be preferred when possible.
 

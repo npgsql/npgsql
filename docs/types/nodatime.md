@@ -2,7 +2,7 @@
 
 Since 4.0, Npgsql supports *type plugins*, which are external nuget packages that modify how Npgsql maps PostgreSQL values to CLR types. One of these is the NodaTime plugin, which makes Npgsql read and write [NodaTime](http://nodatime.org) types. The NodaTime plugin is now the recommended way to interact with PostgreSQL date/time types, and isn't the default only because of the added dependency on the NodaTime library.
 
-# What is NodaTime?
+## What is NodaTime
 
 By default, [the PostgreSQL date/time types](https://www.postgresql.org/docs/current/static/datatype-datetime.html) are mapped to the built-in .NET types (`DateTime`, `TimeSpan`). Unfortunately, these built-in types are flawed in many ways. The [NodaTime library](http://nodatime.org/) was created to solve many of these problems, and if your application handles dates and times in anything but the most basic way, you should consider using it. To learn more [read this blog post by Jon Skeet](http://blog.nodatime.org/2011/08/what-wrong-with-datetime-anyway.html).
 
@@ -53,14 +53,14 @@ using (var reader = cmd.ExecuteReader())
 > A common mistake is for users to think that the PostgreSQL `timestamp with timezone` type stores the timezone in the database. This is not the case: only the t
 imestamp is stored. There is no single PostgreSQL type that stores both a date/time and a timezone, similar to [.NET DateTimeOffset](https://msdn.microsoft.com/en-us/library/system.datetimeoffset(v=vs.110).aspx).
 
-PostgreSQL Type 		| Default NodaTime Type | Additional NodaTime Type      | Notes
+PostgreSQL Type                 | Default NodaTime Type | Additional NodaTime Type      | Notes
 --------------------------------|-----------------------|-------------------------------|-------
-timestamp without time zone		| Instant               | LocalDateTime                 | It's common to store UTC timestamps in databases - you can simply do so and read/write Instant values. You also have the option of readin/writing LocalDateTime, which is a date/time with no information about timezones; this makes sense if you're storing the timezone in a different column and want to read both into a NodaTime ZonedDateTime.
-timestamp with time zone	| Instant               | ZonedDateTime, OffsetDateTime | This PostgreSQL type stores only a timestamp, assumed to be in UTC. If you read/write this as an Instant, it will be provided as stored with no timezone conversions whatsoever. If, however, you read/write as a ZonedDateTime or OffsetDateTime, the plugin will automatically convert to and from UTC according to your PostgreSQL session's timezone.
-date				| LocalDate             |                               | A simple date with no timezone or offset information.
-time without time zone	| LocalTime             |                               | A simple time-of-day, with no timezone or offset information.
-time with time zone		| OffsetTime            |                               | This is a PostgreSQL type that stores a time and an offset.
-interval        		| Period                |                               | This is a human interval which does not have a fixed absolute length ("two months" can vary depending on the months in question), and so it is mapped to NodaTime's Period (and not Duration or TimeSpan).
+timestamp without time zone     | Instant               | LocalDateTime                 | It's common to store UTC timestamps in databases - you can simply do so and read/write Instant values. You also have the option of readin/writing LocalDateTime, which is a date/time with no information about timezones; this makes sense if you're storing the timezone in a different column and want to read both into a NodaTime ZonedDateTime.
+timestamp with time zone        | Instant               | ZonedDateTime, OffsetDateTime | This PostgreSQL type stores only a timestamp, assumed to be in UTC. If you read/write this as an Instant, it will be provided as stored with no timezone conversions whatsoever. If, however, you read/write as a ZonedDateTime or OffsetDateTime, the plugin will automatically convert to and from UTC according to your PostgreSQL session's timezone.
+date                            | LocalDate             |                               | A simple date with no timezone or offset information.
+time without time zone          | LocalTime             |                               | A simple time-of-day, with no timezone or offset information.
+time with time zone             | OffsetTime            |                               | This is a PostgreSQL type that stores a time and an offset.
+interval                        | Period                |                               | This is a human interval which does not have a fixed absolute length ("two months" can vary depending on the months in question), and so it is mapped to NodaTime's Period (and not Duration or TimeSpan).
 
 ## Additional Notes
 

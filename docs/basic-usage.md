@@ -48,7 +48,7 @@ As an alternative, you can use `NpgsqlParameter<T>`. This generic class has a `T
 
 ## Stored functions and procedures
 
-PostgreSQL supports [stored (or server-side) functions](https://www.postgresql.org/docs/current/static/sql-createfunction.html), and since PostgreSQL 11 also [stored procedures](). These can be written in SQL (similar to views), or in [PL/pgSQL](https://www.postgresql.org/docs/current/static/plpgsql.html) (PostgreSQL's procedural language), [PL/Python](https://www.postgresql.org/docs/current/static/plpython.html) or several other server-side languages.
+PostgreSQL supports [stored (or server-side) functions](https://www.postgresql.org/docs/current/static/sql-createfunction.html), and since PostgreSQL 11 also [stored procedures](https://www.postgresql.org/docs/current/sql-createprocedure.html). These can be written in SQL (similar to views), or in [PL/pgSQL](https://www.postgresql.org/docs/current/static/plpgsql.html) (PostgreSQL's procedural language), [PL/Python](https://www.postgresql.org/docs/current/static/plpython.html) or several other server-side languages.
 
 Once a function or procedure has been defined, calling it is a simple matter of executing a regular command:
 
@@ -92,7 +92,7 @@ CREATE FUNCTION dup(in int, out f1 int, out f2 text)
 ```
 
 However, the above syntax is nothing more than a definition of the function's resultset, and is identical to the following ([see the PostgreSQL docs](https://www.postgresql.org/docs/current/static/sql-createfunction.html)):
- 
+
 ```c#
 CREATE FUNCTION dup(int) RETURNS TABLE(f1 int, f2 text)
     AS $$ SELECT $1, CAST($1 AS text) || ' is text' $$
@@ -113,5 +113,3 @@ using (var cmd = new NpgsqlCommand("SELECT my_func()", conn))
 ```
 
 When Npgsql sees a parameter with `ParameterDirection.Output` (or `InputOutput`), it will simply search the function's resultset for a column whose name matches the parameter, and copy the first row's value into the output parameter. This provides no value whatsoever over processing the resultset yourself, and is discouraged - you should only use output parameters in Npgsql if you need to maintain portability with other databases which require it.
-
-

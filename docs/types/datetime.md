@@ -73,4 +73,3 @@ timetz      | DateTime                 | Strip offset, date is empty
 ## Further Reading
 
 If you're really interested in some of the mapping decisions above, check out [this issue](https://github.com/npgsql/npgsql/issues/347).
-

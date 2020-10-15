@@ -10,7 +10,7 @@ The VSIX extension has been tested and works on Visual Studio 2015, 2017 and 201
 
 ## Upgrading from an older version
 
-Note that the extension has been pretty much rewritten for Npgsql 3.2 - if you encountered installation issues with previous versions, these issues should hopefully be gone. A summary of work done for 3.2 [is available here](https://github.com/npgsql/npgsql/issues/1407). If you already have an earlier version of the VSIX (or MSI) installed, it's highly recommended that you uninstall them to avoid conflicts. 
+Note that the extension has been pretty much rewritten for Npgsql 3.2 - if you encountered installation issues with previous versions, these issues should hopefully be gone. A summary of work done for 3.2 [is available here](https://github.com/npgsql/npgsql/issues/1407). If you already have an earlier version of the VSIX (or MSI) installed, it's highly recommended that you uninstall them to avoid conflicts.
 
 It is no longer necessary or recommended to have Npgsql in your GAC, or to have Npgsql listed in your machines.config. Simply installing the VSIX should work just fine, and a GAC/machines.config may actually cause issues. If you previously installed Npgsql into your GAC/machines.config, it's recommended you uninstall it. If you have any entries (binding redirects, DbProviderFactory registrations) in either your `machines.config` or in your Visual Studio setup (e.g. App.config, `devenv.exe.config`), please remove them The VSIX should work on a totally clean setup.
 

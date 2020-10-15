@@ -1,0 +1,72 @@
+﻿- name: Getting Started
+  href: index.md
+- name: Release notes
+  items:
+  - name: "5.0"
+    href: release-notes/5.0.md
+  - name: "4.1"
+    href: release-notes/4.1.md
+  - name: "4.0"
+    href: release-notes/4.0.md
+  - name: "3.2"
+    href: release-notes/3.2.md
+  - name: "3.1"
+    href: release-notes/3.1.md
+  - name: "3.0"
+    href: release-notes/3.0.md
+- name: Compatibility notes
+  href: compatibility.md
+- name: Installation
+  href: installation.md
+- name: Basic usage
+  href: basic-usage.md
+- name: Connection string parameters
+  href: connection-string-parameters.md
+- name: Security and encryption
+  href: security.md
+- name: Type mapping
+  items:
+  - name: Basic type mapping
+    href: types/basic.md
+  - name: Date and time
+    href: types/datetime.md
+  - name: NodaTime
+    href: types/nodatime.md
+  - name: Enums and composites
+    href: types/enums_and_composites.md
+  - name: Json.NET
+    href: types/jsonnet.md
+  - name: Spatial
+    items:
+    - name: NetTopologySuite
+      href: types/nts.md
+    - name: GeoJSON
+      href: types/geojson.md
+    - name: Legacy PostGIS
+      ref: types/legacy-postgis.md
+- name: Transactions
+  href: transactions.md
+- name: Performance
+  href: performance.md
+- name: Prepared statements
+  href: prepare.md
+- name: Waiting for notifications
+  href: wait.md
+- name: Keepalive
+  href: keepalive.md
+- name: Bulk copy
+  href: copy.md
+- name: Logging
+  href: logging.md
+- name: Visual Studio integration
+  href: ddex.md
+- name: FAQ
+  href: faq.md
+- name: API reference
+  href: "../../obj/api/Npgsql/"
+- name: Developer notes
+  items:
+  - name: Tests
+    href: dev/tests.md
+  - name: Type representations
+    href: dev/type-representations.md

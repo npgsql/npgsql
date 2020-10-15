@@ -69,4 +69,3 @@ See [this section](basic-usage.md#strongly-typed-parameters).
 ## Unix Domain Socket
 
 If you're on Linux or macOS and are connecting to a PostgreSQL server on the same machine, you can boost performance a little by connecting via Unix domain socket rather than via a regular TCP/IP socket. To do this, simply specify the directory of your PostgreSQL sockets in the `Host` connection string parameter - if this parameter starts with a slash, it will be taken to mean a filesystem path.
-

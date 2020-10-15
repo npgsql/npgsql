@@ -7,6 +7,7 @@ Note that in addition to the below, enum and composite mappings are documented [
 ## Read mappings
 
 The following shows the mappings used when reading values.
+
 * The default type is returned when using `NpgsqlCommand.ExecuteScalar()`, `NpgsqlDataReader.GetValue()` and similar methods.
 * You can read as other types by calling `NpgsqlDataReader.GetFieldValue<T>()`.
 * Provider-specific types are returne by `NpgsqlDataReader.GetProviderSpecificValue()`.

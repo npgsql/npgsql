@@ -41,7 +41,6 @@ using (var reader = Conn.BeginBinaryExport("COPY data (field_text, field_int2) T
 }
 ```
 
-
 ## Text COPY
 
 This mode uses the PostgreSQL text or csv format to transfer data in and out of the database. It is the user's responsibility to format the text or CSV appropriately, Npgsql simply provides a TextReader or Writer. This mode is less efficient than binary copy, and is suitable mainly if you already have the data in a CSV or compatible text format and don't care about performance.
