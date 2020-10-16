@@ -211,13 +211,6 @@ namespace Npgsql
 
         bool _sendResetOnClose;
 
-        /// <summary>
-        /// Contains the timeout exception caught when executing a command (when
-        /// <see cref="NpgsqlCommand.CommandTimeout"/> is reached). Gets rethrown later when the query is successfully
-        /// cancelled.
-        /// </summary>
-        NpgsqlException? _originalTimeoutException;
-
         ConnectorPool? _pool;
 
         /// <summary>
@@ -1036,9 +1029,6 @@ namespace Npgsql
                 ReadBuffer.ReadPosition--;
                 return ReadMessageLong(dataRowLoadingMode, readingNotifications2: false, cancellationToken2: cancellationToken);
             case BackendMessageCode.ReadyForQuery:
-                // Just in case if we were successful in sending a cancellation, but the query is already completed (and the response is already in the buffer)
-                // Same thing is done below for the cases, when RFQ is not in the buffer
-                _originalTimeoutException = null;
                 break;
             }
 
@@ -1142,9 +1132,6 @@ namespace Npgsql
                                     NpgsqlEventSource.Log.CommandFailed();
                                     throw error;
                                 }
-                                // Just in case if we were successful in sending a cancellation, but the query is already completed
-                                // Do not move it into the ParseServerMessage, as we're not checking there for an error like above
-                                _originalTimeoutException = null;
 
                                 break;
 
@@ -1162,28 +1149,10 @@ namespace Npgsql
                             Debug.Assert(msg != null, "Message is null for code: " + messageCode);
                             return msg;
                         }
-                        catch (NpgsqlException e) when (!readingNotifications2 && e.InnerException is TimeoutException)
+                        catch (NpgsqlException e) when (!readingNotifications2 && e.InnerException is TimeoutException && _cancellationRequested)
                         {
-                            // Cancel request is send, but we were unable to read a response from PG due to timeout
-                            if (_originalTimeoutException != null)
-                                throw Break(_originalTimeoutException);
-
                             // User requested the cancellation and it timed out
-                            if (_cancellationRequested)
-                                throw Break(new OperationCanceledException("Query was cancelled", e.InnerException, cancellationToken2));
-
-                            // We have got a timeout while not reading async notifications - trying to cancel a query
-                            try
-                            {
-                                CancelRequest(throwExceptions: true, requestedByUser: false);
-                                _originalTimeoutException = e;
-                                ReadBuffer.Timeout = TimeSpan.FromSeconds(Settings.CancellationTimeout);
-                            }
-                            catch
-                            {
-                                // Unable to cancel the query, so we break the connection
-                                throw Break(e);
-                            }
+                            throw new OperationCanceledException("Query was cancelled", e.InnerException, cancellationToken2);
                         }
                     }
                 }
@@ -1199,16 +1168,10 @@ namespace Npgsql
                         EndUserAction();
                     }
 
-                    if (e.SqlState == PostgresErrorCodes.QueryCanceled)
+                    if (e.SqlState == PostgresErrorCodes.QueryCanceled && _cancellationRequested)
                     {
                         // User requested the cancellation - translate the PostgresException to an OperationCanceledException (keeping the former as the inner)
-                        if (_originalTimeoutException is null)
-                            throw new OperationCanceledException("Query was cancelled", e, cancellationToken2);
-
-                        // We failed because of a timeout, and the cancellation was successful
-                        var tempException = _originalTimeoutException;
-                        _originalTimeoutException = null;
-                        throw tempException;
+                        throw new OperationCanceledException("Query was cancelled", e, cancellationToken2);
                     }
 
                     throw;
