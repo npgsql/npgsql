@@ -1170,13 +1170,12 @@ namespace Npgsql
                         EndUserAction();
                     }
 
-                    if (e.SqlState == PostgresErrorCodes.QueryCanceled)
+                    if (e.SqlState == PostgresErrorCodes.QueryCanceled && _cancellationRequested)
                     {
                         // User requested the cancellation - translate the PostgresException to an OperationCanceledException (keeping the former as the inner)
                         if (_userCancellationRequested)
                             throw new OperationCanceledException("Query was cancelled", e, cancellationToken2);
 
-                        //error = null;
                         // We've timed out, send the cancellation request and successfully read it
                         throw new NpgsqlException("Exception while reading from stream", new TimeoutException("Timeout during reading attempt"));
                     }
