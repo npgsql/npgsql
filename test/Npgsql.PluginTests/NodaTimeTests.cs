@@ -139,20 +139,23 @@ namespace Npgsql.PluginTests
                 var localZonedDateTime = utcZonedDateTime.WithZone(DateTimeZoneProviders.Tzdb[timezone]);
                 var offsetDateTime = localZonedDateTime.ToOffsetDateTime();
                 var dateTimeOffset = offsetDateTime.ToDateTimeOffset();
+                var dateTime = dateTimeOffset.DateTime;
+                var localDateTime = dateTimeOffset.LocalDateTime;
 
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (d1 TIMESTAMPTZ, d2 TIMESTAMPTZ, d3 TIMESTAMPTZ, d4 TIMESTAMPTZ, d5 TIMESTAMPTZ)");
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (d1 TIMESTAMPTZ, d2 TIMESTAMPTZ, d3 TIMESTAMPTZ, d4 TIMESTAMPTZ, d5 TIMESTAMPTZ, d6 TIMESTAMPTZ)");
 
-                using (var cmd = new NpgsqlCommand("INSERT INTO data VALUES (@p1, @p2, @p3, @p4, @p5)", conn))
+                using (var cmd = new NpgsqlCommand("INSERT INTO data VALUES (@p1, @p2, @p3, @p4, @p5, @p6)", conn))
                 {
                     cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.TimestampTz) { Value = instant });
                     cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p2", Value = utcZonedDateTime });
                     cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p3", Value = localZonedDateTime });
                     cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p4", Value = offsetDateTime });
                     cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p5", Value = dateTimeOffset });
+                    cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p6", Value = dateTime });
                     cmd.ExecuteNonQuery();
                 }
 
-                using (var cmd = new NpgsqlCommand("SELECT d1::TEXT, d2::TEXT, d3::TEXT, d4::TEXT, d5::TEXT FROM data", conn))
+                using (var cmd = new NpgsqlCommand("SELECT d1::TEXT, d2::TEXT, d3::TEXT, d4::TEXT, d5::TEXT, d6::TEXT FROM data", conn))
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
@@ -178,7 +181,7 @@ namespace Npgsql.PluginTests
                         Assert.That(reader.GetFieldValue<OffsetDateTime>(i), Is.EqualTo(offsetDateTime));
                         Assert.That(reader.GetFieldValue<DateTimeOffset>(i), Is.EqualTo(dateTimeOffset));
                         Assert.That(() => reader.GetFieldValue<LocalDateTime>(i), Throws.TypeOf<InvalidCastException>());
-                        Assert.That(() => reader.GetDateTime(i), Throws.TypeOf<InvalidCastException>());
+                        Assert.That(() => reader.GetDateTime(i), Is.EqualTo(localDateTime));
                         Assert.That(() => reader.GetDate(i), Throws.TypeOf<InvalidCastException>());
                     }
                 }
