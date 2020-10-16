@@ -452,9 +452,10 @@ namespace Npgsql
                 throw _connector.Break(
                     new NpgsqlException("Expected ErrorResponse when cancelling COPY but got: " + msg.Code));
             }
-            catch (OperationCanceledException e) when (e.InnerException is PostgresException pg && pg.SqlState == PostgresErrorCodes.QueryCanceled)
+            catch (PostgresException e)
             {
-                // Swallowing the successful cancellation exception
+                if (e.SqlState != PostgresErrorCodes.QueryCanceled)
+                    throw;
             }
         }
 

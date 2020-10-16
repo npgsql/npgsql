@@ -166,10 +166,9 @@ namespace Npgsql
                         : TimeoutCts.Reset(cancellationToken);
 
                 var totalRead = 0;
+                var isCancellation = false;
                 while (count > 0)
                 {
-                    var isCancellation = false;
-
                     try
                     {
                         var toRead = Size - FilledBytes;

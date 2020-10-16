@@ -1406,6 +1406,7 @@ namespace Npgsql
                     return;
 
                 Log.Debug("Sending cancellation...", Id);
+                _cancellationRequested = true;
 
                 // In case, if the cancellation request was not successful
                 // We attempt to cancel async read immediately
@@ -1429,8 +1430,6 @@ namespace Npgsql
                 }
                 finally
                 {
-                    _cancellationRequested = true;
-
                     // If the cancellation request was not requested by a user
                     // It means we've timed out, and the cancellation well be handled by the read buffers timeout
                     if (requestedByUser)
