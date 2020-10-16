@@ -1408,6 +1408,9 @@ namespace Npgsql
 
             lock (CancelLock)
             {
+                if (requestedByUser)
+                    _userCancellationRequested = true;
+
                 if (_cancellationRequested)
                     return;
 
@@ -1440,9 +1443,6 @@ namespace Npgsql
                     // It means we've timed out, and the cancellation well be handled by the read buffers timeout
                     if (requestedByUser)
                     {
-                        // TODO: Can be only set once
-                        _userCancellationRequested = true;
-
                         if (cancelImmediately)
                             ReadBuffer.TimeoutCts.Cancel();
                         else
