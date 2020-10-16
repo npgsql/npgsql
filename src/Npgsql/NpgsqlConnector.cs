@@ -223,6 +223,8 @@ namespace Npgsql
 
         volatile bool _cancellationRequested;
 
+        volatile bool _userCancellationRequested;
+
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlConnector));
 
         internal readonly Stopwatch QueryLogStopWatch = new Stopwatch();
@@ -1149,7 +1151,7 @@ namespace Npgsql
                             Debug.Assert(msg != null, "Message is null for code: " + messageCode);
                             return msg;
                         }
-                        catch (NpgsqlException e) when (!readingNotifications2 && e.InnerException is TimeoutException && _cancellationRequested)
+                        catch (NpgsqlException e) when (!readingNotifications2 && e.InnerException is TimeoutException && _userCancellationRequested)
                         {
                             // User requested the cancellation and it timed out
                             throw new OperationCanceledException("Query was cancelled", e.InnerException, cancellationToken2);
@@ -1168,10 +1170,15 @@ namespace Npgsql
                         EndUserAction();
                     }
 
-                    if (e.SqlState == PostgresErrorCodes.QueryCanceled && _cancellationRequested)
+                    if (e.SqlState == PostgresErrorCodes.QueryCanceled)
                     {
                         // User requested the cancellation - translate the PostgresException to an OperationCanceledException (keeping the former as the inner)
-                        throw new OperationCanceledException("Query was cancelled", e, cancellationToken2);
+                        if (_userCancellationRequested)
+                            throw new OperationCanceledException("Query was cancelled", e, cancellationToken2);
+
+                        //error = null;
+                        // We've timed out, send the cancellation request and successfully read it
+                        throw new NpgsqlException("Exception while reading from stream", new TimeoutException("Timeout during reading attempt"));
                     }
 
                     throw;
@@ -1434,6 +1441,9 @@ namespace Npgsql
                     // It means we've timed out, and the cancellation well be handled by the read buffers timeout
                     if (requestedByUser)
                     {
+                        // TODO: Can be only set once
+                        _userCancellationRequested = true;
+
                         if (cancelImmediately)
                             ReadBuffer.TimeoutCts.Cancel();
                         else
@@ -1472,6 +1482,7 @@ namespace Npgsql
         internal void ResetCancellation()
         {
             _cancellationRequested = false;
+            _userCancellationRequested = false;
             ReadBuffer.TimeoutCts.Reset();
         }
 
