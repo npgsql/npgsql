@@ -27,6 +27,7 @@ Integrated Security      | Whether to use integrated security to log in (GSS/SSP
 Persist Security Info    | Gets or sets a Boolean value that indicates if security-sensitive information, such as the password, is not returned as part of the connection if the connection is open or has ever been in an open state. Since 3.1 only. | false
 Kerberos Service Name    | The Kerberos service name to be used for authentication. [See docs for more info](security.md). | postgres
 Include Realm            | The Kerberos realm to be used for authentication. [See docs for more info](security.md).
+Include Error Detail     | When enabled, PostgreSQL error and notice details are included on PostgresException.Detail and PostgresNotice.Detail. These can contain sensitive data.
 
 ## Pooling
 
