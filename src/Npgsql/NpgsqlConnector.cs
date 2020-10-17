@@ -1441,9 +1441,9 @@ namespace Npgsql
                     if (requestedByUser)
                     {
                         if (cancelImmediately)
-                            ReadBuffer.TimeoutCts.Cancel();
+                            ReadBuffer.Cts.Cancel();
                         else
-                            ReadBuffer.TimeoutCts.CancelAfter(Settings.CancellationTimeout * 1000);
+                            ReadBuffer.Cts.CancelAfter(Settings.CancellationTimeout * 1000);
                     }
                 }
             }
@@ -1479,7 +1479,7 @@ namespace Npgsql
         {
             _cancellationRequested = false;
             _userCancellationRequested = false;
-            ReadBuffer.TimeoutCts.ResetCts();
+            ReadBuffer.Cts.ResetCts();
         }
 
         #endregion Cancel

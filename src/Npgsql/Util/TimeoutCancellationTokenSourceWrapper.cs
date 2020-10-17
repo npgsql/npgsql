@@ -91,15 +91,11 @@ namespace Npgsql.Util
         /// </summary>
         public void ResetCts()
         {
-            _cts.CancelAfter(InfiniteTimeSpan);
             if (_cts.IsCancellationRequested)
             {
                 _cts.Dispose();
                 _cts = new CancellationTokenSource();
             }
-#if DEBUG
-            _isRunning = false;
-#endif
         }
 
         /// <summary>
