@@ -938,14 +938,14 @@ namespace Npgsql
         int _internalCommandTimeout;
 
         /// <summary>
-        /// The time to wait (in seconds) while trying to read a response for a cancellation request for a timed out or cancelled query, before terminating the attempt and generating an error.
-        /// Defaults to 2 seconds.
+        /// The time to wait (in milliseconds) while trying to read a response for a cancellation request for a timed out or cancelled query, before terminating the attempt and generating an error.
+        /// Defaults to 2000 milliseconds.
         /// </summary>
         [Category("Timeouts")]
-        [Description("After Command Timeout is reached (or user supplied cancellation token is cancelled) and command cancellation is attempted, Npgsql waits for this additional timeout (in seconds) before breaking the connection. Defaults to 2, set to zero for infinity.")]
+        [Description("After Command Timeout is reached (or user supplied cancellation token is cancelled) and command cancellation is attempted, Npgsql waits for this additional timeout (in milliseconds) before breaking the connection. Defaults to 2000, set to zero for infinity.")]
         [DisplayName("Cancellation Timeout")]
         [NpgsqlConnectionStringProperty]
-        [DefaultValue(2)]
+        [DefaultValue(2000)]
         public int CancellationTimeout
         {
             get => _cancellationTimeout;

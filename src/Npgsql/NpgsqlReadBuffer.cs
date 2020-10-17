@@ -225,7 +225,9 @@ namespace Npgsql
                                 if (!skipCancellationWait)
                                 {
                                     isCancellation = true;
-                                    Timeout = TimeSpan.FromSeconds(Connector.Settings.CancellationTimeout);
+
+                                    if (Connector.Settings.CancellationTimeout > 0)
+                                        Timeout = TimeSpan.FromMilliseconds(Connector.Settings.CancellationTimeout);
 
                                     if (async)
                                         finalCt = Cts.Start(cancellationToken);

@@ -1442,8 +1442,8 @@ namespace Npgsql
                     {
                         if (cancelImmediately)
                             ReadBuffer.Cts.Cancel();
-                        else
-                            ReadBuffer.Cts.CancelAfter(Settings.CancellationTimeout * 1000);
+                        else if (Settings.CancellationTimeout > 0)
+                            ReadBuffer.Cts.CancelAfter(Settings.CancellationTimeout);
                     }
                 }
             }
