@@ -1440,9 +1440,11 @@ namespace Npgsql
                     // It means we've timed out, and the cancellation well be handled by the read buffers timeout
                     if (requestedByUser)
                     {
-                        if (cancelImmediately)
+                        var cancellationTimeout = Settings.CancellationTimeout;
+
+                        if (cancelImmediately || cancellationTimeout < 0)
                             ReadBuffer.Cts.Cancel();
-                        else if (Settings.CancellationTimeout > 0)
+                        else if (cancellationTimeout > 0)
                             ReadBuffer.Cts.CancelAfter(Settings.CancellationTimeout);
                     }
                 }

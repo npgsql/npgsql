@@ -218,15 +218,21 @@ namespace Npgsql
                                 {
                                     Connector.CancelRequest(throwExceptions: true, requestedByUser: false);
 
-                                    isCancellation = true;
+                                    // If the cancellation timeout is negative, we break the connection immediately
+                                    var cancellationTimeout = Connector.Settings.CancellationTimeout;
+                                    if (cancellationTimeout >= 0)
+                                    {
+                                        isCancellation = true;
 
-                                    if (Connector.Settings.CancellationTimeout > 0)
-                                        Timeout = TimeSpan.FromMilliseconds(Connector.Settings.CancellationTimeout);
+                                        if (cancellationTimeout > 0)
+                                            Timeout = TimeSpan.FromMilliseconds(cancellationTimeout);
 
-                                    if (async)
-                                        finalCt = Cts.Start(cancellationToken);
+                                        if (async)
+                                            finalCt = Cts.Start(cancellationToken);
 
-                                    continue;
+                                        continue;
+
+                                    }
                                 }
                                 catch
                                 {
