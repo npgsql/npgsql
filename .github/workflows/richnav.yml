@@ -1,4 +1,4 @@
-name: Build
+name: Rich Code Navigation
 
 on: [push, pull_request]
 
