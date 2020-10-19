@@ -1,0 +1,39 @@
+name: Build
+
+on: [push, pull_request]
+
+env:
+  dotnet_sdk_version: '5.0.100-rc.1.20452.10'
+  postgis_version: 3
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+jobs:
+  build:
+    runs-on: windows-2019
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: NuGet Cache
+        uses: actions/cache@v2
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/Directory.Build.targets') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Setup .NET Core SDK
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: ${{ env.dotnet_sdk_version }}
+
+      - name: Build
+        run: dotnet build Npgsql.sln --configuration Debug
+        shell: bash
+
+      - name: Rich Navigation Indexing
+        uses: microsoft/RichCodeNavIndexer@v0.1
+        with:
+          repo-token: ${{ github.token }}
+          languages: csharp
