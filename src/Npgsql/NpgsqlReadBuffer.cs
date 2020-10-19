@@ -161,9 +161,11 @@ namespace Npgsql
 
                 var finalCt = cancellationToken;
                 if (async)
+                {
                     finalCt = Timeout > TimeSpan.Zero
                         ? Cts.Start(cancellationToken)
                         : Cts.Reset(cancellationToken);
+                }
 
                 var totalRead = 0;
                 var isCancellation = false;
@@ -199,9 +201,10 @@ namespace Npgsql
                         Cts.Stop();
                         switch (e)
                         {
-                        // User requested the cancellation
+                        // User requested the cancellation (at this moment, it should be only WaitAsync)
                         case OperationCanceledException _ when (cancellationToken.IsCancellationRequested):
-                            throw readingNotifications ? e : Connector.Break(e);
+                            Debug.Assert(readingNotifications);
+                            throw;
                         // Read timeout
                         case OperationCanceledException _:
                         // Note that mono throws SocketException with the wrong error (see #1330)
@@ -211,19 +214,10 @@ namespace Npgsql
 
                             if (!isCancellation && !readingNotifications)
                             {
-                                var skipCancellationWait = false;
-
                                 try
                                 {
                                     Connector.CancelRequest(throwExceptions: true, requestedByUser: false);
-                                }
-                                catch
-                                {
-                                    skipCancellationWait = true;
-                                }
 
-                                if (!skipCancellationWait)
-                                {
                                     isCancellation = true;
 
                                     if (Connector.Settings.CancellationTimeout > 0)
@@ -234,13 +228,17 @@ namespace Npgsql
 
                                     continue;
                                 }
+                                catch
+                                {
+                                    // Cancellation was not successful - ignoring the exception, and throwing the timeout one
+                                }
                             }
 
                             var timeoutException = new NpgsqlException("Exception while reading from stream", new TimeoutException("Timeout during reading attempt"));
                             throw readingNotifications ? timeoutException : Connector.Break(timeoutException);
+                        default:
+                            throw Connector.Break(new NpgsqlException("Exception while reading from stream", e));
                         }
-
-                        throw Connector.Break(new NpgsqlException("Exception while reading from stream", e));
                     }
                 }
 
