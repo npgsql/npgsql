@@ -395,7 +395,6 @@ namespace Npgsql
                         if (pStatement != null)
                         {
                             Debug.Assert(!pStatement.IsPrepared);
-                            Debug.Assert(pStatement.Description == null);
                             if (pStatement.StatementBeingReplaced != null)
                             {
                                 Expect<CloseCompletedMessage>(await Connector.ReadMessage(async), Connector);

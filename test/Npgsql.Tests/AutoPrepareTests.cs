@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
+using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests
 {
@@ -377,17 +378,61 @@ namespace Npgsql.Tests
         {
             var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
+                ApplicationName = nameof(DontAutoPrepareMoreThanMaxStatementsInBatch),
                 MaxAutoPrepare = 50,
             };
 
             await using var connection = new NpgsqlConnection(builder.ToString());
             await connection.OpenAsync();
-            for (var i = 0; i < 10; i++)
+            for (var i = 0; i < 100; i++)
             {
                 using var command = connection.CreateCommand();
                 command.CommandText = string.Join("", Enumerable.Range(0, 100).Select(n => $"SELECT {n};"));
                 await command.ExecuteNonQueryAsync();
             }
+
+            NpgsqlConnection.ClearPool(connection);
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3106")]
+        public async Task DontAutoPrepareMoreThanMaxStatementsInBatchRandom()
+        {
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                MaxAutoPrepare = 10,
+            };
+
+            await using var connection = new NpgsqlConnection(builder.ToString());
+            await connection.OpenAsync();
+            var random = new Random(1);
+            for (var i = 0; i < 100; i++)
+            {
+                using var command = connection.CreateCommand();
+                command.CommandText = string.Join("", Enumerable.Range(0, 100).Select(n => $"SELECT {random.Next(200)};"));
+                await command.ExecuteNonQueryAsync();
+            }
+        }
+
+        [Test]
+        public async Task ReplaceAndExecuteWithinSameBatch()
+        {
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ApplicationName = nameof(ReplaceAndExecuteWithinSameBatch),
+                MaxAutoPrepare = 1,
+                AutoPrepareMinUsages = 2
+            };
+
+            await using var connection = new NpgsqlConnection(builder.ToString());
+            await connection.OpenAsync();
+            for (var i = 0; i < 2; i++)
+                await connection.ExecuteNonQueryAsync("SELECT 1");
+
+            // SELECT 1 is now auto-prepared and occupying the only slot.
+            // Within the same batch, cause another SQL to replace it, and then execute it.
+            await connection.ExecuteNonQueryAsync("SELECT 2; SELECT 2; SELECT 1");
+
+            NpgsqlConnection.ClearPool(connection);
         }
 
         // Exclude some internal Npgsql queries which include pg_type as well as the count statement itself
