@@ -68,7 +68,7 @@ namespace Npgsql
             Debug.Assert(_multiplexCommandReader != null);
 
             var timeout = _writeCoalescingDelayTicks / 2;
-            var timeoutTokenSource = new TimeoutCancellationTokenSourceWrapper(TimeSpan.FromTicks(timeout));
+            var timeoutTokenSource = new ResettableCancellationTokenSource(TimeSpan.FromTicks(timeout));
             var timeoutToken = timeout == 0 ? CancellationToken.None : timeoutTokenSource.Token;
 
             while (true)
