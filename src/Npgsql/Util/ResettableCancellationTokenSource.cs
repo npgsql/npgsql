@@ -6,14 +6,14 @@ using static System.Threading.Timeout;
 namespace Npgsql.Util
 {
     /// <summary>
-    /// Internal struct wrapping a <see cref="CancellationTokenSource"/> for timeouts.
+    /// A wrapper around <see cref="CancellationTokenSource"/> to simplify reset management.
     /// </summary>
     /// <remarks>
     /// Since there's no way to reset a <see cref="CancellationTokenSource"/> once it was cancelled,
     /// we need to make sure that an existing cancellation token source hasn't been cancelled,
     /// every time we start it (see https://github.com/dotnet/runtime/issues/4694).
     /// </remarks>
-    class TimeoutCancellationTokenSourceWrapper : IDisposable
+    class ResettableCancellationTokenSource : IDisposable
     {
         public TimeSpan Timeout { get; set; }
         CancellationTokenSource _cts = new CancellationTokenSource();
@@ -23,9 +23,9 @@ namespace Npgsql.Util
         bool _isRunning;
 #endif
 
-        public TimeoutCancellationTokenSourceWrapper() => Timeout = InfiniteTimeSpan;
+        public ResettableCancellationTokenSource() => Timeout = InfiniteTimeSpan;
 
-        public TimeoutCancellationTokenSourceWrapper(TimeSpan timeout) => Timeout = timeout;
+        public ResettableCancellationTokenSource(TimeSpan timeout) => Timeout = timeout;
 
         /// <summary>
         /// Set the timeout on the wrapped <see cref="CancellationTokenSource"/>

@@ -29,7 +29,7 @@ namespace Npgsql
 
         readonly Socket? _underlyingSocket;
 
-        readonly TimeoutCancellationTokenSourceWrapper _timeoutCts;
+        readonly ResettableCancellationTokenSource _timeoutCts;
 
         /// <summary>
         /// Timeout for sync and async writes
@@ -94,7 +94,7 @@ namespace Npgsql
             Connector = connector;
             Underlying = stream;
             _underlyingSocket = socket;
-            _timeoutCts = new TimeoutCancellationTokenSourceWrapper();
+            _timeoutCts = new ResettableCancellationTokenSource();
             Size = size;
             Buffer = ArrayPool<byte>.Shared.Rent(size);
             TextEncoding = textEncoding;

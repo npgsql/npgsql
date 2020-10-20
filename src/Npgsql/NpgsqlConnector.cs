@@ -1398,10 +1398,21 @@ namespace Npgsql
         /// <summary>
         /// Creates another connector and sends a cancel request through it for this connector.
         /// </summary>
-        internal void CancelRequest(bool throwExceptions = false, bool requestedByUser = true)
+        /// <returns>
+        /// <para>
+        /// <see langword="true" /> if the cancellation request was successfully delivered, or if it was skipped because a previous
+        /// request was already sent. <see langword="false"/> if the cancellation request could not be delivered because of an exception
+        /// (the method logs internally).
+        /// </para>
+        /// <para>
+        /// This does not indicate whether the cancellation attempt was successful on the PostgreSQL side - only if the request was
+        /// delivered.
+        /// </para>
+        /// </returns>
+        internal bool CancelRequest(bool requestedByUser = true)
         {
             if (BackendProcessId == 0)
-                throw new NpgsqlException("Cancellation not supported on this database (no BackendKeyData was received during connection)");
+                return true;
 
             lock (CancelLock)
             {
@@ -1409,7 +1420,7 @@ namespace Npgsql
                     _userCancellationRequested = true;
 
                 if (_cancellationRequested)
-                    return;
+                    return true;
 
                 Log.Debug("Sending cancellation...", Id);
                 _cancellationRequested = true;
@@ -1430,8 +1441,7 @@ namespace Npgsql
                     {
                         cancelImmediately = true;
                         Log.Debug("Exception caught while attempting to cancel command", e, Id);
-                        if (throwExceptions)
-                            throw;
+                        return false;
                     }
                 }
                 finally
@@ -1448,6 +1458,8 @@ namespace Npgsql
                             ReadBuffer.Cts.CancelAfter(Settings.CancellationTimeout);
                     }
                 }
+
+                return true;
             }
         }
 
