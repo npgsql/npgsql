@@ -236,6 +236,8 @@ namespace Npgsql
 
             async Task OpenAsync(CancellationToken cancellationToken2)
             {
+                Debug.Assert(!Settings.Multiplexing);
+
                 NpgsqlConnector? connector = null;
                 try
                 {
@@ -278,6 +280,9 @@ namespace Npgsql
                         else
                             connector = await _pool.Rent(this, timeout, async, cancellationToken2);
                     }
+
+                    Debug.Assert(connector.Connection == this,
+                        $"Connection for opened connector {Connector} isn't the same as this connection");
 
                     ConnectorBindingScope = ConnectorBindingScope.Connection;
                     Connector = connector;
@@ -750,6 +755,8 @@ namespace Npgsql
 
                 if (connector.IsBroken)
                 {
+                    connector.Connection = null;
+
                     if (_pool == null)
                         connector.Close();
                     else
@@ -760,6 +767,8 @@ namespace Npgsql
                 else if (EnlistedTransaction != null)
                 {
                     // A System.Transactions transaction is still in progress
+
+                    connector.Connection = null;
 
                     // If pooled, close the connection and disconnect it from the resource manager but leave the
                     // connector in an enlisted pending list in the pool. If another connection is opened within
@@ -781,18 +790,20 @@ namespace Npgsql
                         // Clear the buffer, roll back any pending transaction and prepend a reset message if needed
                         await connector.Reset(async, cancellationToken);
 
+                        connector.Connection = null;
+
                         if (Settings.Multiplexing)
                         {
                             // We've already closed ongoing operations and rolled back any transaction, so we must be
                             // unbound. Nothing to do.
-                            Debug.Assert(ConnectorBindingScope == ConnectorBindingScope.None);
+                            Debug.Assert(ConnectorBindingScope == ConnectorBindingScope.None,
+                                $"When closing a multiplexed connection, the connection was supposed to be unbound, but {nameof(ConnectorBindingScope)} was {ConnectorBindingScope}");
                         }
                         else
                             _pool.Return(connector);
                     }
                 }
 
-                connector.Connection = null;
                 Connector = null;
                 ConnectorBindingScope = ConnectorBindingScope.None;
                 FullState = ConnectionState.Closed;
@@ -1515,6 +1526,7 @@ namespace Npgsql
                 return false;
             }
             Debug.Assert(Connector != null, $"Binding scope is {ConnectorBindingScope} but {Connector} is null");
+            Debug.Assert(Connector.Connection == this, $"Bound connector {Connector} does not reference this connection");
             connector = Connector;
             return true;
         }
