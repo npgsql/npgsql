@@ -495,9 +495,8 @@ namespace Npgsql
                 throw new Exception("Invalid state: " + _state);
             }
 
-            var connector = _connector;
+            _connector.EndUserAction();
             Cleanup();
-            connector.EndUserAction();
         }
 
 #pragma warning disable CS8625

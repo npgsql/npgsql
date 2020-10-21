@@ -30,7 +30,8 @@ namespace Npgsql
 
         // Note that with ambient transactions, it's possible for a transaction to be pending after its connection
         // is already closed. So we capture the connector and perform everything directly on it.
-        readonly NpgsqlConnector _connector;
+        // Will be null, the transaction is already commited, as the connector will be returned to the pool on the commit (only if multiplexing is on).
+        NpgsqlConnector _connector;
 
         /// <summary>
         /// Specifies the <see cref="NpgsqlConnection"/> object associated with the transaction.
@@ -128,6 +129,7 @@ namespace Npgsql
             {
                 Log.Debug("Committing transaction", _connector.Id);
                 await _connector.ExecuteInternalCommand(PregeneratedMessages.CommitTransaction, async, cancellationToken);
+                _connector = null;
             }
         }
 
@@ -335,14 +337,17 @@ namespace Npgsql
             if (IsDisposed)
                 return;
 
-            if (disposing && !IsCompleted)
+            if (disposing)
             {
-                // We're disposing, so no cancellation token
-                _connector.CloseOngoingOperations(async: false).GetAwaiter().GetResult();
-                Rollback();
-            }
+                if (_connector != null && !IsCompleted)
+                {
+                    // We're disposing, so no cancellation token
+                    _connector.CloseOngoingOperations(async: false).GetAwaiter().GetResult();
+                    Rollback();
+                }
 
-            IsDisposed = true;
+                IsDisposed = true;
+            }
         }
 
         /// <summary>
@@ -356,7 +361,7 @@ namespace Npgsql
         {
             if (!IsDisposed)
             {
-                if (!IsCompleted)
+                if (_connector != null && !IsCompleted)
                 {
                     using (NoSynchronizationContextScope.Enter())
                         return DisposeAsyncInternal();

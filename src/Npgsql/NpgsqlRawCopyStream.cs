@@ -397,9 +397,8 @@ namespace Npgsql
             }
             finally
             {
-                var connector = _connector;
+                _connector.EndUserAction();
                 Cleanup();
-                connector.EndUserAction();
             }
         }
 
