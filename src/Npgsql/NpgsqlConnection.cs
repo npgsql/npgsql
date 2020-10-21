@@ -788,9 +788,12 @@ namespace Npgsql
                     else
                     {
                         // Clear the buffer, roll back any pending transaction and prepend a reset message if needed
+                        // Also returns the connector to the pool, if there is an open transaction and multiplexing is on
                         await connector.Reset(async, cancellationToken);
 
-                        connector.Connection = null;
+                        // If multiplexing is on, the connector is already in the pool
+                        if (!Settings.Multiplexing)
+                            connector.Connection = null;
 
                         if (Settings.Multiplexing)
                         {
