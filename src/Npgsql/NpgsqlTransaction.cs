@@ -129,7 +129,7 @@ namespace Npgsql
             {
                 Log.Debug("Committing transaction", _connector.Id);
                 await _connector.ExecuteInternalCommand(PregeneratedMessages.CommitTransaction, async, cancellationToken);
-                _connector = null;
+                _connector = null!;
             }
         }
 
