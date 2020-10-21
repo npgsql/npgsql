@@ -16,8 +16,11 @@ namespace Npgsql.Util
     class ResettableCancellationTokenSource : IDisposable
     {
         public TimeSpan Timeout { get; set; }
-        CancellationTokenSource _cts = new CancellationTokenSource();
+
+        volatile CancellationTokenSource _cts = new CancellationTokenSource();
         CancellationTokenRegistration _registration;
+
+        readonly object lockObject = new object();
 
 #if DEBUG
         bool _isRunning;
@@ -42,8 +45,11 @@ namespace Npgsql.Util
             _cts.CancelAfter(Timeout);
             if (_cts.IsCancellationRequested)
             {
-                _cts.Dispose();
-                _cts = new CancellationTokenSource(Timeout);
+                lock (lockObject)
+                {
+                    _cts.Dispose();
+                    _cts = new CancellationTokenSource(Timeout);
+                }
             }
             if (cancellationToken.CanBeCanceled)
                 _registration = cancellationToken.Register(cts => ((CancellationTokenSource)cts!).Cancel(), _cts);
@@ -73,8 +79,11 @@ namespace Npgsql.Util
             _cts.CancelAfter(InfiniteTimeSpan);
             if (_cts.IsCancellationRequested)
             {
-                _cts.Dispose();
-                _cts = new CancellationTokenSource();
+                lock (lockObject)
+                {
+                    _cts.Dispose();
+                    _cts = new CancellationTokenSource();
+                }
             }
             if (cancellationToken.CanBeCanceled)
                 _registration = cancellationToken.Register(cts => ((CancellationTokenSource)cts!).Cancel(), _cts);
@@ -122,12 +131,24 @@ namespace Npgsql.Util
         /// <summary>
         /// Cancel the wrapped <see cref="CancellationTokenSource"/>
         /// </summary>
-        public void Cancel() => _cts.Cancel();
+        public void Cancel()
+        {
+            lock (lockObject)
+            {
+                _cts.Cancel();
+            }
+        }
 
         /// <summary>
         /// Cancel the wrapped <see cref="CancellationTokenSource"/> after delay
         /// </summary>
-        public void CancelAfter(int delay) => _cts.CancelAfter(delay);
+        public void CancelAfter(int delay)
+        {
+            lock (lockObject)
+            {
+                _cts.CancelAfter(delay);
+            }
+        }
 
         /// <summary>
         /// The <see cref="CancellationToken"/> from the wrapped
