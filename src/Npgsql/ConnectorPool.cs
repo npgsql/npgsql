@@ -166,15 +166,9 @@ namespace Npgsql
         internal ValueTask<NpgsqlConnector> Rent(
             NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
         {
-            if (TryGetIdleConnector(out var connector))
-            {
-                connector.Connection = conn;
-                conn.Connector = connector;
-
-                return new ValueTask<NpgsqlConnector>(connector);
-            }
-
-            return RentAsync();
+            return TryGetIdleConnector(out var connector)
+                ? new ValueTask<NpgsqlConnector>(AssignConnection(conn, connector))
+                : RentAsync();
 
             async ValueTask<NpgsqlConnector> RentAsync()
             {
@@ -239,13 +233,13 @@ namespace Npgsql
                     if (connector != null)
                         return AssignConnection(conn, connector);
                 }
+            }
 
-                static NpgsqlConnector AssignConnection(NpgsqlConnection connection, NpgsqlConnector connector)
-                {
-                    connector.Connection = connection;
-                    connection.Connector = connector;
-                    return connector;
-                }
+            static NpgsqlConnector AssignConnection(NpgsqlConnection connection, NpgsqlConnector connector)
+            {
+                connector.Connection = connection;
+                connection.Connector = connector;
+                return connector;
             }
         }
 

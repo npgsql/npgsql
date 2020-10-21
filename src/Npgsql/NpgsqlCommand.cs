@@ -1253,6 +1253,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                             await reader.NextResultAsync(CancellationToken.None);
                         else
                             reader.NextResult();
+
                         return reader;
                     }
                     catch

@@ -1337,8 +1337,11 @@ namespace Npgsql
                 // In multiplexing mode, we can't support transaction in SQL: the connector must be removed from the
                 // writable connectors list, otherwise other commands may get written to it. So the user must tell us
                 // about the transaction via BeginTransaction.
-                if (Connection == null)
+                if (Connection is null)
+                {
+                    Debug.Assert(Settings.Multiplexing);
                     throw new NotSupportedException("In multiplexing mode, transactions must be started with BeginTransaction");
+                }
                 break;
             case TransactionStatus.Pending:
                 throw new Exception($"Internal Npgsql bug: invalid TransactionStatus {nameof(TransactionStatus.Pending)} received, should be frontend-only");
