@@ -30,7 +30,6 @@ namespace Npgsql
 
         // Note that with ambient transactions, it's possible for a transaction to be pending after its connection
         // is already closed. So we capture the connector and perform everything directly on it.
-        // Will be null, the transaction is already commited, as the connector will be returned to the pool on the commit (only if multiplexing is on).
         NpgsqlConnector _connector;
 
         /// <summary>
@@ -42,7 +41,13 @@ namespace Npgsql
         /// <summary>
         /// If true, the transaction has been committed/rolled back, but not disposed.
         /// </summary>
-        internal bool IsCompleted => _connector.TransactionStatus == TransactionStatus.Idle;
+        internal bool IsCompleted => isCompleted || _connector.TransactionStatus == TransactionStatus.Idle;
+
+        /// <summary>
+        /// If true, the transaction has been committed/rolled back, but not disposed.
+        /// </summary>
+        /// <remarks>Useful for multiplexing, when on transaction commit/rollback the connector is returned to the pool</remarks>
+        bool isCompleted;
 
         internal bool IsDisposed;
 
@@ -78,6 +83,8 @@ namespace Npgsql
 
             if (!_connector.DatabaseInfo.SupportsTransactions)
                 return;
+
+            isCompleted = false;
 
             Log.Debug($"Beginning transaction with isolation level {isolationLevel}", _connector.Id);
             switch (isolationLevel)
@@ -129,7 +136,7 @@ namespace Npgsql
             {
                 Log.Debug("Committing transaction", _connector.Id);
                 await _connector.ExecuteInternalCommand(PregeneratedMessages.CommitTransaction, async, cancellationToken);
-                _connector = null!;
+                isCompleted = true;
             }
         }
 
@@ -158,12 +165,15 @@ namespace Npgsql
         /// </summary>
         public override void Rollback() => Rollback(false).GetAwaiter().GetResult();
 
-        Task Rollback(bool async, CancellationToken cancellationToken = default)
+        async Task Rollback(bool async, CancellationToken cancellationToken = default)
         {
             CheckReady();
-            return _connector.DatabaseInfo.SupportsTransactions
-                ? _connector.Rollback(async, cancellationToken)
-                : Task.CompletedTask;
+
+            if (_connector.DatabaseInfo.SupportsTransactions)
+            {
+                await _connector.Rollback(async, cancellationToken);
+                isCompleted = true;
+            }
         }
 
         /// <summary>
@@ -339,7 +349,7 @@ namespace Npgsql
 
             if (disposing)
             {
-                if (_connector != null && !IsCompleted)
+                if (!IsCompleted)
                 {
                     // We're disposing, so no cancellation token
                     _connector.CloseOngoingOperations(async: false).GetAwaiter().GetResult();
@@ -361,7 +371,7 @@ namespace Npgsql
         {
             if (!IsDisposed)
             {
-                if (_connector != null && !IsCompleted)
+                if (!IsCompleted)
                 {
                     using (NoSynchronizationContextScope.Enter())
                         return DisposeAsyncInternal();
