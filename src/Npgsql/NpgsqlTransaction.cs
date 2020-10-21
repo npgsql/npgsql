@@ -46,7 +46,7 @@ namespace Npgsql
         /// <summary>
         /// If true, the transaction has been committed/rolled back, but not disposed.
         /// </summary>
-        /// <remarks>Useful for multiplexing, when on transaction commit/rollback the connector is returned to the pool</remarks>
+        /// <remarks>Useful for multiplexing, when on transaction commit/rollback the connector might be returned to the pool</remarks>
         bool isCompleted;
 
         internal bool IsDisposed;
@@ -132,20 +132,13 @@ namespace Npgsql
             if (!_connector.DatabaseInfo.SupportsTransactions)
                 return;
 
-            var isMultiplexing = !_connector.Settings.Multiplexing;
-
-            var action = _connector.StartUserAction();
-            try
+            // TODO: On successful commit, the connector might be returned to the pool, if multiplexing is on.
+            // In this case, we might call EndUserAction on the connector, which might be in use.
+            using (_connector.StartUserAction())
             {
                 Log.Debug("Committing transaction", _connector.Id);
                 await _connector.ExecuteInternalCommand(PregeneratedMessages.CommitTransaction, async, cancellationToken);
                 isCompleted = true;
-            }
-            finally
-            {
-                // UserAction well be closed then the connector is returned to the pool, if multiplexing is on
-                if (!isMultiplexing)
-                    action.Dispose();
             }
         }
 

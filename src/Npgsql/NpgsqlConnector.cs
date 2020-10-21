@@ -1301,17 +1301,10 @@ namespace Npgsql
         internal async Task Rollback(bool async, CancellationToken cancellationToken = default)
         {
             Log.Debug("Rolling back transaction", Id);
-            var action = StartUserAction();
-            try
-            {
+            // TODO: On successful rollback, the connector might be returned to the pool, if multiplexing is on.
+            // In this case, we might call EndUserAction on the connector, which might be in use.
+            using (StartUserAction())
                 await ExecuteInternalCommand(PregeneratedMessages.RollbackTransaction, async, cancellationToken);
-            }
-            finally
-            {
-                // UserAction well be closed then the connector is returned to the pool, if multiplexing is on
-                if (!Settings.Multiplexing)
-                    action.Dispose();
-            }
         }
 
         internal bool InTransaction

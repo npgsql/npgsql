@@ -1601,7 +1601,6 @@ namespace Npgsql
             // TODO: If enlisted transaction scope is still active, need to AddPendingEnlistedConnector, just like Close
             var connector = Connector;
             Connector = null;
-            connector.EndUserAction();
             connector.Connection = null;
             _pool.Return(connector);
             ConnectorBindingScope = ConnectorBindingScope.None;
