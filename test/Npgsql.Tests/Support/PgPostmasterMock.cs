@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using Npgsql.Util;
 using NUnit.Framework.Constraints;
@@ -21,11 +22,12 @@ namespace Npgsql.Tests.Support
 
         readonly Socket _socket;
         readonly List<PgServerMock> _allServers = new List<PgServerMock>();
-        readonly Queue<PgServerMock> _pendingServers = new Queue<PgServerMock>();
-        readonly Queue<(int ProcessId, int Secret)> _pendingCancellationRequests
-            = new Queue<(int ProcessId, int Secret)>();
+        bool _acceptingClients;
         Task? _acceptClientsTask;
         int _processIdCounter;
+
+        ChannelWriter<ServerOrCancellationRequest> _pendingRequestsWriter { get; }
+        internal ChannelReader<ServerOrCancellationRequest> PendingRequestsReader { get; }
 
         internal string ConnectionString { get; }
 
@@ -38,6 +40,10 @@ namespace Npgsql.Tests.Support
 
         internal PgPostmasterMock(string? connectionString = null)
         {
+            var pendingRequestsChannel = Channel.CreateUnbounded<ServerOrCancellationRequest>();
+            PendingRequestsReader = pendingRequestsChannel.Reader;
+            _pendingRequestsWriter = pendingRequestsChannel.Writer;
+
             var connectionStringBuilder =
                 new NpgsqlConnectionStringBuilder(connectionString ?? TestUtil.ConnectionString);
 
@@ -55,6 +61,7 @@ namespace Npgsql.Tests.Support
 
         void AcceptClients()
         {
+            _acceptingClients = true;
             _acceptClientsTask = DoAcceptClients();
 
             async Task DoAcceptClients()
@@ -64,11 +71,14 @@ namespace Npgsql.Tests.Support
                     var serverOrCancellationRequest = await Accept();
                     if (serverOrCancellationRequest.Server is { } server)
                     {
-                        _pendingServers.Enqueue(server);
-                        await server.Startup();
+                        // Hand off the new server to the client test only once startup is complete, to avoid reading/writing in parallel
+                        // during startup. Don't wait for all this to complete - continue to accept other connections in case that's needed.
+                        _ = server.Startup().ContinueWith(t => _pendingRequestsWriter.WriteAsync(serverOrCancellationRequest));
                     }
                     else
-                        _pendingCancellationRequests.Enqueue(serverOrCancellationRequest.CancellationRequest!.Value);
+                    {
+                        await _pendingRequestsWriter.WriteAsync(serverOrCancellationRequest);
+                    }
                 }
 
                 // ReSharper disable once FunctionNeverReturns
@@ -105,21 +115,39 @@ namespace Npgsql.Tests.Support
 
         internal async Task<PgServerMock> AcceptServer()
         {
+            if (_acceptingClients)
+                throw new InvalidOperationException($"Already accepting clients via {nameof(AcceptClients)}");
             var serverOrCancellationRequest = await Accept();
             if (serverOrCancellationRequest.Server is null)
-                throw new InvalidOperationException("Expected new server connection but a cancellation request occurred instead");
+                throw new InvalidOperationException("Expected a server connection but got a cancellation request instead");
             return serverOrCancellationRequest.Server;
         }
 
-        internal PgServerMock GetPendingServer()
-            => _pendingServers.TryDequeue(out var server)
-                ? server
-                : throw new InvalidOperationException("No pending server");
+        internal async Task<(int ProcessId, int Secret)> AcceptCancellationRequest()
+        {
+            if (_acceptingClients)
+                throw new InvalidOperationException($"Already accepting clients via {nameof(AcceptClients)}");
+            var serverOrCancellationRequest = await Accept();
+            if (serverOrCancellationRequest.CancellationRequest is null)
+                throw new InvalidOperationException("Expected a cancellation request but got a server connection instead");
+            return serverOrCancellationRequest.CancellationRequest.Value;
+        }
 
-        internal (int ProcessId, int Secret) GetPendingCancellationRequest()
-            => _pendingCancellationRequests.TryDequeue(out var cancellationRequest)
-                ? cancellationRequest
-                : throw new InvalidOperationException("No pending cancellation request");
+        internal async ValueTask<PgServerMock> WaitForServerConnection()
+        {
+            var serverOrCancellationRequest = await PendingRequestsReader.ReadAsync();
+            if (serverOrCancellationRequest.Server is null)
+                throw new InvalidOperationException("Expected a server connection but got a cancellation request instead");
+            return serverOrCancellationRequest.Server;
+        }
+
+        internal async ValueTask<(int ProcessId, int Secret)> WaitForCancellationRequest()
+        {
+            var serverOrCancellationRequest = await PendingRequestsReader.ReadAsync();
+            if (serverOrCancellationRequest.CancellationRequest is null)
+                throw new InvalidOperationException("Expected cancellation request but got a server connection instead");
+            return serverOrCancellationRequest.CancellationRequest.Value;
+        }
 
         public async ValueTask DisposeAsync()
         {

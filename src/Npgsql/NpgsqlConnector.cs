@@ -222,8 +222,8 @@ namespace Npgsql
         internal int ClearCounter { get; set; }
 
         volatile bool _cancellationRequested;
-
         volatile bool _userCancellationRequested;
+        internal CancellationToken UserCancellationToken { get; set; }
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlConnector));
 
@@ -1065,7 +1065,7 @@ namespace Npgsql
 
                     while (true)
                     {
-                        await ReadBuffer.Ensure(5, async, readingNotifications2, cancellationToken);
+                        await ReadBuffer.Ensure(5, async, readingNotifications2, cancellationToken2);
                         messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
                         PGUtil.ValidateBackendMessageCode(messageCode);
                         len = ReadBuffer.ReadInt32() - 4; // Transmitted length includes itself
@@ -1076,7 +1076,7 @@ namespace Npgsql
                         {
                             if (dataRowLoadingMode2 == DataRowLoadingMode.Skip)
                             {
-                                await ReadBuffer.Skip(len, async, cancellationToken);
+                                await ReadBuffer.Skip(len, async, cancellationToken2);
                                 continue;
                             }
                         }
@@ -1094,7 +1094,7 @@ namespace Npgsql
                                 ReadBuffer = oversizeBuffer;
                             }
 
-                            await ReadBuffer.Ensure(len, async, cancellationToken);
+                            await ReadBuffer.Ensure(len, async, cancellationToken2);
                         }
 
                         var msg = ParseServerMessage(ReadBuffer, messageCode, len, isReadingPrependedMessage);
@@ -1157,7 +1157,9 @@ namespace Npgsql
                     {
                         // User requested the cancellation - translate the PostgresException to an OperationCanceledException (keeping the former as the inner)
                         if (_userCancellationRequested)
-                            throw new OperationCanceledException("Query was cancelled", e, cancellationToken2);
+                        {
+                            throw new OperationCanceledException("Query was cancelled", e, UserCancellationToken);
+                        }
 
                         // We've timed out, send the cancellation request and successfully read it
                         throw new NpgsqlException("Exception while reading from stream", new TimeoutException("Timeout during reading attempt"));
@@ -1168,7 +1170,7 @@ namespace Npgsql
                 catch (NpgsqlException e) when (e.InnerException is TimeoutException && _userCancellationRequested)
                 {
                     // User requested the cancellation and it timed out
-                    throw new OperationCanceledException("Query was cancelled", e.InnerException, cancellationToken2);
+                    throw new OperationCanceledException("Query was cancelled", e.InnerException, UserCancellationToken);
                 }
                 catch (NpgsqlException)
                 {
@@ -1485,10 +1487,19 @@ namespace Npgsql
             }
         }
 
-        internal void ResetCancellation()
+        /// <summary>
+        /// Resets cancellation-related state to prepare for a new cancellable operation.
+        /// </summary>
+        /// <param name="userCancellationToken">
+        /// The cancellation token provided by the user for the operation. This is stored on the connector, and will be referenced
+        /// by the <see cref="OperationCanceledException"/> if one is thrown.
+        /// </param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void ResetCancellation(CancellationToken userCancellationToken)
         {
             _cancellationRequested = false;
             _userCancellationRequested = false;
+            UserCancellationToken = userCancellationToken;
             ReadBuffer.Cts.ResetCts();
         }
 

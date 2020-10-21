@@ -197,6 +197,7 @@ namespace Npgsql.Tests
             await using var postmasterMock = PgPostmasterMock.Start(builder.ConnectionString);
             using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
             await using var conn = await OpenConnectionAsync(connectionString);
+            await postmasterMock.WaitForServerConnection();
 
             var processId = conn.ProcessID;
 
@@ -206,7 +207,7 @@ namespace Npgsql.Tests
                     .With.InnerException.TypeOf<TimeoutException>());
 
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
-            Assert.That(postmasterMock.GetPendingCancellationRequest().ProcessId,
+            Assert.That((await postmasterMock.WaitForCancellationRequest()).ProcessId,
                 Is.EqualTo(processId));
         }
 
@@ -299,11 +300,14 @@ namespace Npgsql.Tests
             var cancellationSource = new CancellationTokenSource();
             var t = cmd.ExecuteNonQueryAsync(cancellationSource.Token);
             cancellationSource.Cancel();
-            Assert.That(async () => await t, Throws.Exception.TypeOf<OperationCanceledException>()
-                    .With.InnerException.TypeOf<PostgresException>()
-                    .With.InnerException.Property(nameof(PostgresException.SqlState)).EqualTo("57014"));
+
+            var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await t);
+            Assert.That(exception.InnerException,
+                Is.TypeOf<PostgresException>().With.Property(nameof(PostgresException.SqlState)).EqualTo("57014"));
+            Assert.That(exception.CancellationToken, Is.EqualTo(cancellationSource.Token));
 
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+            Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
         }
 
         [Test, Description("Cancels an async query with the cancellation token, with unsuccessful PG cancellation (socket break)")]
@@ -315,6 +319,7 @@ namespace Npgsql.Tests
             await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
             using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
             await using var conn = await OpenConnectionAsync(connectionString);
+            await postmasterMock.WaitForServerConnection();
 
             var processId = conn.ProcessID;
 
@@ -322,12 +327,13 @@ namespace Npgsql.Tests
             using var cmd = new NpgsqlCommand("SELECT 1", conn);
             var t = cmd.ExecuteScalarAsync(cancellationSource.Token);
             cancellationSource.Cancel();
-            Assert.That(async () => await t, Throws.Exception
-                .TypeOf<OperationCanceledException>()
-                .With.InnerException.TypeOf<TimeoutException>());
+
+            var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await t);
+            Assert.That(exception.InnerException, Is.TypeOf<TimeoutException>());
+            Assert.That(exception.CancellationToken, Is.EqualTo(cancellationSource.Token));
 
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
-            Assert.That(postmasterMock.GetPendingCancellationRequest().ProcessId,
+            Assert.That((await postmasterMock.WaitForCancellationRequest()).ProcessId,
                 Is.EqualTo(processId));
         }
 
