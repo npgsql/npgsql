@@ -1583,7 +1583,10 @@ namespace Npgsql
         /// <summary>
         /// Ends binding scope to the physical connection and returns it to the pool. Only useful with multiplexing on.
         /// </summary>
-        /// <remarks>After this method is called, under no circumstances the physical connection (connector) should ever be used. See issue 3249.</remarks>
+        /// <remarks>
+        /// After this method is called, under no circumstances the physical connection (connector) should ever be used if multiplexing is on.
+        /// See issue 3249.
+        /// </remarks>
         internal void EndBindingScope(ConnectorBindingScope scope)
         {
             Debug.Assert(ConnectorBindingScope != ConnectorBindingScope.None, $"Ending binding scope {scope} but connection's scope is null");
@@ -1598,6 +1601,7 @@ namespace Npgsql
             // TODO: If enlisted transaction scope is still active, need to AddPendingEnlistedConnector, just like Close
             var connector = Connector;
             Connector = null;
+            connector.EndUserAction();
             connector.Connection = null;
             _pool.Return(connector);
             ConnectorBindingScope = ConnectorBindingScope.None;
