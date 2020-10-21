@@ -1153,7 +1153,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 if (conn.TryGetBoundConnector(out var connector))
                 {
                     connector.StartUserAction(this);
-                    connector.ResetCancellation();
+                    connector.ResetCancellation(cancellationToken);
 
                     CancellationTokenRegistration? registration = null;
 
