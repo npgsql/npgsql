@@ -52,8 +52,10 @@ namespace Npgsql
         }
 
         static string? GetDefaultFilePath(string fileName) =>
-            Environment.GetEnvironmentVariable(PGUtil.IsWindows ? "APPDATA" : "HOME") is string appData
-                ? Path.Combine(appData, "postgresql", fileName)
+            Environment.GetEnvironmentVariable(PGUtil.IsWindows ? "APPDATA" : "HOME") is string appData &&
+            Path.Combine(appData, "postgresql", fileName) is string filePath &&
+            File.Exists(filePath)
+                ? filePath
                 : null;
     }
 }

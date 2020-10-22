@@ -463,9 +463,7 @@ namespace Npgsql
                 return password;
 
             var passFile = Settings.Passfile ?? PostgresEnvironment.PassFile;
-            if (passFile is null &&
-                PostgresEnvironment.PassFileDefault is { } passFileDefault &&
-                File.Exists(passFileDefault))
+            if (passFile is null && PostgresEnvironment.PassFileDefault is string passFileDefault)
             {
                 passFile = passFileDefault;
             }
