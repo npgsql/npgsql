@@ -223,7 +223,7 @@ namespace Npgsql
 
         volatile bool _cancellationRequested;
         volatile bool _userCancellationRequested;
-        CancellationToken _userCancellationToken;
+        internal CancellationToken UserCancellationToken { get; set; }
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlConnector));
 
@@ -1158,7 +1158,7 @@ namespace Npgsql
                         // User requested the cancellation - translate the PostgresException to an OperationCanceledException (keeping the former as the inner)
                         if (_userCancellationRequested)
                         {
-                            throw new OperationCanceledException("Query was cancelled", e, _userCancellationToken);
+                            throw new OperationCanceledException("Query was cancelled", e, UserCancellationToken);
                         }
 
                         // We've timed out, send the cancellation request and successfully read it
@@ -1170,7 +1170,7 @@ namespace Npgsql
                 catch (NpgsqlException e) when (e.InnerException is TimeoutException && _userCancellationRequested)
                 {
                     // User requested the cancellation and it timed out
-                    throw new OperationCanceledException("Query was cancelled", e.InnerException, _userCancellationToken);
+                    throw new OperationCanceledException("Query was cancelled", e.InnerException, UserCancellationToken);
                 }
                 catch (NpgsqlException)
                 {
@@ -1499,7 +1499,7 @@ namespace Npgsql
         {
             _cancellationRequested = false;
             _userCancellationRequested = false;
-            _userCancellationToken = userCancellationToken;
+            UserCancellationToken = userCancellationToken;
             ReadBuffer.Cts.ResetCts();
         }
 

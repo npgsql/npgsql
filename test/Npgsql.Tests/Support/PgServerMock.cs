@@ -215,6 +215,29 @@ namespace Npgsql.Tests.Support
             return this;
         }
 
+        internal PgServerMock WriteErrorResponse(string code)
+            => WriteErrorResponse(code, "ERROR", "MOCK ERROR MESSAGE");
+
+        internal PgServerMock WriteErrorResponse(string code, string severity, string message)
+        {
+            CheckDisposed();
+            _writeBuffer.WriteByte((byte)BackendMessageCode.ErrorResponse);
+            _writeBuffer.WriteInt32(
+                4 +
+                1 + Encoding.GetByteCount(code) +
+                1 + Encoding.GetByteCount(severity) +
+                1 + Encoding.GetByteCount(message) +
+                1);
+            _writeBuffer.WriteByte((byte)ErrorOrNoticeMessage.ErrorFieldTypeCode.Code);
+            _writeBuffer.WriteNullTerminatedString(code);
+            _writeBuffer.WriteByte((byte)ErrorOrNoticeMessage.ErrorFieldTypeCode.Severity);
+            _writeBuffer.WriteNullTerminatedString(severity);
+            _writeBuffer.WriteByte((byte)ErrorOrNoticeMessage.ErrorFieldTypeCode.Message);
+            _writeBuffer.WriteNullTerminatedString(message);
+            _writeBuffer.WriteByte((byte)ErrorOrNoticeMessage.ErrorFieldTypeCode.Done);
+            return this;
+        }
+
         #endregion Low-level message writing
 
         void CheckDisposed()
