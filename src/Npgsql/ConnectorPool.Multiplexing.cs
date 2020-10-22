@@ -36,6 +36,8 @@ namespace Npgsql
         /// </summary>
         readonly int _writeCoalescingBufferThresholdBytes;
 
+        readonly SemaphoreSlim? bootstrapSemaphore;
+
         /// <summary>
         /// Called exactly once per multiplexing pool, when the first connection is opened, with two goals:
         /// 1. Load types and bind the pool-wide type mapper (necessary for binding parameters)
@@ -45,18 +47,39 @@ namespace Npgsql
         {
             Debug.Assert(_multiplexing);
 
-            var connector =
+            var hasSemaphore = async
+                ? await bootstrapSemaphore!.WaitAsync(timeout.TimeLeft, cancellationToken)
+                : bootstrapSemaphore!.Wait(timeout.TimeLeft, cancellationToken);
+
+            // We've timed out - calling Check, to throw the correct exception
+            if (!hasSemaphore)
+                timeout.Check();
+
+            if (IsBootstrapped)
+            {
+                bootstrapSemaphore!.Release();
+                return;
+            }
+
+            try
+            {
+                var connector =
                 await conn.StartBindingScope(ConnectorBindingScope.Connection, timeout, async, cancellationToken);
-            using var _ = Defer(() => conn.EndBindingScope(ConnectorBindingScope.Connection));
+                using var _ = Defer(() => conn.EndBindingScope(ConnectorBindingScope.Connection));
 
-            // Somewhat hacky. Extract the connector's type mapper as our pool-wide mapper,
-            // and have the connector rebind to ensure it has a different instance.
-            // The latter isn't strictly necessary (type mappers should always be usable
-            // concurrently) but just in case.
-            MultiplexingTypeMapper = connector.TypeMapper;
-            connector.RebindTypeMapper();
+                // Somewhat hacky. Extract the connector's type mapper as our pool-wide mapper,
+                // and have the connector rebind to ensure it has a different instance.
+                // The latter isn't strictly necessary (type mappers should always be usable
+                // concurrently) but just in case.
+                MultiplexingTypeMapper = connector.TypeMapper;
+                connector.RebindTypeMapper();
 
-            IsBootstrapped = true;
+                IsBootstrapped = true;
+            }
+            finally
+            {
+                bootstrapSemaphore!.Release();
+            }
         }
 
         async Task MultiplexingWriteLoop()

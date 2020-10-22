@@ -33,7 +33,13 @@ namespace Npgsql
         readonly TimeSpan _connectionLifetime;
         volatile int _numConnectors;
 
-        public bool IsBootstrapped { get; set; }
+        public bool IsBootstrapped
+        {
+            get => _isBootstrapped;
+            set => _isBootstrapped = value;
+        }
+
+        volatile bool _isBootstrapped;
 
         volatile int _idleCount;
 
@@ -136,6 +142,8 @@ namespace Npgsql
             if (Settings.Multiplexing)
             {
                 _multiplexing = true;
+
+                bootstrapSemaphore = new SemaphoreSlim(1);
 
                 // Translate microseconds to ticks for cancellation token
                 _writeCoalescingDelayTicks = Settings.WriteCoalescingDelayUs * 100;
