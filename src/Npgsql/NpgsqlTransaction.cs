@@ -30,7 +30,7 @@ namespace Npgsql
 
         // Note that with ambient transactions, it's possible for a transaction to be pending after its connection
         // is already closed. So we capture the connector and perform everything directly on it.
-        NpgsqlConnector _connector;
+        readonly NpgsqlConnector _connector;
 
         /// <summary>
         /// Specifies the <see cref="NpgsqlConnection"/> object associated with the transaction.
@@ -41,13 +41,7 @@ namespace Npgsql
         /// <summary>
         /// If true, the transaction has been committed/rolled back, but not disposed.
         /// </summary>
-        internal bool IsCompleted => isCompleted || _connector.TransactionStatus == TransactionStatus.Idle;
-
-        /// <summary>
-        /// If true, the transaction has been committed/rolled back, but not disposed.
-        /// </summary>
-        /// <remarks>Useful for multiplexing, when on transaction commit/rollback the connector might be returned to the pool</remarks>
-        bool isCompleted;
+        internal bool IsCompleted => _connector.TransactionStatus == TransactionStatus.Idle;
 
         internal bool IsDisposed;
 
@@ -83,8 +77,6 @@ namespace Npgsql
 
             if (!_connector.DatabaseInfo.SupportsTransactions)
                 return;
-
-            isCompleted = false;
 
             Log.Debug($"Beginning transaction with isolation level {isolationLevel}", _connector.Id);
             switch (isolationLevel)
@@ -138,7 +130,6 @@ namespace Npgsql
             {
                 Log.Debug("Committing transaction", _connector.Id);
                 await _connector.ExecuteInternalCommand(PregeneratedMessages.CommitTransaction, async, cancellationToken);
-                isCompleted = true;
             }
         }
 
@@ -167,15 +158,12 @@ namespace Npgsql
         /// </summary>
         public override void Rollback() => Rollback(false).GetAwaiter().GetResult();
 
-        async Task Rollback(bool async, CancellationToken cancellationToken = default)
+        Task Rollback(bool async, CancellationToken cancellationToken = default)
         {
             CheckReady();
-
-            if (_connector.DatabaseInfo.SupportsTransactions)
-            {
-                await _connector.Rollback(async, cancellationToken);
-                isCompleted = true;
-            }
+            return _connector.DatabaseInfo.SupportsTransactions
+                ? _connector.Rollback(async, cancellationToken)
+                : Task.CompletedTask;
         }
 
         /// <summary>

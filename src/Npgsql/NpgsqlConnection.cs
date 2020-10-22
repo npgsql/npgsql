@@ -791,19 +791,18 @@ namespace Npgsql
                         // Also returns the connector to the pool, if there is an open transaction and multiplexing is on
                         await connector.Reset(async, cancellationToken);
 
-                        // If multiplexing is on, the connector is already in the pool
-                        if (!Settings.Multiplexing)
-                            connector.Connection = null;
-
                         if (Settings.Multiplexing)
                         {
-                            // We've already closed ongoing operations and rolled back any transaction, so we must be
-                            // unbound. Nothing to do.
+                            // We've already closed ongoing operations rolled back any transaction and the connector is already in the pool, 
+                            // so we must be unbound. Nothing to do.
                             Debug.Assert(ConnectorBindingScope == ConnectorBindingScope.None,
                                 $"When closing a multiplexed connection, the connection was supposed to be unbound, but {nameof(ConnectorBindingScope)} was {ConnectorBindingScope}");
                         }
                         else
+                        {
+                            connector.Connection = null;
                             _pool.Return(connector);
+                        }   
                     }
                 }
 
@@ -1588,7 +1587,7 @@ namespace Npgsql
         /// </summary>
         /// <remarks>
         /// After this method is called, under no circumstances the physical connection (connector) should ever be used if multiplexing is on.
-        /// See issue 3249.
+        /// See #3249.
         /// </remarks>
         internal void EndBindingScope(ConnectorBindingScope scope)
         {
