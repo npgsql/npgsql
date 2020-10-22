@@ -619,7 +619,7 @@ namespace Npgsql
                         var clientCertificates = new X509Certificate2Collection();
                         var certPath = Settings.ClientCertificate ?? PostgresEnvironment.SslCert;
 
-                        if (certPath is null && PostgresEnvironment.SslCertDefault is { } certPathDefault && File.Exists(certPathDefault))
+                        if (certPath is null && PostgresEnvironment.SslCertDefault is string certPathDefault)
                             certPath = certPathDefault;
 
                         if (certPath != null)
