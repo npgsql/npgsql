@@ -788,19 +788,21 @@ namespace Npgsql
                     else
                     {
                         // Clear the buffer, roll back any pending transaction and prepend a reset message if needed
+                        // Also returns the connector to the pool, if there is an open transaction and multiplexing is on
                         await connector.Reset(async, cancellationToken);
-
-                        connector.Connection = null;
 
                         if (Settings.Multiplexing)
                         {
-                            // We've already closed ongoing operations and rolled back any transaction, so we must be
-                            // unbound. Nothing to do.
+                            // We've already closed ongoing operations rolled back any transaction and the connector is already in the pool, 
+                            // so we must be unbound. Nothing to do.
                             Debug.Assert(ConnectorBindingScope == ConnectorBindingScope.None,
                                 $"When closing a multiplexed connection, the connection was supposed to be unbound, but {nameof(ConnectorBindingScope)} was {ConnectorBindingScope}");
                         }
                         else
+                        {
+                            connector.Connection = null;
                             _pool.Return(connector);
+                        }   
                     }
                 }
 
@@ -1023,8 +1025,8 @@ namespace Npgsql
             }
             catch
             {
-                EndBindingScope(ConnectorBindingScope.Copy);
                 connector.EndUserAction();
+                EndBindingScope(ConnectorBindingScope.Copy);
                 throw;
             }
         }
@@ -1057,8 +1059,8 @@ namespace Npgsql
             }
             catch
             {
-                EndBindingScope(ConnectorBindingScope.Copy);
                 connector.EndUserAction();
+                EndBindingScope(ConnectorBindingScope.Copy);
                 throw;
             }
         }
@@ -1094,8 +1096,8 @@ namespace Npgsql
             }
             catch
             {
-                EndBindingScope(ConnectorBindingScope.Copy);
                 connector.EndUserAction();
+                EndBindingScope(ConnectorBindingScope.Copy);
                 throw;
             }
         }
@@ -1131,8 +1133,8 @@ namespace Npgsql
             }
             catch
             {
-                EndBindingScope(ConnectorBindingScope.Copy);
                 connector.EndUserAction();
+                EndBindingScope(ConnectorBindingScope.Copy);
                 throw;
             }
         }
@@ -1174,8 +1176,8 @@ namespace Npgsql
             }
             catch
             {
-                EndBindingScope(ConnectorBindingScope.Copy);
                 connector.EndUserAction();
+                EndBindingScope(ConnectorBindingScope.Copy);
                 throw;
             }
         }
@@ -1580,6 +1582,13 @@ namespace Npgsql
             return result;
         }
 
+        /// <summary>
+        /// Ends binding scope to the physical connection and returns it to the pool. Only useful with multiplexing on.
+        /// </summary>
+        /// <remarks>
+        /// After this method is called, under no circumstances the physical connection (connector) should ever be used if multiplexing is on.
+        /// See #3249.
+        /// </remarks>
         internal void EndBindingScope(ConnectorBindingScope scope)
         {
             Debug.Assert(ConnectorBindingScope != ConnectorBindingScope.None, $"Ending binding scope {scope} but connection's scope is null");

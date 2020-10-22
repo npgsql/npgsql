@@ -388,9 +388,8 @@ namespace Npgsql
                 Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async, cancellationToken: default), _connector);
             }
 
-            var connector = _connector;
+            _connector.EndUserAction();
             Cleanup();
-            connector.EndUserAction();
         }
 
 #pragma warning disable CS8625
