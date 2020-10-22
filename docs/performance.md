@@ -26,7 +26,7 @@ using (var reader = cmd.ExecuteReader())
 
 ## Performance Counters
 
-Npgsql 3.2 includes support for *performance counters*, which provide visibility into connections and the connection pool - this helps you understand what your application is doing in real-time, whether there's a connection leak, etc. Npgsql counter support is very similar to [that of other ADO.NET providers, such as SqlClient](https://msdn.microsoft.com/en-us/library/ms254503(v=vs.110).aspx), it's recommended that your read that page first.
+Npgsql 3.2 includes support for *performance counters*, which provide visibility into connections and the connection pool - this helps you understand what your application is doing in real-time, whether there's a connection leak, etc. Npgsql counter support is very similar to [that of other ADO.NET providers, such as SqlClient](https://msdn.microsoft.com/en-us/library/ms254503(v=vs.110).aspx), it's recommended that your read that page first. The feature was removed in Npgsql 5.0.
 
 Using performance counters first involves setting them up on your Windows system. To do this you will need to install Npgsql's MSI, which is available on the [github releases page](https://github.com/npgsql/npgsql/releases). Note that GAC installation isn't necessary (or recommended). Once the counters are installed, fire up the Windows Performance Monitor and look for the category ".NET Data Provider for PostgreSQL (Npgsql)".
 

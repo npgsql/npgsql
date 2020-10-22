@@ -24,10 +24,10 @@ Trust Server Certificate | Whether to trust the server certificate without valid
 Client Certificate       | Location of a client certificate to be sent to the server.              | [See docs](security.md)
 Check Certificate Revocation | Whether to check the certificate revocation list during authentication. False by default. | false
 Integrated Security      | Whether to use integrated security to log in (GSS/SSPI), currently supported on Windows only. [See docs for more info](security.md). | false
-Persist Security Info    | Gets or sets a Boolean value that indicates if security-sensitive information, such as the password, is not returned as part of the connection if the connection is open or has ever been in an open state. Since 3.1 only. | false
+Persist Security Info    | Gets or sets a Boolean value that indicates if security-sensitive information, such as the password, is not returned as part of the connection if the connection is open or has ever been in an open state. Introduced in 3.1. | false
 Kerberos Service Name    | The Kerberos service name to be used for authentication. [See docs for more info](security.md). | postgres
 Include Realm            | The Kerberos realm to be used for authentication. [See docs for more info](security.md).
-Include Error Detail     | When enabled, PostgreSQL error and notice details are included on <xref:Npgsql.PostgresException.Detail?displayProperty=nameWithType> and <xref:Npgsql.PostgresNotice.Detail?displayProperty=nameWithType>. These can contain sensitive data.
+Include Error Detail     | When enabled, PostgreSQL error and notice details are included on <xref:Npgsql.PostgresException.Detail?displayProperty=nameWithType> and <xref:Npgsql.PostgresNotice.Detail?displayProperty=nameWithType>. These can contain sensitive data. | false
 
 ## Pooling
 
@@ -36,8 +36,8 @@ Parameter                   | Description                                | Defau
 Pooling                     | Whether connection pooling should be used. | true
 Minimum Pool Size           | The minimum connection pool size.          | 0
 Maximum Pool Size           | The maximum connection pool size.          | 100 since 3.1, 20 previously
-Connection Idle Lifetime    | The time (in seconds) to wait before closing idle connections in the pool if the count of all connections exceeds `Minimum Pool Size`. Since 3.1 only. | 300
-Connection Pruning Interval | How many seconds the pool waits before attempting to prune idle connections that are beyond idle lifetime (see `Connection Idle Lifetime`). Since 3.1 only. | 10
+Connection Idle Lifetime    | The time (in seconds) to wait before closing idle connections in the pool if the count of all connections exceeds `Minimum Pool Size`. Introduced in 3.1. | 300
+Connection Pruning Interval | How many seconds the pool waits before attempting to prune idle connections that are beyond idle lifetime (see `Connection Idle Lifetime`). Introduced in 3.1. | 10
 
 ## Timeouts and Keepalive
 
@@ -57,7 +57,7 @@ Parameter                  | Description                                        
 -------------------------- | ------------------------------------------------------------ | -------
 Max Auto Prepare           | The maximum number SQL statements that can be automatically prepared at any given point. Beyond this number the least-recently-used statement will be recycled. Zero disables automatic preparation. | 0
 Auto Prepare Min Usages    | The minimum number of usages an SQL statement is used before it's automatically prepared. | 5
-Use Perf Counters          | Makes Npgsql write performance information about connection use to Windows Performance Counters. [Read the docs](performance.md#performance-counters) for more info.
+Use Perf Counters          | Makes Npgsql write performance information about connection use to Windows Performance Counters. [Read the docs](performance.md#performance-counters) for more info. Removed in 5.0. | false
 Read Buffer Size           | Determines the size of the internal buffer Npgsql uses when reading. Increasing may improve performance if transferring large values from the database. | 8192
 Write Buffer Size          | Determines the size of the internal buffer Npgsql uses when writing. Increasing may improve performance if transferring large values to the database. | 8192
 Socket Receive Buffer Size | Determines the size of socket receive buffer. | System-dependent
@@ -66,15 +66,15 @@ No Reset On Close          | Improves performance in some cases by not resetting
 
 ## Misc
 
-Parameter                | Description                                                                                     | Default
------------------------- | ----------------------------------------------------------------------------------------------- | ----------
-Application Name         | The optional application name parameter to be sent to the backend during connection initiation. |
-Enlist                   | Whether to enlist in an ambient TransactionScope.                                               | true
-Search Path              | Sets the schema search path.                                                                    |
-Client Encoding          | Gets or sets the client_encoding parameter. Since 3.1.                                          |
-Timezone                 | Gets or sets the session timezone, PGTZ environment variable can be used instead. Since 3.3.    |
-EF Template Database     | The database template to specify when creating a database in Entity Framework.                  | template1
-Load Table Composites    | Load table composite type definitions, and not just free-standing composite types.              | false
+Parameter                | Description                                                                                          | Default
+------------------------ | ---------------------------------------------------------------------------------------------------- | ----------
+Application Name         | The optional application name parameter to be sent to the backend during connection initiation.      |
+Enlist                   | Whether to enlist in an ambient TransactionScope.                                                    | true
+Search Path              | Sets the schema search path.                                                                         |
+Client Encoding          | Gets or sets the client_encoding parameter. Introduced in 3.1.                                       |
+Timezone                 | Gets or sets the session timezone, PGTZ environment variable can be used instead. Introduced in 3.3. |
+EF Template Database     | The database template to specify when creating a database in Entity Framework.                       | template1
+Load Table Composites    | Load table composite type definitions, and not just free-standing composite types.                   | false
 
 ## Compatibility
 
