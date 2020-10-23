@@ -36,7 +36,7 @@ namespace Npgsql
         /// </summary>
         readonly int _writeCoalescingBufferThresholdBytes;
 
-        readonly SemaphoreSlim? bootstrapSemaphore;
+        readonly SemaphoreSlim? _bootstrapSemaphore;
 
         /// <summary>
         /// Called exactly once per multiplexing pool, when the first connection is opened, with two goals:
@@ -48,23 +48,19 @@ namespace Npgsql
             Debug.Assert(_multiplexing);
 
             var hasSemaphore = async
-                ? await bootstrapSemaphore!.WaitAsync(timeout.TimeLeft, cancellationToken)
-                : bootstrapSemaphore!.Wait(timeout.TimeLeft, cancellationToken);
-
-            // We've timed out - calling Check, to throw the correct exception
-            if (!hasSemaphore)
-                timeout.Check();
-
-            if (IsBootstrapped)
-            {
-                bootstrapSemaphore!.Release();
-                return;
-            }
+                ? await _bootstrapSemaphore!.WaitAsync(timeout.TimeLeft, cancellationToken)
+                : _bootstrapSemaphore!.Wait(timeout.TimeLeft, cancellationToken);
 
             try
             {
-                var connector =
-                await conn.StartBindingScope(ConnectorBindingScope.Connection, timeout, async, cancellationToken);
+                // We've timed out - calling Check, to throw the correct exception
+                if (!hasSemaphore)
+                    timeout.Check();
+
+                if (IsBootstrapped)
+                    return;
+
+                var connector = await conn.StartBindingScope(ConnectorBindingScope.Connection, timeout, async, cancellationToken);
                 using var _ = Defer(() => conn.EndBindingScope(ConnectorBindingScope.Connection));
 
                 // Somewhat hacky. Extract the connector's type mapper as our pool-wide mapper,
@@ -78,7 +74,7 @@ namespace Npgsql
             }
             finally
             {
-                bootstrapSemaphore!.Release();
+                _bootstrapSemaphore!.Release();
             }
         }
 

@@ -143,7 +143,7 @@ namespace Npgsql
             {
                 _multiplexing = true;
 
-                bootstrapSemaphore = new SemaphoreSlim(1);
+                _bootstrapSemaphore = new SemaphoreSlim(1);
 
                 // Translate microseconds to ticks for cancellation token
                 _writeCoalescingDelayTicks = Settings.WriteCoalescingDelayUs * 100;
