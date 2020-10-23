@@ -575,14 +575,12 @@ namespace Npgsql
 
             try
             {
-                // Note that beginning a transaction doesn't actually send anything to the backend
-                // (only prepends), so strictly speaking we don't have to start a user action.
-                // However, we do this for consistency as if we did (for the checks and exceptions)
-                using (connector.StartUserAction())
-                {
-                    connector.Transaction.Init(level);
-                    return connector.Transaction;
-                }
+                // Note that beginning a transaction doesn't actually send anything to the backend (only prepends), so strictly speaking we
+                // don't have to start a user action. However, we do this for consistency as if we did (for the checks and exceptions)
+                using var _ = connector.StartUserAction();
+
+                connector.Transaction.Init(level);
+                return connector.Transaction;
             }
             catch
             {

@@ -1582,7 +1582,7 @@ LANGUAGE plpgsql VOLATILE";
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
             }
 
-            await pgMock.WriteScalarResponse(1);
+            await pgMock.WriteScalarResponseAndFlush(1);
             Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
         }
 
@@ -1634,7 +1634,7 @@ LANGUAGE plpgsql VOLATILE";
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
             }
 
-            await pgMock.WriteScalarResponse(1);
+            await pgMock.WriteScalarResponseAndFlush(1);
             Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
         }
 
