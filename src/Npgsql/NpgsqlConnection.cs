@@ -617,14 +617,7 @@ namespace Npgsql
             if (cancellationToken.IsCancellationRequested)
 		        return new ValueTask<NpgsqlTransaction>(Task.FromCanceled<NpgsqlTransaction>(cancellationToken));
 
-            try
-            {
-                return new ValueTask<NpgsqlTransaction>(BeginTransaction(level));
-            }
-            catch (Exception exception)
-            {
-                return new ValueTask<NpgsqlTransaction>(Task.FromException<NpgsqlTransaction>(exception));
-            }
+            return BeginTransaction(level, true, cancellationToken);
         }
 #endif
 
