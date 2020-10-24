@@ -223,7 +223,7 @@ namespace Npgsql
                     }
 
                     // If we're here, our waiting attempt on the idle connector channel was released with a null
-                    // (or bad connector). Check again if a new idle connector has appeared since we last checked.
+                    // (or bad connector), or we're in sync mode. Check again if a new idle connector has appeared since we last checked.
                     if (TryGetIdleConnector(out connector))
                         return AssignConnection(conn, connector);
 
