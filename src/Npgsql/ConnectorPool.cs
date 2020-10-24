@@ -199,13 +199,13 @@ namespace Npgsql
                             // Channels don't have a sync API. To avoid sync-over-async issues, we use a special single-
                             // thread synchronization context which ensures that callbacks are executed on a dedicated
                             // thread.
-
+                            // Note that AsTask isn't safe here for getting the result, since it still causes some continuation code
+                            // to get executed on the TP (which can cause deadlocks).
                             using (SingleThreadSynchronizationContext.Enter())
+                            using (var mre = new ManualResetEventSlim())
                             {
-                                connector = _idleConnectorReader.ReadAsync(finalToken)
-                                    .AsTask().GetAwaiter().GetResult();
-                                if (CheckIdleConnector(connector))
-                                    return AssignConnection(conn, connector);
+                                _idleConnectorReader.WaitToReadAsync(finalToken).GetAwaiter().OnCompleted(() => mre.Set());
+                                mre.Wait(finalToken);
                             }
                         }
                     }
