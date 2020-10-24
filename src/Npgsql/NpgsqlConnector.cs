@@ -782,7 +782,7 @@ namespace Npgsql
                     if (perIpTimeout.IsSet)
                     {
                         combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                        combinedCts.CancelAfter(perIpTimeout.TimeLeft.Milliseconds);
+                        combinedCts.CancelAfter((int)perIpTimeout.TimeLeft.TotalMilliseconds);
                         finalCt = combinedCts.Token;
                     }
 
