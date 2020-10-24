@@ -41,7 +41,13 @@ namespace Npgsql
         /// <summary>
         /// If true, the transaction has been committed/rolled back, but not disposed.
         /// </summary>
-        internal bool IsCompleted => _connector.TransactionStatus == TransactionStatus.Idle;
+        internal bool IsCompleted => _isCompleted || _connector.TransactionStatus == TransactionStatus.Idle;
+
+        /// <summary>
+        /// Only useful for multiplexing, as on commit/rollback the connector will return to the pool.
+        /// And we shouldn't use it after that.
+        /// </summary>
+        bool _isCompleted;
 
         internal bool IsDisposed;
 
@@ -130,6 +136,7 @@ namespace Npgsql
             {
                 Log.Debug("Committing transaction", _connector.Id);
                 await _connector.ExecuteInternalCommand(PregeneratedMessages.CommitTransaction, async, cancellationToken);
+                _isCompleted = true;
             }
         }
 
@@ -158,12 +165,15 @@ namespace Npgsql
         /// </summary>
         public override void Rollback() => Rollback(false).GetAwaiter().GetResult();
 
-        Task Rollback(bool async, CancellationToken cancellationToken = default)
+        async Task Rollback(bool async, CancellationToken cancellationToken = default)
         {
             CheckReady();
-            return _connector.DatabaseInfo.SupportsTransactions
-                ? _connector.Rollback(async, cancellationToken)
-                : Task.CompletedTask;
+
+            if (!_connector.DatabaseInfo.SupportsTransactions)
+                return;
+
+            await _connector.Rollback(async, cancellationToken);
+            _isCompleted = true;
         }
 
         /// <summary>
