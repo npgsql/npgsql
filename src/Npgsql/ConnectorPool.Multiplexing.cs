@@ -51,12 +51,12 @@ namespace Npgsql
                 ? await _bootstrapSemaphore!.WaitAsync(timeout.TimeLeft, cancellationToken)
                 : _bootstrapSemaphore!.Wait(timeout.TimeLeft, cancellationToken);
 
+            // We've timed out - calling Check, to throw the correct exception
+            if (!hasSemaphore)
+                timeout.Check();
+
             try
             {
-                // We've timed out - calling Check, to throw the correct exception
-                if (!hasSemaphore)
-                    timeout.Check();
-
                 if (IsBootstrapped)
                     return;
 

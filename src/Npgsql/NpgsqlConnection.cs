@@ -558,7 +558,7 @@ namespace Npgsql
         /// There's no support for nested transactions.
         /// </remarks>
         public new NpgsqlTransaction BeginTransaction(IsolationLevel level)
-            => BeginTransaction(level, false, CancellationToken.None).GetAwaiter().GetResult();
+            => BeginTransaction(level, async: false, CancellationToken.None).GetAwaiter().GetResult();
 
         async ValueTask<NpgsqlTransaction> BeginTransaction(IsolationLevel level, bool async, CancellationToken cancellationToken)
         {
@@ -616,8 +616,8 @@ namespace Npgsql
         {
             if (cancellationToken.IsCancellationRequested)
 		        return new ValueTask<NpgsqlTransaction>(Task.FromCanceled<NpgsqlTransaction>(cancellationToken));
-
-            return BeginTransaction(level, true, cancellationToken);
+            using (NoSynchronizationContextScope.Enter())
+                return BeginTransaction(level, async: true, cancellationToken);
         }
 #endif
 
