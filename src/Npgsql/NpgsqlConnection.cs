@@ -668,15 +668,16 @@ namespace Npgsql
                 // A System.Transactions transaction is still in progress, we need to wait for it to complete.
                 if (connection.EnlistedTransaction != null)
                 {
+                    // If a non-pooled connection is being closed but is enlisted in an ongoing
+                    // TransactionScope, simply detach the connector from the connection and leave
+                    // it open. It will be closed when the TransactionScope is disposed.
+                    connector.Connection = null;
+
                     // Close the connection and disconnect it from the resource manager but leave the connector
                     // in a enlisted pending list in the pool.
                     if (connection.Settings.Pooling)
                         connection._pool!.AddPendingEnlistedConnector(connector, connection.EnlistedTransaction);
 
-                    // If a non-pooled connection is being closed but is enlisted in an ongoing
-                    // TransactionScope, simply detach the connector from the connection and leave
-                    // it open. It will be closed when the TransactionScope is disposed.
-                    connector.Connection = null;
                     connection.EnlistedTransaction = null;
                 }
                 else
