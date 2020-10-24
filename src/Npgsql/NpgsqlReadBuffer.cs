@@ -200,6 +200,8 @@ namespace Npgsql
                         // _timeoutCts
                         Cts.Stop();
 
+                        var isMono = Type.GetType("Mono.Runtime") != null;
+
                         switch (e)
                         {
                         // User requested the cancellation (at this moment, it should be only WaitAsync)
@@ -209,9 +211,12 @@ namespace Npgsql
 
                         // Read timeout
                         case OperationCanceledException _:
+                        // Timeout with ssl and mono
+                        case AggregateException _ when isMono && Connector.IsSecure && e.InnerException is IOException &&
+                                                    (e.InnerException.InnerException as SocketException)?.SocketErrorCode == SocketError.WouldBlock:
                         // Note that mono throws SocketException with the wrong error (see #1330)
                         case IOException _ when (e.InnerException as SocketException)?.SocketErrorCode ==
-                                                (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock):
+                                                (isMono ? SocketError.WouldBlock : SocketError.TimedOut):
                         {
                             Debug.Assert(e is OperationCanceledException ? async : !async);
 
@@ -222,6 +227,13 @@ namespace Npgsql
                             // We simply continue and throw the timeout one.
                             if (!wasCancellationRequested && Connector.CancelRequest(requestedByUser: false))
                             {
+                                // If there was a timeout while using ssl on .net framework, the ssl stream is broken and no longer can be used
+                                // More at #1501
+                                #if NET461
+                                if (Connector.IsSecure)
+                                    throw Connector.Break(TimeoutException());
+                                #endif
+
                                 // If the cancellation timeout is negative, we break the connection immediately
                                 var cancellationTimeout = Connector.Settings.CancellationTimeout;
                                 if (cancellationTimeout >= 0)
