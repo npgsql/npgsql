@@ -93,11 +93,7 @@ namespace Npgsql.Util
         internal static StringComparer InvariantCaseIgnoringStringComparer => StringComparer.InvariantCultureIgnoreCase;
 
         internal static bool IsWindows =>
-#if NET461
-            Environment.OSVersion.Platform == PlatformID.Win32NT;
-#else
             System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows);
-#endif
     }
 
     enum FormatCode : short

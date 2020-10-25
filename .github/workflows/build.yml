@@ -154,9 +154,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Setup MSBuild
-        uses: warrenbuckley/Setup-MSBuild@v1
-
       - name: NuGet Cache
         uses: actions/cache@v2
         with:
@@ -180,32 +177,11 @@ jobs:
         run: dotnet pack Npgsql.sln --configuration Release --output nupkgs -p:ContinuousIntegrationBuild=true
         shell: bash
 
-#      - name: Restore for VSIX
-#        run: msbuild src\VSIX\VSIX.csproj -t:Restore -v:Minimal
-
-#      - name: Create VSIX
-#        run: msbuild src\VSIX\VSIX.csproj -p:Configuration=Release -v:Minimal
-
-#      - name: Create MSI
-#        run: msbuild src\MSI\MSI.wixproj -p:Configuration=Release -v:Minimal
-
       - name: Upload artifacts (nupkg)
         uses: actions/upload-artifact@v2
         with:
           name: Npgsql.nupkgs
           path: nupkgs
-
-#      - name: Upload artifacts (vsix)
-#        uses: actions/upload-artifact@v2
-#        with:
-#          name: Npgsql.vsix
-#          path: src/VSIX/bin/Release/Npgsql.vsix
-
-#      - name: Upload artifacts (msi)
-#        uses: actions/upload-artifact@v2
-#        with:
-#          name: Npgsql.msi
-#          path: src/MSI/bin/Release/en-us/Npgsql.msi
 
       - name: Publish packages to MyGet (vnext)
         if: startsWith(github.ref, 'refs/heads/') && startsWith(github.ref, 'refs/heads/hotfix/') == false

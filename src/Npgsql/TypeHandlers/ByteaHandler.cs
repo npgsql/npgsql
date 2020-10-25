@@ -27,13 +27,13 @@ namespace Npgsql.TypeHandlers
         new[] {
             typeof(byte[]),
             typeof(ArraySegment<byte>),
-#if !NETSTANDARD2_0 && !NET461
+#if !NETSTANDARD2_0
             typeof(ReadOnlyMemory<byte>),
             typeof(Memory<byte>)
 #endif
         })]
     public class ByteaHandler : NpgsqlTypeHandler<byte[]>, INpgsqlTypeHandler<ArraySegment<byte>>
-#if !NETSTANDARD2_0 && !NET461
+#if !NETSTANDARD2_0
         , INpgsqlTypeHandler<ReadOnlyMemory<byte>>, INpgsqlTypeHandler<Memory<byte>>
 #endif
     {
@@ -98,7 +98,7 @@ namespace Npgsql.TypeHandlers
             await buf.DirectWrite(new ReadOnlyMemory<byte>(value, offset, count), async, cancellationToken);
         }
 
-#if !NETSTANDARD2_0 && !NET461
+#if !NETSTANDARD2_0
         /// <inheritdoc />
         public int ValidateAndGetLength(Memory<byte> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
             => ValidateAndGetLength(value.Length, parameter);

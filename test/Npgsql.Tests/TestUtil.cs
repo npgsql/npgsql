@@ -465,7 +465,7 @@ namespace Npgsql.Tests
         Unpooled
     }
 
-#if NET461 || NETSTANDARD2_0
+#if NETSTANDARD2_0
     static class QueueExtensions
     {
         public static bool TryDequeue<T>(this Queue<T> queue, out T result)

@@ -101,10 +101,10 @@ namespace Npgsql
             return WriteAsync(new Memory<byte>(buffer, offset, count), cancellationToken).AsTask();
         }
 
-#if !NET461 && !NETSTANDARD2_0
-        public override void Write(ReadOnlySpan<byte> buffer)
-#else
+#if NETSTANDARD2_0
         public void Write(ReadOnlySpan<byte> buffer)
+#else
+        public override void Write(ReadOnlySpan<byte> buffer)
 #endif
         {
             CheckDisposed();
@@ -141,10 +141,10 @@ namespace Npgsql
             }
         }
 
-#if !NET461 && !NETSTANDARD2_0
-        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
-#else
+#if NETSTANDARD2_0
         public ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+#else
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
 #endif
         {
             CheckDisposed();
@@ -220,10 +220,10 @@ namespace Npgsql
             return ReadAsync(new Memory<byte>(buffer, offset, count), cancellationToken).AsTask();
         }
 
-#if !NET461 && !NETSTANDARD2_0
-        public override int Read(Span<byte> span)
-#else
+#if NETSTANDARD2_0
         public int Read(Span<byte> span)
+#else
+        public override int Read(Span<byte> span)
 #endif
         {
             CheckDisposed();
@@ -236,10 +236,10 @@ namespace Npgsql
             return count;
         }
 
-#if !NET461 && !NETSTANDARD2_0
-        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
-#else
+#if NETSTANDARD2_0
         public ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+#else
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
 #endif
         {
             CheckDisposed();

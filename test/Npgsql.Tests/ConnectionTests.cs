@@ -6,16 +6,13 @@ using System.Linq;
 using System.Net;
 using System.Net.Security;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Tests.Support;
 using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;
 using static Npgsql.Util.Statics;
-
-#if NET461
-using System.Text;
-#endif
 
 namespace Npgsql.Tests
 {
@@ -1194,6 +1191,7 @@ CREATE TABLE record ()");
             }
         }
 
+// TODO: Port this test to .NET Core somehow
 #if NET461
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/392")]
         public async Task NonUTF8Encoding()
@@ -1454,7 +1452,6 @@ CREATE TABLE record ()");
             };
         }
 
-#if !NET461 // .NET 4.6.1 doesn't support cancellation tokens on socket operations, so no async timeouts
         [Test, Description("Simulates a timeout during the authentication phase")]
         [IssueLink("https://github.com/npgsql/npgsql/issues/3227")]
         [Timeout(10000)]
@@ -1472,7 +1469,6 @@ CREATE TABLE record ()");
                 Throws.Exception.TypeOf<NpgsqlException>()
                     .With.InnerException.TypeOf<TimeoutException>());
         }
-#endif
 
         public ConnectionTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
     }

@@ -15,8 +15,4 @@
     <ProjectReference Include="../../src/Npgsql/Npgsql.csproj" />
   </ItemGroup>
 
-  <ItemGroup Condition=" '$(TargetFramework)' == 'net461' ">
-    <PackageReference Include="BenchmarkDotNet.Diagnostics.Windows" />
-  </ItemGroup>
-
 </Project>

@@ -9,7 +9,7 @@ using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
-#if !NET461 && !NETSTANDARD2_0 && !NETSTANDARD2_1
+#if !NETSTANDARD2_0 && !NETSTANDARD2_1
 using System.Collections.Immutable;
 #endif
 
@@ -30,7 +30,7 @@ namespace Npgsql.TypeHandlers
     {
         typeof(Dictionary<string, string?>),
         typeof(IDictionary<string, string?>),
-#if !NET461 && !NETSTANDARD2_0 && !NETSTANDARD2_1
+#if !NETSTANDARD2_0 && !NETSTANDARD2_1
         typeof(ImmutableDictionary<string, string?>)
 #endif
     })]
@@ -56,7 +56,7 @@ namespace Npgsql.TypeHandlers
     public class HstoreHandler :
         NpgsqlTypeHandler<Dictionary<string, string?>>,
         INpgsqlTypeHandler<IDictionary<string, string?>>
-#if !NET461 && !NETSTANDARD2_0 && !NETSTANDARD2_1
+#if !NETSTANDARD2_0 && !NETSTANDARD2_1
         , INpgsqlTypeHandler<ImmutableDictionary<string, string?>>
 #endif
     {
@@ -159,7 +159,7 @@ namespace Npgsql.TypeHandlers
 
         #endregion
 
-#if !NET461 && !NETSTANDARD2_0 && !NETSTANDARD2_1
+#if !NETSTANDARD2_0 && !NETSTANDARD2_1
         #region ImmutableDictionary
 
         /// <inheritdoc />
