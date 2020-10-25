@@ -630,14 +630,25 @@ namespace Npgsql
                                     : SslDefaultValidation;
 
                         timeout.CheckAndApply(this);
-                        var sslStream = new SslStream(_stream, leaveInnerStreamOpen: false, certificateValidationCallback);
 
-                        if (async)
-                            await sslStream.AuthenticateAsClientAsync(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, Settings.CheckCertificateRevocation);
-                        else
-                            sslStream.AuthenticateAsClient(Host, clientCertificates, SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, Settings.CheckCertificateRevocation);
+                        try
+                        {
+                            var sslStream = new SslStream(_stream, leaveInnerStreamOpen: false, certificateValidationCallback);
 
-                        _stream = sslStream;
+                            if (async)
+                                await sslStream.AuthenticateAsClientAsync(Host, clientCertificates,
+                                    SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, Settings.CheckCertificateRevocation);
+                            else
+                                sslStream.AuthenticateAsClient(Host, clientCertificates,
+                                    SslProtocols.Tls | SslProtocols.Tls11 | SslProtocols.Tls12, Settings.CheckCertificateRevocation);
+
+                            _stream = sslStream;
+                        }
+                        catch (Exception e)
+                        {
+                            throw new NpgsqlException("Exception while performing SSL handshake", e);
+                        }
+
                         ReadBuffer.Clear();  // Reset to empty after reading single SSL char
                         ReadBuffer.Underlying = _stream;
                         WriteBuffer.Underlying = _stream;

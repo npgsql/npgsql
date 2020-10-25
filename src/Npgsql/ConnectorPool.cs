@@ -323,8 +323,10 @@ namespace Npgsql
                     for (; i < _max; i++)
                         if (Interlocked.CompareExchange(ref _connectors[i], connector, null) == null)
                             break;
+
+                    Debug.Assert(i < _max, $"Could not find free slot in {_connectors} when opening.");
                     if (i == _max)
-                        throw new Exception($"Could not find free slot in {_connectors} when opening. Please report a bug.");
+                        throw new NpgsqlException($"Could not find free slot in {_connectors} when opening. Please report a bug.");
 
                     // Only start pruning if it was this thread that incremented open count past _min.
                     if (numConnectors == _min)
@@ -404,8 +406,10 @@ namespace Npgsql
             for (; i < _max; i++)
                 if (Interlocked.CompareExchange(ref _connectors[i], null, connector) == connector)
                     break;
+
+            Debug.Assert(i < _max, $"Could not find free slot in {_connectors} when closing.");
             if (i == _max)
-                throw new Exception($"Could not find connector in {_connectors} when closing. Please report a bug.");
+                throw new NpgsqlException($"Could not find free slot in {_connectors} when closing. Please report a bug.");
 
             var numConnectors = Interlocked.Decrement(ref _numConnectors);
             Debug.Assert(numConnectors >= 0);
