@@ -1,4 +1,4 @@
-#if NET461 || NETSTANDARD2_0
+#if NETSTANDARD2_0
 #pragma warning disable 1591
 using System.Data.Common;
 

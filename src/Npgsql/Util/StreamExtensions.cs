@@ -9,7 +9,7 @@ namespace Npgsql.Util
     // Helpers to read/write Span/Memory<byte> to Stream before netstandard 2.1
     static class StreamExtensions
     {
-#if NET461 || NETSTANDARD2_0
+#if NETSTANDARD2_0
         public static int Read(this Stream stream, Span<byte> buffer)
         {
             var sharedBuffer = ArrayPool<byte>.Shared.Rent(buffer.Length);

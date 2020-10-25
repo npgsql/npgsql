@@ -15,7 +15,7 @@ namespace Npgsql
         internal const int CommandStartId = 3;
         internal const int CommandStopId = 4;
 
-#if !NET461 && !NETSTANDARD2_0
+#if !NETSTANDARD2_0
         IncrementingPollingCounter? _bytesWrittenPerSecondCounter;
         IncrementingPollingCounter? _bytesReadPerSecondCounter;
 
@@ -92,7 +92,7 @@ namespace Npgsql
             Interlocked.Add(ref _multiplexingTicksWritten, stopwatch.ElapsedTicks);
         }
 
-#if !NET461 && !NETSTANDARD2_0
+#if !NETSTANDARD2_0
         static int GetIdleConnections()
         {
             // Note: there's no attempt here to be coherent in terms of race conditions, especially not with regards

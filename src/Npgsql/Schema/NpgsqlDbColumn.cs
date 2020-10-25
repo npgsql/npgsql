@@ -1,12 +1,9 @@
 ﻿using System;
+using System.Data.Common;
 using System.Runtime.CompilerServices;
 using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
-
-#if !NET461
-using System.Data.Common;
-#endif
 
 namespace Npgsql.Schema
 {

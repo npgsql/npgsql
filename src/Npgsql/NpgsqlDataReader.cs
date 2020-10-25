@@ -29,11 +29,8 @@ namespace Npgsql
     /// Reads a forward-only stream of rows from a data source.
     /// </summary>
 #pragma warning disable CA1010
-    public sealed class NpgsqlDataReader : DbDataReader
+    public sealed class NpgsqlDataReader : DbDataReader, IDbColumnSchemaGenerator
 #pragma warning restore CA1010
-#if !NET461
-        , IDbColumnSchemaGenerator
-#endif
     {
         internal NpgsqlCommand Command { get; private set; } = default!;
         internal NpgsqlConnector Connector { get; }
@@ -832,10 +829,10 @@ namespace Npgsql
         /// <summary>
         /// Releases the resources used by the <see cref="NpgsqlDataReader">NpgsqlDataReader</see>.
         /// </summary>
-#if !NET461 && !NETSTANDARD2_0
-        public override ValueTask DisposeAsync()
-#else
+#if NETSTANDARD2_0
         public ValueTask DisposeAsync()
+#else
+        public override ValueTask DisposeAsync()
 #endif
         {
             using (NoSynchronizationContextScope.Enter())
@@ -850,10 +847,10 @@ namespace Npgsql
         /// <summary>
         /// Closes the <see cref="NpgsqlDataReader"/> reader, allowing a new command to be executed.
         /// </summary>
-#if !NET461 && !NETSTANDARD2_0
-        public override Task CloseAsync()
-#else
+#if NETSTANDARD2_0
         public Task CloseAsync()
+#else
+        public override Task CloseAsync()
 #endif
             => Close(connectionClosing: false, async: true);
 
@@ -1775,10 +1772,8 @@ namespace Npgsql
         public ReadOnlyCollection<NpgsqlDbColumn> GetColumnSchema()
             => GetColumnSchema(async: false).GetAwaiter().GetResult();
 
-#if !NET461
         ReadOnlyCollection<DbColumn> IDbColumnSchemaGenerator.GetColumnSchema()
             => new ReadOnlyCollection<DbColumn>(GetColumnSchema().Select(c => (DbColumn)c).ToList());
-#endif
 
         /// <summary>
         /// Asynchronously returns schema information for the columns in the current resultset.

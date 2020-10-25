@@ -546,15 +546,6 @@ namespace Npgsql
             if (username?.Length > 0)
                 return username;
 
-#if NET461
-            if (PGUtil.IsWindows && Type.GetType("Mono.Runtime") == null)
-            {
-                username = WindowsUsernameProvider.GetUsername(Settings.IncludeRealm);
-                if (username?.Length > 0)
-                    return username;
-            }
-#endif
-
             if (!PGUtil.IsWindows)
             {
                 username = KerberosUsernameProvider.GetUsername(Settings.IncludeRealm);
@@ -846,7 +837,7 @@ namespace Npgsql
                     ? Settings.TcpKeepAliveInterval
                     : Settings.TcpKeepAliveTime;
 
-#if NET461 || NETSTANDARD2_0 || NETSTANDARD2_1
+#if NETSTANDARD2_0 || NETSTANDARD2_1
                 if (!PGUtil.IsWindows)
                     throw new PlatformNotSupportedException(
                         "Npgsql management of TCP keepalive is supported only on Windows, unless targeting .NET Core 3.0 and above " +
@@ -1966,21 +1957,6 @@ namespace Npgsql
 
         internal async Task<bool> Wait(bool async, int timeout, CancellationToken cancellationToken = default)
         {
-#if NET461
-            if (timeout > 0)
-            {
-                // Issue 1501
-                if (IsSecure)
-                    throw new NotSupportedException("Wait with timeout isn't supported when SSL is used on .NET Framework. Please consider moving to .NET Core or disabling SSL.");
-                // .net framework doesn't support cancellation tokens, so we're unable to timeout async reads
-                if (async)
-                    throw new NotSupportedException("WaitAsync with timeout isn't supported when used on .NET Framework. Please consider moving to .NET Core.");
-            }
-            // .net framework doesn't support cancellation tokens
-            if (cancellationToken.CanBeCanceled)
-                throw new NotSupportedException("WaitAsync with cancellation token isn't supported when used on .NET Framework. Please consider moving to .NET Core.");
-#endif
-
             using var _ = StartUserAction(ConnectorState.Waiting);
             // We may have prepended messages in the connection's write buffer - these need to be flushed now.
             await Flush(async, cancellationToken);

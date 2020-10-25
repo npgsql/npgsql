@@ -169,7 +169,7 @@ namespace Npgsql.Tests.Types
             }
         }
 
-#if !NETSTANDARD2_0 && !NET461
+#if !NETSTANDARD2_0
         [Test]
         public async Task Memory()
         {

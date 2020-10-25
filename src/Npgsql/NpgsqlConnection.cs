@@ -590,7 +590,7 @@ namespace Npgsql
             }
         }
 
-#if !NET461 && !NETSTANDARD2_0
+#if !NETSTANDARD2_0
         /// <summary>
         /// Asynchronously begins a database transaction.
         /// </summary>
@@ -677,10 +677,10 @@ namespace Npgsql
         /// Releases the connection. If the connection is pooled, it will be returned to the pool and made available for re-use.
         /// If it is non-pooled, the physical connection will be closed.
         /// </summary>
-#if !NET461 && !NETSTANDARD2_0
-        public override Task CloseAsync()
-#else
+#if NETSTANDARD2_0
         public Task CloseAsync()
+#else
+        public override Task CloseAsync()
 #endif
         {
             using (NoSynchronizationContextScope.Enter())
@@ -786,7 +786,7 @@ namespace Npgsql
 
                         if (Settings.Multiplexing)
                         {
-                            // We've already closed ongoing operations rolled back any transaction and the connector is already in the pool, 
+                            // We've already closed ongoing operations rolled back any transaction and the connector is already in the pool,
                             // so we must be unbound. Nothing to do.
                             Debug.Assert(ConnectorBindingScope == ConnectorBindingScope.None,
                                 $"When closing a multiplexed connection, the connection was supposed to be unbound, but {nameof(ConnectorBindingScope)} was {ConnectorBindingScope}");
@@ -795,7 +795,7 @@ namespace Npgsql
                         {
                             connector.Connection = null;
                             _pool.Return(connector);
-                        }   
+                        }
                     }
                 }
 
@@ -824,10 +824,10 @@ namespace Npgsql
         /// <summary>
         /// Releases all resources used by the <see cref="NpgsqlConnection">NpgsqlConnection</see>.
         /// </summary>
-#if !NET461 && !NETSTANDARD2_0
-        public async override ValueTask DisposeAsync()
-#else
+#if NETSTANDARD2_0
         public async ValueTask DisposeAsync()
+#else
+        public override async ValueTask DisposeAsync()
 #endif
         {
             if (_disposed)
