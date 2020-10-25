@@ -467,38 +467,6 @@ namespace Npgsql.Tests
             }
         }
 
-        [Test]
-        [IssueLink("https://github.com/npgsql/npgsql/issues/3248")]
-        // More at #3254
-        public async Task Bug3248()
-        {
-            if (!IsMultiplexing)
-                return;
-
-            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-            {
-                MaxPoolSize = 1,
-            };
-
-            var conn = await OpenConnectionAsync(csb.ToString());
-
-            var tx = conn.BeginTransaction();
-            var connector = conn.Connector!;
-            Assert.That(connector, Is.Not.Null);
-            await conn.ExecuteScalarAsync("SELECT 1", tx: tx);
-            await tx.CommitAsync();
-
-            conn = await OpenConnectionAsync(csb.ToString());
-            await using var _ = conn;
-            await using var otherTx = conn.BeginTransaction();
-
-            Assert.That(connector, Is.EqualTo(conn.Connector));
-            Assert.That(connector.TransactionStatus, Is.EqualTo(TransactionStatus.Pending));
-
-            await tx.DisposeAsync();
-            Assert.That(connector.TransactionStatus, Is.EqualTo(TransactionStatus.Pending));
-        }
-
         class NoTransactionDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
         {
             public async Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)

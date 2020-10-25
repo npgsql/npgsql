@@ -104,10 +104,11 @@ namespace Npgsql
         internal TransactionStatus TransactionStatus { get; set; }
 
         /// <summary>
-        /// A transaction object for this connector.
-        /// To check whether a transaction is currently in progress on this connector, see <see cref="TransactionStatus"/>.
+        /// A transaction object for this connector. Since only one transaction can be in progress at any given time,
+        /// this instance is recycled. To check whether a transaction is currently in progress on this connector,
+        /// see <see cref="TransactionStatus"/>.
         /// </summary>
-        internal NpgsqlTransaction Transaction { get; set; }
+        internal NpgsqlTransaction Transaction { get; }
 
         /// <summary>
         /// The NpgsqlConnection that (currently) owns this connector. Null if the connector isn't
@@ -1771,8 +1772,6 @@ namespace Npgsql
                 throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {TransactionStatus} of enum {nameof(TransactionStatus)}. Please file a bug.");
             }
 
-            // TODO: if multiplexing is on and the TransactionStatus is Pending, InTransactionBlock or InFailedTransactionBlock
-            // the connector is already in the pool by this point
             if (_sendResetOnClose)
             {
                 if (PreparedStatementManager.NumPrepared > 0)

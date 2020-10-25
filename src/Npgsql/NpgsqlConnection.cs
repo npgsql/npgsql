@@ -579,7 +579,6 @@ namespace Npgsql
                 // However, we do this for consistency as if we did (for the checks and exceptions)
                 using (connector.StartUserAction())
                 {
-                    connector.Transaction = new NpgsqlTransaction(connector);
                     connector.Transaction.Init(level);
                     return connector.Transaction;
                 }
