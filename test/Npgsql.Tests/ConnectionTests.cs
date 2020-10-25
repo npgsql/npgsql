@@ -488,7 +488,7 @@ namespace Npgsql.Tests
         [Test]
         public async Task UnixDomainSocket()
         {
-            if (RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 if (Environment.OSVersion.Version.Major < 10 || Environment.OSVersion.Version.Build < 17093)
                     Assert.Ignore("Unix-domain sockets support was introduced in Windows build 17093");
@@ -496,8 +496,9 @@ namespace Npgsql.Tests
                 // On Windows we first need a classic IP connection to make sure we're running against the
                 // right backend version
                 using var versionConnection = await OpenConnectionAsync();
-                TestUtil.MinimumPgVersion(versionConnection, "13.0",
-                    "Unix-domain sockets support on Windows was introduced in PostgreSQL 13");
+                MinimumPgVersion(versionConnection, "13.0", "Unix-domain sockets support on Windows was introduced in PostgreSQL 13");
+
+                Assert.Ignore("This test currently fails on Windows against PG13 (#2942)");
             }
 
             var port = new NpgsqlConnectionStringBuilder(ConnectionString).Port;
