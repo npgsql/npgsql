@@ -81,11 +81,13 @@ jobs:
         shell: bash
         run: |
           # Find EnterpriseDB version number
-          EDB_VERSION=$(\
-            curl -Ls 'http://sbp.enterprisedb.com/applications.xml' |
-            sed -n '\#<id>postgresql_${{ matrix.pg_major }}</id>#{n;p;n;p;}' |
-            sed -n '\#<platform>windows-x64</platform>#{n;p;}' |
-            sed -E 's#.*<version>([^<]+)</version>#\1#')
+          EDB_VERSION=$(pwsh -c "
+              \$global:progressPreference='silentlyContinue';
+              Invoke-WebRequest -URI https://www.postgresql.org/applications-v2.xml |
+                  Select-Object -ExpandProperty Content |
+                  Select-Xml -XPath '/applications/application[id=\"postgresql_${{ matrix.pg_major }}\" and platform=\"windows-x64\"]/version/text()' |
+                  Select-Object -First 1 -ExpandProperty Node |
+                  Select-Object -ExpandProperty Value")
 
           # Install PostgreSQL
           echo "Installing PostgreSQL (version: ${EDB_VERSION})"
