@@ -69,9 +69,16 @@ namespace Npgsql.Tests.Support
                 while (true)
                 {
                     var serverOrCancellationRequest = await Accept();
-                    await _pendingRequestsWriter.WriteAsync(serverOrCancellationRequest);
                     if (serverOrCancellationRequest.Server is { } server)
-                        _ = server.Startup(); // Don't wait for this to complete
+                    {
+                        // Hand off the new server to the client test only once startup is complete, to avoid reading/writing in parallel
+                        // during startup. Don't wait for all this to complete - continue to accept other connections in case that's needed.
+                        _ = server.Startup().ContinueWith(t => _pendingRequestsWriter.WriteAsync(serverOrCancellationRequest));
+                    }
+                    else
+                    {
+                        await _pendingRequestsWriter.WriteAsync(serverOrCancellationRequest);
+                    }
                 }
 
                 // ReSharper disable once FunctionNeverReturns
