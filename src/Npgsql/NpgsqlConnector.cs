@@ -1330,9 +1330,6 @@ namespace Npgsql
             switch (newStatus)
             {
             case TransactionStatus.Idle:
-                // Connection is null if a connection enlisted in a TransactionScope was closed before the
-                // TransactionScope completed - the connector is still enlisted, but has no connection.
-                Connection?.EndBindingScope(ConnectorBindingScope.Transaction);
                 break;
             case TransactionStatus.InTransactionBlock:
             case TransactionStatus.InFailedTransactionBlock:
@@ -1752,6 +1749,8 @@ namespace Npgsql
                 _origReadBuffer = null;
             }
 
+            var endBindingScope = false;
+
             // Must rollback transaction before sending DISCARD ALL
             switch (TransactionStatus)
             {
@@ -1762,11 +1761,13 @@ namespace Npgsql
                 // Just clear the transaction state.
                 ProcessNewTransactionStatus(TransactionStatus.Idle);
                 ClearTransaction();
+                endBindingScope = true;
                 break;
             case TransactionStatus.InTransactionBlock:
             case TransactionStatus.InFailedTransactionBlock:
                 await Rollback(async, cancellationToken);
                 ClearTransaction();
+                endBindingScope = true;
                 break;
             default:
                 throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {TransactionStatus} of enum {nameof(TransactionStatus)}. Please file a bug.");
@@ -1786,6 +1787,13 @@ namespace Npgsql
                     // We simply send DISCARD ALL which is more efficient than sending the above messages separately
                     PrependInternalMessage(PregeneratedMessages.DiscardAll, 2);
                 }
+            }
+
+            if (endBindingScope)
+            {
+                // Connection is null if a connection enlisted in a TransactionScope was closed before the
+                // TransactionScope completed - the connector is still enlisted, but has no connection.
+                Connection?.EndBindingScope(ConnectorBindingScope.Transaction);
             }
         }
 
