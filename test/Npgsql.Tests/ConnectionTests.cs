@@ -740,7 +740,7 @@ namespace Npgsql.Tests
                 {
                     connection.Open();
                     command.Connection = connection;
-                    var tx = connection.BeginTransaction();
+                    using var tx = connection.BeginTransaction();
                     await command.ExecuteScalarAsync();
                     await tx.CommitAsync();
                 }

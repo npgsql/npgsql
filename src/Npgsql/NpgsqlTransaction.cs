@@ -346,7 +346,7 @@ namespace Npgsql
                     Rollback();
                 }
 
-                _connector.Connection!.EndBindingScope(ConnectorBindingScope.Transaction);
+                _connector.Connection?.EndBindingScope(ConnectorBindingScope.Transaction);
 
                 IsDisposed = true;
             }
@@ -380,7 +380,7 @@ namespace Npgsql
                 // We're disposing, so no cancellation token
                 await _connector.CloseOngoingOperations(async: true);
                 await Rollback(async: true);
-                _connector.Connection!.EndBindingScope(ConnectorBindingScope.Transaction);
+                _connector.Connection?.EndBindingScope(ConnectorBindingScope.Transaction);
                 IsDisposed = true;
             }
         }
