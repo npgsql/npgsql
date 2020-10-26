@@ -334,7 +334,7 @@ namespace Npgsql
         #region Dispose
 
         /// <summary>
-        /// Disposes the transaction.
+        /// Disposes the transaction, rolling it back if it is still pending.
         /// </summary>
         protected override void Dispose(bool disposing)
         {
@@ -343,12 +343,21 @@ namespace Npgsql
 
             if (disposing)
             {
+                if (!IsCompleted)
+                {
+                    // We're disposing, so no cancellation token
+                    _connector.CloseOngoingOperations(async: false).GetAwaiter().GetResult();
+                    Rollback();
+                }
+
+                _connector.Connection?.EndBindingScope(ConnectorBindingScope.Transaction);
+
                 IsDisposed = true;
             }
         }
 
         /// <summary>
-        /// Disposes the transaction.
+        /// Disposes the transaction, rolling it back if it is still pending.
         /// </summary>
 #if !NET461 && !NETSTANDARD2_0
         public override ValueTask DisposeAsync()
@@ -358,10 +367,26 @@ namespace Npgsql
         {
             if (!IsDisposed)
             {
+                if (!IsCompleted)
+                {
+                    using (NoSynchronizationContextScope.Enter())
+                        return DisposeAsyncInternal();
+                }
+
+                _connector.Connection?.EndBindingScope(ConnectorBindingScope.Transaction);
+
                 IsDisposed = true;
             }
-
             return default;
+
+            async ValueTask DisposeAsyncInternal()
+            {
+                // We're disposing, so no cancellation token
+                await _connector.CloseOngoingOperations(async: true);
+                await Rollback(async: true);
+                _connector.Connection?.EndBindingScope(ConnectorBindingScope.Transaction);
+                IsDisposed = true;
+            }
         }
 
         /// <summary>
