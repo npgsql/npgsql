@@ -202,10 +202,9 @@ namespace Npgsql
 
                         switch (e)
                         {
-                        // User requested the cancellation (at this moment, it should be only WaitAsync)
+                        // User requested the cancellation (at this moment, it is COPY operations, WaitAsync, Reader's sequential methods, authentication)
                         case OperationCanceledException _ when cancellationToken.IsCancellationRequested:
-                            Debug.Assert(readingNotifications);
-                            throw;
+                            throw readingNotifications ? e : Connector.Break(e);
 
                         // Read timeout
                         case OperationCanceledException _:
@@ -220,7 +219,7 @@ namespace Npgsql
 
                             // Note that if PG cancellation fails, the exception for that is already logged internally by CancelRequest.
                             // We simply continue and throw the timeout one.
-                            if (!wasCancellationRequested && Connector.CancelRequest(requestedByUser: false))
+                            if (!HardCancellationBlock.Entered && !wasCancellationRequested && Connector.CancelRequest(requestedByUser: false))
                             {
                                 // If the cancellation timeout is negative, we break the connection immediately
                                 var cancellationTimeout = Connector.Settings.CancellationTimeout;

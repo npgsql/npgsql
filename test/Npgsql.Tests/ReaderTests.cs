@@ -1724,6 +1724,42 @@ LANGUAGE plpgsql VOLATILE";
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
         }
 
+        [Test, Description("Timeouts ReadAsGetFieldValueAsync")]
+        [Timeout(15000)]
+        public async Task GetFieldValue_timeout_hard()
+        {
+            if (IsMultiplexing)
+                return; // Multiplexing, cancellation
+
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString);
+            csb.CommandTimeout = 5;
+            csb.CancellationTimeout = 30000;
+
+            await using var postmasterMock = PgPostmasterMock.Start(csb.ToString());
+            using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
+            await using var conn = await OpenConnectionAsync(connectionString);
+
+            // Write responses to the query we're about to send, with a single data row (we'll attempt to read two)
+            var pgMock = await postmasterMock.WaitForServerConnection();
+            await pgMock
+                .WriteParseComplete()
+                .WriteBindComplete()
+                .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Bytea))
+                .WriteDataRowWithFlush(new byte[10000]);
+
+            using var cmd = new NpgsqlCommand("SELECT some_int FROM some_table", conn);
+            await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
+
+            await reader.ReadAsync();
+
+            var task = reader.GetFieldValueAsync<byte[]>(0);
+
+            var exception = Assert.ThrowsAsync<NpgsqlException>(async () => await task);
+            Assert.That(exception.InnerException, Is.TypeOf<TimeoutException>());
+
+            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+        }
+
         #endregion Cancellation
 
         #region Initialization / setup / teardown
