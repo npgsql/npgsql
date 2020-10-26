@@ -169,7 +169,7 @@ namespace Npgsql
                 throw new NpgsqlException("[SASL] AuthenticationSASLFinal message expected");
             var firstServerMsg = AuthenticationSCRAMServerFirstMessage.Load(saslContinueMsg.Payload);
             if (!firstServerMsg.Nonce.StartsWith(clientNonce))
-                throw new InvalidOperationException("[SCRAM] Malformed SCRAMServerFirst message: server nonce doesn't start with client nonce");
+                throw new NpgsqlException("[SCRAM] Malformed SCRAMServerFirst message: server nonce doesn't start with client nonce");
 
             var saltBytes = Convert.FromBase64String(firstServerMsg.Salt);
             var saltedPassword = Hi(passwd.Normalize(NormalizationForm.FormKC), saltBytes, firstServerMsg.Iteration);
@@ -348,9 +348,7 @@ namespace Npgsql
             byte[]? _readBuf;
 
             internal GSSPasswordMessageStream(NpgsqlConnector connector)
-            {
-                _connector = connector;
-            }
+                => _connector = connector;
 
             public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken = default)
                 => Write(buffer, offset, count, true, cancellationToken);
