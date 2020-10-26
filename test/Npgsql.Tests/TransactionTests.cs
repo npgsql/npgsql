@@ -108,7 +108,7 @@ namespace Npgsql.Tests
             await using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
 
-            using var tx = conn.BeginTransaction();
+            var tx = conn.BeginTransaction();
             await conn.ExecuteNonQueryAsync($"INSERT INTO {table} (name) VALUES ('X')", tx: tx);
             Assert.That(async () => await conn.ExecuteNonQueryAsync("BAD QUERY"), Throws.Exception.TypeOf<PostgresException>());
             tx.Rollback();
@@ -120,16 +120,14 @@ namespace Npgsql.Tests
         public async Task EmptyCommit()
         {
             await using var conn = await OpenConnectionAsync();
-            using var tx = conn.BeginTransaction();
-            await tx.CommitAsync();
+            await conn.BeginTransaction().CommitAsync();
         }
 
         [Test, Description("Rolls back an empty transaction")]
         public async Task EmptyRollback()
         {
             await using var conn = await OpenConnectionAsync();
-            using var tx = conn.BeginTransaction();
-            await tx.RollbackAsync();
+            await conn.BeginTransaction().RollbackAsync();
         }
 
         [Test, Description("Disposes an empty transaction")]
@@ -160,7 +158,7 @@ namespace Npgsql.Tests
         public async Task IsolationLevels(IsolationLevel level, string expectedName)
         {
             await using var conn = await OpenConnectionAsync();
-            using var tx = conn.BeginTransaction(level);
+            var tx = conn.BeginTransaction(level);
             Assert.That(conn.ExecuteScalar("SHOW TRANSACTION ISOLATION LEVEL"), Is.EqualTo(expectedName));
             await tx.CommitAsync();
         }
@@ -176,7 +174,7 @@ namespace Npgsql.Tests
         public async Task RollbackTwice()
         {
             await using var conn = await OpenConnectionAsync();
-            using var transaction = conn.BeginTransaction();
+            var transaction = conn.BeginTransaction();
             transaction.Rollback();
             Assert.That(() => transaction.Rollback(), Throws.Exception.TypeOf<InvalidOperationException>());
         }
@@ -186,17 +184,13 @@ namespace Npgsql.Tests
         public async Task DbConnectionDefaultIsolation()
         {
             await using var conn = await OpenConnectionAsync();
-            using (var tx = conn.BeginTransaction())
-            {
-                Assert.That(tx.IsolationLevel, Is.EqualTo(IsolationLevel.ReadCommitted));
-                tx.Rollback();
-            }
+            var tx = conn.BeginTransaction();
+            Assert.That(tx.IsolationLevel, Is.EqualTo(IsolationLevel.ReadCommitted));
+            tx.Rollback();
 
-            using (var tx = conn.BeginTransaction(IsolationLevel.Unspecified))
-            {
-                Assert.That(tx.IsolationLevel, Is.EqualTo(IsolationLevel.ReadCommitted));
-                tx.Rollback();
-            }
+            tx = conn.BeginTransaction(IsolationLevel.Unspecified);
+            Assert.That(tx.IsolationLevel, Is.EqualTo(IsolationLevel.ReadCommitted));
+            tx.Rollback();
         }
 
         [Test, Description("Makes sure that transactions started in SQL work, except in multiplexing")]
@@ -240,7 +234,7 @@ namespace Npgsql.Tests
         {
             await using var conn = await OpenConnectionAsync();
 
-            using var tx = conn.BeginTransaction();
+            var tx = conn.BeginTransaction();
             using var cmd = new NpgsqlCommand("BAD QUERY", conn, tx);
             Assert.That(cmd.CommandTimeout != 1);
             cmd.CommandTimeout = 1;
@@ -387,7 +381,7 @@ namespace Npgsql.Tests
         {
             await using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
-            using var tx = conn.BeginTransaction();
+            var tx = conn.BeginTransaction();
             Assert.That(!tx.IsCompleted);
             await conn.ExecuteNonQueryAsync($"INSERT INTO {table} (name) VALUES ('X')", tx: tx);
             Assert.That(!tx.IsCompleted);
@@ -401,7 +395,7 @@ namespace Npgsql.Tests
         {
             await using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
-            using var tx = conn.BeginTransaction();
+            var tx = conn.BeginTransaction();
             Assert.That(!tx.IsCompleted);
             await conn.ExecuteNonQueryAsync($"INSERT INTO {table} (name) VALUES ('X')", tx: tx);
             Assert.That(!tx.IsCompleted);
@@ -415,7 +409,7 @@ namespace Npgsql.Tests
         {
             await using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
-            using var tx = conn.BeginTransaction();
+            var tx = conn.BeginTransaction();
             Assert.That(!tx.IsCompleted);
             await conn.ExecuteNonQueryAsync($"INSERT INTO {table} (name) VALUES ('X')", tx: tx);
             Assert.That(!tx.IsCompleted);
@@ -476,55 +470,12 @@ namespace Npgsql.Tests
         [Test]
         [IssueLink("https://github.com/npgsql/npgsql/issues/3248")]
         // More at #3254
-        public async Task Bug3248Commit()
+        public async Task Bug3248()
         {
             if (!IsMultiplexing)
                 return;
 
             var conn = await OpenConnectionAsync();
-
-            await using (var tx = conn.BeginTransaction())
-            {
-                Assert.That(conn.Connector, Is.Not.Null);
-                await conn.ExecuteScalarAsync("SELECT 1", tx: tx);
-                await tx.CommitAsync();
-                Assert.That(conn.Connector, Is.Not.Null);
-            }
-
-            Assert.That(conn.Connector, Is.Null);
-        }
-
-        [Test]
-        [IssueLink("https://github.com/npgsql/npgsql/issues/3248")]
-        // More at #3254
-        public async Task Bug3248Rollback()
-        {
-            if (!IsMultiplexing)
-                return;
-
-            var conn = await OpenConnectionAsync();
-
-            await using (var tx = conn.BeginTransaction())
-            {
-                Assert.That(conn.Connector, Is.Not.Null);
-                await conn.ExecuteScalarAsync("SELECT 1", tx: tx);
-                await tx.RollbackAsync();
-                Assert.That(conn.Connector, Is.Not.Null);
-            }
-
-            Assert.That(conn.Connector, Is.Null);
-        }
-
-        [Test]
-        [IssueLink("https://github.com/npgsql/npgsql/issues/3248")]
-        // More at #3254
-        public async Task Bug3248ErrorRollback()
-        {
-            if (!IsMultiplexing)
-                return;
-
-            var conn = await OpenConnectionAsync();
-
             await using (var tx = conn.BeginTransaction())
             {
                 Assert.That(conn.Connector, Is.Not.Null);
@@ -532,6 +483,10 @@ namespace Npgsql.Tests
                     Throws.Exception.TypeOf<PostgresException>());
                 Assert.That(conn.Connector, Is.Not.Null);
             }
+
+            Assert.That(conn.Connector, Is.Not.Null);
+
+            await conn.DisposeAsync();
 
             Assert.That(conn.Connector, Is.Null);
         }

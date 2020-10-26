@@ -124,13 +124,13 @@ namespace Npgsql
             if (!_connector.DatabaseInfo.SupportsTransactions)
                 return;
 
-            // TODO: On successful commit, the connector might be returned to the pool, if multiplexing is on.
-            // In this case, we might call EndUserAction on the connector, which might be in use.
             using (_connector.StartUserAction())
             {
                 Log.Debug("Committing transaction", _connector.Id);
                 await _connector.ExecuteInternalCommand(PregeneratedMessages.CommitTransaction, async, cancellationToken);
             }
+
+            _connector.Connection?.EndBindingScope(ConnectorBindingScope.Transaction);
         }
 
         /// <summary>
@@ -158,12 +158,16 @@ namespace Npgsql
         /// </summary>
         public override void Rollback() => Rollback(false).GetAwaiter().GetResult();
 
-        Task Rollback(bool async, CancellationToken cancellationToken = default)
+        async Task Rollback(bool async, CancellationToken cancellationToken = default)
         {
             CheckReady();
-            return _connector.DatabaseInfo.SupportsTransactions
-                ? _connector.Rollback(async, cancellationToken)
-                : Task.CompletedTask;
+
+            if (!_connector.DatabaseInfo.SupportsTransactions)
+                return;
+
+            await _connector.Rollback(async, cancellationToken);
+
+            _connector.Connection?.EndBindingScope(ConnectorBindingScope.Transaction);
         }
 
         /// <summary>
@@ -330,7 +334,7 @@ namespace Npgsql
         #region Dispose
 
         /// <summary>
-        /// Disposes the transaction, rolling it back if it is still pending.
+        /// Disposes the transaction.
         /// </summary>
         protected override void Dispose(bool disposing)
         {
@@ -339,21 +343,12 @@ namespace Npgsql
 
             if (disposing)
             {
-                if (!IsCompleted)
-                {
-                    // We're disposing, so no cancellation token
-                    _connector.CloseOngoingOperations(async: false).GetAwaiter().GetResult();
-                    Rollback();
-                }
-
-                _connector.Connection?.EndBindingScope(ConnectorBindingScope.Transaction);
-
                 IsDisposed = true;
             }
         }
 
         /// <summary>
-        /// Disposes the transaction, rolling it back if it is still pending.
+        /// Disposes the transaction.
         /// </summary>
 #if !NET461 && !NETSTANDARD2_0
         public override ValueTask DisposeAsync()
@@ -363,26 +358,10 @@ namespace Npgsql
         {
             if (!IsDisposed)
             {
-                if (!IsCompleted)
-                {
-                    using (NoSynchronizationContextScope.Enter())
-                        return DisposeAsyncInternal();
-                }
-
-                _connector.Connection!.EndBindingScope(ConnectorBindingScope.Transaction);
-
                 IsDisposed = true;
             }
+
             return default;
-
-            async ValueTask DisposeAsyncInternal()
-            {
-                // We're disposing, so no cancellation token
-                await _connector.CloseOngoingOperations(async: true);
-                await Rollback(async: true);
-                _connector.Connection?.EndBindingScope(ConnectorBindingScope.Transaction);
-                IsDisposed = true;
-            }
         }
 
         /// <summary>
