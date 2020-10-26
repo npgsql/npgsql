@@ -347,6 +347,7 @@ namespace Npgsql
 
         string Host => Settings.Host!;
         int Port => Settings.Port;
+        string Database => Settings.Database!;
         string KerberosServiceName => Settings.KerberosServiceName;
         SslMode SslMode => Settings.SslMode;
         int ConnectionTimeout => Settings.Timeout;
@@ -522,7 +523,7 @@ namespace Npgsql
             // being set up (even if its empty)
             TypeMapper = new ConnectorTypeMapper(this);
 
-            var key = (Settings.Host, Settings.Port, Settings.Database);
+            var key = (Host, Port, Database, Settings.ServerCompatibilityMode == ServerCompatibilityMode.NoTypeLoading);
             if (forceReload || !NpgsqlDatabaseInfo.Cache.TryGetValue(key, out var database))
             {
                 var hasSemaphore = async
