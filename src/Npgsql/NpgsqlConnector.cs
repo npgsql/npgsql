@@ -774,25 +774,37 @@ namespace Npgsql
                 throw new ArgumentException("If TcpKeepAliveInterval is defined, TcpKeepAliveTime must be defined as well");
             if (Settings.TcpKeepAliveTime > 0)
             {
-                if (!PGUtil.IsWindows)
-                    throw new PlatformNotSupportedException(
-                        "Npgsql management of TCP keepalive is supported only on Windows. " +
-                        "TCP keepalives can still be used on other systems but are enabled via the TcpKeepAlive option or configured globally for the machine, see the relevant docs.");
-
+#if NET461 || NETSTANDARD2_0 || NETSTANDARD2_1
                 var time = Settings.TcpKeepAliveTime;
                 var interval = Settings.TcpKeepAliveInterval > 0
                     ? Settings.TcpKeepAliveInterval
                     : Settings.TcpKeepAliveTime;
 
                 // For the following see https://msdn.microsoft.com/en-us/library/dd877220.aspx
+                // SIO_KEEPALIVE_VALS handling is supported in mono since version 2.11.0: https://github.com/mono/mono/commit/891af303aa9a335d0c2e8439c363d0817bdce774
                 var uintSize = Marshal.SizeOf(typeof(uint));
                 var inOptionValues = new byte[uintSize * 3];
                 BitConverter.GetBytes((uint)1).CopyTo(inOptionValues, 0);
                 BitConverter.GetBytes((uint)time).CopyTo(inOptionValues, uintSize);
                 BitConverter.GetBytes((uint)interval).CopyTo(inOptionValues, uintSize * 2);
-                var result = socket.IOControl(IOControlCode.KeepAliveValues, inOptionValues, null);
+                var result = 0;
+                try
+                {
+                    result = socket.IOControl(IOControlCode.KeepAliveValues, inOptionValues, null);
+                }
+                catch (PlatformNotSupportedException)
+                {
+                    throw new PlatformNotSupportedException("Setting TCP Keepalive Time and TCP Keepalive Interval is supported only on Windows, Mono and .NET Core 3.1+. " +
+                        "TCP keepalives can still be used on other systems but are enabled via the TcpKeepAlive option or configured globally for the machine, see the relevant docs.");
+                }
+
                 if (result != 0)
                     throw new NpgsqlException($"Got non-zero value when trying to set TCP keepalive: {result}");
+#else
+                socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
+                socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveTime, Settings.TcpKeepAliveTime / 1000);
+                socket.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveInterval, Settings.TcpKeepAliveInterval / 1000);
+#endif
             }
         }
 

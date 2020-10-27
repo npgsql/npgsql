@@ -1304,6 +1304,23 @@ namespace Npgsql.Tests
                 Thread.Sleep(Timeout.Infinite);
         }
 
+        [Test, Description("Asserting TCP keepalive time and interval setting does not throw exceptions")]
+        public void TcpKeepaliveSupport()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                TcpKeepAliveTime = 2000,
+                TcpKeepAliveInterval = 3000,
+            };
+
+            using (var conn = OpenConnection(csb))
+            using (var cmd = new NpgsqlCommand("SELECT 1", conn))
+            using (var reader = cmd.ExecuteReader())
+            {
+                reader.Read();
+            }
+        }
+
         [Test]
         public void ChangeParameter()
         {

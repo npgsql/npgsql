@@ -923,7 +923,7 @@ namespace Npgsql
         /// <summary>
         /// The number of seconds of connection inactivity before a TCP keepalive query is sent.
         /// Use of this option is discouraged, use <see cref="KeepAlive"/> instead if possible.
-        /// Set to 0 (the default) to disable. Supported only on Windows.
+        /// Set to 0 (the default) to disable.
         /// </summary>
         [Category("Advanced")]
         [Description("The number of milliseconds of connection inactivity before a TCP keepalive query is sent.")]
@@ -946,7 +946,6 @@ namespace Npgsql
         /// <summary>
         /// The interval, in milliseconds, between when successive keep-alive packets are sent if no acknowledgement is received.
         /// Defaults to the value of <see cref="TcpKeepAliveTime"/>. <see cref="TcpKeepAliveTime"/> must be non-zero as well.
-        /// Supported only on Windows.
         /// </summary>
         [Category("Advanced")]
         [Description("The interval, in milliseconds, between when successive keep-alive packets are sent if no acknowledgement is received.")]
