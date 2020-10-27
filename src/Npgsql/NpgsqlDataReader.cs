@@ -1476,7 +1476,6 @@ namespace Npgsql
 
         async ValueTask<T> GetFieldValueSequential<T>(int column, bool async, CancellationToken cancellationToken = default)
         {
-            using var _ = HardCancellationBlock.Enter();
             var field = CheckRowAndGetField(column);
             await SeekToColumnSequential(column, async, cancellationToken);
             CheckColumnStart();
@@ -1962,8 +1961,6 @@ namespace Npgsql
                 // Disposing the stream leaves us at the end of the column
                 PosInColumn = ColumnLen;
             }
-
-            using var _ = HardCancellationBlock.Enter();
 
             // Skip to end of column if needed
             // TODO: Simplify by better initializing _columnLen/_posInColumn
