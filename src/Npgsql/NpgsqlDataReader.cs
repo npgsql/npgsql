@@ -282,7 +282,7 @@ namespace Npgsql
 
         ValueTask<IBackendMessage> ReadMessage(bool async, CancellationToken cancellationToken = default)
         {
-            return _isSequential ? ReadMessageSequential(async) : Connector.ReadMessage(async, cancellationToken);
+            return _isSequential ? ReadMessageSequential(async) : Connector.ReadMessageWithCancellation(async, cancellationToken);
 
             async ValueTask<IBackendMessage> ReadMessageSequential(bool async2)
             {
@@ -348,7 +348,7 @@ namespace Npgsql
                     await ConsumeRow(async, CancellationToken.None);
                     while (true)
                     {
-                        var completedMsg = await Connector.ReadMessage(async, DataRowLoadingMode.Skip, CancellationToken.None);
+                        var completedMsg = await Connector.ReadMessageWithCancellation(async, DataRowLoadingMode.Skip, CancellationToken.None);
                         switch (completedMsg.Code)
                         {
                         case BackendMessageCode.CommandComplete:
@@ -392,7 +392,7 @@ namespace Npgsql
 
                     if (statement.IsPrepared)
                     {
-                        Expect<BindCompleteMessage>(await Connector.ReadMessage(async, CancellationToken.None), Connector);
+                        Expect<BindCompleteMessage>(await Connector.ReadMessageWithCancellation(async, CancellationToken.None), Connector);
                         RowDescription = statement.Description;
                     }
                     else // Non-prepared/preparing flow
@@ -403,15 +403,15 @@ namespace Npgsql
                             Debug.Assert(!pStatement.IsPrepared);
                             if (pStatement.StatementBeingReplaced != null)
                             {
-                                Expect<CloseCompletedMessage>(await Connector.ReadMessage(async, CancellationToken.None), Connector);
+                                Expect<CloseCompletedMessage>(await Connector.ReadMessageWithCancellation(async, CancellationToken.None), Connector);
                                 pStatement.StatementBeingReplaced.CompleteUnprepare();
                                 pStatement.StatementBeingReplaced = null;
                             }
                         }
 
-                        Expect<ParseCompleteMessage>(await Connector.ReadMessage(async, CancellationToken.None), Connector);
-                        Expect<BindCompleteMessage>(await Connector.ReadMessage(async, CancellationToken.None), Connector);
-                        msg = await Connector.ReadMessage(async, CancellationToken.None);
+                        Expect<ParseCompleteMessage>(await Connector.ReadMessageWithCancellation(async, CancellationToken.None), Connector);
+                        Expect<BindCompleteMessage>(await Connector.ReadMessageWithCancellation(async, CancellationToken.None), Connector);
+                        msg = await Connector.ReadMessageWithCancellation(async, CancellationToken.None);
 
                         RowDescription = statement.Description = msg.Code switch
                         {
@@ -457,7 +457,7 @@ namespace Npgsql
                         // If output parameters are present and this is the first row of the first resultset,
                         // we must always read it in non-sequential mode because it will be traversed twice (once
                         // here for the parameters, then as a regular row).
-                        msg = await Connector.ReadMessage(async, CancellationToken.None);
+                        msg = await Connector.ReadMessageWithCancellation(async, CancellationToken.None);
                         ProcessMessage(msg);
                         if (msg.Code == BackendMessageCode.DataRow)
                             PopulateOutputParameters();
@@ -481,7 +481,7 @@ namespace Npgsql
                 }
 
                 // There are no more queries, we're done. Read the RFQ.
-                ProcessMessage(Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async, CancellationToken.None), Connector));
+                ProcessMessage(Expect<ReadyForQueryMessage>(await Connector.ReadMessageWithCancellation(async, CancellationToken.None), Connector));
                 RowDescription = null;
                 return false;
             }
@@ -605,9 +605,9 @@ namespace Npgsql
                     }
                     else
                     {
-                        Expect<ParseCompleteMessage>(await Connector.ReadMessage(async, CancellationToken.None), Connector);
-                        Expect<ParameterDescriptionMessage>(await Connector.ReadMessage(async, CancellationToken.None), Connector);
-                        var msg = await Connector.ReadMessage(async, CancellationToken.None);
+                        Expect<ParseCompleteMessage>(await Connector.ReadMessageWithCancellation(async, CancellationToken.None), Connector);
+                        Expect<ParameterDescriptionMessage>(await Connector.ReadMessageWithCancellation(async, CancellationToken.None), Connector);
+                        var msg = await Connector.ReadMessageWithCancellation(async, CancellationToken.None);
                         switch (msg.Code)
                         {
                         case BackendMessageCode.NoData:
@@ -631,7 +631,7 @@ namespace Npgsql
                 // There are no more queries, we're done. Read to the RFQ.
                 if (!_statements.All(s => s.IsPrepared))
                 {
-                    ProcessMessage(Expect<ReadyForQueryMessage>(await Connector.ReadMessage(async, CancellationToken.None), Connector));
+                    ProcessMessage(Expect<ReadyForQueryMessage>(await Connector.ReadMessageWithCancellation(async, CancellationToken.None), Connector));
                     RowDescription = null;
                 }
 

@@ -1747,7 +1747,7 @@ LANGUAGE plpgsql VOLATILE";
                 .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Bytea))
                 .WriteDataRowWithFlush(new byte[10000]);
 
-            using var cmd = new NpgsqlCommand("SELECT some_int FROM some_table", conn);
+            using var cmd = new NpgsqlCommand("SELECT some_bytea FROM some_table", conn);
             await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
 
             await reader.ReadAsync();

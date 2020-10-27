@@ -128,16 +128,17 @@ namespace Npgsql
         }
 
         public Task Ensure(int count, bool async, CancellationToken cancellationToken = default)
-            => Ensure(count, async, readingNotifications: false, cancellationToken);
+            => Ensure(count, async, readingNotifications: false, attemptPostgresCancellation: false, cancellationToken);
 
         public Task EnsureAsync(int count, CancellationToken cancellationToken = default)
-            => Ensure(count, async: true, readingNotifications: false, cancellationToken);
+            => Ensure(count, async: true, readingNotifications: false, attemptPostgresCancellation: false, cancellationToken);
 
         /// <summary>
         /// Ensures that <paramref name="count"/> bytes are available in the buffer, and if
         /// not, reads from the socket until enough is available.
         /// </summary>
-        internal Task Ensure(int count, bool async, bool readingNotifications, CancellationToken cancellationToken = default)
+        internal Task Ensure(int count, bool async, bool readingNotifications, bool attemptPostgresCancellation,
+            CancellationToken cancellationToken = default)
         {
             return count <= ReadBytesLeft ? Task.CompletedTask : EnsureLong();
 
@@ -219,7 +220,8 @@ namespace Npgsql
 
                             // Note that if PG cancellation fails, the exception for that is already logged internally by CancelRequest.
                             // We simply continue and throw the timeout one.
-                            if (!wasCancellationRequested && Connector.CancelRequest(requestedByUser: false))
+                            // TODO: As an optimization, we can still attempt to send a cancellation request, but after that immediately break the connection
+                            if (attemptPostgresCancellation && !wasCancellationRequested && Connector.CancelRequest(requestedByUser: false))
                             {
                                 // If the cancellation timeout is negative, we break the connection immediately
                                 var cancellationTimeout = Connector.Settings.CancellationTimeout;

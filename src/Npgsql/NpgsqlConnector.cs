@@ -1003,8 +1003,14 @@ namespace Npgsql
         internal ValueTask<IBackendMessage> ReadMessage(bool async, CancellationToken cancellationToken = default)
             => DoReadMessage(async, DataRowLoadingMode.NonSequential, cancellationToken: cancellationToken)!;
 
+        internal ValueTask<IBackendMessage> ReadMessageWithCancellation(bool async, CancellationToken cancellationToken = default)
+            => DoReadMessage(async, DataRowLoadingMode.NonSequential, attemptPostgresCancellation: true, cancellationToken: cancellationToken)!;
+
         internal ValueTask<IBackendMessage> ReadMessage(bool async, DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential, CancellationToken cancellationToken = default)
             => DoReadMessage(async, dataRowLoadingMode, cancellationToken: cancellationToken)!;
+
+        internal ValueTask<IBackendMessage> ReadMessageWithCancellation(bool async, DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential, CancellationToken cancellationToken = default)
+            => DoReadMessage(async, dataRowLoadingMode, attemptPostgresCancellation: true, cancellationToken: cancellationToken)!;
 
         internal ValueTask<IBackendMessage?> ReadMessageWithNotifications(bool async, CancellationToken cancellationToken = default)
             => DoReadMessage(async, DataRowLoadingMode.NonSequential, true, cancellationToken: cancellationToken);
@@ -1013,6 +1019,7 @@ namespace Npgsql
             bool async,
             DataRowLoadingMode dataRowLoadingMode = DataRowLoadingMode.NonSequential,
             bool readingNotifications = false,
+            bool attemptPostgresCancellation = false,
             CancellationToken cancellationToken = default)
         {
             if (_pendingPrependedResponses > 0 ||
@@ -1020,7 +1027,8 @@ namespace Npgsql
                 readingNotifications ||
                 ReadBuffer.ReadBytesLeft < 5)
             {
-                return ReadMessageLong(dataRowLoadingMode, readingNotifications, cancellationToken2: cancellationToken);
+                return ReadMessageLong(dataRowLoadingMode, readingNotifications2: readingNotifications,
+                    attemptPostgresCancellation2: attemptPostgresCancellation, cancellationToken2: cancellationToken);
             }
 
             var messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
@@ -1050,6 +1058,7 @@ namespace Npgsql
                 DataRowLoadingMode dataRowLoadingMode2,
                 bool readingNotifications2,
                 bool isReadingPrependedMessage = false,
+                bool attemptPostgresCancellation2 = false,
                 CancellationToken cancellationToken2 = default)
             {
                 // First read the responses of any prepended messages.
@@ -1060,7 +1069,7 @@ namespace Npgsql
                         // TODO: There could be room for optimization here, rather than the async call(s)
                         ReadBuffer.Timeout = TimeSpan.FromMilliseconds(InternalCommandTimeout);
                         for (; _pendingPrependedResponses > 0; _pendingPrependedResponses--)
-                            await ReadMessageLong(DataRowLoadingMode.Skip, false, true, cancellationToken2);
+                            await ReadMessageLong(DataRowLoadingMode.Skip, false, true, false, cancellationToken2);
                     }
                     catch (PostgresException e)
                     {
@@ -1076,7 +1085,7 @@ namespace Npgsql
 
                     while (true)
                     {
-                        await ReadBuffer.Ensure(5, async, readingNotifications2, cancellationToken2);
+                        await ReadBuffer.Ensure(5, async, readingNotifications2, attemptPostgresCancellation2, cancellationToken2);
                         messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
                         PGUtil.ValidateBackendMessageCode(messageCode);
                         len = ReadBuffer.ReadInt32() - 4; // Transmitted length includes itself
