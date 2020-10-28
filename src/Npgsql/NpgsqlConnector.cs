@@ -849,11 +849,6 @@ namespace Npgsql
                     : Settings.TcpKeepAliveTime;
 
 #if NETSTANDARD2_0 || NETSTANDARD2_1
-                if (!PGUtil.IsWindows)
-                    throw new PlatformNotSupportedException(
-                        "Npgsql management of TCP keepalive is supported only on Windows, unless targeting .NET Core 3.0 and above " +
-                        "TCP keepalives can still be used on other systems but are enabled via the TcpKeepAlive option or configured globally for the machine, see the relevant docs.");
-
                 var timeMilliseconds = timeSeconds * 1000;
                 var intervalMilliseconds = intervalSeconds * 1000;
 
@@ -863,7 +858,17 @@ namespace Npgsql
                 BitConverter.GetBytes((uint)1).CopyTo(inOptionValues, 0);
                 BitConverter.GetBytes((uint)timeMilliseconds).CopyTo(inOptionValues, uintSize);
                 BitConverter.GetBytes((uint)intervalMilliseconds).CopyTo(inOptionValues, uintSize * 2);
-                var result = socket.IOControl(IOControlCode.KeepAliveValues, inOptionValues, null);
+                var result = 0;
+                try
+                {
+                    result = socket.IOControl(IOControlCode.KeepAliveValues, inOptionValues, null);
+                }
+                catch (PlatformNotSupportedException)
+                {
+                    throw new PlatformNotSupportedException("Setting TCP Keepalive Time and TCP Keepalive Interval is supported only on Windows, Mono and .NET Core 3.1+. " +
+                        "TCP keepalives can still be used on other systems but are enabled via the TcpKeepAlive option or configured globally for the machine, see the relevant docs.");
+                }
+
                 if (result != 0)
                     throw new NpgsqlException($"Got non-zero value when trying to set TCP keepalive: {result}");
 #else
