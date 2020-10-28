@@ -130,11 +130,20 @@ namespace Npgsql
             if (_column != -1 && _column != NumColumns)
                 ThrowHelper.ThrowInvalidOperationException_BinaryImportParametersMismatch(NumColumns, _column);
 
-            if (_buf.WriteSpaceLeft < 2)
-                await _buf.Flush(async, cancellationToken);
-            _buf.WriteInt16(NumColumns);
+            try
+            {
+                if (_buf.WriteSpaceLeft < 2)
+                    await _buf.Flush(async, cancellationToken);
+                _buf.WriteInt16(NumColumns);
 
-            _column = 0;
+                _column = 0;
+            }
+            catch
+            {
+                // An exception here will have already broken the connection etc.
+                Cleanup();
+                throw;
+            }
         }
 
         /// <summary>
@@ -298,25 +307,34 @@ namespace Npgsql
                 return;
             }
 
-            if (typeof(T) == typeof(object))
+            try
             {
-                param.Value = value;
-            }
-            else
-            {
-                if (!(param is NpgsqlParameter<T> typedParam))
+                if (typeof(T) == typeof(object))
                 {
-                    _params[_column] = typedParam = new NpgsqlParameter<T>();
-                    typedParam.NpgsqlDbType = param.NpgsqlDbType;
+                    param.Value = value;
                 }
-                typedParam.TypedValue = value;
+                else
+                {
+                    if (!(param is NpgsqlParameter<T> typedParam))
+                    {
+                        _params[_column] = typedParam = new NpgsqlParameter<T>();
+                        typedParam.NpgsqlDbType = param.NpgsqlDbType;
+                    }
+                    typedParam.TypedValue = value;
+                }
+                param.ResolveHandler(_connector.TypeMapper);
+                param.ValidateAndGetLength();
+                param.LengthCache?.Rewind();
+                await param.WriteWithLength(_buf, async, cancellationToken);
+                param.LengthCache?.Clear();
+                _column++;
             }
-            param.ResolveHandler(_connector.TypeMapper);
-            param.ValidateAndGetLength();
-            param.LengthCache?.Rewind();
-            await param.WriteWithLength(_buf, async, cancellationToken);
-            param.LengthCache?.Clear();
-            _column++;
+            catch
+            {
+                // An exception here will have already broken the connection etc.
+                Cleanup();
+                throw;
+            }
         }
 
         /// <summary>
@@ -341,11 +359,20 @@ namespace Npgsql
             if (_column == -1)
                 throw new InvalidOperationException("A row hasn't been started");
 
-            if (_buf.WriteSpaceLeft < 4)
-                await _buf.Flush(async, cancellationToken);
+            try
+            {
+                if (_buf.WriteSpaceLeft < 4)
+                    await _buf.Flush(async, cancellationToken);
 
-            _buf.WriteInt32(-1);
-            _column++;
+                _buf.WriteInt32(-1);
+                _column++;
+            }
+            catch
+            {
+                // An exception here will have already broken the connection etc.
+                Cleanup();
+                throw;
+            }
         }
 
         /// <summary>
