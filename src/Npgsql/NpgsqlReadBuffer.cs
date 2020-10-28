@@ -216,7 +216,7 @@ namespace Npgsql
                             Debug.Assert(e is OperationCanceledException ? async : !async);
 
                             if (readingNotifications)
-                                throw TimeoutException();
+                                throw NpgsqlTimeoutException();
 
                             // Note that if PG cancellation fails, the exception for that is already logged internally by CancelRequest.
                             // We simply continue and throw the timeout one.
@@ -241,14 +241,14 @@ namespace Npgsql
 
                             // There is a case, when we might call a cancellable method (NpgsqlDataReader.NextResult)
                             // but it times out on a sequential read (NpgsqlDataReader.ConsumeRow)
-                            if (Connector.UserCancellationRequesed)
+                            if (Connector.CancellationRequesed)
                             {
-                                // User requested the cancellation and it timed out (or we didn't send it)
-                                throw Connector.Break(new OperationCanceledException("Query was cancelled", e.InnerException,
+                                // The cancellation was requested and it timed out (or we didn't send it)
+                                throw Connector.Break(new OperationCanceledException("Query was cancelled", TimeoutException(),
                                     Connector.UserCancellationToken));
                             }
 
-                            throw Connector.Break(TimeoutException());
+                            throw Connector.Break(NpgsqlTimeoutException());
                         }
 
                         default:
@@ -260,8 +260,9 @@ namespace Npgsql
                 Cts.Stop();
                 NpgsqlEventSource.Log.BytesRead(totalRead);
 
-                static Exception TimeoutException()
-                    => new NpgsqlException("Exception while reading from stream", new TimeoutException("Timeout during reading attempt"));
+                static Exception NpgsqlTimeoutException() => new NpgsqlException("Exception while reading from stream", TimeoutException());
+
+                static Exception TimeoutException() => new TimeoutException("Timeout during reading attempt");
             }
         }
 
