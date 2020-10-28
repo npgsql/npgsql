@@ -1075,7 +1075,6 @@ LANGUAGE plpgsql VOLATILE";
             }
         }
 
-
         [Test]
         public async Task NullableScalar()
         {
@@ -1724,16 +1723,84 @@ LANGUAGE plpgsql VOLATILE";
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
         }
 
-        [Test, Description("Timeouts ReadAsGetFieldValueAsync")]
-        [Timeout(15000)]
-        public async Task GetFieldValue_timeout_hard()
+        [Test, Description("Cancels sequential ReadAsGetFieldValueAsync")]
+        public async Task GetFieldValueAsync_sequential_cancel()
+        {
+            if (IsMultiplexing)
+                return; // Multiplexing, cancellation
+
+            await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
+            using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
+            await using var conn = await OpenConnectionAsync(connectionString);
+
+            // Write responses to the query we're about to send, with a single data row (we'll attempt to read two)
+            var pgMock = await postmasterMock.WaitForServerConnection();
+            await pgMock
+                .WriteParseComplete()
+                .WriteBindComplete()
+                .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Bytea))
+                .WriteDataRowWithFlush(new byte[10000]);
+
+            using var cmd = new NpgsqlCommand("SELECT some_bytea FROM some_table", conn);
+            await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
+
+            await reader.ReadAsync();
+
+            using var cts = new CancellationTokenSource();
+            var task = reader.GetFieldValueAsync<byte[]>(0, cts.Token);
+            cts.Cancel();
+
+            var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task);
+
+            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+        }
+
+        [Test, Description("Cancels sequential ReadAsGetFieldValueAsync")]
+        public async Task IsDBNullAsync_sequential_cancel()
+        {
+            if (IsMultiplexing)
+                return; // Multiplexing, cancellation
+
+            await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
+            using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
+            await using var conn = await OpenConnectionAsync(connectionString);
+
+            // Write responses to the query we're about to send, with a single data row (we'll attempt to read two)
+            var pgMock = await postmasterMock.WaitForServerConnection();
+            await pgMock
+                .WriteParseComplete()
+                .WriteBindComplete()
+                .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Bytea), new FieldDescription(PostgresTypeOIDs.Int4))
+                .WriteDataRowWithFlush(new byte[10000], new byte[4]);
+
+            using var cmd = new NpgsqlCommand("SELECT some_bytea, some_int FROM some_table", conn);
+            await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
+
+            await reader.ReadAsync();
+
+            using var cts = new CancellationTokenSource();
+            var task = reader.IsDBNullAsync(1, cts.Token);
+            cts.Cancel();
+
+            var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task);
+
+            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+        }
+
+        #endregion Cancellation
+
+        #region Timeout
+
+        [Test, Description("Timeouts sequential ReadAsGetFieldValueAsync")]
+        [Timeout(10000)]
+        public async Task GetFieldValueAsync_sequential_timeout()
         {
             if (IsMultiplexing)
                 return; // Multiplexing, cancellation
 
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString);
-            csb.CommandTimeout = 5;
-            csb.CancellationTimeout = 30000;
+            csb.CommandTimeout = 3;
+            csb.CancellationTimeout = 15000;
 
             await using var postmasterMock = PgPostmasterMock.Start(csb.ToString());
             using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
@@ -1760,7 +1827,43 @@ LANGUAGE plpgsql VOLATILE";
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
         }
 
-        #endregion Cancellation
+        [Test, Description("Timeouts sequential IsDBNullAsync")]
+        [Timeout(10000)]
+        public async Task IsDBNullAsync_sequential_timeout()
+        {
+            if (IsMultiplexing)
+                return; // Multiplexing, cancellation
+
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString);
+            csb.CommandTimeout = 3;
+            csb.CancellationTimeout = 15000;
+
+            await using var postmasterMock = PgPostmasterMock.Start(csb.ToString());
+            using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
+            await using var conn = await OpenConnectionAsync(connectionString);
+
+            // Write responses to the query we're about to send, with a single data row (we'll attempt to read two)
+            var pgMock = await postmasterMock.WaitForServerConnection();
+            await pgMock
+                .WriteParseComplete()
+                .WriteBindComplete()
+                .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Bytea), new FieldDescription(PostgresTypeOIDs.Int4))
+                .WriteDataRowWithFlush(new byte[10000], new byte[4]);
+
+            using var cmd = new NpgsqlCommand("SELECT some_bytea, some_int FROM some_table", conn);
+            await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
+
+            await reader.ReadAsync();
+
+            var task = reader.GetFieldValueAsync<byte[]>(0);
+
+            var exception = Assert.ThrowsAsync<NpgsqlException>(async () => await task);
+            Assert.That(exception.InnerException, Is.TypeOf<TimeoutException>());
+
+            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+        }
+
+        #endregion
 
         #region Initialization / setup / teardown
 
