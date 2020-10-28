@@ -1308,23 +1308,6 @@ CREATE TABLE record ()");
                 Thread.Sleep(Timeout.Infinite);
         }
 
-        [Test, Description("Asserting TCP keepalive time and interval setting does not throw exceptions")]
-        public async Task TcpKeepaliveSupport()
-        {
-            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
-            {
-                TcpKeepAliveTime = 2000,
-                TcpKeepAliveInterval = 3000,
-            };
-
-            using (var conn = OpenConnection(csb))
-            using (var cmd = new NpgsqlCommand("SELECT 1", conn))
-            using (var reader = await cmd.ExecuteReaderAsync())
-            {
-                reader.Read();
-            }
-        }
-
         [Test]
         public async Task ChangeParameter()
         {
