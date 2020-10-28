@@ -1680,7 +1680,7 @@ LANGUAGE plpgsql VOLATILE";
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
         }
 
-        [Test, Description("Cancels ReadAsync via the cancellation token, with unsuccessful PG cancellation (socket break)")]
+        [Test, Description("Cancels NextResultAsync via the cancellation token, with unsuccessful PG cancellation (socket break)")]
         public async Task NextResultAsync_cancel_hard()
         {
             if (IsMultiplexing)
@@ -1718,6 +1718,46 @@ LANGUAGE plpgsql VOLATILE";
             // Send no response from server, wait for the cancellation attempt to time out
             var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task);
             Assert.That(exception.InnerException, Is.TypeOf<TimeoutException>());
+            Assert.That(exception.CancellationToken, Is.EqualTo(cancellationSource.Token));
+
+            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+        }
+
+        [Test, Description("Cancels sequential NextResultAsync via the cancellation token")]
+        public async Task NextResultAsync_sequential_cancel()
+        {
+            if (IsMultiplexing)
+                return; // Multiplexing, cancellation
+
+            await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
+            using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
+            await using var conn = await OpenConnectionAsync(connectionString);
+
+            // Write responses to the query we're about to send, with a single data row (we'll attempt to read two)
+            var pgMock = await postmasterMock.WaitForServerConnection();
+            await pgMock
+                .WriteParseComplete()
+                .WriteBindComplete()
+                .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Bytea))
+                .WriteDataRowWithFlush(new byte[10000]);
+
+            using var cmd = new NpgsqlCommand("SELECT some_bytea FROM some_table", conn);
+            await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
+
+            // Successfully read the first resultset
+            Assert.True(await reader.ReadAsync());
+
+            // Attempt to read the second row - simulate blocking and cancellation
+            var cancellationSource = new CancellationTokenSource();
+            var task = reader.NextResultAsync(cancellationSource.Token);
+            cancellationSource.Cancel();
+
+            var (processId, _) = await postmasterMock.WaitForCancellationRequest();
+            Assert.That(processId, Is.EqualTo(conn.ProcessID));
+
+            // Send no response from server, wait for the cancellation attempt to time out
+            var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task);
+            Assert.That(exception.InnerException, Is.Null);
             Assert.That(exception.CancellationToken, Is.EqualTo(cancellationSource.Token));
 
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));

@@ -239,6 +239,15 @@ namespace Npgsql
                                 }
                             }
 
+                            // There is a case, when we might call a cancellable method (NpgsqlDataReader.NextResult)
+                            // but it times out on a sequential read (NpgsqlDataReader.ConsumeRow)
+                            if (Connector.UserCancellationRequesed)
+                            {
+                                // User requested the cancellation and it timed out (or we didn't send it)
+                                throw Connector.Break(new OperationCanceledException("Query was cancelled", e.InnerException,
+                                    Connector.UserCancellationToken));
+                            }
+
                             throw Connector.Break(TimeoutException());
                         }
 
