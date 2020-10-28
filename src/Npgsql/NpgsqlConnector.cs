@@ -224,7 +224,7 @@ namespace Npgsql
         volatile bool _cancellationRequested;
         volatile bool _userCancellationRequested;
 
-        internal bool CancellationRequesed => _cancellationRequested;
+        internal bool UserCancellationRequesed => _userCancellationRequested;
 
         internal CancellationToken UserCancellationToken { get; set; }
 
