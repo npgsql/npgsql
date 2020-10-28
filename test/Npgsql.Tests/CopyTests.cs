@@ -17,7 +17,6 @@ namespace Npgsql.Tests
         #region issue 2257
 
         [Test, Description("Reproduce #2257")]
-        [Timeout(10000)]
         public async Task Issue2257()
         {
             if (IsMultiplexing)
