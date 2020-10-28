@@ -1729,6 +1729,9 @@ LANGUAGE plpgsql VOLATILE";
             if (IsMultiplexing)
                 return; // Multiplexing, cancellation
 
+            if (!IsSequential)
+                return;
+
             await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
             using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
             await using var conn = await OpenConnectionAsync(connectionString);
@@ -1742,7 +1745,7 @@ LANGUAGE plpgsql VOLATILE";
                 .WriteDataRowWithFlush(new byte[10000]);
 
             using var cmd = new NpgsqlCommand("SELECT some_bytea FROM some_table", conn);
-            await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
+            await using var reader = await cmd.ExecuteReaderAsync(Behavior);
 
             // Successfully read the first resultset
             Assert.True(await reader.ReadAsync());
@@ -1757,7 +1760,7 @@ LANGUAGE plpgsql VOLATILE";
 
             // Send no response from server, wait for the cancellation attempt to time out
             var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task);
-            Assert.That(exception.InnerException, Is.Null);
+            Assert.That(exception.InnerException, Is.TypeOf<TimeoutException>());
             Assert.That(exception.CancellationToken, Is.EqualTo(cancellationSource.Token));
 
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
@@ -1768,6 +1771,9 @@ LANGUAGE plpgsql VOLATILE";
         {
             if (IsMultiplexing)
                 return; // Multiplexing, cancellation
+
+            if (!IsSequential)
+                return;
 
             await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
             using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
@@ -1782,7 +1788,7 @@ LANGUAGE plpgsql VOLATILE";
                 .WriteDataRowWithFlush(new byte[10000]);
 
             using var cmd = new NpgsqlCommand("SELECT some_bytea FROM some_table", conn);
-            await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
+            await using var reader = await cmd.ExecuteReaderAsync(Behavior);
 
             await reader.ReadAsync();
 
@@ -1791,6 +1797,7 @@ LANGUAGE plpgsql VOLATILE";
             cts.Cancel();
 
             var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task);
+            Assert.That(exception.InnerException, Is.Null);
 
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
         }
@@ -1800,6 +1807,9 @@ LANGUAGE plpgsql VOLATILE";
         {
             if (IsMultiplexing)
                 return; // Multiplexing, cancellation
+
+            if (!IsSequential)
+                return;
 
             await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
             using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
@@ -1814,7 +1824,7 @@ LANGUAGE plpgsql VOLATILE";
                 .WriteDataRowWithFlush(new byte[10000], new byte[4]);
 
             using var cmd = new NpgsqlCommand("SELECT some_bytea, some_int FROM some_table", conn);
-            await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
+            await using var reader = await cmd.ExecuteReaderAsync(Behavior);
 
             await reader.ReadAsync();
 
@@ -1823,6 +1833,7 @@ LANGUAGE plpgsql VOLATILE";
             cts.Cancel();
 
             var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task);
+            Assert.That(exception.InnerException, Is.Null);
 
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
         }
@@ -1837,6 +1848,9 @@ LANGUAGE plpgsql VOLATILE";
         {
             if (IsMultiplexing)
                 return; // Multiplexing, cancellation
+
+            if (!IsSequential)
+                return;
 
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString);
             csb.CommandTimeout = 3;
@@ -1855,7 +1869,7 @@ LANGUAGE plpgsql VOLATILE";
                 .WriteDataRowWithFlush(new byte[10000]);
 
             using var cmd = new NpgsqlCommand("SELECT some_bytea FROM some_table", conn);
-            await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
+            await using var reader = await cmd.ExecuteReaderAsync(Behavior);
 
             await reader.ReadAsync();
 
@@ -1874,6 +1888,9 @@ LANGUAGE plpgsql VOLATILE";
             if (IsMultiplexing)
                 return; // Multiplexing, cancellation
 
+            if (!IsSequential)
+                return;
+
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString);
             csb.CommandTimeout = 3;
             csb.CancellationTimeout = 15000;
@@ -1891,7 +1908,7 @@ LANGUAGE plpgsql VOLATILE";
                 .WriteDataRowWithFlush(new byte[10000], new byte[4]);
 
             using var cmd = new NpgsqlCommand("SELECT some_bytea, some_int FROM some_table", conn);
-            await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
+            await using var reader = await cmd.ExecuteReaderAsync(Behavior);
 
             await reader.ReadAsync();
 
