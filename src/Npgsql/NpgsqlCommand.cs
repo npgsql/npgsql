@@ -480,8 +480,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                 foreach (var statement in _statements)
                 {
-                    Expect<ParseCompleteMessage>(connector.ReadMessage(), connector);
-                    var paramTypeOIDs = Expect<ParameterDescriptionMessage>(connector.ReadMessage(), connector).TypeOIDs;
+                    Expect<ParseCompleteMessage>(connector.ReadMessageWithoutCancellation(), connector);
+                    var paramTypeOIDs = Expect<ParameterDescriptionMessage>(connector.ReadMessageWithoutCancellation(), connector).TypeOIDs;
 
                     if (statement.InputParameters.Count != paramTypeOIDs.Count)
                     {
@@ -515,7 +515,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         }
                     }
 
-                    var msg = connector.ReadMessage();
+                    var msg = connector.ReadMessageWithoutCancellation();
                     switch (msg.Code)
                     {
                     case BackendMessageCode.RowDescription:
@@ -526,7 +526,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     }
                 }
 
-                Expect<ReadyForQueryMessage>(connector.ReadMessage(), connector);
+                Expect<ReadyForQueryMessage>(connector.ReadMessageWithoutCancellation(), connector);
                 sendTask.GetAwaiter().GetResult();
             }
         }

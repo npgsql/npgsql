@@ -52,7 +52,7 @@ namespace Npgsql
             _connector.Flush();
 
             CopyOutResponseMessage copyOutResponse;
-            var msg = _connector.ReadMessage();
+            var msg = _connector.ReadMessageWithoutCancellation();
             switch (msg.Code)
             {
             case BackendMessageCode.CopyOutResponse:
@@ -144,9 +144,9 @@ namespace Npgsql
             if (numColumns == -1)
             {
                 Debug.Assert(_leftToReadInDataMsg == 0);
-                Expect<CopyDoneMessage>(await _connector.ReadMessage(async, cancellationToken), _connector);
-                Expect<CommandCompleteMessage>(await _connector.ReadMessage(async, cancellationToken), _connector);
-                Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async, cancellationToken), _connector);
+                Expect<CopyDoneMessage>(await _connector.ReadMessageWithoutCancellation(async, cancellationToken), _connector);
+                Expect<CommandCompleteMessage>(await _connector.ReadMessageWithoutCancellation(async, cancellationToken), _connector);
+                Expect<ReadyForQueryMessage>(await _connector.ReadMessageWithoutCancellation(async, cancellationToken), _connector);
                 _column = -1;
                 _isConsumed = true;
                 return -1;
@@ -384,8 +384,8 @@ namespace Npgsql
                 // Read to the end
                 _connector.SkipUntil(BackendMessageCode.CopyDone);
                 // We intentionally do not pass a CancellationToken since we don't want to cancel cleanup
-                Expect<CommandCompleteMessage>(await _connector.ReadMessage(async, cancellationToken: default), _connector);
-                Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async, cancellationToken: default), _connector);
+                Expect<CommandCompleteMessage>(await _connector.ReadMessageWithoutCancellation(async, cancellationToken: default), _connector);
+                Expect<ReadyForQueryMessage>(await _connector.ReadMessageWithoutCancellation(async, cancellationToken: default), _connector);
             }
 
             _connector.EndUserAction();

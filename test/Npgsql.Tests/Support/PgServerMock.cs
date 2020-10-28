@@ -158,6 +158,21 @@ namespace Npgsql.Tests.Support
             return this;
         }
 
+        internal async Task WriteDataRowWithFlush(params byte[][] columnValues)
+        {
+            CheckDisposed();
+
+            _writeBuffer.WriteByte((byte) BackendMessageCode.DataRow);
+            _writeBuffer.WriteInt32(4 + 2 + columnValues.Sum(v => 4 + v.Length));
+            _writeBuffer.WriteInt16(columnValues.Length);
+
+            foreach (var field in columnValues)
+            {
+                _writeBuffer.WriteInt32(field.Length);
+                await _writeBuffer.WriteBytesRaw(field, true);
+            }
+        }
+
         internal PgServerMock WriteCommandComplete(string tag = "")
         {
             CheckDisposed();
