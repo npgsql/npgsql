@@ -500,7 +500,7 @@ namespace Npgsql
             // being set up (even if its empty)
             TypeMapper = new ConnectorTypeMapper(this);
 
-            NpgsqlDatabaseInfo database = null!;
+            NpgsqlDatabaseInfo? database;
 
             if (forceReload)
             {
@@ -531,7 +531,7 @@ namespace Npgsql
                 }
             }
 
-            DatabaseInfo = database;
+            DatabaseInfo = database!;
             TypeMapper.Bind(DatabaseInfo);
         }
 
