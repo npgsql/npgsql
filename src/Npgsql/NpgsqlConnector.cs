@@ -148,6 +148,11 @@ namespace Npgsql
         volatile Exception? _breakReason;
 
         /// <summary>
+        /// Semaphore, used to synchronize DatabaseInfo between multiple connections, so it wouldn't be loaded in parallel.
+        /// </summary>
+        static readonly SemaphoreSlim DatabaseInfoSemaphore = new SemaphoreSlim(1);
+
+        /// <summary>
         /// <para>
         /// Used by the pool to indicate that I/O is currently in progress on this connector, so that another write
         /// isn't started concurrently. Note that since we have only one write loop, this is only ever usedto
@@ -450,7 +455,7 @@ namespace Npgsql
 
                 State = ConnectorState.Ready;
 
-                await LoadDatabaseInfo(forceReload: false, timeout, async);
+                await LoadDatabaseInfo(forceReload: false, timeout, async, cancellationToken);
 
                 if (Settings.Pooling && !Settings.Multiplexing && !Settings.NoResetOnClose && DatabaseInfo.SupportsDiscard)
                 {
@@ -482,7 +487,8 @@ namespace Npgsql
             }
         }
 
-        internal async Task LoadDatabaseInfo(bool forceReload, NpgsqlTimeout timeout, bool async)
+        internal async Task LoadDatabaseInfo(bool forceReload, NpgsqlTimeout timeout, bool async,
+            CancellationToken cancellationToken = default)
         {
             // Super hacky stuff...
 
@@ -495,9 +501,30 @@ namespace Npgsql
             TypeMapper = new ConnectorTypeMapper(this);
 
             if (forceReload || !NpgsqlDatabaseInfo.Cache.TryGetValue(ConnectionString, out var database))
-                NpgsqlDatabaseInfo.Cache[ConnectionString] = database = await NpgsqlDatabaseInfo.Load(Connection, timeout, async);
+            {
+                var hasSemaphore = async
+                    ? await DatabaseInfoSemaphore.WaitAsync(timeout.TimeLeft, cancellationToken)
+                    : DatabaseInfoSemaphore.Wait(timeout.TimeLeft, cancellationToken);
 
-            DatabaseInfo = database;
+                // We've timed out - calling Check, to throw the correct exception
+                if (!hasSemaphore)
+                    timeout.Check();
+
+                try
+                {
+                    if (forceReload || !NpgsqlDatabaseInfo.Cache.TryGetValue(ConnectionString, out database))
+                    {
+                        NpgsqlDatabaseInfo.Cache[ConnectionString] = database = await NpgsqlDatabaseInfo.Load(Connection,
+                            timeout, async);
+                    }
+                }
+                finally
+                {
+                    DatabaseInfoSemaphore.Release();
+                }
+            }
+
+            DatabaseInfo = database!;
             TypeMapper.Bind(DatabaseInfo);
         }
 
