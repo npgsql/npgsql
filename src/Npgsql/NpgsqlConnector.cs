@@ -500,14 +500,7 @@ namespace Npgsql
             // being set up (even if its empty)
             TypeMapper = new ConnectorTypeMapper(this);
 
-            NpgsqlDatabaseInfo? database;
-
-            if (forceReload)
-            {
-                NpgsqlDatabaseInfo.Cache[ConnectionString] = database = await NpgsqlDatabaseInfo.Load(Connection,
-                    timeout, async);
-            }
-            else if (!NpgsqlDatabaseInfo.Cache.TryGetValue(ConnectionString, out database))
+            if (forceReload || !NpgsqlDatabaseInfo.Cache.TryGetValue(ConnectionString, out var database))
             {
                 var hasSemaphore = async
                     ? await DatabaseInfoSemaphore.WaitAsync(timeout.TimeLeft, cancellationToken)
@@ -519,7 +512,7 @@ namespace Npgsql
 
                 try
                 {
-                    if (!NpgsqlDatabaseInfo.Cache.TryGetValue(ConnectionString, out database))
+                    if (forceReload || !NpgsqlDatabaseInfo.Cache.TryGetValue(ConnectionString, out database))
                     {
                         NpgsqlDatabaseInfo.Cache[ConnectionString] = database = await NpgsqlDatabaseInfo.Load(Connection,
                             timeout, async);
