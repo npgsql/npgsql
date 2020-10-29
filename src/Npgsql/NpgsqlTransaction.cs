@@ -129,8 +129,6 @@ namespace Npgsql
                 Log.Debug("Committing transaction", _connector.Id);
                 await _connector.ExecuteInternalCommand(PregeneratedMessages.CommitTransaction, async, cancellationToken);
             }
-
-            _connector.Connection?.EndBindingScope(ConnectorBindingScope.Transaction);
         }
 
         /// <summary>
@@ -158,16 +156,12 @@ namespace Npgsql
         /// </summary>
         public override void Rollback() => Rollback(false).GetAwaiter().GetResult();
 
-        async Task Rollback(bool async, CancellationToken cancellationToken = default)
+        Task Rollback(bool async, CancellationToken cancellationToken = default)
         {
             CheckReady();
-
-            if (!_connector.DatabaseInfo.SupportsTransactions)
-                return;
-
-            await _connector.Rollback(async, cancellationToken);
-
-            _connector.Connection?.EndBindingScope(ConnectorBindingScope.Transaction);
+            return _connector.DatabaseInfo.SupportsTransactions
+                ? _connector.Rollback(async, cancellationToken)
+                : Task.CompletedTask;
         }
 
         /// <summary>
