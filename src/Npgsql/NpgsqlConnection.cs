@@ -719,18 +719,32 @@ namespace Npgsql
                 throw new ArgumentOutOfRangeException("Unknown connection state: " + FullState);
             }
 
-            // TODO: The following shouldn't exist - we need to flow down the regular path to close any
-            // open reader / COPY. See test CloseDuringRead with multiplexing.
-            if (Settings.Multiplexing && ConnectorBindingScope == ConnectorBindingScope.None)
+            
+            if (Settings.Multiplexing)
             {
-                // TODO: Consider falling through to the regular reset logic. This adds some unneeded conditions
-                // and assignment but actual perf impact should be negligible (measure).
-                Debug.Assert(Connector == null);
-                FullState = ConnectionState.Closed;
-                Log.Debug("Connection closed (multiplexing)");
-                OnStateChange(OpenToClosedEventArgs);
-                Volatile.Write(ref _closing, 0);
-                return Task.CompletedTask;
+                // TODO: The following shouldn't exist - we need to flow down the regular path to close any
+                // open reader / COPY. See test CloseDuringRead with multiplexing.
+                if (ConnectorBindingScope == ConnectorBindingScope.None)
+                {
+                    // TODO: Consider falling through to the regular reset logic. This adds some unneeded conditions
+                    // and assignment but actual perf impact should be negligible (measure).
+                    Debug.Assert(Connector == null);
+                    FullState = ConnectionState.Closed;
+                    Log.Debug("Connection closed (multiplexing)");
+                    OnStateChange(OpenToClosedEventArgs);
+                    Volatile.Write(ref _closing, 0);
+                    return Task.CompletedTask;
+                }
+                else if (ConnectorBindingScope == ConnectorBindingScope.Transaction)
+                {
+                    // There was an open transaction, but it was not disposed
+                    if (async)
+                        return Connector.Transaction.DisposeAsync().AsTask();
+                    else
+                        Connector.Transaction.Dispose();
+
+                    return Task.CompletedTask;
+                }
             }
 
             return CloseAsync(cancellationToken);
