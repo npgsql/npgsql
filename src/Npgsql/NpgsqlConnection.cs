@@ -737,6 +737,7 @@ namespace Npgsql
                 }
                 else if (ConnectorBindingScope == ConnectorBindingScope.Transaction)
                 {
+                    Debug.Assert(Connector != null);
                     // There was an open transaction, but it was not disposed
                     if (async)
                         return Connector.Transaction.DisposeAsync().AsTask();
