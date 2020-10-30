@@ -683,7 +683,7 @@ namespace Npgsql
         /// Releases the connection. If the connection is pooled, it will be returned to the pool and made available for re-use.
         /// If it is non-pooled, the physical connection will be closed.
         /// </summary>
-        public override void Close() => Close(async: false);
+        public override void Close() => Close(async: false).GetAwaiter().GetResult();
 
         /// <summary>
         /// Releases the connection. If the connection is pooled, it will be returned to the pool and made available for re-use.
@@ -699,12 +699,12 @@ namespace Npgsql
                 return Close(async: true);
         }
 
-        internal Task Close(bool async, CancellationToken cancellationToken = default)
+        internal async Task Close(bool async, CancellationToken cancellationToken = default)
         {
             // Even though NpgsqlConnection isn't thread safe we'll make sure this part is.
             // Because we really don't want double returns to the pool.
             if (Interlocked.Exchange(ref _closing, 1) == 1)
-                return Task.CompletedTask;
+                return;
 
             switch (FullState)
             {
@@ -715,7 +715,7 @@ namespace Npgsql
                 break;
             case ConnectionState.Closed:
                 Volatile.Write(ref _closing, 0);
-                return Task.CompletedTask;
+                return;
             case ConnectionState.Connecting:
                 Volatile.Write(ref _closing, 0);
                 throw new InvalidOperationException("Can't close, connection is in state " + FullState);
@@ -727,6 +727,19 @@ namespace Npgsql
             
             if (Settings.Multiplexing)
             {
+                if (ConnectorBindingScope == ConnectorBindingScope.Transaction)
+                {
+                    Debug.Assert(Connector != null);
+                    // There was an open transaction, but it was not disposed
+                    // After it is disposed, the connector is returned to the pool
+                    // And the current scope should be None
+                    // So we fall through below and close the connection
+                    if (async)
+                        await Connector.Transaction.DisposeAsync();
+                    else
+                        Connector.Transaction.Dispose();
+                }
+
                 // TODO: The following shouldn't exist - we need to flow down the regular path to close any
                 // open reader / COPY. See test CloseDuringRead with multiplexing.
                 if (ConnectorBindingScope == ConnectorBindingScope.None)
@@ -738,22 +751,11 @@ namespace Npgsql
                     Log.Debug("Connection closed (multiplexing)");
                     OnStateChange(OpenToClosedEventArgs);
                     Volatile.Write(ref _closing, 0);
-                    return Task.CompletedTask;
-                }
-                else if (ConnectorBindingScope == ConnectorBindingScope.Transaction)
-                {
-                    Debug.Assert(Connector != null);
-                    // There was an open transaction, but it was not disposed
-                    if (async)
-                        return Connector.Transaction.DisposeAsync().AsTask();
-                    else
-                        Connector.Transaction.Dispose();
-
-                    return Task.CompletedTask;
+                    return;
                 }
             }
 
-            return CloseAsync(cancellationToken);
+            await CloseAsync(cancellationToken);
 
             async Task CloseAsync(CancellationToken cancellationToken)
             {
