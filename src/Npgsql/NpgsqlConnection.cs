@@ -724,22 +724,18 @@ namespace Npgsql
                 throw new ArgumentOutOfRangeException("Unknown connection state: " + FullState);
             }
 
-            
-            if (Settings.Multiplexing)
+            // TODO: The following shouldn't exist - we need to flow down the regular path to close any
+            // open reader / COPY. See test CloseDuringRead with multiplexing.
+            if (Settings.Multiplexing && ConnectorBindingScope == ConnectorBindingScope.None)
             {
-                // TODO: The following shouldn't exist - we need to flow down the regular path to close any
-                // open reader / COPY. See test CloseDuringRead with multiplexing.
-                if (ConnectorBindingScope == ConnectorBindingScope.None)
-                {
-                    // TODO: Consider falling through to the regular reset logic. This adds some unneeded conditions
-                    // and assignment but actual perf impact should be negligible (measure).
-                    Debug.Assert(Connector == null);
-                    FullState = ConnectionState.Closed;
-                    Log.Debug("Connection closed (multiplexing)");
-                    OnStateChange(OpenToClosedEventArgs);
-                    Volatile.Write(ref _closing, 0);
-                    return Task.CompletedTask;
-                }
+                // TODO: Consider falling through to the regular reset logic. This adds some unneeded conditions
+                // and assignment but actual perf impact should be negligible (measure).
+                Debug.Assert(Connector == null);
+                FullState = ConnectionState.Closed;
+                Log.Debug("Connection closed (multiplexing)");
+                OnStateChange(OpenToClosedEventArgs);
+                Volatile.Write(ref _closing, 0);
+                return Task.CompletedTask;
             }
 
             return CloseAsync(cancellationToken);
