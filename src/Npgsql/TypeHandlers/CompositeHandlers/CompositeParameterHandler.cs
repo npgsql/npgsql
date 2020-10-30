@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System;
+using System.Reflection;
 using System.Threading.Tasks;
 using Npgsql.TypeHandling;
 
@@ -7,14 +8,14 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
     abstract class CompositeParameterHandler
     {
         public NpgsqlTypeHandler Handler { get; }
-        public ParameterInfo ParameterInfo { get; }
-        public int Position { get; }
+        public Type ParameterType { get; }
+        public int ParameterPosition { get; }
 
         public CompositeParameterHandler(NpgsqlTypeHandler handler, ParameterInfo parameterInfo)
         {
             Handler = handler;
-            ParameterInfo = parameterInfo;
-            Position = parameterInfo.Position;
+            ParameterType = parameterInfo.ParameterType;
+            ParameterPosition = parameterInfo.Position;
         }
 
         public async ValueTask<T> Read<T>(NpgsqlReadBuffer buffer, bool async)

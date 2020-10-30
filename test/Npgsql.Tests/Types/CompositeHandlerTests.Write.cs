@@ -50,7 +50,7 @@ namespace Npgsql.Tests.Types
 
         [Test]
         public void Write_TypeWithTwoPropertiesInverted_Succeeds() =>
-            Write<TypeWithTwoPropertiesInverted>((execute, expected) =>
+            Write<TypeWithTwoPropertiesReversed>((execute, expected) =>
             {
                 var actual = execute();
                 Assert.AreEqual(expected.IntValue, actual.GetInt32(1));
