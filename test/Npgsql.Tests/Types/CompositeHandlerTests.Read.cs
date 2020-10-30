@@ -51,7 +51,7 @@ namespace Npgsql.Tests.Types
 
         [Test]
         public void Read_TypeWithTwoPropertiesInverted_Succeeds() =>
-            Read<TypeWithTwoPropertiesInverted>((execute, expected) =>
+            Read<TypeWithTwoPropertiesReversed>((execute, expected) =>
             {
                 var actual = execute();
                 Assert.AreEqual(expected.IntValue, actual.IntValue);
@@ -110,6 +110,24 @@ namespace Npgsql.Tests.Types
         [Test]
         public void Read_TypeWithOneParameter_Succeeds() =>
             Read(new TypeWithOneParameter(1), (execute, expected) => Assert.That(execute().Value1, Is.EqualTo(expected.Value1)));
+
+        [Test]
+        public void Read_TypeWithTwoParameters_Succeeds() =>
+            Read(new TypeWithTwoParameters(TheAnswer, HelloSlonik), (execute, expected) =>
+            {
+                var actual = execute();
+                Assert.That(actual.IntValue, Is.EqualTo(expected.IntValue));
+                Assert.That(actual.StringValue, Is.EqualTo(expected.StringValue));
+            });
+
+        [Test]
+        public void Read_TypeWithTwoParametersReversed_Succeeds() =>
+            Read(new TypeWithTwoParametersReversed(HelloSlonik, TheAnswer), (execute, expected) =>
+            {
+                var actual = execute();
+                Assert.That(actual.IntValue, Is.EqualTo(expected.IntValue));
+                Assert.That(actual.StringValue, Is.EqualTo(expected.StringValue));
+            });
 
         [Test]
         public void Read_TypeWithNineParameters_Succeeds() =>
