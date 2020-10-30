@@ -29,7 +29,7 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
 
             var args = new object?[Handlers.Length];
             foreach (var handler in Handlers)
-                args[handler.Position] = await handler.Read(buffer, async, cancellationToken);
+                args[handler.ParameterPosition] = await handler.Read(buffer, async, cancellationToken);
 
             return (TComposite)ConstructorInfo.Invoke(args);
         }
@@ -41,11 +41,12 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
             if (parameterHandlers.Length > maxGenericParameters)
                 return new CompositeConstructorHandler<TComposite>(postgresType, constructorInfo, parameterHandlers);
 
-            var parameterTypes = new Type[maxGenericParameters + 1];
-            for (var parameterIndex = 0; parameterIndex < maxGenericParameters; ++parameterIndex)
-                parameterTypes[parameterIndex + 1] = parameterIndex < parameterHandlers.Length
-                    ? parameterHandlers[parameterIndex].ParameterInfo.ParameterType
-                    : typeof(Unused);
+            var parameterTypes = new Type[1 + maxGenericParameters];
+            foreach (var parameterHandler in parameterHandlers)
+                parameterTypes[1 + parameterHandler.ParameterPosition] = parameterHandler.ParameterType;
+
+            for (var parameterIndex = 1; parameterIndex < parameterTypes.Length; parameterIndex++)
+                parameterTypes[parameterIndex] ??= typeof(Unused);
 
             parameterTypes[0] = typeof(TComposite);
             return (CompositeConstructorHandler<TComposite>)Activator.CreateInstance(
