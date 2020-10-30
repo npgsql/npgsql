@@ -1753,6 +1753,8 @@ namespace Npgsql
             switch (TransactionStatus)
             {
             case TransactionStatus.Idle:
+                // There is an undisposed transaction on multiplexing connection
+                endBindingScope = Connection?.ConnectorBindingScope == ConnectorBindingScope.Transaction;
                 break;
             case TransactionStatus.Pending:
                 // BeginTransaction() was called, but was left in the write buffer and not yet sent to server.
