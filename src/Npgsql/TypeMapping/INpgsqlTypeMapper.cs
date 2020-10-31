@@ -14,7 +14,6 @@ namespace Npgsql.TypeMapping
     /// </summary>
     /// <remarks>
     /// </remarks>
-    [PublicAPI]
     public interface INpgsqlTypeMapper
     {
         /// <summary>

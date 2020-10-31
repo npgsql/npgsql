@@ -13,7 +13,6 @@ namespace Npgsql.PostgresTypes
         /// <summary>
         /// The PostgreSQL data type of the subtype of this range.
         /// </summary>
-        [PublicAPI]
         public PostgresType Subtype { get; }
 
         /// <summary>

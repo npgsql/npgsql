@@ -44,7 +44,6 @@ namespace Npgsql
         /// </summary>
         /// <param name="parameterName">The name of the <see cref="NpgsqlParameter">NpgsqlParameter</see> to retrieve.</param>
         /// <value>The <see cref="NpgsqlParameter">NpgsqlParameter</see> with the specified name, or a null reference if the parameter is not found.</value>
-        [PublicAPI]
         public new NpgsqlParameter this[string parameterName]
         {
             get
@@ -83,7 +82,6 @@ namespace Npgsql
         /// </summary>
         /// <param name="index">The zero-based index of the <see cref="NpgsqlParameter">NpgsqlParameter</see> to retrieve.</param>
         /// <value>The <see cref="NpgsqlParameter">NpgsqlParameter</see> at the specified index.</value>
-        [PublicAPI]
         public new NpgsqlParameter this[int index]
         {
             get => _internalList[index];
@@ -136,7 +134,6 @@ namespace Npgsql
         /// <param name="parameterName">The name of the <see cref="NpgsqlParameter">NpgsqlParameter</see>.</param>
         /// <param name="value">The Value of the <see cref="NpgsqlParameter">NpgsqlParameter</see> to add to the collection.</param>
         /// <returns>The parameter that was added.</returns>
-        [PublicAPI]
         public NpgsqlParameter AddWithValue(string parameterName, object value)
             => Add(new NpgsqlParameter(parameterName, value));
 
@@ -147,7 +144,6 @@ namespace Npgsql
         /// <param name="parameterType">One of the NpgsqlDbType values.</param>
         /// <param name="value">The Value of the <see cref="NpgsqlParameter">NpgsqlParameter</see> to add to the collection.</param>
         /// <returns>The parameter that was added.</returns>
-        [PublicAPI]
         public NpgsqlParameter AddWithValue(string parameterName, NpgsqlDbType parameterType, object value)
             => Add(new NpgsqlParameter(parameterName, parameterType) { Value = value });
 
@@ -159,7 +155,6 @@ namespace Npgsql
         /// <param name="parameterType">One of the NpgsqlDbType values.</param>
         /// <param name="size">The length of the column.</param>
         /// <returns>The parameter that was added.</returns>
-        [PublicAPI]
         public NpgsqlParameter AddWithValue(string parameterName, NpgsqlDbType parameterType, int size, object value)
             => Add(new NpgsqlParameter(parameterName, parameterType, size) { Value = value });
 
@@ -172,7 +167,6 @@ namespace Npgsql
         /// <param name="size">The length of the column.</param>
         /// <param name="sourceColumn">The name of the source column.</param>
         /// <returns>The parameter that was added.</returns>
-        [PublicAPI]
         public NpgsqlParameter AddWithValue(string parameterName, NpgsqlDbType parameterType, int size, string? sourceColumn, object value)
             => Add(new NpgsqlParameter(parameterName, parameterType, size, sourceColumn) { Value = value });
 
@@ -181,7 +175,6 @@ namespace Npgsql
         /// </summary>
         /// <param name="value">The Value of the <see cref="NpgsqlParameter">NpgsqlParameter</see> to add to the collection.</param>
         /// <returns>The parameter that was added.</returns>
-        [PublicAPI]
         public NpgsqlParameter AddWithValue(object value)
             => Add(new NpgsqlParameter { Value = value });
 
@@ -191,7 +184,6 @@ namespace Npgsql
         /// <param name="parameterType">One of the NpgsqlDbType values.</param>
         /// <param name="value">The Value of the <see cref="NpgsqlParameter">NpgsqlParameter</see> to add to the collection.</param>
         /// <returns>The parameter that was added.</returns>
-        [PublicAPI]
         public NpgsqlParameter AddWithValue(NpgsqlDbType parameterType, object value)
             => Add(new NpgsqlParameter { NpgsqlDbType = parameterType, Value = value });
 
@@ -201,7 +193,6 @@ namespace Npgsql
         /// <param name="parameterName">The name of the parameter.</param>
         /// <param name="parameterType">One of the DbType values.</param>
         /// <returns>The index of the new <see cref="NpgsqlParameter">NpgsqlParameter</see> object.</returns>
-        [PublicAPI]
         public NpgsqlParameter Add(string parameterName, NpgsqlDbType parameterType)
             => Add(new NpgsqlParameter(parameterName, parameterType));
 
@@ -212,7 +203,6 @@ namespace Npgsql
         /// <param name="parameterType">One of the DbType values.</param>
         /// <param name="size">The length of the column.</param>
         /// <returns>The index of the new <see cref="NpgsqlParameter">NpgsqlParameter</see> object.</returns>
-        [PublicAPI]
         public NpgsqlParameter Add(string parameterName, NpgsqlDbType parameterType, int size)
             => Add(new NpgsqlParameter(parameterName, parameterType, size));
 
@@ -224,7 +214,6 @@ namespace Npgsql
         /// <param name="size">The length of the column.</param>
         /// <param name="sourceColumn">The name of the source column.</param>
         /// <returns>The index of the new <see cref="NpgsqlParameter">NpgsqlParameter</see> object.</returns>
-        [PublicAPI]
         public NpgsqlParameter Add(string parameterName, NpgsqlDbType parameterType, int size, string sourceColumn)
             => Add(new NpgsqlParameter(parameterName, parameterType, size, sourceColumn));
 
@@ -233,7 +222,6 @@ namespace Npgsql
         #region IDataParameterCollection Member
 
         /// <inheritdoc />
-        [PublicAPI]
         // ReSharper disable once ImplicitNotNullOverridesUnknownExternalMember
         public override void RemoveAt(string parameterName)
             => RemoveAt(IndexOf(parameterName ?? throw new ArgumentNullException(nameof(parameterName))));
@@ -332,7 +320,6 @@ namespace Npgsql
         /// Removes the specified <see cref="NpgsqlParameter">NpgsqlParameter</see> from the collection.
         /// </summary>
         /// <param name="parameterName">The name of the <see cref="NpgsqlParameter">NpgsqlParameter</see> to remove from the collection.</param>
-        [PublicAPI]
         public void Remove(string parameterName)
         {
             if (parameterName is null)
@@ -472,7 +459,6 @@ namespace Npgsql
         /// </summary>
         /// <param name="item">Parameter to find.</param>
         /// <returns>Index of the parameter, or -1 if the parameter is not present.</returns>
-        [PublicAPI]
         public int IndexOf(NpgsqlParameter item)
             => _internalList.IndexOf(item);
 
@@ -481,7 +467,6 @@ namespace Npgsql
         /// </summary>
         /// <param name="index">Index of the existing parameter before which to insert the new one.</param>
         /// <param name="item">Parameter to insert.</param>
-        [PublicAPI]
         public void Insert(int index, NpgsqlParameter item)
         {
             if (item is null)
@@ -499,7 +484,6 @@ namespace Npgsql
         /// </summary>
         /// <param name="item">Parameter to find.</param>
         /// <returns>True if the parameter was found, otherwise false.</returns>
-        [PublicAPI]
         public bool Contains(NpgsqlParameter item) => _internalList.Contains(item);
 
         /// <summary>
@@ -507,7 +491,6 @@ namespace Npgsql
         /// </summary>
         /// <param name="item">Parameter to remove.</param>
         /// <returns>True if the parameter was found and removed, otherwise false.</returns>
-        [PublicAPI]
         public bool Remove(NpgsqlParameter item)
         {
             if (item == null)
@@ -530,7 +513,6 @@ namespace Npgsql
         /// </summary>
         /// <param name="array">Destination array.</param>
         /// <param name="arrayIndex">Starting index in destination array.</param>
-        [PublicAPI]
         public void CopyTo(NpgsqlParameter[] array, int arrayIndex)
             => _internalList.CopyTo(array, arrayIndex);
 
@@ -538,7 +520,6 @@ namespace Npgsql
         /// Convert collection to a System.Array.
         /// </summary>
         /// <returns>NpgsqlParameter[]</returns>
-        [PublicAPI]
         public NpgsqlParameter[] ToArray() => _internalList.ToArray();
 
         internal void CloneTo(NpgsqlParameterCollection other)

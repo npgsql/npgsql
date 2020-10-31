@@ -384,14 +384,12 @@ namespace Npgsql
         /// Backend server host name.
         /// </summary>
         [Browsable(true)]
-        [PublicAPI]
         public string? Host => Settings.Host;
 
         /// <summary>
         /// Backend server port.
         /// </summary>
         [Browsable(true)]
-        [PublicAPI]
         public int Port => Settings.Port;
 
         /// <summary>
@@ -427,13 +425,11 @@ namespace Npgsql
         /// <summary>
         /// Whether to use Windows integrated security to log in.
         /// </summary>
-        [PublicAPI]
         public bool IntegratedSecurity => Settings.IntegratedSecurity;
 
         /// <summary>
         /// User name.
         /// </summary>
-        [PublicAPI]
         public string? UserName => Settings.Username;
 
         internal string? Password => Settings.Password;
@@ -967,14 +963,12 @@ namespace Npgsql
         /// Meant for use by type plugins (e.g. NodaTime)
         /// </summary>
         [Browsable(false)]
-        [PublicAPI]
         public bool HasIntegerDateTimes => CheckOpenAndRunInTemporaryScope(c => c.DatabaseInfo.HasIntegerDateTimes);
 
         /// <summary>
         /// The connection's timezone as reported by PostgreSQL, in the IANA/Olson database format.
         /// </summary>
         [Browsable(false)]
-        [PublicAPI]
         public string Timezone => CheckOpenAndRunInTemporaryScope(c => c.Timezone);
 
         /// <summary>
@@ -982,7 +976,6 @@ namespace Npgsql
         /// (e.g. as a result of a SET command).
         /// </summary>
         [Browsable(false)]
-        [PublicAPI]
         public IReadOnlyDictionary<string, string> PostgresParameters
             => CheckOpenAndRunInTemporaryScope(c => c.PostgresParameters);
 
@@ -1203,7 +1196,6 @@ namespace Npgsql
         /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
         /// <typeparam name="TEnum">The .NET enum type to be mapped</typeparam>
-        [PublicAPI]
         [Obsolete("Use NpgsqlConnection.TypeMapper.MapEnum() instead")]
         public void MapEnum<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
             where TEnum : struct, Enum
@@ -1231,7 +1223,6 @@ namespace Npgsql
         /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
         /// <typeparam name="TEnum">The .NET enum type to be mapped</typeparam>
-        [PublicAPI]
         [Obsolete("Use NpgsqlConnection.GlobalTypeMapper.MapEnum() instead")]
         public static void MapEnumGlobally<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
             where TEnum : struct, Enum
@@ -1248,7 +1239,6 @@ namespace Npgsql
         /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
         /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
-        [PublicAPI]
         [Obsolete("Use NpgsqlConnection.GlobalTypeMapper.UnmapEnum() instead")]
         public static void UnmapEnumGlobally<TEnum>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null)
             where TEnum : struct, Enum
@@ -1282,7 +1272,6 @@ namespace Npgsql
         /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
         /// <typeparam name="T">The .NET type to be mapped</typeparam>
-        [PublicAPI]
         [Obsolete("Use NpgsqlConnection.TypeMapper.MapComposite() instead")]
         public void MapComposite<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null) where T : new()
             => TypeMapper.MapComposite<T>(pgName, nameTranslator);
@@ -1309,7 +1298,6 @@ namespace Npgsql
         /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
         /// <typeparam name="T">The .NET type to be mapped</typeparam>
-        [PublicAPI]
         [Obsolete("Use NpgsqlConnection.GlobalTypeMapper.MapComposite() instead")]
         public static void MapCompositeGlobally<T>(string? pgName = null, INpgsqlNameTranslator? nameTranslator = null) where T : new()
             => GlobalTypeMapper.MapComposite<T>(pgName, nameTranslator);
@@ -1325,7 +1313,6 @@ namespace Npgsql
         /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
         /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
-        [PublicAPI]
         [Obsolete("Use NpgsqlConnection.GlobalTypeMapper.UnmapComposite() instead")]
         public static void UnmapCompositeGlobally<T>(string pgName, INpgsqlNameTranslator? nameTranslator = null) where T : new()
             => GlobalTypeMapper.UnmapComposite<T>(pgName, nameTranslator);
@@ -1367,7 +1354,6 @@ namespace Npgsql
         /// The time-out value is passed to <see cref="Socket.ReceiveTimeout"/>.
         /// </param>
         /// <returns>true if an asynchronous message was received, false if timed out.</returns>
-        [PublicAPI]
         public bool Wait(TimeSpan timeout) => Wait((int)timeout.TotalMilliseconds);
 
         /// <summary>
@@ -1375,7 +1361,6 @@ namespace Npgsql
         /// exits immediately. The asynchronous message is delivered via the normal events
         /// (<see cref="Notification"/>, <see cref="Notice"/>).
         /// </summary>
-        [PublicAPI]
         public void Wait() => Wait(0);
 
         /// <summary>
@@ -1390,7 +1375,6 @@ namespace Npgsql
         /// </param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
         /// <returns>true if an asynchronous message was received, false if timed out.</returns>
-        [PublicAPI]
         public Task<bool> WaitAsync(int timeout, CancellationToken cancellationToken = default)
         {
             if (cancellationToken.IsCancellationRequested)
@@ -1415,7 +1399,6 @@ namespace Npgsql
         /// </param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
         /// <returns>true if an asynchronous message was received, false if timed out.</returns>
-        [PublicAPI]
         public Task<bool> WaitAsync(TimeSpan timeout, CancellationToken cancellationToken = default) => WaitAsync((int)timeout.TotalMilliseconds, cancellationToken);
 
         /// <summary>
@@ -1424,7 +1407,6 @@ namespace Npgsql
         /// (<see cref="Notification"/>, <see cref="Notice"/>).
         /// </summary>
         /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
-        [PublicAPI]
         public Task WaitAsync(CancellationToken cancellationToken = default) => WaitAsync(0, cancellationToken);
 
         #endregion
@@ -1703,7 +1685,6 @@ namespace Npgsql
         /// (password, SSL callbacks) while changing other connection parameters (e.g.
         /// database or pooling)
         /// </summary>
-        [PublicAPI]
         public NpgsqlConnection CloneWith(string connectionString)
         {
             CheckDisposed();
@@ -1764,7 +1745,6 @@ namespace Npgsql
         /// <summary>
         /// Unprepares all prepared statements on this connection.
         /// </summary>
-        [PublicAPI]
         public void UnprepareAll()
         {
             if (Settings.Multiplexing)

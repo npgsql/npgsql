@@ -360,7 +360,6 @@ namespace Npgsql
         /// <summary>
         /// Used to specify which PostgreSQL type will be sent to the database for this parameter.
         /// </summary>
-        [PublicAPI]
         public string? DataTypeName
         {
             get

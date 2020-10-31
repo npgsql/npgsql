@@ -156,24 +156,6 @@ namespace JetBrains.Annotations
     }
 
     /// <summary>
-    /// This attribute is intended to mark publicly available API
-    /// which should not be removed and so is treated as used.
-    /// </summary>
-    [MeansImplicitUse(ImplicitUseTargetFlags.WithMembers)]
-#pragma warning disable CA1018
-    sealed class PublicAPIAttribute : Attribute
-#pragma warning restore CA1018
-    {
-        public PublicAPIAttribute() : this("") { }
-        public PublicAPIAttribute([NotNull] string comment)
-        {
-            Comment = comment;
-        }
-
-        public string Comment { get; private set; }
-    }
-
-    /// <summary>
     /// Describes dependency between method input and output.
     /// </summary>
     /// <syntax>

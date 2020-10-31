@@ -30,7 +30,6 @@ namespace Npgsql
         /// <summary>
         /// Row updated event.
         /// </summary>
-        [PublicAPI]
         public event NpgsqlRowUpdatedEventHandler? RowUpdated;
 
         /// <summary>
@@ -143,7 +142,7 @@ namespace Npgsql
 
         // Temporary implementation, waiting for official support in System.Data via https://github.com/dotnet/runtime/issues/22109
         internal async Task<int> Fill(DataTable dataTable, bool async, CancellationToken cancellationToken = default)
-        { 
+        {
             var command = SelectCommand;
             var activeConnection = command?.Connection ?? throw new InvalidOperationException("Connection required");
             var originalState = ConnectionState.Closed;
