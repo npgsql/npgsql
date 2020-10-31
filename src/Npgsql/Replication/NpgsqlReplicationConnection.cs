@@ -249,7 +249,7 @@ namespace Npgsql.Replication
             // the connection, but if DisposeAsync() is called while the connection is streaming, we
             // do the cancellation ourselves to bring it down in a predictable way.
             if (currentState == ReplicationConnectionState.Streaming)
-                _npgsqlConnection.Connector!.CancelRequest();
+                Cancel();
 
 #if NETSTANDARD2_0
             _sendFeedbackTimer.Dispose();
@@ -421,7 +421,7 @@ namespace Npgsql.Replication
 #if !NETSTANDARD2_0
             await
 #endif
-            using var registration = cancellationToken.CanBeCanceled ? cancellationToken.Register(c => ((NpgsqlConnector)c!).CancelRequest(), connector) : default;
+            using var registration = cancellationToken.CanBeCanceled ? cancellationToken.Register(c => ((NpgsqlReplicationConnection)c!).Cancel(), this) : default;
             var createCommandBuilder = new StringBuilder("START_REPLICATION ");
             startCommandAction(createCommandBuilder);
             await connector.WriteQuery(createCommandBuilder.ToString(), true, cancellationToken);
@@ -465,7 +465,7 @@ namespace Npgsql.Replication
 #if !NETSTANDARD2_0
             await
 #endif
-            using var registration = cancellationToken.CanBeCanceled ? cancellationToken.Register(c => ((NpgsqlConnector)c!).CancelRequest(), connector) : default;
+            using var registration = cancellationToken.CanBeCanceled ? cancellationToken.Register(c => ((NpgsqlReplicationConnection)c!).Cancel(), this) : default;
             SetTimeouts(_walReceiverTimeout, CommandTimeout);
             var buf = connector.ReadBuffer;
             var columnStream = new NpgsqlReadBuffer.ColumnStream(buf);
@@ -593,9 +593,12 @@ namespace Npgsql.Replication
             }
             finally
             {
-                // Restart the timers
-                _sendFeedbackTimer.Change(WalReceiverStatusInterval, Timeout.InfiniteTimeSpan);
-                _requestFeedbackTimer.Change(_requestFeedbackInterval, Timeout.InfiniteTimeSpan);
+                // Restart the timers if we are still streaming
+                if (State == ReplicationConnectionState.Streaming)
+                {
+                    _sendFeedbackTimer.Change(WalReceiverStatusInterval, Timeout.InfiniteTimeSpan);
+                    _requestFeedbackTimer.Change(_requestFeedbackInterval, Timeout.InfiniteTimeSpan);
+                }
                 _feedbackSemaphore.Release();
             }
         }
@@ -665,7 +668,7 @@ namespace Npgsql.Replication
 #if !NETSTANDARD2_0
             await
 #endif
-            using var registration = cancellationToken.CanBeCanceled ? cancellationToken.Register(c => ((NpgsqlConnector)c!).CancelRequest(), connector) : default;
+            using var registration = cancellationToken.CanBeCanceled ? cancellationToken.Register(c => ((NpgsqlReplicationConnection)c!).Cancel(), this) : default;
             var command = "DROP_REPLICATION_SLOT " + slotName;
             if (wait == true)
                 command += " WAIT";
@@ -693,7 +696,7 @@ namespace Npgsql.Replication
 #if !NETSTANDARD2_0
             await
 #endif
-            using var registration = cancellationToken.CanBeCanceled ? cancellationToken.Register(c => ((NpgsqlConnector)c!).CancelRequest(), connector) : default;
+            using var registration = cancellationToken.CanBeCanceled ? cancellationToken.Register(c => ((NpgsqlReplicationConnection)c!).Cancel(), this) : default;
             await connector.WriteQuery(command, true, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             await connector.Flush(true, cancellationToken);
@@ -825,9 +828,17 @@ namespace Npgsql.Replication
 
         void SetTimeouts(TimeSpan readTimeout, TimeSpan writeTimeout)
         {
-            var connector = _npgsqlConnection.Connector!;
+            var connector = Connector;
             connector.UserTimeout = readTimeout > TimeSpan.Zero ? (int)readTimeout.TotalMilliseconds : 0;
             connector.WriteBuffer.Timeout = writeTimeout;
+        }
+
+        void Cancel()
+        {
+            using var stateResetter = EnsureAndSetState(ReplicationConnectionState.Streaming, ReplicationConnectionState.Cancelling);
+            _sendFeedbackTimer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+            _requestFeedbackTimer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+            Connector.CancelRequest();
         }
 
         /// <summary>
