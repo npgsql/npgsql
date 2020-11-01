@@ -35,8 +35,8 @@ namespace Npgsql.Tests.Replication
                 });
 
         [Test]
-        public Task PhysicalReplicationWithSlot()
-            => SafeReplicationTest(nameof(PhysicalReplicationWithSlot),
+        public Task WithSlot()
+            => SafeReplicationTest(nameof(WithSlot),
                 async (slotName, tableName) =>
                 {
                     var messages = new ConcurrentQueue<(NpgsqlLogSequenceNumber WalStart, NpgsqlLogSequenceNumber WalEnd, byte[] data)>();
@@ -82,7 +82,7 @@ namespace Npgsql.Tests.Replication
                 });
 
         [Test]
-        public async Task PhysicalReplicationWithoutSlot()
+        public async Task WithoutSlot()
         {
             var messages =
                 new ConcurrentQueue<(NpgsqlLogSequenceNumber WalStart, NpgsqlLogSequenceNumber WalEnd, byte[] data)>();
