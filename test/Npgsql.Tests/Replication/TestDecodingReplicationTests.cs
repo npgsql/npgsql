@@ -1,14 +1,11 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
-using Npgsql.Replication.Logical;
+﻿using Npgsql.Replication.Logical;
 using Npgsql.Replication.Logical.Protocol;
 using Npgsql.Replication.Logical.TestDecoding;
-using NpgsqlTypes;
 using NUnit.Framework;
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using NpgsqlLogicalReplicationConnectionExtensions = Npgsql.Replication.Logical.TestDecoding.NpgsqlLogicalReplicationConnectionExtensions;
 
 namespace Npgsql.Tests.Replication
@@ -291,7 +288,6 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
                 async (slotName, tableName) =>
                 {
                     await using var c = await OpenConnectionAsync();
-                    var indexName = $"i_{tableName.Substring(2)}";
                     await c.ExecuteNonQueryAsync(@$"
 CREATE TABLE {tableName} (id serial PRIMARY KEY, name TEXT NOT NULL);
 ALTER TABLE {tableName} REPLICA IDENTITY FULL;
@@ -333,7 +329,6 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
                 {
                     await using var c = await OpenConnectionAsync();
                     TestUtil.MinimumPgVersion(c, "11.0", "Replication of TRUNCATE commands was introduced in PostgreSQL 11");
-                    var indexName = $"i_{tableName.Substring(2)}";
                     await c.ExecuteNonQueryAsync(@$"
 CREATE TABLE {tableName} (id serial PRIMARY KEY, name TEXT NOT NULL);
 INSERT INTO {tableName} (name) VALUES ('val'), ('val2');

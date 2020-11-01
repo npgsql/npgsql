@@ -1,11 +1,8 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.IO;
+﻿using Npgsql.Replication.Physical;
+using NUnit.Framework;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Npgsql.Replication.Physical;
-using NpgsqlTypes;
-using NUnit.Framework;
 
 namespace Npgsql.Tests.Replication
 {

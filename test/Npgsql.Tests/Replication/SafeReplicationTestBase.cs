@@ -1,14 +1,10 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Diagnostics;
+﻿using Npgsql.Replication;
+using NUnit.Framework;
+using System;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-using Npgsql.Replication;
-using Npgsql.Replication.Logical.Protocol;
-using NUnit.Framework;
 
 namespace Npgsql.Tests.Replication
 {

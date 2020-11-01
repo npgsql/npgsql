@@ -151,7 +151,6 @@ namespace Npgsql.Tests.Replication
             var info = await rc.TimelineHistory(systemInfo.Timeline);
             Assert.That(info.FileName, Is.Not.Null);
             Assert.That(info.Content.Length, Is.GreaterThan(0));
-            var contentText = Encoding.UTF8.GetString(info.Content);
         }
 
         [Test]
