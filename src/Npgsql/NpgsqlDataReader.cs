@@ -851,7 +851,7 @@ namespace Npgsql
         /// <summary>
         /// Closes the <see cref="NpgsqlDataReader"/> reader, allowing a new command to be executed.
         /// </summary>
-        public override void Close() => Close(connectionClosing: false, async: false).GetAwaiter().GetResult();
+        public override void Close() { } // NO-OP per #3289
 
         /// <summary>
         /// Closes the <see cref="NpgsqlDataReader"/> reader, allowing a new command to be executed.
@@ -861,7 +861,7 @@ namespace Npgsql
 #else
         public override Task CloseAsync()
 #endif
-            => Close(connectionClosing: false, async: true);
+            => Task.CompletedTask; // NO-OP per #3289
 
         internal async Task Close(bool connectionClosing, bool async)
         {
