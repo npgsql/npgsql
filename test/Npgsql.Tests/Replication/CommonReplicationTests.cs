@@ -284,11 +284,11 @@ namespace Npgsql.Tests.Replication
                     TestUtil.MinimumPgVersion(c, "12.0", "Setting wal_sender_timeout at runtime was introduced in in PostgreSQL 12");
 
                     var synchronousCommit = (string)(await c.ExecuteScalarAsync("SHOW synchronous_commit"))!;
-                    if (synchronousCommit != "on")
-                        TestUtil.IgnoreExceptOnBuildServer("Ignoring because synchronous_commit isn't on");
+                    if (synchronousCommit != "local")
+                        TestUtil.IgnoreExceptOnBuildServer("Ignoring because synchronous_commit isn't 'local'");
                     var synchronousStandbyNames = (string)(await c.ExecuteScalarAsync("SHOW synchronous_standby_names"))!;
-                    if (synchronousStandbyNames != "local")
-                        TestUtil.IgnoreExceptOnBuildServer(@"Ignoring because synchronous_standby_names isn't ""local""");
+                    if (synchronousStandbyNames != "npgsql_test_sync_standby")
+                        TestUtil.IgnoreExceptOnBuildServer("Ignoring because synchronous_standby_names isn't 'npgsql_test_sync_standby'");
 
                     var messages = new ConcurrentQueue<(NpgsqlLogSequenceNumber Lsn, string? messageData)>();
                     await c.ExecuteNonQueryAsync(@$"
