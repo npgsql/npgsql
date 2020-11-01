@@ -1,6 +1,9 @@
 ﻿using System;
+using System.Buffers.Binary;
 using System.Data;
 using System.Threading.Tasks;
+using Npgsql.BackendMessages;
+using Npgsql.Tests.Support;
 using Npgsql.Util;
 using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;
@@ -368,11 +371,40 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task SavepointWithSemicolon()
+        public async Task SavepointQuoted()
         {
             await using var conn = await OpenConnectionAsync();
             await using var tx = conn.BeginTransaction();
-            Assert.That(() => tx.Save("a;b"), Throws.Exception.TypeOf<ArgumentException>());
+            tx.Save("a;b");
+            tx.Rollback("a;b");
+        }
+
+        [Test(Description = "Makes sure that creating a savepoint doesn't perform an additional roundtrip, but prepends to the next command")]
+        public async Task SavepointPrepends()
+        {
+            await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
+            using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
+            await using var conn = await OpenConnectionAsync(connectionString);
+            var pgMock = await postmasterMock.WaitForServerConnection();
+
+            using var tx = conn.BeginTransaction();
+            var saveTask = tx.SaveAsync("foo");
+            Assert.That(saveTask.Status, Is.EqualTo(TaskStatus.RanToCompletion));
+
+            // If we're here, SaveAsync above didn't wait for any response, which is the right behavior
+
+            await pgMock
+                .WriteCommandComplete()
+                .WriteReadyForQuery() // BEGIN response
+                .WriteCommandComplete()
+                .WriteReadyForQuery() // SAVEPOINT response
+                .WriteScalarResponseAndFlush(1);
+
+            await conn.ExecuteScalarAsync("SELECT 1");
+
+            await pgMock.ExpectSimpleQuery("BEGIN TRANSACTION ISOLATION LEVEL READ COMMITTED");
+            await pgMock.ExpectSimpleQuery("SAVEPOINT foo");
+            await pgMock.ExpectExtendedQuery();
         }
 
         [Test, Description("Check IsCompleted before, during and after a normal committed transaction")]

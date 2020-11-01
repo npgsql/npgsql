@@ -72,7 +72,7 @@ namespace Npgsql.Tests.Support
             _readBuffer.Skip(len - 4);
         }
 
-        internal async Task ReadMessageType(byte expectedCode)
+        internal async Task ExpectMessage(byte expectedCode)
         {
             CheckDisposed();
 
@@ -84,13 +84,39 @@ namespace Npgsql.Tests.Support
             _readBuffer.Skip(len - 4);
         }
 
+        internal Task ExpectExtendedQuery()
+            => ExpectMessages(
+                FrontendMessageCode.Parse,
+                FrontendMessageCode.Bind,
+                FrontendMessageCode.Describe,
+                FrontendMessageCode.Execute,
+                FrontendMessageCode.Sync);
+
+        internal async Task ExpectMessages(params byte[] expectedCodes)
+        {
+            foreach (var expectedCode in expectedCodes)
+                await ExpectMessage(expectedCode);
+        }
+
+        internal async Task ExpectSimpleQuery(string expectedSql)
+        {
+            CheckDisposed();
+
+            await _readBuffer.EnsureAsync(5);
+            var actualCode = _readBuffer.ReadByte();
+            Assert.That(actualCode, Is.EqualTo(FrontendMessageCode.Query), $"Expected message of type Query but got '{(char)actualCode}'");
+            _ = _readBuffer.ReadInt32();
+            var actualSql = _readBuffer.ReadNullTerminatedString();
+            Assert.That(actualSql, Is.EqualTo(expectedSql));
+        }
+
         internal Task FlushAsync()
         {
             CheckDisposed();
             return _writeBuffer.Flush(async: true);
         }
 
-        internal Task WriteScalarResponse(int value)
+        internal Task WriteScalarResponseAndFlush(int value)
             => WriteParseComplete()
                 .WriteBindComplete()
                 .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Int4))

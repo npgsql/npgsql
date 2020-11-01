@@ -2,6 +2,7 @@ using System;
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Logging;
@@ -184,40 +185,63 @@ namespace Npgsql
 
         #region Savepoints
 
-        async Task Save(string name, bool async, CancellationToken cancellationToken = default)
+        /// <summary>
+        /// Creates a transaction save point.
+        /// </summary>
+        /// <param name="name">The name of the savepoint.</param>
+        /// <remarks>
+        /// This method does not cause a database roundtrip to be made. The savepoint creation statement will instead be sent along with
+        /// the next command.
+        /// </remarks>
+#if NET
+        public override void Save(string name)
+#else
+        public void Save(string name)
+#endif
         {
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentException("name can't be empty", nameof(name));
-            if (name.Contains(";"))
-                throw new ArgumentException("name can't contain a semicolon");
 
             CheckReady();
             if (!_connector.DatabaseInfo.SupportsTransactions)
                 return;
-            using (_connector.StartUserAction())
-            {
-                Log.Debug($"Creating savepoint {name}", _connector.Id);
-                await _connector.ExecuteInternalCommand($"SAVEPOINT {name}", async, cancellationToken);
-            }
+
+            // Note that creating a savepoint doesn't actually send anything to the backend (only prepends), so strictly speaking we don't
+            // have to start a user action. However, we do this for consistency as if we did (for the checks and exceptions)
+            using var _ = _connector.StartUserAction();
+
+            Log.Debug($"Creating savepoint {name}", _connector.Id);
+
+            if (RequiresQuoting(name))
+                name = $"\"{name.Replace("\"", "\"\"")}\"";
+
+            // Note: savepoint names are PostgreSQL identifiers, and so limited by default to 63 characters.
+            // Since we are prepending, we assume below that the statement will always fit in the buffer.
+            _connector.WriteBuffer.WriteByte(FrontendMessageCode.Query);
+            _connector.WriteBuffer.WriteInt32(
+                sizeof(int)  +                               // Message length (including self excluding code)
+                _connector.TextEncoding.GetByteCount("SAVEPOINT ") +
+                _connector.TextEncoding.GetByteCount(name) +
+                sizeof(byte));                               // Null terminator
+
+            _connector.WriteBuffer.WriteString("SAVEPOINT ");
+            _connector.WriteBuffer.WriteString(name);
+            _connector.WriteBuffer.WriteByte(0);
+
+            _connector.PendingPrependedResponses += 2;
         }
 
         /// <summary>
         /// Creates a transaction save point.
         /// </summary>
         /// <param name="name">The name of the savepoint.</param>
-#if NET
-        public override void Save(string name) => Save(name, false).GetAwaiter().GetResult();
-#else
-        public void Save(string name) => Save(name, false).GetAwaiter().GetResult();
-#endif
-
-        /// <summary>
-        /// Creates a transaction save point.
-        /// </summary>
-        /// <param name="name">The name of the savepoint.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <remarks>
+        /// This method does not cause a database roundtrip to be made, and will therefore always complete synchronously.
+        /// The savepoint creation statement will instead be sent along with the next command.
+        /// </remarks>
 #if NET
         public override Task SaveAsync(string name, CancellationToken cancellationToken = default)
 #else
@@ -226,8 +250,8 @@ namespace Npgsql
         {
             if (cancellationToken.IsCancellationRequested)
                 return Task.FromCanceled(cancellationToken);
-            using (NoSynchronizationContextScope.Enter())
-                return Save(name, true, cancellationToken);
+            Save(name);
+            return Task.CompletedTask;
         }
 
         async Task Rollback(string name, bool async, CancellationToken cancellationToken = default)
@@ -236,8 +260,6 @@ namespace Npgsql
                 throw new ArgumentNullException(nameof(name));
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentException("name can't be empty", nameof(name));
-            if (name.Contains(";"))
-                throw new ArgumentException("name can't contain a semicolon");
 
             CheckReady();
             if (!_connector.DatabaseInfo.SupportsTransactions)
@@ -245,6 +267,10 @@ namespace Npgsql
             using (_connector.StartUserAction())
             {
                 Log.Debug($"Rolling back savepoint {name}", _connector.Id);
+
+                if (RequiresQuoting(name))
+                    name = $"\"{name.Replace("\"", "\"\"")}\"";
+
                 await _connector.ExecuteInternalCommand($"ROLLBACK TO SAVEPOINT {name}", async, cancellationToken);
             }
         }
@@ -283,8 +309,6 @@ namespace Npgsql
                 throw new ArgumentNullException(nameof(name));
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentException("name can't be empty", nameof(name));
-            if (name.Contains(";"))
-                throw new ArgumentException("name can't contain a semicolon");
 
             CheckReady();
             if (!_connector.DatabaseInfo.SupportsTransactions)
@@ -292,6 +316,10 @@ namespace Npgsql
             using (_connector.StartUserAction())
             {
                 Log.Debug($"Releasing savepoint {name}", _connector.Id);
+
+                if (RequiresQuoting(name))
+                    name = $"\"{name.Replace("\"", "\"\"")}\"";
+
                 await _connector.ExecuteInternalCommand($"RELEASE SAVEPOINT {name}", async, cancellationToken);
             }
         }
@@ -399,6 +427,21 @@ namespace Npgsql
                 throw new ObjectDisposedException(typeof(NpgsqlTransaction).Name);
             if (IsCompleted)
                 throw new InvalidOperationException("This NpgsqlTransaction has completed; it is no longer usable.");
+        }
+
+        static bool RequiresQuoting(string identifier)
+        {
+            Debug.Assert(identifier.Length > 0);
+            
+            var first = identifier[0];
+            if (first != '_' && !char.IsLower(first))
+                return true;
+
+            foreach (var c in identifier.AsSpan(1))
+                if (c != '_' && c != '$' && !char.IsLower(c) && !char.IsDigit(c))
+                    return true;
+
+            return false;
         }
 
         #endregion

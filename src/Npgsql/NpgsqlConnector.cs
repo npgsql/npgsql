@@ -120,7 +120,7 @@ namespace Npgsql
         /// The number of messages that were prepended to the current message chain, but not yet sent.
         /// Note that this only tracks messages which produce a ReadyForQuery message
         /// </summary>
-        int _pendingPrependedResponses;
+        internal int PendingPrependedResponses { get; set; }
 
         internal NpgsqlDataReader? CurrentReader;
 
@@ -1022,7 +1022,7 @@ namespace Npgsql
         /// </summary>
         internal void PrependInternalMessage(byte[] rawMessage, int responseMessageCount)
         {
-            _pendingPrependedResponses += responseMessageCount;
+            PendingPrependedResponses += responseMessageCount;
 
             var t = WritePregenerated(rawMessage);
             Debug.Assert(t.IsCompleted, "Could not fully write pregenerated message into the buffer");
@@ -1061,7 +1061,7 @@ namespace Npgsql
             bool attemptPostgresCancellation = true,
             CancellationToken cancellationToken = default)
         {
-            if (_pendingPrependedResponses > 0 ||
+            if (PendingPrependedResponses > 0 ||
                 dataRowLoadingMode != DataRowLoadingMode.NonSequential ||
                 readingNotifications ||
                 ReadBuffer.ReadBytesLeft < 5)
@@ -1103,13 +1103,13 @@ namespace Npgsql
                 CancellationToken cancellationToken2 = default)
             {
                 // First read the responses of any prepended messages.
-                if (_pendingPrependedResponses > 0 && !isReadingPrependedMessage)
+                if (PendingPrependedResponses > 0 && !isReadingPrependedMessage)
                 {
                     try
                     {
                         // TODO: There could be room for optimization here, rather than the async call(s)
                         ReadBuffer.Timeout = TimeSpan.FromMilliseconds(InternalCommandTimeout);
-                        for (; _pendingPrependedResponses > 0; _pendingPrependedResponses--)
+                        for (; PendingPrependedResponses > 0; PendingPrependedResponses--)
                             await ReadMessageLong(DataRowLoadingMode.Skip, readingNotifications2: false, isReadingPrependedMessage: true,
                                 attemptPostgresCancellation2: false, cancellationToken2);
                     }
@@ -1795,7 +1795,7 @@ namespace Npgsql
 
             // Our buffer may contain unsent prepended messages (such as BeginTransaction), clear it out completely
             WriteBuffer.Clear();
-            _pendingPrependedResponses = 0;
+            PendingPrependedResponses = 0;
 
             // We may have allocated an oversize read buffer, switch back to the original one
             // TODO: Replace this with array pooling, #2326
@@ -2139,7 +2139,7 @@ namespace Npgsql
         {
             Debug.Assert(State != ConnectorState.Ready, "Forgot to start a user action...");
 
-            Log.Trace($"Executing internal pregenerated command", Id);
+            Log.Trace("Executing internal pregenerated command", Id);
 
             await WritePregenerated(data, async, cancellationToken);
             await Flush(async, cancellationToken);
