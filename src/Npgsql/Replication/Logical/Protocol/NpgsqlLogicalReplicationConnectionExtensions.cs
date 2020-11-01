@@ -17,7 +17,6 @@ namespace Npgsql.Replication.Logical.Protocol
     /// See <a href="https://www.postgresql.org/docs/current/protocol-logical-replication.html">https://www.postgresql.org/docs/current/protocol-logical-replication.html</a>
     /// and <a href="https://www.postgresql.org/docs/current/protocol-logicalrep-message-formats.html">https://www.postgresql.org/docs/current/protocol-logicalrep-message-formats.html</a>.
     /// </summary>
-    [PublicAPI]
     public static class NpgsqlLogicalReplicationConnectionExtensions
     {
         /// <summary>
@@ -55,7 +54,6 @@ namespace Npgsql.Replication.Logical.Protocol
         /// <returns>
         /// A <see cref="NpgsqlPgOutputReplicationSlot"/> that wraps the newly-created replication slot.
         /// </returns>
-        [PublicAPI]
         public static async Task<NpgsqlPgOutputReplicationSlot> CreateReplicationSlot(
             this NpgsqlLogicalReplicationConnection connection,
             string slotName,
@@ -86,7 +84,6 @@ namespace Npgsql.Replication.Logical.Protocol
         /// The default value is <see cref="CancellationToken.None"/>.</param>
         /// <returns>A <see cref="Task{T}"/> representing an <see cref="IAsyncEnumerable{T}"/> that
         /// can be used to stream WAL entries in form of <see cref="LogicalReplicationProtocolMessage"/> instances.</returns>
-        [PublicAPI]
         public static Task<IAsyncEnumerable<LogicalReplicationProtocolMessage>> StartReplication(
             this NpgsqlLogicalReplicationConnection connection, NpgsqlPgOutputReplicationSlot slot,
             NpgsqlPgOutputPluginOptions options, NpgsqlLogSequenceNumber? walLocation = null, CancellationToken cancellationToken = default)

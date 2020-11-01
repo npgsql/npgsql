@@ -7,7 +7,6 @@ namespace Npgsql.Replication.Logical.Protocol
     /// <summary>
     /// Abstract base class for Logical Replication Protocol delete message types.
     /// </summary>
-    [PublicAPI]
     public abstract class DeleteMessage : LogicalReplicationProtocolMessage
     {
         private protected DeleteMessage(NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock,
@@ -16,7 +15,6 @@ namespace Npgsql.Replication.Logical.Protocol
         /// <summary>
         /// ID of the relation corresponding to the ID in the relation message.
         /// </summary>
-        [PublicAPI]
         public uint RelationId { get; }
     }
 }

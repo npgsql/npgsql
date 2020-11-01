@@ -6,7 +6,6 @@ namespace Npgsql.Replication.Logical.TestDecoding
     /// Acts as a proxy for a logical replication slot
     /// initialized for for the test_decoding logical decoding plugin.
     /// </summary>
-    [PublicAPI]
     public class NpgsqlTestDecodingReplicationSlot : NpgsqlLogicalReplicationSlot
     {
         /// <summary>
@@ -18,7 +17,6 @@ namespace Npgsql.Replication.Logical.TestDecoding
         /// been initialized for the test_decoding logical decoding plugin.
         /// </remarks>
         /// <param name="slotName">The name of the existing replication slot</param>
-        [PublicAPI]
         public NpgsqlTestDecodingReplicationSlot(string slotName)
             : this(new NpgsqlReplicationSlotOptions(slotName)) { }
 
@@ -31,7 +29,6 @@ namespace Npgsql.Replication.Logical.TestDecoding
         /// been initialized for the test_decoding logical decoding plugin.
         /// </remarks>
         /// <param name="options">The <see cref="NpgsqlReplicationSlotOptions"/> representing the existing replication slot</param>
-        [PublicAPI]
         public NpgsqlTestDecodingReplicationSlot(NpgsqlReplicationSlotOptions options) : base("test_decoding", options) { }
     }
 }

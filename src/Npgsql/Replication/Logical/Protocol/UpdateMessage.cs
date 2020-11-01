@@ -10,7 +10,6 @@ namespace Npgsql.Replication.Logical.Protocol
     /// <remarks>
     /// This is the base type of all update messages containing only the tuples for the new row.
     /// </remarks>
-    [PublicAPI]
     public class UpdateMessage : LogicalReplicationProtocolMessage
     {
         internal UpdateMessage(NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock,
@@ -23,13 +22,11 @@ namespace Npgsql.Replication.Logical.Protocol
         /// <summary>
         /// ID of the relation corresponding to the ID in the relation message.
         /// </summary>
-        [PublicAPI]
         public uint RelationId { get; }
 
         /// <summary>
         /// Columns representing the new row.
         /// </summary>
-        [PublicAPI]
         public ITupleData[]  NewRow { get; }
     }
 }

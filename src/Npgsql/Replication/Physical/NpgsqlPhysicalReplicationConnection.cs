@@ -12,7 +12,6 @@ namespace Npgsql.Replication.Physical
     /// <summary>
     /// Represents a physical replication connection to a PostgreSQL server
     /// </summary>
-    [PublicAPI]
     public sealed class NpgsqlPhysicalReplicationConnection : NpgsqlReplicationConnection
     {
         private protected override ReplicationMode ReplicationMode => ReplicationMode.Physical;
@@ -34,7 +33,6 @@ namespace Npgsql.Replication.Physical
         /// </param>
         /// <returns>A <see cref="NpgsqlPhysicalReplicationSlot"/> that wraps the newly-created replication slot.
         /// </returns>
-        [PublicAPI]
         public Task<NpgsqlPhysicalReplicationSlot> CreateReplicationSlot(
             string slotName,
             bool temporary = false,
@@ -78,7 +76,6 @@ namespace Npgsql.Replication.Physical
         /// The default value is <see cref="CancellationToken.None"/>.</param>
         /// <returns>A <see cref="Task{T}"/> representing an <see cref="IAsyncEnumerable{NpgsqlXLogDataMessage}"/> that
         /// can be used to stream WAL entries in form of <see cref="NpgsqlXLogDataMessage"/> instances.</returns>
-        [PublicAPI]
         public Task<IAsyncEnumerable<NpgsqlXLogDataMessage>> StartReplication(NpgsqlPhysicalReplicationSlot slot,
             NpgsqlLogSequenceNumber walLocation, uint timeline = default, CancellationToken cancellationToken = default)
         {
@@ -106,7 +103,6 @@ namespace Npgsql.Replication.Physical
         /// The default value is <see cref="CancellationToken.None"/>.</param>
         /// <returns>A <see cref="Task{T}"/> representing an <see cref="IAsyncEnumerable{NpgsqlXLogDataMessage}"/> that
         /// can be used to stream WAL entries in form of <see cref="NpgsqlXLogDataMessage"/> instances.</returns>
-        [PublicAPI]
         public Task<IAsyncEnumerable<NpgsqlXLogDataMessage>> StartReplication(NpgsqlLogSequenceNumber walLocation,
             uint timeline = default,
             CancellationToken cancellationToken = default)

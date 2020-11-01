@@ -7,7 +7,6 @@ namespace Npgsql.Replication
     /// <summary>
     /// Contains information about a replication slot.
     /// </summary>
-    [PublicAPI]
     public readonly struct NpgsqlReplicationSlotOptions
     {
         /// <summary>
@@ -19,7 +18,6 @@ namespace Npgsql.Replication
         /// <param name="consistentPoint">
         /// The WAL location at which the slot became consistent.
         /// </param>
-        [PublicAPI]
         public NpgsqlReplicationSlotOptions(string slotName, string? consistentPoint = null)
             : this(slotName, consistentPoint == null ? default : NpgsqlLogSequenceNumber.Parse(consistentPoint), null){}
 
@@ -32,7 +30,6 @@ namespace Npgsql.Replication
         /// <param name="consistentPoint">
         /// The WAL location at which the slot became consistent.
         /// </param>
-        [PublicAPI]
         public NpgsqlReplicationSlotOptions(string slotName, NpgsqlLogSequenceNumber consistentPoint)
             : this(slotName, consistentPoint, null){}
 
@@ -49,19 +46,16 @@ namespace Npgsql.Replication
         /// <summary>
         /// The name of the replication slot.
         /// </summary>
-        [PublicAPI]
         public string SlotName { get; }
 
         /// <summary>
         /// The WAL location at which the slot became consistent.
         /// </summary>
-        [PublicAPI]
         public NpgsqlLogSequenceNumber ConsistentPoint { get; }
 
         /// <summary>
         /// The identifier of the snapshot exported by the CREATE_REPLICATION_SLOT command.
         /// </summary>
-        [PublicAPI]
         internal string? SnapshotName { get; }
     }
 }

@@ -122,7 +122,6 @@ namespace Npgsql.Replication.Logical.Internal
         /// The default value is <see cref="CancellationToken.None"/>.</param>
         /// <returns>A <see cref="Task{T}"/> representing an <see cref="IAsyncEnumerable{T}"/> that
         /// can be used to stream WAL entries in form of <see cref="NpgsqlXLogDataMessage"/> instances.</returns>
-        [PublicAPI]
         public static Task<IAsyncEnumerable<NpgsqlXLogDataMessage>> StartReplicationForPlugin(
             this NpgsqlLogicalReplicationConnection connection, NpgsqlLogicalReplicationSlot slot,
             NpgsqlLogSequenceNumber? walLocation = null, IEnumerable<KeyValuePair<string, string?>>? options = null, CancellationToken cancellationToken = default)

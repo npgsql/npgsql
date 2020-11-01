@@ -9,7 +9,6 @@ namespace Npgsql.Replication
     /// <summary>
     /// A message representing a section of the WAL data stream.
     /// </summary>
-    [PublicAPI]
     public readonly struct NpgsqlXLogDataMessage : INpgsqlReplicationMessage
     {
         internal NpgsqlXLogDataMessage(NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, Stream data)
@@ -21,15 +20,12 @@ namespace Npgsql.Replication
         }
 
         /// <inheritdoc />
-        [PublicAPI]
         public NpgsqlLogSequenceNumber WalStart { get; }
 
         /// <inheritdoc />
-        [PublicAPI]
         public NpgsqlLogSequenceNumber WalEnd { get; }
 
         /// <inheritdoc />
-        [PublicAPI]
         public DateTime ServerClock { get; }
 
         /// <summary>
@@ -43,7 +39,6 @@ namespace Npgsql.Replication
         /// it can be split at the page boundary. In other words, the first main WAL record and its continuation
         /// records can be sent in different XLogData messages.
         /// </remarks>
-        [PublicAPI]
         public Stream Data { get; }
     }
 }

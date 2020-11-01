@@ -5,14 +5,12 @@ namespace Npgsql.Replication.Logical
     /// <summary>
     /// Decides what to do with the snapshot created during logical slot initialization.
     /// </summary>
-    [PublicAPI]
     public enum SlotSnapshotInitMode
     {
         /// <summary>
         /// Export the snapshot for use in other sessions. This is the default.
         /// This option can't be used inside a transaction.
         /// </summary>
-        [PublicAPI]
         Export = 0,
 
         /// <summary>
@@ -20,13 +18,11 @@ namespace Npgsql.Replication.Logical
         /// This option must be used in a transaction, and CREATE_REPLICATION_SLOT must be the first command run
         /// in that transaction.
         /// </summary>
-        [PublicAPI]
         Use = 1,
 
         /// <summary>
         /// Just use the snapshot for logical decoding as normal but don't do anything else with it.
         /// </summary>
-        [PublicAPI]
         NoExport = 2
     }
 }

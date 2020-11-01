@@ -11,7 +11,6 @@ namespace Npgsql.Replication.Logical.Protocol
     /// See https://www.postgresql.org/docs/current/protocol-logicalrep-message-formats.html for details about the
     /// protocol.
     /// </remarks>
-    [PublicAPI]
     public abstract class LogicalReplicationProtocolMessage : INpgsqlReplicationMessage
     {
         private protected LogicalReplicationProtocolMessage(NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd,
@@ -23,15 +22,12 @@ namespace Npgsql.Replication.Logical.Protocol
         }
 
         /// <inheritdoc />
-        [PublicAPI]
         public NpgsqlLogSequenceNumber WalStart { get; }
 
         /// <inheritdoc />
-        [PublicAPI]
         public NpgsqlLogSequenceNumber WalEnd { get; }
 
         /// <inheritdoc />
-        [PublicAPI]
         public DateTime ServerClock { get; }
     }
 }

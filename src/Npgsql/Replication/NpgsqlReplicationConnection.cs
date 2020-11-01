@@ -22,7 +22,6 @@ namespace Npgsql.Replication
     /// <see cref="Logical.NpgsqlLogicalReplicationConnection"/> and
     /// <see cref="Physical.NpgsqlPhysicalReplicationConnection"/>.
     /// </summary>
-    [PublicAPI]
     public abstract class NpgsqlReplicationConnection : IAsyncDisposable
     {
         #region Fields
@@ -75,7 +74,6 @@ namespace Npgsql.Replication
         /// in your connection string.
         /// </remarks>
         [AllowNull]
-        [PublicAPI]
         public string ConnectionString {
             get => _userFacingConnectionString ?? string.Empty;
             set
@@ -95,7 +93,6 @@ namespace Npgsql.Replication
         /// <summary>
         /// The location of the last WAL byte + 1 received in the standby.
         /// </summary>
-        [PublicAPI]
         public NpgsqlLogSequenceNumber LastReceivedLsn
         {
             get => (NpgsqlLogSequenceNumber)unchecked((ulong)Interlocked.Read(ref _lastReceivedLsn));
@@ -105,7 +102,6 @@ namespace Npgsql.Replication
         /// <summary>
         /// The location of the last WAL byte + 1 flushed to disk in the standby.
         /// </summary>
-        [PublicAPI]
         public NpgsqlLogSequenceNumber LastFlushedLsn
         {
             get => (NpgsqlLogSequenceNumber)unchecked((ulong)Interlocked.Read(ref _lastFlushedLsn));
@@ -115,7 +111,6 @@ namespace Npgsql.Replication
         /// <summary>
         /// The location of the last WAL byte + 1 applied (e. g. written to disk) in the standby.
         /// </summary>
-        [PublicAPI]
         public NpgsqlLogSequenceNumber LastAppliedLsn
         {
             get => (NpgsqlLogSequenceNumber)unchecked((ulong)Interlocked.Read(ref _lastAppliedLsn));
@@ -126,14 +121,12 @@ namespace Npgsql.Replication
         /// Send replies at least this often.
         /// Timeout.<see cref="Timeout.InfiniteTimeSpan"/> disables automated replies.
         /// </summary>
-        [PublicAPI]
         public TimeSpan WalReceiverStatusInterval { get; set; } = TimeSpan.FromSeconds(10d);
 
         /// <summary>
         /// Time that receiver waits for communication from master.
         /// Timeout.<see cref="Timeout.InfiniteTimeSpan"/> disables the timeout.
         /// </summary>
-        [PublicAPI]
         public TimeSpan WalReceiverTimeout
         {
             get => _walReceiverTimeout;
@@ -169,7 +162,6 @@ namespace Npgsql.Replication
         /// Gets or sets the wait time before terminating the attempt  to execute a command and generating an error.
         /// </summary>
         /// <value>The time to wait for the command to execute. The default value is 30 seconds.</value>
-        [PublicAPI]
         public TimeSpan CommandTimeout
         {
             get => _commandTimeout ?? (_npgsqlConnection.CommandTimeout > 0
@@ -191,14 +183,12 @@ namespace Npgsql.Replication
         /// The client encoding for the connection
         /// This can only be called when there is an active connection.
         /// </summary>
-        [PublicAPI]
         public Encoding Encoding => _npgsqlConnection.Connector?.TextEncoding ?? throw new InvalidOperationException($"The {Encoding} property can only be used when there is an active connection");
 
         /// <summary>
         /// Process id of backend server.
         /// This can only be called when there is an active connection.
         /// </summary>
-        [PublicAPI]
         public int ProcessID => _npgsqlConnection.Connector?.BackendProcessId ?? throw new InvalidOperationException($"The {ProcessID} property can only be used when there is an active connection");
 
         #endregion Properties
@@ -212,7 +202,6 @@ namespace Npgsql.Replication
         /// <param name="cancellationToken">The token to monitor for cancellation requests.
         /// The default value is <see cref="CancellationToken.None"/>.</param>
         /// <returns>A task representing the asynchronous open operation.</returns>
-        [PublicAPI]
         public async Task OpenAsync(CancellationToken cancellationToken = default)
         {
             // No need for NoSynchronizationContextScope.Enter() since
@@ -231,7 +220,6 @@ namespace Npgsql.Replication
         /// with freeing, releasing, or resetting its unmanaged resources asynchronously.
         /// </summary>
         /// <returns>A task that represents the asynchronous dispose operation.</returns>
-        [PublicAPI]
         public ValueTask DisposeAsync()
         {
             using (NoSynchronizationContextScope.Enter())
@@ -275,7 +263,6 @@ namespace Npgsql.Replication
         /// A <see cref="NpgsqlReplicationSystemIdentification"/> containing information
         /// about the system we are connected to.
         /// </returns>
-        [PublicAPI]
         public Task<NpgsqlReplicationSystemIdentification> IdentifySystem(CancellationToken cancellationToken = default)
         {
             using (NoSynchronizationContextScope.Enter())
@@ -298,7 +285,6 @@ namespace Npgsql.Replication
         /// <param name="cancellationToken">The token to monitor for cancellation requests.
         /// The default value is <see cref="CancellationToken.None"/>.</param>
         /// <returns>The current setting of the run-time parameter specified in <paramref name="parameterName"/> as <see cref="string"/>.</returns>
-        [PublicAPI]
         public Task<string> Show(string parameterName, CancellationToken cancellationToken = default)
         {
             if (parameterName == null)
@@ -318,7 +304,6 @@ namespace Npgsql.Replication
         /// <param name="cancellationToken">The token to monitor for cancellation requests.
         /// The default value is <see cref="CancellationToken.None"/>.</param>
         /// <returns>The timeline history file for timeline tli</returns>
-        [PublicAPI]
         public Task<NpgsqlTimelineHistoryFile> TimelineHistory(uint tli, CancellationToken cancellationToken = default)
         {
             using (NoSynchronizationContextScope.Enter())
@@ -549,7 +534,6 @@ namespace Npgsql.Replication
         /// </summary>
         /// <exception cref="InvalidOperationException">The connection currently isn't streaming</exception>
         /// <returns>A Task representing the sending of the status update (and not any PostgreSQL response).</returns>
-        [PublicAPI]
         public Task SendStatusUpdate(CancellationToken cancellationToken = default)
         {
             using (NoSynchronizationContextScope.Enter())
@@ -650,7 +634,6 @@ namespace Npgsql.Replication
         /// <param name="cancellationToken">The token to monitor for cancellation requests.
         /// The default value is <see cref="CancellationToken.None"/>.</param>
         /// <returns>A task representing the asynchronous drop operation.</returns>
-        [PublicAPI]
         public Task DropReplicationSlot(string slotName, bool wait = false, CancellationToken cancellationToken = default)
         {
             if (slotName is null)

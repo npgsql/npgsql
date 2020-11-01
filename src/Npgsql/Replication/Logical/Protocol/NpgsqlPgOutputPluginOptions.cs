@@ -8,7 +8,6 @@ namespace Npgsql.Replication.Logical.Protocol
     /// <summary>
     /// Options to be passed to the pgoutput plugin
     /// </summary>
-    [PublicAPI]
     public class NpgsqlPgOutputPluginOptions
     {
         /// <summary>
@@ -18,7 +17,6 @@ namespace Npgsql.Replication.Logical.Protocol
         /// <param name="protocolVersion">The version of the logical streaming replication protocol</param>
         /// <param name="binary">Send values in binary representation</param>
         /// <param name="streaming">Enable streaming output</param>
-        [PublicAPI]
         public NpgsqlPgOutputPluginOptions(string publicationName, ulong protocolVersion = 1UL, bool? binary = null, bool? streaming = null)
             : this(new List<string> { publicationName ?? throw new ArgumentNullException(nameof(publicationName)) }, protocolVersion, binary, streaming)
         { }
@@ -30,7 +28,6 @@ namespace Npgsql.Replication.Logical.Protocol
         /// <param name="protocolVersion">The version of the logical streaming replication protocol</param>
         /// <param name="binary">Send values in binary representation</param>
         /// <param name="streaming">Enable streaming output</param>
-        [PublicAPI]
         public NpgsqlPgOutputPluginOptions(IEnumerable<string> publicationNames, ulong protocolVersion = 1UL, bool? binary = null, bool? streaming = null)
         {
             var publicationNamesList = new List<string>(publicationNames);
@@ -52,13 +49,11 @@ namespace Npgsql.Replication.Logical.Protocol
         /// <summary>
         /// The version of the logical streaming replication protocol
         /// </summary>
-        [PublicAPI]
         public ulong ProtocolVersion { get; }
 
         /// <summary>
         /// The publication names to stream
         /// </summary>
-        [PublicAPI]
         public List<string> PublicationNames { get; }
 
         /// <summary>
@@ -67,7 +62,6 @@ namespace Npgsql.Replication.Logical.Protocol
         /// <remarks>
         /// This works in PostgreSQL versions 14+
         /// </remarks>
-        [PublicAPI]
         public bool? Binary { get; }
 
         /// <summary>
@@ -76,7 +70,6 @@ namespace Npgsql.Replication.Logical.Protocol
         /// <remarks>
         /// This works in PostgreSQL versions 14+
         /// </remarks>
-        [PublicAPI]
         public bool? Streaming { get; }
 
         internal IEnumerable<KeyValuePair<string, string?>> GetOptionPairs()

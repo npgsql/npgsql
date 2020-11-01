@@ -5,7 +5,6 @@ namespace Npgsql.Replication.Logical.Protocol
     /// <summary>
     /// Represents a column in a Logical Replication Protocol relation message
     /// </summary>
-    [PublicAPI]
     public readonly struct RelationMessageColumn
     {
         internal RelationMessageColumn(byte flags, string columnName, uint dataTypeId, int typeModifier)
@@ -19,25 +18,21 @@ namespace Npgsql.Replication.Logical.Protocol
         /// <summary>
         /// Flags for the column. Currently can be either 0 for no flags or 1 which marks the column as part of the key.
         /// </summary>
-        [PublicAPI]
         public byte Flags { get; }
 
         /// <summary>
         /// Name of the column.
         /// </summary>
-        [PublicAPI]
         public string ColumnName { get; }
 
         /// <summary>
         /// ID of the column's data type.
         /// </summary>
-        [PublicAPI]
         public uint DataTypeId { get; }
 
         /// <summary>
         /// Type modifier of the column (atttypmod).
         /// </summary>
-        [PublicAPI]
         public int TypeModifier { get; }
     }
 }

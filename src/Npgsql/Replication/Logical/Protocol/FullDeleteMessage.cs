@@ -7,7 +7,6 @@ namespace Npgsql.Replication.Logical.Protocol
     /// <summary>
     /// Logical Replication Protocol delete message for tables with REPLICA IDENTITY REPLICA IDENTITY set to FULL.
     /// </summary>
-    [PublicAPI]
     public sealed class FullDeleteMessage : DeleteMessage
     {
         internal FullDeleteMessage(NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock,
@@ -17,7 +16,6 @@ namespace Npgsql.Replication.Logical.Protocol
         /// <summary>
         /// Columns representing the old values.
         /// </summary>
-        [PublicAPI]
         public ITupleData[] OldRow { get; }
     }
 }

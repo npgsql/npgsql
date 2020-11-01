@@ -7,7 +7,6 @@ namespace Npgsql.Replication.Logical.Protocol
     /// <summary>
     /// Logical Replication Protocol truncate message
     /// </summary>
-    [PublicAPI]
     public sealed class TruncateMessage : LogicalReplicationProtocolMessage
     {
         internal TruncateMessage(NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock,
@@ -20,13 +19,11 @@ namespace Npgsql.Replication.Logical.Protocol
         /// <summary>
         /// Option flags for TRUNCATE
         /// </summary>
-        [PublicAPI]
         public TruncateOptions Options { get; }
 
         /// <summary>
         /// IDs of the relations corresponding to the ID in the relation message.
         /// </summary>
-        [PublicAPI]
         public uint[] RelationIds { get; }
     }
 }

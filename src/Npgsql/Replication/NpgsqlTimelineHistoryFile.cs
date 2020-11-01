@@ -5,7 +5,6 @@ namespace Npgsql.Replication
     /// <summary>
     /// Represents a PostgreSQL timeline history file
     /// </summary>
-    [PublicAPI]
     public readonly struct NpgsqlTimelineHistoryFile
     {
         internal  NpgsqlTimelineHistoryFile(string fileName, byte[] content)
@@ -17,7 +16,6 @@ namespace Npgsql.Replication
         /// <summary>
         /// File name of the timeline history file, e.g., 00000002.history.
         /// </summary>
-        [PublicAPI]
         public string FileName { get; }
 
 
@@ -29,7 +27,6 @@ namespace Npgsql.Replication
         /// <summary>
         /// Contents of the timeline history file.
         /// </summary>
-        [PublicAPI]
         public byte[] Content { get; }
     }
 }

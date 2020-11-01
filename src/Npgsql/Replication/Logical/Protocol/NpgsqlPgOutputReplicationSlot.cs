@@ -7,7 +7,6 @@ namespace Npgsql.Replication.Logical.Protocol
     /// initialized for for the logical streaming replication
     /// protocol (pgoutput logical decoding plugin).
     /// </summary>
-    [PublicAPI]
     public class NpgsqlPgOutputReplicationSlot : NpgsqlLogicalReplicationSlot
     {
         /// <summary>
@@ -19,7 +18,6 @@ namespace Npgsql.Replication.Logical.Protocol
         /// been initialized for the pgoutput logical decoding plugin.
         /// </remarks>
         /// <param name="slotName">The name of the existing replication slot</param>
-        [PublicAPI]
         public NpgsqlPgOutputReplicationSlot(string slotName)
             : this(new NpgsqlReplicationSlotOptions(slotName)) { }
 
@@ -32,7 +30,6 @@ namespace Npgsql.Replication.Logical.Protocol
         /// been initialized for the pgoutput logical decoding plugin.
         /// </remarks>
         /// <param name="options">The <see cref="NpgsqlReplicationSlotOptions"/> representing the existing replication slot</param>
-        [PublicAPI]
         public NpgsqlPgOutputReplicationSlot(NpgsqlReplicationSlotOptions options) : base("pgoutput", options) { }
 
         /// <summary>

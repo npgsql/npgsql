@@ -8,19 +8,16 @@ namespace Npgsql.Replication.Logical.Protocol
     /// <summary>
     /// Represents the data transmitted for a tuple in a Logical Replication Protocol message
     /// </summary>
-    [PublicAPI]
     public interface ITupleData
     {
         /// <summary>
         /// The kind of data in the tuple
         /// </summary>
-        [PublicAPI]
         TupleDataKind Kind { get; }
 
         /// <summary>
         /// The <see cref="System.Type"/> of <see cref="Value"/>.
         /// </summary>
-        [PublicAPI]
         Type Type { get; }
 
         /// <summary>
@@ -28,12 +25,10 @@ namespace Npgsql.Replication.Logical.Protocol
         /// or in binary format if <see cref="Kind" /> is <see cref="TupleDataKind.BinaryValue"/>.
         /// Otherwise <see langword="null" />.
         /// </summary>
-        [PublicAPI]
         object? Value { get; }
     }
 
     /// <inheritdoc />
-    [PublicAPI]
     public class TupleData<T> : ITupleData
     {
         internal TupleData(TupleDataKind kind)
@@ -51,7 +46,6 @@ namespace Npgsql.Replication.Logical.Protocol
         }
 
         /// <inheritdoc />
-        [PublicAPI]
         public TupleDataKind Kind { get; }
 
         Type ITupleData.Type => typeof(T);
@@ -62,7 +56,6 @@ namespace Npgsql.Replication.Logical.Protocol
         /// Otherwise <see langword="null" />.
         /// </summary>
         [MaybeNull]
-        [PublicAPI]
         public T Value { get; }
 
         object? ITupleData.Value => Value;

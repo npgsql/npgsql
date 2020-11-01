@@ -15,7 +15,6 @@ namespace Npgsql.Replication.Logical.TestDecoding
     /// test_decoding logical decoding plugin.
     /// See <a href="https://www.postgresql.org/docs/current/test-decoding.html">https://www.postgresql.org/docs/current/test-decoding.html</a>.
     /// </summary>
-    [PublicAPI]
     public static class NpgsqlLogicalReplicationConnectionExtensions
     {
         /// <summary>
@@ -51,7 +50,6 @@ namespace Npgsql.Replication.Logical.TestDecoding
         /// <returns>
         /// A <see cref="NpgsqlTestDecodingReplicationSlot"/> that wraps the newly-created replication slot.
         /// </returns>
-        [PublicAPI]
         public static async Task<NpgsqlTestDecodingReplicationSlot> CreateReplicationSlot(
             this NpgsqlLogicalReplicationConnection connection,
             string slotName,
@@ -82,7 +80,6 @@ namespace Npgsql.Replication.Logical.TestDecoding
         /// The default value is <see cref="CancellationToken.None"/>.</param>
         /// <returns>A <see cref="Task{T}"/> representing an <see cref="IAsyncEnumerable{T}"/> that
         /// can be used to stream WAL entries in form of <see cref="NpgsqlTestDecodingData"/> instances.</returns>
-        [PublicAPI]
         public static Task<IAsyncEnumerable<NpgsqlTestDecodingData>> StartReplication(
             this NpgsqlLogicalReplicationConnection connection, NpgsqlTestDecodingReplicationSlot slot,
             NpgsqlTestDecodingPluginOptions options = default, NpgsqlLogSequenceNumber? walLocation = null, CancellationToken cancellationToken = default)

@@ -6,7 +6,6 @@ namespace Npgsql.Replication.Logical.TestDecoding
     /// <summary>
     /// Options to be passed to the test_decoding plugin
     /// </summary>
-    [PublicAPI]
     public readonly struct NpgsqlTestDecodingPluginOptions
     {
         /// <summary>
@@ -19,7 +18,6 @@ namespace Npgsql.Replication.Logical.TestDecoding
         /// <param name="onlyLocal">Only output data that don't have the <a href="https://www.postgresql.org/docs/11/replication-origins.html">replication origin</a> set</param>
         /// <param name="includeRewrites">Include output from table rewrites that were caused by DDL statements</param>
         /// <param name="streamChanges">Enable streaming output</param>
-        [PublicAPI]
         public NpgsqlTestDecodingPluginOptions(bool? includeXids = null, bool? includeTimestamp = null, bool? forceBinary = null,
             bool? skipEmptyXacts = null, bool? onlyLocal = null, bool? includeRewrites = null, bool? streamChanges = null)
         {
@@ -35,43 +33,36 @@ namespace Npgsql.Replication.Logical.TestDecoding
         /// <summary>
         /// Include the transaction number for BEGIN and COMMIT command output
         /// </summary>
-        [PublicAPI]
         public bool? IncludeXids { get; }
 
         /// <summary>
         /// Include the timestamp for COMMIT command output
         /// </summary>
-        [PublicAPI]
         public bool? IncludeTimestamp { get; }
 
         /// <summary>
         /// Set the <a href="https://www.postgresql.org/docs/current/logicaldecoding-output-plugin.html#LOGICALDECODING-OUTPUT-MODE">output mode</a> to binary
         /// </summary>
-        [PublicAPI]
         public bool? ForceBinary { get; }
 
         /// <summary>
         /// Skip output for transactions that didn't change the database
         /// </summary>
-        [PublicAPI]
         public bool? SkipEmptyXacts { get; }
 
         /// <summary>
         /// Only output data that don't have the <a href="https://www.postgresql.org/docs/11/replication-origins.html">replication origin</a> set
         /// </summary>
-        [PublicAPI]
         public bool? OnlyLocal { get; }
 
         /// <summary>
         /// Include output from table rewrites that were caused by DDL statements
         /// </summary>
-        [PublicAPI]
         public bool? IncludeRewrites { get; }
 
         /// <summary>
         /// Enable streaming output
         /// </summary>
-        [PublicAPI]
         public bool? StreamChanges { get; }
 
         internal IEnumerable<KeyValuePair<string, string?>> GetOptionPairs()
