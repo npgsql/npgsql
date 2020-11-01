@@ -156,7 +156,7 @@ namespace Npgsql.Replication.Logical.Internal
             static void AppendKeyValue(StringBuilder sb, KeyValuePair<string, string?> kv)
             {
                 sb.Append('"').Append(kv.Key).Append('"');
-                if(kv.Value is null)
+                if (kv.Value is null)
                     return;
                 sb.Append(" '").Append(kv.Value).Append('\'');
             }
