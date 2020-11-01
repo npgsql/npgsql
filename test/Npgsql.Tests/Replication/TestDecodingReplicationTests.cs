@@ -332,6 +332,7 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
                 async (slotName, tableName) =>
                 {
                     await using var c = await OpenConnectionAsync();
+                    TestUtil.MinimumPgVersion(c, "11.0", "Replication of TRUNCATE commands was introduced in PostgreSQL 11");
                     var indexName = $"i_{tableName.Substring(2)}";
                     await c.ExecuteNonQueryAsync(@$"
 CREATE TABLE {tableName} (id serial PRIMARY KEY, name TEXT NOT NULL);

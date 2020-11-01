@@ -397,6 +397,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 async (slotName, tableName, publicationName) =>
                 {
                     await using var c = await OpenConnectionAsync();
+                    TestUtil.MinimumPgVersion(c, "11.0", "Replication of TRUNCATE commands was introduced in PostgreSQL 11");
                     await c.ExecuteNonQueryAsync(@$"
 CREATE TABLE {tableName} (id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, name TEXT NOT NULL);
 INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
