@@ -43,7 +43,6 @@ namespace Npgsql.Tests.Replication
                 async (slotName, tableName) =>
                 {
                     await using var c = await OpenConnectionAsync();
-                    TestUtil.MinimumPgVersion(c, "9.4", "Logical Replication was introduced in PostgreSQL 9.4");
                     var messages = new ConcurrentQueue<(NpgsqlLogSequenceNumber WalStart, NpgsqlLogSequenceNumber WalEnd, string Data)>();
                     await c.ExecuteNonQueryAsync($"CREATE TABLE {tableName} (id serial PRIMARY KEY, name TEXT NOT NULL)");
                     var rc = await OpenReplicationConnectionAsync();
@@ -92,7 +91,6 @@ namespace Npgsql.Tests.Replication
                 async (slotName, tableName) =>
                 {
                     await using var c = await OpenConnectionAsync();
-                    TestUtil.MinimumPgVersion(c, "9.4", "Logical Replication was introduced in PostgreSQL 9.4");
                     var messages = new ConcurrentQueue<(NpgsqlLogSequenceNumber WalStart, NpgsqlLogSequenceNumber WalEnd, string Data)>();
                     await c.ExecuteNonQueryAsync($@"CREATE TABLE {tableName} (id serial PRIMARY KEY, name TEXT NOT NULL);
 INSERT INTO {tableName} (name) VALUES ('val'), ('val2')");
@@ -137,7 +135,6 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2')");
                 async (slotName, tableName) =>
                 {
                     await using var c = await OpenConnectionAsync();
-                    TestUtil.MinimumPgVersion(c, "9.4", "Logical Replication was introduced in PostgreSQL 9.4");
                     var messages = new ConcurrentQueue<(NpgsqlLogSequenceNumber WalStart, NpgsqlLogSequenceNumber WalEnd, string Data)>();
                     var indexName = $"i_{tableName.Substring(2)}";
                     await c.ExecuteNonQueryAsync(@$"
@@ -185,7 +182,6 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
                 async (slotName, tableName) =>
                 {
                     await using var c = await OpenConnectionAsync();
-                    TestUtil.MinimumPgVersion(c, "9.4", "Logical Replication was introduced in PostgreSQL 9.4");
                     var messages = new ConcurrentQueue<(NpgsqlLogSequenceNumber WalStart, NpgsqlLogSequenceNumber WalEnd, string Data)>();
                     await c.ExecuteNonQueryAsync(@$"
 CREATE TABLE {tableName} (id serial PRIMARY KEY, name TEXT NOT NULL);
@@ -231,7 +227,6 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
                 async (slotName, tableName) =>
                 {
                     await using var c = await OpenConnectionAsync();
-                    TestUtil.MinimumPgVersion(c, "9.4", "Logical Replication was introduced in PostgreSQL 9.4");
                     var messages = new ConcurrentQueue<(NpgsqlLogSequenceNumber WalStart, NpgsqlLogSequenceNumber WalEnd, string Data)>();
                     await c.ExecuteNonQueryAsync(@$"
 CREATE TABLE {tableName} (id serial PRIMARY KEY, name TEXT NOT NULL);
@@ -276,7 +271,6 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
                 async (slotName, tableName) =>
                 {
                     await using var c = await OpenConnectionAsync();
-                    TestUtil.MinimumPgVersion(c, "9.4", "Logical Replication was introduced in PostgreSQL 9.4");
                     var messages = new ConcurrentQueue<(NpgsqlLogSequenceNumber WalStart, NpgsqlLogSequenceNumber WalEnd, string Data)>();
                     var indexName = $"i_{tableName.Substring(2)}";
                     await c.ExecuteNonQueryAsync(@$"
@@ -324,7 +318,6 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
                 async (slotName, tableName) =>
                 {
                     await using var c = await OpenConnectionAsync();
-                    TestUtil.MinimumPgVersion(c, "9.4", "Logical Replication was introduced in PostgreSQL 9.4");
                     var messages = new ConcurrentQueue<(NpgsqlLogSequenceNumber WalStart, NpgsqlLogSequenceNumber WalEnd, string Data)>();
                     var indexName = $"i_{tableName.Substring(2)}";
                     await c.ExecuteNonQueryAsync(@$"
@@ -371,7 +364,6 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
                 async (slotName, tableName) =>
                 {
                     await using var c = await OpenConnectionAsync();
-                    TestUtil.MinimumPgVersion(c, "11.0", "Replication of TRUNCATE commands was introduced in PostgreSQL 11");
                     var messages = new ConcurrentQueue<(NpgsqlLogSequenceNumber WalStart, NpgsqlLogSequenceNumber WalEnd, string Data)>();
                     var indexName = $"i_{tableName.Substring(2)}";
                     await c.ExecuteNonQueryAsync(@$"
@@ -412,5 +404,12 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
                 });
 
         protected override string Postfix => "test_encoding_l";
+
+        [OneTimeSetUp]
+        public async Task SetUp()
+        {
+            await using var c = await OpenConnectionAsync();
+            TestUtil.MinimumPgVersion(c, "9.4", "Logical Replication was introduced in PostgreSQL 9.4");
+        }
     }
 }

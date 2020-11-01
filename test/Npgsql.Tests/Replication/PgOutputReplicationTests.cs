@@ -17,7 +17,6 @@ namespace Npgsql.Tests.Replication
                 async (slotName, _) =>
                 {
                     await using var c = await OpenConnectionAsync();
-                    TestUtil.MinimumPgVersion(c, "10.0", "The Logical Replication Protocol (via pgoutput plugin) was introduced in PostgreSQL 10");
                     await using var rc = await OpenReplicationConnectionAsync();
                     var options = await rc.CreateReplicationSlot(slotName);
 
@@ -38,7 +37,6 @@ namespace Npgsql.Tests.Replication
                 async (slotName, tableName, publicationName) =>
                 {
                     await using var c = await OpenConnectionAsync();
-                    TestUtil.MinimumPgVersion(c, "10.0", "The Logical Replication Protocol (via pgoutput plugin) was introduced in PostgreSQL 10");
                     var messages = new ConcurrentQueue<LogicalReplicationProtocolMessage>();
                     await c.ExecuteNonQueryAsync(@$"
 CREATE TABLE {tableName} (id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, name TEXT NOT NULL);
@@ -104,7 +102,6 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 async (slotName, tableName, publicationName) =>
                 {
                     await using var c = await OpenConnectionAsync();
-                    TestUtil.MinimumPgVersion(c, "10.0", "The Logical Replication Protocol (via pgoutput plugin) was introduced in PostgreSQL 10");
                     var messages = new ConcurrentQueue<LogicalReplicationProtocolMessage>();
                     await c.ExecuteNonQueryAsync(@$"
 CREATE TABLE {tableName} (id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, name TEXT NOT NULL);
@@ -163,7 +160,6 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 async (slotName, tableName, publicationName) =>
                 {
                     await using var c = await OpenConnectionAsync();
-                    TestUtil.MinimumPgVersion(c, "10.0", "The Logical Replication Protocol (via pgoutput plugin) was introduced in PostgreSQL 10");
                     var messages = new ConcurrentQueue<LogicalReplicationProtocolMessage>();
                     var indexName = $"i_{tableName.Substring(2)}";
                     await c.ExecuteNonQueryAsync(@$"
@@ -228,7 +224,6 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 async (slotName, tableName, publicationName) =>
                 {
                     await using var c = await OpenConnectionAsync();
-                    TestUtil.MinimumPgVersion(c, "10.0", "The Logical Replication Protocol (via pgoutput plugin) was introduced in PostgreSQL 10");
                     var messages = new ConcurrentQueue<LogicalReplicationProtocolMessage>();
                     await c.ExecuteNonQueryAsync(@$"
 CREATE TABLE {tableName} (id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, name TEXT NOT NULL);
@@ -291,7 +286,6 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 async (slotName, tableName, publicationName) =>
                 {
                     await using var c = await OpenConnectionAsync();
-                    TestUtil.MinimumPgVersion(c, "10.0", "The Logical Replication Protocol (via pgoutput plugin) was introduced in PostgreSQL 10");
                     var messages = new ConcurrentQueue<LogicalReplicationProtocolMessage>();
                     await c.ExecuteNonQueryAsync(@$"
 CREATE TABLE {tableName} (id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, name TEXT NOT NULL);
@@ -350,7 +344,6 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 async (slotName, tableName, publicationName) =>
                 {
                     await using var c = await OpenConnectionAsync();
-                    TestUtil.MinimumPgVersion(c, "10.0", "The Logical Replication Protocol (via pgoutput plugin) was introduced in PostgreSQL 10");
                     var messages = new ConcurrentQueue<LogicalReplicationProtocolMessage>();
                     var indexName = $"i_{tableName.Substring(2)}";
                     await c.ExecuteNonQueryAsync(@$"
@@ -412,7 +405,6 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 async (slotName, tableName, publicationName) =>
                 {
                     await using var c = await OpenConnectionAsync();
-                    TestUtil.MinimumPgVersion(c, "10.0", "The Logical Replication Protocol (via pgoutput plugin) was introduced in PostgreSQL 10");
                     var messages = new ConcurrentQueue<LogicalReplicationProtocolMessage>();
                     await c.ExecuteNonQueryAsync(@$"
 CREATE TABLE {tableName} (id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, name TEXT NOT NULL);
@@ -476,7 +468,6 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 async (slotName, tableName, publicationName) =>
                 {
                     await using var c = await OpenConnectionAsync();
-                    TestUtil.MinimumPgVersion(c, "11.0", "Replication of TRUNCATE commands was introduced in PostgreSQL 11");
                     var messages = new ConcurrentQueue<LogicalReplicationProtocolMessage>();
                     await c.ExecuteNonQueryAsync(@$"
 CREATE TABLE {tableName} (id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, name TEXT NOT NULL);
@@ -534,5 +525,12 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 }, nameof(Truncate) + truncateOptionFlags.ToString("D"));
 
         protected override string Postfix => "pgoutput_l";
+
+        [OneTimeSetUp]
+        public async Task SetUp()
+        {
+            await using var c = await OpenConnectionAsync();
+            TestUtil.MinimumPgVersion(c, "10.0", "The Logical Replication Protocol (via pgoutput plugin) was introduced in PostgreSQL 10");
+        }
     }
 }
