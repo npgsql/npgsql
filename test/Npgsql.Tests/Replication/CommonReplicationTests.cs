@@ -455,13 +455,13 @@ namespace Npgsql.Tests.Replication
         }
 
         async IAsyncEnumerable<INpgsqlReplicationMessage> StartReplication(TConnection connection, string slotName,
-            NpgsqlLogSequenceNumber xLogPos, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+            NpgsqlLogSequenceNumber xLogPos, [EnumeratorCancellation] CancellationToken cancellationToken)
         {
             if (typeof(TConnection) == typeof(NpgsqlPhysicalReplicationConnection))
             {
                 var slot = new NpgsqlPhysicalReplicationSlot(slotName);
                 var rc = (NpgsqlPhysicalReplicationConnection)(NpgsqlReplicationConnection)connection;
-                await foreach (var msg in (await rc.StartReplication(slot, xLogPos, cancellationToken: cancellationToken)).WithCancellation(cancellationToken))
+                await foreach (var msg in (await rc.StartReplication(slot, cancellationToken, xLogPos)).WithCancellation(cancellationToken))
                 {
                     yield return msg;
                 }
@@ -470,7 +470,7 @@ namespace Npgsql.Tests.Replication
             {
                 var slot = new NpgsqlTestDecodingReplicationSlot(slotName);
                 var rc = (NpgsqlLogicalReplicationConnection)(NpgsqlReplicationConnection)connection;
-                await foreach (var msg in (await rc.StartReplication(slot, walLocation: xLogPos, cancellationToken: cancellationToken)).WithCancellation(cancellationToken))
+                await foreach (var msg in (await rc.StartReplication(slot, cancellationToken, walLocation: xLogPos)).WithCancellation(cancellationToken))
                 {
                     yield return msg;
                 }

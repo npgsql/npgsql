@@ -74,25 +74,24 @@ namespace Npgsql.Replication.Logical.TestDecoding
         /// <param name="slot">The replication slot that will be updated as replication progresses so that the server
         /// knows which WAL segments are still needed by the standby.
         /// </param>
-        /// <param name="walLocation">The WAL location to begin streaming at.</param>
+        /// <param name="cancellationToken">The token to monitor for stopping the replication.</param>
         /// <param name="options">The collection of options passed to the slot's logical decoding plugin.</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests.
-        /// The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="walLocation">The WAL location to begin streaming at.</param>
         /// <returns>A <see cref="Task{T}"/> representing an <see cref="IAsyncEnumerable{T}"/> that
         /// can be used to stream WAL entries in form of <see cref="NpgsqlTestDecodingData"/> instances.</returns>
         public static Task<IAsyncEnumerable<NpgsqlTestDecodingData>> StartReplication(
-            this NpgsqlLogicalReplicationConnection connection, NpgsqlTestDecodingReplicationSlot slot,
-            NpgsqlTestDecodingPluginOptions options = default, NpgsqlLogSequenceNumber? walLocation = null, CancellationToken cancellationToken = default)
+            this NpgsqlLogicalReplicationConnection connection, NpgsqlTestDecodingReplicationSlot slot, CancellationToken cancellationToken,
+            NpgsqlTestDecodingPluginOptions options = default, NpgsqlLogSequenceNumber? walLocation = null)
         {
             using (NoSynchronizationContextScope.Enter())
-                return StartReplicationInternal(connection, slot, options, walLocation, cancellationToken);
+                return StartReplicationInternal(connection, slot, cancellationToken, options, walLocation);
         }
 
         static async Task<IAsyncEnumerable<NpgsqlTestDecodingData>> StartReplicationInternal(
-            NpgsqlLogicalReplicationConnection connection, NpgsqlTestDecodingReplicationSlot slot,
-            NpgsqlTestDecodingPluginOptions options = default, NpgsqlLogSequenceNumber? walLocation = null, CancellationToken cancellationToken = default)
+            NpgsqlLogicalReplicationConnection connection, NpgsqlTestDecodingReplicationSlot slot, CancellationToken cancellationToken,
+            NpgsqlTestDecodingPluginOptions options = default, NpgsqlLogSequenceNumber? walLocation = null)
         {
-            var stream = await connection.StartReplicationForPlugin(slot, walLocation, options.GetOptionPairs(), cancellationToken);
+            var stream = await connection.StartReplicationForPlugin(slot, cancellationToken, walLocation, options.GetOptionPairs());
 #pragma warning disable CA2016
             // ReSharper disable once MethodSupportsCancellation
             return StreamData(stream, connection.Encoding!);

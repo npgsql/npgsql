@@ -78,15 +78,14 @@ namespace Npgsql.Replication.Logical.Protocol
         /// <param name="slot">The replication slot that will be updated as replication progresses so that the server
         /// knows which WAL segments are still needed by the standby.
         /// </param>
-        /// <param name="walLocation">The WAL location to begin streaming at.</param>
         /// <param name="options">The collection of options passed to the slot's logical decoding plugin.</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests.
-        /// The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">The token to monitor for stopping the replication.</param>
+        /// <param name="walLocation">The WAL location to begin streaming at.</param>
         /// <returns>A <see cref="Task{T}"/> representing an <see cref="IAsyncEnumerable{T}"/> that
         /// can be used to stream WAL entries in form of <see cref="LogicalReplicationProtocolMessage"/> instances.</returns>
         public static Task<IAsyncEnumerable<LogicalReplicationProtocolMessage>> StartReplication(
             this NpgsqlLogicalReplicationConnection connection, NpgsqlPgOutputReplicationSlot slot,
-            NpgsqlPgOutputPluginOptions options, NpgsqlLogSequenceNumber? walLocation = null, CancellationToken cancellationToken = default)
+            NpgsqlPgOutputPluginOptions options, CancellationToken cancellationToken, NpgsqlLogSequenceNumber? walLocation = null)
         {
             using (NoSynchronizationContextScope.Enter())
                 return StartReplicationInternal(connection, slot, walLocation, options, cancellationToken);
@@ -94,7 +93,7 @@ namespace Npgsql.Replication.Logical.Protocol
 
         static async Task<IAsyncEnumerable<LogicalReplicationProtocolMessage>> StartReplicationInternal(
             NpgsqlLogicalReplicationConnection connection, NpgsqlPgOutputReplicationSlot slot,
-            NpgsqlLogSequenceNumber? walLocation, NpgsqlPgOutputPluginOptions options, CancellationToken cancellationToken = default)
+            NpgsqlLogSequenceNumber? walLocation, NpgsqlPgOutputPluginOptions options, CancellationToken cancellationToken)
         {
             var stream = await connection.StartReplicationInternal(commandBuilder =>
             {
@@ -107,7 +106,10 @@ namespace Npgsql.Replication.Logical.Protocol
 #pragma warning restore CA2016
         }
 
-        static async IAsyncEnumerable<LogicalReplicationProtocolMessage> StreamData(IAsyncEnumerable<NpgsqlXLogDataMessage> messageStream, NpgsqlLogicalReplicationConnection connection, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+        static async IAsyncEnumerable<LogicalReplicationProtocolMessage> StreamData(
+            IAsyncEnumerable<NpgsqlXLogDataMessage> messageStream,
+            NpgsqlLogicalReplicationConnection connection,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
             // Hack: NAMEDATALEN is a constant in PostgreSQL which can be changed at compile time. It's probably saner to query max_identifier_length on connection startup.
             // See https://www.postgresql.org/docs/current/runtime-config-preset.html

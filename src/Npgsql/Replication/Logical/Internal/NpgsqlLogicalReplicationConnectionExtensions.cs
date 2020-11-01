@@ -26,10 +26,12 @@ namespace Npgsql.Replication.Logical.Internal
         /// <param name="connection">The <see cref="NpgsqlLogicalReplicationConnection"/> to use for creating the
         /// replication slot</param>
         /// <param name="slotName">The name of the slot to create. Must be a valid replication slot name (see
-        /// <a href="https://www.postgresql.org/docs/current/warm-standby.html#STREAMING-REPLICATION-SLOTS-MANIPULATION">https://www.postgresql.org/docs/current/warm-standby.html#STREAMING-REPLICATION-SLOTS-MANIPULATION</a>).
+        /// <a href="https://www.postgresql.org/docs/current/warm-standby.html#STREAMING-REPLICATION-SLOTS-MANIPULATION">
+        /// https://www.postgresql.org/docs/current/warm-standby.html#STREAMING-REPLICATION-SLOTS-MANIPULATION</a>).
         /// </param>
         /// <param name="outputPlugin">The name of the output plugin used for logical decoding (see
-        /// <a href="https://www.postgresql.org/docs/current/logicaldecoding-output-plugin.html">https://www.postgresql.org/docs/current/logicaldecoding-output-plugin.html</a>).
+        /// <a href="https://www.postgresql.org/docs/current/logicaldecoding-output-plugin.html">
+        /// https://www.postgresql.org/docs/current/logicaldecoding-output-plugin.html</a>).
         /// </param>
         /// <param name="temporarySlot"><see langword="true"/> if this replication slot shall be temporary one; otherwise
         /// <see langword="false"/>. Temporary slots are not saved to disk and are automatically dropped on error or
@@ -114,15 +116,14 @@ namespace Npgsql.Replication.Logical.Internal
         /// <param name="slot">The replication slot that will be updated as replication progresses so that the server
         /// knows which WAL segments are still needed by the standby.
         /// </param>
+        /// <param name="cancellationToken">The token to monitor for stopping the replication.</param>
         /// <param name="walLocation">The WAL location to begin streaming at.</param>
         /// <param name="options">The collection of options passed to the slot's logical decoding plugin.</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests.
-        /// The default value is <see cref="CancellationToken.None"/>.</param>
         /// <returns>A <see cref="Task{T}"/> representing an <see cref="IAsyncEnumerable{T}"/> that
         /// can be used to stream WAL entries in form of <see cref="NpgsqlXLogDataMessage"/> instances.</returns>
         public static Task<IAsyncEnumerable<NpgsqlXLogDataMessage>> StartReplicationForPlugin(
-            this NpgsqlLogicalReplicationConnection connection, NpgsqlLogicalReplicationSlot slot,
-            NpgsqlLogSequenceNumber? walLocation = null, IEnumerable<KeyValuePair<string, string?>>? options = null, CancellationToken cancellationToken = default)
+            this NpgsqlLogicalReplicationConnection connection, NpgsqlLogicalReplicationSlot slot, CancellationToken cancellationToken,
+            NpgsqlLogSequenceNumber? walLocation = null, IEnumerable<KeyValuePair<string, string?>>? options = null)
         {
             if (cancellationToken.IsCancellationRequested)
                 return Task.FromCanceled<IAsyncEnumerable<NpgsqlXLogDataMessage>>(cancellationToken);
@@ -134,7 +135,9 @@ namespace Npgsql.Replication.Logical.Internal
             }, false, cancellationToken);
         }
 
-        internal static void AppendCommon(StringBuilder commandBuilder, NpgsqlLogSequenceNumber? walLocation, IEnumerable<KeyValuePair<string, string?>>? options, NpgsqlLogSequenceNumber consistentPoint)
+        internal static void AppendCommon(
+            StringBuilder commandBuilder, NpgsqlLogSequenceNumber? walLocation, IEnumerable<KeyValuePair<string, string?>>? options,
+            NpgsqlLogSequenceNumber consistentPoint)
         {
             commandBuilder.Append("LOGICAL ").Append(walLocation ?? consistentPoint);
             if (options != null)

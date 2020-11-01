@@ -396,7 +396,10 @@ namespace Npgsql.Replication
             }
         }
 
-        internal async Task<IAsyncEnumerable<NpgsqlXLogDataMessage>> StartReplicationInternal(Action<StringBuilder> startCommandAction, bool bypassingStream, CancellationToken cancellationToken = default)
+        internal async Task<IAsyncEnumerable<NpgsqlXLogDataMessage>> StartReplicationInternal(
+            Action<StringBuilder> startCommandAction,
+            bool bypassingStream,
+            CancellationToken cancellationToken)
         {
             using var executeState = EnsureAndSetState(ReplicationConnectionState.Idle, ReplicationConnectionState.Executing);
             var connector = _npgsqlConnection.Connector!;

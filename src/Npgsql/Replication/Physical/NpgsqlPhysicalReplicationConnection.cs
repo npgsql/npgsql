@@ -70,14 +70,14 @@ namespace Npgsql.Replication.Physical
         /// <param name="slot">The replication slot that will be updated as replication progresses so that the server
         /// knows which WAL segments are still needed by the standby.
         /// </param>
+        /// <param name="cancellationToken">The token to monitor for stopping the replication.</param>
         /// <param name="walLocation">The WAL location to begin streaming at.</param>
         /// <param name="timeline">Streaming starts on timeline tli.</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests.
-        /// The default value is <see cref="CancellationToken.None"/>.</param>
         /// <returns>A <see cref="Task{T}"/> representing an <see cref="IAsyncEnumerable{NpgsqlXLogDataMessage}"/> that
         /// can be used to stream WAL entries in form of <see cref="NpgsqlXLogDataMessage"/> instances.</returns>
-        public Task<IAsyncEnumerable<NpgsqlXLogDataMessage>> StartReplication(NpgsqlPhysicalReplicationSlot slot,
-            NpgsqlLogSequenceNumber walLocation, uint timeline = default, CancellationToken cancellationToken = default)
+        public Task<IAsyncEnumerable<NpgsqlXLogDataMessage>> StartReplication(
+            NpgsqlPhysicalReplicationSlot slot, CancellationToken cancellationToken, NpgsqlLogSequenceNumber walLocation,
+            uint timeline = default)
         {
             using var _ = NoSynchronizationContextScope.Enter();
             return StartReplicationInternal(commandBuilder =>
@@ -98,14 +98,12 @@ namespace Npgsql.Replication.Physical
         /// server switched to another timeline.
         /// </remarks>
         /// <param name="walLocation">The WAL location to begin streaming at.</param>
+        /// <param name="cancellationToken">The token to monitor for stopping the replication.</param>
         /// <param name="timeline">Streaming starts on timeline tli.</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests.
-        /// The default value is <see cref="CancellationToken.None"/>.</param>
         /// <returns>A <see cref="Task{T}"/> representing an <see cref="IAsyncEnumerable{NpgsqlXLogDataMessage}"/> that
         /// can be used to stream WAL entries in form of <see cref="NpgsqlXLogDataMessage"/> instances.</returns>
-        public Task<IAsyncEnumerable<NpgsqlXLogDataMessage>> StartReplication(NpgsqlLogSequenceNumber walLocation,
-            uint timeline = default,
-            CancellationToken cancellationToken = default)
+        public Task<IAsyncEnumerable<NpgsqlXLogDataMessage>> StartReplication(
+            NpgsqlLogSequenceNumber walLocation, CancellationToken cancellationToken, uint timeline = default)
         {
             using var _ = NoSynchronizationContextScope.Enter();
             return StartReplicationInternal(commandBuilder => AppendCommon(commandBuilder, walLocation, timeline),
