@@ -462,7 +462,6 @@ namespace Npgsql
         /// <summary>
         /// Completes the import process and signals to the database to write everything.
         /// </summary>
-        [PublicAPI]
         public void Close() => CloseAsync(false).GetAwaiter().GetResult();
 
         /// <summary>
@@ -470,7 +469,6 @@ namespace Npgsql
         /// </summary>
         /// <returns></returns>
         /// <exception cref="Exception"></exception>
-        [PublicAPI]
         public ValueTask CloseAsync(CancellationToken cancellationToken = default)
         {
             if (cancellationToken.IsCancellationRequested)

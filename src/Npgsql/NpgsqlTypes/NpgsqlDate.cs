@@ -34,13 +34,9 @@ namespace NpgsqlTypes
         /// </summary>
         public static readonly NpgsqlDate Era = new NpgsqlDate(0);
 
-        [PublicAPI]
         public const int MaxYear = 5874897;
-        [PublicAPI]
         public const int MinYear = -4714;
-        [PublicAPI]
         public static readonly NpgsqlDate MaxCalculableValue = new NpgsqlDate(MaxYear, 12, 31);
-        [PublicAPI]
         public static readonly NpgsqlDate MinCalculableValue = new NpgsqlDate(MinYear, 11, 24);
 
         public static readonly NpgsqlDate Infinity = new NpgsqlDate(InternalType.Infinity);
@@ -140,7 +136,6 @@ namespace NpgsqlTypes
             }
         }
 
-        [PublicAPI]
         public static bool TryParse(string str, out NpgsqlDate date)
         {
             try {
@@ -156,14 +151,14 @@ namespace NpgsqlTypes
 
         #region Public Properties
 
-        [PublicAPI] public static NpgsqlDate Now => new NpgsqlDate(DateTime.Now);
-        [PublicAPI] public static NpgsqlDate Today => Now;
-        [PublicAPI] public static NpgsqlDate Yesterday => Now.AddDays(-1);
-        [PublicAPI] public static NpgsqlDate Tomorrow => Now.AddDays(1);
+        public static NpgsqlDate Now => new NpgsqlDate(DateTime.Now);
+        public static NpgsqlDate Today => Now;
+        public static NpgsqlDate Yesterday => Now.AddDays(-1);
+        public static NpgsqlDate Tomorrow => Now.AddDays(1);
 
-        [PublicAPI] public int DayOfYear => _daysSinceEra - DaysForYears(Year) + 1;
+        public int DayOfYear => _daysSinceEra - DaysForYears(Year) + 1;
 
-        [PublicAPI] public int Year
+        public int Year
         {
             get
             {
@@ -174,7 +169,7 @@ namespace NpgsqlTypes
             }
         }
 
-        [PublicAPI] public int Month
+        public int Month
         {
             get
             {
@@ -189,18 +184,18 @@ namespace NpgsqlTypes
             }
         }
 
-        [PublicAPI] public int Day => DayOfYear - (IsLeapYear ? LeapYearDays : CommonYearDays)[Month - 1];
+        public int Day => DayOfYear - (IsLeapYear ? LeapYearDays : CommonYearDays)[Month - 1];
 
-        [PublicAPI] public DayOfWeek DayOfWeek => (DayOfWeek) ((_daysSinceEra + 1)%7);
+        public DayOfWeek DayOfWeek => (DayOfWeek) ((_daysSinceEra + 1)%7);
 
         internal int DaysSinceEra => _daysSinceEra;
 
-        [PublicAPI] public bool IsLeapYear => IsLeap(Year);
+        public bool IsLeapYear => IsLeap(Year);
 
-        [PublicAPI] public bool IsInfinity => _type == InternalType.Infinity;
-        [PublicAPI] public bool IsNegativeInfinity => _type == InternalType.NegativeInfinity;
+        public bool IsInfinity => _type == InternalType.Infinity;
+        public bool IsNegativeInfinity => _type == InternalType.NegativeInfinity;
 
-        [PublicAPI] public bool IsFinite
+        public bool IsFinite
             => _type switch {
                 InternalType.Finite           => true,
                 InternalType.Infinity         => false,
@@ -240,7 +235,6 @@ namespace NpgsqlTypes
 
         #region Arithmetic
 
-        [PublicAPI]
         public NpgsqlDate AddDays(int days)
             => _type switch
         {
@@ -250,7 +244,6 @@ namespace NpgsqlTypes
             _ => throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {_type} of enum {nameof(NpgsqlDate)}.{nameof(InternalType)}. Please file a bug.")
         };
 
-        [PublicAPI]
         public NpgsqlDate AddYears(int years)
         {
             switch (_type) {
@@ -276,7 +269,6 @@ namespace NpgsqlTypes
             return new NpgsqlDate(newYear, Month, Day);
         }
 
-        [PublicAPI]
         public NpgsqlDate AddMonths(int months)
         {
             switch (_type) {
@@ -309,7 +301,6 @@ namespace NpgsqlTypes
 
         }
 
-        [PublicAPI]
         public NpgsqlDate Add(in NpgsqlTimeSpan interval)
         {
             switch (_type) {
@@ -326,7 +317,6 @@ namespace NpgsqlTypes
             return AddMonths(interval.Months).AddDays(interval.Days);
         }
 
-        [PublicAPI]
         internal NpgsqlDate Add(in NpgsqlTimeSpan interval, int carriedOverflow)
         {
             switch (_type) {

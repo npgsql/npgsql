@@ -792,7 +792,6 @@ namespace Npgsql
         /// return true even if attempting to read a column will fail, e.g. before <see cref="Read()"/>
         /// has been called
         /// </summary>
-        [PublicAPI]
         public bool IsOnRow => State == ReaderState.InResult;
 
         /// <summary>
@@ -1708,7 +1707,6 @@ namespace Npgsql
         /// The returned representation can be used to access various information about the field.
         /// </summary>
         /// <param name="ordinal">The zero-based column index.</param>
-        [PublicAPI]
         public PostgresType GetPostgresType(int ordinal) => CheckRowDescriptionAndGetField(ordinal).PostgresType;
 
         /// <summary>
