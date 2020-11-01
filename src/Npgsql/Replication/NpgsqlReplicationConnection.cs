@@ -287,7 +287,7 @@ namespace Npgsql.Replication
         /// <returns>The current setting of the run-time parameter specified in <paramref name="parameterName"/> as <see cref="string"/>.</returns>
         public Task<string> Show(string parameterName, CancellationToken cancellationToken = default)
         {
-            if (parameterName == null)
+            if (parameterName is null)
                 throw new ArgumentNullException(nameof(parameterName));
 
             using (NoSynchronizationContextScope.Enter())
@@ -333,31 +333,31 @@ namespace Npgsql.Replication
 
                 var rowDescription = Expect<RowDescriptionMessage>(await connector.ReadMessage(true, cancellationToken), connector);
                 Debug.Assert(rowDescription.NumFields == 4);
-                Debug.Assert(rowDescription.Fields[0].TypeOID == 25u); // text (slot_name)
-                Debug.Assert(rowDescription.Fields[1].TypeOID == 25u); // text (consistent_point)
-                Debug.Assert(rowDescription.Fields[2].TypeOID == 25u); // text (snapshot_name)
-                Debug.Assert(rowDescription.Fields[3].TypeOID == 25u); // text (output_plugin)
+                Debug.Assert(rowDescription.Fields[0].TypeOID == 25u, "slot_name expected as text");
+                Debug.Assert(rowDescription.Fields[1].TypeOID == 25u, "consistent_point expected as text");
+                Debug.Assert(rowDescription.Fields[2].TypeOID == 25u, "snapshot_name expected as text");
+                Debug.Assert(rowDescription.Fields[3].TypeOID == 25u, "output_plugin expected as text");
                 Expect<DataRowMessage>(await connector.ReadMessage(true, cancellationToken), connector);
                 var buf = connector.ReadBuffer;
                 await buf.Ensure(2, true, cancellationToken);
                 var results = new object[buf.ReadInt16()];
                 Debug.Assert(results.Length == 4);
 
-                // slot_name 
+                // slot_name
                 await buf.Ensure(4, true, cancellationToken);
                 var len = buf.ReadInt32();
-                Debug.Assert(len > 0); // The slot_name is never empty
+                Debug.Assert(len > 0, "slot_name should never be empty");
                 await buf.Ensure(len, true, cancellationToken);
                 var slotNameResult = buf.ReadString(len);
 
-                // consistent_point  
+                // consistent_point
                 await buf.Ensure(4, true, cancellationToken);
                 len = buf.ReadInt32();
-                Debug.Assert(len > 0); // The consistent_point is never empty
+                Debug.Assert(len > 0, "consistent_point should never be empty");
                 await buf.Ensure(len, true, cancellationToken);
                 var consistentPoint   = NpgsqlLogSequenceNumber.Parse(buf.ReadString(len));
 
-                // snapshot_name  
+                // snapshot_name
                 await buf.Ensure(4, true, cancellationToken);
                 len = buf.ReadInt32();
                 string? snapshotName;
@@ -369,7 +369,7 @@ namespace Npgsql.Replication
                     snapshotName = buf.ReadString(len);
                 }
 
-                // output_plugin  
+                // output_plugin
                 await buf.Ensure(4, true, cancellationToken);
                 len = buf.ReadInt32();
                 if (len != -1)
@@ -385,7 +385,7 @@ namespace Npgsql.Replication
             }
             catch (PostgresException e)
             {
-                if (PostgreSqlVersion < FirstVersionWithTemporarySlots && e.SqlState == "42601" /* syntax_error */)
+                if (PostgreSqlVersion < FirstVersionWithTemporarySlots && e.SqlState == PostgresErrorCodes.SyntaxError)
                 {
                     if (temporarySlot)
                         throw new ArgumentException("Temporary replication slots were introduced in PostgreSQL " +
@@ -400,7 +400,6 @@ namespace Npgsql.Replication
 
         internal async Task<IAsyncEnumerable<NpgsqlXLogDataMessage>> StartReplicationInternal(Action<StringBuilder> startCommandAction, bool bypassingStream, CancellationToken cancellationToken = default)
         {
-            Debug.Assert(startCommandAction != null);
             using var executeState = EnsureAndSetState(ReplicationConnectionState.Idle, ReplicationConnectionState.Executing);
             var connector = _npgsqlConnection.Connector!;
 #if !NETSTANDARD2_0

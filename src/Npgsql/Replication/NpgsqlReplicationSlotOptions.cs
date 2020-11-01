@@ -19,7 +19,7 @@ namespace Npgsql.Replication
         /// The WAL location at which the slot became consistent.
         /// </param>
         public NpgsqlReplicationSlotOptions(string slotName, string? consistentPoint = null)
-            : this(slotName, consistentPoint == null ? default : NpgsqlLogSequenceNumber.Parse(consistentPoint), null){}
+            : this(slotName, consistentPoint is null ? default : NpgsqlLogSequenceNumber.Parse(consistentPoint), null){}
 
         /// <summary>
         /// Creates a new <see cref="NpgsqlReplicationSlotOptions"/> instance.
@@ -31,7 +31,7 @@ namespace Npgsql.Replication
         /// The WAL location at which the slot became consistent.
         /// </param>
         public NpgsqlReplicationSlotOptions(string slotName, NpgsqlLogSequenceNumber consistentPoint)
-            : this(slotName, consistentPoint, null){}
+            : this(slotName, consistentPoint, null) {}
 
         internal NpgsqlReplicationSlotOptions(
             string slotName,

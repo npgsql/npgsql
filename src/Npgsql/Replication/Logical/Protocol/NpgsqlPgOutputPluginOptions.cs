@@ -36,7 +36,7 @@ namespace Npgsql.Replication.Logical.Protocol
 
             foreach (var publicationName in publicationNamesList)
                 if (string.IsNullOrWhiteSpace(publicationName))
-                    throw publicationName == null
+                    throw publicationName is null
                         ? new ArgumentNullException(nameof(publicationName))
                         : new ArgumentException("Invalid publication name", nameof(publicationName));
 

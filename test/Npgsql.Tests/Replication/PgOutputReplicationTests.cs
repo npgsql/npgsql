@@ -5,7 +5,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Replication.Logical;
 using Npgsql.Replication.Logical.Protocol;
-using NpgsqlTypes;
 using NUnit.Framework;
 
 namespace Npgsql.Tests.Replication

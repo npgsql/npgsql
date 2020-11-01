@@ -66,9 +66,9 @@ namespace Npgsql.Replication.Logical.Internal
             SlotSnapshotInitMode? slotSnapshotInitMode,
             CancellationToken cancellationToken = default)
         {
-            if (slotName == null)
+            if (slotName is null)
                 throw new ArgumentNullException(nameof(slotName));
-            if (outputPlugin == null)
+            if (outputPlugin is null)
                 throw new ArgumentNullException(nameof(outputPlugin));
 
             try
@@ -92,18 +92,14 @@ namespace Npgsql.Replication.Logical.Internal
 
                 }, cancellationToken);
             }
-            catch (PostgresException e)
+            catch (PostgresException e) when (connection.PostgreSqlVersion < FirstVersionWithSlotSnapshotInitMode &&
+                                              e.SqlState == PostgresErrorCodes.SyntaxError &&
+                                              slotSnapshotInitMode != null)
             {
-                if (connection.PostgreSqlVersion < FirstVersionWithSlotSnapshotInitMode && e.SqlState == "42601" /* syntax_error */)
-                {
-                    if (slotSnapshotInitMode != null)
-                        throw new ArgumentException("The EXPORT_SNAPSHOT, USE_SNAPSHOT and NOEXPORT_SNAPSHOT syntax was introduced in PostgreSQL " +
-                                                    $"{FirstVersionWithSlotSnapshotInitMode.ToString(1)}. Using PostgreSQL version " +
-                                                    $"{connection.PostgreSqlVersion.ToString(3)} you have to omit the " +
-                                                    $"{nameof(slotSnapshotInitMode)} argument.",
-                            nameof(slotSnapshotInitMode), e);
-                }
-                throw;
+                throw new NotSupportedException(
+                    "The EXPORT_SNAPSHOT, USE_SNAPSHOT and NOEXPORT_SNAPSHOT syntax was introduced in PostgreSQL " +
+                    $"{FirstVersionWithSlotSnapshotInitMode.ToString(1)}. Using PostgreSQL version " +
+                    $"{connection.PostgreSqlVersion.ToString(3)} you have to omit the {nameof(slotSnapshotInitMode)} argument.", e);
             }
         }
 

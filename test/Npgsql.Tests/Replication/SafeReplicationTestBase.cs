@@ -44,8 +44,8 @@ namespace Npgsql.Tests.Replication
             return c;
         }
 
-        private protected Task SafeReplicationTest(string baseName, Func<string, string, Task> testAction) =>
-            SafeReplicationTest(baseName, (slotName, tableName, publicationName) => testAction(slotName, tableName));
+        private protected Task SafeReplicationTest(string baseName, Func<string, string, Task> testAction)
+            => SafeReplicationTest(baseName, (slotName, tableName, publicationName) => testAction(slotName, tableName));
 
         private protected async Task SafeReplicationTest(string baseName, Func<string, string, string, Task> testAction)
         {

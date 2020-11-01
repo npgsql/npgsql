@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Data;
 using System.Threading.Tasks;
-using Npgsql.Replication;
 using Npgsql.Replication.Logical;
 using Npgsql.Replication.Logical.Internal;
 using NpgsqlTypes;
@@ -24,8 +23,6 @@ namespace Npgsql.Tests.Replication
         // beginning of logical decoding and by that has the best backwards
         // compatibility.
         const string OutputPlugin = "test_decoding";
-
-        #region CreateReplicationSlotForPlugin
 
         [TestCase(true)]
         [TestCase(false)]
@@ -210,8 +207,5 @@ namespace Npgsql.Tests.Replication
                         .EqualTo(nameof(NpgsqlLogicalReplicationConnection)));
                     return Task.CompletedTask;
                 });
-
-        #endregion CreateReplicationSlotForPlugin
-
     }
 }
