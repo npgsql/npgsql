@@ -1351,8 +1351,6 @@ namespace Npgsql
         internal async Task Rollback(bool async, CancellationToken cancellationToken = default)
         {
             Log.Debug("Rolling back transaction", Id);
-            // TODO: On successful rollback, the connector might be returned to the pool, if multiplexing is on.
-            // In this case, we might call EndUserAction on the connector, which might be in use.
             using (StartUserAction())
                 await ExecuteInternalCommand(PregeneratedMessages.RollbackTransaction, async, cancellationToken);
         }
@@ -1380,9 +1378,6 @@ namespace Npgsql
             switch (newStatus)
             {
             case TransactionStatus.Idle:
-                // Connection is null if a connection enlisted in a TransactionScope was closed before the
-                // TransactionScope completed - the connector is still enlisted, but has no connection.
-                Connection?.EndBindingScope(ConnectorBindingScope.Transaction);
                 break;
             case TransactionStatus.InTransactionBlock:
             case TransactionStatus.InFailedTransactionBlock:
@@ -1811,21 +1806,27 @@ namespace Npgsql
                 _origReadBuffer = null;
             }
 
+            var endBindingScope = false;
+
             // Must rollback transaction before sending DISCARD ALL
             switch (TransactionStatus)
             {
             case TransactionStatus.Idle:
+                // There is an undisposed transaction on multiplexing connection
+                endBindingScope = Connection?.ConnectorBindingScope == ConnectorBindingScope.Transaction;
                 break;
             case TransactionStatus.Pending:
                 // BeginTransaction() was called, but was left in the write buffer and not yet sent to server.
                 // Just clear the transaction state.
                 ProcessNewTransactionStatus(TransactionStatus.Idle);
                 ClearTransaction();
+                endBindingScope = true;
                 break;
             case TransactionStatus.InTransactionBlock:
             case TransactionStatus.InFailedTransactionBlock:
                 await Rollback(async, cancellationToken);
                 ClearTransaction();
+                endBindingScope = true;
                 break;
             default:
                 throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {TransactionStatus} of enum {nameof(TransactionStatus)}. Please file a bug.");
@@ -1845,6 +1846,13 @@ namespace Npgsql
                     // We simply send DISCARD ALL which is more efficient than sending the above messages separately
                     PrependInternalMessage(PregeneratedMessages.DiscardAll, 2);
                 }
+            }
+
+            if (endBindingScope)
+            {
+                // Connection is null if a connection enlisted in a TransactionScope was closed before the
+                // TransactionScope completed - the connector is still enlisted, but has no connection.
+                Connection?.EndBindingScope(ConnectorBindingScope.Transaction);
             }
         }
 

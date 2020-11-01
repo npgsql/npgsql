@@ -467,6 +467,45 @@ namespace Npgsql.Tests
             }
         }
 
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/3248")]
+        // More at #3254
+        public async Task Bug3248DisposeTransactionRollback()
+        {
+            if (!IsMultiplexing)
+                return;
+
+            using var conn = await OpenConnectionAsync();
+            await using (var tx = conn.BeginTransaction())
+            {
+                Assert.That(conn.Connector, Is.Not.Null);
+                Assert.That(async () => await conn.ExecuteScalarAsync("SELECT * FROM \"unknown_table\"", tx: tx),
+                    Throws.Exception.TypeOf<PostgresException>());
+                Assert.That(conn.Connector, Is.Not.Null);
+            }
+
+            Assert.That(conn.Connector, Is.Null);
+        }
+
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/3248")]
+        // More at #3254
+        public async Task Bug3248DisposeConnectionRollback()
+        {
+            if (!IsMultiplexing)
+                return;
+
+            var conn = await OpenConnectionAsync();
+            var tx = conn.BeginTransaction();
+            Assert.That(conn.Connector, Is.Not.Null);
+            Assert.That(async () => await conn.ExecuteScalarAsync("SELECT * FROM \"unknown_table\"", tx: tx),
+                Throws.Exception.TypeOf<PostgresException>());
+            Assert.That(conn.Connector, Is.Not.Null);
+
+            await conn.DisposeAsync();
+            Assert.That(conn.Connector, Is.Null);
+        }
+
         class NoTransactionDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
         {
             public async Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)

@@ -565,8 +565,13 @@ namespace Npgsql
             if (Connector != null && Connector.InTransaction)
                 throw new InvalidOperationException("A transaction is already in progress; nested/concurrent transactions aren't supported.");
 
-            var connector = await StartBindingScope(ConnectorBindingScope.Transaction, NpgsqlTimeout.Infinite, async,
-                cancellationToken);
+            // There was a commited/rollbacked transaction, but it was not disposed
+            var connector = ConnectorBindingScope == ConnectorBindingScope.Transaction ?
+                    Connector
+                    : await StartBindingScope(ConnectorBindingScope.Transaction, NpgsqlTimeout.Infinite, async,
+                        cancellationToken);
+
+            Debug.Assert(connector != null);
 
             try
             {

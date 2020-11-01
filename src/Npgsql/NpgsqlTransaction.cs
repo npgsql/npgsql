@@ -124,8 +124,6 @@ namespace Npgsql
             if (!_connector.DatabaseInfo.SupportsTransactions)
                 return;
 
-            // TODO: On successful commit, the connector might be returned to the pool, if multiplexing is on.
-            // In this case, we might call EndUserAction on the connector, which might be in use.
             using (_connector.StartUserAction())
             {
                 Log.Debug("Committing transaction", _connector.Id);
@@ -346,6 +344,8 @@ namespace Npgsql
                     Rollback();
                 }
 
+                _connector.Connection?.EndBindingScope(ConnectorBindingScope.Transaction);
+
                 IsDisposed = true;
             }
         }
@@ -367,6 +367,8 @@ namespace Npgsql
                         return DisposeAsyncInternal();
                 }
 
+                _connector.Connection?.EndBindingScope(ConnectorBindingScope.Transaction);
+
                 IsDisposed = true;
             }
             return default;
@@ -376,6 +378,7 @@ namespace Npgsql
                 // We're disposing, so no cancellation token
                 await _connector.CloseOngoingOperations(async: true);
                 await Rollback(async: true);
+                _connector.Connection?.EndBindingScope(ConnectorBindingScope.Transaction);
                 IsDisposed = true;
             }
         }
