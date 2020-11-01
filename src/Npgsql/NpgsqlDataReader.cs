@@ -833,7 +833,7 @@ namespace Npgsql
         /// <summary>
         /// Releases the resources used by the <see cref="NpgsqlDataReader">NpgsqlDataReader</see>.
         /// </summary>
-        protected override void Dispose(bool disposing) => Close();
+        protected override void Dispose(bool disposing) => Close(connectionClosing: false, async: false).GetAwaiter().GetResult();
 
         /// <summary>
         /// Releases the resources used by the <see cref="NpgsqlDataReader">NpgsqlDataReader</see>.
