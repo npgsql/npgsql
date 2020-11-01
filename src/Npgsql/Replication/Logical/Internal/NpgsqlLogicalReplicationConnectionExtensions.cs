@@ -53,9 +53,11 @@ namespace Npgsql.Replication.Logical.Internal
             SlotSnapshotInitMode? slotSnapshotInitMode = null,
             CancellationToken cancellationToken = default)
         {
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled<NpgsqlReplicationSlotOptions>(cancellationToken);
             using var _ = NoSynchronizationContextScope.Enter();
-            return CreateReplicationSlotForPluginInternal(connection, slotName, outputPlugin, temporarySlot,
-                slotSnapshotInitMode, cancellationToken);
+            return CreateReplicationSlotForPluginInternal(
+                connection, slotName, outputPlugin, temporarySlot, slotSnapshotInitMode, cancellationToken);
         }
 
         static async Task<NpgsqlReplicationSlotOptions> CreateReplicationSlotForPluginInternal(
@@ -122,6 +124,8 @@ namespace Npgsql.Replication.Logical.Internal
             this NpgsqlLogicalReplicationConnection connection, NpgsqlLogicalReplicationSlot slot,
             NpgsqlLogSequenceNumber? walLocation = null, IEnumerable<KeyValuePair<string, string?>>? options = null, CancellationToken cancellationToken = default)
         {
+            if (cancellationToken.IsCancellationRequested)
+                return Task.FromCanceled<IAsyncEnumerable<NpgsqlXLogDataMessage>>(cancellationToken);
             using var _ = NoSynchronizationContextScope.Enter();
             return connection.StartReplicationInternal(commandBuilder =>
             {
