@@ -833,7 +833,7 @@ namespace Npgsql
         /// <summary>
         /// Releases the resources used by the <see cref="NpgsqlDataReader">NpgsqlDataReader</see>.
         /// </summary>
-        protected override void Dispose(bool disposing) => Close(connectionClosing: false, async: false, withCleanup: true).GetAwaiter().GetResult();
+        protected override void Dispose(bool disposing) => Close(connectionClosing: false, async: false, canCloseConnection: true).GetAwaiter().GetResult();
 
         /// <summary>
         /// Releases the resources used by the <see cref="NpgsqlDataReader">NpgsqlDataReader</see>.
@@ -845,13 +845,13 @@ namespace Npgsql
 #endif
         {
             using (NoSynchronizationContextScope.Enter())
-                return new ValueTask(Close(connectionClosing: false, async: true, withCleanup: true));
+                return new ValueTask(Close(connectionClosing: false, async: true, canCloseConnection: true));
         }
 
         /// <summary>
         /// Closes the <see cref="NpgsqlDataReader"/> reader, allowing a new command to be executed.
         /// </summary>
-        public override void Close() => Close(connectionClosing: false, async: false, withCleanup: false).GetAwaiter().GetResult();
+        public override void Close() => Close(connectionClosing: false, async: false, canCloseConnection: false).GetAwaiter().GetResult();
 
         /// <summary>
         /// Closes the <see cref="NpgsqlDataReader"/> reader, allowing a new command to be executed.
@@ -861,12 +861,16 @@ namespace Npgsql
 #else
         public override Task CloseAsync()
 #endif
-            => Close(connectionClosing: false, async: true, withCleanup: false);
+            => Close(connectionClosing: false, async: true, canCloseConnection: false);
 
-        internal async Task Close(bool connectionClosing, bool async, bool withCleanup)
+        internal async Task Close(bool connectionClosing, bool async, bool canCloseConnection)
         {
             if (State == ReaderState.Closed)
+            {
+                if (canCloseConnection)
+                    AttemptToCloseConnection(connectionClosing);
                 return;
+            }
 
             switch (Connector.State)
             {
@@ -888,11 +892,10 @@ namespace Npgsql
                 throw new ArgumentOutOfRangeException();
             }
 
-            if (withCleanup)
-                await Cleanup(async, connectionClosing);
+            await Cleanup(async, canCloseConnection, connectionClosing);
         }
 
-        internal async Task Cleanup(bool async, bool connectionClosing=false)
+        internal async Task Cleanup(bool async, bool canCloseConnection, bool connectionClosing = false)
         {
             Log.Trace("Cleaning up reader", Connector.Id);
 
@@ -928,6 +931,18 @@ namespace Npgsql
             Connector.EndUserAction();
             NpgsqlEventSource.Log.CommandStop();
 
+            if (ReaderClosed != null)
+            {
+                ReaderClosed(this, EventArgs.Empty);
+                ReaderClosed = null;
+            }
+
+            if (canCloseConnection)
+                AttemptToCloseConnection(connectionClosing);
+        }
+
+        void AttemptToCloseConnection(bool connectionClosing)
+        {
             if (_connection.ConnectorBindingScope == ConnectorBindingScope.Reader)
             {
                 // TODO: Refactor... Use proper scope
@@ -944,12 +959,6 @@ namespace Npgsql
             }
             else if (_behavior.HasFlag(CommandBehavior.CloseConnection) && !connectionClosing)
                 _connection.Close();
-
-            if (ReaderClosed != null)
-            {
-                ReaderClosed(this, EventArgs.Empty);
-                ReaderClosed = null;
-            }
         }
 
         #endregion

@@ -1208,7 +1208,7 @@ namespace Npgsql
                     if (CurrentReader != null)
                     {
                         // The reader cleanup will call EndUserAction
-                        await CurrentReader.Cleanup(async);
+                        await CurrentReader.Cleanup(async, canCloseConnection: true);
                     }
                     else
                     {
@@ -1574,7 +1574,7 @@ namespace Npgsql
             var copyOperation = CurrentCopyOperation;
 
             if (reader != null)
-                await reader.Close(connectionClosing: true, async, withCleanup: true);
+                await reader.Close(connectionClosing: true, async, canCloseConnection: true);
             else if (copyOperation != null)
             {
                 // TODO: There's probably a race condition as the COPY operation may finish on its own during the next few lines
