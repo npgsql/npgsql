@@ -282,6 +282,14 @@ namespace Npgsql.Tests.Replication
                     //TestUtil.MinimumPgVersion(c, "9.4", "Logical Replication was introduced in PostgreSQL 9.4");
                     //
                     TestUtil.MinimumPgVersion(c, "12.0", "Setting wal_sender_timeout at runtime was introduced in in PostgreSQL 12");
+
+                    var synchronousCommit = (string)(await c.ExecuteScalarAsync("SHOW synchronous_commit"))!;
+                    if (synchronousCommit != "on")
+                        TestUtil.IgnoreExceptOnBuildServer("Ignoring because synchronous_commit isn't on");
+                    var synchronousStandbyNames = (string)(await c.ExecuteScalarAsync("SHOW synchronous_standby_names"))!;
+                    if (synchronousStandbyNames != "local")
+                        TestUtil.IgnoreExceptOnBuildServer(@"Ignoring because synchronous_standby_names isn't ""local""");
+
                     var messages = new ConcurrentQueue<(NpgsqlLogSequenceNumber Lsn, string? messageData)>();
                     await c.ExecuteNonQueryAsync(@$"
     CREATE TABLE {tableName} (id serial PRIMARY KEY, name TEXT NOT NULL);
