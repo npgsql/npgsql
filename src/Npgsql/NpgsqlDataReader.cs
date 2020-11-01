@@ -861,7 +861,10 @@ namespace Npgsql
 #else
         public override Task CloseAsync()
 #endif
-            => Close(connectionClosing: false, async: true, canCloseConnection: false);
+        {
+            using (NoSynchronizationContextScope.Enter())
+                return Close(connectionClosing: false, async: true, canCloseConnection: false);
+        }
 
         internal async Task Close(bool connectionClosing, bool async, bool canCloseConnection)
         {
