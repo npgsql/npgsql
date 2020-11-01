@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -37,7 +38,6 @@ namespace Npgsql.Tests.Replication
                 async (slotName, tableName, publicationName) =>
                 {
                     await using var c = await OpenConnectionAsync();
-                    var messages = new ConcurrentQueue<LogicalReplicationProtocolMessage>();
                     await c.ExecuteNonQueryAsync(@$"
 CREATE TABLE {tableName} (id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, name TEXT NOT NULL);
 CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
@@ -47,20 +47,14 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     await c.ExecuteNonQueryAsync($"INSERT INTO {tableName} (name) VALUES ('val1'), ('val2')");
 
                     using var streamingCts = new CancellationTokenSource();
-                    var replicationTask = Task.Run(async () =>
-                    {
-                        await foreach (var msg in rc.StartReplication(slot, new NpgsqlPgOutputPluginOptions(publicationName), streamingCts.Token))
-                            messages.Enqueue(msg);
-                    }, CancellationToken.None);
+                    var messages = rc.StartReplication(slot, new NpgsqlPgOutputPluginOptions(publicationName), streamingCts.Token)
+                        .GetAsyncEnumerator();
 
                     // Begin Transaction
-                    var message = await DequeueMessage(messages);
-                    Assert.That(message, Is.TypeOf<BeginMessage>());
+                    _ = await NextMessage<BeginMessage>(messages);
 
                     // Relation
-                    message = await DequeueMessage(messages);
-                    Assert.That(message, Is.TypeOf<RelationMessage>());
-                    var relMsg = (RelationMessage)message!;
+                    var relMsg = await NextMessage<RelationMessage>(messages);
                     Assert.That(relMsg.RelationReplicaIdentitySetting, Is.EqualTo('d'));
                     Assert.That(relMsg.Namespace, Is.EqualTo("public"));
                     Assert.That(relMsg.RelationName, Is.EqualTo(tableName));
@@ -69,27 +63,22 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     Assert.That(relMsg.Columns[1].ColumnName, Is.EqualTo("name"));
 
                     // Insert first value
-                    message = await DequeueMessage(messages);
-                    Assert.That(message, Is.TypeOf<InsertMessage>());
-                    var insertMsg = (InsertMessage)message!;
+                    var insertMsg = await NextMessage<InsertMessage>(messages);
                     Assert.That(insertMsg.NewRow.Length, Is.EqualTo(2));
                     Assert.That(insertMsg.NewRow[0].Value, Is.EqualTo("1"));
                     Assert.That(insertMsg.NewRow[1].Value, Is.EqualTo("val1"));
 
                     // Insert second value
-                    message = await DequeueMessage(messages);
-                    Assert.That(message, Is.TypeOf<InsertMessage>());
-                    insertMsg = (InsertMessage)message!;
+                    insertMsg = await NextMessage<InsertMessage>(messages);
                     Assert.That(insertMsg.NewRow.Length, Is.EqualTo(2));
                     Assert.That(insertMsg.NewRow[0].Value, Is.EqualTo("2"));
                     Assert.That(insertMsg.NewRow[1].Value, Is.EqualTo("val2"));
 
                     // Commit Transaction
-                    message = await DequeueMessage(messages);
-                    Assert.That(message, Is.TypeOf<CommitMessage>());
+                    _ = await NextMessage<CommitMessage>(messages);
 
                     streamingCts.Cancel();
-                    Assert.That(async () => await replicationTask, Throws.Exception.AssignableTo<OperationCanceledException>()
+                    Assert.That(async () => await messages.MoveNextAsync(), Throws.Exception.AssignableTo<OperationCanceledException>()
                         .With.InnerException.InstanceOf<PostgresException>()
                         .And.InnerException.Property(nameof(PostgresException.SqlState))
                         .EqualTo(PostgresErrorCodes.QueryCanceled));
@@ -102,7 +91,6 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 async (slotName, tableName, publicationName) =>
                 {
                     await using var c = await OpenConnectionAsync();
-                    var messages = new ConcurrentQueue<LogicalReplicationProtocolMessage>();
                     await c.ExecuteNonQueryAsync(@$"
 CREATE TABLE {tableName} (id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, name TEXT NOT NULL);
 INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
@@ -113,20 +101,14 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     await c.ExecuteNonQueryAsync($"UPDATE {tableName} SET name='val1' WHERE name='val'");
 
                     using var streamingCts = new CancellationTokenSource();
-                    var replicationTask = Task.Run(async () =>
-                    {
-                        await foreach (var msg in rc.StartReplication(slot, new NpgsqlPgOutputPluginOptions(publicationName), streamingCts.Token))
-                            messages.Enqueue(msg);
-                    }, CancellationToken.None);
+                    var messages = rc.StartReplication(slot, new NpgsqlPgOutputPluginOptions(publicationName), streamingCts.Token)
+                        .GetAsyncEnumerator();
 
                     // Begin Transaction
-                    var message = await DequeueMessage(messages);
-                    Assert.That(message, Is.TypeOf<BeginMessage>());
+                    _ = await NextMessage<BeginMessage>(messages);
 
                     // Relation
-                    message = await DequeueMessage(messages);
-                    Assert.That(message, Is.TypeOf<RelationMessage>());
-                    var relMsg = (RelationMessage)message!;
+                    var relMsg = await NextMessage<RelationMessage>(messages);
                     Assert.That(relMsg.RelationReplicaIdentitySetting, Is.EqualTo('d'));
                     Assert.That(relMsg.Namespace, Is.EqualTo("public"));
                     Assert.That(relMsg.RelationName, Is.EqualTo(tableName));
@@ -135,19 +117,16 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     Assert.That(relMsg.Columns[1].ColumnName, Is.EqualTo("name"));
 
                     // Update
-                    message = await DequeueMessage(messages);
-                    Assert.That(message, Is.TypeOf<UpdateMessage>());
-                    var updateMsg = (UpdateMessage)message;
+                    var updateMsg = await NextMessage<UpdateMessage>(messages);
                     Assert.That(updateMsg.NewRow.Length, Is.EqualTo(2));
                     Assert.That(updateMsg.NewRow[0].Value, Is.EqualTo("1"));
                     Assert.That(updateMsg.NewRow[1].Value, Is.EqualTo("val1"));
 
                     // Commit Transaction
-                    message = await DequeueMessage(messages);
-                    Assert.That(message, Is.TypeOf<CommitMessage>());
+                    _ = await NextMessage<CommitMessage>(messages);
 
                     streamingCts.Cancel();
-                    Assert.That(async () => await replicationTask, Throws.Exception.AssignableTo<OperationCanceledException>()
+                    Assert.That(async () => await messages.MoveNextAsync(), Throws.Exception.AssignableTo<OperationCanceledException>()
                         .With.InnerException.InstanceOf<PostgresException>()
                         .And.InnerException.Property(nameof(PostgresException.SqlState))
                         .EqualTo(PostgresErrorCodes.QueryCanceled));
@@ -160,7 +139,6 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 async (slotName, tableName, publicationName) =>
                 {
                     await using var c = await OpenConnectionAsync();
-                    var messages = new ConcurrentQueue<LogicalReplicationProtocolMessage>();
                     var indexName = $"i_{tableName.Substring(2)}";
                     await c.ExecuteNonQueryAsync(@$"
 CREATE TABLE {tableName} (id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, name TEXT NOT NULL);
@@ -174,20 +152,14 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     await c.ExecuteNonQueryAsync($"UPDATE {tableName} SET name='val1' WHERE name='val'");
 
                     using var streamingCts = new CancellationTokenSource();
-                    var replicationTask = Task.Run(async () =>
-                    {
-                        await foreach (var msg in rc.StartReplication(slot, new NpgsqlPgOutputPluginOptions(publicationName), streamingCts.Token))
-                            messages.Enqueue(msg);
-                    }, CancellationToken.None);
+                    var messages = rc.StartReplication(slot, new NpgsqlPgOutputPluginOptions(publicationName), streamingCts.Token)
+                        .GetAsyncEnumerator();
 
                     // Begin Transaction
-                    var message = await DequeueMessage(messages);
-                    Assert.That(message, Is.TypeOf<BeginMessage>());
+                    _ = await NextMessage<BeginMessage>(messages);
 
                     // Relation
-                    message = await DequeueMessage(messages);
-                    Assert.That(message, Is.TypeOf<RelationMessage>());
-                    var relMsg = (RelationMessage)message!;
+                    var relMsg = await NextMessage<RelationMessage>(messages);
                     Assert.That(relMsg.RelationReplicaIdentitySetting, Is.EqualTo('i'));
                     Assert.That(relMsg.Namespace, Is.EqualTo("public"));
                     Assert.That(relMsg.RelationName, Is.EqualTo(tableName));
@@ -196,9 +168,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     Assert.That(relMsg.Columns[1].ColumnName, Is.EqualTo("name"));
 
                     // Update
-                    message = await DequeueMessage(messages);
-                    Assert.That(message, Is.TypeOf<IndexUpdateMessage>());
-                    var updateMsg = (IndexUpdateMessage)message;
+                    var updateMsg = await NextMessage<IndexUpdateMessage>(messages);
                     Assert.That(updateMsg.KeyRow!.Length, Is.EqualTo(2));
                     Assert.That(updateMsg.KeyRow![0].Value, Is.Null);
                     Assert.That(updateMsg.KeyRow![1].Value, Is.EqualTo("val"));
@@ -207,11 +177,10 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     Assert.That(updateMsg.NewRow[1].Value, Is.EqualTo("val1"));
 
                     // Commit Transaction
-                    message = await DequeueMessage(messages);
-                    Assert.That(message, Is.TypeOf<CommitMessage>());
+                    _ = await NextMessage<CommitMessage>(messages);
 
                     streamingCts.Cancel();
-                    Assert.That(async () => await replicationTask, Throws.Exception.AssignableTo<OperationCanceledException>()
+                    Assert.That(async () => await messages.MoveNextAsync(), Throws.Exception.AssignableTo<OperationCanceledException>()
                         .With.InnerException.InstanceOf<PostgresException>()
                         .And.InnerException.Property(nameof(PostgresException.SqlState))
                         .EqualTo(PostgresErrorCodes.QueryCanceled));
@@ -224,7 +193,6 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 async (slotName, tableName, publicationName) =>
                 {
                     await using var c = await OpenConnectionAsync();
-                    var messages = new ConcurrentQueue<LogicalReplicationProtocolMessage>();
                     await c.ExecuteNonQueryAsync(@$"
 CREATE TABLE {tableName} (id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, name TEXT NOT NULL);
 ALTER TABLE {tableName} REPLICA IDENTITY FULL;
@@ -236,20 +204,14 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     await c.ExecuteNonQueryAsync($"UPDATE {tableName} SET name='val1' WHERE name='val'");
 
                     using var streamingCts = new CancellationTokenSource();
-                    var replicationTask = Task.Run(async () =>
-                    {
-                        await foreach (var msg in rc.StartReplication(slot, new NpgsqlPgOutputPluginOptions(publicationName), streamingCts.Token))
-                            messages.Enqueue(msg);
-                    }, CancellationToken.None);
+                    var messages = rc.StartReplication(slot, new NpgsqlPgOutputPluginOptions(publicationName), streamingCts.Token)
+                        .GetAsyncEnumerator();
 
                     // Begin Transaction
-                    var message = await DequeueMessage(messages);
-                    Assert.That(message, Is.TypeOf<BeginMessage>());
+                    _ = await NextMessage<BeginMessage>(messages);
 
                     // Relation
-                    message = await DequeueMessage(messages);
-                    Assert.That(message, Is.TypeOf<RelationMessage>());
-                    var relMsg = (RelationMessage)message!;
+                    var relMsg = await NextMessage<RelationMessage>(messages);
                     Assert.That(relMsg.RelationReplicaIdentitySetting, Is.EqualTo('f'));
                     Assert.That(relMsg.Namespace, Is.EqualTo("public"));
                     Assert.That(relMsg.RelationName, Is.EqualTo(tableName));
@@ -258,9 +220,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     Assert.That(relMsg.Columns[1].ColumnName, Is.EqualTo("name"));
 
                     // Update
-                    message = await DequeueMessage(messages);
-                    Assert.That(message, Is.TypeOf<FullUpdateMessage>());
-                    var updateMsg = (FullUpdateMessage)message;
+                    var updateMsg = await NextMessage<FullUpdateMessage>(messages);
                     Assert.That(updateMsg.OldRow!.Length, Is.EqualTo(2));
                     Assert.That(updateMsg.OldRow![0].Value, Is.EqualTo("1"));
                     Assert.That(updateMsg.OldRow![1].Value, Is.EqualTo("val"));
@@ -269,11 +229,10 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     Assert.That(updateMsg.NewRow[1].Value, Is.EqualTo("val1"));
 
                     // Commit Transaction
-                    message = await DequeueMessage(messages);
-                    Assert.That(message, Is.TypeOf<CommitMessage>());
+                    _ = await NextMessage<CommitMessage>(messages);
 
                     streamingCts.Cancel();
-                    Assert.That(async () => await replicationTask, Throws.Exception.AssignableTo<OperationCanceledException>()
+                    Assert.That(async () => await messages.MoveNextAsync(), Throws.Exception.AssignableTo<OperationCanceledException>()
                         .With.InnerException.InstanceOf<PostgresException>()
                         .And.InnerException.Property(nameof(PostgresException.SqlState))
                         .EqualTo(PostgresErrorCodes.QueryCanceled));
@@ -286,7 +245,6 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 async (slotName, tableName, publicationName) =>
                 {
                     await using var c = await OpenConnectionAsync();
-                    var messages = new ConcurrentQueue<LogicalReplicationProtocolMessage>();
                     await c.ExecuteNonQueryAsync(@$"
 CREATE TABLE {tableName} (id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, name TEXT NOT NULL);
 INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
@@ -297,20 +255,14 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     await c.ExecuteNonQueryAsync($"DELETE FROM {tableName} WHERE name='val2'");
 
                     using var streamingCts = new CancellationTokenSource();
-                    var replicationTask = Task.Run(async () =>
-                    {
-                        await foreach (var msg in rc.StartReplication(slot, new NpgsqlPgOutputPluginOptions(publicationName), streamingCts.Token))
-                            messages.Enqueue(msg);
-                    }, CancellationToken.None);
+                    var messages = rc.StartReplication(slot, new NpgsqlPgOutputPluginOptions(publicationName), streamingCts.Token)
+                        .GetAsyncEnumerator();
 
                     // Begin Transaction
-                    var message = await DequeueMessage(messages);
-                    Assert.That(message, Is.TypeOf<BeginMessage>());
+                    _ = await NextMessage<BeginMessage>(messages);
 
                     // Relation
-                    message = await DequeueMessage(messages);
-                    Assert.That(message, Is.TypeOf<RelationMessage>());
-                    var relMsg = (RelationMessage)message!;
+                    var relMsg = await NextMessage<RelationMessage>(messages);
                     Assert.That(relMsg.RelationReplicaIdentitySetting, Is.EqualTo('d'));
                     Assert.That(relMsg.Namespace, Is.EqualTo("public"));
                     Assert.That(relMsg.RelationName, Is.EqualTo(tableName));
@@ -319,19 +271,16 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     Assert.That(relMsg.Columns[1].ColumnName, Is.EqualTo("name"));
 
                     // Delete
-                    message = await DequeueMessage(messages);
-                    Assert.That(message, Is.TypeOf<KeyDeleteMessage>());
-                    var deleteMsg = (KeyDeleteMessage)message;
+                    var deleteMsg = await NextMessage<KeyDeleteMessage>(messages);
                     Assert.That(deleteMsg.KeyRow!.Length, Is.EqualTo(2));
                     Assert.That(deleteMsg.KeyRow[0].Value, Is.EqualTo("2"));
                     Assert.That(deleteMsg.KeyRow[1].Value, Is.Null);
 
                     // Commit Transaction
-                    message = await DequeueMessage(messages);
-                    Assert.That(message, Is.TypeOf<CommitMessage>());
+                    _ = await NextMessage<CommitMessage>(messages);
 
                     streamingCts.Cancel();
-                    Assert.That(async () => await replicationTask, Throws.Exception.AssignableTo<OperationCanceledException>()
+                    Assert.That(async () => await messages.MoveNextAsync(), Throws.Exception.AssignableTo<OperationCanceledException>()
                         .With.InnerException.InstanceOf<PostgresException>()
                         .And.InnerException.Property(nameof(PostgresException.SqlState))
                         .EqualTo(PostgresErrorCodes.QueryCanceled));
@@ -344,7 +293,6 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 async (slotName, tableName, publicationName) =>
                 {
                     await using var c = await OpenConnectionAsync();
-                    var messages = new ConcurrentQueue<LogicalReplicationProtocolMessage>();
                     var indexName = $"i_{tableName.Substring(2)}";
                     await c.ExecuteNonQueryAsync(@$"
 CREATE TABLE {tableName} (id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, name TEXT NOT NULL);
@@ -358,20 +306,14 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     await c.ExecuteNonQueryAsync($"DELETE FROM {tableName} WHERE name='val2'");
 
                     using var streamingCts = new CancellationTokenSource();
-                    var replicationTask = Task.Run(async () =>
-                    {
-                        await foreach (var msg in rc.StartReplication(slot, new NpgsqlPgOutputPluginOptions(publicationName), streamingCts.Token))
-                            messages.Enqueue(msg);
-                    }, CancellationToken.None);
+                    var messages = rc.StartReplication(slot, new NpgsqlPgOutputPluginOptions(publicationName), streamingCts.Token)
+                        .GetAsyncEnumerator();
 
                     // Begin Transaction
-                    var message = await DequeueMessage(messages);
-                    Assert.That(message, Is.TypeOf<BeginMessage>());
+                    _ = await NextMessage<BeginMessage>(messages);
 
                     // Relation
-                    message = await DequeueMessage(messages);
-                    Assert.That(message, Is.TypeOf<RelationMessage>());
-                    var relMsg = (RelationMessage)message!;
+                    var relMsg = await NextMessage<RelationMessage>(messages);
                     Assert.That(relMsg.RelationReplicaIdentitySetting, Is.EqualTo('i'));
                     Assert.That(relMsg.Namespace, Is.EqualTo("public"));
                     Assert.That(relMsg.RelationName, Is.EqualTo(tableName));
@@ -380,19 +322,16 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     Assert.That(relMsg.Columns[1].ColumnName, Is.EqualTo("name"));
 
                     // Delete
-                    message = await DequeueMessage(messages);
-                    Assert.That(message, Is.TypeOf<KeyDeleteMessage>());
-                    var deleteMsg = (KeyDeleteMessage)message;
+                    var deleteMsg = await NextMessage<KeyDeleteMessage>(messages);
                     Assert.That(deleteMsg.KeyRow!.Length, Is.EqualTo(2));
                     Assert.That(deleteMsg.KeyRow[0].Value, Is.Null);
                     Assert.That(deleteMsg.KeyRow[1].Value, Is.EqualTo("val2"));
 
                     // Commit Transaction
-                    message = await DequeueMessage(messages);
-                    Assert.That(message, Is.TypeOf<CommitMessage>());
+                    _ = await NextMessage<CommitMessage>(messages);
 
                     streamingCts.Cancel();
-                    Assert.That(async () => await replicationTask, Throws.Exception.AssignableTo<OperationCanceledException>()
+                    Assert.That(async () => await messages.MoveNextAsync(), Throws.Exception.AssignableTo<OperationCanceledException>()
                         .With.InnerException.InstanceOf<PostgresException>()
                         .And.InnerException.Property(nameof(PostgresException.SqlState))
                         .EqualTo(PostgresErrorCodes.QueryCanceled));
@@ -405,7 +344,6 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 async (slotName, tableName, publicationName) =>
                 {
                     await using var c = await OpenConnectionAsync();
-                    var messages = new ConcurrentQueue<LogicalReplicationProtocolMessage>();
                     await c.ExecuteNonQueryAsync(@$"
 CREATE TABLE {tableName} (id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, name TEXT NOT NULL);
 ALTER TABLE {tableName} REPLICA IDENTITY FULL;
@@ -417,20 +355,14 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     await c.ExecuteNonQueryAsync($"DELETE FROM {tableName} WHERE name='val2'");
 
                     using var streamingCts = new CancellationTokenSource();
-                    var replicationTask = Task.Run(async () =>
-                    {
-                        await foreach (var msg in rc.StartReplication(slot, new NpgsqlPgOutputPluginOptions(publicationName), streamingCts.Token))
-                            messages.Enqueue(msg);
-                    }, CancellationToken.None);
+                    var messages = rc.StartReplication(slot, new NpgsqlPgOutputPluginOptions(publicationName), streamingCts.Token)
+                        .GetAsyncEnumerator();
 
                     // Begin Transaction
-                    var message = await DequeueMessage(messages);
-                    Assert.That(message, Is.TypeOf<BeginMessage>());
+                    _ = await NextMessage<BeginMessage>(messages);
 
                     // Relation
-                    message = await DequeueMessage(messages);
-                    Assert.That(message, Is.TypeOf<RelationMessage>());
-                    var relMsg = (RelationMessage)message!;
+                    var relMsg = await NextMessage<RelationMessage>(messages);
                     Assert.That(relMsg.RelationReplicaIdentitySetting, Is.EqualTo('f'));
                     Assert.That(relMsg.Namespace, Is.EqualTo("public"));
                     Assert.That(relMsg.RelationName, Is.EqualTo(tableName));
@@ -439,19 +371,16 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     Assert.That(relMsg.Columns[1].ColumnName, Is.EqualTo("name"));
 
                     // Delete
-                    message = await DequeueMessage(messages);
-                    Assert.That(message, Is.TypeOf<FullDeleteMessage>());
-                    var deleteMsg = (FullDeleteMessage)message;
+                    var deleteMsg = await NextMessage<FullDeleteMessage>(messages);
                     Assert.That(deleteMsg.OldRow!.Length, Is.EqualTo(2));
                     Assert.That(deleteMsg.OldRow[0].Value, Is.EqualTo("2"));
                     Assert.That(deleteMsg.OldRow[1].Value, Is.EqualTo("val2"));
 
                     // Commit Transaction
-                    message = await DequeueMessage(messages);
-                    Assert.That(message, Is.TypeOf<CommitMessage>());
+                    _ = await NextMessage<CommitMessage>(messages);
 
                     streamingCts.Cancel();
-                    Assert.That(async () => await replicationTask, Throws.Exception.AssignableTo<OperationCanceledException>()
+                    Assert.That(async () => await messages.MoveNextAsync(), Throws.Exception.AssignableTo<OperationCanceledException>()
                         .With.InnerException.InstanceOf<PostgresException>()
                         .And.InnerException.Property(nameof(PostgresException.SqlState))
                         .EqualTo(PostgresErrorCodes.QueryCanceled));
@@ -468,7 +397,6 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                 async (slotName, tableName, publicationName) =>
                 {
                     await using var c = await OpenConnectionAsync();
-                    var messages = new ConcurrentQueue<LogicalReplicationProtocolMessage>();
                     await c.ExecuteNonQueryAsync(@$"
 CREATE TABLE {tableName} (id INT PRIMARY KEY GENERATED ALWAYS AS IDENTITY, name TEXT NOT NULL);
 INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
@@ -484,20 +412,14 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     await c.ExecuteNonQueryAsync(sb.ToString());
 
                     using var streamingCts = new CancellationTokenSource();
-                    var replicationTask = Task.Run(async () =>
-                    {
-                        await foreach (var msg in rc.StartReplication(slot, new NpgsqlPgOutputPluginOptions(publicationName), streamingCts.Token))
-                            messages.Enqueue(msg);
-                    }, CancellationToken.None);
+                    var messages = rc.StartReplication(slot, new NpgsqlPgOutputPluginOptions(publicationName), streamingCts.Token)
+                        .GetAsyncEnumerator();
 
                     // Begin Transaction
-                    var message = await DequeueMessage(messages);
-                    Assert.That(message, Is.TypeOf<BeginMessage>());
+                    _ = await NextMessage<BeginMessage>(messages);
 
                     // Relation
-                    message = await DequeueMessage(messages);
-                    Assert.That(message, Is.TypeOf<RelationMessage>());
-                    var relMsg = (RelationMessage)message!;
+                    var relMsg = await NextMessage<RelationMessage>(messages);
                     Assert.That(relMsg.RelationReplicaIdentitySetting, Is.EqualTo('d'));
                     Assert.That(relMsg.Namespace, Is.EqualTo("public"));
                     Assert.That(relMsg.RelationName, Is.EqualTo(tableName));
@@ -506,23 +428,30 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     Assert.That(relMsg.Columns[1].ColumnName, Is.EqualTo("name"));
 
                     // Truncate
-                    message = await DequeueMessage(messages);
-                    Assert.That(message, Is.TypeOf<TruncateMessage>());
-                    var truncateMsg = (TruncateMessage)message;
+                    var truncateMsg = await NextMessage<TruncateMessage>(messages);
                     Assert.That(truncateMsg.Options, Is.EqualTo(truncateOptionFlags));
                     Assert.That(truncateMsg.RelationIds.Length, Is.EqualTo(1));
 
                     // Commit Transaction
-                    message = await DequeueMessage(messages);
-                    Assert.That(message, Is.TypeOf<CommitMessage>());
+                    _ = await NextMessage<CommitMessage>(messages);
 
                     streamingCts.Cancel();
-                    Assert.That(async () => await replicationTask, Throws.Exception.AssignableTo<OperationCanceledException>()
+                    Assert.That(async () => await messages.MoveNextAsync(), Throws.Exception.AssignableTo<OperationCanceledException>()
                         .With.InnerException.InstanceOf<PostgresException>()
                         .And.InnerException.Property(nameof(PostgresException.SqlState))
                         .EqualTo(PostgresErrorCodes.QueryCanceled));
                     await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
                 }, nameof(Truncate) + truncateOptionFlags.ToString("D"));
+
+
+        static async ValueTask<TExpected> NextMessage<TExpected>(
+            IAsyncEnumerator<LogicalReplicationProtocolMessage> enumerator)
+            where TExpected : LogicalReplicationProtocolMessage
+        {
+            Assert.True(await enumerator.MoveNextAsync());
+            Assert.That(enumerator.Current, Is.TypeOf<TExpected>());
+            return (TExpected)enumerator.Current!;
+        }
 
         protected override string Postfix => "pgoutput_l";
 

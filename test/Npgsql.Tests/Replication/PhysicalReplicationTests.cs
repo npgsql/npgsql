@@ -1,11 +1,8 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
-using System.Reflection.Metadata.Ecma335;
 using System.Threading;
 using System.Threading.Tasks;
-using Npgsql.Replication;
 using Npgsql.Replication.Physical;
 using NpgsqlTypes;
 using NUnit.Framework;
@@ -39,21 +36,13 @@ namespace Npgsql.Tests.Replication
             => SafeReplicationTest(
                 async (slotName, tableName) =>
                 {
-                    var messages = new ConcurrentQueue<(NpgsqlLogSequenceNumber WalStart, NpgsqlLogSequenceNumber WalEnd, byte[] data)>();
+                    // var messages = new ConcurrentQueue<(NpgsqlLogSequenceNumber WalStart, NpgsqlLogSequenceNumber WalEnd, byte[] data)>();
                     var rc = await OpenReplicationConnectionAsync();
                     var slot = await rc.CreateReplicationSlot(slotName);
                     var info = await rc.IdentifySystem();
 
                     using var streamingCts = new CancellationTokenSource();
-                    var replicationTask = Task.Run(async () =>
-                    {
-                        await foreach (var msg in rc.StartReplication(slot, streamingCts.Token, info.XLogPos))
-                        {
-                            using var memoryStream = new MemoryStream();
-                            await msg.Data.CopyToAsync(memoryStream, 4096, streamingCts.Token);
-                            messages.Enqueue((msg.WalStart, msg.WalEnd, memoryStream.ToArray()));
-                        }
-                    });
+                    var messages = rc.StartReplication(slot, streamingCts.Token, info.XLogPos).GetAsyncEnumerator();
 
                     await using var c = await OpenConnectionAsync();
                     await c.ExecuteNonQueryAsync($"CREATE TABLE {tableName} (value text)");
@@ -66,13 +55,14 @@ namespace Npgsql.Tests.Replication
                     // other transactions possibly from system processes can
                     // interfere here, inserting additional messages, but more
                     // likely we'll get everything in one big chunk.
-                    var message = await DequeueMessage(messages);
+                    Assert.True(await messages.MoveNextAsync());
+                    var message = messages.Current;
                     Assert.That(message.WalStart, Is.EqualTo(info.XLogPos));
                     Assert.That(message.WalEnd, Is.GreaterThan(message.WalStart));
-                    Assert.That(message.data.Length, Is.GreaterThan(0));
+                    Assert.That(message.Data.Length, Is.GreaterThan(0));
 
                     streamingCts.Cancel();
-                    var exception = Assert.ThrowsAsync(Is.AssignableTo<OperationCanceledException>(), async () => await replicationTask);
+                    var exception = Assert.ThrowsAsync(Is.AssignableTo<OperationCanceledException>(), async () => await messages.MoveNextAsync());
                     if (c.PostgreSqlVersion < Version.Parse("9.4"))
                     {
                         Assert.That(exception, Has.InnerException.InstanceOf<PostgresException>()
@@ -84,21 +74,12 @@ namespace Npgsql.Tests.Replication
         [Test]
         public async Task WithoutSlot()
         {
-            var messages =
-                new ConcurrentQueue<(NpgsqlLogSequenceNumber WalStart, NpgsqlLogSequenceNumber WalEnd, byte[] data)>();
             var rc = await OpenReplicationConnectionAsync();
             var info = await rc.IdentifySystem();
 
             using var streamingCts = new CancellationTokenSource();
-            var replicationTask = Task.Run(async () =>
-            {
-                await foreach (var msg in rc.StartReplication(info.XLogPos, streamingCts.Token))
-                {
-                    using var memoryStream = new MemoryStream();
-                    await msg.Data.CopyToAsync(memoryStream, 4096, streamingCts.Token);
-                    messages.Enqueue((msg.WalStart, msg.WalEnd, memoryStream.ToArray()));
-                }
-            });
+            var messages = rc.StartReplication(info.XLogPos, streamingCts.Token).GetAsyncEnumerator();
+
             var tableName = "t_physicalreplicationwithoutslot_p";
             await using var c = await OpenConnectionAsync();
             await c.ExecuteNonQueryAsync($"CREATE TABLE IF NOT EXISTS {tableName} (value text)");
@@ -112,13 +93,14 @@ namespace Npgsql.Tests.Replication
                 // other transactions possibly from system processes can
                 // interfere here, inserting additional messages, but more
                 // likely we'll get everything in one big chunk.
-                var message = await DequeueMessage(messages);
+                Assert.True(await messages.MoveNextAsync());
+                var message = messages.Current;
                 Assert.That(message.WalStart, Is.EqualTo(info.XLogPos));
                 Assert.That(message.WalEnd, Is.GreaterThan(message.WalStart));
-                Assert.That(message.data.Length, Is.GreaterThan(0));
+                Assert.That(message.Data.Length, Is.GreaterThan(0));
 
                 streamingCts.Cancel();
-                var exception = Assert.ThrowsAsync(Is.AssignableTo<OperationCanceledException>(), async () => await replicationTask);
+                var exception = Assert.ThrowsAsync(Is.AssignableTo<OperationCanceledException>(), async () => await messages.MoveNextAsync());
                 if (c.PostgreSqlVersion < Version.Parse("9.4"))
                 {
                     Assert.That(exception, Has.InnerException.InstanceOf<PostgresException>()

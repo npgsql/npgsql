@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Replication;
+using Npgsql.Replication.Logical.Protocol;
 using NUnit.Framework;
 
 namespace Npgsql.Tests.Replication
@@ -110,23 +112,6 @@ namespace Npgsql.Tests.Replication
             var cts = new CancellationTokenSource();
             cts.Cancel();
             return cts;
-        }
-
-        private protected static async Task<T> DequeueMessage<T>(ConcurrentQueue<T> queue, TimeSpan? delay = null, TimeSpan? timeout = null)
-        {
-            var effectiveDelay = delay ?? TimeSpan.FromMilliseconds(10);
-            var effectiveTimeout = timeout ?? TimeSpan.FromSeconds(5);
-            Debug.Assert(effectiveDelay < effectiveTimeout);
-            var iterations = effectiveTimeout.Ticks / effectiveDelay.Ticks;
-            for (var i = 0; i < iterations; i++)
-            {
-                if (!queue.IsEmpty && queue.TryDequeue(out var value))
-                    return value;
-
-                await Task.Delay(effectiveDelay, CancellationToken.None);
-            }
-
-            throw new TimeoutException("A timeout occurred while trying to dequeue a message.");
         }
     }
 }

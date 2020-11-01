@@ -290,7 +290,6 @@ namespace Npgsql.Tests.Replication
                     if (synchronousStandbyNames != "npgsql_test_sync_standby")
                         TestUtil.IgnoreExceptOnBuildServer("Ignoring because synchronous_standby_names isn't 'npgsql_test_sync_standby'");
 
-                    var messages = new ConcurrentQueue<(NpgsqlLogSequenceNumber Lsn, string? messageData)>();
                     await c.ExecuteNonQueryAsync(@$"
     CREATE TABLE {tableName} (id serial PRIMARY KEY, name TEXT NOT NULL);
     ");
@@ -310,27 +309,10 @@ namespace Npgsql.Tests.Replication
                     rc.WalReceiverStatusInterval = Timeout.InfiniteTimeSpan;
 
                     await CreateReplicationSlot(slotName);
-
                     using var streamingCts = new CancellationTokenSource();
-                    var replicationTask = Task.Run(async () =>
-                    {
-                        await foreach (var msg in StartReplication(rc, slotName, info.XLogPos, streamingCts.Token))
-                        {
-                            if (typeof(TConnection) == typeof(NpgsqlPhysicalReplicationConnection))
-                            {
-                                var buffer = new MemoryStream();
-                                ((NpgsqlXLogDataMessage)msg).Data.CopyTo(buffer);
-                                // Hack: This is really gruesome but we really have no idea how many
-                                // messages we get in physical replication
-                                var messageString = Encoding.ASCII.GetString(buffer.ToArray());
-                                messages.Enqueue((msg.WalEnd, messageString));
-                            }
-                            else
-                            {
-                                messages.Enqueue((msg.WalEnd, null));
-                            }
-                        }
-                    }, CancellationToken.None);
+                    var messages = ParseMessages(
+                            StartReplication(rc, slotName, info.XLogPos, streamingCts.Token))
+                        .GetAsyncEnumerator();
 
                     var value1String = Guid.NewGuid().ToString("B");
                     // We need to start a separate thread here as the insert command wil not complete until
@@ -423,29 +405,45 @@ namespace Npgsql.Tests.Replication
                     Assert.That(result, Is.EqualTo(value3String)); // Now it's committed because we reported receive
 
                     streamingCts.Cancel();
-                    Assert.That(async () => await replicationTask, Throws.Exception.AssignableTo<OperationCanceledException>()
+                    Assert.That(async () => await messages.MoveNextAsync(), Throws.Exception.AssignableTo<OperationCanceledException>()
                         .With.InnerException.InstanceOf<PostgresException>()
                         .And.InnerException.Property(nameof(PostgresException.SqlState))
                         .EqualTo(PostgresErrorCodes.QueryCanceled));
                     await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
 
-                    async Task<NpgsqlLogSequenceNumber> GetCommitLsn(string valueString)
+                    static async IAsyncEnumerable<(NpgsqlLogSequenceNumber Lsn, string? MessageData)> ParseMessages(
+                        IAsyncEnumerable<INpgsqlReplicationMessage> messages)
                     {
-                        (NpgsqlLogSequenceNumber Lsn, string? messageData) message = default!;
-                        if (typeof(TConnection) == typeof(NpgsqlPhysicalReplicationConnection))
+                        await foreach (var msg in messages)
                         {
-                            while (true)
+                            if (typeof(TConnection) == typeof(NpgsqlPhysicalReplicationConnection))
                             {
-                                message = await DequeueMessage(messages);
-                                if (message.messageData!.Contains(valueString))
-                                    return message.Lsn;
+                                var buffer = new MemoryStream();
+                                ((NpgsqlXLogDataMessage)msg).Data.CopyTo(buffer);
+                                // Hack: This is really gruesome but we really have no idea how many
+                                // messages we get in physical replication
+                                var messageString = Encoding.ASCII.GetString(buffer.ToArray());
+                                yield return (msg.WalEnd, messageString);
+                            }
+                            else
+                            {
+                                yield return (msg.WalEnd, null);
                             }
                         }
+                    }
+
+                    async Task<NpgsqlLogSequenceNumber> GetCommitLsn(string valueString)
+                    {
+                        if (typeof(TConnection) == typeof(NpgsqlPhysicalReplicationConnection))
+                            while (await messages.MoveNextAsync())
+                                if (messages.Current.MessageData!.Contains(valueString))
+                                    return messages.Current.Lsn;
+
                         // NpgsqlLogicalReplicationConnection
                         // Begin Transaction, Insert, Commit Transaction
                         for (var i = 0; i < 3; i++)
-                            message = await DequeueMessage(messages);
-                        return message.Lsn;
+                            Assert.True(await messages.MoveNextAsync());
+                        return messages.Current.Lsn;
 
                     }
                 });
