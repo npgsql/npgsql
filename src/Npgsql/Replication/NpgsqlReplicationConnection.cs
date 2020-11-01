@@ -348,7 +348,7 @@ namespace Npgsql.Replication
                 var len = buf.ReadInt32();
                 Debug.Assert(len > 0); // The slot_name is never empty
                 await buf.Ensure(len, true, cancellationToken);
-                var slotNameResult  = buf.ReadString(len);
+                var slotNameResult = buf.ReadString(len);
 
                 // consistent_point  
                 await buf.Ensure(4, true, cancellationToken);
