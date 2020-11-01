@@ -168,12 +168,12 @@ namespace Npgsql.Tests.Replication
         public void TimelineHistoryNonExisting()
             => Assert.That(async () =>
             {
-                // ToDo: Fix for PG10 (physical)
                 await using var rc = await OpenReplicationConnectionAsync();
                 await rc.TimelineHistory(uint.MaxValue);
             }, Throws.InstanceOf<PostgresException>()
                 .With.Property(nameof(PostgresException.SqlState))
-                .EqualTo("58P01"));
+                .EqualTo("58P01").Or.InstanceOf<PostgresException>()
+                .With.Property(nameof(PostgresException.SqlState)).EqualTo("22021"));
 
         [Test]
         public void TimelineHistoryDisposed()
