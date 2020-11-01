@@ -13,7 +13,7 @@ namespace Npgsql.Tests.Replication
     {
         [Test]
         public Task CreateReplicationSlot()
-            => SafeReplicationTest(nameof(CreateReplicationSlot) + "_pgoutput",
+            => SafeReplicationTest(
                 async (slotName, _) =>
                 {
                     await using var c = await OpenConnectionAsync();
@@ -34,7 +34,7 @@ namespace Npgsql.Tests.Replication
 
         [Test(Description = "Tests whether INSERT commands get replicated as Logical Replication Protocol Messages")]
         public Task Insert()
-            => SafeReplicationTest(nameof(Insert) + "_pgoutput",
+            => SafeReplicationTest(
                 async (slotName, tableName, publicationName) =>
                 {
                     await using var c = await OpenConnectionAsync();
@@ -100,7 +100,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
 
         [Test(Description = "Tests whether UPDATE commands get replicated as Logical Replication Protocol Messages for tables using the default replica identity")]
         public Task UpdateForDefaultReplicaIdentity()
-            => SafeReplicationTest(nameof(UpdateForDefaultReplicaIdentity) + "_pgoutput",
+            => SafeReplicationTest(
                 async (slotName, tableName, publicationName) =>
                 {
                     await using var c = await OpenConnectionAsync();
@@ -159,7 +159,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
 
         [Test(Description = "Tests whether UPDATE commands get replicated as Logical Replication Protocol Messages for tables using an index as replica identity")]
         public  Task UpdateForIndexReplicaIdentity()
-            => SafeReplicationTest(nameof(UpdateForIndexReplicaIdentity) + "_pgoutput",
+            => SafeReplicationTest(
                 async (slotName, tableName, publicationName) =>
                 {
                     await using var c = await OpenConnectionAsync();
@@ -224,7 +224,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
 
         [Test(Description = "Tests whether UPDATE commands get replicated as Logical Replication Protocol Messages for tables using full replica identity")]
         public  Task UpdateForFullReplicaIdentity()
-            => SafeReplicationTest(nameof(UpdateForFullReplicaIdentity) + "_pgoutput",
+            => SafeReplicationTest(
                 async (slotName, tableName, publicationName) =>
                 {
                     await using var c = await OpenConnectionAsync();
@@ -287,7 +287,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
 
         [Test(Description = "Tests whether DELETE commands get replicated as Logical Replication Protocol Messages for tables using the default replica identity")]
         public  Task DeleteForDefaultReplicaIdentity()
-            => SafeReplicationTest(nameof(DeleteForDefaultReplicaIdentity) + "_pgoutput",
+            => SafeReplicationTest(
                 async (slotName, tableName, publicationName) =>
                 {
                     await using var c = await OpenConnectionAsync();
@@ -346,7 +346,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
 
         [Test(Description = "Tests whether DELETE commands get replicated as Logical Replication Protocol Messages for tables using an index as replica identity")]
         public Task DeleteForIndexReplicaIdentity()
-            => SafeReplicationTest(nameof(DeleteForIndexReplicaIdentity) + "_pgoutput",
+            => SafeReplicationTest(
                 async (slotName, tableName, publicationName) =>
                 {
                     await using var c = await OpenConnectionAsync();
@@ -408,7 +408,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
 
         [Test(Description = "Tests whether DELETE commands get replicated as Logical Replication Protocol Messages for tables using full replica identity")]
         public Task DeleteForFullReplicaIdentity()
-            => SafeReplicationTest(nameof(DeleteForFullReplicaIdentity) + "_pgoutput",
+            => SafeReplicationTest(
                 async (slotName, tableName, publicationName) =>
                 {
                     await using var c = await OpenConnectionAsync();
@@ -472,7 +472,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
         [TestCase(TruncateOptions.RestartIdentity)]
         [TestCase(TruncateOptions.Cascade | TruncateOptions.RestartIdentity)]
         public Task Truncate(TruncateOptions truncateOptionFlags)
-            => SafeReplicationTest(nameof(Truncate) + truncateOptionFlags.ToString("D"),
+            => SafeReplicationTest(
                 async (slotName, tableName, publicationName) =>
                 {
                     await using var c = await OpenConnectionAsync();
@@ -531,6 +531,8 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                         .And.InnerException.Property(nameof(PostgresException.SqlState))
                         .EqualTo(PostgresErrorCodes.QueryCanceled));
                     await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
-                });
+                }, nameof(Truncate) + truncateOptionFlags.ToString("D"));
+
+        protected override string Postfix => "pgoutput_l";
     }
 }

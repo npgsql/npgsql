@@ -27,7 +27,7 @@ namespace Npgsql.Tests.Replication
         [TestCase(true)]
         [TestCase(false)]
         public Task CreateReplicationSlotForPlugin(bool temporary)
-            => SafeReplicationTest(nameof(CreateReplicationSlotForPlugin) + temporary,
+            => SafeReplicationTest(
                 async (slotName, _) =>
                 {
                     await using var c = await OpenConnectionAsync();
@@ -51,11 +51,11 @@ namespace Npgsql.Tests.Replication
                         Assert.That(reader.GetFieldValue<NpgsqlLogSequenceNumber>(reader.GetOrdinal("confirmed_flush_lsn")),
                             Is.EqualTo(options.ConsistentPoint));
                     Assert.That(reader.Read, Is.False);
-                });
+                }, nameof(CreateReplicationSlotForPlugin) + temporary);
 
         [Test]
         public Task CreateReplicationSlotForPluginNoExportSnapshot()
-            => SafeReplicationTest(nameof(CreateReplicationSlotForPluginNoExportSnapshot),
+            => SafeReplicationTest(
                 async (slotName, _) =>
                 {
                     await using var c = await OpenConnectionAsync();
@@ -70,7 +70,7 @@ namespace Npgsql.Tests.Replication
         [TestCase(SlotSnapshotInitMode.NoExport)]
         [TestCase(SlotSnapshotInitMode.Use)]
         public Task CreateReplicationSlotForPluginExportSnapshotSyntaxThrows(SlotSnapshotInitMode mode)
-            => SafeReplicationTest(nameof(CreateReplicationSlotForPluginExportSnapshotSyntaxThrows),
+            => SafeReplicationTest(
                 async (slotName, _) =>
                 {
                     await using var c = await OpenConnectionAsync();
@@ -88,7 +88,7 @@ namespace Npgsql.Tests.Replication
 
         [Test(Description = "We can use the exported snapshot to query the database in the very moment the replication slot was created.")]
         public Task CreateReplicationSlotForPluginExportSnapshot()
-            => SafeReplicationTest(nameof(CreateReplicationSlotForPluginExportSnapshot),
+            => SafeReplicationTest(
                 async (slotName, tableName) =>
                 {
                     await using var c = await OpenConnectionAsync();
@@ -121,7 +121,7 @@ namespace Npgsql.Tests.Replication
                             "USE_SNAPSHOT currently doesn't work and always leads to an exception. On the other hand, starting" +
                             "a transaction would only be useful if we'd also provide an API to issue commands.")]
         public Task CreateReplicationSlotForPluginUseSnapshot()
-            => SafeReplicationTest(nameof(CreateReplicationSlotForPluginNullPlugin),
+            => SafeReplicationTest(
                 async (slotName, _) =>
                 {
                     await using var c = await OpenConnectionAsync();
@@ -148,7 +148,7 @@ namespace Npgsql.Tests.Replication
 
         [Test]
         public Task CreateReplicationSlotForPluginNullPlugin()
-            => SafeReplicationTest(nameof(CreateReplicationSlotForPluginNullPlugin),
+            => SafeReplicationTest(
                 (slotName, _) =>
                 {
                     Assert.That(async () =>
@@ -163,7 +163,7 @@ namespace Npgsql.Tests.Replication
 
         [Test]
         public Task CreateReplicationSlotForPluginCancelled()
-            => SafeReplicationTest(nameof(CreateReplicationSlotForPluginCancelled),
+            => SafeReplicationTest(
                 (slotName, _) =>
                 {
                     Assert.That(async () =>
@@ -177,7 +177,7 @@ namespace Npgsql.Tests.Replication
 
         [Test]
         public Task CreateReplicationSlotForPluginInvalidSlotSnapshotInitMode()
-            => SafeReplicationTest(nameof(CreateReplicationSlotForPluginInvalidSlotSnapshotInitMode),
+            => SafeReplicationTest(
                 (slotName, _) =>
                 {
                     Assert.That(async () =>
@@ -194,7 +194,7 @@ namespace Npgsql.Tests.Replication
 
         [Test]
         public Task CreateReplicationSlotForPluginDisposed()
-            => SafeReplicationTest(nameof(CreateReplicationSlotForPluginDisposed),
+            => SafeReplicationTest(
                 (slotName, _) =>
                 {
                     Assert.That(async () =>
@@ -207,5 +207,7 @@ namespace Npgsql.Tests.Replication
                         .EqualTo(nameof(NpgsqlLogicalReplicationConnection)));
                     return Task.CompletedTask;
                 });
+
+        protected override string Postfix => "commonl_l";
     }
 }

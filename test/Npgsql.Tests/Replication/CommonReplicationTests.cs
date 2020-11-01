@@ -203,7 +203,7 @@ namespace Npgsql.Tests.Replication
 
         [Test]
         public Task DropReplicationSlotCancelled()
-            => SafeReplicationTest(nameof(DropReplicationSlotCancelled),
+            => SafeReplicationTest(
                 async (slotName, _) =>
                 {
                     await CreateReplicationSlot(slotName);
@@ -214,7 +214,7 @@ namespace Npgsql.Tests.Replication
 
         [Test]
         public Task DropReplicationSlotDisposed()
-            => SafeReplicationTest(nameof(DropReplicationSlotDisposed),
+            => SafeReplicationTest(
                 async (slotName, _) =>
                 {
                     await CreateReplicationSlot(slotName);
@@ -228,215 +228,217 @@ namespace Npgsql.Tests.Replication
         #endregion
 
         [Test(Description = "Tests whether our automated feedback thread prevents the backend from disconnecting due to wal_sender_timeout")]
-        public Task ReplicationSurvivesPausesLongerThanWalSenderTimeout() =>
-            SafeReplicationTest(nameof(ReplicationSurvivesPausesLongerThanWalSenderTimeout), async (slotName, tableName) =>
-            {
-                await using var c = await OpenConnectionAsync();
-                TestUtil.MinimumPgVersion(c, "10.0", "The SHOW command, which is required to run this test was added to the Streaming Replication Protocol in PostgreSQL 10");
-                var messages = new ConcurrentQueue<INpgsqlReplicationMessage>();
-                await c.ExecuteNonQueryAsync($"CREATE TABLE {tableName} (id serial PRIMARY KEY, name TEXT NOT NULL);");
-                await using var rc = await OpenReplicationConnectionAsync(new NpgsqlConnectionStringBuilder(ConnectionString)
+        public Task ReplicationSurvivesPausesLongerThanWalSenderTimeout()
+            => SafeReplicationTest(
+                async (slotName, tableName) =>
                 {
-                    ApplicationName = slotName
+                    await using var c = await OpenConnectionAsync();
+                    TestUtil.MinimumPgVersion(c, "10.0", "The SHOW command, which is required to run this test was added to the Streaming Replication Protocol in PostgreSQL 10");
+                    var messages = new ConcurrentQueue<INpgsqlReplicationMessage>();
+                    await c.ExecuteNonQueryAsync($"CREATE TABLE {tableName} (id serial PRIMARY KEY, name TEXT NOT NULL);");
+                    await using var rc = await OpenReplicationConnectionAsync(new NpgsqlConnectionStringBuilder(ConnectionString)
+                    {
+                        ApplicationName = slotName
+                    });
+                    var walSenderTimeout = ParseTimespan(await rc.Show("wal_sender_timeout"));
+                    var info = await rc.IdentifySystem();
+                    Console.WriteLine($"The server wal_sender_timeout is configured to {walSenderTimeout}");
+                    var walReceiverStatusInterval = TimeSpan.FromTicks(walSenderTimeout.Ticks / 2L);
+                    Console.WriteLine($"Setting {nameof(NpgsqlReplicationConnection)}.{nameof(NpgsqlReplicationConnection.WalReceiverStatusInterval)} to {walReceiverStatusInterval}");
+                    rc.WalReceiverStatusInterval = walReceiverStatusInterval;
+                    await CreateReplicationSlot(slotName);
+                    await c.ExecuteNonQueryAsync($"INSERT INTO \"{tableName}\" (name) VALUES ('val1')");
+                    using var streamingCts = new CancellationTokenSource();
+
+                    var replicationEnumerator = StartReplication(rc, slotName, info.XLogPos, streamingCts.Token).GetAsyncEnumerator(streamingCts.Token);
+
+                    var delay = TimeSpan.FromTicks((long)(walSenderTimeout.Ticks * 1.1));
+                    Console.WriteLine($"Going to sleep for {delay}");
+                    await Task.Delay(delay, CancellationToken.None);
+
+                    Assert.That(await replicationEnumerator.MoveNextAsync(), Is.True);
+                    var message = replicationEnumerator.Current;
+                    Assert.That(message.WalStart, Is.GreaterThanOrEqualTo(info.XLogPos));
+                    Assert.That(message.WalEnd, Is.GreaterThanOrEqualTo(message.WalStart));
+
+                    streamingCts.Cancel();
+
+                    Assert.That(async () => { while (await replicationEnumerator.MoveNextAsync()){} }, Throws.Exception.AssignableTo<OperationCanceledException>()
+                        .With.InnerException.InstanceOf<PostgresException>()
+                        .And.InnerException.Property(nameof(PostgresException.SqlState))
+                        .EqualTo(PostgresErrorCodes.QueryCanceled));
+
+                    await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
                 });
-                var walSenderTimeout = ParseTimespan(await rc.Show("wal_sender_timeout"));
-                var info = await rc.IdentifySystem();
-                Console.WriteLine($"The server wal_sender_timeout is configured to {walSenderTimeout}");
-                var walReceiverStatusInterval = TimeSpan.FromTicks(walSenderTimeout.Ticks / 2L);
-                Console.WriteLine($"Setting {nameof(NpgsqlReplicationConnection)}.{nameof(NpgsqlReplicationConnection.WalReceiverStatusInterval)} to {walReceiverStatusInterval}");
-                rc.WalReceiverStatusInterval = walReceiverStatusInterval;
-                await CreateReplicationSlot(slotName);
-                await c.ExecuteNonQueryAsync($"INSERT INTO \"{tableName}\" (name) VALUES ('val1')");
-                using var streamingCts = new CancellationTokenSource();
-
-                var replicationEnumerator = StartReplication(rc, slotName, info.XLogPos, streamingCts.Token).GetAsyncEnumerator(streamingCts.Token);
-
-                var delay = TimeSpan.FromTicks((long)(walSenderTimeout.Ticks * 1.1));
-                Console.WriteLine($"Going to sleep for {delay}");
-                await Task.Delay(delay, CancellationToken.None);
-
-                Assert.That(await replicationEnumerator.MoveNextAsync(), Is.True);
-                var message = replicationEnumerator.Current;
-                Assert.That(message.WalStart, Is.GreaterThanOrEqualTo(info.XLogPos));
-                Assert.That(message.WalEnd, Is.GreaterThanOrEqualTo(message.WalStart));
-
-                streamingCts.Cancel();
-
-                Assert.That(async () => { while (await replicationEnumerator.MoveNextAsync()){} }, Throws.Exception.AssignableTo<OperationCanceledException>()
-                    .With.InnerException.InstanceOf<PostgresException>()
-                    .And.InnerException.Property(nameof(PostgresException.SqlState))
-                    .EqualTo(PostgresErrorCodes.QueryCanceled));
-
-                await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
-            });
 
         [Test(Description = "Tests whether synchronous replication works the way it should.")]
-        public Task SynchronousReplication() =>
-            SafeReplicationTest(nameof(SynchronousReplication), async (slotName, tableName) =>
-            {
-                await using var c = await OpenConnectionAsync();
-                //TestUtil.MinimumPgVersion(c, "9.4", "Logical Replication was introduced in PostgreSQL 9.4");
-                //
-                TestUtil.MinimumPgVersion(c, "12.0", "Setting wal_sender_timeout at runtime was introduced in in PostgreSQL 12");
-                var messages = new ConcurrentQueue<(NpgsqlLogSequenceNumber Lsn, string? messageData)>();
-                await c.ExecuteNonQueryAsync(@$"
-CREATE TABLE {tableName} (id serial PRIMARY KEY, name TEXT NOT NULL);
-");
-
-                await using var rc = await OpenReplicationConnectionAsync(new NpgsqlConnectionStringBuilder(ConnectionString)
+        public Task SynchronousReplication()
+            => SafeReplicationTest(
+                async (slotName, tableName) =>
                 {
-                    // This must be one of the configured synchronous_standby_names from postgresql.conf
-                    ApplicationName = "npgsql_test_sync_standby",
-                    // We need wal_sender_timeout to be at least twice checkpoint_timeout to avoid getting feedback requests
-                    // from the backend in physical replication which makes this test fail, so we disable it for this test.
-                    Options = "wal_sender_timeout=0"
-                });
-                var info = await rc.IdentifySystem();
+                    await using var c = await OpenConnectionAsync();
+                    //TestUtil.MinimumPgVersion(c, "9.4", "Logical Replication was introduced in PostgreSQL 9.4");
+                    //
+                    TestUtil.MinimumPgVersion(c, "12.0", "Setting wal_sender_timeout at runtime was introduced in in PostgreSQL 12");
+                    var messages = new ConcurrentQueue<(NpgsqlLogSequenceNumber Lsn, string? messageData)>();
+                    await c.ExecuteNonQueryAsync(@$"
+    CREATE TABLE {tableName} (id serial PRIMARY KEY, name TEXT NOT NULL);
+    ");
 
-                // Set WalReceiverStatusInterval to infinite so that the automated feedback doesn't interfere with
-                // our manual feedback
-                rc.WalReceiverStatusInterval = Timeout.InfiniteTimeSpan;
-
-                await CreateReplicationSlot(slotName);
-
-                using var streamingCts = new CancellationTokenSource();
-                var replicationTask = Task.Run(async () =>
-                {
-                    await foreach (var msg in StartReplication(rc, slotName, info.XLogPos, streamingCts.Token).WithCancellation(streamingCts.Token))
+                    await using var rc = await OpenReplicationConnectionAsync(new NpgsqlConnectionStringBuilder(ConnectionString)
                     {
+                        // This must be one of the configured synchronous_standby_names from postgresql.conf
+                        ApplicationName = "npgsql_test_sync_standby",
+                        // We need wal_sender_timeout to be at least twice checkpoint_timeout to avoid getting feedback requests
+                        // from the backend in physical replication which makes this test fail, so we disable it for this test.
+                        Options = "wal_sender_timeout=0"
+                    });
+                    var info = await rc.IdentifySystem();
+
+                    // Set WalReceiverStatusInterval to infinite so that the automated feedback doesn't interfere with
+                    // our manual feedback
+                    rc.WalReceiverStatusInterval = Timeout.InfiniteTimeSpan;
+
+                    await CreateReplicationSlot(slotName);
+
+                    using var streamingCts = new CancellationTokenSource();
+                    var replicationTask = Task.Run(async () =>
+                    {
+                        await foreach (var msg in StartReplication(rc, slotName, info.XLogPos, streamingCts.Token).WithCancellation(streamingCts.Token))
+                        {
+                            if (typeof(TConnection) == typeof(NpgsqlPhysicalReplicationConnection))
+                            {
+                                var buffer = new MemoryStream();
+                                ((NpgsqlXLogDataMessage)msg).Data.CopyTo(buffer);
+                                // Hack: This is really gruesome but we really have no idea how many
+                                // messages we get in physical replication
+                                var messageString = Encoding.ASCII.GetString(buffer.ToArray());
+                                messages.Enqueue((msg.WalEnd, messageString));
+                            }
+                            else
+                            {
+                                messages.Enqueue((msg.WalEnd, null));
+                            }
+                        }
+                    }, CancellationToken.None);
+
+                    var value1String = Guid.NewGuid().ToString("B");
+                    // We need to start a separate thread here as the insert command wil not complete until
+                    // the transaction successfully completes (which we block here from the standby side) and by that
+                    // will occupy the connection it is bound to.
+                    var insertTask = Task.Run(async () =>
+                    {
+                        await using var insertConn = await OpenConnectionAsync(new NpgsqlConnectionStringBuilder(ConnectionString)
+                        {
+                            Options = "synchronous_commit=on"
+                        });
+                        await insertConn.ExecuteNonQueryAsync($"INSERT INTO {tableName} (name) VALUES ('{value1String}')");
+                    });
+
+                    var commitLsn = await GetCommitLsn(value1String);
+
+                    var result = await c.ExecuteScalarAsync($"SELECT name FROM {tableName} ORDER BY id DESC LIMIT 1;");
+                    Assert.That(result, Is.Null); // Not committed yet because we didn't report fsync yet
+
+                    // Report last received LSN
+                    await rc.SendStatusUpdate(CancellationToken.None);
+
+                    result = await c.ExecuteScalarAsync($"SELECT name FROM {tableName} ORDER BY id DESC LIMIT 1;");
+                    Assert.That(result, Is.Null); // Not committed yet because we still didn't report fsync yet
+
+                    // Report last applied LSN
+                    rc.LastAppliedLsn = commitLsn;
+                    await rc.SendStatusUpdate(CancellationToken.None);
+
+                    result = await c.ExecuteScalarAsync($"SELECT name FROM {tableName} ORDER BY id DESC LIMIT 1;");
+                    Assert.That(result, Is.Null); // Not committed yet because we still didn't report fsync yet
+
+                    // Report last flushed LSN
+                    rc.LastFlushedLsn = commitLsn;
+                    await rc.SendStatusUpdate(CancellationToken.None);
+
+                    await insertTask;
+                    result = await c.ExecuteScalarAsync($"SELECT name FROM {tableName} ORDER BY id DESC LIMIT 1;");
+                    Assert.That(result, Is.EqualTo(value1String)); // Now it's committed because we reported fsync
+
+                    var value2String = Guid.NewGuid().ToString("B");
+                    insertTask = Task.Run(async () =>
+                    {
+                        await using var insertConn = OpenConnection(new NpgsqlConnectionStringBuilder(ConnectionString)
+                        {
+                            Options = "synchronous_commit=remote_apply"
+                        });
+                        await insertConn.ExecuteNonQueryAsync($"INSERT INTO {tableName} (name) VALUES ('{value2String}')");
+                    });
+
+                    commitLsn = await GetCommitLsn(value2String);
+
+                    result = await c.ExecuteScalarAsync($"SELECT name FROM {tableName} ORDER BY id DESC LIMIT 1;");
+                    Assert.That(result, Is.EqualTo(value1String)); // Not committed yet because we didn't report apply yet
+
+                    // Report last received LSN
+                    await rc.SendStatusUpdate(CancellationToken.None);
+
+                    result = await c.ExecuteScalarAsync($"SELECT name FROM {tableName} ORDER BY id DESC LIMIT 1;");
+                    Assert.That(result, Is.EqualTo(value1String)); // Not committed yet because we still didn't report apply yet
+
+                    // Report last applied LSN
+                    rc.LastAppliedLsn = commitLsn;
+                    await rc.SendStatusUpdate(CancellationToken.None);
+
+                    await insertTask;
+                    result = await c.ExecuteScalarAsync($"SELECT name FROM {tableName} ORDER BY id DESC LIMIT 1;");
+                    Assert.That(result, Is.EqualTo(value2String)); // Now it's committed because we reported apply
+
+                    var value3String = Guid.NewGuid().ToString("B");
+                    insertTask = Task.Run(async () =>
+                    {
+                        await using var insertConn = OpenConnection(new NpgsqlConnectionStringBuilder(ConnectionString)
+                        {
+                            Options = "synchronous_commit=remote_write"
+                        });
+                        await insertConn.ExecuteNonQueryAsync($"INSERT INTO {tableName} (name) VALUES ('{value3String}')");
+                    });
+
+                    await GetCommitLsn(value3String);
+
+                    result = await c.ExecuteScalarAsync($"SELECT name FROM {tableName} ORDER BY id DESC LIMIT 1;");
+                    Assert.That(result, Is.EqualTo(value2String)); // Not committed yet because we didn't report receive yet
+
+                    // Report last received LSN
+                    await rc.SendStatusUpdate(CancellationToken.None);
+
+                    await insertTask;
+                    result = await c.ExecuteScalarAsync($"SELECT name FROM {tableName} ORDER BY id DESC LIMIT 1;");
+                    Assert.That(result, Is.EqualTo(value3String)); // Now it's committed because we reported receive
+
+                    streamingCts.Cancel();
+                    Assert.That(async () => await replicationTask, Throws.Exception.AssignableTo<OperationCanceledException>()
+                        .With.InnerException.InstanceOf<PostgresException>()
+                        .And.InnerException.Property(nameof(PostgresException.SqlState))
+                        .EqualTo(PostgresErrorCodes.QueryCanceled));
+                    await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
+
+                    async Task<NpgsqlLogSequenceNumber> GetCommitLsn(string valueString)
+                    {
+                        (NpgsqlLogSequenceNumber Lsn, string? messageData) message = default!;
                         if (typeof(TConnection) == typeof(NpgsqlPhysicalReplicationConnection))
                         {
-                            var buffer = new MemoryStream();
-                            ((NpgsqlXLogDataMessage)msg).Data.CopyTo(buffer);
-                            // Hack: This is really gruesome but we really have no idea how many
-                            // messages we get in physical replication
-                            var messageString = Encoding.ASCII.GetString(buffer.ToArray());
-                            messages.Enqueue((msg.WalEnd, messageString));
+                            while (true)
+                            {
+                                message = await DequeueMessage(messages);
+                                if (message.messageData!.Contains(valueString))
+                                    return message.Lsn;
+                            }
                         }
-                        else
-                        {
-                            messages.Enqueue((msg.WalEnd, null));
-                        }
-                    }
-                }, CancellationToken.None);
-
-                var value1String = Guid.NewGuid().ToString("B");
-                // We need to start a separate thread here as the insert command wil not complete until
-                // the transaction successfully completes (which we block here from the standby side) and by that
-                // will occupy the connection it is bound to.
-                var insertTask = Task.Run(async () =>
-                {
-                    await using var insertConn = await OpenConnectionAsync(new NpgsqlConnectionStringBuilder(ConnectionString)
-                    {
-                        Options = "synchronous_commit=on"
-                    });
-                    await insertConn.ExecuteNonQueryAsync($"INSERT INTO {tableName} (name) VALUES ('{value1String}')");
-                });
-
-                var commitLsn = await GetCommitLsn(value1String);
-
-                var result = await c.ExecuteScalarAsync($"SELECT name FROM {tableName} ORDER BY id DESC LIMIT 1;");
-                Assert.That(result, Is.Null); // Not committed yet because we didn't report fsync yet
-
-                // Report last received LSN
-                await rc.SendStatusUpdate(CancellationToken.None);
-
-                result = await c.ExecuteScalarAsync($"SELECT name FROM {tableName} ORDER BY id DESC LIMIT 1;");
-                Assert.That(result, Is.Null); // Not committed yet because we still didn't report fsync yet
-
-                // Report last applied LSN
-                rc.LastAppliedLsn = commitLsn;
-                await rc.SendStatusUpdate(CancellationToken.None);
-
-                result = await c.ExecuteScalarAsync($"SELECT name FROM {tableName} ORDER BY id DESC LIMIT 1;");
-                Assert.That(result, Is.Null); // Not committed yet because we still didn't report fsync yet
-
-                // Report last flushed LSN
-                rc.LastFlushedLsn = commitLsn;
-                await rc.SendStatusUpdate(CancellationToken.None);
-
-                await insertTask;
-                result = await c.ExecuteScalarAsync($"SELECT name FROM {tableName} ORDER BY id DESC LIMIT 1;");
-                Assert.That(result, Is.EqualTo(value1String)); // Now it's committed because we reported fsync
-
-                var value2String = Guid.NewGuid().ToString("B");
-                insertTask = Task.Run(async () =>
-                {
-                    await using var insertConn = OpenConnection(new NpgsqlConnectionStringBuilder(ConnectionString)
-                    {
-                        Options = "synchronous_commit=remote_apply"
-                    });
-                    await insertConn.ExecuteNonQueryAsync($"INSERT INTO {tableName} (name) VALUES ('{value2String}')");
-                });
-
-                commitLsn = await GetCommitLsn(value2String);
-
-                result = await c.ExecuteScalarAsync($"SELECT name FROM {tableName} ORDER BY id DESC LIMIT 1;");
-                Assert.That(result, Is.EqualTo(value1String)); // Not committed yet because we didn't report apply yet
-
-                // Report last received LSN
-                await rc.SendStatusUpdate(CancellationToken.None);
-
-                result = await c.ExecuteScalarAsync($"SELECT name FROM {tableName} ORDER BY id DESC LIMIT 1;");
-                Assert.That(result, Is.EqualTo(value1String)); // Not committed yet because we still didn't report apply yet
-
-                // Report last applied LSN
-                rc.LastAppliedLsn = commitLsn;
-                await rc.SendStatusUpdate(CancellationToken.None);
-
-                await insertTask;
-                result = await c.ExecuteScalarAsync($"SELECT name FROM {tableName} ORDER BY id DESC LIMIT 1;");
-                Assert.That(result, Is.EqualTo(value2String)); // Now it's committed because we reported apply
-
-                var value3String = Guid.NewGuid().ToString("B");
-                insertTask = Task.Run(async () =>
-                {
-                    await using var insertConn = OpenConnection(new NpgsqlConnectionStringBuilder(ConnectionString)
-                    {
-                        Options = "synchronous_commit=remote_write"
-                    });
-                    await insertConn.ExecuteNonQueryAsync($"INSERT INTO {tableName} (name) VALUES ('{value3String}')");
-                });
-
-                await GetCommitLsn(value3String);
-
-                result = await c.ExecuteScalarAsync($"SELECT name FROM {tableName} ORDER BY id DESC LIMIT 1;");
-                Assert.That(result, Is.EqualTo(value2String)); // Not committed yet because we didn't report receive yet
-
-                // Report last received LSN
-                await rc.SendStatusUpdate(CancellationToken.None);
-
-                await insertTask;
-                result = await c.ExecuteScalarAsync($"SELECT name FROM {tableName} ORDER BY id DESC LIMIT 1;");
-                Assert.That(result, Is.EqualTo(value3String)); // Now it's committed because we reported receive
-
-                streamingCts.Cancel();
-                Assert.That(async () => await replicationTask, Throws.Exception.AssignableTo<OperationCanceledException>()
-                    .With.InnerException.InstanceOf<PostgresException>()
-                    .And.InnerException.Property(nameof(PostgresException.SqlState))
-                    .EqualTo(PostgresErrorCodes.QueryCanceled));
-                await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
-
-                async Task<NpgsqlLogSequenceNumber> GetCommitLsn(string valueString)
-                {
-                    (NpgsqlLogSequenceNumber Lsn, string? messageData) message = default!;
-                    if (typeof(TConnection) == typeof(NpgsqlPhysicalReplicationConnection))
-                    {
-                        while (true)
-                        {
+                        // NpgsqlLogicalReplicationConnection
+                        // Begin Transaction, Insert, Commit Transaction
+                        for (var i = 0; i < 3; i++)
                             message = await DequeueMessage(messages);
-                            if (message.messageData!.Contains(valueString))
-                                return message.Lsn;
-                        }
-                    }
-                    // NpgsqlLogicalReplicationConnection
-                    // Begin Transaction, Insert, Commit Transaction
-                    for (var i = 0; i < 3; i++)
-                        message = await DequeueMessage(messages);
-                    return message.Lsn;
+                        return message.Lsn;
 
-                }
-            });
+                    }
+                });
 
         #region BaseBackup
 
@@ -505,5 +507,13 @@ CREATE TABLE {tableName} (id serial PRIMARY KEY, name TEXT NOT NULL);
             throw new ArgumentException($"Can not parse timestamp '{span.ToString()}'");
         }
 
+        protected override string Postfix =>
+            "common_" +
+            new TConnection() switch
+            {
+                NpgsqlLogicalReplicationConnection _ => "_l",
+                NpgsqlPhysicalReplicationConnection _ => "_p",
+                _ => throw new ArgumentOutOfRangeException($"{typeof(TConnection)} is not expected.")
+            };
     }
 }

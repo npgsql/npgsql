@@ -1,24 +1,20 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Replication;
-using Npgsql.Replication.Logical;
-using Npgsql.Replication.Physical;
 using NUnit.Framework;
 
 namespace Npgsql.Tests.Replication
 {
-    public class SafeReplicationTestBase<TConnection> : TestBase
+    public abstract class SafeReplicationTestBase<TConnection> : TestBase
         where TConnection : NpgsqlReplicationConnection, new()
     {
-        readonly string _postfix = new TConnection() switch {
-            NpgsqlLogicalReplicationConnection _ => "_l",
-            NpgsqlPhysicalReplicationConnection _ => "_p",
-            _ => throw new ArgumentOutOfRangeException($"{typeof(TConnection)} is not expected.")
-        };
+        protected abstract string Postfix { get; }
+
         int _maxIdentifierLength;
 
         [OneTimeSetUp]
@@ -44,16 +40,20 @@ namespace Npgsql.Tests.Replication
             return c;
         }
 
-        private protected Task SafeReplicationTest(string baseName, Func<string, string, Task> testAction)
-            => SafeReplicationTest(baseName, (slotName, tableName, publicationName) => testAction(slotName, tableName));
+        private protected Task SafeReplicationTest(Func<string, string, Task> testAction, [CallerMemberName] string memberName = "")
+            => SafeReplicationTestCore((slotName, tableName, publicationName) => testAction(slotName, tableName), memberName);
 
-        private protected async Task SafeReplicationTest(string baseName, Func<string, string, string, Task> testAction)
+        private protected Task SafeReplicationTest(Func<string, string, string, Task> testAction, [CallerMemberName] string memberName = "")
+            => SafeReplicationTestCore(testAction, memberName);
+
+        async Task SafeReplicationTestCore(Func<string, string, string, Task> testAction, string memberName)
         {
             // if the supplied name is too long we create on from a guid.
+            var baseName = $"{memberName}_{Postfix}";
             var name = (baseName.Length > _maxIdentifierLength - 4 ? Guid.NewGuid().ToString("N") : baseName).ToLowerInvariant();
-            var slotName = $"s_{name}{_postfix}".ToLowerInvariant();
-            var tableName = $"t_{name}{_postfix}".ToLowerInvariant();
-            var publicationName = $"p_{name}{_postfix}".ToLowerInvariant();
+            var slotName = $"s_{name}".ToLowerInvariant();
+            var tableName = $"t_{name}".ToLowerInvariant();
+            var publicationName = $"p_{name}".ToLowerInvariant();
             try
             {
                 await testAction(slotName, tableName, publicationName);

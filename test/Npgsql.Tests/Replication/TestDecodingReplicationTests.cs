@@ -19,7 +19,7 @@ namespace Npgsql.Tests.Replication
     {
         [Test]
         public Task CreateReplicationSlot()
-            => SafeReplicationTest(nameof(CreateReplicationSlot) + "_test_decoding",
+            => SafeReplicationTest(
                 async (slotName, _) =>
                 {
                     await using var rc = await OpenReplicationConnectionAsync();
@@ -39,7 +39,7 @@ namespace Npgsql.Tests.Replication
 
         [Test(Description = "Tests whether INSERT commands get replicated via test_decoding plugin")]
         public Task Insert()
-            => SafeReplicationTest(nameof(Insert) + "_test_decoding",
+            => SafeReplicationTest(
                 async (slotName, tableName) =>
                 {
                     await using var c = await OpenConnectionAsync();
@@ -88,7 +88,7 @@ namespace Npgsql.Tests.Replication
 
         [Test(Description = "Tests whether UPDATE commands get replicated via test_decoding plugin for tables using the default replica identity")]
         public Task UpdateForDefaultReplicaIdentity()
-            => SafeReplicationTest(nameof(UpdateForDefaultReplicaIdentity) + "_test_decoding",
+            => SafeReplicationTest(
                 async (slotName, tableName) =>
                 {
                     await using var c = await OpenConnectionAsync();
@@ -133,7 +133,7 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2')");
 
         [Test(Description = "Tests whether UPDATE commands get replicated via test_decoding plugin for tables using an index as replica identity")]
         public Task UpdateForIndexReplicaIdentity()
-            => SafeReplicationTest(nameof(UpdateForIndexReplicaIdentity) + "_test_decoding",
+            => SafeReplicationTest(
                 async (slotName, tableName) =>
                 {
                     await using var c = await OpenConnectionAsync();
@@ -181,7 +181,7 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
 
         [Test(Description = "Tests whether UPDATE commands get replicated via test_decoding plugin for tables using full replica identity")]
         public Task UpdateForFullReplicaIdentity()
-            => SafeReplicationTest(nameof(UpdateForFullReplicaIdentity) + "_test_decoding",
+            => SafeReplicationTest(
                 async (slotName, tableName) =>
                 {
                     await using var c = await OpenConnectionAsync();
@@ -227,7 +227,7 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
 
         [Test(Description = "Tests whether DELETE commands get replicated via test_decoding plugin for tables using the default replica identity")]
         public Task DeleteForDefaultReplicaIdentity()
-            => SafeReplicationTest(nameof(DeleteForDefaultReplicaIdentity) + "_test_decoding",
+            => SafeReplicationTest(
                 async (slotName, tableName) =>
                 {
                     await using var c = await OpenConnectionAsync();
@@ -272,7 +272,7 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
 
         [Test(Description = "Tests whether DELETE commands get replicated via test_decoding plugin for tables using an index as replica identity")]
         public Task DeleteForIndexReplicaIdentity()
-            => SafeReplicationTest(nameof(DeleteForIndexReplicaIdentity) + "_test_decoding",
+            => SafeReplicationTest(
                 async (slotName, tableName) =>
                 {
                     await using var c = await OpenConnectionAsync();
@@ -320,7 +320,7 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
 
         [Test(Description = "Tests whether DELETE commands get replicated via test_decoding plugin for tables using full replica identity")]
         public Task DeleteForFullReplicaIdentity()
-            => SafeReplicationTest(nameof(DeleteForFullReplicaIdentity) + "_test_decoding",
+            => SafeReplicationTest(
                 async (slotName, tableName) =>
                 {
                     await using var c = await OpenConnectionAsync();
@@ -367,7 +367,7 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
 
         [Test(Description = "Tests whether TRUNCATE commands get replicated via test_decoding plugin")]
         public Task Truncate()
-            => SafeReplicationTest(nameof(Truncate) + "_test_decoding",
+            => SafeReplicationTest(
                 async (slotName, tableName) =>
                 {
                     await using var c = await OpenConnectionAsync();
@@ -410,5 +410,7 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
                         .EqualTo(PostgresErrorCodes.QueryCanceled));
                     await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
                 });
+
+        protected override string Postfix => "test_encoding_l";
     }
 }

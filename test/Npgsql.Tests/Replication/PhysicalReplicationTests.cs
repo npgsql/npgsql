@@ -16,7 +16,7 @@ namespace Npgsql.Tests.Replication
     {
         [Test]
         public Task CreateReplicationSlot()
-            => SafeReplicationTest(nameof(CreateReplicationSlot) + "_physical",
+            => SafeReplicationTest(
                 async (slotName, _) =>
                 {
                     await using var rc = await OpenReplicationConnectionAsync();
@@ -36,7 +36,7 @@ namespace Npgsql.Tests.Replication
 
         [Test]
         public Task WithSlot()
-            => SafeReplicationTest(nameof(WithSlot),
+            => SafeReplicationTest(
                 async (slotName, tableName) =>
                 {
                     var messages = new ConcurrentQueue<(NpgsqlLogSequenceNumber WalStart, NpgsqlLogSequenceNumber WalEnd, byte[] data)>();
@@ -131,5 +131,7 @@ namespace Npgsql.Tests.Replication
                 await c.ExecuteNonQueryAsync($"DROP TABLE {tableName}");
             }
         }
+
+        protected override string Postfix => "physical_p";
     }
 }
