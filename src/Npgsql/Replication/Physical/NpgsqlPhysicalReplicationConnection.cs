@@ -75,7 +75,7 @@ namespace Npgsql.Replication.Physical
         /// <param name="timeline">Streaming starts on timeline tli.</param>
         /// <returns>A <see cref="Task{T}"/> representing an <see cref="IAsyncEnumerable{NpgsqlXLogDataMessage}"/> that
         /// can be used to stream WAL entries in form of <see cref="NpgsqlXLogDataMessage"/> instances.</returns>
-        public Task<IAsyncEnumerable<NpgsqlXLogDataMessage>> StartReplication(
+        public IAsyncEnumerable<NpgsqlXLogDataMessage> StartReplication(
             NpgsqlPhysicalReplicationSlot slot, CancellationToken cancellationToken, NpgsqlLogSequenceNumber walLocation,
             uint timeline = default)
         {
@@ -84,7 +84,7 @@ namespace Npgsql.Replication.Physical
             {
                 commandBuilder.Append("SLOT ").Append(slot.SlotName).Append(' ');
                 AppendCommon(commandBuilder, walLocation, timeline);
-            }, false, cancellationToken);
+            }, bypassingStream: false, cancellationToken);
         }
 
         /// <summary>
@@ -102,12 +102,12 @@ namespace Npgsql.Replication.Physical
         /// <param name="timeline">Streaming starts on timeline tli.</param>
         /// <returns>A <see cref="Task{T}"/> representing an <see cref="IAsyncEnumerable{NpgsqlXLogDataMessage}"/> that
         /// can be used to stream WAL entries in form of <see cref="NpgsqlXLogDataMessage"/> instances.</returns>
-        public Task<IAsyncEnumerable<NpgsqlXLogDataMessage>> StartReplication(
+        public IAsyncEnumerable<NpgsqlXLogDataMessage> StartReplication(
             NpgsqlLogSequenceNumber walLocation, CancellationToken cancellationToken, uint timeline = default)
         {
             using var _ = NoSynchronizationContextScope.Enter();
             return StartReplicationInternal(commandBuilder => AppendCommon(commandBuilder, walLocation, timeline),
-                false, cancellationToken);
+                bypassingStream: false, cancellationToken);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]

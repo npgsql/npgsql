@@ -49,7 +49,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     using var streamingCts = new CancellationTokenSource();
                     var replicationTask = Task.Run(async () =>
                     {
-                        await foreach (var msg in (await rc.StartReplication(slot, new NpgsqlPgOutputPluginOptions(publicationName), cancellationToken: streamingCts.Token)).WithCancellation(streamingCts.Token))
+                        await foreach (var msg in rc.StartReplication(slot, new NpgsqlPgOutputPluginOptions(publicationName), streamingCts.Token))
                             messages.Enqueue(msg);
                     }, CancellationToken.None);
 
@@ -115,7 +115,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     using var streamingCts = new CancellationTokenSource();
                     var replicationTask = Task.Run(async () =>
                     {
-                        await foreach (var msg in (await rc.StartReplication(slot, new NpgsqlPgOutputPluginOptions(publicationName), cancellationToken: streamingCts.Token)).WithCancellation(streamingCts.Token))
+                        await foreach (var msg in rc.StartReplication(slot, new NpgsqlPgOutputPluginOptions(publicationName), streamingCts.Token))
                             messages.Enqueue(msg);
                     }, CancellationToken.None);
 
@@ -176,7 +176,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     using var streamingCts = new CancellationTokenSource();
                     var replicationTask = Task.Run(async () =>
                     {
-                        await foreach (var msg in (await rc.StartReplication(slot, new NpgsqlPgOutputPluginOptions(publicationName), cancellationToken: streamingCts.Token)).WithCancellation(streamingCts.Token))
+                        await foreach (var msg in rc.StartReplication(slot, new NpgsqlPgOutputPluginOptions(publicationName), streamingCts.Token))
                             messages.Enqueue(msg);
                     }, CancellationToken.None);
 
@@ -238,7 +238,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     using var streamingCts = new CancellationTokenSource();
                     var replicationTask = Task.Run(async () =>
                     {
-                        await foreach (var msg in (await rc.StartReplication(slot, new NpgsqlPgOutputPluginOptions(publicationName), cancellationToken: streamingCts.Token)).WithCancellation(streamingCts.Token))
+                        await foreach (var msg in rc.StartReplication(slot, new NpgsqlPgOutputPluginOptions(publicationName), streamingCts.Token))
                             messages.Enqueue(msg);
                     }, CancellationToken.None);
 
@@ -299,7 +299,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     using var streamingCts = new CancellationTokenSource();
                     var replicationTask = Task.Run(async () =>
                     {
-                        await foreach (var msg in (await rc.StartReplication(slot, new NpgsqlPgOutputPluginOptions(publicationName), cancellationToken: streamingCts.Token)).WithCancellation(streamingCts.Token))
+                        await foreach (var msg in rc.StartReplication(slot, new NpgsqlPgOutputPluginOptions(publicationName), streamingCts.Token))
                             messages.Enqueue(msg);
                     }, CancellationToken.None);
 
@@ -360,7 +360,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     using var streamingCts = new CancellationTokenSource();
                     var replicationTask = Task.Run(async () =>
                     {
-                        await foreach (var msg in (await rc.StartReplication(slot, new NpgsqlPgOutputPluginOptions(publicationName), cancellationToken: streamingCts.Token)).WithCancellation(streamingCts.Token))
+                        await foreach (var msg in rc.StartReplication(slot, new NpgsqlPgOutputPluginOptions(publicationName), streamingCts.Token))
                             messages.Enqueue(msg);
                     }, CancellationToken.None);
 
@@ -419,7 +419,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     using var streamingCts = new CancellationTokenSource();
                     var replicationTask = Task.Run(async () =>
                     {
-                        await foreach (var msg in (await rc.StartReplication(slot, new NpgsqlPgOutputPluginOptions(publicationName), cancellationToken: streamingCts.Token)).WithCancellation(streamingCts.Token))
+                        await foreach (var msg in rc.StartReplication(slot, new NpgsqlPgOutputPluginOptions(publicationName), streamingCts.Token))
                             messages.Enqueue(msg);
                     }, CancellationToken.None);
 
@@ -486,7 +486,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     using var streamingCts = new CancellationTokenSource();
                     var replicationTask = Task.Run(async () =>
                     {
-                        await foreach (var msg in (await rc.StartReplication(slot, new NpgsqlPgOutputPluginOptions(publicationName), cancellationToken: streamingCts.Token)).WithCancellation(streamingCts.Token))
+                        await foreach (var msg in rc.StartReplication(slot, new NpgsqlPgOutputPluginOptions(publicationName), streamingCts.Token))
                             messages.Enqueue(msg);
                     }, CancellationToken.None);
 

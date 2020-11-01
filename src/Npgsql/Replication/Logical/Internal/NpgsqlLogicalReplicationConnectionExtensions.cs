@@ -121,12 +121,10 @@ namespace Npgsql.Replication.Logical.Internal
         /// <param name="options">The collection of options passed to the slot's logical decoding plugin.</param>
         /// <returns>A <see cref="Task{T}"/> representing an <see cref="IAsyncEnumerable{T}"/> that
         /// can be used to stream WAL entries in form of <see cref="NpgsqlXLogDataMessage"/> instances.</returns>
-        public static Task<IAsyncEnumerable<NpgsqlXLogDataMessage>> StartReplicationForPlugin(
+        public static IAsyncEnumerable<NpgsqlXLogDataMessage> StartReplicationForPlugin(
             this NpgsqlLogicalReplicationConnection connection, NpgsqlLogicalReplicationSlot slot, CancellationToken cancellationToken,
             NpgsqlLogSequenceNumber? walLocation = null, IEnumerable<KeyValuePair<string, string?>>? options = null)
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled<IAsyncEnumerable<NpgsqlXLogDataMessage>>(cancellationToken);
             using var _ = NoSynchronizationContextScope.Enter();
             return connection.StartReplicationInternal(commandBuilder =>
             {

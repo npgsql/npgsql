@@ -83,7 +83,7 @@ namespace Npgsql.Replication.Logical.Protocol
         /// <param name="walLocation">The WAL location to begin streaming at.</param>
         /// <returns>A <see cref="Task{T}"/> representing an <see cref="IAsyncEnumerable{T}"/> that
         /// can be used to stream WAL entries in form of <see cref="LogicalReplicationProtocolMessage"/> instances.</returns>
-        public static Task<IAsyncEnumerable<LogicalReplicationProtocolMessage>> StartReplication(
+        public static IAsyncEnumerable<LogicalReplicationProtocolMessage> StartReplication(
             this NpgsqlLogicalReplicationConnection connection, NpgsqlPgOutputReplicationSlot slot,
             NpgsqlPgOutputPluginOptions options, CancellationToken cancellationToken, NpgsqlLogSequenceNumber? walLocation = null)
         {
@@ -91,31 +91,23 @@ namespace Npgsql.Replication.Logical.Protocol
                 return StartReplicationInternal(connection, slot, walLocation, options, cancellationToken);
         }
 
-        static async Task<IAsyncEnumerable<LogicalReplicationProtocolMessage>> StartReplicationInternal(
-            NpgsqlLogicalReplicationConnection connection, NpgsqlPgOutputReplicationSlot slot,
-            NpgsqlLogSequenceNumber? walLocation, NpgsqlPgOutputPluginOptions options, CancellationToken cancellationToken)
+        static async IAsyncEnumerable<LogicalReplicationProtocolMessage> StartReplicationInternal(
+            NpgsqlLogicalReplicationConnection connection, NpgsqlPgOutputReplicationSlot slot, NpgsqlLogSequenceNumber? walLocation,
+            NpgsqlPgOutputPluginOptions options, [EnumeratorCancellation] CancellationToken cancellationToken)
         {
-            var stream = await connection.StartReplicationInternal(commandBuilder =>
+            var stream = connection.StartReplicationInternal(commandBuilder =>
             {
                 commandBuilder.Append("SLOT ").Append(slot.SlotName).Append(' ');
-                Internal.NpgsqlLogicalReplicationConnectionExtensions.AppendCommon(commandBuilder, walLocation, options.GetOptionPairs(), slot.ConsistentPoint);
-            }, true, cancellationToken);
-#pragma warning disable CA2016
-            // ReSharper disable once MethodSupportsCancellation
-            return StreamData(stream, connection);
-#pragma warning restore CA2016
-        }
+                Internal.NpgsqlLogicalReplicationConnectionExtensions.AppendCommon(
+                    commandBuilder, walLocation, options.GetOptionPairs(), slot.ConsistentPoint);
+            }, bypassingStream: true, cancellationToken);
 
-        static async IAsyncEnumerable<LogicalReplicationProtocolMessage> StreamData(
-            IAsyncEnumerable<NpgsqlXLogDataMessage> messageStream,
-            NpgsqlLogicalReplicationConnection connection,
-            [EnumeratorCancellation] CancellationToken cancellationToken = default)
-        {
-            // Hack: NAMEDATALEN is a constant in PostgreSQL which can be changed at compile time. It's probably saner to query max_identifier_length on connection startup.
+            // Hack: NAMEDATALEN is a constant in PostgreSQL which can be changed at compile time.// It's probably saner to query
+            // max_identifier_length on connection startup.
             // See https://www.postgresql.org/docs/current/runtime-config-preset.html
             const int NAMEDATALEN = 64;
             var buf = connection.Connector!.ReadBuffer;
-            await foreach (var xLogData in messageStream.WithCancellation(cancellationToken))
+            await foreach (var xLogData in stream.WithCancellation(cancellationToken))
             {
                 await buf.EnsureAsync(1, cancellationToken);
                 var messageCode = (BackendReplicationMessageCode)buf.ReadByte();

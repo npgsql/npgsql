@@ -53,7 +53,7 @@ namespace Npgsql.Tests.Replication
                     using var streamingCts = new CancellationTokenSource();
                     var replicationTask = Task.Run(async () =>
                     {
-                        await foreach(var msg in (await rc.StartReplication(slot, cancellationToken: streamingCts.Token)).WithCancellation(streamingCts.Token))
+                        await foreach (var msg in rc.StartReplication(slot, streamingCts.Token))
                             messages.Enqueue((msg.WalStart, msg.WalEnd, msg.Data));
                     }, CancellationToken.None);
 
@@ -102,7 +102,7 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2')");
                     using var streamingCts = new CancellationTokenSource();
                     var replicationTask = Task.Run(async () =>
                     {
-                        await foreach(var msg in (await rc.StartReplication(slot, cancellationToken: streamingCts.Token)).WithCancellation(streamingCts.Token))
+                        await foreach (var msg in rc.StartReplication(slot, streamingCts.Token))
                             messages.Enqueue((msg.WalStart, msg.WalEnd, msg.Data));
                     }, CancellationToken.None);
 
@@ -151,7 +151,7 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
                     using var streamingCts = new CancellationTokenSource();
                     var replicationTask = Task.Run(async () =>
                     {
-                        await foreach(var msg in (await rc.StartReplication(slot, cancellationToken: streamingCts.Token)).WithCancellation(streamingCts.Token))
+                        await foreach (var msg in rc.StartReplication(slot, streamingCts.Token))
                             messages.Enqueue((msg.WalStart, msg.WalEnd, msg.Data));
                     }, CancellationToken.None);
 
@@ -196,7 +196,7 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
                     using var streamingCts = new CancellationTokenSource();
                     var replicationTask = Task.Run(async () =>
                     {
-                        await foreach(var msg in (await rc.StartReplication(slot, cancellationToken: streamingCts.Token)).WithCancellation(streamingCts.Token))
+                        await foreach (var msg in rc.StartReplication(slot, streamingCts.Token))
                             messages.Enqueue((msg.WalStart, msg.WalEnd, msg.Data));
                     }, CancellationToken.None);
 
@@ -240,7 +240,7 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
                     using var streamingCts = new CancellationTokenSource();
                     var replicationTask = Task.Run(async () =>
                     {
-                        await foreach(var msg in (await rc.StartReplication(slot, cancellationToken: streamingCts.Token)).WithCancellation(streamingCts.Token))
+                        await foreach (var msg in rc.StartReplication(slot, streamingCts.Token))
                             messages.Enqueue((msg.WalStart, msg.WalEnd, msg.Data));
                     }, CancellationToken.None);
 
@@ -287,7 +287,7 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
                     using var streamingCts = new CancellationTokenSource();
                     var replicationTask = Task.Run(async () =>
                     {
-                        await foreach(var msg in (await rc.StartReplication(slot, cancellationToken: streamingCts.Token)).WithCancellation(streamingCts.Token))
+                        await foreach (var msg in rc.StartReplication(slot, streamingCts.Token))
                             messages.Enqueue((msg.WalStart, msg.WalEnd, msg.Data));
                     }, CancellationToken.None);
 
@@ -333,7 +333,7 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
                     using var streamingCts = new CancellationTokenSource();
                     var replicationTask = Task.Run(async () =>
                     {
-                        await foreach(var msg in (await rc.StartReplication(slot, cancellationToken: streamingCts.Token)).WithCancellation(streamingCts.Token))
+                        await foreach (var msg in rc.StartReplication(slot, streamingCts.Token))
                             messages.Enqueue((msg.WalStart, msg.WalEnd, msg.Data));
                     }, CancellationToken.None);
 
@@ -378,7 +378,7 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
                     using var streamingCts = new CancellationTokenSource();
                     var replicationTask = Task.Run(async () =>
                     {
-                        await foreach(var msg in (await rc.StartReplication(slot, cancellationToken: streamingCts.Token)).WithCancellation(streamingCts.Token))
+                        await foreach (var msg in rc.StartReplication(slot, streamingCts.Token))
                             messages.Enqueue((msg.WalStart, msg.WalEnd, msg.Data));
                     }, CancellationToken.None);
 

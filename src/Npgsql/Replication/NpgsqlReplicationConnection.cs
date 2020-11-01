@@ -1,5 +1,4 @@
-﻿using JetBrains.Annotations;
-using Npgsql.BackendMessages;
+﻿using Npgsql.BackendMessages;
 using Npgsql.Logging;
 using Npgsql.TypeHandlers.DateTimeHandlers;
 using NpgsqlTypes;
@@ -33,7 +32,7 @@ namespace Npgsql.Replication
         readonly NpgsqlConnection _npgsqlConnection;
         readonly SemaphoreSlim _feedbackSemaphore = new SemaphoreSlim(1, 1);
         string? _userFacingConnectionString;
-        int _state;
+        volatile int _state;
         TimeSpan? _commandTimeout;
         TimeSpan _walReceiverTimeout = TimeSpan.FromSeconds(60d);
         Timer _sendFeedbackTimer;
@@ -145,16 +144,16 @@ namespace Npgsql.Replication
 
         internal NpgsqlConnector Connector => _npgsqlConnection.Connector ?? throw new InvalidOperationException($"The {Connector} property can only be used when there is an active connection");
 
-            ReplicationConnectionState State
+        ReplicationConnectionState State
         {
-            get => (ReplicationConnectionState)Interlocked.CompareExchange(ref _state, 0, 0);
+            get => (ReplicationConnectionState)_state;
             set
             {
                 // Disposed and Broken are final states. We never leave them.
                 if (State == ReplicationConnectionState.Disposed || State == ReplicationConnectionState.Broken)
                     return;
 
-                Interlocked.Exchange(ref _state, (int)value);
+                _state = (int)value;
             }
         }
 
@@ -396,17 +395,19 @@ namespace Npgsql.Replication
             }
         }
 
-        internal async Task<IAsyncEnumerable<NpgsqlXLogDataMessage>> StartReplicationInternal(
+        internal async IAsyncEnumerable<NpgsqlXLogDataMessage> StartReplicationInternal(
             Action<StringBuilder> startCommandAction,
             bool bypassingStream,
-            CancellationToken cancellationToken)
+            [EnumeratorCancellation] CancellationToken cancellationToken)
         {
-            using var executeState = EnsureAndSetState(ReplicationConnectionState.Idle, ReplicationConnectionState.Executing);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            EnsureAndSetState(ReplicationConnectionState.Idle, ReplicationConnectionState.Executing);
             var connector = _npgsqlConnection.Connector!;
 #if !NETSTANDARD2_0
             await
 #endif
-            using var registration = cancellationToken.CanBeCanceled ? cancellationToken.Register(c => ((NpgsqlReplicationConnection)c!).Cancel(), this) : default;
+            using var registration = cancellationToken.Register(c => ((NpgsqlReplicationConnection)c!).Cancel(), this);
             var createCommandBuilder = new StringBuilder("START_REPLICATION ");
             startCommandAction(createCommandBuilder);
             await connector.WriteQuery(createCommandBuilder.ToString(), true, cancellationToken);
@@ -416,116 +417,93 @@ namespace Npgsql.Replication
             switch (msg.Code)
             {
             case BackendMessageCode.CopyBothResponse:
-                executeState.ChangeResetState(ReplicationConnectionState.Streaming);
-                _sendFeedbackTimer.Change(WalReceiverStatusInterval, Timeout.InfiniteTimeSpan);
-                _requestFeedbackTimer.Change(_requestFeedbackInterval, Timeout.InfiniteTimeSpan);
-#pragma warning disable CA2016 // We support passing a different token to the IAsyncEnumerator
-                // ReSharper disable once MethodSupportsCancellation
-                return StreamXLogData(bypassingStream);
-#pragma warning restore CA2016
+                break;
             case BackendMessageCode.CommandComplete:
-                executeState.ChangeResetState(ReplicationConnectionState.Streaming);
-                return EmptyXLogData();
+            {
+                EnsureAndSetState(ReplicationConnectionState.Idle);
+                yield break;
+            }
             default:
                 throw connector.UnexpectedMessageReceived(msg.Code);
             }
-        }
 
-        // Since we don't want to take a dependency on System.Linq.Async
-        // just for AsyncEnumerable.Empty<T>(), we use this trick to
-        // generate an empty IAsyncEnumerable
-#pragma warning disable 1998
-        async IAsyncEnumerable<NpgsqlXLogDataMessage> EmptyXLogData()
-#pragma warning restore 1998
-        {
-            using var currentState = EnsureAndSetState(ReplicationConnectionState.Streaming);
-            currentState.ChangeResetState(ReplicationConnectionState.Idle);
-            yield break;
-        }
+            _sendFeedbackTimer.Change(WalReceiverStatusInterval, Timeout.InfiniteTimeSpan);
+            _requestFeedbackTimer.Change(_requestFeedbackInterval, Timeout.InfiniteTimeSpan);
 
-        async IAsyncEnumerable<NpgsqlXLogDataMessage> StreamXLogData(bool bypassingStream, [EnumeratorCancellation] CancellationToken cancellationToken = default)
-        {
-            using var currentState = EnsureAndSetState(ReplicationConnectionState.Streaming);
-            var connector = _npgsqlConnection.Connector!;
-#if !NETSTANDARD2_0
-            await
-#endif
-            using var registration = cancellationToken.CanBeCanceled ? cancellationToken.Register(c => ((NpgsqlReplicationConnection)c!).Cancel(), this) : default;
-            SetTimeouts(_walReceiverTimeout, CommandTimeout);
             var buf = connector.ReadBuffer;
             var columnStream = new NpgsqlReadBuffer.ColumnStream(buf);
-            try
+
+            SetTimeouts(_walReceiverTimeout, CommandTimeout);
+            using var _ = Defer(() => SetTimeouts(CommandTimeout, CommandTimeout));
+
+            // TODO: Clean up state management mechanism
+            using var currentState = EnsureAndSetState(ReplicationConnectionState.Executing, ReplicationConnectionState.Streaming);
+            currentState.ChangeResetState(ReplicationConnectionState.Idle);
+
+            while (true)
             {
-                while (true)
+                msg = await connector.ReadMessage(true, CancellationToken.None);
+                Expect<CopyDataMessage>(msg, connector);
+
+                // We received some message so there's no need to forcibly request feedback or time out.
+                // Reset the timer to request feedback.
+                _requestFeedbackTimer.Change(_requestFeedbackInterval, Timeout.InfiniteTimeSpan);
+
+                var messageLength = ((CopyDataMessage)msg).Length;
+                await buf.Ensure(1, true, CancellationToken.None);
+                var code = (char)buf.ReadByte();
+                switch (code)
                 {
-                    var msg = await connector.ReadMessage(true, CancellationToken.None);
-                    Expect<CopyDataMessage>(msg, connector);
+                case 'w': // XLogData
+                {
+                    await buf.Ensure(24, true, CancellationToken.None);
+                    var startLsn = buf.ReadUInt64();
+                    var endLsn = buf.ReadUInt64();
+                    var sendTime = TimestampHandler.FromPostgresTimestamp(buf.ReadInt64()).ToLocalTime();
 
-                    // We received some message so there's no need to forcibly request feedback or time out.
-                    // Reset the timer to request feedback.
-                    _requestFeedbackTimer.Change(_requestFeedbackInterval, Timeout.InfiniteTimeSpan);
+                    if (unchecked((ulong)Interlocked.Read(ref _lastReceivedLsn)) < startLsn)
+                        Interlocked.Exchange(ref _lastReceivedLsn, unchecked((long)startLsn));
+                    if (unchecked((ulong)Interlocked.Read(ref _lastReceivedLsn)) < endLsn)
+                        Interlocked.Exchange(ref _lastReceivedLsn, unchecked((long)endLsn));
 
-                    var messageLength = ((CopyDataMessage)msg).Length;
-                    await buf.Ensure(1, true, CancellationToken.None);
-                    var code = (char)buf.ReadByte();
-                    switch (code)
+                    // dataLen = msg.Length - (code = 1 + walStart = 8 + walEnd = 8 + serverClock = 8)
+                    var dataLen = messageLength - 25;
+                    columnStream.Init(dataLen, canSeek: false);
+                    var data = new NpgsqlXLogDataMessage(new NpgsqlLogSequenceNumber(startLsn), new NpgsqlLogSequenceNumber(endLsn), sendTime, columnStream);
+
+                    yield return data;
+
+                    // Our consumer may have disposed the stream which isn't necessary but shouldn't hurt us
+                    if (columnStream.IsDisposed)
+                        columnStream = new NpgsqlReadBuffer.ColumnStream(buf);
+                    // Our consumer may not have read the stream to the end, but it might as well have been us
+                    // ourselves bypassing the stream and reading directly from the buffer in StartReplication()
+                    else if (columnStream.Position < columnStream.Length && !bypassingStream)
                     {
-                    case 'w': // XLogData
-                    {
-                        await buf.Ensure(24, true, CancellationToken.None);
-                        var startLsn = buf.ReadUInt64();
-                        var endLsn = buf.ReadUInt64();
-                        var sendTime = TimestampHandler.FromPostgresTimestamp(buf.ReadInt64()).ToLocalTime();
-
-                        if (unchecked((ulong)Interlocked.Read(ref _lastReceivedLsn)) < startLsn)
-                            Interlocked.Exchange(ref _lastReceivedLsn, unchecked((long)startLsn));
-                        if (unchecked((ulong)Interlocked.Read(ref _lastReceivedLsn)) < endLsn)
-                            Interlocked.Exchange(ref _lastReceivedLsn, unchecked((long)endLsn));
-
-                        // dataLen = msg.Length - (code = 1 + walStart = 8 + walEnd = 8 + serverClock = 8)
-                        var dataLen = messageLength - 25;
-                        columnStream.Init(dataLen, canSeek: false);
-                        var data = new NpgsqlXLogDataMessage(new NpgsqlLogSequenceNumber(startLsn), new NpgsqlLogSequenceNumber(endLsn), sendTime, columnStream);
-
-                        yield return data;
-
-                        // Our consumer may have disposed the stream which isn't necessary but shouldn't hurt us
-                        if (columnStream.IsDisposed)
-                            columnStream = new NpgsqlReadBuffer.ColumnStream(buf);
-                        // Our consumer may not have read the stream to the end, but it might as well have been us
-                        // ourselves bypassing the stream and reading directly from the buffer in StartReplication()
-                        else if (columnStream.Position < columnStream.Length && !bypassingStream)
-                        {
-                            await buf.Skip(columnStream.Length - columnStream.Position, true, CancellationToken.None);
-                        }
-
-                        continue;
+                        await buf.Skip(columnStream.Length - columnStream.Position, true, CancellationToken.None);
                     }
 
-                    case 'k': // Primary keepalive message
-                    {
-                        await buf.Ensure(17, true, CancellationToken.None);
-                        var endLsn = buf.ReadUInt64();
-                        var timestamp = buf.ReadInt64();
-                        var replyRequested = buf.ReadByte() == 1;
-                        if (unchecked((ulong)Interlocked.Read(ref _lastReceivedLsn)) < endLsn)
-                            Interlocked.Exchange(ref _lastReceivedLsn, unchecked((long)endLsn));
-
-                        if (replyRequested && await _feedbackSemaphore.WaitAsync(Timeout.Infinite, CancellationToken.None))
-                            await SendFeedback(cancellationToken: CancellationToken.None);
-
-                        continue;
-                    }
-
-                    default:
-                        throw connector.Break(new NpgsqlException($"Unknown replication message code '{code}'"));
-                    }
+                    continue;
                 }
-            }
-            finally
-            {
-                SetTimeouts(CommandTimeout, CommandTimeout);
-                currentState.ChangeResetState(ReplicationConnectionState.Idle);
+
+                case 'k': // Primary keepalive message
+                {
+                    await buf.Ensure(17, true, CancellationToken.None);
+                    var endLsn = buf.ReadUInt64();
+                    var timestamp = buf.ReadInt64();
+                    var replyRequested = buf.ReadByte() == 1;
+                    if (unchecked((ulong)Interlocked.Read(ref _lastReceivedLsn)) < endLsn)
+                        Interlocked.Exchange(ref _lastReceivedLsn, unchecked((long)endLsn));
+
+                    if (replyRequested && await _feedbackSemaphore.WaitAsync(Timeout.Infinite, CancellationToken.None))
+                        await SendFeedback(cancellationToken: CancellationToken.None);
+
+                    continue;
+                }
+
+                default:
+                    throw connector.Break(new NpgsqlException($"Unknown replication message code '{code}'"));
+                }
             }
         }
 
@@ -817,7 +795,6 @@ namespace Npgsql.Replication
 
         void Cancel()
         {
-            using var stateResetter = EnsureAndSetState(ReplicationConnectionState.Streaming, ReplicationConnectionState.Cancelling);
             _sendFeedbackTimer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
             _requestFeedbackTimer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
             Connector.CancelRequest();
@@ -866,8 +843,6 @@ namespace Npgsql.Replication
                         "Connection is currently executing a command. Await or cancel it before attempting a new operation."),
                     ReplicationConnectionState.Streaming => new InvalidOperationException(
                         "Connection is currently streaming. Cancel before attempting a new operation."),
-                    ReplicationConnectionState.Cancelling => new InvalidOperationException(
-                        "Connection is currently cancelling a command."),
                     ReplicationConnectionState.Disposed => new ObjectDisposedException(GetType().Name),
                     ReplicationConnectionState.Broken => new InvalidOperationException("Connection is broken."),
                     _ => new ArgumentOutOfRangeException(nameof(actualState),
@@ -910,7 +885,6 @@ namespace Npgsql.Replication
             Idle,
             Executing,
             Streaming,
-            Cancelling,
             Disposed,
             Broken,
         }

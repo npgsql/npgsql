@@ -47,7 +47,7 @@ namespace Npgsql.Tests.Replication
                     using var streamingCts = new CancellationTokenSource();
                     var replicationTask = Task.Run(async () =>
                     {
-                        await foreach(var msg in (await rc.StartReplication(slot, streamingCts.Token, info.XLogPos)).WithCancellation(streamingCts.Token))
+                        await foreach (var msg in rc.StartReplication(slot, streamingCts.Token, info.XLogPos))
                         {
                             using var memoryStream = new MemoryStream();
                             await msg.Data.CopyToAsync(memoryStream, 4096, streamingCts.Token);
@@ -92,7 +92,7 @@ namespace Npgsql.Tests.Replication
             using var streamingCts = new CancellationTokenSource();
             var replicationTask = Task.Run(async () =>
             {
-                await foreach(var msg in (await rc.StartReplication(info.XLogPos, cancellationToken: streamingCts.Token)).WithCancellation(streamingCts.Token))
+                await foreach (var msg in rc.StartReplication(info.XLogPos, streamingCts.Token))
                 {
                     using var memoryStream = new MemoryStream();
                     await msg.Data.CopyToAsync(memoryStream, 4096, streamingCts.Token);

@@ -314,7 +314,7 @@ namespace Npgsql.Tests.Replication
                     using var streamingCts = new CancellationTokenSource();
                     var replicationTask = Task.Run(async () =>
                     {
-                        await foreach (var msg in StartReplication(rc, slotName, info.XLogPos, streamingCts.Token).WithCancellation(streamingCts.Token))
+                        await foreach (var msg in StartReplication(rc, slotName, info.XLogPos, streamingCts.Token))
                         {
                             if (typeof(TConnection) == typeof(NpgsqlPhysicalReplicationConnection))
                             {
@@ -471,7 +471,7 @@ namespace Npgsql.Tests.Replication
             {
                 var slot = new NpgsqlPhysicalReplicationSlot(slotName);
                 var rc = (NpgsqlPhysicalReplicationConnection)(NpgsqlReplicationConnection)connection;
-                await foreach (var msg in (await rc.StartReplication(slot, cancellationToken, xLogPos)).WithCancellation(cancellationToken))
+                await foreach (var msg in rc.StartReplication(slot, cancellationToken, xLogPos))
                 {
                     yield return msg;
                 }
@@ -480,7 +480,7 @@ namespace Npgsql.Tests.Replication
             {
                 var slot = new NpgsqlTestDecodingReplicationSlot(slotName);
                 var rc = (NpgsqlLogicalReplicationConnection)(NpgsqlReplicationConnection)connection;
-                await foreach (var msg in (await rc.StartReplication(slot, cancellationToken, walLocation: xLogPos)).WithCancellation(cancellationToken))
+                await foreach (var msg in rc.StartReplication(slot, cancellationToken, walLocation: xLogPos))
                 {
                     yield return msg;
                 }

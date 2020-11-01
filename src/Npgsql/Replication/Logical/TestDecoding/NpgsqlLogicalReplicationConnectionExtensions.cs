@@ -79,7 +79,7 @@ namespace Npgsql.Replication.Logical.TestDecoding
         /// <param name="walLocation">The WAL location to begin streaming at.</param>
         /// <returns>A <see cref="Task{T}"/> representing an <see cref="IAsyncEnumerable{T}"/> that
         /// can be used to stream WAL entries in form of <see cref="NpgsqlTestDecodingData"/> instances.</returns>
-        public static Task<IAsyncEnumerable<NpgsqlTestDecodingData>> StartReplication(
+        public static IAsyncEnumerable<NpgsqlTestDecodingData> StartReplication(
             this NpgsqlLogicalReplicationConnection connection, NpgsqlTestDecodingReplicationSlot slot, CancellationToken cancellationToken,
             NpgsqlTestDecodingPluginOptions options = default, NpgsqlLogSequenceNumber? walLocation = null)
         {
@@ -87,27 +87,21 @@ namespace Npgsql.Replication.Logical.TestDecoding
                 return StartReplicationInternal(connection, slot, cancellationToken, options, walLocation);
         }
 
-        static async Task<IAsyncEnumerable<NpgsqlTestDecodingData>> StartReplicationInternal(
-            NpgsqlLogicalReplicationConnection connection, NpgsqlTestDecodingReplicationSlot slot, CancellationToken cancellationToken,
-            NpgsqlTestDecodingPluginOptions options = default, NpgsqlLogSequenceNumber? walLocation = null)
+        static async IAsyncEnumerable<NpgsqlTestDecodingData> StartReplicationInternal(
+            NpgsqlLogicalReplicationConnection connection, NpgsqlTestDecodingReplicationSlot slot,
+            [EnumeratorCancellation] CancellationToken cancellationToken, NpgsqlTestDecodingPluginOptions options = default,
+            NpgsqlLogSequenceNumber? walLocation = null)
         {
-            var stream = await connection.StartReplicationForPlugin(slot, cancellationToken, walLocation, options.GetOptionPairs());
-#pragma warning disable CA2016
-            // ReSharper disable once MethodSupportsCancellation
-            return StreamData(stream, connection.Encoding!);
-#pragma warning restore CA2016
-        }
+            var stream = connection.StartReplicationForPlugin(slot, cancellationToken, walLocation, options.GetOptionPairs());
 
-        static async IAsyncEnumerable<NpgsqlTestDecodingData> StreamData(IAsyncEnumerable<NpgsqlXLogDataMessage> messageStream, Encoding encoding, [EnumeratorCancellation] CancellationToken cancellationToken = default)
-        {
-            await foreach (var msg in messageStream.WithCancellation(cancellationToken))
+            await foreach (var msg in stream.WithCancellation(cancellationToken))
                 yield return new NpgsqlTestDecodingData(msg.WalStart, msg.WalEnd, msg.ServerClock, await GetString(msg.Data));
 
             async Task<string> GetString(Stream xlogDataStream)
             {
                 var memoryStream = new MemoryStream();
                 await xlogDataStream.CopyToAsync(memoryStream, 4096, CancellationToken.None);
-                return encoding.GetString(memoryStream.ToArray());
+                return connection.Encoding!.GetString(memoryStream.ToArray());
             }
         }
     }
