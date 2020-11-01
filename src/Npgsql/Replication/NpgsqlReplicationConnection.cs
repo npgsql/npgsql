@@ -402,7 +402,7 @@ namespace Npgsql.Replication
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            EnsureAndSetState(ReplicationConnectionState.Idle, ReplicationConnectionState.Executing);
+            using var stateResetter = EnsureAndSetState(ReplicationConnectionState.Idle, ReplicationConnectionState.Streaming);
             var connector = _npgsqlConnection.Connector!;
 #if !NETSTANDARD2_0
             await
@@ -420,10 +420,10 @@ namespace Npgsql.Replication
                 break;
             case BackendMessageCode.CommandComplete:
             {
-                EnsureAndSetState(ReplicationConnectionState.Idle);
                 yield break;
             }
             default:
+                stateResetter.ChangeResetState(ReplicationConnectionState.Broken);
                 throw connector.UnexpectedMessageReceived(msg.Code);
             }
 
@@ -435,10 +435,6 @@ namespace Npgsql.Replication
 
             SetTimeouts(_walReceiverTimeout, CommandTimeout);
             using var _ = Defer(() => SetTimeouts(CommandTimeout, CommandTimeout));
-
-            // TODO: Clean up state management mechanism
-            using var currentState = EnsureAndSetState(ReplicationConnectionState.Executing, ReplicationConnectionState.Streaming);
-            currentState.ChangeResetState(ReplicationConnectionState.Idle);
 
             while (true)
             {
