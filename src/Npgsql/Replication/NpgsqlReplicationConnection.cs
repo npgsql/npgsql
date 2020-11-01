@@ -318,7 +318,6 @@ namespace Npgsql.Replication
 
         internal async Task<NpgsqlReplicationSlotOptions> CreateReplicationSlotInternal(string slotName, bool temporarySlot, Action<StringBuilder> createCommandAction, CancellationToken cancellationToken = default)
         {
-            Debug.Assert(createCommandAction != null);
             using var executeState = EnsureAndSetState(ReplicationConnectionState.Idle, ReplicationConnectionState.Executing);
             var createCommandBuilder = new StringBuilder("CREATE_REPLICATION_SLOT ").Append(slotName);
             if (temporarySlot)
@@ -328,7 +327,6 @@ namespace Npgsql.Replication
             {
                 var connector = _npgsqlConnection.Connector!;
                 await connector.WriteQuery(createCommandBuilder.ToString(), true, cancellationToken);
-                cancellationToken.ThrowIfCancellationRequested();
                 await connector.Flush(true, cancellationToken);
 
                 var rowDescription = Expect<RowDescriptionMessage>(await connector.ReadMessage(true, cancellationToken), connector);
@@ -680,7 +678,6 @@ namespace Npgsql.Replication
 #endif
             using var registration = cancellationToken.CanBeCanceled ? cancellationToken.Register(c => ((NpgsqlReplicationConnection)c!).Cancel(), this) : default;
             await connector.WriteQuery(command, true, cancellationToken);
-            cancellationToken.ThrowIfCancellationRequested();
             await connector.Flush(true, cancellationToken);
 
             var description =
