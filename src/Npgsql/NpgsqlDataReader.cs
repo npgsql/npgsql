@@ -833,7 +833,7 @@ namespace Npgsql
         /// <summary>
         /// Releases the resources used by the <see cref="NpgsqlDataReader">NpgsqlDataReader</see>.
         /// </summary>
-        protected override void Dispose(bool disposing) => Close(connectionClosing: false, async: false).GetAwaiter().GetResult();
+        protected override void Dispose(bool disposing) => Close(connectionClosing: false, async: false, withCleanup: true).GetAwaiter().GetResult();
 
         /// <summary>
         /// Releases the resources used by the <see cref="NpgsqlDataReader">NpgsqlDataReader</see>.
@@ -845,13 +845,13 @@ namespace Npgsql
 #endif
         {
             using (NoSynchronizationContextScope.Enter())
-                return new ValueTask(Close(connectionClosing: false, async: true));
+                return new ValueTask(Close(connectionClosing: false, async: true, withCleanup: true));
         }
 
         /// <summary>
         /// Closes the <see cref="NpgsqlDataReader"/> reader, allowing a new command to be executed.
         /// </summary>
-        public override void Close() { } // NO-OP per #3289
+        public override void Close() => Close(connectionClosing: false, async: false, withCleanup: false).GetAwaiter().GetResult();
 
         /// <summary>
         /// Closes the <see cref="NpgsqlDataReader"/> reader, allowing a new command to be executed.
@@ -861,9 +861,9 @@ namespace Npgsql
 #else
         public override Task CloseAsync()
 #endif
-            => Task.CompletedTask; // NO-OP per #3289
+            => Close(connectionClosing: false, async: true, withCleanup: false);
 
-        internal async Task Close(bool connectionClosing, bool async)
+        internal async Task Close(bool connectionClosing, bool async, bool withCleanup)
         {
             if (State == ReaderState.Closed)
                 return;
@@ -888,7 +888,8 @@ namespace Npgsql
                 throw new ArgumentOutOfRangeException();
             }
 
-            await Cleanup(async, connectionClosing);
+            if (withCleanup)
+                await Cleanup(async, connectionClosing);
         }
 
         internal async Task Cleanup(bool async, bool connectionClosing=false)

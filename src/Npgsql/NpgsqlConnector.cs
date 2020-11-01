@@ -1574,7 +1574,7 @@ namespace Npgsql
             var copyOperation = CurrentCopyOperation;
 
             if (reader != null)
-                await reader.Close(connectionClosing: true, async);
+                await reader.Close(connectionClosing: true, async, withCleanup: true);
             else if (copyOperation != null)
             {
                 // TODO: There's probably a race condition as the COPY operation may finish on its own during the next few lines
