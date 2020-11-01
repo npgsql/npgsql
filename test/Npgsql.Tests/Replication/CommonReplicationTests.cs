@@ -242,6 +242,8 @@ namespace Npgsql.Tests.Replication
                     });
                     var walSenderTimeout = ParseTimespan(await rc.Show("wal_sender_timeout"));
                     var info = await rc.IdentifySystem();
+                    if (walSenderTimeout > TimeSpan.FromSeconds(3) && !TestUtil.IsOnBuildServer)
+                        Assert.Ignore($"wal_sender_timeout is set to {walSenderTimeout}, skipping");
                     Console.WriteLine($"The server wal_sender_timeout is configured to {walSenderTimeout}");
                     var walReceiverStatusInterval = TimeSpan.FromTicks(walSenderTimeout.Ticks / 2L);
                     Console.WriteLine($"Setting {nameof(NpgsqlReplicationConnection)}.{nameof(NpgsqlReplicationConnection.WalReceiverStatusInterval)} to {walReceiverStatusInterval}");
