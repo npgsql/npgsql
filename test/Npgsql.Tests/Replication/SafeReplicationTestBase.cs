@@ -94,7 +94,7 @@ namespace Npgsql.Tests.Replication
                     catch (PostgresException ex) when (ex.SqlState == "42704" && ex.Message.Contains(slotName))
                     {
                         // Temporary slots might already have been deleted
-                        // We don't care as log as it's gone and we don't have to clean it up
+                        // We don't care as long as it's gone and we don't have to clean it up
                     }
                 }
             }
