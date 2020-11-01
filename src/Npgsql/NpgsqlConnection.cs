@@ -737,7 +737,7 @@ namespace Npgsql
 
                 using var _ = Defer(() => Volatile.Write(ref _closing, 0));
 
-                if (connector.CurrentReader != null || connector.CurrentCopyOperation != null || connector.InTransaction)
+                if (connector.CurrentReader != null || connector.CurrentCopyOperation != null)
                 {
                     // This method could re-enter connection.Close() due to an underlying connection failure.
                     await connector.CloseOngoingOperations(async, cancellationToken);
