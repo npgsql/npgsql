@@ -132,7 +132,10 @@ namespace Npgsql.Tests
                 await using var _ = await CreateTempTable(conn, "int INT", out var table);
 
                 var sb = new StringBuilder();
-                for (var i = 0; i < 15; i++)
+                for (var i = 0; i < 10; i++)
+                    sb.Append($"INSERT INTO {table} (int) VALUES ({i});");
+                sb.Append("SELECT 1;");
+                for (var i = 10; i < 15; i++)
                     sb.Append($"INSERT INTO {table} (int) VALUES ({i});");
                 var cmd = new NpgsqlCommand(sb.ToString(), conn);
                 var reader = await cmd.ExecuteReaderAsync(Behavior);
