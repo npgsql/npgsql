@@ -169,10 +169,12 @@ namespace Npgsql.Tests.Replication
             {
                 await using var rc = await OpenReplicationConnectionAsync();
                 await rc.TimelineHistory(uint.MaxValue);
-            }, Throws.InstanceOf<PostgresException>()
-                .With.Property(nameof(PostgresException.SqlState))
-                .EqualTo("58P01").Or.InstanceOf<PostgresException>()
-                .With.Property(nameof(PostgresException.SqlState)).EqualTo("22021"));
+            }, Throws
+                .InstanceOf<PostgresException>()
+                .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.UndefinedFile)
+                .Or
+                .InstanceOf<PostgresException>()
+                .With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.CharacterNotInRepertoire));
 
         [Test]
         public void TimelineHistoryDisposed()
