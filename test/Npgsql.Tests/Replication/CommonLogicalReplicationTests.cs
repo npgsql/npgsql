@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Data;
 using System.Threading.Tasks;
-using Npgsql.Replication.Logical;
-using Npgsql.Replication.Logical.Internal;
-using NpgsqlTypes;
 using NUnit.Framework;
+using Npgsql.Replication;
+using Npgsql.Replication.Internal;
+using Npgsql.Replication.Logical;
+using NpgsqlTypes;
 
 namespace Npgsql.Tests.Replication
 {
@@ -61,15 +62,15 @@ namespace Npgsql.Tests.Replication
                     await using var c = await OpenConnectionAsync();
                     TestUtil.MinimumPgVersion(c, "10.0", "The *_SNAPSHOT syntax was introduced in PostgreSQL 10");
                     await using var rc = await OpenReplicationConnectionAsync();
-                    var options = await rc.CreateReplicationSlotForPlugin(slotName, OutputPlugin, slotSnapshotInitMode: SlotSnapshotInitMode.NoExport);
+                    var options = await rc.CreateReplicationSlotForPlugin(slotName, OutputPlugin, slotSnapshotInitMode: NpgsqlLogicalSlotSnapshotInitMode.NoExport);
                     Assert.That(options.SnapshotName, Is.Null);
                 });
 
         [Test(Description = "Tests whether we throw a helpful exception about the unsupported *_SNAPSHOT syntax on old servers.")]
-        [TestCase(SlotSnapshotInitMode.Export)]
-        [TestCase(SlotSnapshotInitMode.NoExport)]
-        [TestCase(SlotSnapshotInitMode.Use)]
-        public Task CreateReplicationSlotForPluginExportSnapshotSyntaxThrows(SlotSnapshotInitMode mode)
+        [TestCase(NpgsqlLogicalSlotSnapshotInitMode.Export)]
+        [TestCase(NpgsqlLogicalSlotSnapshotInitMode.NoExport)]
+        [TestCase(NpgsqlLogicalSlotSnapshotInitMode.Use)]
+        public Task CreateReplicationSlotForPluginExportSnapshotSyntaxThrows(NpgsqlLogicalSlotSnapshotInitMode mode)
             => SafeReplicationTest(
                 async (slotName, _) =>
                 {
@@ -100,7 +101,7 @@ namespace Npgsql.Tests.Replication
                         transaction.Commit();
                     }
                     await using var rc = await OpenReplicationConnectionAsync();
-                    var options = await rc.CreateReplicationSlotForPlugin(slotName, OutputPlugin, slotSnapshotInitMode: SlotSnapshotInitMode.Export);
+                    var options = await rc.CreateReplicationSlotForPlugin(slotName, OutputPlugin, slotSnapshotInitMode: NpgsqlLogicalSlotSnapshotInitMode.Export);
                     await using (var transaction = c.BeginTransaction())
                     {
                         await c.ExecuteNonQueryAsync($"INSERT INTO {tableName} (value) VALUES('After snapshot')");
@@ -129,7 +130,7 @@ namespace Npgsql.Tests.Replication
                     Assert.That(async () =>
                     {
                         await using var rc = await OpenReplicationConnectionAsync();
-                        await rc.CreateReplicationSlotForPlugin(slotName, OutputPlugin, slotSnapshotInitMode: SlotSnapshotInitMode.Use);
+                        await rc.CreateReplicationSlotForPlugin(slotName, OutputPlugin, slotSnapshotInitMode: NpgsqlLogicalSlotSnapshotInitMode.Use);
                     }, Throws.InstanceOf<PostgresException>()
                         .With.Property("SqlState")
                         .EqualTo("XX000")
@@ -183,12 +184,12 @@ namespace Npgsql.Tests.Replication
                     Assert.That(async () =>
                     {
                         await using var rc = await OpenReplicationConnectionAsync();
-                        await rc.CreateReplicationSlotForPlugin(slotName, OutputPlugin, slotSnapshotInitMode: (SlotSnapshotInitMode)42);
+                        await rc.CreateReplicationSlotForPlugin(slotName, OutputPlugin, slotSnapshotInitMode: (NpgsqlLogicalSlotSnapshotInitMode)42);
                     }, Throws.InstanceOf<ArgumentOutOfRangeException>()
                         .With.Property("ParamName")
                         .EqualTo("slotSnapshotInitMode")
                         .And.Property("ActualValue")
-                        .EqualTo((SlotSnapshotInitMode)42));
+                        .EqualTo((NpgsqlLogicalSlotSnapshotInitMode)42));
                     return Task.CompletedTask;
                 });
 

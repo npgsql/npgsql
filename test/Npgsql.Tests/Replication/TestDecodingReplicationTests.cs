@@ -1,12 +1,10 @@
-﻿using Npgsql.Replication.Logical;
-using Npgsql.Replication.Logical.Protocol;
-using Npgsql.Replication.Logical.TestDecoding;
-using NUnit.Framework;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using NpgsqlLogicalReplicationConnectionExtensions = Npgsql.Replication.Logical.TestDecoding.NpgsqlLogicalReplicationConnectionExtensions;
+using NUnit.Framework;
+using Npgsql.Replication;
+using Npgsql.Replication.TestDecoding;
 
 namespace Npgsql.Tests.Replication
 {
@@ -23,7 +21,7 @@ namespace Npgsql.Tests.Replication
                 async (slotName, _) =>
                 {
                     await using var rc = await OpenReplicationConnectionAsync();
-                    var options = await NpgsqlLogicalReplicationConnectionExtensions.CreateReplicationSlot(rc, slotName);
+                    var options = await rc.CreateTestDecodingReplicationSlot(slotName);
 
                     await using var c = await OpenConnectionAsync();
                     using var cmd =
@@ -45,7 +43,7 @@ namespace Npgsql.Tests.Replication
                     await using var c = await OpenConnectionAsync();
                     await c.ExecuteNonQueryAsync($"CREATE TABLE {tableName} (id serial PRIMARY KEY, name TEXT NOT NULL)");
                     var rc = await OpenReplicationConnectionAsync();
-                    var slot = await NpgsqlLogicalReplicationConnectionExtensions.CreateReplicationSlot(rc, slotName);
+                    var slot = await rc.CreateTestDecodingReplicationSlot(slotName);
 
                     await c.ExecuteNonQueryAsync($"INSERT INTO {tableName} (name) VALUES ('val1'), ('val2')");
 
@@ -89,7 +87,7 @@ namespace Npgsql.Tests.Replication
                     await c.ExecuteNonQueryAsync($@"CREATE TABLE {tableName} (id serial PRIMARY KEY, name TEXT NOT NULL);
 INSERT INTO {tableName} (name) VALUES ('val'), ('val2')");
                     var rc = await OpenReplicationConnectionAsync();
-                    var slot = await NpgsqlLogicalReplicationConnectionExtensions.CreateReplicationSlot(rc, slotName);
+                    var slot = await rc.CreateTestDecodingReplicationSlot(slotName);
 
                     await c.ExecuteNonQueryAsync($"UPDATE {tableName} SET name='val1' WHERE name='val'");
 
@@ -133,7 +131,7 @@ ALTER TABLE {tableName} REPLICA IDENTITY USING INDEX {indexName};
 INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
 ");
                     var rc = await OpenReplicationConnectionAsync();
-                    var slot = await NpgsqlLogicalReplicationConnectionExtensions.CreateReplicationSlot(rc, slotName);
+                    var slot = await rc.CreateTestDecodingReplicationSlot(slotName);
 
                     await c.ExecuteNonQueryAsync($"UPDATE {tableName} SET name='val1' WHERE name='val'");
 
@@ -173,7 +171,7 @@ ALTER TABLE {tableName} REPLICA IDENTITY FULL;
 INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
 ");
                     var rc = await OpenReplicationConnectionAsync();
-                    var slot = await NpgsqlLogicalReplicationConnectionExtensions.CreateReplicationSlot(rc, slotName);
+                    var slot = await rc.CreateTestDecodingReplicationSlot(slotName);
 
                     await c.ExecuteNonQueryAsync($"UPDATE {tableName} SET name='val1' WHERE name='val'");
 
@@ -212,7 +210,7 @@ CREATE TABLE {tableName} (id serial PRIMARY KEY, name TEXT NOT NULL);
 INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
 ");
                     var rc = await OpenReplicationConnectionAsync();
-                    var slot = await NpgsqlLogicalReplicationConnectionExtensions.CreateReplicationSlot(rc, slotName);
+                    var slot = await rc.CreateTestDecodingReplicationSlot(slotName);
 
                     await c.ExecuteNonQueryAsync($"DELETE FROM {tableName} WHERE name='val2'");
 
@@ -254,7 +252,7 @@ ALTER TABLE {tableName} REPLICA IDENTITY USING INDEX {indexName};
 INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
 ");
                     var rc = await OpenReplicationConnectionAsync();
-                    var slot = await NpgsqlLogicalReplicationConnectionExtensions.CreateReplicationSlot(rc, slotName);
+                    var slot = await rc.CreateTestDecodingReplicationSlot(slotName);
 
                     await c.ExecuteNonQueryAsync($"DELETE FROM {tableName} WHERE name='val2'");
 
@@ -294,7 +292,7 @@ ALTER TABLE {tableName} REPLICA IDENTITY FULL;
 INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
 ");
                     var rc = await OpenReplicationConnectionAsync();
-                    var slot = await NpgsqlLogicalReplicationConnectionExtensions.CreateReplicationSlot(rc, slotName);
+                    var slot = await rc.CreateTestDecodingReplicationSlot(slotName);
 
                     await c.ExecuteNonQueryAsync($"DELETE FROM {tableName} WHERE name='val2'");
 
@@ -334,7 +332,7 @@ CREATE TABLE {tableName} (id serial PRIMARY KEY, name TEXT NOT NULL);
 INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
 ");
                     var rc = await OpenReplicationConnectionAsync();
-                    var slot = await NpgsqlLogicalReplicationConnectionExtensions.CreateReplicationSlot(rc, slotName);
+                    var slot = await rc.CreateTestDecodingReplicationSlot(slotName);
 
                     await c.ExecuteNonQueryAsync($"TRUNCATE TABLE {tableName} RESTART IDENTITY CASCADE");
 

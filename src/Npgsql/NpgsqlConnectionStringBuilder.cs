@@ -9,6 +9,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using Npgsql.Replication;
 
 namespace Npgsql
 {
@@ -1259,8 +1260,8 @@ namespace Npgsql
         /// This property and its corresponding enum are intentionally kept internal as they
         /// should not be set by users or even be visible in their connection strings.
         /// Replication connections are a special kind of connection that is encapsulated in
-        /// <see cref="Replication.Physical.NpgsqlPhysicalReplicationConnection"/>
-        /// and <see cref="Replication.Logical.NpgsqlLogicalReplicationConnection"/>.
+        /// <see cref="NpgsqlPhysicalReplicationConnection"/>
+        /// and <see cref="NpgsqlLogicalReplicationConnection"/>.
         /// </remarks>
 
         [NpgsqlConnectionStringProperty]
@@ -1730,8 +1731,8 @@ namespace Npgsql
     /// This enum and its corresponding property are intentionally kept internal as they
     /// should not be set by users or even be visible in their connection strings.
     /// Replication connections are a special kind of connection that is encapsulated in
-    /// <see cref="Replication.Physical.NpgsqlPhysicalReplicationConnection"/>
-    /// and <see cref="Replication.Logical.NpgsqlLogicalReplicationConnection"/>.
+    /// <see cref="NpgsqlPhysicalReplicationConnection"/>
+    /// and <see cref="NpgsqlLogicalReplicationConnection"/>.
     /// </remarks>
     enum ReplicationMode
     {

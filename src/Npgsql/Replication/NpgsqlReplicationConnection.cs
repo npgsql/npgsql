@@ -18,8 +18,8 @@ namespace Npgsql.Replication
 {
     /// <summary>
     /// Defines the core behavior of replication connections and provides the base class for
-    /// <see cref="Logical.NpgsqlLogicalReplicationConnection"/> and
-    /// <see cref="Physical.NpgsqlPhysicalReplicationConnection"/>.
+    /// <see cref="NpgsqlLogicalReplicationConnection"/> and
+    /// <see cref="NpgsqlPhysicalReplicationConnection"/>.
     /// </summary>
     public abstract class NpgsqlReplicationConnection : IAsyncDisposable
     {

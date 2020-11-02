@@ -6,12 +6,10 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Npgsql.Replication;
-using Npgsql.Replication.Logical;
-using Npgsql.Replication.Logical.TestDecoding;
-using Npgsql.Replication.Physical;
-using NpgsqlTypes;
 using NUnit.Framework;
+using Npgsql.Replication;
+using Npgsql.Replication.TestDecoding;
+using NpgsqlTypes;
 
 namespace Npgsql.Tests.Replication
 {

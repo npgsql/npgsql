@@ -1,6 +1,4 @@
-﻿using JetBrains.Annotations;
-
-namespace Npgsql.Replication
+﻿namespace Npgsql.Replication
 {
     /// <summary>
     /// Contains information about a newly-created replication slot.

@@ -1,10 +1,10 @@
-﻿using Npgsql.Replication;
-using NUnit.Framework;
-using System;
+﻿using System;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
+using NUnit.Framework;
+using Npgsql.Replication;
 
 namespace Npgsql.Tests.Replication
 {
