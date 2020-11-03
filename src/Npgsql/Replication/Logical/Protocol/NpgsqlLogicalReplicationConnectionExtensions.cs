@@ -102,10 +102,6 @@ namespace Npgsql.Replication.Logical.Protocol
                     commandBuilder, walLocation, options.GetOptionPairs(), slot.ConsistentPoint);
             }, bypassingStream: true, cancellationToken);
 
-            // Hack: NAMEDATALEN is a constant in PostgreSQL which can be changed at compile time.// It's probably saner to query
-            // max_identifier_length on connection startup.
-            // See https://www.postgresql.org/docs/current/runtime-config-preset.html
-            const int NAMEDATALEN = 64;
             var buf = connection.Connector!.ReadBuffer;
             await foreach (var xLogData in stream.WithCancellation(cancellationToken))
             {
@@ -148,15 +144,15 @@ namespace Npgsql.Replication.Logical.Protocol
                         xLogData.WalEnd,
                         xLogData.ServerClock,
                         new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
-                        await buf.ReadNullTerminatedStringDefensive(NAMEDATALEN, cancellationToken));
+                        await buf.ReadNullTerminatedString(async: true, cancellationToken));
                     continue;
                 }
                 case BackendReplicationMessageCode.Relation:
                 {
                     await buf.EnsureAsync(6, cancellationToken);
                     var relationId = buf.ReadUInt32();
-                    var ns = await buf.ReadNullTerminatedStringDefensive(NAMEDATALEN, cancellationToken);
-                    var relationName = await buf.ReadNullTerminatedStringDefensive(NAMEDATALEN, cancellationToken);
+                    var ns = await buf.ReadNullTerminatedString(async: true, cancellationToken);
+                    var relationName = await buf.ReadNullTerminatedString(async: true, cancellationToken);
                     await buf.EnsureAsync(3, cancellationToken);
                     var relationReplicaIdentitySetting = (char)buf.ReadByte();
                     var numColumns = buf.ReadUInt16();
@@ -165,7 +161,7 @@ namespace Npgsql.Replication.Logical.Protocol
                     {
                         await buf.EnsureAsync(2, cancellationToken);
                         var flags = buf.ReadByte();
-                        var columnName = await buf.ReadNullTerminatedStringDefensive(NAMEDATALEN, cancellationToken);
+                        var columnName = await buf.ReadNullTerminatedString(async: true, cancellationToken);
                         await buf.EnsureAsync(8, cancellationToken);
                         var dateTypeId = buf.ReadUInt32();
                         var typeModifier = buf.ReadInt32();
@@ -190,8 +186,8 @@ namespace Npgsql.Replication.Logical.Protocol
                 {
                     await buf.EnsureAsync(5, cancellationToken);
                     var typeId = buf.ReadUInt32();
-                    var ns = await buf.ReadNullTerminatedStringDefensive(NAMEDATALEN, cancellationToken);
-                    var name = await buf.ReadNullTerminatedStringDefensive(NAMEDATALEN, cancellationToken);
+                    var ns = await buf.ReadNullTerminatedString(async: true, cancellationToken);
+                    var name = await buf.ReadNullTerminatedString(async: true, cancellationToken);
                     yield return new TypeMessage(xLogData.WalStart, xLogData.WalEnd, xLogData.ServerClock, typeId,
                         ns, name);
 
