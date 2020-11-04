@@ -8,11 +8,13 @@ namespace Npgsql.Tests
     [NonParallelizable]
     public class NpgsqlEventSourceTests : TestBase
     {
-        [Test, Ignore("Not working, needs investigation")]
+        [Test]
         public void CommandStartStop()
         {
             using (var conn = OpenConnection())
             {
+                // There is a new pool created, which sends a few queries to load pg types
+                ClearEvents();
                 conn.ExecuteScalar("SELECT 1");
             }
 
