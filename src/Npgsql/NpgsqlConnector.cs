@@ -2075,7 +2075,7 @@ namespace Npgsql
 
                 while (true)
                 {
-                    IBackendMessage? msg;
+                    IBackendMessage? msg = null;
 
                     try
                     {
@@ -2085,7 +2085,7 @@ namespace Npgsql
                     {
                         // We're somewhere in the middle of a reading keepalive messages
                         // Breaking the connection, as we've lost protocol sync
-                        throw Break(e);
+                        ExceptionDispatchInfo.Capture(Break(e)).Throw();
                     }
                     
                     if (msg == null)
