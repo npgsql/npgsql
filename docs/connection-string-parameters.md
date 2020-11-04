@@ -38,6 +38,7 @@ Minimum Pool Size           | The minimum connection pool size.          | 0
 Maximum Pool Size           | The maximum connection pool size.          | 100 since 3.1, 20 previously
 Connection Idle Lifetime    | The time (in seconds) to wait before closing idle connections in the pool if the count of all connections exceeds `Minimum Pool Size`. Introduced in 3.1. | 300
 Connection Pruning Interval | How many seconds the pool waits before attempting to prune idle connections that are beyond idle lifetime (see `Connection Idle Lifetime`). Introduced in 3.1. | 10
+ConnectionLifetime          | The total maximum lifetime of connections (in seconds). Connections which have exceeded this value will be destroyed instead of returned from the pool. This is useful in clustered configurations to force load balancing between a running server and a server just brought online. | 0 (disabled)
 
 ## Timeouts and Keepalive
 
