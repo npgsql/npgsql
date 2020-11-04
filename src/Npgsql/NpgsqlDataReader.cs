@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.ExceptionServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -705,10 +706,9 @@ namespace Npgsql
             // See #1502
             lock (Connector)
             {
-                if (Connector.State == ConnectorState.Broken)
-                {
-                    throw Connector.BreakReason!;
-                }
+                var error = Connector.BreakReason;
+                if (error != null)
+                    ExceptionDispatchInfo.Capture(error).Throw();
 
                 Connector.State = ConnectorState.Fetching;
             }
