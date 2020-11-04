@@ -2076,7 +2076,7 @@ namespace Npgsql
                     {
                         msg = await ReadMessageWithNotifications(async, cancellationToken);
                     }
-                    catch (Exception e) when (!IsBroken)
+                    catch (Exception e) when (e is OperationCanceledException || e is NpgsqlException npgEx && npgEx.InnerException is TimeoutException)
                     {
                         // We're somewhere in the middle of a reading keepalive messages
                         // Breaking the connection, as we've lost protocol sync
