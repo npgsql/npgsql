@@ -148,6 +148,11 @@ namespace Npgsql
         volatile Exception? _breakReason;
 
         /// <summary>
+        /// If this connector was broken, this contains the exception that caused the break.
+        /// </summary>
+        internal Exception? BreakReason => _breakReason;
+
+        /// <summary>
         /// Semaphore, used to synchronize DatabaseInfo between multiple connections, so it wouldn't be loaded in parallel.
         /// </summary>
         static readonly SemaphoreSlim DatabaseInfoSemaphore = new SemaphoreSlim(1);

@@ -701,7 +701,17 @@ namespace Npgsql
 
         void ProcessDataRowMessage(DataRowMessage msg)
         {
-            Connector.State = ConnectorState.Fetching;
+            // Protection from concurrent break
+            // See #1502
+            lock (Connector)
+            {
+                if (Connector.State == ConnectorState.Broken)
+                {
+                    throw Connector.BreakReason!;
+                }
+
+                Connector.State = ConnectorState.Fetching;
+            }
 
             // The connector's buffer can actually change between DataRows:
             // If a large DataRow exceeding the connector's current read buffer arrives, and we're
