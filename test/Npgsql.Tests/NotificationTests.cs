@@ -121,8 +121,8 @@ namespace Npgsql.Tests
             Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
         }
 
-        [Test, Ignore("Flaky, see #2070")]
-        public void WaitWithKeepalive()
+        [Test]
+        public async Task WaitWithKeepalive()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
@@ -133,14 +133,16 @@ namespace Npgsql.Tests
             using (var notifyingConn = OpenConnection())
             {
                 conn.ExecuteNonQuery("LISTEN notifytest");
-                Task.Delay(2000).ContinueWith(t => notifyingConn.ExecuteNonQuery("NOTIFY notifytest"));
+                var notificationTask = Task.Delay(2000).ContinueWith(t => notifyingConn.ExecuteNonQuery("NOTIFY notifytest"));
                 conn.Wait();
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+                // A safeguard against closing an active connection
+                await notificationTask;
             }
             //Assert.That(TestLoggerSink.Records, Has.Some.With.Property("EventId").EqualTo(new EventId(NpgsqlEventId.Keepalive)));
         }
 
-        [Test, Ignore("Flaky, see #2070")]
+        [Test]
         public async Task WaitAsyncWithKeepalive()
         {
             var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
@@ -152,12 +154,12 @@ namespace Npgsql.Tests
             using (var notifyingConn = OpenConnection())
             {
                 conn.ExecuteNonQuery("LISTEN notifytest");
-#pragma warning disable 4014
-                Task.Delay(2000).ContinueWith(t => notifyingConn.ExecuteNonQuery("NOTIFY notifytest"));
-#pragma warning restore 4014
+                var notificationTask = Task.Delay(2000).ContinueWith(t => notifyingConn.ExecuteNonQuery("NOTIFY notifytest"));
                 await conn.WaitAsync();
                 //Assert.That(TestLoggerSink.Records, Has.Some.With.Property("EventId").EqualTo(new EventId(NpgsqlEventId.Keepalive)));
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
+                // A safeguard against closing an active connection
+                await notificationTask;
             }
         }
 

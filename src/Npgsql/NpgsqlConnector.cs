@@ -2070,7 +2070,19 @@ namespace Npgsql
 
                 while (true)
                 {
-                    var msg = await ReadMessageWithoutCancellation(async, cancellationToken);
+                    IBackendMessage? msg;
+
+                    try
+                    {
+                        msg = await ReadMessageWithNotifications(async, cancellationToken);
+                    }
+                    catch (Exception e) when (e is OperationCanceledException || e is NpgsqlException npgEx && npgEx.InnerException is TimeoutException)
+                    {
+                        // We're somewhere in the middle of a reading keepalive messages
+                        // Breaking the connection, as we've lost protocol sync
+                        throw Break(e);
+                    }
+                    
                     if (msg == null)
                     {
                         receivedNotification = true;
