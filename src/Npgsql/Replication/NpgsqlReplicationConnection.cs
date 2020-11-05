@@ -512,14 +512,14 @@ namespace Npgsql.Replication
         public Task SendStatusUpdate(CancellationToken cancellationToken = default)
         {
             using (NoSynchronizationContextScope.Enter())
-                return SendStatusUpdateInternal(cancellationToken);
-        }
+                return SendStatusUpdateInternal();
 
-        async Task SendStatusUpdateInternal(CancellationToken cancellationToken = default)
-        {
-            EnsureState(ReplicationConnectionState.Streaming);
-            if (await _feedbackSemaphore.WaitAsync(Timeout.Infinite, cancellationToken))
-                await SendFeedback(cancellationToken: cancellationToken);
+            async Task SendStatusUpdateInternal()
+            {
+                EnsureState(ReplicationConnectionState.Streaming);
+                if (await _feedbackSemaphore.WaitAsync(Timeout.Infinite, cancellationToken))
+                    await SendFeedback(cancellationToken: cancellationToken);
+            }
         }
 
         async Task SendFeedback(bool requestReply = false, CancellationToken cancellationToken = default)
