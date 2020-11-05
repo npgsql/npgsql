@@ -265,13 +265,14 @@ namespace Npgsql.Replication
         public Task<NpgsqlReplicationSystemIdentification> IdentifySystem(CancellationToken cancellationToken = default)
         {
             using (NoSynchronizationContextScope.Enter())
-                return IdentifySystemInternal(cancellationToken);
-        }
+                return IdentifySystemInternal();
 
-        async Task<NpgsqlReplicationSystemIdentification> IdentifySystemInternal(CancellationToken cancellationToken = default)
-        {
-            var row = await ReadSingleRow("IDENTIFY_SYSTEM", cancellationToken);
-            return new NpgsqlReplicationSystemIdentification((string)row[0], (uint)row[1], NpgsqlLogSequenceNumber.Parse((string)row[2]), (string)row[3]);
+            async Task<NpgsqlReplicationSystemIdentification> IdentifySystemInternal()
+            {
+                var row = await ReadSingleRow("IDENTIFY_SYSTEM", cancellationToken);
+                return new NpgsqlReplicationSystemIdentification(
+                    (string)row[0], (uint)row[1], NpgsqlLogSequenceNumber.Parse((string)row[2]), (string)row[3]);
+            }
         }
 
         /// <summary>
@@ -290,29 +291,29 @@ namespace Npgsql.Replication
                 throw new ArgumentNullException(nameof(parameterName));
 
             using (NoSynchronizationContextScope.Enter())
-                return ShowInternal(parameterName, cancellationToken);
-        }
+                return ShowInternal();
 
-        async Task<string> ShowInternal(string parameterName, CancellationToken cancellationToken = default)
-            => (string)(await ReadSingleRow("SHOW " + parameterName, cancellationToken))[0];
+            async Task<string> ShowInternal()
+                => (string)(await ReadSingleRow("SHOW " + parameterName, cancellationToken))[0];
+        }
 
         /// <summary>
         /// Requests the server to send over the timeline history file for timeline tli.
         /// </summary>
-        /// <param name="tli">The timeline for which the history file sould be sent.</param>
+        /// <param name="tli">The timeline for which the history file should be sent.</param>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.
         /// The default value is <see cref="CancellationToken.None"/>.</param>
         /// <returns>The timeline history file for timeline tli</returns>
         public Task<NpgsqlTimelineHistoryFile> TimelineHistory(uint tli, CancellationToken cancellationToken = default)
         {
             using (NoSynchronizationContextScope.Enter())
-                return TimelineHistoryInternal(tli, cancellationToken);
-        }
+                return TimelineHistoryInternal();
 
-        async Task<NpgsqlTimelineHistoryFile> TimelineHistoryInternal(uint tli, CancellationToken cancellationToken = default)
-        {
-            var result = await ReadSingleRow($"TIMELINE_HISTORY {tli:D}", cancellationToken);
-            return new NpgsqlTimelineHistoryFile((string)result[0], (byte[])result[1]);
+            async Task<NpgsqlTimelineHistoryFile> TimelineHistoryInternal()
+            {
+                var result = await ReadSingleRow($"TIMELINE_HISTORY {tli:D}", cancellationToken);
+                return new NpgsqlTimelineHistoryFile((string)result[0], (byte[])result[1]);
+            }
         }
 
         internal async Task<NpgsqlReplicationSlotOptions> CreateReplicationSlotInternal(string slotName, bool temporarySlot, Action<StringBuilder> createCommandAction, CancellationToken cancellationToken = default)
@@ -614,32 +615,34 @@ namespace Npgsql.Replication
                 throw new ArgumentNullException(nameof(slotName));
 
             using (NoSynchronizationContextScope.Enter())
-                return DropReplicationSlotInternal(slotName, wait, cancellationToken);
-        }
+                return DropReplicationSlotInternal();
 
-        async Task DropReplicationSlotInternal(string slotName, bool wait, CancellationToken cancellationToken = default)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            using var dropState = EnsureAndSetState(ReplicationConnectionState.Idle, ReplicationConnectionState.Executing);
-            var connector = _npgsqlConnection.Connector!;
+            async Task DropReplicationSlotInternal()
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                using var dropState = EnsureAndSetState(ReplicationConnectionState.Idle, ReplicationConnectionState.Executing);
+                var connector = _npgsqlConnection.Connector!;
 #if !NETSTANDARD2_0
-            await
+                await
 #endif
-            using var registration = cancellationToken.CanBeCanceled ? cancellationToken.Register(c => ((NpgsqlReplicationConnection)c!).Cancel(), this) : default;
-            var command = "DROP_REPLICATION_SLOT " + slotName;
-            if (wait == true)
-                command += " WAIT";
+                using var registration = cancellationToken.CanBeCanceled
+                    ? cancellationToken.Register(c => ((NpgsqlReplicationConnection)c!).Cancel(), this)
+                    : default;
+                var command = "DROP_REPLICATION_SLOT " + slotName;
+                if (wait == true)
+                    command += " WAIT";
 
-            await connector.WriteQuery(command, true, CancellationToken.None);
-            await connector.Flush(true, CancellationToken.None);
+                await connector.WriteQuery(command, true, CancellationToken.None);
+                await connector.Flush(true, CancellationToken.None);
 
-            Expect<CommandCompleteMessage>(await connector.ReadMessage(true, CancellationToken.None), connector);
+                Expect<CommandCompleteMessage>(await connector.ReadMessage(true, CancellationToken.None), connector);
 
-            // Two CommandComplete messages are returned
-            if (PostgreSqlVersion < FirstVersionWithoutDropSlotDoubleCommandCompleteMessage)
-                Expect<CommandCompleteMessage>(await connector.ReadMessage(true, cancellationToken), connector);
+                // Two CommandComplete messages are returned
+                if (PostgreSqlVersion < FirstVersionWithoutDropSlotDoubleCommandCompleteMessage)
+                    Expect<CommandCompleteMessage>(await connector.ReadMessage(true, cancellationToken), connector);
 
-            Expect<ReadyForQueryMessage>(await connector.ReadMessage(true, CancellationToken.None), connector);
+                Expect<ReadyForQueryMessage>(await connector.ReadMessage(true, CancellationToken.None), connector);
+            }
         }
 
         #endregion
