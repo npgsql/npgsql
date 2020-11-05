@@ -61,22 +61,18 @@ namespace Npgsql
         internal void BytesWritten(long bytesWritten) => Interlocked.Add(ref _bytesWritten, bytesWritten);
         internal void BytesRead(long bytesRead) => Interlocked.Add(ref _bytesRead, bytesRead);
 
-        [Event(CommandStartId, Level = EventLevel.Informational)]
         public void CommandStart(string sql)
         {
             Interlocked.Increment(ref _totalCommands);
             Interlocked.Increment(ref _currentCommands);
-            WriteEvent(CommandStartId);
-            NpgsqlSqlEventSource.CommandStart(sql);
+            NpgsqlSqlEventSource.Log.CommandStart(sql);
         }
 
         [MethodImpl(MethodImplOptions.NoInlining)]
-        [Event(CommandStopId, Level = EventLevel.Informational)]
         public void CommandStop()
         {
             Interlocked.Decrement(ref _currentCommands);
-            WriteEvent(CommandStopId);
-            NpgsqlSqlEventSource.CommandStop();
+            NpgsqlSqlEventSource.Log.CommandStop();
         }
 
         internal void CommandStartPrepared() => Interlocked.Increment(ref _totalPreparedCommands);

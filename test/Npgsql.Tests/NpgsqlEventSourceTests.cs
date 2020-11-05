@@ -29,13 +29,13 @@ namespace Npgsql.Tests
         public void EnableEventSource()
         {
             _listener = new TestEventListener(_events);
-            _listener.EnableEvents(NpgsqlEventSource.Log, EventLevel.Informational);
+            _listener.EnableEvents(NpgsqlSqlEventSource.Log, EventLevel.Informational);
         }
 
         [OneTimeTearDown]
         public void DisableEventSource()
         {
-            _listener.DisableEvents(NpgsqlEventSource.Log);
+            _listener.DisableEvents(NpgsqlSqlEventSource.Log);
             _listener.Dispose();
         }
 
