@@ -8,11 +8,22 @@ using NpgsqlTypes;
 namespace Npgsql.Replication
 {
     /// <summary>
-    /// Represents a physical replication connection to a PostgreSQL server
+    /// Represents a physical replication connection to a PostgreSQL server.
     /// </summary>
     public sealed class PhysicalReplicationConnection : ReplicationConnection
     {
         private protected override ReplicationMode ReplicationMode => ReplicationMode.Physical;
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="PhysicalReplicationConnection"/>.
+        /// </summary>
+        public PhysicalReplicationConnection() {}
+
+        /// <summary>
+        /// Initializes a new instance of <see cref="PhysicalReplicationConnection"/> with the given connection string.
+        /// </summary>
+        /// <param name="connectionString">The connection used to open the PostgreSQL database.</param>
+        public PhysicalReplicationConnection(string? connectionString) : base(connectionString) {}
 
         /// <summary>
         /// Creates a <see cref="PhysicalReplicationSlot"/> that wraps a PostgreSQL physical replication slot and
