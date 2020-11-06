@@ -48,6 +48,8 @@ namespace Npgsql.Replication
         long _lastFlushedLsn;
         long _lastAppliedLsn;
 
+        NpgsqlXLogDataMessage _cachedXLogDataMessage = new NpgsqlXLogDataMessage();
+
         #endregion Fields
 
         private protected NpgsqlReplicationConnection()
@@ -466,19 +468,14 @@ namespace Npgsql.Replication
                     // dataLen = msg.Length - (code = 1 + walStart = 8 + walEnd = 8 + serverClock = 8)
                     var dataLen = messageLength - 25;
                     columnStream.Init(dataLen, canSeek: false);
-                    var data = new NpgsqlXLogDataMessage(new NpgsqlLogSequenceNumber(startLsn), new NpgsqlLogSequenceNumber(endLsn), sendTime, columnStream);
 
-                    yield return data;
+                    _cachedXLogDataMessage.Populate(new NpgsqlLogSequenceNumber(startLsn), new NpgsqlLogSequenceNumber(endLsn), sendTime, columnStream);
+                    yield return _cachedXLogDataMessage;
 
-                    // Our consumer may have disposed the stream which isn't necessary but shouldn't hurt us
-                    if (columnStream.IsDisposed)
-                        columnStream = new NpgsqlReadBuffer.ColumnStream(buf);
                     // Our consumer may not have read the stream to the end, but it might as well have been us
                     // ourselves bypassing the stream and reading directly from the buffer in StartReplication()
-                    else if (columnStream.Position < columnStream.Length && !bypassingStream)
-                    {
+                    if (!columnStream.IsDisposed && columnStream.Position < columnStream.Length && !bypassingStream)
                         await buf.Skip(columnStream.Length - columnStream.Position, true, CancellationToken.None);
-                    }
 
                     continue;
                 }

@@ -9,25 +9,8 @@ namespace Npgsql.Replication
     /// <summary>
     /// A message representing a section of the WAL data stream.
     /// </summary>
-    public readonly struct NpgsqlXLogDataMessage : INpgsqlReplicationMessage
+    public class NpgsqlXLogDataMessage : NpgsqlReplicationMessage
     {
-        internal NpgsqlXLogDataMessage(NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, Stream data)
-        {
-            WalStart = walStart;
-            WalEnd = walEnd;
-            ServerClock = serverClock;
-            Data = data;
-        }
-
-        /// <inheritdoc />
-        public NpgsqlLogSequenceNumber WalStart { get; }
-
-        /// <inheritdoc />
-        public NpgsqlLogSequenceNumber WalEnd { get; }
-
-        /// <inheritdoc />
-        public DateTime ServerClock { get; }
-
         /// <summary>
         /// A section of the WAL data stream that is raw WAL data in physical replication or decoded with the selected
         /// logical decoding plugin in logical replication. It is only valid until the next <see cref="NpgsqlXLogDataMessage"/>
@@ -39,6 +22,16 @@ namespace Npgsql.Replication
         /// it can be split at the page boundary. In other words, the first main WAL record and its continuation
         /// records can be sent in different XLogData messages.
         /// </remarks>
-        public Stream Data { get; }
+        public Stream Data { get; private set; } = default!;
+
+        internal NpgsqlXLogDataMessage Populate(
+            NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, Stream data)
+        {
+            base.Populate(walStart, walEnd, serverClock);
+
+            Data = data;
+
+            return this;
+        }
     }
 }

@@ -10,22 +10,7 @@ namespace Npgsql.Replication.PgOutput.Messages
     /// See https://www.postgresql.org/docs/current/protocol-logicalrep-message-formats.html for details about the
     /// protocol.
     /// </remarks>
-    public abstract class LogicalReplicationProtocolMessage : INpgsqlReplicationMessage
+    public abstract class LogicalReplicationProtocolMessage : NpgsqlReplicationMessage
     {
-        /// <inheritdoc />
-        public NpgsqlLogSequenceNumber WalStart { get; private set; }
-
-        /// <inheritdoc />
-        public NpgsqlLogSequenceNumber WalEnd { get; private set; }
-
-        /// <inheritdoc />
-        public DateTime ServerClock { get; private set; }
-
-        private protected void Populate(NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock)
-        {
-            WalStart = walStart;
-            WalEnd = walEnd;
-            ServerClock = serverClock;
-        }
     }
 }

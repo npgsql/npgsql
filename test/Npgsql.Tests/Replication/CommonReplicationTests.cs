@@ -233,7 +233,7 @@ namespace Npgsql.Tests.Replication
                 {
                     await using var c = await OpenConnectionAsync();
                     TestUtil.MinimumPgVersion(c, "10.0", "The SHOW command, which is required to run this test was added to the Streaming Replication Protocol in PostgreSQL 10");
-                    var messages = new ConcurrentQueue<INpgsqlReplicationMessage>();
+                    var messages = new ConcurrentQueue<NpgsqlReplicationMessage>();
                     await c.ExecuteNonQueryAsync($"CREATE TABLE {tableName} (id serial PRIMARY KEY, name TEXT NOT NULL);");
                     await using var rc = await OpenReplicationConnectionAsync(new NpgsqlConnectionStringBuilder(ConnectionString)
                     {
@@ -411,7 +411,7 @@ namespace Npgsql.Tests.Replication
                     await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
 
                     static async IAsyncEnumerable<(NpgsqlLogSequenceNumber Lsn, string? MessageData)> ParseMessages(
-                        IAsyncEnumerable<INpgsqlReplicationMessage> messages)
+                        IAsyncEnumerable<NpgsqlReplicationMessage> messages)
                     {
                         await foreach (var msg in messages)
                         {
@@ -461,7 +461,7 @@ namespace Npgsql.Tests.Replication
                 : $"SELECT pg_create_logical_replication_slot ('{slotName}', 'test_decoding')");
         }
 
-        async IAsyncEnumerable<INpgsqlReplicationMessage> StartReplication(TConnection connection, string slotName,
+        async IAsyncEnumerable<NpgsqlReplicationMessage> StartReplication(TConnection connection, string slotName,
             NpgsqlLogSequenceNumber xLogPos, [EnumeratorCancellation] CancellationToken cancellationToken)
         {
             if (typeof(TConnection) == typeof(NpgsqlPhysicalReplicationConnection))
