@@ -489,8 +489,8 @@ namespace Npgsql.Replication
                     if (unchecked((ulong)Interlocked.Read(ref _lastReceivedLsn)) < endLsn)
                         Interlocked.Exchange(ref _lastReceivedLsn, unchecked((long)endLsn));
 
-                    if (replyRequested && await _feedbackSemaphore.WaitAsync(Timeout.Infinite, CancellationToken.None))
-                        await SendFeedback(cancellationToken: CancellationToken.None);
+                    if (replyRequested)
+                        await SendFeedback(waitOnSemaphore: true, cancellationToken: CancellationToken.None);
 
                     continue;
                 }
@@ -514,13 +514,19 @@ namespace Npgsql.Replication
             async Task SendStatusUpdateInternal()
             {
                 EnsureState(ReplicationConnectionState.Streaming);
-                if (await _feedbackSemaphore.WaitAsync(Timeout.Infinite, cancellationToken))
-                    await SendFeedback(cancellationToken: cancellationToken);
+                await SendFeedback(waitOnSemaphore: true, cancellationToken: cancellationToken);
             }
         }
 
-        async Task SendFeedback(bool requestReply = false, CancellationToken cancellationToken = default)
+        async Task SendFeedback(bool waitOnSemaphore = false, bool requestReply = false, CancellationToken cancellationToken = default)
         {
+            var taken = waitOnSemaphore
+                ? await _feedbackSemaphore.WaitAsync(Timeout.Infinite, cancellationToken)
+                : await _feedbackSemaphore.WaitAsync(TimeSpan.Zero, cancellationToken);
+
+            if (!taken)
+                return;
+
             try
             {
                 // Disable the timers while we are sending
@@ -566,8 +572,7 @@ namespace Npgsql.Replication
                 if (State != ReplicationConnectionState.Streaming)
                     return;
 
-                if (await _feedbackSemaphore.WaitAsync(Timeout.Infinite))
-                    await SendFeedback(true);
+                await SendFeedback(waitOnSemaphore: true, requestReply: true);
             }
             catch (Exception e)
             {
@@ -582,10 +587,7 @@ namespace Npgsql.Replication
                 if (State != ReplicationConnectionState.Streaming)
                     return;
 
-                if (await _feedbackSemaphore.WaitAsync(TimeSpan.Zero))
-                {
-                    await SendFeedback();
-                }
+                await SendFeedback();
             }
             catch (Exception e)
             {
