@@ -1,5 +1,5 @@
-﻿using System;
-using NpgsqlTypes;
+﻿using NpgsqlTypes;
+using System;
 
 namespace Npgsql.Replication.PgOutput.Messages
 {
@@ -12,21 +12,20 @@ namespace Npgsql.Replication.PgOutput.Messages
     /// </remarks>
     public abstract class LogicalReplicationProtocolMessage : INpgsqlReplicationMessage
     {
-        private protected LogicalReplicationProtocolMessage(NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd,
-            DateTime serverClock)
+        /// <inheritdoc />
+        public NpgsqlLogSequenceNumber WalStart { get; private set; }
+
+        /// <inheritdoc />
+        public NpgsqlLogSequenceNumber WalEnd { get; private set; }
+
+        /// <inheritdoc />
+        public DateTime ServerClock { get; private set; }
+
+        private protected void Populate(NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock)
         {
             WalStart = walStart;
             WalEnd = walEnd;
             ServerClock = serverClock;
         }
-
-        /// <inheritdoc />
-        public NpgsqlLogSequenceNumber WalStart { get; }
-
-        /// <inheritdoc />
-        public NpgsqlLogSequenceNumber WalEnd { get; }
-
-        /// <inheritdoc />
-        public DateTime ServerClock { get; }
     }
 }

@@ -1,5 +1,5 @@
-﻿using System;
-using NpgsqlTypes;
+﻿using NpgsqlTypes;
+using System;
 
 namespace Npgsql.Replication.PgOutput.Messages
 {
@@ -8,13 +8,19 @@ namespace Npgsql.Replication.PgOutput.Messages
     /// </summary>
     public sealed class FullDeleteMessage : DeleteMessage
     {
-        internal FullDeleteMessage(NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock,
-            uint relationId, ITupleData[] oldRow) : base(walStart, walEnd, serverClock, relationId)
-            => OldRow = oldRow;
-
         /// <summary>
         /// Columns representing the old values.
         /// </summary>
-        public ITupleData[] OldRow { get; }
+        public ReadOnlyMemory<TupleData> OldRow { get; private set; } = default!;
+
+        internal FullDeleteMessage Populate(
+            NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint relationId, ReadOnlyMemory<TupleData> oldRow)
+        {
+            base.Populate(walStart, walEnd, serverClock, relationId);
+
+            OldRow = oldRow;
+
+            return this;
+        }
     }
 }

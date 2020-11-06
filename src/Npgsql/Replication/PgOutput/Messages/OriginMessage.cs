@@ -1,5 +1,5 @@
-﻿using System;
-using NpgsqlTypes;
+﻿using NpgsqlTypes;
+using System;
 
 namespace Npgsql.Replication.PgOutput.Messages
 {
@@ -8,21 +8,26 @@ namespace Npgsql.Replication.PgOutput.Messages
     /// </summary>
     public sealed class OriginMessage : LogicalReplicationProtocolMessage
     {
-        internal OriginMessage(NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock,
-            NpgsqlLogSequenceNumber originCommitLsn, string originName) : base(walStart, walEnd, serverClock)
-        {
-            OriginCommitLsn = originCommitLsn;
-            OriginName = originName;
-        }
-
         /// <summary>
         /// The LSN of the commit on the origin server.
         /// </summary>
-        public NpgsqlLogSequenceNumber OriginCommitLsn { get; }
+        public NpgsqlLogSequenceNumber OriginCommitLsn { get; private set; }
 
         /// <summary>
         /// Name of the origin.
         /// </summary>
-        public string OriginName { get; }
+        public string OriginName { get; private set; } = string.Empty;
+
+        internal OriginMessage Populate(
+            NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, NpgsqlLogSequenceNumber originCommitLsn,
+            string originName)
+        {
+            base.Populate(walStart, walEnd, serverClock);
+
+            OriginCommitLsn = originCommitLsn;
+            OriginName = originName;
+
+            return this;
+        }
     }
 }

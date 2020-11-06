@@ -1,6 +1,5 @@
-﻿using System;
-using JetBrains.Annotations;
-using NpgsqlTypes;
+﻿using NpgsqlTypes;
+using System;
 
 namespace Npgsql.Replication.PgOutput.Messages
 {
@@ -9,13 +8,20 @@ namespace Npgsql.Replication.PgOutput.Messages
     /// </summary>
     public sealed class FullUpdateMessage : UpdateMessage
     {
-        internal FullUpdateMessage(NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock,
-            uint relationId, [NotNull] ITupleData[] newRow, ITupleData[] oldRow) : base(walStart, walEnd,
-            serverClock, relationId, newRow) => OldRow = oldRow;
-
         /// <summary>
         /// Columns representing the old values.
         /// </summary>
-        public ITupleData[] OldRow { get; }
+        public ReadOnlyMemory<TupleData> OldRow { get; private set; } = default!;
+
+        internal FullUpdateMessage Populate(
+            NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint relationId,
+            ReadOnlyMemory<TupleData> newRow, ReadOnlyMemory<TupleData> oldRow)
+        {
+            base.Populate(walStart, walEnd, serverClock, relationId, newRow);
+
+            OldRow = oldRow;
+
+            return this;
+        }
     }
 }

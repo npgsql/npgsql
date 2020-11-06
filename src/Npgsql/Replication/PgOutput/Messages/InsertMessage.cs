@@ -1,5 +1,5 @@
-﻿using System;
-using NpgsqlTypes;
+﻿using NpgsqlTypes;
+using System;
 
 namespace Npgsql.Replication.PgOutput.Messages
 {
@@ -8,21 +8,26 @@ namespace Npgsql.Replication.PgOutput.Messages
     /// </summary>
     public sealed class InsertMessage : LogicalReplicationProtocolMessage
     {
-        internal InsertMessage(NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock,
-            uint relationId, ITupleData[] newRow) : base(walStart, walEnd, serverClock)
-        {
-            RelationId = relationId;
-            NewRow = newRow;
-        }
-
         /// <summary>
         /// ID of the relation corresponding to the ID in the relation message.
         /// </summary>
-        public uint RelationId { get; }
+        public uint RelationId { get; private set; }
 
         /// <summary>
         /// Columns representing the new row.
         /// </summary>
-        public ITupleData[] NewRow { get; }
+        public ReadOnlyMemory<TupleData> NewRow { get; private set; } = default!;
+
+        internal InsertMessage Populate(
+            NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, uint relationId,
+            ReadOnlyMemory<TupleData> newRow)
+        {
+            base.Populate(walStart, walEnd, serverClock);
+
+            RelationId = relationId;
+            NewRow = newRow;
+
+            return this;
+        }
     }
 }
