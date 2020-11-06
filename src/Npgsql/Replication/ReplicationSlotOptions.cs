@@ -7,10 +7,10 @@ namespace Npgsql.Replication
     /// <summary>
     /// Contains information about a replication slot.
     /// </summary>
-    public readonly struct NpgsqlReplicationSlotOptions
+    public readonly struct ReplicationSlotOptions
     {
         /// <summary>
-        /// Creates a new <see cref="NpgsqlReplicationSlotOptions"/> instance.
+        /// Creates a new <see cref="ReplicationSlotOptions"/> instance.
         /// </summary>
         /// <param name="slotName">
         /// The name of the replication slot.
@@ -18,11 +18,11 @@ namespace Npgsql.Replication
         /// <param name="consistentPoint">
         /// The WAL location at which the slot became consistent.
         /// </param>
-        public NpgsqlReplicationSlotOptions(string slotName, string? consistentPoint = null)
+        public ReplicationSlotOptions(string slotName, string? consistentPoint = null)
             : this(slotName, consistentPoint is null ? default : NpgsqlLogSequenceNumber.Parse(consistentPoint), null){}
 
         /// <summary>
-        /// Creates a new <see cref="NpgsqlReplicationSlotOptions"/> instance.
+        /// Creates a new <see cref="ReplicationSlotOptions"/> instance.
         /// </summary>
         /// <param name="slotName">
         /// The name of the replication slot.
@@ -30,10 +30,10 @@ namespace Npgsql.Replication
         /// <param name="consistentPoint">
         /// The WAL location at which the slot became consistent.
         /// </param>
-        public NpgsqlReplicationSlotOptions(string slotName, NpgsqlLogSequenceNumber consistentPoint)
+        public ReplicationSlotOptions(string slotName, NpgsqlLogSequenceNumber consistentPoint)
             : this(slotName, consistentPoint, null) {}
 
-        internal NpgsqlReplicationSlotOptions(
+        internal ReplicationSlotOptions(
             string slotName,
             NpgsqlLogSequenceNumber consistentPoint,
             string? snapshotName)

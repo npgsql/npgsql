@@ -6,7 +6,7 @@ using Npgsql.Replication;
 
 namespace Npgsql.Tests.Replication
 {
-    public class PhysicalReplicationTests : SafeReplicationTestBase<NpgsqlPhysicalReplicationConnection>
+    public class PhysicalReplicationTests : SafeReplicationTestBase<PhysicalReplicationConnection>
     {
         [Test]
         public Task CreateReplicationSlot()

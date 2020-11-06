@@ -6,10 +6,10 @@ namespace Npgsql.Replication.TestDecoding
     /// <summary>
     /// Options to be passed to the test_decoding plugin
     /// </summary>
-    public readonly struct NpgsqlTestDecodingOptions
+    public readonly struct TestDecodingOptions
     {
         /// <summary>
-        /// Creates a new instance of <see cref="NpgsqlTestDecodingOptions"/>.
+        /// Creates a new instance of <see cref="TestDecodingOptions"/>.
         /// </summary>
         /// <param name="includeXids">Include the transaction number for BEGIN and COMMIT command output</param>
         /// <param name="includeTimestamp">Include the timestamp for COMMIT command output</param>
@@ -18,7 +18,7 @@ namespace Npgsql.Replication.TestDecoding
         /// <param name="onlyLocal">Only output data that don't have the <a href="https://www.postgresql.org/docs/11/replication-origins.html">replication origin</a> set</param>
         /// <param name="includeRewrites">Include output from table rewrites that were caused by DDL statements</param>
         /// <param name="streamChanges">Enable streaming output</param>
-        public NpgsqlTestDecodingOptions(bool? includeXids = null, bool? includeTimestamp = null, bool? forceBinary = null,
+        public TestDecodingOptions(bool? includeXids = null, bool? includeTimestamp = null, bool? forceBinary = null,
             bool? skipEmptyXacts = null, bool? onlyLocal = null, bool? includeRewrites = null, bool? streamChanges = null)
         {
             IncludeXids = includeXids;

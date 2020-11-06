@@ -13,7 +13,7 @@ namespace Npgsql.Tests.Replication
     /// implementation of logical replication was still somewhat incomplete.
     /// Please don't change them without confirming that they still work on those old versions.
     /// </summary>
-    public class TestDecodingReplicationTests : SafeReplicationTestBase<NpgsqlLogicalReplicationConnection>
+    public class TestDecodingReplicationTests : SafeReplicationTestBase<LogicalReplicationConnection>
     {
         [Test]
         public Task CreateReplicationSlot()
@@ -360,7 +360,7 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
                     await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
                 });
 
-        static async ValueTask<NpgsqlTestDecodingData> NextMessage(IAsyncEnumerator<NpgsqlTestDecodingData> enumerator)
+        static async ValueTask<TestDecodingData> NextMessage(IAsyncEnumerator<TestDecodingData> enumerator)
         {
             Assert.True(await enumerator.MoveNextAsync());
             return enumerator.Current!;

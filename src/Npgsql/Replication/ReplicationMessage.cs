@@ -6,7 +6,7 @@ namespace Npgsql.Replication
     /// <summary>
     /// The common base class for all streaming replication messages
     /// </summary>
-    public abstract class NpgsqlReplicationMessage
+    public abstract class ReplicationMessage
     {
         /// <summary>
         /// The starting point of the WAL data in this message.

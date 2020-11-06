@@ -1,13 +1,11 @@
-﻿using JetBrains.Annotations;
-
-namespace Npgsql.Replication
+﻿namespace Npgsql.Replication
 {
     /// <summary>
     /// Represents a PostgreSQL timeline history file
     /// </summary>
-    public readonly struct NpgsqlTimelineHistoryFile
+    public readonly struct TimelineHistoryFile
     {
-        internal  NpgsqlTimelineHistoryFile(string fileName, byte[] content)
+        internal  TimelineHistoryFile(string fileName, byte[] content)
         {
             FileName = fileName;
             Content = content;

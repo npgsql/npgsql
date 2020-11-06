@@ -7,27 +7,27 @@ namespace Npgsql.Replication.PgOutput
     /// <summary>
     /// Options to be passed to the pgoutput plugin
     /// </summary>
-    public class NpgsqlPgOutputReplicationOptions
+    public class PgOutputReplicationOptions
     {
         /// <summary>
-        /// Creates a new instance of <see cref="NpgsqlPgOutputReplicationOptions"/>.
+        /// Creates a new instance of <see cref="PgOutputReplicationOptions"/>.
         /// </summary>
         /// <param name="publicationName">The publication names to include into the stream</param>
         /// <param name="protocolVersion">The version of the logical streaming replication protocol</param>
         /// <param name="binary">Send values in binary representation</param>
         /// <param name="streaming">Enable streaming output</param>
-        public NpgsqlPgOutputReplicationOptions(string publicationName, ulong protocolVersion = 1UL, bool? binary = null, bool? streaming = null)
+        public PgOutputReplicationOptions(string publicationName, ulong protocolVersion = 1UL, bool? binary = null, bool? streaming = null)
             : this(new List<string> { publicationName ?? throw new ArgumentNullException(nameof(publicationName)) }, protocolVersion, binary, streaming)
         { }
 
         /// <summary>
-        /// Creates a new instance of <see cref="NpgsqlPgOutputReplicationOptions"/>.
+        /// Creates a new instance of <see cref="PgOutputReplicationOptions"/>.
         /// </summary>
         /// <param name="publicationNames">The publication names to include into the stream</param>
         /// <param name="protocolVersion">The version of the logical streaming replication protocol</param>
         /// <param name="binary">Send values in binary representation</param>
         /// <param name="streaming">Enable streaming output</param>
-        public NpgsqlPgOutputReplicationOptions(IEnumerable<string> publicationNames, ulong protocolVersion = 1UL, bool? binary = null, bool? streaming = null)
+        public PgOutputReplicationOptions(IEnumerable<string> publicationNames, ulong protocolVersion = 1UL, bool? binary = null, bool? streaming = null)
         {
             var publicationNamesList = new List<string>(publicationNames);
             if (publicationNamesList.Count < 1)

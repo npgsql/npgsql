@@ -7,20 +7,20 @@ using NpgsqlTypes;
 
 namespace Npgsql.Replication.TestDecoding
 {
-    class TestDecodingAsyncEnumerable : IAsyncEnumerable<NpgsqlTestDecodingData>
+    class TestDecodingAsyncEnumerable : IAsyncEnumerable<TestDecodingData>
     {
-        readonly NpgsqlLogicalReplicationConnection _connection;
-        readonly NpgsqlTestDecodingReplicationSlot _slot;
-        readonly NpgsqlTestDecodingOptions _options;
+        readonly LogicalReplicationConnection _connection;
+        readonly TestDecodingReplicationSlot _slot;
+        readonly TestDecodingOptions _options;
         readonly CancellationToken _baseCancellationToken;
         readonly NpgsqlLogSequenceNumber? _walLocation;
 
-        readonly NpgsqlTestDecodingData _cachedMessage = new NpgsqlTestDecodingData();
+        readonly TestDecodingData _cachedMessage = new TestDecodingData();
 
         internal TestDecodingAsyncEnumerable(
-            NpgsqlLogicalReplicationConnection connection,
-            NpgsqlTestDecodingReplicationSlot slot,
-            NpgsqlTestDecodingOptions options,
+            LogicalReplicationConnection connection,
+            TestDecodingReplicationSlot slot,
+            TestDecodingOptions options,
             CancellationToken cancellationToken,
             NpgsqlLogSequenceNumber? walLocation = null)
         {
@@ -31,7 +31,7 @@ namespace Npgsql.Replication.TestDecoding
             _walLocation = walLocation;
         }
 
-        public IAsyncEnumerator<NpgsqlTestDecodingData> GetAsyncEnumerator(
+        public IAsyncEnumerator<TestDecodingData> GetAsyncEnumerator(
             CancellationToken cancellationToken = new CancellationToken())
         {
             using (NoSynchronizationContextScope.Enter())
@@ -39,7 +39,7 @@ namespace Npgsql.Replication.TestDecoding
                     CancellationTokenSource.CreateLinkedTokenSource(_baseCancellationToken, cancellationToken).Token);
         }
 
-        async IAsyncEnumerator<NpgsqlTestDecodingData> StartReplicationInternal(CancellationToken cancellationToken)
+        async IAsyncEnumerator<TestDecodingData> StartReplicationInternal(CancellationToken cancellationToken)
         {
             var stream = _connection.StartLogicalReplication(
                 _slot, cancellationToken, _walLocation, _options.GetOptionPairs());

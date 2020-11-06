@@ -10,12 +10,12 @@ namespace Npgsql.Replication
     /// <summary>
     /// Represents a physical replication connection to a PostgreSQL server
     /// </summary>
-    public sealed class NpgsqlPhysicalReplicationConnection : NpgsqlReplicationConnection
+    public sealed class PhysicalReplicationConnection : ReplicationConnection
     {
         private protected override ReplicationMode ReplicationMode => ReplicationMode.Physical;
 
         /// <summary>
-        /// Creates a <see cref="NpgsqlPhysicalReplicationSlot"/> that wraps a PostgreSQL physical replication slot and
+        /// Creates a <see cref="PhysicalReplicationSlot"/> that wraps a PostgreSQL physical replication slot and
         /// can be used to start physical streaming replication
         /// </summary>
         /// <param name="slotName">
@@ -34,15 +34,15 @@ namespace Npgsql.Replication
         /// <param name="cancellationToken">
         /// The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.
         /// </param>
-        /// <returns>A <see cref="NpgsqlPhysicalReplicationSlot"/> that wraps the newly-created replication slot.
+        /// <returns>A <see cref="PhysicalReplicationSlot"/> that wraps the newly-created replication slot.
         /// </returns>
-        public Task<NpgsqlPhysicalReplicationSlot> CreateReplicationSlot(
+        public Task<PhysicalReplicationSlot> CreateReplicationSlot(
             string slotName, bool isTemporary = false, bool reserveWal = false, CancellationToken cancellationToken = default)
         {
             using var _ = NoSynchronizationContextScope.Enter();
             return CreatePhysicalReplicationSlot();
 
-            async Task<NpgsqlPhysicalReplicationSlot> CreatePhysicalReplicationSlot()
+            async Task<PhysicalReplicationSlot> CreatePhysicalReplicationSlot()
             {
                 var builder = new StringBuilder("CREATE_REPLICATION_SLOT ").Append(slotName);
                 if (isTemporary)
@@ -53,7 +53,7 @@ namespace Npgsql.Replication
 
                 var slotOptions = await CreateReplicationSlot(builder.ToString(), isTemporary, cancellationToken);
 
-                return new NpgsqlPhysicalReplicationSlot(slotOptions.SlotName);
+                return new PhysicalReplicationSlot(slotOptions.SlotName);
             }
         }
 
@@ -75,8 +75,8 @@ namespace Npgsql.Replication
         /// <param name="cancellationToken">The token to be used for stopping the replication.</param>
         /// <param name="timeline">Streaming starts on timeline tli.</param>
         /// <returns>A <see cref="Task{T}"/> representing an <see cref="IAsyncEnumerable{NpgsqlXLogDataMessage}"/> that
-        /// can be used to stream WAL entries in form of <see cref="NpgsqlXLogDataMessage"/> instances.</returns>
-        public IAsyncEnumerable<NpgsqlXLogDataMessage> StartReplication(NpgsqlPhysicalReplicationSlot? slot,
+        /// can be used to stream WAL entries in form of <see cref="XLogDataMessage"/> instances.</returns>
+        public IAsyncEnumerable<XLogDataMessage> StartReplication(PhysicalReplicationSlot? slot,
             NpgsqlLogSequenceNumber walLocation,
             CancellationToken cancellationToken,
             uint timeline = default)
@@ -107,8 +107,8 @@ namespace Npgsql.Replication
         /// <param name="cancellationToken">The token to be used for stopping the replication.</param>
         /// <param name="timeline">Streaming starts on timeline tli.</param>
         /// <returns>A <see cref="Task{T}"/> representing an <see cref="IAsyncEnumerable{NpgsqlXLogDataMessage}"/> that
-        /// can be used to stream WAL entries in form of <see cref="NpgsqlXLogDataMessage"/> instances.</returns>
-        public IAsyncEnumerable<NpgsqlXLogDataMessage> StartReplication(
+        /// can be used to stream WAL entries in form of <see cref="XLogDataMessage"/> instances.</returns>
+        public IAsyncEnumerable<XLogDataMessage> StartReplication(
             NpgsqlLogSequenceNumber walLocation, CancellationToken cancellationToken, uint timeline = default)
             => StartReplication(slot: null, walLocation: walLocation, timeline: timeline, cancellationToken: cancellationToken);
     }

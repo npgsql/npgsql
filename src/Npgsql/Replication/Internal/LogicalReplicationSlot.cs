@@ -6,14 +6,14 @@ namespace Npgsql.Replication.Internal
     /// <summary>
     /// Contains information about a newly-created logical replication slot.
     /// </summary>
-    public abstract class NpgsqlLogicalReplicationSlot : NpgsqlReplicationSlot
+    public abstract class LogicalReplicationSlot : ReplicationSlot
     {
         /// <summary>
         /// Creates a new logical replication slot
         /// </summary>
         /// <param name="outputPlugin">The logical decoding output plugin to the corresponding replication slot was created for.</param>
-        /// <param name="replicationSlotOptions">A <see cref="NpgsqlReplicationSlotOptions"/> struct with information to create the replication slot.</param>
-        protected NpgsqlLogicalReplicationSlot(string outputPlugin, NpgsqlReplicationSlotOptions replicationSlotOptions)
+        /// <param name="replicationSlotOptions">A <see cref="ReplicationSlotOptions"/> struct with information to create the replication slot.</param>
+        protected LogicalReplicationSlot(string outputPlugin, ReplicationSlotOptions replicationSlotOptions)
             : base(replicationSlotOptions.SlotName)
         {
             OutputPlugin = outputPlugin ?? throw new ArgumentNullException(nameof(outputPlugin), $"The {nameof(outputPlugin)} argument can not be null.");

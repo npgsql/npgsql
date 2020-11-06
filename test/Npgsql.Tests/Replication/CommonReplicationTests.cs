@@ -13,10 +13,10 @@ using NpgsqlTypes;
 
 namespace Npgsql.Tests.Replication
 {
-    [TestFixture(typeof(NpgsqlLogicalReplicationConnection))]
-    [TestFixture(typeof(NpgsqlPhysicalReplicationConnection))]
+    [TestFixture(typeof(LogicalReplicationConnection))]
+    [TestFixture(typeof(PhysicalReplicationConnection))]
     public class CommonReplicationTests<TConnection> : SafeReplicationTestBase<TConnection>
-        where TConnection : NpgsqlReplicationConnection, new()
+        where TConnection : ReplicationConnection, new()
     {
         #region Open
 
@@ -233,7 +233,7 @@ namespace Npgsql.Tests.Replication
                 {
                     await using var c = await OpenConnectionAsync();
                     TestUtil.MinimumPgVersion(c, "10.0", "The SHOW command, which is required to run this test was added to the Streaming Replication Protocol in PostgreSQL 10");
-                    var messages = new ConcurrentQueue<NpgsqlReplicationMessage>();
+                    var messages = new ConcurrentQueue<ReplicationMessage>();
                     await c.ExecuteNonQueryAsync($"CREATE TABLE {tableName} (id serial PRIMARY KEY, name TEXT NOT NULL);");
                     await using var rc = await OpenReplicationConnectionAsync(new NpgsqlConnectionStringBuilder(ConnectionString)
                     {
@@ -245,7 +245,7 @@ namespace Npgsql.Tests.Replication
                         Assert.Ignore($"wal_sender_timeout is set to {walSenderTimeout}, skipping");
                     Console.WriteLine($"The server wal_sender_timeout is configured to {walSenderTimeout}");
                     var walReceiverStatusInterval = TimeSpan.FromTicks(walSenderTimeout.Ticks / 2L);
-                    Console.WriteLine($"Setting {nameof(NpgsqlReplicationConnection)}.{nameof(NpgsqlReplicationConnection.WalReceiverStatusInterval)} to {walReceiverStatusInterval}");
+                    Console.WriteLine($"Setting {nameof(ReplicationConnection)}.{nameof(ReplicationConnection.WalReceiverStatusInterval)} to {walReceiverStatusInterval}");
                     rc.WalReceiverStatusInterval = walReceiverStatusInterval;
                     await CreateReplicationSlot(slotName);
                     await c.ExecuteNonQueryAsync($"INSERT INTO \"{tableName}\" (name) VALUES ('val1')");
@@ -411,14 +411,14 @@ namespace Npgsql.Tests.Replication
                     await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
 
                     static async IAsyncEnumerable<(NpgsqlLogSequenceNumber Lsn, string? MessageData)> ParseMessages(
-                        IAsyncEnumerable<NpgsqlReplicationMessage> messages)
+                        IAsyncEnumerable<ReplicationMessage> messages)
                     {
                         await foreach (var msg in messages)
                         {
-                            if (typeof(TConnection) == typeof(NpgsqlPhysicalReplicationConnection))
+                            if (typeof(TConnection) == typeof(PhysicalReplicationConnection))
                             {
                                 var buffer = new MemoryStream();
-                                ((NpgsqlXLogDataMessage)msg).Data.CopyTo(buffer);
+                                ((XLogDataMessage)msg).Data.CopyTo(buffer);
                                 // Hack: This is really gruesome but we really have no idea how many
                                 // messages we get in physical replication
                                 var messageString = Encoding.ASCII.GetString(buffer.ToArray());
@@ -433,7 +433,7 @@ namespace Npgsql.Tests.Replication
 
                     async Task<NpgsqlLogSequenceNumber> GetCommitLsn(string valueString)
                     {
-                        if (typeof(TConnection) == typeof(NpgsqlPhysicalReplicationConnection))
+                        if (typeof(TConnection) == typeof(PhysicalReplicationConnection))
                             while (await messages.MoveNextAsync())
                                 if (messages.Current.MessageData!.Contains(valueString))
                                     return messages.Current.Lsn;
@@ -456,27 +456,27 @@ namespace Npgsql.Tests.Replication
         async Task CreateReplicationSlot(string slotName)
         {
             await using var c = await OpenConnectionAsync();
-            await c.ExecuteNonQueryAsync(typeof(TConnection) == typeof(NpgsqlPhysicalReplicationConnection)
+            await c.ExecuteNonQueryAsync(typeof(TConnection) == typeof(PhysicalReplicationConnection)
                 ? $"SELECT pg_create_physical_replication_slot('{slotName}')"
                 : $"SELECT pg_create_logical_replication_slot ('{slotName}', 'test_decoding')");
         }
 
-        async IAsyncEnumerable<NpgsqlReplicationMessage> StartReplication(TConnection connection, string slotName,
+        async IAsyncEnumerable<ReplicationMessage> StartReplication(TConnection connection, string slotName,
             NpgsqlLogSequenceNumber xLogPos, [EnumeratorCancellation] CancellationToken cancellationToken)
         {
-            if (typeof(TConnection) == typeof(NpgsqlPhysicalReplicationConnection))
+            if (typeof(TConnection) == typeof(PhysicalReplicationConnection))
             {
-                var slot = new NpgsqlPhysicalReplicationSlot(slotName);
-                var rc = (NpgsqlPhysicalReplicationConnection)(NpgsqlReplicationConnection)connection;
+                var slot = new PhysicalReplicationSlot(slotName);
+                var rc = (PhysicalReplicationConnection)(ReplicationConnection)connection;
                 await foreach (var msg in rc.StartReplication(slot, xLogPos, cancellationToken))
                 {
                     yield return msg;
                 }
             }
-            else if (typeof(TConnection) == typeof(NpgsqlLogicalReplicationConnection))
+            else if (typeof(TConnection) == typeof(LogicalReplicationConnection))
             {
-                var slot = new NpgsqlTestDecodingReplicationSlot(slotName);
-                var rc = (NpgsqlLogicalReplicationConnection)(NpgsqlReplicationConnection)connection;
+                var slot = new TestDecodingReplicationSlot(slotName);
+                var rc = (LogicalReplicationConnection)(ReplicationConnection)connection;
                 await foreach (var msg in rc.StartReplication(slot, cancellationToken, walLocation: xLogPos))
                 {
                     yield return msg;
@@ -518,8 +518,8 @@ namespace Npgsql.Tests.Replication
             "common_" +
             new TConnection() switch
             {
-                NpgsqlLogicalReplicationConnection _ => "_l",
-                NpgsqlPhysicalReplicationConnection _ => "_p",
+                LogicalReplicationConnection _ => "_l",
+                PhysicalReplicationConnection _ => "_p",
                 _ => throw new ArgumentOutOfRangeException($"{typeof(TConnection)} is not expected.")
             };
     }

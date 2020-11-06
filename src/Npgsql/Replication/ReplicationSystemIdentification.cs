@@ -1,15 +1,13 @@
-﻿using JetBrains.Annotations;
-using NpgsqlTypes;
+﻿using NpgsqlTypes;
 
 namespace Npgsql.Replication
 {
     /// <summary>
-    /// Contains server identification information returned from <see cref="NpgsqlReplicationConnection.IdentifySystem"/>.
+    /// Contains server identification information returned from <see cref="ReplicationConnection.IdentifySystem"/>.
     /// </summary>
-    public class NpgsqlReplicationSystemIdentification
+    public class ReplicationSystemIdentification
     {
-
-        internal NpgsqlReplicationSystemIdentification(string systemId, uint timeline, NpgsqlLogSequenceNumber xLogPos, string dbName)
+        internal ReplicationSystemIdentification(string systemId, uint timeline, NpgsqlLogSequenceNumber xLogPos, string dbName)
         {
             SystemId = systemId;
             Timeline = timeline;

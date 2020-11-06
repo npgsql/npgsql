@@ -12,9 +12,9 @@ namespace Npgsql.Replication.PgOutput
 {
     class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessage>
     {
-        readonly NpgsqlLogicalReplicationConnection _connection;
-        readonly NpgsqlPgOutputReplicationSlot _slot;
-        readonly NpgsqlPgOutputReplicationOptions _options;
+        readonly LogicalReplicationConnection _connection;
+        readonly PgOutputReplicationSlot _slot;
+        readonly PgOutputReplicationOptions _options;
         readonly CancellationToken _baseCancellationToken;
         readonly NpgsqlLogSequenceNumber? _walLocation;
 
@@ -40,9 +40,9 @@ namespace Npgsql.Replication.PgOutput
         #endregion
 
         internal PgOutputAsyncEnumerable(
-            NpgsqlLogicalReplicationConnection connection,
-            NpgsqlPgOutputReplicationSlot slot,
-            NpgsqlPgOutputReplicationOptions options,
+            LogicalReplicationConnection connection,
+            PgOutputReplicationSlot slot,
+            PgOutputReplicationOptions options,
             CancellationToken cancellationToken,
             NpgsqlLogSequenceNumber? walLocation = null)
         {

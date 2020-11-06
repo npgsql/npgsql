@@ -1260,8 +1260,8 @@ namespace Npgsql
         /// This property and its corresponding enum are intentionally kept internal as they
         /// should not be set by users or even be visible in their connection strings.
         /// Replication connections are a special kind of connection that is encapsulated in
-        /// <see cref="NpgsqlPhysicalReplicationConnection"/>
-        /// and <see cref="NpgsqlLogicalReplicationConnection"/>.
+        /// <see cref="PhysicalReplicationConnection"/>
+        /// and <see cref="LogicalReplicationConnection"/>.
         /// </remarks>
 
         [NpgsqlConnectionStringProperty]
@@ -1731,8 +1731,8 @@ namespace Npgsql
     /// This enum and its corresponding property are intentionally kept internal as they
     /// should not be set by users or even be visible in their connection strings.
     /// Replication connections are a special kind of connection that is encapsulated in
-    /// <see cref="NpgsqlPhysicalReplicationConnection"/>
-    /// and <see cref="NpgsqlLogicalReplicationConnection"/>.
+    /// <see cref="PhysicalReplicationConnection"/>
+    /// and <see cref="LogicalReplicationConnection"/>.
     /// </remarks>
     enum ReplicationMode
     {

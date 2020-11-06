@@ -10,7 +10,7 @@ namespace Npgsql.Replication.PgOutput.Messages
     /// See https://www.postgresql.org/docs/current/protocol-logicalrep-message-formats.html for details about the
     /// protocol.
     /// </remarks>
-    public abstract class PgOutputReplicationMessage : NpgsqlReplicationMessage
+    public abstract class PgOutputReplicationMessage : ReplicationMessage
     {
     }
 }

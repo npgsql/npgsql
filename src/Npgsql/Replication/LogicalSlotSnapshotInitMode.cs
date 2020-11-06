@@ -1,11 +1,9 @@
-﻿using JetBrains.Annotations;
-
-namespace Npgsql.Replication
+﻿namespace Npgsql.Replication
 {
     /// <summary>
     /// Decides what to do with the snapshot created during logical slot initialization.
     /// </summary>
-    public enum NpgsqlLogicalSlotSnapshotInitMode
+    public enum LogicalSlotSnapshotInitMode
     {
         /// <summary>
         /// Export the snapshot for use in other sessions. This is the default.

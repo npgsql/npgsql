@@ -4,7 +4,6 @@ using System.Threading.Tasks;
 using NUnit.Framework;
 using Npgsql.Replication;
 using Npgsql.Replication.Internal;
-using Npgsql.Replication.Logical;
 using NpgsqlTypes;
 
 namespace Npgsql.Tests.Replication
@@ -17,7 +16,7 @@ namespace Npgsql.Tests.Replication
     /// for the individual logical replication tests, they are in fact not, because
     /// the methods they test are extension points for plugin developers.
     /// </remarks>
-    public class CommonLogicalReplicationTests : SafeReplicationTestBase<NpgsqlLogicalReplicationConnection>
+    public class CommonLogicalReplicationTests : SafeReplicationTestBase<LogicalReplicationConnection>
     {
         // We use the test_decoding logical decoding plugin for the common
         // logical replication tests because it has existed since the
@@ -62,15 +61,15 @@ namespace Npgsql.Tests.Replication
                     await using var c = await OpenConnectionAsync();
                     TestUtil.MinimumPgVersion(c, "10.0", "The *_SNAPSHOT syntax was introduced in PostgreSQL 10");
                     await using var rc = await OpenReplicationConnectionAsync();
-                    var options = await rc.CreateLogicalReplicationSlot(slotName, OutputPlugin, slotSnapshotInitMode: NpgsqlLogicalSlotSnapshotInitMode.NoExport);
+                    var options = await rc.CreateLogicalReplicationSlot(slotName, OutputPlugin, slotSnapshotInitMode: LogicalSlotSnapshotInitMode.NoExport);
                     Assert.That(options.SnapshotName, Is.Null);
                 });
 
         [Test(Description = "Tests whether we throw a helpful exception about the unsupported *_SNAPSHOT syntax on old servers.")]
-        [TestCase(NpgsqlLogicalSlotSnapshotInitMode.Export)]
-        [TestCase(NpgsqlLogicalSlotSnapshotInitMode.NoExport)]
-        [TestCase(NpgsqlLogicalSlotSnapshotInitMode.Use)]
-        public Task CreateReplicationSlotForPluginExportSnapshotSyntaxThrows(NpgsqlLogicalSlotSnapshotInitMode mode)
+        [TestCase(LogicalSlotSnapshotInitMode.Export)]
+        [TestCase(LogicalSlotSnapshotInitMode.NoExport)]
+        [TestCase(LogicalSlotSnapshotInitMode.Use)]
+        public Task CreateReplicationSlotForPluginExportSnapshotSyntaxThrows(LogicalSlotSnapshotInitMode mode)
             => SafeReplicationTest(
                 async (slotName, _) =>
                 {
@@ -101,7 +100,7 @@ namespace Npgsql.Tests.Replication
                         transaction.Commit();
                     }
                     await using var rc = await OpenReplicationConnectionAsync();
-                    var options = await rc.CreateLogicalReplicationSlot(slotName, OutputPlugin, slotSnapshotInitMode: NpgsqlLogicalSlotSnapshotInitMode.Export);
+                    var options = await rc.CreateLogicalReplicationSlot(slotName, OutputPlugin, slotSnapshotInitMode: LogicalSlotSnapshotInitMode.Export);
                     await using (var transaction = c.BeginTransaction())
                     {
                         await c.ExecuteNonQueryAsync($"INSERT INTO {tableName} (value) VALUES('After snapshot')");
@@ -130,7 +129,7 @@ namespace Npgsql.Tests.Replication
                     Assert.That(async () =>
                     {
                         await using var rc = await OpenReplicationConnectionAsync();
-                        await rc.CreateLogicalReplicationSlot(slotName, OutputPlugin, slotSnapshotInitMode: NpgsqlLogicalSlotSnapshotInitMode.Use);
+                        await rc.CreateLogicalReplicationSlot(slotName, OutputPlugin, slotSnapshotInitMode: LogicalSlotSnapshotInitMode.Use);
                     }, Throws.InstanceOf<PostgresException>()
                         .With.Property("SqlState")
                         .EqualTo("XX000")
@@ -184,12 +183,12 @@ namespace Npgsql.Tests.Replication
                     Assert.That(async () =>
                     {
                         await using var rc = await OpenReplicationConnectionAsync();
-                        await rc.CreateLogicalReplicationSlot(slotName, OutputPlugin, slotSnapshotInitMode: (NpgsqlLogicalSlotSnapshotInitMode)42);
+                        await rc.CreateLogicalReplicationSlot(slotName, OutputPlugin, slotSnapshotInitMode: (LogicalSlotSnapshotInitMode)42);
                     }, Throws.InstanceOf<ArgumentOutOfRangeException>()
                         .With.Property("ParamName")
                         .EqualTo("slotSnapshotInitMode")
                         .And.Property("ActualValue")
-                        .EqualTo((NpgsqlLogicalSlotSnapshotInitMode)42));
+                        .EqualTo((LogicalSlotSnapshotInitMode)42));
                     return Task.CompletedTask;
                 });
 
@@ -205,7 +204,7 @@ namespace Npgsql.Tests.Replication
                         await rc.CreateLogicalReplicationSlot(slotName, OutputPlugin);
                     }, Throws.InstanceOf<ObjectDisposedException>()
                         .With.Property(nameof(ObjectDisposedException.ObjectName))
-                        .EqualTo(nameof(NpgsqlLogicalReplicationConnection)));
+                        .EqualTo(nameof(LogicalReplicationConnection)));
                     return Task.CompletedTask;
                 });
 

@@ -18,16 +18,16 @@ namespace Npgsql.Replication
 {
     /// <summary>
     /// Defines the core behavior of replication connections and provides the base class for
-    /// <see cref="NpgsqlLogicalReplicationConnection"/> and
-    /// <see cref="NpgsqlPhysicalReplicationConnection"/>.
+    /// <see cref="LogicalReplicationConnection"/> and
+    /// <see cref="PhysicalReplicationConnection"/>.
     /// </summary>
-    public abstract class NpgsqlReplicationConnection : IAsyncDisposable
+    public abstract class ReplicationConnection : IAsyncDisposable
     {
         #region Fields
 
         static readonly Version FirstVersionWithoutDropSlotDoubleCommandCompleteMessage = new Version(13, 0);
         static readonly Version FirstVersionWithTemporarySlots = new Version(10, 0);
-        static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlReplicationConnection));
+        static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(ReplicationConnection));
         readonly Stopwatch _cancelTimer = new Stopwatch();
         readonly NpgsqlConnection _npgsqlConnection;
         readonly SemaphoreSlim _feedbackSemaphore = new SemaphoreSlim(1, 1);
@@ -48,11 +48,11 @@ namespace Npgsql.Replication
         long _lastFlushedLsn;
         long _lastAppliedLsn;
 
-        readonly NpgsqlXLogDataMessage _cachedXLogDataMessage = new NpgsqlXLogDataMessage();
+        readonly XLogDataMessage _cachedXLogDataMessage = new XLogDataMessage();
 
         #endregion Fields
 
-        private protected NpgsqlReplicationConnection()
+        private protected ReplicationConnection()
         {
             _npgsqlConnection = new NpgsqlConnection();
             _requestFeedbackInterval = new TimeSpan(_walReceiverTimeout.Ticks / 2);
@@ -198,7 +198,7 @@ namespace Npgsql.Replication
 
         /// <summary>
         /// Opens a database replication connection with the property settings specified by the
-        /// <see cref="NpgsqlReplicationConnection.ConnectionString">ConnectionString</see>.
+        /// <see cref="ReplicationConnection.ConnectionString">ConnectionString</see>.
         /// </summary>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.
         /// The default value is <see cref="CancellationToken.None"/>.</param>
@@ -261,18 +261,18 @@ namespace Npgsql.Replication
         /// <param name="cancellationToken">The token to monitor for cancellation requests.
         /// The default value is <see cref="CancellationToken.None"/>.</param>
         /// <returns>
-        /// A <see cref="NpgsqlReplicationSystemIdentification"/> containing information
+        /// A <see cref="ReplicationSystemIdentification"/> containing information
         /// about the system we are connected to.
         /// </returns>
-        public Task<NpgsqlReplicationSystemIdentification> IdentifySystem(CancellationToken cancellationToken = default)
+        public Task<ReplicationSystemIdentification> IdentifySystem(CancellationToken cancellationToken = default)
         {
             using (NoSynchronizationContextScope.Enter())
                 return IdentifySystemInternal();
 
-            async Task<NpgsqlReplicationSystemIdentification> IdentifySystemInternal()
+            async Task<ReplicationSystemIdentification> IdentifySystemInternal()
             {
                 var row = await ReadSingleRow("IDENTIFY_SYSTEM", cancellationToken);
-                return new NpgsqlReplicationSystemIdentification(
+                return new ReplicationSystemIdentification(
                     (string)row[0], (uint)row[1], NpgsqlLogSequenceNumber.Parse((string)row[2]), (string)row[3]);
             }
         }
@@ -306,19 +306,19 @@ namespace Npgsql.Replication
         /// <param name="cancellationToken">The token to monitor for cancellation requests.
         /// The default value is <see cref="CancellationToken.None"/>.</param>
         /// <returns>The timeline history file for timeline tli</returns>
-        public Task<NpgsqlTimelineHistoryFile> TimelineHistory(uint tli, CancellationToken cancellationToken = default)
+        public Task<TimelineHistoryFile> TimelineHistory(uint tli, CancellationToken cancellationToken = default)
         {
             using (NoSynchronizationContextScope.Enter())
                 return TimelineHistoryInternal();
 
-            async Task<NpgsqlTimelineHistoryFile> TimelineHistoryInternal()
+            async Task<TimelineHistoryFile> TimelineHistoryInternal()
             {
                 var result = await ReadSingleRow($"TIMELINE_HISTORY {tli:D}", cancellationToken);
-                return new NpgsqlTimelineHistoryFile((string)result[0], (byte[])result[1]);
+                return new TimelineHistoryFile((string)result[0], (byte[])result[1]);
             }
         }
 
-        internal async Task<NpgsqlReplicationSlotOptions> CreateReplicationSlot(
+        internal async Task<ReplicationSlotOptions> CreateReplicationSlot(
             string command, bool temporarySlot, CancellationToken cancellationToken = default)
         {
             using var executeState = EnsureAndSetState(ReplicationConnectionState.Idle, ReplicationConnectionState.Executing);
@@ -378,7 +378,7 @@ namespace Npgsql.Replication
                 Expect<CommandCompleteMessage>(await connector.ReadMessage(true, cancellationToken), connector);
                 Expect<ReadyForQueryMessage>(await connector.ReadMessage(true, cancellationToken), connector);
 
-                return new NpgsqlReplicationSlotOptions(slotNameResult, consistentPoint, snapshotName);
+                return new ReplicationSlotOptions(slotNameResult, consistentPoint, snapshotName);
             }
             catch (PostgresException e)
             {
@@ -395,7 +395,7 @@ namespace Npgsql.Replication
             }
         }
 
-        internal async IAsyncEnumerable<NpgsqlXLogDataMessage> StartReplicationInternal(
+        internal async IAsyncEnumerable<XLogDataMessage> StartReplicationInternal(
             string command,
             bool bypassingStream,
             [EnumeratorCancellation] CancellationToken cancellationToken)
@@ -407,7 +407,7 @@ namespace Npgsql.Replication
 #if !NETSTANDARD2_0
             await
 #endif
-            using var registration = cancellationToken.Register(c => ((NpgsqlReplicationConnection)c!).Cancel(), this);
+            using var registration = cancellationToken.Register(c => ((ReplicationConnection)c!).Cancel(), this);
             await connector.WriteQuery(command, true, cancellationToken);
             await connector.Flush(true, cancellationToken);
 
@@ -620,7 +620,7 @@ namespace Npgsql.Replication
                 await
 #endif
                 using var registration = cancellationToken.CanBeCanceled
-                    ? cancellationToken.Register(c => ((NpgsqlReplicationConnection)c!).Cancel(), this)
+                    ? cancellationToken.Register(c => ((ReplicationConnection)c!).Cancel(), this)
                     : default;
                 var command = "DROP_REPLICATION_SLOT " + slotName;
                 if (wait == true)
@@ -650,7 +650,7 @@ namespace Npgsql.Replication
 #if !NETSTANDARD2_0
             await
 #endif
-            using var registration = cancellationToken.CanBeCanceled ? cancellationToken.Register(c => ((NpgsqlReplicationConnection)c!).Cancel(), this) : default;
+            using var registration = cancellationToken.CanBeCanceled ? cancellationToken.Register(c => ((ReplicationConnection)c!).Cancel(), this) : default;
             await connector.WriteQuery(command, true, cancellationToken);
             await connector.Flush(true, cancellationToken);
 
@@ -857,10 +857,10 @@ namespace Npgsql.Replication
 
         struct StateResetter : IDisposable
         {
-            readonly NpgsqlReplicationConnection _connection;
+            readonly ReplicationConnection _connection;
             ReplicationConnectionState _resetState;
 
-            internal StateResetter(NpgsqlReplicationConnection connection, ReplicationConnectionState resetState)
+            internal StateResetter(ReplicationConnection connection, ReplicationConnectionState resetState)
             {
                 _connection = connection;
                 _resetState = resetState;

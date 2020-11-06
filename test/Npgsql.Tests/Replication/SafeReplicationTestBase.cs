@@ -9,7 +9,7 @@ using Npgsql.Replication;
 namespace Npgsql.Tests.Replication
 {
     public abstract class SafeReplicationTestBase<TConnection> : TestBase
-        where TConnection : NpgsqlReplicationConnection, new()
+        where TConnection : ReplicationConnection, new()
     {
         protected abstract string Postfix { get; }
 

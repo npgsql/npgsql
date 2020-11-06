@@ -3,9 +3,9 @@
     /// <summary>
     /// Contains information about a newly-created replication slot.
     /// </summary>
-    public abstract class NpgsqlReplicationSlot
+    public abstract class ReplicationSlot
     {
-        internal NpgsqlReplicationSlot(string name)
+        internal ReplicationSlot(string name)
         {
             Name = name;
         }
