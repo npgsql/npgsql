@@ -1,6 +1,6 @@
 ﻿using JetBrains.Annotations;
 
-namespace Npgsql.Replication.Logical
+namespace Npgsql.Replication
 {
     /// <summary>
     /// Decides what to do with the snapshot created during logical slot initialization.

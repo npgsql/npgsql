@@ -1,10 +1,7 @@
 ﻿using System.Collections.Generic;
-using System.IO;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using NpgsqlTypes;
-using Npgsql.Replication.Logical;
 using Npgsql.Replication.Internal;
 using Npgsql.Replication.TestDecoding;
 

@@ -1,15 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
+﻿using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using NpgsqlTypes;
-using Npgsql.Replication.Logical;
 using Npgsql.Replication.Internal;
 using Npgsql.Replication.PgOutput;
 using Npgsql.Replication.PgOutput.Messages;
-using Npgsql.TypeHandlers.DateTimeHandlers;
 
 // ReSharper disable once CheckNamespace
 namespace Npgsql.Replication
