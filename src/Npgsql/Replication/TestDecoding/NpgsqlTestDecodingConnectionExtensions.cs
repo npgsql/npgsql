@@ -96,13 +96,11 @@ namespace Npgsql.Replication
             var stream = connection.StartReplicationForPlugin(slot, cancellationToken, walLocation, options.GetOptionPairs());
 
             await foreach (var msg in stream.WithCancellation(cancellationToken))
-                yield return new NpgsqlTestDecodingData(msg.WalStart, msg.WalEnd, msg.ServerClock, await GetString(msg.Data));
-
-            async Task<string> GetString(Stream xlogDataStream)
             {
                 var memoryStream = new MemoryStream();
-                await xlogDataStream.CopyToAsync(memoryStream, 4096, CancellationToken.None);
-                return connection.Encoding!.GetString(memoryStream.ToArray());
+                await msg.Data.CopyToAsync(memoryStream, 4096, CancellationToken.None);
+                var data = connection.Encoding!.GetString(memoryStream.ToArray());
+                yield return new NpgsqlTestDecodingData(msg.WalStart, msg.WalEnd, msg.ServerClock, data);
             }
         }
     }
