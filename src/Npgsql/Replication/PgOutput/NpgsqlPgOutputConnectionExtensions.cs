@@ -81,8 +81,8 @@ namespace Npgsql.Replication
         /// <param name="cancellationToken">The token to monitor for stopping the replication.</param>
         /// <param name="walLocation">The WAL location to begin streaming at.</param>
         /// <returns>A <see cref="Task{T}"/> representing an <see cref="IAsyncEnumerable{T}"/> that
-        /// can be used to stream WAL entries in form of <see cref="LogicalReplicationProtocolMessage"/> instances.</returns>
-        public static IAsyncEnumerable<LogicalReplicationProtocolMessage> StartReplication(
+        /// can be used to stream WAL entries in form of <see cref="PgOutputReplicationMessage"/> instances.</returns>
+        public static IAsyncEnumerable<PgOutputReplicationMessage> StartReplication(
             this NpgsqlLogicalReplicationConnection connection,
             NpgsqlPgOutputReplicationSlot slot,
             NpgsqlPgOutputReplicationOptions options,

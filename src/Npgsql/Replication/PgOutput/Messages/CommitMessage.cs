@@ -6,7 +6,7 @@ namespace Npgsql.Replication.PgOutput.Messages
     /// <summary>
     /// Logical Replication Protocol commit message
     /// </summary>
-    public sealed class CommitMessage : LogicalReplicationProtocolMessage
+    public sealed class CommitMessage : PgOutputReplicationMessage
     {
         /// <summary>
         /// Flags; currently unused (must be 0).

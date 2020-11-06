@@ -48,7 +48,7 @@ namespace Npgsql.Replication
         long _lastFlushedLsn;
         long _lastAppliedLsn;
 
-        NpgsqlXLogDataMessage _cachedXLogDataMessage = new NpgsqlXLogDataMessage();
+        readonly NpgsqlXLogDataMessage _cachedXLogDataMessage = new NpgsqlXLogDataMessage();
 
         #endregion Fields
 

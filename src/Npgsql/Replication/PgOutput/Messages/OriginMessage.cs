@@ -6,7 +6,7 @@ namespace Npgsql.Replication.PgOutput.Messages
     /// <summary>
     /// Logical Replication Protocol origin message
     /// </summary>
-    public sealed class OriginMessage : LogicalReplicationProtocolMessage
+    public sealed class OriginMessage : PgOutputReplicationMessage
     {
         /// <summary>
         /// The LSN of the commit on the origin server.

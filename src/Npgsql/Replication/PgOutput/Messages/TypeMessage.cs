@@ -6,7 +6,7 @@ namespace Npgsql.Replication.PgOutput.Messages
     /// <summary>
     /// Logical Replication Protocol type message
     /// </summary>
-    public sealed class TypeMessage : LogicalReplicationProtocolMessage
+    public sealed class TypeMessage : PgOutputReplicationMessage
     {
         /// <summary>
         /// ID of the data type.

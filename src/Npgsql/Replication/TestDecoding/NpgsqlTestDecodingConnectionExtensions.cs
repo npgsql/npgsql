@@ -81,27 +81,11 @@ namespace Npgsql.Replication
         /// <returns>A <see cref="Task{T}"/> representing an <see cref="IAsyncEnumerable{T}"/> that
         /// can be used to stream WAL entries in form of <see cref="NpgsqlTestDecodingData"/> instances.</returns>
         public static IAsyncEnumerable<NpgsqlTestDecodingData> StartReplication(
-            this NpgsqlLogicalReplicationConnection connection, NpgsqlTestDecodingReplicationSlot slot, CancellationToken cancellationToken,
-            NpgsqlTestDecodingPluginOptions options = default, NpgsqlLogSequenceNumber? walLocation = null)
-        {
-            using (NoSynchronizationContextScope.Enter())
-                return StartReplicationInternal(connection, slot, cancellationToken, options, walLocation);
-        }
-
-        static async IAsyncEnumerable<NpgsqlTestDecodingData> StartReplicationInternal(
-            NpgsqlLogicalReplicationConnection connection, NpgsqlTestDecodingReplicationSlot slot,
-            [EnumeratorCancellation] CancellationToken cancellationToken, NpgsqlTestDecodingPluginOptions options = default,
+            this NpgsqlLogicalReplicationConnection connection,
+            NpgsqlTestDecodingReplicationSlot slot,
+            CancellationToken cancellationToken,
+            NpgsqlTestDecodingOptions options = default,
             NpgsqlLogSequenceNumber? walLocation = null)
-        {
-            var stream = connection.StartLogicalReplication(slot, cancellationToken, walLocation, options.GetOptionPairs());
-
-            await foreach (var msg in stream.WithCancellation(cancellationToken))
-            {
-                var memoryStream = new MemoryStream();
-                await msg.Data.CopyToAsync(memoryStream, 4096, CancellationToken.None);
-                var data = connection.Encoding!.GetString(memoryStream.ToArray());
-                yield return new NpgsqlTestDecodingData(msg.WalStart, msg.WalEnd, msg.ServerClock, data);
-            }
-        }
+            => new TestDecodingAsyncEnumerable(connection, slot, options, cancellationToken, walLocation);
     }
 }

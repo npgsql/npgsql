@@ -6,7 +6,7 @@ namespace Npgsql.Replication.PgOutput.Messages
     /// <summary>
     /// Logical Replication Protocol begin message
     /// </summary>
-    public sealed class BeginMessage : LogicalReplicationProtocolMessage
+    public sealed class BeginMessage : PgOutputReplicationMessage
     {
         /// <summary>
         /// The final LSN of the transaction.

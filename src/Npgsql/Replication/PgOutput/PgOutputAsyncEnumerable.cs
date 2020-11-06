@@ -10,7 +10,7 @@ using NpgsqlTypes;
 
 namespace Npgsql.Replication.PgOutput
 {
-    class PgOutputAsyncEnumerable : IAsyncEnumerable<LogicalReplicationProtocolMessage>
+    class PgOutputAsyncEnumerable : IAsyncEnumerable<PgOutputReplicationMessage>
     {
         readonly NpgsqlLogicalReplicationConnection _connection;
         readonly NpgsqlPgOutputReplicationSlot _slot;
@@ -53,7 +53,7 @@ namespace Npgsql.Replication.PgOutput
             _walLocation = walLocation;
         }
 
-        public IAsyncEnumerator<LogicalReplicationProtocolMessage> GetAsyncEnumerator(
+        public IAsyncEnumerator<PgOutputReplicationMessage> GetAsyncEnumerator(
             CancellationToken cancellationToken = new CancellationToken())
         {
             using (NoSynchronizationContextScope.Enter())
@@ -61,7 +61,7 @@ namespace Npgsql.Replication.PgOutput
                     CancellationTokenSource.CreateLinkedTokenSource(_baseCancellationToken, cancellationToken).Token);
         }
 
-        async IAsyncEnumerator<LogicalReplicationProtocolMessage> StartReplicationInternal(CancellationToken cancellationToken)
+        async IAsyncEnumerator<PgOutputReplicationMessage> StartReplicationInternal(CancellationToken cancellationToken)
         {
             var stream = _connection.StartLogicalReplication(
                 _slot, cancellationToken, _walLocation, _options.GetOptionPairs(), bypassingStream: true);

@@ -6,7 +6,7 @@ namespace Npgsql.Replication.PgOutput.Messages
     /// <summary>
     /// Abstract base class for Logical Replication Protocol delete message types.
     /// </summary>
-    public abstract class DeleteMessage : LogicalReplicationProtocolMessage
+    public abstract class DeleteMessage : PgOutputReplicationMessage
     {
         /// <summary>
         /// ID of the relation corresponding to the ID in the relation message.

@@ -1,5 +1,4 @@
-﻿using JetBrains.Annotations;
-using NpgsqlTypes;
+﻿using NpgsqlTypes;
 using System;
 
 namespace Npgsql.Replication.TestDecoding
@@ -10,15 +9,19 @@ namespace Npgsql.Replication.TestDecoding
     /// </summary>
     public sealed class NpgsqlTestDecodingData : NpgsqlReplicationMessage
     {
-        internal NpgsqlTestDecodingData(NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, string data)
-        {
-            Populate(walStart, walEnd, serverClock);
-            Data = data;
-        }
-
         /// <summary>
         /// Decoded text representation of the operation performed in this WAL entry
         /// </summary>
-        public string Data { get; }
+        public string Data { get; private set; } = default!;
+
+        internal NpgsqlTestDecodingData Populate(
+            NpgsqlLogSequenceNumber walStart, NpgsqlLogSequenceNumber walEnd, DateTime serverClock, string data)
+        {
+            base.Populate(walStart, walEnd, serverClock);
+
+            Data = data;
+
+            return this;
+        }
     }
 }

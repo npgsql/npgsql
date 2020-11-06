@@ -445,8 +445,8 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
 
 
         static async ValueTask<TExpected> NextMessage<TExpected>(
-            IAsyncEnumerator<LogicalReplicationProtocolMessage> enumerator)
-            where TExpected : LogicalReplicationProtocolMessage
+            IAsyncEnumerator<PgOutputReplicationMessage> enumerator)
+            where TExpected : PgOutputReplicationMessage
         {
             Assert.True(await enumerator.MoveNextAsync());
             Assert.That(enumerator.Current, Is.TypeOf<TExpected>());

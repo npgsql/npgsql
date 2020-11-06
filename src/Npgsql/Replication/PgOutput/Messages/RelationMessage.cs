@@ -7,7 +7,7 @@ namespace Npgsql.Replication.PgOutput.Messages
     /// <summary>
     /// Logical Replication Protocol relation message
     /// </summary>
-    public sealed class RelationMessage : LogicalReplicationProtocolMessage
+    public sealed class RelationMessage : PgOutputReplicationMessage
     {
         /// <summary>
         /// ID of the relation.

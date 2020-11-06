@@ -6,7 +6,7 @@ namespace Npgsql.Replication.PgOutput.Messages
     /// <summary>
     /// Logical Replication Protocol truncate message
     /// </summary>
-    public sealed class TruncateMessage : LogicalReplicationProtocolMessage
+    public sealed class TruncateMessage : PgOutputReplicationMessage
     {
         /// <summary>
         /// Option flags for TRUNCATE
