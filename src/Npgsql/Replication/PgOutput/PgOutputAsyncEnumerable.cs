@@ -63,14 +63,10 @@ namespace Npgsql.Replication.PgOutput
 
         async IAsyncEnumerator<LogicalReplicationProtocolMessage> StartReplicationInternal(CancellationToken cancellationToken)
         {
-            var stream = _connection.StartReplicationInternal(commandBuilder =>
-            {
-                commandBuilder.Append("SLOT ").Append(_slot.SlotName).Append(' ');
-                NpgsqlLogicalReplicationConnectionExtensions.AppendCommon(
-                    commandBuilder, _walLocation, _options.GetOptionPairs(), _slot.ConsistentPoint);
-            }, bypassingStream: true, cancellationToken);
-
+            var stream = _connection.StartLogicalReplication(
+                _slot, cancellationToken, _walLocation, _options.GetOptionPairs(), bypassingStream: true);
             var buf = _connection.Connector!.ReadBuffer;
+
             await foreach (var xLogData in stream.WithCancellation(cancellationToken))
             {
                 await buf.EnsureAsync(1, cancellationToken);

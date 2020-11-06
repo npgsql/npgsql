@@ -1,6 +1,7 @@
 ﻿using NpgsqlTypes;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -33,7 +34,7 @@ namespace Npgsql.Replication.Internal
         /// <a href="https://www.postgresql.org/docs/current/logicaldecoding-output-plugin.html">
         /// https://www.postgresql.org/docs/current/logicaldecoding-output-plugin.html</a>).
         /// </param>
-        /// <param name="temporarySlot"><see langword="true"/> if this replication slot shall be temporary one; otherwise
+        /// <param name="isTemporary"><see langword="true"/> if this replication slot shall be temporary one; otherwise
         /// <see langword="false"/>. Temporary slots are not saved to disk and are automatically dropped on error or
         /// when the session has finished.</param>
         /// <param name="slotSnapshotInitMode">A <see cref="NpgsqlLogicalSlotSnapshotInitMode"/> to specify what to do with the
@@ -47,41 +48,33 @@ namespace Npgsql.Replication.Internal
         /// The default value is <see cref="CancellationToken.None"/>.</param>
         /// <returns>A <see cref="Task{T}"/> representing a <see cref="NpgsqlReplicationSlotOptions"/> class that
         /// can be used to initialize instances of <see cref="NpgsqlReplicationSlot"/> subclasses.</returns>
-        public static Task<NpgsqlReplicationSlotOptions> CreateReplicationSlotForPlugin(
+        public static Task<NpgsqlReplicationSlotOptions> CreateLogicalReplicationSlot(
             this NpgsqlLogicalReplicationConnection connection,
             string slotName,
             string outputPlugin,
-            bool temporarySlot = false,
+            bool isTemporary = false,
             NpgsqlLogicalSlotSnapshotInitMode? slotSnapshotInitMode = null,
             CancellationToken cancellationToken = default)
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled<NpgsqlReplicationSlotOptions>(cancellationToken);
             using var _ = NoSynchronizationContextScope.Enter();
-            return CreateReplicationSlotForPluginInternal(
-                connection, slotName, outputPlugin, temporarySlot, slotSnapshotInitMode, cancellationToken);
-        }
+            return CreateLogicalReplicationSlotCore();
 
-        static async Task<NpgsqlReplicationSlotOptions> CreateReplicationSlotForPluginInternal(
-            this NpgsqlLogicalReplicationConnection connection,
-            string slotName,
-            string outputPlugin,
-            bool temporarySlot,
-            NpgsqlLogicalSlotSnapshotInitMode? slotSnapshotInitMode,
-            CancellationToken cancellationToken = default)
-        {
-            if (slotName is null)
-                throw new ArgumentNullException(nameof(slotName));
-            if (outputPlugin is null)
-                throw new ArgumentNullException(nameof(outputPlugin));
-
-            try
+            Task<NpgsqlReplicationSlotOptions> CreateLogicalReplicationSlotCore()
             {
-                return await connection.CreateReplicationSlotInternal(slotName, temporarySlot, commandBuilder =>
-                {
-                    commandBuilder.Append(" LOGICAL ").Append(outputPlugin);
+                if (slotName is null)
+                    throw new ArgumentNullException(nameof(slotName));
+                if (outputPlugin is null)
+                    throw new ArgumentNullException(nameof(outputPlugin));
 
-                    commandBuilder.Append(slotSnapshotInitMode switch
+                cancellationToken.ThrowIfCancellationRequested();
+
+                try
+                {
+                    var builder = new StringBuilder("CREATE_REPLICATION_SLOT ").Append(slotName);
+                    if (isTemporary)
+                        builder.Append(" TEMPORARY");
+                    builder.Append(" LOGICAL ").Append(outputPlugin);
+                    builder.Append(slotSnapshotInitMode switch
                     {
                         // EXPORT_SNAPSHOT is the default since it has been introduced.
                         // We don't set it unless it is explicitly requested so that older backends can digest the query too.
@@ -94,16 +87,17 @@ namespace Npgsql.Replication.Internal
                             $"Unexpected value {slotSnapshotInitMode} for argument {nameof(slotSnapshotInitMode)}.")
                     });
 
-                }, cancellationToken);
-            }
-            catch (PostgresException e) when (connection.PostgreSqlVersion < FirstVersionWithSlotSnapshotInitMode &&
-                                              e.SqlState == PostgresErrorCodes.SyntaxError &&
-                                              slotSnapshotInitMode != null)
-            {
-                throw new NotSupportedException(
-                    "The EXPORT_SNAPSHOT, USE_SNAPSHOT and NOEXPORT_SNAPSHOT syntax was introduced in PostgreSQL " +
-                    $"{FirstVersionWithSlotSnapshotInitMode.ToString(1)}. Using PostgreSQL version " +
-                    $"{connection.PostgreSqlVersion.ToString(3)} you have to omit the {nameof(slotSnapshotInitMode)} argument.", e);
+                    return connection.CreateReplicationSlot(builder.ToString(), isTemporary, cancellationToken);
+                }
+                catch (PostgresException e) when (connection.PostgreSqlVersion < FirstVersionWithSlotSnapshotInitMode &&
+                                                  e.SqlState == PostgresErrorCodes.SyntaxError &&
+                                                  slotSnapshotInitMode != null)
+                {
+                    throw new NotSupportedException(
+                        "The EXPORT_SNAPSHOT, USE_SNAPSHOT and NOEXPORT_SNAPSHOT syntax was introduced in PostgreSQL " +
+                        $"{FirstVersionWithSlotSnapshotInitMode.ToString(1)}. Using PostgreSQL version " +
+                        $"{connection.PostgreSqlVersion.ToString(3)} you have to omit the {nameof(slotSnapshotInitMode)} argument.", e);
+                }
             }
         }
 
@@ -119,48 +113,33 @@ namespace Npgsql.Replication.Internal
         /// <param name="cancellationToken">The token to monitor for stopping the replication.</param>
         /// <param name="walLocation">The WAL location to begin streaming at.</param>
         /// <param name="options">The collection of options passed to the slot's logical decoding plugin.</param>
+        /// <param name="bypassingStream">
+        /// Whether the plugin will be bypassing <see cref="NpgsqlXLogDataMessage.Data" /> and reading directly from the buffer.
+        /// </param>
         /// <returns>A <see cref="Task{T}"/> representing an <see cref="IAsyncEnumerable{T}"/> that
         /// can be used to stream WAL entries in form of <see cref="NpgsqlXLogDataMessage"/> instances.</returns>
-        public static IAsyncEnumerable<NpgsqlXLogDataMessage> StartReplicationForPlugin(
-            this NpgsqlLogicalReplicationConnection connection, NpgsqlLogicalReplicationSlot slot, CancellationToken cancellationToken,
-            NpgsqlLogSequenceNumber? walLocation = null, IEnumerable<KeyValuePair<string, string?>>? options = null)
+        public static IAsyncEnumerable<NpgsqlXLogDataMessage> StartLogicalReplication(
+            this NpgsqlLogicalReplicationConnection connection,
+            NpgsqlLogicalReplicationSlot slot,
+            CancellationToken cancellationToken,
+            NpgsqlLogSequenceNumber? walLocation = null,
+            IEnumerable<KeyValuePair<string, string?>>? options = null,
+            bool bypassingStream = false)
         {
-            using var _ = NoSynchronizationContextScope.Enter();
-            return connection.StartReplicationInternal(commandBuilder =>
-            {
-                commandBuilder.Append("SLOT ").Append(slot.SlotName).Append(' ');
-                AppendCommon(commandBuilder, walLocation, options, slot.ConsistentPoint);
-            }, false, cancellationToken);
-        }
+            var builder = new StringBuilder("START_REPLICATION ")
+                .Append("SLOT ").Append(slot.Name)
+                .Append(" LOGICAL ")
+                .Append(walLocation ?? slot.ConsistentPoint);
 
-        internal static void AppendCommon(
-            StringBuilder commandBuilder, NpgsqlLogSequenceNumber? walLocation, IEnumerable<KeyValuePair<string, string?>>? options,
-            NpgsqlLogSequenceNumber consistentPoint)
-        {
-            commandBuilder.Append("LOGICAL ").Append(walLocation ?? consistentPoint);
-            if (options != null)
+            if (options?.Any() == true)
             {
-                using var optionsEnumerator = options.GetEnumerator();
-                if (!optionsEnumerator.MoveNext())
-                    return;
-                commandBuilder.Append(" (");
-                AppendKeyValue(commandBuilder, optionsEnumerator.Current);
-
-                while (optionsEnumerator.MoveNext())
-                {
-                    commandBuilder.Append(", ");
-                    AppendKeyValue(commandBuilder, optionsEnumerator.Current);
-                }
-                commandBuilder.Append(")");
+                builder
+                    .Append(" (")
+                    .AppendJoin(", ", options.Select(kv => @$"""{kv.Key}""{(kv.Value is null ? "" : $" '{kv.Value}'")}"))
+                    .Append(')');
             }
 
-            static void AppendKeyValue(StringBuilder sb, KeyValuePair<string, string?> kv)
-            {
-                sb.Append('"').Append(kv.Key).Append('"');
-                if (kv.Value is null)
-                    return;
-                sb.Append(" '").Append(kv.Value).Append('\'');
-            }
+            return connection.StartReplicationInternal(builder.ToString(), bypassingStream, cancellationToken);
         }
     }
 }

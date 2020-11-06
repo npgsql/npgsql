@@ -21,7 +21,7 @@ namespace Npgsql.Tests.Replication
                     var options = await rc.CreatePgOutputReplicationSlot(slotName);
 
                     using var cmd =
-                        new NpgsqlCommand($"SELECT * FROM pg_replication_slots WHERE slot_name = '{options.SlotName}'",
+                        new NpgsqlCommand($"SELECT * FROM pg_replication_slots WHERE slot_name = '{options.Name}'",
                             c);
                     await using var reader = await cmd.ExecuteReaderAsync();
 

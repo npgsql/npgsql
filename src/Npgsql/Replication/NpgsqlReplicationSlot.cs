@@ -5,14 +5,14 @@
     /// </summary>
     public abstract class NpgsqlReplicationSlot
     {
-        internal NpgsqlReplicationSlot(string slotName)
+        internal NpgsqlReplicationSlot(string name)
         {
-            SlotName = slotName;
+            Name = name;
         }
 
         /// <summary>
         /// The name of the newly-created replication slot.
         /// </summary>
-        public string SlotName { get; }
+        public string Name { get; }
     }
 }

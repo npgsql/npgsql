@@ -18,7 +18,7 @@ namespace Npgsql.Tests.Replication
 
                     await using var c = await OpenConnectionAsync();
                     using var cmd =
-                        new NpgsqlCommand($"SELECT * FROM pg_replication_slots WHERE slot_name = '{slot.SlotName}'",
+                        new NpgsqlCommand($"SELECT * FROM pg_replication_slots WHERE slot_name = '{slot.Name}'",
                             c);
                     await using var reader = await cmd.ExecuteReaderAsync();
 
@@ -39,7 +39,7 @@ namespace Npgsql.Tests.Replication
                     var info = await rc.IdentifySystem();
 
                     using var streamingCts = new CancellationTokenSource();
-                    var messages = rc.StartReplication(slot, streamingCts.Token, info.XLogPos).GetAsyncEnumerator();
+                    var messages = rc.StartReplication(slot, info.XLogPos, streamingCts.Token).GetAsyncEnumerator();
 
                     await using var c = await OpenConnectionAsync();
                     await c.ExecuteNonQueryAsync($"CREATE TABLE {tableName} (value text)");

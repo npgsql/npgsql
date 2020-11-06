@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.Globalization;
-using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -23,37 +22,39 @@ namespace Npgsql.Replication
         /// The name of the slot to create. Must be a valid replication slot name
         /// (see <a href="https://www.postgresql.org/docs/current/warm-standby.html#STREAMING-REPLICATION-SLOTS-MANIPULATION">Section 26.2.6.1</a>).
         /// </param>
-        /// <param name="temporary"><see langword="true"/> if this replication slot shall be temporary one; otherwise
+        /// <param name="isTemporary">
+        /// <see langword="true"/> if this replication slot shall be a temporary one; otherwise
         /// <see langword="false"/>. Temporary slots are not saved to disk and are automatically dropped on error or
-        /// when the session has finished.</param>
+        /// when the session has finished.
+        /// </param>
         /// <param name="reserveWal">
         /// If this is set to <see langword="true"/> this physical replication slot reserves WAL immediately. Otherwise,
         /// WAL is only reserved upon connection from a streaming replication client.
         /// </param>
+        /// <param name="cancellationToken">
+        /// The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>A <see cref="NpgsqlPhysicalReplicationSlot"/> that wraps the newly-created replication slot.
         /// </returns>
         public Task<NpgsqlPhysicalReplicationSlot> CreateReplicationSlot(
-            string slotName,
-            bool temporary = false,
-            bool reserveWal = false)
+            string slotName, bool isTemporary = false, bool reserveWal = false, CancellationToken cancellationToken = default)
         {
             using var _ = NoSynchronizationContextScope.Enter();
-            return CreatePhysicalReplicationSlot(slotName, temporary, reserveWal);
-        }
+            return CreatePhysicalReplicationSlot();
 
-        async Task<NpgsqlPhysicalReplicationSlot> CreatePhysicalReplicationSlot(
-            string slotName,
-            bool temporary,
-            bool reserveWal)
-        {
-            var slotOptions = await CreateReplicationSlotInternal(slotName, temporary, commandBuilder =>
+            async Task<NpgsqlPhysicalReplicationSlot> CreatePhysicalReplicationSlot()
             {
-                commandBuilder.Append(" PHYSICAL");
+                var builder = new StringBuilder("CREATE_REPLICATION_SLOT ").Append(slotName);
+                if (isTemporary)
+                    builder.Append(" TEMPORARY");
+                builder.Append(" PHYSICAL");
                 if (reserveWal)
-                    commandBuilder.Append(" RESERVE_WAL");
-            });
+                    builder.Append(" RESERVE_WAL");
 
-            return new NpgsqlPhysicalReplicationSlot(slotOptions.SlotName);
+                var slotOptions = await CreateReplicationSlot(builder.ToString(), isTemporary, cancellationToken);
+
+                return new NpgsqlPhysicalReplicationSlot(slotOptions.SlotName);
+            }
         }
 
         /// <summary>
@@ -66,24 +67,30 @@ namespace Npgsql.Replication
         /// will stream all the WAL on that timeline starting from the requested start point up to the point where the
         /// server switched to another timeline.
         /// </remarks>
-        /// <param name="slot">The replication slot that will be updated as replication progresses so that the server
+        /// <param name="slot">
+        /// The replication slot that will be updated as replication progresses so that the server
         /// knows which WAL segments are still needed by the standby.
         /// </param>
-        /// <param name="cancellationToken">The token to monitor for stopping the replication.</param>
         /// <param name="walLocation">The WAL location to begin streaming at.</param>
+        /// <param name="cancellationToken">The token to be used for stopping the replication.</param>
         /// <param name="timeline">Streaming starts on timeline tli.</param>
         /// <returns>A <see cref="Task{T}"/> representing an <see cref="IAsyncEnumerable{NpgsqlXLogDataMessage}"/> that
         /// can be used to stream WAL entries in form of <see cref="NpgsqlXLogDataMessage"/> instances.</returns>
-        public IAsyncEnumerable<NpgsqlXLogDataMessage> StartReplication(
-            NpgsqlPhysicalReplicationSlot slot, CancellationToken cancellationToken, NpgsqlLogSequenceNumber walLocation,
+        public IAsyncEnumerable<NpgsqlXLogDataMessage> StartReplication(NpgsqlPhysicalReplicationSlot? slot,
+            NpgsqlLogSequenceNumber walLocation,
+            CancellationToken cancellationToken,
             uint timeline = default)
         {
             using var _ = NoSynchronizationContextScope.Enter();
-            return StartReplicationInternal(commandBuilder =>
-            {
-                commandBuilder.Append("SLOT ").Append(slot.SlotName).Append(' ');
-                AppendCommon(commandBuilder, walLocation, timeline);
-            }, bypassingStream: false, cancellationToken);
+
+            var builder = new StringBuilder("START_REPLICATION");
+            if (slot != null)
+                builder.Append(" SLOT ").Append(slot.Name);
+            builder.Append(" PHYSICAL ").Append(walLocation);
+            if (timeline != default)
+                builder.Append(" TIMELINE ").Append(timeline.ToString(CultureInfo.InvariantCulture));
+
+            return StartReplicationInternal(builder.ToString(), bypassingStream: false, cancellationToken);
         }
 
         /// <summary>
@@ -97,24 +104,12 @@ namespace Npgsql.Replication
         /// server switched to another timeline.
         /// </remarks>
         /// <param name="walLocation">The WAL location to begin streaming at.</param>
-        /// <param name="cancellationToken">The token to monitor for stopping the replication.</param>
+        /// <param name="cancellationToken">The token to be used for stopping the replication.</param>
         /// <param name="timeline">Streaming starts on timeline tli.</param>
         /// <returns>A <see cref="Task{T}"/> representing an <see cref="IAsyncEnumerable{NpgsqlXLogDataMessage}"/> that
         /// can be used to stream WAL entries in form of <see cref="NpgsqlXLogDataMessage"/> instances.</returns>
         public IAsyncEnumerable<NpgsqlXLogDataMessage> StartReplication(
             NpgsqlLogSequenceNumber walLocation, CancellationToken cancellationToken, uint timeline = default)
-        {
-            using var _ = NoSynchronizationContextScope.Enter();
-            return StartReplicationInternal(commandBuilder => AppendCommon(commandBuilder, walLocation, timeline),
-                bypassingStream: false, cancellationToken);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        static void AppendCommon(StringBuilder commandBuilder, NpgsqlLogSequenceNumber walLocation, uint timeline)
-        {
-            commandBuilder.Append("PHYSICAL ").Append(walLocation);
-            if (timeline != default)
-                commandBuilder.Append(" TIMELINE ").Append(timeline.ToString(CultureInfo.InvariantCulture));
-        }
+            => StartReplication(slot: null, walLocation: walLocation, timeline: timeline, cancellationToken: cancellationToken);
     }
 }

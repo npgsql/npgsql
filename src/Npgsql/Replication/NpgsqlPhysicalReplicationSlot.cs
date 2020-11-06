@@ -7,7 +7,7 @@ namespace Npgsql.Replication
     /// </summary>
     public class NpgsqlPhysicalReplicationSlot : NpgsqlReplicationSlot
     {
-        internal NpgsqlPhysicalReplicationSlot(string slotName)
-            : base(slotName) { }
+        internal NpgsqlPhysicalReplicationSlot(string name)
+            : base(name) { }
     }
 }

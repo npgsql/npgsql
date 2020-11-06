@@ -60,9 +60,10 @@ namespace Npgsql.Replication
             NpgsqlLogicalSlotSnapshotInitMode? slotSnapshotInitMode = null,
             CancellationToken cancellationToken = default)
         {
-            // We don't enter NoSynchronizationContextScope here since we (have to) do it in CreateReplicationSlotForPlugin, because
-            // otherwise it couldn't be set for external plugins.
-            var options = await connection.CreateReplicationSlotForPlugin(slotName, "pgoutput", temporarySlot, slotSnapshotInitMode, cancellationToken);
+            // We don't enter NoSynchronizationContextScope here since we (have to) do it in CreateLogicalReplicationSlot, because
+            // otherwise it wouldn't be set for external plugins.
+            var options = await connection.CreateLogicalReplicationSlot(
+                slotName, "pgoutput", temporarySlot, slotSnapshotInitMode, cancellationToken).ConfigureAwait(false);
             return new NpgsqlPgOutputReplicationSlot(options);
         }
 

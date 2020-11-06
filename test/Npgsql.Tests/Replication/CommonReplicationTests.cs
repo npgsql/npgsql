@@ -468,7 +468,7 @@ namespace Npgsql.Tests.Replication
             {
                 var slot = new NpgsqlPhysicalReplicationSlot(slotName);
                 var rc = (NpgsqlPhysicalReplicationConnection)(NpgsqlReplicationConnection)connection;
-                await foreach (var msg in rc.StartReplication(slot, cancellationToken, xLogPos))
+                await foreach (var msg in rc.StartReplication(slot, xLogPos, cancellationToken))
                 {
                     yield return msg;
                 }

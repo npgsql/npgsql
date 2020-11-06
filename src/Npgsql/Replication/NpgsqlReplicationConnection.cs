@@ -318,17 +318,14 @@ namespace Npgsql.Replication
             }
         }
 
-        internal async Task<NpgsqlReplicationSlotOptions> CreateReplicationSlotInternal(string slotName, bool temporarySlot, Action<StringBuilder> createCommandAction, CancellationToken cancellationToken = default)
+        internal async Task<NpgsqlReplicationSlotOptions> CreateReplicationSlot(
+            string command, bool temporarySlot, CancellationToken cancellationToken = default)
         {
             using var executeState = EnsureAndSetState(ReplicationConnectionState.Idle, ReplicationConnectionState.Executing);
-            var createCommandBuilder = new StringBuilder("CREATE_REPLICATION_SLOT ").Append(slotName);
-            if (temporarySlot)
-                createCommandBuilder.Append(" TEMPORARY");
-            createCommandAction(createCommandBuilder);
             try
             {
                 var connector = _npgsqlConnection.Connector!;
-                await connector.WriteQuery(createCommandBuilder.ToString(), true, cancellationToken);
+                await connector.WriteQuery(command, true, cancellationToken);
                 await connector.Flush(true, cancellationToken);
 
                 var rowDescription = Expect<RowDescriptionMessage>(await connector.ReadMessage(true, cancellationToken), connector);
@@ -399,7 +396,7 @@ namespace Npgsql.Replication
         }
 
         internal async IAsyncEnumerable<NpgsqlXLogDataMessage> StartReplicationInternal(
-            Action<StringBuilder> startCommandAction,
+            string command,
             bool bypassingStream,
             [EnumeratorCancellation] CancellationToken cancellationToken)
         {
@@ -411,9 +408,7 @@ namespace Npgsql.Replication
             await
 #endif
             using var registration = cancellationToken.Register(c => ((NpgsqlReplicationConnection)c!).Cancel(), this);
-            var createCommandBuilder = new StringBuilder("START_REPLICATION ");
-            startCommandAction(createCommandBuilder);
-            await connector.WriteQuery(createCommandBuilder.ToString(), true, cancellationToken);
+            await connector.WriteQuery(command, true, cancellationToken);
             await connector.Flush(true, cancellationToken);
 
             var msg = await connector.ReadMessage(true, cancellationToken);

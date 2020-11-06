@@ -59,9 +59,9 @@ namespace Npgsql.Replication
             CancellationToken cancellationToken = default)
         {
             // We don't enter NoSynchronizationContextScope here since we (have to) do it in CreateReplicationSlotForPlugin, because
-            // otherwise it couldn't be set for external plugins.
-            var options =
-                await connection.CreateReplicationSlotForPlugin(slotName, "test_decoding", temporarySlot, slotSnapshotInitMode, cancellationToken);
+            // otherwise it wouldn't be set for external plugins.
+            var options = await connection.CreateLogicalReplicationSlot(
+                slotName, "test_decoding", temporarySlot, slotSnapshotInitMode, cancellationToken).ConfigureAwait(false);
             return new NpgsqlTestDecodingReplicationSlot(options);
         }
 
@@ -93,7 +93,7 @@ namespace Npgsql.Replication
             [EnumeratorCancellation] CancellationToken cancellationToken, NpgsqlTestDecodingPluginOptions options = default,
             NpgsqlLogSequenceNumber? walLocation = null)
         {
-            var stream = connection.StartReplicationForPlugin(slot, cancellationToken, walLocation, options.GetOptionPairs());
+            var stream = connection.StartLogicalReplication(slot, cancellationToken, walLocation, options.GetOptionPairs());
 
             await foreach (var msg in stream.WithCancellation(cancellationToken))
             {

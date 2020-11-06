@@ -40,6 +40,6 @@ namespace Npgsql.Replication.PgOutput
         /// </remarks>
         /// <param name="slot">The <see cref="NpgsqlPgOutputReplicationSlot"/> from which the new instance should be initialized</param>
         protected NpgsqlPgOutputReplicationSlot(NpgsqlPgOutputReplicationSlot slot)
-            : base(slot.OutputPlugin, new NpgsqlReplicationSlotOptions(slot.SlotName, slot.ConsistentPoint, slot.SnapshotName)) { }
+            : base(slot.OutputPlugin, new NpgsqlReplicationSlotOptions(slot.Name, slot.ConsistentPoint, slot.SnapshotName)) { }
     }
 }
