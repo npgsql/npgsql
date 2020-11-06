@@ -60,6 +60,9 @@ namespace Npgsql.Replication
             _requestFeedbackTimer = new Timer(TimerRequestFeedback);
         }
 
+        private protected ReplicationConnection(string? connectionString) : this()
+            => ConnectionString = connectionString;
+
         #region Properties
 
         /// <summary>
