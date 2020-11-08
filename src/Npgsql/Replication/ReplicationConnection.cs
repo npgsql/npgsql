@@ -199,16 +199,17 @@ namespace Npgsql.Replication
 
         #endregion Properties
 
-        #region OpenAsync / DisposeAsync
+        #region Open / Dispose
 
         /// <summary>
         /// Opens a database replication connection with the property settings specified by the
         /// <see cref="ReplicationConnection.ConnectionString">ConnectionString</see>.
         /// </summary>
         /// <param name="cancellationToken">The token to monitor for cancellation requests.
-        /// The default value is <see cref="CancellationToken.None"/>.</param>
+        /// The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>A task representing the asynchronous open operation.</returns>
-        public async Task OpenAsync(CancellationToken cancellationToken = default)
+        public async Task Open(CancellationToken cancellationToken = default)
         {
             // No need for NoSynchronizationContextScope.Enter() since
             // NpgsqlConnection.OpenAsync() does it itself and it's the
