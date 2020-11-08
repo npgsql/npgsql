@@ -40,7 +40,7 @@ namespace Npgsql.Tests.Replication
             {
                 var rc = await OpenReplicationConnectionAsync();
                 await rc.DisposeAsync();
-                await rc.OpenAsync();
+                await rc.Open();
             }, Throws.InstanceOf<ObjectDisposedException>()
                 .With.Property(nameof(ObjectDisposedException.ObjectName))
                 .EqualTo(typeof(TConnection).Name));

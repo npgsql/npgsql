@@ -40,15 +40,9 @@ namespace Npgsql.Tests.Replication
         private protected async Task<TConnection> OpenReplicationConnectionAsync(NpgsqlConnectionStringBuilder? csb = null, CancellationToken cancellationToken = default)
         {
             var c = new TConnection { ConnectionString = csb?.ToString() ?? ConnectionString };
-            await c.OpenAsync(cancellationToken);
+            await c.Open(cancellationToken);
             return c;
         }
-
-        private protected Task SafeReplicationTest(Func<string, string, Task> testAction, [CallerMemberName] string memberName = "")
-            => SafeReplicationTestCore((slotName, tableName, publicationName) => testAction(slotName, tableName), memberName);
-
-        private protected Task SafeReplicationTest(Func<string, string, string, Task> testAction, [CallerMemberName] string memberName = "")
-            => SafeReplicationTestCore(testAction, memberName);
 
         private protected static async Task AssertReplicationCancellation<T>(IAsyncEnumerator<T> enumerator)
         {
@@ -67,6 +61,12 @@ namespace Npgsql.Tests.Replication
                     .EqualTo(PostgresErrorCodes.QueryCanceled));
             }
         }
+
+        private protected Task SafeReplicationTest(Func<string, string, Task> testAction, [CallerMemberName] string memberName = "")
+            => SafeReplicationTestCore((slotName, tableName, publicationName) => testAction(slotName, tableName), memberName);
+
+        private protected Task SafeReplicationTest(Func<string, string, string, Task> testAction, [CallerMemberName] string memberName = "")
+            => SafeReplicationTestCore(testAction, memberName);
 
         async Task SafeReplicationTestCore(Func<string, string, string, Task> testAction, string memberName)
         {
