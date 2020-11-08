@@ -28,7 +28,6 @@ namespace Npgsql.Replication
         static readonly Version FirstVersionWithoutDropSlotDoubleCommandCompleteMessage = new Version(13, 0);
         static readonly Version FirstVersionWithTemporarySlots = new Version(10, 0);
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(ReplicationConnection));
-        readonly Stopwatch _cancelTimer = new Stopwatch();
         readonly NpgsqlConnection _npgsqlConnection;
         readonly SemaphoreSlim _feedbackSemaphore = new SemaphoreSlim(1, 1);
         string? _userFacingConnectionString;
