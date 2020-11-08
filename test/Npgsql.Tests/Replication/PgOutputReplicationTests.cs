@@ -78,10 +78,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     _ = await NextMessage<CommitMessage>(messages);
 
                     streamingCts.Cancel();
-                    Assert.That(async () => await messages.MoveNextAsync(), Throws.Exception.AssignableTo<OperationCanceledException>()
-                        .With.InnerException.InstanceOf<PostgresException>()
-                        .And.InnerException.Property(nameof(PostgresException.SqlState))
-                        .EqualTo(PostgresErrorCodes.QueryCanceled));
+                    await AssertReplicationCancellation(messages);
                     await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
                 });
 
@@ -126,10 +123,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     _ = await NextMessage<CommitMessage>(messages);
 
                     streamingCts.Cancel();
-                    Assert.That(async () => await messages.MoveNextAsync(), Throws.Exception.AssignableTo<OperationCanceledException>()
-                        .With.InnerException.InstanceOf<PostgresException>()
-                        .And.InnerException.Property(nameof(PostgresException.SqlState))
-                        .EqualTo(PostgresErrorCodes.QueryCanceled));
+                    await AssertReplicationCancellation(messages);
                     await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
                 });
 
@@ -180,10 +174,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     _ = await NextMessage<CommitMessage>(messages);
 
                     streamingCts.Cancel();
-                    Assert.That(async () => await messages.MoveNextAsync(), Throws.Exception.AssignableTo<OperationCanceledException>()
-                        .With.InnerException.InstanceOf<PostgresException>()
-                        .And.InnerException.Property(nameof(PostgresException.SqlState))
-                        .EqualTo(PostgresErrorCodes.QueryCanceled));
+                    await AssertReplicationCancellation(messages);
                     await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
                 });
 
@@ -280,10 +271,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     _ = await NextMessage<CommitMessage>(messages);
 
                     streamingCts.Cancel();
-                    Assert.That(async () => await messages.MoveNextAsync(), Throws.Exception.AssignableTo<OperationCanceledException>()
-                        .With.InnerException.InstanceOf<PostgresException>()
-                        .And.InnerException.Property(nameof(PostgresException.SqlState))
-                        .EqualTo(PostgresErrorCodes.QueryCanceled));
+                    await AssertReplicationCancellation(messages);
                     await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
                 });
 
@@ -331,10 +319,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     _ = await NextMessage<CommitMessage>(messages);
 
                     streamingCts.Cancel();
-                    Assert.That(async () => await messages.MoveNextAsync(), Throws.Exception.AssignableTo<OperationCanceledException>()
-                        .With.InnerException.InstanceOf<PostgresException>()
-                        .And.InnerException.Property(nameof(PostgresException.SqlState))
-                        .EqualTo(PostgresErrorCodes.QueryCanceled));
+                    await AssertReplicationCancellation(messages);
                     await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
                 });
 
@@ -380,10 +365,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     _ = await NextMessage<CommitMessage>(messages);
 
                     streamingCts.Cancel();
-                    Assert.That(async () => await messages.MoveNextAsync(), Throws.Exception.AssignableTo<OperationCanceledException>()
-                        .With.InnerException.InstanceOf<PostgresException>()
-                        .And.InnerException.Property(nameof(PostgresException.SqlState))
-                        .EqualTo(PostgresErrorCodes.QueryCanceled));
+                    await AssertReplicationCancellation(messages);
                     await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
                 });
 
@@ -437,10 +419,7 @@ CREATE PUBLICATION {publicationName} FOR TABLE {tableName};
                     _ = await NextMessage<CommitMessage>(messages);
 
                     streamingCts.Cancel();
-                    Assert.That(async () => await messages.MoveNextAsync(), Throws.Exception.AssignableTo<OperationCanceledException>()
-                        .With.InnerException.InstanceOf<PostgresException>()
-                        .And.InnerException.Property(nameof(PostgresException.SqlState))
-                        .EqualTo(PostgresErrorCodes.QueryCanceled));
+                    await AssertReplicationCancellation(messages);
                     await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
                 }, nameof(Truncate) + truncateOptionFlags.ToString("D"));
 

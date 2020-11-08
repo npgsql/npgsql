@@ -152,10 +152,7 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
                     Assert.That(message.Data, Does.StartWith("COMMIT "));
 
                     streamingCts.Cancel();
-                    Assert.That(async () => await messages.MoveNextAsync(), Throws.Exception.AssignableTo<OperationCanceledException>()
-                        .With.InnerException.InstanceOf<PostgresException>()
-                        .And.InnerException.Property(nameof(PostgresException.SqlState))
-                        .EqualTo(PostgresErrorCodes.QueryCanceled));
+                    await AssertReplicationCancellation(messages);
                     await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
                 });
 
@@ -192,10 +189,7 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
                     Assert.That(message.Data, Does.StartWith("COMMIT "));
 
                     streamingCts.Cancel();
-                    Assert.That(async () => await messages.MoveNextAsync(), Throws.Exception.AssignableTo<OperationCanceledException>()
-                        .With.InnerException.InstanceOf<PostgresException>()
-                        .And.InnerException.Property(nameof(PostgresException.SqlState))
-                        .EqualTo(PostgresErrorCodes.QueryCanceled));
+                    await AssertReplicationCancellation(messages);
                     await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
                 });
 
@@ -231,10 +225,7 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
                     Assert.That(message.Data, Does.StartWith("COMMIT "));
 
                     streamingCts.Cancel();
-                    Assert.That(async () => await messages.MoveNextAsync(), Throws.Exception.AssignableTo<OperationCanceledException>()
-                        .With.InnerException.InstanceOf<PostgresException>()
-                        .And.InnerException.Property(nameof(PostgresException.SqlState))
-                        .EqualTo(PostgresErrorCodes.QueryCanceled));
+                    await AssertReplicationCancellation(messages);
                     await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
                 });
 
@@ -273,10 +264,7 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
                     Assert.That(message.Data, Does.StartWith("COMMIT "));
 
                     streamingCts.Cancel();
-                    Assert.That(async () => await messages.MoveNextAsync(), Throws.Exception.AssignableTo<OperationCanceledException>()
-                        .With.InnerException.InstanceOf<PostgresException>()
-                        .And.InnerException.Property(nameof(PostgresException.SqlState))
-                        .EqualTo(PostgresErrorCodes.QueryCanceled));
+                    await AssertReplicationCancellation(messages);
                     await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
                 });
 
@@ -313,10 +301,7 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
                     Assert.That(message.Data, Does.StartWith("COMMIT "));
 
                     streamingCts.Cancel();
-                    Assert.That(async () => await messages.MoveNextAsync(), Throws.Exception.AssignableTo<OperationCanceledException>()
-                        .With.InnerException.InstanceOf<PostgresException>()
-                        .And.InnerException.Property(nameof(PostgresException.SqlState))
-                        .EqualTo(PostgresErrorCodes.QueryCanceled));
+                    await AssertReplicationCancellation(messages);
                     await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
                 });
 
@@ -353,10 +338,7 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
                     Assert.That(message.Data, Does.StartWith("COMMIT "));
 
                     streamingCts.Cancel();
-                    Assert.That(async () => await messages.MoveNextAsync(), Throws.Exception.AssignableTo<OperationCanceledException>()
-                        .With.InnerException.InstanceOf<PostgresException>()
-                        .And.InnerException.Property(nameof(PostgresException.SqlState))
-                        .EqualTo(PostgresErrorCodes.QueryCanceled));
+                    await AssertReplicationCancellation(messages);
                     await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
                 });
 

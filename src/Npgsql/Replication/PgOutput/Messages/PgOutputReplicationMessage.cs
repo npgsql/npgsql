@@ -12,5 +12,7 @@ namespace Npgsql.Replication.PgOutput.Messages
     /// </remarks>
     public abstract class PgOutputReplicationMessage : ReplicationMessage
     {
+        /// <inheritdoc />
+        public override string ToString() => GetType().Name;
     }
 }

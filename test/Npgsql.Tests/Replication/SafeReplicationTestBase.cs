@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -48,6 +49,24 @@ namespace Npgsql.Tests.Replication
 
         private protected Task SafeReplicationTest(Func<string, string, string, Task> testAction, [CallerMemberName] string memberName = "")
             => SafeReplicationTestCore(testAction, memberName);
+
+        private protected static async Task AssertReplicationCancellation<T>(IAsyncEnumerator<T> enumerator)
+        {
+            try
+            {
+                var succeeded = await enumerator.MoveNextAsync();
+                Assert.Fail(succeeded
+                    ? $"Expected replication cancellation but got message: {enumerator.Current}"
+                    : "Expected replication cancellation but reached enumeration end instead");
+            }
+            catch (Exception e)
+            {
+                Assert.That(e, Is.AssignableTo<OperationCanceledException>()
+                    .With.InnerException.InstanceOf<PostgresException>()
+                    .And.InnerException.Property(nameof(PostgresException.SqlState))
+                    .EqualTo(PostgresErrorCodes.QueryCanceled));
+            }
+        }
 
         async Task SafeReplicationTestCore(Func<string, string, string, Task> testAction, string memberName)
         {

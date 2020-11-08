@@ -23,5 +23,8 @@ namespace Npgsql.Replication.TestDecoding
 
             return this;
         }
+
+        /// <inheritdoc />
+        public override string ToString() => Data;
     }
 }
