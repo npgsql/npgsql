@@ -14,5 +14,10 @@ namespace Npgsql.Replication.PgOutput.Messages
     {
         /// <inheritdoc />
         public override string ToString() => GetType().Name;
+
+        /// <summary>
+        /// Returns a clone of this message, which can be accessed after other replication messages have been retrieved.
+        /// </summary>
+        public abstract PgOutputReplicationMessage Clone();
     }
 }

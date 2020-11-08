@@ -15,7 +15,7 @@
     <NoWarn>$(NoWarn);NU5105</NoWarn>
 
     <!-- Language -->
-    <LangVersion>8.0</LangVersion>
+    <LangVersion>9.0</LangVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <Nullable>enable</Nullable>
     <AnalysisLevel>latest</AnalysisLevel>

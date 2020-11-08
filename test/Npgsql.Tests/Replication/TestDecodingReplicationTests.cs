@@ -48,7 +48,7 @@ namespace Npgsql.Tests.Replication
                     await c.ExecuteNonQueryAsync($"INSERT INTO {tableName} (name) VALUES ('val1'), ('val2')");
 
                     using var streamingCts = new CancellationTokenSource();
-                    var messages = rc.StartReplication(slot, streamingCts.Token).GetAsyncEnumerator();
+                    var messages = rc.StartReplication(slot, streamingCts.Token, new TestDecodingOptions(skipEmptyXacts: true)).GetAsyncEnumerator();
 
                     // Begin Transaction
                     var message = await NextMessage(messages);
@@ -92,7 +92,7 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2')");
                     await c.ExecuteNonQueryAsync($"UPDATE {tableName} SET name='val1' WHERE name='val'");
 
                     using var streamingCts = new CancellationTokenSource();
-                    var messages = rc.StartReplication(slot, streamingCts.Token).GetAsyncEnumerator();
+                    var messages = rc.StartReplication(slot, streamingCts.Token, new TestDecodingOptions(skipEmptyXacts: true)).GetAsyncEnumerator();
 
                     // Begin Transaction
                     var message = await NextMessage(messages);
@@ -136,7 +136,7 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
                     await c.ExecuteNonQueryAsync($"UPDATE {tableName} SET name='val1' WHERE name='val'");
 
                     using var streamingCts = new CancellationTokenSource();
-                    var messages = rc.StartReplication(slot, streamingCts.Token).GetAsyncEnumerator();
+                    var messages = rc.StartReplication(slot, streamingCts.Token, new TestDecodingOptions(skipEmptyXacts: true)).GetAsyncEnumerator();
 
                     // Begin Transaction
                     var message = await NextMessage(messages);
@@ -173,7 +173,7 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
                     await c.ExecuteNonQueryAsync($"UPDATE {tableName} SET name='val1' WHERE name='val'");
 
                     using var streamingCts = new CancellationTokenSource();
-                    var messages = rc.StartReplication(slot, streamingCts.Token).GetAsyncEnumerator();
+                    var messages = rc.StartReplication(slot, streamingCts.Token, new TestDecodingOptions(skipEmptyXacts: true)).GetAsyncEnumerator();
 
                     // Begin Transaction
                     var message = await NextMessage(messages);
@@ -209,7 +209,7 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
                     await c.ExecuteNonQueryAsync($"DELETE FROM {tableName} WHERE name='val2'");
 
                     using var streamingCts = new CancellationTokenSource();
-                    var messages = rc.StartReplication(slot, streamingCts.Token).GetAsyncEnumerator();
+                    var messages = rc.StartReplication(slot, streamingCts.Token, new TestDecodingOptions(skipEmptyXacts: true)).GetAsyncEnumerator();
 
                     // Begin Transaction
                     var message = await NextMessage(messages);
@@ -248,7 +248,7 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
                     await c.ExecuteNonQueryAsync($"DELETE FROM {tableName} WHERE name='val2'");
 
                     using var streamingCts = new CancellationTokenSource();
-                    var messages = rc.StartReplication(slot, streamingCts.Token).GetAsyncEnumerator();
+                    var messages = rc.StartReplication(slot, streamingCts.Token, new TestDecodingOptions(skipEmptyXacts: true)).GetAsyncEnumerator();
 
                     // Begin Transaction
                     var message = await NextMessage(messages);
@@ -285,7 +285,7 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
                     await c.ExecuteNonQueryAsync($"DELETE FROM {tableName} WHERE name='val2'");
 
                     using var streamingCts = new CancellationTokenSource();
-                    var messages = rc.StartReplication(slot, streamingCts.Token).GetAsyncEnumerator();
+                    var messages = rc.StartReplication(slot, streamingCts.Token, new TestDecodingOptions(skipEmptyXacts: true)).GetAsyncEnumerator();
 
                     // Begin Transaction
                     var message = await NextMessage(messages);
@@ -322,7 +322,7 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
                     await c.ExecuteNonQueryAsync($"TRUNCATE TABLE {tableName} RESTART IDENTITY CASCADE");
 
                     using var streamingCts = new CancellationTokenSource();
-                    var messages = rc.StartReplication(slot, streamingCts.Token).GetAsyncEnumerator();
+                    var messages = rc.StartReplication(slot, streamingCts.Token, new TestDecodingOptions(skipEmptyXacts: true)).GetAsyncEnumerator();
 
                     // Begin Transaction
                     var message = await NextMessage(messages);

@@ -49,6 +49,18 @@ namespace Npgsql.Replication.PgOutput.Messages
             return this;
         }
 
+        /// <inheritdoc />
+#if NETSTANDARD2_0 || NETSTANDARD2_1 || NETCOREAPP3_1
+        public override PgOutputReplicationMessage Clone()
+#else
+        public override RelationMessage Clone()
+#endif
+        {
+            var clone = new RelationMessage();
+            clone.Populate(WalStart, WalEnd, ServerClock, RelationId, Namespace, RelationName, RelationReplicaIdentitySetting, Columns.ToArray());
+            return clone;
+        }
+
         /// <summary>
         /// Represents a column in a Logical Replication Protocol relation message
         /// </summary>

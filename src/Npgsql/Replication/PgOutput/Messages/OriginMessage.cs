@@ -29,5 +29,17 @@ namespace Npgsql.Replication.PgOutput.Messages
 
             return this;
         }
+
+        /// <inheritdoc />
+#if NETSTANDARD2_0 || NETSTANDARD2_1 || NETCOREAPP3_1
+        public override PgOutputReplicationMessage Clone()
+#else
+        public override OriginMessage Clone()
+#endif
+        {
+            var clone = new OriginMessage();
+            clone.Populate(WalStart, WalEnd, ServerClock, OriginCommitLsn, OriginName);
+            return clone;
+        }
     }
 }

@@ -35,5 +35,17 @@ namespace Npgsql.Replication.PgOutput.Messages
 
             return this;
         }
+
+        /// <inheritdoc />
+#if NETSTANDARD2_0 || NETSTANDARD2_1 || NETCOREAPP3_1
+        public override PgOutputReplicationMessage Clone()
+#else
+        public override BeginMessage Clone()
+#endif
+        {
+            var clone = new BeginMessage();
+            clone.Populate(WalStart, WalEnd, ServerClock, TransactionFinalLsn, TransactionCommitTimestamp, TransactionXid);
+            return clone;
+        }
     }
 }

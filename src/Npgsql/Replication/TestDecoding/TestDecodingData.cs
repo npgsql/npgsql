@@ -26,5 +26,15 @@ namespace Npgsql.Replication.TestDecoding
 
         /// <inheritdoc />
         public override string ToString() => Data;
+
+        /// <summary>
+        /// Returns a clone of this message, which can be accessed after other replication messages have been retrieved.
+        /// </summary>
+        public TestDecodingData Clone()
+        {
+            var clone = new TestDecodingData();
+            clone.Populate(WalStart, WalEnd, ServerClock, Data);
+            return clone;
+        }
     }
 }
