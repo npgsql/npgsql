@@ -15,11 +15,13 @@ namespace Npgsql.Tests.Replication
         protected abstract string Postfix { get; }
 
         int _maxIdentifierLength;
+        static Version CurrentServerVersion = null!;
 
         [OneTimeSetUp]
         public async Task OneTimeSetUp()
         {
             await using var conn = await OpenConnectionAsync();
+            CurrentServerVersion = conn.PostgreSqlVersion;
             _maxIdentifierLength = int.Parse((string)(await conn.ExecuteScalarAsync("SHOW max_identifier_length"))!);
         }
 
@@ -55,12 +57,14 @@ namespace Npgsql.Tests.Replication
             }
             catch (Exception e)
             {
-                Assert.That(e, Is.AssignableTo<OperationCanceledException>()
-                    .With.InnerException.InstanceOf<PostgresException>()
-                    .And.InnerException.Property(nameof(PostgresException.SqlState))
-                    .EqualTo(PostgresErrorCodes.QueryCanceled)
-                    .Or.AssignableTo<OperationCanceledException>()
-                    .With.InnerException.InstanceOf<TimeoutException>());
+                if (CurrentServerVersion >= Pg10Version)
+                    Assert.That(e, Is.AssignableTo<OperationCanceledException>()
+                        .With.InnerException.InstanceOf<PostgresException>()
+                        .And.InnerException.Property(nameof(PostgresException.SqlState))
+                        .EqualTo(PostgresErrorCodes.QueryCanceled));
+                else
+                    Assert.That(e, Is.AssignableTo<OperationCanceledException>()
+                        .With.InnerException.InstanceOf<TimeoutException>());
             }
         }
 
@@ -108,7 +112,7 @@ namespace Npgsql.Tests.Replication
                     await DropSlot();
                 }
 
-                if (c.PostgreSqlVersion > Pg10Version)
+                if (c.PostgreSqlVersion >= Pg10Version)
                     await c.ExecuteNonQueryAsync($"DROP PUBLICATION IF EXISTS {publicationName}");
 
                 await c.ExecuteNonQueryAsync($"DROP TABLE IF EXISTS {tableName}");
