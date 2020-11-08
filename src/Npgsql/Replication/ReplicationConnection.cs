@@ -14,7 +14,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using static Npgsql.Util.Statics;
 
-#if NETSTANDARD2_0 || NETSTANDARD2_1 || NETCOREAPP3_1
+#if NETSTANDARD2_0
 using Npgsql.Util;
 #endif
 
@@ -402,7 +402,8 @@ namespace Npgsql.Replication
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            var completionSource = new TaskCompletionSource();
+            var completionSource = new TaskCompletionSource<int>();
+            _replicationCompletion = completionSource.Task;
 
             try
             {
@@ -530,7 +531,7 @@ namespace Npgsql.Replication
 
                 SetTimeouts(CommandTimeout, CommandTimeout);
 
-                completionSource.SetResult();
+                completionSource.SetResult(0);
             }
         }
 
