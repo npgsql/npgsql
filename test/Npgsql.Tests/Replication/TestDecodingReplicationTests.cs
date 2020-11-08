@@ -69,13 +69,7 @@ namespace Npgsql.Tests.Replication
                     Assert.That(message.Data, Does.StartWith("COMMIT "));
 
                     streamingCts.Cancel();
-                    var exception = Assert.ThrowsAsync(Is.AssignableTo<OperationCanceledException>(), async () => await messages.MoveNextAsync());
-                    if (c.PostgreSqlVersion < Version.Parse("9.4"))
-                    {
-                        Assert.That(exception, Has.InnerException.InstanceOf<PostgresException>()
-                            .And.InnerException.Property(nameof(PostgresException.SqlState))
-                            .EqualTo(PostgresErrorCodes.QueryCanceled));
-                    }
+                    await AssertReplicationCancellation(messages);
                 });
 
         [Test(Description = "Tests whether UPDATE commands get replicated via test_decoding plugin for tables using the default replica identity")]
@@ -108,13 +102,7 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2')");
                     Assert.That(message.Data, Does.StartWith("COMMIT "));
 
                     streamingCts.Cancel();
-                    var exception = Assert.ThrowsAsync(Is.AssignableTo<OperationCanceledException>(), async () => await messages.MoveNextAsync());
-                    if (c.PostgreSqlVersion < Version.Parse("9.4"))
-                    {
-                        Assert.That(exception, Has.InnerException.InstanceOf<PostgresException>()
-                            .And.InnerException.Property(nameof(PostgresException.SqlState))
-                            .EqualTo(PostgresErrorCodes.QueryCanceled));
-                    }
+                    await AssertReplicationCancellation(messages);
                 });
 
         [Test(Description = "Tests whether UPDATE commands get replicated via test_decoding plugin for tables using an index as replica identity")]
@@ -153,7 +141,6 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
 
                     streamingCts.Cancel();
                     await AssertReplicationCancellation(messages);
-                    await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
                 });
 
         [Test(Description = "Tests whether UPDATE commands get replicated via test_decoding plugin for tables using full replica identity")]
@@ -190,7 +177,6 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
 
                     streamingCts.Cancel();
                     await AssertReplicationCancellation(messages);
-                    await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
                 });
 
         [Test(Description = "Tests whether DELETE commands get replicated via test_decoding plugin for tables using the default replica identity")]
@@ -226,7 +212,6 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
 
                     streamingCts.Cancel();
                     await AssertReplicationCancellation(messages);
-                    await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
                 });
 
         [Test(Description = "Tests whether DELETE commands get replicated via test_decoding plugin for tables using an index as replica identity")]
@@ -265,7 +250,6 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
 
                     streamingCts.Cancel();
                     await AssertReplicationCancellation(messages);
-                    await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
                 });
 
         [Test(Description = "Tests whether DELETE commands get replicated via test_decoding plugin for tables using full replica identity")]
@@ -302,7 +286,6 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
 
                     streamingCts.Cancel();
                     await AssertReplicationCancellation(messages);
-                    await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
                 });
 
         [Test(Description = "Tests whether TRUNCATE commands get replicated via test_decoding plugin")]
@@ -339,7 +322,6 @@ INSERT INTO {tableName} (name) VALUES ('val'), ('val2');
 
                     streamingCts.Cancel();
                     await AssertReplicationCancellation(messages);
-                    await rc.DropReplicationSlot(slotName, cancellationToken: CancellationToken.None);
                 });
 
         static async ValueTask<TestDecodingData> NextMessage(IAsyncEnumerator<TestDecodingData> enumerator)

@@ -30,7 +30,7 @@ namespace Npgsql.Replication
         #region Fields
 
         static readonly Version FirstVersionWithoutDropSlotDoubleCommandCompleteMessage = new Version(13, 0);
-        static readonly Version FirstVersionWithTemporarySlots = new Version(10, 0);
+        static readonly Version FirstVersionWithTemporarySlotsAndSlotSnapshotInitMode = new Version(10, 0);
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(ReplicationConnection));
         readonly NpgsqlConnection _npgsqlConnection;
         readonly SemaphoreSlim _feedbackSemaphore = new SemaphoreSlim(1, 1);
@@ -376,14 +376,18 @@ namespace Npgsql.Replication
             }
             catch (PostgresException e)
             {
-                if (PostgreSqlVersion < FirstVersionWithTemporarySlots && e.SqlState == PostgresErrorCodes.SyntaxError)
+                if (PostgreSqlVersion < FirstVersionWithTemporarySlotsAndSlotSnapshotInitMode && e.SqlState == PostgresErrorCodes.SyntaxError)
                 {
                     if (temporarySlot)
-                        throw new ArgumentException("Temporary replication slots were introduced in PostgreSQL " +
-                                                    $"{FirstVersionWithTemporarySlots.ToString(1)}. " +
-                                                    $"Using PostgreSQL version {PostgreSqlVersion.ToString(3)} you " +
-                                                    $"have to set the {nameof(temporarySlot)} argument to false.",
-                            nameof(temporarySlot), e);
+                        throw new NotSupportedException("Temporary replication slots were introduced in PostgreSQL " +
+                                                        $"{FirstVersionWithTemporarySlotsAndSlotSnapshotInitMode.ToString(1)}. " +
+                                                        $"Using PostgreSQL version {PostgreSqlVersion.ToString(3)} you " +
+                                                        $"have to set the {nameof(temporarySlot)} argument to false.", e);
+                    if (command.Contains("_SNAPSHOT"))
+                        throw new NotSupportedException(
+                            "The EXPORT_SNAPSHOT, USE_SNAPSHOT and NOEXPORT_SNAPSHOT syntax was introduced in PostgreSQL " +
+                            $"{FirstVersionWithTemporarySlotsAndSlotSnapshotInitMode.ToString(1)}. Using PostgreSQL version " +
+                            $"{PostgreSqlVersion.ToString(3)} you have to omit the slotSnapshotInitMode argument.", e);
                 }
                 throw;
             }
@@ -816,7 +820,9 @@ namespace Npgsql.Replication
         {
             var connector = Connector;
             connector.UserTimeout = readTimeout > TimeSpan.Zero ? (int)readTimeout.TotalMilliseconds : 0;
-            connector.WriteBuffer.Timeout = writeTimeout;
+
+            if (connector.WriteBuffer != null)
+                connector.WriteBuffer.Timeout = writeTimeout;
         }
 
         void CheckDisposed()

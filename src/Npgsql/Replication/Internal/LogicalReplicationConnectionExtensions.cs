@@ -14,8 +14,6 @@ namespace Npgsql.Replication.Internal
     /// </summary>
     public static class LogicalReplicationConnectionExtensions
     {
-        static readonly Version FirstVersionWithSlotSnapshotInitMode = new Version(10, 0);
-
         /// <summary>
         /// This API is for internal use and for implementing logical replication plugins.
         /// It is not meant to be consumed in common Npgsql usage scenarios.
@@ -67,36 +65,24 @@ namespace Npgsql.Replication.Internal
 
                 cancellationToken.ThrowIfCancellationRequested();
 
-                try
+                var builder = new StringBuilder("CREATE_REPLICATION_SLOT ").Append(slotName);
+                if (isTemporary)
+                    builder.Append(" TEMPORARY");
+                builder.Append(" LOGICAL ").Append(outputPlugin);
+                builder.Append(slotSnapshotInitMode switch
                 {
-                    var builder = new StringBuilder("CREATE_REPLICATION_SLOT ").Append(slotName);
-                    if (isTemporary)
-                        builder.Append(" TEMPORARY");
-                    builder.Append(" LOGICAL ").Append(outputPlugin);
-                    builder.Append(slotSnapshotInitMode switch
-                    {
-                        // EXPORT_SNAPSHOT is the default since it has been introduced.
-                        // We don't set it unless it is explicitly requested so that older backends can digest the query too.
-                        null => string.Empty,
-                        LogicalSlotSnapshotInitMode.Export => " EXPORT_SNAPSHOT",
-                        LogicalSlotSnapshotInitMode.Use => " USE_SNAPSHOT",
-                        LogicalSlotSnapshotInitMode.NoExport => " NOEXPORT_SNAPSHOT",
-                        _ => throw new ArgumentOutOfRangeException(nameof(slotSnapshotInitMode),
-                            slotSnapshotInitMode,
-                            $"Unexpected value {slotSnapshotInitMode} for argument {nameof(slotSnapshotInitMode)}.")
-                    });
+                    // EXPORT_SNAPSHOT is the default since it has been introduced.
+                    // We don't set it unless it is explicitly requested so that older backends can digest the query too.
+                    null => string.Empty,
+                    LogicalSlotSnapshotInitMode.Export => " EXPORT_SNAPSHOT",
+                    LogicalSlotSnapshotInitMode.Use => " USE_SNAPSHOT",
+                    LogicalSlotSnapshotInitMode.NoExport => " NOEXPORT_SNAPSHOT",
+                    _ => throw new ArgumentOutOfRangeException(nameof(slotSnapshotInitMode),
+                        slotSnapshotInitMode,
+                        $"Unexpected value {slotSnapshotInitMode} for argument {nameof(slotSnapshotInitMode)}.")
+                });
 
-                    return connection.CreateReplicationSlot(builder.ToString(), isTemporary, cancellationToken);
-                }
-                catch (PostgresException e) when (connection.PostgreSqlVersion < FirstVersionWithSlotSnapshotInitMode &&
-                                                  e.SqlState == PostgresErrorCodes.SyntaxError &&
-                                                  slotSnapshotInitMode != null)
-                {
-                    throw new NotSupportedException(
-                        "The EXPORT_SNAPSHOT, USE_SNAPSHOT and NOEXPORT_SNAPSHOT syntax was introduced in PostgreSQL " +
-                        $"{FirstVersionWithSlotSnapshotInitMode.ToString(1)}. Using PostgreSQL version " +
-                        $"{connection.PostgreSqlVersion.ToString(3)} you have to omit the {nameof(slotSnapshotInitMode)} argument.", e);
-                }
+                return connection.CreateReplicationSlot(builder.ToString(), isTemporary, cancellationToken);
             }
         }
 

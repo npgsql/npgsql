@@ -58,7 +58,9 @@ namespace Npgsql.Tests.Replication
                 Assert.That(e, Is.AssignableTo<OperationCanceledException>()
                     .With.InnerException.InstanceOf<PostgresException>()
                     .And.InnerException.Property(nameof(PostgresException.SqlState))
-                    .EqualTo(PostgresErrorCodes.QueryCanceled));
+                    .EqualTo(PostgresErrorCodes.QueryCanceled)
+                    .Or.AssignableTo<OperationCanceledException>()
+                    .With.InnerException.InstanceOf<TimeoutException>());
             }
         }
 
@@ -67,6 +69,8 @@ namespace Npgsql.Tests.Replication
 
         private protected Task SafeReplicationTest(Func<string, string, string, Task> testAction, [CallerMemberName] string memberName = "")
             => SafeReplicationTestCore(testAction, memberName);
+
+        static readonly Version Pg10Version = new Version(10, 0);
 
         async Task SafeReplicationTestCore(Func<string, string, string, Task> testAction, string memberName)
         {
@@ -104,7 +108,9 @@ namespace Npgsql.Tests.Replication
                     await DropSlot();
                 }
 
-                await c.ExecuteNonQueryAsync($"DROP PUBLICATION IF EXISTS {publicationName}");
+                if (c.PostgreSqlVersion > Pg10Version)
+                    await c.ExecuteNonQueryAsync($"DROP PUBLICATION IF EXISTS {publicationName}");
+
                 await c.ExecuteNonQueryAsync($"DROP TABLE IF EXISTS {tableName}");
 
                 async Task DropSlot()
