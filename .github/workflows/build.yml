@@ -40,7 +40,7 @@ jobs:
           dotnet-version: ${{ env.dotnet_sdk_version }}
 
       - name: Build
-        run: dotnet build Npgsql.sln --configuration Debug
+        run: dotnet build
         shell: bash
 
       - name: Start PostgreSQL ${{ matrix.pg_major }} (Linux)
@@ -136,11 +136,11 @@ jobs:
 
       # TODO: Once test/Npgsql.Specification.Tests work, switch to just testing on the solution
       - name: Test
-        run: dotnet test test/Npgsql.Tests --configuration Debug --logger "GitHubActions;report-warnings=false"
+        run: dotnet test test/Npgsql.Tests --logger "GitHubActions;report-warnings=false"
         shell: bash
 
       - name: Test Plugins
-        run: dotnet test test/Npgsql.PluginTests --configuration Debug --logger "GitHubActions;report-warnings=false"
+        run: dotnet test test/Npgsql.PluginTests --logger "GitHubActions;report-warnings=false"
         shell: bash
 
   publish:
