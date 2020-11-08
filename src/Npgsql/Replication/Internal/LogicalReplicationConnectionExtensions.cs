@@ -134,11 +134,7 @@ namespace Npgsql.Replication.Internal
             {
                 builder
                     .Append(" (")
-#if NETSTANDARD2_0
                     .Append(string.Join(", ", options.Select(kv => @$"""{kv.Key}""{(kv.Value is null ? "" : $" '{kv.Value}'")}")))
-#else
-                    .AppendJoin(", ", options.Select(kv => @$"""{kv.Key}""{(kv.Value is null ? "" : $" '{kv.Value}'")}"))
-#endif
                     .Append(')');
             }
 
