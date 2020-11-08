@@ -6,6 +6,7 @@ using Npgsql.Replication;
 
 namespace Npgsql.Tests.Replication
 {
+    [Explicit("Flakiness")]
     public class PhysicalReplicationTests : SafeReplicationTestBase<PhysicalReplicationConnection>
     {
         [Test]
