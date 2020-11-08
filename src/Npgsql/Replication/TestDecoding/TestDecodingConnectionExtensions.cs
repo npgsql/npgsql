@@ -81,8 +81,8 @@ namespace Npgsql.Replication
             this LogicalReplicationConnection connection,
             TestDecodingReplicationSlot slot,
             CancellationToken cancellationToken,
-            TestDecodingOptions options = default,
+            TestDecodingOptions? options = default,
             NpgsqlLogSequenceNumber? walLocation = null)
-            => new TestDecodingAsyncEnumerable(connection, slot, options, cancellationToken, walLocation);
+            => new TestDecodingAsyncEnumerable(connection, slot, options ?? new TestDecodingOptions(), cancellationToken, walLocation);
     }
 }

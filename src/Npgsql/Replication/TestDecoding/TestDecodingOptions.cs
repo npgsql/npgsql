@@ -1,4 +1,4 @@
-﻿using JetBrains.Annotations;
+﻿using System;
 using System.Collections.Generic;
 
 namespace Npgsql.Replication.TestDecoding
@@ -6,7 +6,7 @@ namespace Npgsql.Replication.TestDecoding
     /// <summary>
     /// Options to be passed to the test_decoding plugin
     /// </summary>
-    public readonly struct TestDecodingOptions
+    public class TestDecodingOptions : IEquatable<TestDecodingOptions>
     {
         /// <summary>
         /// Creates a new instance of <see cref="TestDecodingOptions"/>.
@@ -81,6 +81,35 @@ namespace Npgsql.Replication.TestDecoding
                 yield return new KeyValuePair<string, string?>("include-rewrites", IncludeRewrites.Value ? "t" : "f");
             if (StreamChanges != null)
                 yield return new KeyValuePair<string, string?>("stream-changes", StreamChanges.Value ? "t" : "f");
+        }
+
+        /// <inheritdoc />
+        public bool Equals(TestDecodingOptions? other)
+            => other != null && (
+                ReferenceEquals(this, other) ||
+                IncludeXids == other.IncludeXids && IncludeTimestamp == other.IncludeTimestamp && ForceBinary == other.ForceBinary &&
+                SkipEmptyXacts == other.SkipEmptyXacts && OnlyLocal == other.OnlyLocal && IncludeRewrites == other.IncludeRewrites &&
+                StreamChanges == other.StreamChanges);
+
+        /// <inheritdoc />
+        public override bool Equals(object? obj)
+            => obj is TestDecodingOptions other && other.Equals(this);
+
+        /// <inheritdoc />
+        public override int GetHashCode()
+        {
+#if NETSTANDARD2_0
+            var hashCode = IncludeXids.GetHashCode();
+            hashCode = (hashCode * 397) ^ IncludeTimestamp.GetHashCode();
+            hashCode = (hashCode * 397) ^ ForceBinary.GetHashCode();
+            hashCode = (hashCode * 397) ^ SkipEmptyXacts.GetHashCode();
+            hashCode = (hashCode * 397) ^ OnlyLocal.GetHashCode();
+            hashCode = (hashCode * 397) ^ IncludeRewrites.GetHashCode();
+            hashCode = (hashCode * 397) ^ StreamChanges.GetHashCode();
+            return hashCode;
+#else
+            return HashCode.Combine(IncludeXids, IncludeTimestamp, ForceBinary, SkipEmptyXacts, OnlyLocal, IncludeRewrites, StreamChanges);
+#endif
         }
     }
 }

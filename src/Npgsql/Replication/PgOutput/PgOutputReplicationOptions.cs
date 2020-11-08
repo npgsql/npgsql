@@ -7,7 +7,7 @@ namespace Npgsql.Replication.PgOutput
     /// <summary>
     /// Options to be passed to the pgoutput plugin
     /// </summary>
-    public class PgOutputReplicationOptions
+    public class PgOutputReplicationOptions : IEquatable<PgOutputReplicationOptions>
     {
         /// <summary>
         /// Creates a new instance of <see cref="PgOutputReplicationOptions"/>.
@@ -80,6 +80,31 @@ namespace Npgsql.Replication.PgOutput
                 yield return new KeyValuePair<string, string?>("binary", Binary.Value ? "t" : "f");
             if (Streaming != null)
                 yield return new KeyValuePair<string, string?>("streaming", Streaming.Value ? "t" : "f");
+        }
+
+        /// <inheritdoc />
+        public bool Equals(PgOutputReplicationOptions? other)
+            => other != null && (
+                ReferenceEquals(this, other) ||
+                ProtocolVersion == other.ProtocolVersion && PublicationNames.Equals(other.PublicationNames) && Binary == other.Binary &&
+                Streaming == other.Streaming);
+
+        /// <inheritdoc />
+        public override bool Equals(object? obj)
+            => obj is PgOutputReplicationOptions other && other.Equals(this);
+
+        /// <inheritdoc />
+        public override int GetHashCode()
+        {
+#if NETSTANDARD2_0
+            var hashCode = ProtocolVersion.GetHashCode();
+            hashCode = (hashCode * 397) ^ PublicationNames.GetHashCode();
+            hashCode = (hashCode * 397) ^ Binary.GetHashCode();
+            hashCode = (hashCode * 397) ^ Streaming.GetHashCode();
+            return hashCode;
+#else
+            return HashCode.Combine(ProtocolVersion, PublicationNames, Binary, Streaming);
+#endif
         }
     }
 }
