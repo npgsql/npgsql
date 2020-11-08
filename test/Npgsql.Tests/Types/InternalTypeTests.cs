@@ -64,6 +64,44 @@ namespace Npgsql.Tests.Types
             }
         }
 
+        #region NpgsqlLogSequenceNumber / PgLsn
+
+        static readonly TestCaseData[] EqualsObjectCases = {
+            new TestCaseData(new NpgsqlLogSequenceNumber(1ul), null).Returns(false),
+            new TestCaseData(new NpgsqlLogSequenceNumber(1ul), new object()).Returns(false),
+            new TestCaseData(new NpgsqlLogSequenceNumber(1ul), 1ul).Returns(false), // no implicit cast
+            new TestCaseData(new NpgsqlLogSequenceNumber(1ul), "0/0").Returns(false), // no implicit cast/parsing
+            new TestCaseData(new NpgsqlLogSequenceNumber(1ul), new NpgsqlLogSequenceNumber(1ul)).Returns(true),
+        };
+
+        [Test, TestCaseSource(nameof(EqualsObjectCases))]
+        public bool NpgsqlLogSequenceNumberEquals(NpgsqlLogSequenceNumber lsn, object? obj)
+            => lsn.Equals(obj);
+
+
+        [Test]
+        public async Task PgLsn()
+        {
+            var expected1 = new NpgsqlLogSequenceNumber(42949672971ul);
+            Assert.AreEqual(expected1, NpgsqlLogSequenceNumber.Parse("A/B"));
+            await using var conn = await OpenConnectionAsync();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT 'A/B'::pg_lsn, @p::pg_lsn";
+            cmd.Parameters.AddWithValue("p", NpgsqlDbType.PgLsn, expected1);
+            await using var reader = await cmd.ExecuteReaderAsync();
+            reader.Read();
+            var result1 = reader.GetFieldValue<NpgsqlLogSequenceNumber>(0);
+            var result2 = reader.GetFieldValue<NpgsqlLogSequenceNumber>(1);
+            Assert.AreEqual(expected1, result1);
+            Assert.AreEqual(42949672971ul, (ulong)result1);
+            Assert.AreEqual("A/B", result1.ToString());
+            Assert.AreEqual(expected1, result2);
+            Assert.AreEqual(42949672971ul, (ulong)result2);
+            Assert.AreEqual("A/B", result2.ToString());
+        }
+
+        #endregion NpgsqlLogSequenceNumber / PgLsn
+
         public InternalTypeTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
     }
 }

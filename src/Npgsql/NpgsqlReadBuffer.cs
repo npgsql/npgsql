@@ -505,6 +505,9 @@ namespace Npgsql
 
         public ValueTask<int> ReadAsync(Memory<byte> output, CancellationToken cancellationToken = default)
         {
+            if (output.Length == 0)
+                return new ValueTask<int>(0);
+
             var readFromBuffer = Math.Min(ReadBytesLeft, output.Length);
             if (readFromBuffer > 0)
             {
@@ -512,9 +515,6 @@ namespace Npgsql
                 ReadPosition += readFromBuffer;
                 return new ValueTask<int>(readFromBuffer);
             }
-
-            if (output.Length == 0)
-                return new ValueTask<int>(0);
 
             return ReadAsyncLong();
 
@@ -549,29 +549,60 @@ namespace Npgsql
         /// Seeks the first null terminator (\0) and returns the string up to it. The buffer must already
         /// contain the entire string and its terminator.
         /// </summary>
-        public string ReadNullTerminatedString() => ReadNullTerminatedString(TextEncoding);
+        public string ReadNullTerminatedString()
+            => ReadNullTerminatedString(TextEncoding, async: false).GetAwaiter().GetResult();
 
         /// <summary>
         /// Seeks the first null terminator (\0) and returns the string up to it. The buffer must already
         /// contain the entire string and its terminator. If any character could not be decoded, a question
         /// mark character is returned instead of throwing an exception.
         /// </summary>
-        public string ReadNullTerminatedStringRelaxed() => ReadNullTerminatedString(RelaxedTextEncoding);
+        public string ReadNullTerminatedStringRelaxed()
+            => ReadNullTerminatedString(RelaxedTextEncoding, async: false).GetAwaiter().GetResult();
+
+        public ValueTask<string> ReadNullTerminatedString(bool async, CancellationToken cancellationToken = default)
+            => ReadNullTerminatedString(TextEncoding, async, cancellationToken);
 
         /// <summary>
-        /// Seeks the first null terminator (\0) and returns the string up to it. The buffer must already
-        /// contain the entire string and its terminator.
+        /// Seeks the first null terminator (\0) and returns the string up to it. Reads additional data from the network if a null
+        /// terminator isn't found in the buffered data.
         /// </summary>
-        /// <param name="encoding">Decodes the messages with this encoding.</param>
-        string ReadNullTerminatedString(Encoding encoding)
+        ValueTask<string> ReadNullTerminatedString(Encoding encoding, bool async, CancellationToken cancellationToken = default)
         {
-            int i;
-            for (i = ReadPosition; Buffer[i] != 0; i++)
-                Debug.Assert(i <= ReadPosition + ReadBytesLeft);
-            Debug.Assert(i >= ReadPosition);
-            var result = encoding.GetString(Buffer, ReadPosition, i - ReadPosition);
-            ReadPosition = i + 1;
-            return result;
+            return ReadFromBuffer(out var s)
+                ? new ValueTask<string>(s)
+                : ReadLong(s);
+
+            bool ReadFromBuffer(out string s)
+            {
+                var start = ReadPosition;
+                while (ReadPosition < FilledBytes)
+                {
+                    if (Buffer[ReadPosition++] == 0)
+                    {
+                        s = encoding.GetString(Buffer, start, ReadPosition - start - 1);
+                        return true;
+                    }
+                }
+
+                s = encoding.GetString(Buffer, start, ReadPosition - start);
+                return false;
+            }
+
+            async ValueTask<string> ReadLong(string s)
+            {
+                var builder = new StringBuilder(s);
+                bool complete;
+                do
+                {
+                    await ReadMore(async, cancellationToken);
+                    complete = ReadFromBuffer(out s);
+                    builder.Append(s);
+                }
+                while (!complete);
+
+                return builder.ToString();
+            }
         }
 
         public ReadOnlySpan<byte> GetNullTerminatedBytes()

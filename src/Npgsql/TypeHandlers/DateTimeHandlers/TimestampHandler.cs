@@ -2,6 +2,7 @@
 using Npgsql.BackendMessages;
 using NpgsqlTypes;
 using System.Data;
+using System.Runtime.CompilerServices;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
@@ -54,19 +55,31 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
 
         #region Read
 
+        private protected const string InfinityExceptionMessage = "Can't convert infinite timestamp values to DateTime";
+        private protected const string OutOfRangeExceptionMessage = "Out of the range of DateTime (year must be between 1 and 9999)";
+
         /// <inheritdoc />
         public override DateTime Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
-            // TODO: Convert directly to DateTime without passing through NpgsqlTimeStamp?
-            var ts = ReadTimeStamp(buf, len, fieldDescription);
 
-            if (ts.IsFinite)
-                return ts.ToDateTime();
-            if (!ConvertInfinityDateTime)
-                throw new InvalidCastException("Can't convert infinite timestamp values to DateTime");
-            if (ts.IsInfinity)
-                return DateTime.MaxValue;
-            return DateTime.MinValue;
+            var postgresTimestamp = buf.ReadInt64();
+            if (postgresTimestamp == long.MaxValue)
+                return ConvertInfinityDateTime
+                    ? DateTime.MaxValue
+                    : throw new InvalidCastException(InfinityExceptionMessage);
+            if (postgresTimestamp == long.MinValue)
+                return ConvertInfinityDateTime
+                    ? DateTime.MinValue
+                    : throw new InvalidCastException(InfinityExceptionMessage);
+
+            try
+            {
+                return FromPostgresTimestamp(postgresTimestamp);
+            }
+            catch (ArgumentOutOfRangeException e)
+            {
+                throw new InvalidCastException(OutOfRangeExceptionMessage, e);
+            }
         }
 
         /// <inheritdoc />
@@ -168,9 +181,22 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
                 }
             }
 
-            Write(new NpgsqlDateTime(value), buf, parameter);
+            var postgresTimestamp = ToPostgresTimestamp(value);
+            buf.WriteInt64(postgresTimestamp);
         }
 
         #endregion Write
+
+        const long PostgresTimestampOffsetTicks = 630822816000000000L;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static long ToPostgresTimestamp(DateTime value)
+            // Rounding here would cause problems because we would round up DateTime.MaxValue
+            // which would make it impossible to retrieve it back from the database, so we just drop the additional precision
+            => (value.Ticks - PostgresTimestampOffsetTicks) / 10;
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static DateTime FromPostgresTimestamp(long value)
+            => new DateTime(value * 10 + PostgresTimestampOffsetTicks);
     }
 }

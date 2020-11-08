@@ -484,6 +484,17 @@ namespace NpgsqlTypes
         [BuiltInPostgresType("tid", PostgresTypeOIDs.Tid)]
         Tid = 53,
 
+        /// <summary>
+        /// Corresponds to the PostgreSQL "pg_lsn" type, which can be used to store LSN (Log Sequence Number) data which
+        /// is a pointer to a location in the WAL.
+        /// </summary>
+        /// <remarks>
+        /// See: https://www.postgresql.org/docs/current/datatype-pg-lsn.html and
+        /// https://git.postgresql.org/gitweb/?p=postgresql.git;a=commit;h=7d03a83f4d0736ba869fa6f93973f7623a27038a
+        /// </remarks>
+        [BuiltInPostgresType("pg_lsn", 3220)]
+        PgLsn = 59,
+
         #endregion
 
         #region Special
