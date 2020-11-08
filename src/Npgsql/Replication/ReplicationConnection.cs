@@ -14,7 +14,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using static Npgsql.Util.Statics;
 
-#if NETSTANDARD2_0
+#if NETSTANDARD2_0 || NETSTANDARD2_1 || NETCOREAPP3_1
 using Npgsql.Util;
 #endif
 
@@ -41,6 +41,7 @@ namespace Npgsql.Replication
         Timer? _sendFeedbackTimer;
         Timer? _requestFeedbackTimer;
         TimeSpan _requestFeedbackInterval;
+        Task _replicationCompletion = Task.CompletedTask;
 
         // We represent the log sequence numbers as unsigned long
         // although we have a special struct to represent them and
@@ -238,8 +239,11 @@ namespace Npgsql.Replication
             if (currentState == ReplicationConnectionState.Disposed)
                 return;
 
-            // Note that we do not currently support disposing the connection while replication (or any other operation) is in progress.
-            // Doing that safely would require us to cancel replication and wait until it completes.
+            if (State == ReplicationConnectionState.Streaming)
+            {
+                Connector.CancelRequest();
+                await _replicationCompletion;
+            }
 
             Debug.Assert(_sendFeedbackTimer is null);
             Debug.Assert(_requestFeedbackTimer is null);
@@ -398,39 +402,41 @@ namespace Npgsql.Replication
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            using var stateResetter = EnsureAndSetState(ReplicationConnectionState.Idle, ReplicationConnectionState.Streaming);
-            var connector = _npgsqlConnection.Connector!;
-#if !NETSTANDARD2_0
-            await
-#endif
-            using var registration = cancellationToken.Register(c => ((ReplicationConnection)c!).Connector.CancelRequest(), this);
-            await connector.WriteQuery(command, true, cancellationToken);
-            await connector.Flush(true, cancellationToken);
-
-            var msg = await connector.ReadMessage(true, cancellationToken);
-            switch (msg.Code)
-            {
-            case BackendMessageCode.CopyBothResponse:
-                break;
-            case BackendMessageCode.CommandComplete:
-            {
-                yield break;
-            }
-            default:
-                stateResetter.ChangeResetState(ReplicationConnectionState.Broken);
-                throw connector.UnexpectedMessageReceived(msg.Code);
-            }
-
-            var buf = connector.ReadBuffer;
-            var columnStream = new NpgsqlReadBuffer.ColumnStream(buf);
-
-            SetTimeouts(_walReceiverTimeout, CommandTimeout);
-
-            _sendFeedbackTimer = new Timer(TimerSendFeedback, state: null, WalReceiverStatusInterval, Timeout.InfiniteTimeSpan);
-            _requestFeedbackTimer = new Timer(TimerRequestFeedback, state: null, _requestFeedbackInterval, Timeout.InfiniteTimeSpan);
+            var completionSource = new TaskCompletionSource();
 
             try
             {
+                using var stateResetter = EnsureAndSetState(ReplicationConnectionState.Idle, ReplicationConnectionState.Streaming);
+                var connector = _npgsqlConnection.Connector!;
+#if !NETSTANDARD2_0
+                await
+#endif
+                using var registration = cancellationToken.Register(c => ((ReplicationConnection)c!).Connector.CancelRequest(), this);
+                await connector.WriteQuery(command, true, cancellationToken);
+                await connector.Flush(true, cancellationToken);
+
+                var msg = await connector.ReadMessage(true, cancellationToken);
+                switch (msg.Code)
+                {
+                case BackendMessageCode.CopyBothResponse:
+                    break;
+                case BackendMessageCode.CommandComplete:
+                {
+                    yield break;
+                }
+                default:
+                    stateResetter.ChangeResetState(ReplicationConnectionState.Broken);
+                    throw connector.UnexpectedMessageReceived(msg.Code);
+                }
+
+                var buf = connector.ReadBuffer;
+                var columnStream = new NpgsqlReadBuffer.ColumnStream(buf);
+
+                SetTimeouts(_walReceiverTimeout, CommandTimeout);
+
+                _sendFeedbackTimer = new Timer(TimerSendFeedback, state: null, WalReceiverStatusInterval, Timeout.InfiniteTimeSpan);
+                _requestFeedbackTimer = new Timer(TimerRequestFeedback, state: null, _requestFeedbackInterval, Timeout.InfiniteTimeSpan);
+
                 while (true)
                 {
                     msg = await connector.ReadMessage(true, CancellationToken.None);
@@ -496,25 +502,35 @@ namespace Npgsql.Replication
             finally
             {
 #if NETSTANDARD2_0
-                var mre = new ManualResetEvent(false);
-                var actuallyDisposed = _sendFeedbackTimer.Dispose(mre);
-                Debug.Assert(actuallyDisposed, $"{nameof(_sendFeedbackTimer)} had already been disposed when completing replication");
-                if (actuallyDisposed)
-                    await mre.WaitOneAsync(cancellationToken);
+                if (_sendFeedbackTimer != null)
+                {
+                    var mre = new ManualResetEvent(false);
+                    var actuallyDisposed = _sendFeedbackTimer.Dispose(mre);
+                    Debug.Assert(actuallyDisposed, $"{nameof(_sendFeedbackTimer)} had already been disposed when completing replication");
+                    if (actuallyDisposed)
+                        await mre.WaitOneAsync(cancellationToken);
+                }
 
-                mre.Reset();
-                actuallyDisposed = _requestFeedbackTimer.Dispose(mre);
-                Debug.Assert(actuallyDisposed, $"{nameof(_requestFeedbackTimer)} had already been disposed when completing replication");
-                if (actuallyDisposed)
-                    await mre.WaitOneAsync(cancellationToken);
+                if (_requestFeedbackTimer != null)
+                {
+                    var mre = new ManualResetEvent(false);
+                    var actuallyDisposed = _requestFeedbackTimer.Dispose(mre);
+                    Debug.Assert(actuallyDisposed, $"{nameof(_requestFeedbackTimer)} had already been disposed when completing replication");
+                    if (actuallyDisposed)
+                        await mre.WaitOneAsync(cancellationToken);
+                }
 #else
-                await _sendFeedbackTimer.DisposeAsync();
-                await _requestFeedbackTimer.DisposeAsync();
+                if (_sendFeedbackTimer != null)
+                    await _sendFeedbackTimer.DisposeAsync();
+                if (_requestFeedbackTimer != null)
+                    await _requestFeedbackTimer.DisposeAsync();
 #endif
                 _sendFeedbackTimer = null;
                 _requestFeedbackTimer = null;
 
                 SetTimeouts(CommandTimeout, CommandTimeout);
+
+                completionSource.SetResult();
             }
         }
 
