@@ -394,15 +394,16 @@ namespace Npgsql
         bool IsConnected
             => State switch
             {
-                ConnectorState.Ready      => true,
-                ConnectorState.Executing  => true,
-                ConnectorState.Fetching   => true,
-                ConnectorState.Waiting    => true,
-                ConnectorState.Copy       => true,
-                ConnectorState.Closed     => false,
-                ConnectorState.Connecting => false,
-                ConnectorState.Broken     => false,
-                _                         => throw new ArgumentOutOfRangeException("Unknown state: " + State)
+                ConnectorState.Ready       => true,
+                ConnectorState.Executing   => true,
+                ConnectorState.Fetching    => true,
+                ConnectorState.Waiting     => true,
+                ConnectorState.Copy        => true,
+                ConnectorState.Replication => true,
+                ConnectorState.Closed      => false,
+                ConnectorState.Connecting  => false,
+                ConnectorState.Broken      => false,
+                _                          => throw new ArgumentOutOfRangeException("Unknown state: " + State)
             };
 
         internal bool IsReady => State == ConnectorState.Ready;
@@ -1848,7 +1849,7 @@ namespace Npgsql
         internal UserAction StartUserAction(NpgsqlCommand command)
             => StartUserAction(ConnectorState.Executing, command);
 
-        internal UserAction StartUserAction(ConnectorState newState=ConnectorState.Executing, NpgsqlCommand? command = null)
+        internal UserAction StartUserAction(ConnectorState newState = ConnectorState.Executing, NpgsqlCommand? command = null)
         {
             // If keepalive is enabled, we must protect state transitions with a SemaphoreSlim
             // (which itself must be protected by a lock, since its dispose isn't thread-safe).
@@ -1898,6 +1899,7 @@ namespace Npgsql
                 case ConnectorState.Executing:
                 case ConnectorState.Fetching:
                 case ConnectorState.Waiting:
+                case ConnectorState.Replication:
                 case ConnectorState.Connecting:
                 case ConnectorState.Copy:
                     var currentCommand = _currentCommand;
@@ -2219,6 +2221,11 @@ namespace Npgsql
         /// The connector is engaged in a COPY operation.
         /// </summary>
         Copy,
+
+        /// <summary>
+        /// The connector is engaged in streaming replication.
+        /// </summary>
+        Replication,
     }
 
 #pragma warning disable CA1717

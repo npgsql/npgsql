@@ -35,13 +35,13 @@ namespace Npgsql.Replication
         readonly NpgsqlConnection _npgsqlConnection;
         readonly SemaphoreSlim _feedbackSemaphore = new SemaphoreSlim(1, 1);
         string? _userFacingConnectionString;
-        volatile int _state;
         TimeSpan? _commandTimeout;
         TimeSpan _walReceiverTimeout = TimeSpan.FromSeconds(60d);
         Timer? _sendFeedbackTimer;
         Timer? _requestFeedbackTimer;
         TimeSpan _requestFeedbackInterval;
         Task _replicationCompletion = Task.CompletedTask;
+        bool _isDisposed;
 
         // We represent the log sequence numbers as unsigned long
         // although we have a special struct to represent them and
@@ -56,6 +56,8 @@ namespace Npgsql.Replication
 
         #endregion Fields
 
+        #region Constructors
+
         private protected ReplicationConnection()
         {
             _npgsqlConnection = new NpgsqlConnection();
@@ -65,19 +67,22 @@ namespace Npgsql.Replication
         private protected ReplicationConnection(string? connectionString) : this()
             => ConnectionString = connectionString;
 
+        #endregion
+
         #region Properties
 
         /// <summary>
         /// Gets or sets the string used to connect to a PostgreSQL database. See the manual for details.
         /// </summary>
-        /// <value>The connection string that includes the server name,
-        /// the database name, and other parameters needed to establish
-        /// the initial connection. The default value is an empty string.
+        /// <value>
+        /// The connection string that includes the server name, the database name, and other parameters needed to establish the initial
+        /// connection. The default value is an empty string.
         /// </value>
         /// <remarks>
-        /// Since replication connections are a special kind of connection, the values for
-        /// Pooling, Enlist and Multiplexing are always false no matter what you set them to
-        /// in your connection string.
+        /// Since replication connections are a special kind of connection,
+        /// <see cref="NpgsqlConnectionStringBuilder.Pooling"/>, <see cref="NpgsqlConnectionStringBuilder.Enlist"/>,
+        /// <see cref="NpgsqlConnectionStringBuilder.Multiplexing" /> and <see cref="NpgsqlConnectionStringBuilder.KeepAlive"/>
+        /// are always disabled no matter what you set them to in your connection string.
         /// </remarks>
         [AllowNull]
         public string ConnectionString {
@@ -90,6 +95,7 @@ namespace Npgsql.Replication
                     Pooling = false,
                     Enlist = false,
                     Multiplexing = false,
+                    KeepAlive = 0,
                     ServerCompatibilityMode = ServerCompatibilityMode.NoTypeLoading,
                     ReplicationMode = ReplicationMode
                 }.ToString();
@@ -149,20 +155,9 @@ namespace Npgsql.Replication
 
         internal Version PostgreSqlVersion => _npgsqlConnection.PostgreSqlVersion;
 
-        internal NpgsqlConnector Connector => _npgsqlConnection.Connector ?? throw new InvalidOperationException($"The {Connector} property can only be used when there is an active connection");
-
-        ReplicationConnectionState State
-        {
-            get => (ReplicationConnectionState)_state;
-            set
-            {
-                // Disposed and Broken are final states. We never leave them.
-                if (State == ReplicationConnectionState.Disposed || State == ReplicationConnectionState.Broken)
-                    return;
-
-                _state = (int)value;
-            }
-        }
+        internal NpgsqlConnector Connector
+            => _npgsqlConnection.Connector ??
+               throw new InvalidOperationException($"The {Connector} property can only be used when there is an active connection");
 
         /// <summary>
         /// Gets or sets the wait time before terminating the attempt  to execute a command and generating an error.
@@ -180,7 +175,7 @@ namespace Npgsql.Replication
                         $"A finite CommandTimeout can't be less than {TimeSpan.Zero}.");
 
                 _commandTimeout = value;
-                if (State != ReplicationConnectionState.Streaming)
+                if (Connector.State != ConnectorState.Replication)
                     SetTimeouts(value, value);
             }
         }
@@ -211,15 +206,12 @@ namespace Npgsql.Replication
         /// <returns>A task representing the asynchronous open operation.</returns>
         public async Task Open(CancellationToken cancellationToken = default)
         {
-            // No need for NoSynchronizationContextScope.Enter() since
-            // NpgsqlConnection.OpenAsync() does it itself and it's the
-            // first/only async method call.
-            using var openState = EnsureAndSetState(ReplicationConnectionState.Closed, ReplicationConnectionState.Opening);
-            await _npgsqlConnection.OpenAsync(cancellationToken);
+            CheckDisposed();
+
+            await _npgsqlConnection.OpenAsync(cancellationToken)
+                .ConfigureAwait(false);
 
             SetTimeouts(CommandTimeout, CommandTimeout);
-
-            openState.ChangeResetState(ReplicationConnectionState.Idle);
         }
 
         /// <summary>
@@ -230,26 +222,25 @@ namespace Npgsql.Replication
         public ValueTask DisposeAsync()
         {
             using (NoSynchronizationContextScope.Enter())
-                return DisposeAsyncInternal();
-        }
+                return DisposeAsyncCore();
 
-        async ValueTask DisposeAsyncInternal()
-        {
-            var currentState =
-                (ReplicationConnectionState)Interlocked.Exchange(ref _state, (int)ReplicationConnectionState.Disposed);
-            if (currentState == ReplicationConnectionState.Disposed)
-                return;
-
-            if (State == ReplicationConnectionState.Streaming)
+            async ValueTask DisposeAsyncCore()
             {
-                Connector.CancelRequest();
-                await _replicationCompletion;
-            }
+                if (_isDisposed)
+                    return;
 
-            Debug.Assert(_sendFeedbackTimer is null);
-            Debug.Assert(_requestFeedbackTimer is null);
-            _feedbackSemaphore.Dispose();
-            await _npgsqlConnection.Close(async:true);
+                if (Connector.State == ConnectorState.Replication)
+                {
+                    Connector.CancelRequest();
+                    await _replicationCompletion;
+                }
+
+                Debug.Assert(_sendFeedbackTimer is null, "Send feedback timer isn't null at replication shutdown");
+                Debug.Assert(_requestFeedbackTimer is null, "Request feedback timer isn't null at replication shutdown");
+                _feedbackSemaphore.Dispose();
+                await _npgsqlConnection.Close(async: true);
+                _isDisposed = true;
+            }
         }
 
         #endregion Open / Dispose
@@ -322,21 +313,23 @@ namespace Npgsql.Replication
         internal async Task<ReplicationSlotOptions> CreateReplicationSlot(
             string command, bool temporarySlot, CancellationToken cancellationToken = default)
         {
-            using var executeState = EnsureAndSetState(ReplicationConnectionState.Idle, ReplicationConnectionState.Executing);
+            CheckDisposed();
+            cancellationToken.ThrowIfCancellationRequested();
+            using var _ = Connector.StartUserAction();
+
+            await Connector.WriteQuery(command, true, cancellationToken);
+            await Connector.Flush(true, cancellationToken);
+
             try
             {
-                var connector = _npgsqlConnection.Connector!;
-                await connector.WriteQuery(command, true, cancellationToken);
-                await connector.Flush(true, cancellationToken);
-
-                var rowDescription = Expect<RowDescriptionMessage>(await connector.ReadMessage(true, cancellationToken), connector);
+                var rowDescription = Expect<RowDescriptionMessage>(await Connector.ReadMessage(true, cancellationToken), Connector);
                 Debug.Assert(rowDescription.NumFields == 4);
                 Debug.Assert(rowDescription.Fields[0].TypeOID == 25u, "slot_name expected as text");
                 Debug.Assert(rowDescription.Fields[1].TypeOID == 25u, "consistent_point expected as text");
                 Debug.Assert(rowDescription.Fields[2].TypeOID == 25u, "snapshot_name expected as text");
                 Debug.Assert(rowDescription.Fields[3].TypeOID == 25u, "output_plugin expected as text");
-                Expect<DataRowMessage>(await connector.ReadMessage(true, cancellationToken), connector);
-                var buf = connector.ReadBuffer;
+                Expect<DataRowMessage>(await Connector.ReadMessage(true, cancellationToken), Connector);
+                var buf = Connector.ReadBuffer;
                 await buf.Ensure(2, true, cancellationToken);
                 var results = new object[buf.ReadInt16()];
                 Debug.Assert(results.Length == 4);
@@ -376,8 +369,8 @@ namespace Npgsql.Replication
                     buf.Skip(len); // We know already what we created
                 }
 
-                Expect<CommandCompleteMessage>(await connector.ReadMessage(true, cancellationToken), connector);
-                Expect<ReadyForQueryMessage>(await connector.ReadMessage(true, cancellationToken), connector);
+                Expect<CommandCompleteMessage>(await Connector.ReadMessage(true, cancellationToken), Connector);
+                Expect<ReadyForQueryMessage>(await Connector.ReadMessage(true, cancellationToken), Connector);
 
                 return new ReplicationSlotOptions(slotNameResult, consistentPoint, snapshotName);
             }
@@ -401,6 +394,7 @@ namespace Npgsql.Replication
             bool bypassingStream,
             [EnumeratorCancellation] CancellationToken cancellationToken)
         {
+            CheckDisposed();
             cancellationToken.ThrowIfCancellationRequested();
 
             var completionSource = new TaskCompletionSource<int>();
@@ -408,8 +402,9 @@ namespace Npgsql.Replication
 
             try
             {
-                using var stateResetter = EnsureAndSetState(ReplicationConnectionState.Idle, ReplicationConnectionState.Streaming);
                 var connector = _npgsqlConnection.Connector!;
+                using var _ = Connector.StartUserAction(ConnectorState.Replication);
+
 #if !NETSTANDARD2_0
                 await
 #endif
@@ -427,7 +422,6 @@ namespace Npgsql.Replication
                     yield break;
                 }
                 default:
-                    stateResetter.ChangeResetState(ReplicationConnectionState.Broken);
                     throw connector.UnexpectedMessageReceived(msg.Code);
                 }
 
@@ -441,8 +435,8 @@ namespace Npgsql.Replication
 
                 while (true)
                 {
-                    msg = await connector.ReadMessage(true, CancellationToken.None);
-                    Expect<CopyDataMessage>(msg, connector);
+                    msg = await Connector.ReadMessage(true, CancellationToken.None);
+                    Expect<CopyDataMessage>(msg, Connector);
 
                     // We received some message so there's no need to forcibly request feedback
                     // Reset the timer to request feedback.
@@ -497,7 +491,7 @@ namespace Npgsql.Replication
                     }
 
                     default:
-                        throw connector.Break(new NpgsqlException($"Unknown replication message code '{code}'"));
+                        throw Connector.Break(new NpgsqlException($"Unknown replication message code '{code}'"));
                     }
                 }
             }
@@ -548,7 +542,14 @@ namespace Npgsql.Replication
 
             async Task SendStatusUpdateInternal()
             {
-                EnsureState(ReplicationConnectionState.Streaming);
+                CheckDisposed();
+                cancellationToken.ThrowIfCancellationRequested();
+
+                // TODO: If the user accidentally does concurrent usage of the connection, the following is vulnerable to race conditions.
+                // However, we generally aren't safe for this in Npgsql, leaving as-is for now.
+                if (Connector.State != ConnectorState.Replication)
+                    throw new InvalidOperationException("Status update can only be sent during replication");
+
                 await SendFeedback(waitOnSemaphore: true, cancellationToken: cancellationToken);
             }
         }
@@ -596,7 +597,7 @@ namespace Npgsql.Replication
         {
             try
             {
-                if (State != ReplicationConnectionState.Streaming)
+                if (Connector.State != ConnectorState.Replication)
                     return;
 
                 await SendFeedback(waitOnSemaphore: true, requestReply: true);
@@ -611,7 +612,7 @@ namespace Npgsql.Replication
         {
             try
             {
-                if (State != ReplicationConnectionState.Streaming)
+                if (Connector.State != ConnectorState.Replication)
                     return;
 
                 await SendFeedback();
@@ -645,9 +646,10 @@ namespace Npgsql.Replication
 
             async Task DropReplicationSlotInternal()
             {
+                CheckDisposed();
                 cancellationToken.ThrowIfCancellationRequested();
-                using var dropState = EnsureAndSetState(ReplicationConnectionState.Idle, ReplicationConnectionState.Executing);
-                var connector = _npgsqlConnection.Connector!;
+                using var _ = Connector.StartUserAction();
+
 #if !NETSTANDARD2_0
                 await
 #endif
@@ -657,16 +659,16 @@ namespace Npgsql.Replication
                 if (wait)
                     command += " WAIT";
 
-                await connector.WriteQuery(command, true, CancellationToken.None);
-                await connector.Flush(true, CancellationToken.None);
+                await Connector.WriteQuery(command, true, CancellationToken.None);
+                await Connector.Flush(true, CancellationToken.None);
 
-                Expect<CommandCompleteMessage>(await connector.ReadMessage(true, CancellationToken.None), connector);
+                Expect<CommandCompleteMessage>(await Connector.ReadMessage(true, CancellationToken.None), Connector);
 
                 // Two CommandComplete messages are returned
                 if (PostgreSqlVersion < FirstVersionWithoutDropSlotDoubleCommandCompleteMessage)
-                    Expect<CommandCompleteMessage>(await connector.ReadMessage(true, cancellationToken), connector);
+                    Expect<CommandCompleteMessage>(await Connector.ReadMessage(true, cancellationToken), Connector);
 
-                Expect<ReadyForQueryMessage>(await connector.ReadMessage(true, CancellationToken.None), connector);
+                Expect<ReadyForQueryMessage>(await Connector.ReadMessage(true, CancellationToken.None), Connector);
             }
         }
 
@@ -674,21 +676,21 @@ namespace Npgsql.Replication
 
         async Task<object[]> ReadSingleRow(string command, CancellationToken cancellationToken = default)
         {
+            CheckDisposed();
             cancellationToken.ThrowIfCancellationRequested();
-            using var executeState =
-                EnsureAndSetState(ReplicationConnectionState.Idle, ReplicationConnectionState.Executing);
-            var connector = _npgsqlConnection.Connector!;
+            using var _ = Connector.StartUserAction();
+
 #if !NETSTANDARD2_0
             await
 #endif
             using var registration = cancellationToken.Register(c => ((ReplicationConnection)c!).Connector.CancelRequest(), this);
-            await connector.WriteQuery(command, true, cancellationToken);
-            await connector.Flush(true, cancellationToken);
+            await Connector.WriteQuery(command, true, cancellationToken);
+            await Connector.Flush(true, cancellationToken);
 
             var description =
-                Expect<RowDescriptionMessage>(await connector.ReadMessage(true, cancellationToken), connector);
-            Expect<DataRowMessage>(await connector.ReadMessage(true, cancellationToken), connector);
-            var buf = connector.ReadBuffer;
+                Expect<RowDescriptionMessage>(await Connector.ReadMessage(true, cancellationToken), Connector);
+            Expect<DataRowMessage>(await Connector.ReadMessage(true, cancellationToken), Connector);
+            var buf = Connector.ReadBuffer;
             await buf.Ensure(2, true, cancellationToken);
             var results = new object[buf.ReadInt16()];
             for (var i = 0; i < results.Length; i++)
@@ -709,7 +711,7 @@ namespace Npgsql.Replication
                     var str = buf.ReadString(len);
                     if (!uint.TryParse(str, NumberStyles.None, null, out var num))
                     {
-                        throw connector.Break(
+                        throw Connector.Break(
                             new NpgsqlException(
                                 $"Could not parse '{str}' as unsigned integer in field {field.Name}"));
                     }
@@ -727,20 +729,20 @@ namespace Npgsql.Replication
                     }
                     catch (Exception e)
                     {
-                        throw connector.Break(
+                        throw Connector.Break(
                             new NpgsqlException($"Could not parse data as bytea in field {field.Name}", e));
                     }
 
                     continue;
                 default:
 
-                    throw connector.Break(new NpgsqlException(
+                    throw Connector.Break(new NpgsqlException(
                         $"Field {field.Name} has PostgreSQL type {field.PostgresType.Name} which isn't supported yet"));
                 }
             }
 
-            Expect<CommandCompleteMessage>(await connector.ReadMessage(true, cancellationToken), connector);
-            Expect<ReadyForQueryMessage>(await connector.ReadMessage(true, cancellationToken), connector);
+            Expect<CommandCompleteMessage>(await Connector.ReadMessage(true, cancellationToken), Connector);
+            Expect<ReadyForQueryMessage>(await Connector.ReadMessage(true, cancellationToken), Connector);
             return results;
 
             byte[] ParseBytea(ReadOnlySpan<byte> bytes)
@@ -817,93 +819,10 @@ namespace Npgsql.Replication
             connector.WriteBuffer.Timeout = writeTimeout;
         }
 
-        /// <summary>
-        /// Ensures that the connection is in the state specified in <paramref name="state"/>
-        /// and returns a <see cref="StateResetter"/>.
-        /// </summary>
-        /// <remarks>Access to the connection state (<see cref="_state"/>) happens in a thread safe manner.</remarks>
-        /// <param name="state">The state that is expected when entering the method.
-        /// This is also the default state, the connection gets reset to, when the returned <see cref="StateResetter"/> gets disposed</param>
-        /// <returns>A <see cref="StateResetter"/> that resets the connection state when it gets disposed. You can use it to change the state, the connection gets reset to.</returns>
-        StateResetter EnsureAndSetState(ReplicationConnectionState state) => EnsureAndSetState(state, state);
-
-        /// <summary>
-        /// Ensures that the connection is in the state specified in <paramref name="expectedState"/> and sets
-        /// it to the state specified in <paramref name="stateWhileExecuting"/> until the returned <see cref="StateResetter"/>
-        /// is disposed.
-        /// </summary>
-        /// <remarks>All access to the connection state (<see cref="_state"/>) happens in a thread safe manner.</remarks>
-        /// <param name="expectedState">The state that is expected when entering the method.
-        /// This is also the default state, the connection gets reset to, when the returned <see cref="StateResetter"/> gets disposed</param>
-        /// <param name="stateWhileExecuting">The state the connection get set to until the returned <see cref="StateResetter"/> is disposed</param>
-        /// <returns>A <see cref="StateResetter"/> that resets the connection state when it gets disposed. You can use it to change the state, the connection gets reset to.</returns>
-        StateResetter EnsureAndSetState(ReplicationConnectionState expectedState, ReplicationConnectionState stateWhileExecuting)
+        void CheckDisposed()
         {
-            var initialState =
-                (ReplicationConnectionState)Interlocked.CompareExchange(ref _state, (int)stateWhileExecuting, (int)expectedState);
-            ThrowOnInvalidState(expectedState, initialState);
-            return new StateResetter(this, expectedState);
-        }
-
-        void EnsureState(ReplicationConnectionState expectedState)
-            => ThrowOnInvalidState(expectedState, State);
-
-        void ThrowOnInvalidState(ReplicationConnectionState expectedState, ReplicationConnectionState actualState)
-        {
-            if (actualState != expectedState)
-                throw actualState switch
-                {
-                    ReplicationConnectionState.Closed => new InvalidOperationException("Connection is not open."),
-                    ReplicationConnectionState.Opening => new InvalidOperationException("Connection is currently opening."),
-                    ReplicationConnectionState.Idle => new InvalidOperationException("Connection is already open."),
-                    ReplicationConnectionState.Executing => new InvalidOperationException(
-                        "Connection is currently executing a command. Await or cancel it before attempting a new operation."),
-                    ReplicationConnectionState.Streaming => new InvalidOperationException(
-                        "Connection is currently streaming. Cancel before attempting a new operation."),
-                    ReplicationConnectionState.Disposed => new ObjectDisposedException(GetType().Name),
-                    ReplicationConnectionState.Broken => new InvalidOperationException("Connection is broken."),
-                    _ => new ArgumentOutOfRangeException(nameof(actualState),
-                        "Unexpected connection state. Please report this as a bug.")
-                };
-            if (expectedState == ReplicationConnectionState.Idle)
-            {
-                try
-                {
-                    _npgsqlConnection.CheckReady();
-                }
-                catch
-                {
-                    State = ReplicationConnectionState.Broken;
-                    throw;
-                }
-            }
-        }
-
-        struct StateResetter : IDisposable
-        {
-            readonly ReplicationConnection _connection;
-            ReplicationConnectionState _resetState;
-
-            internal StateResetter(ReplicationConnection connection, ReplicationConnectionState resetState)
-            {
-                _connection = connection;
-                _resetState = resetState;
-            }
-            public void ChangeResetState(ReplicationConnectionState newResetState) => _resetState = newResetState;
-
-            public void Dispose()
-                => _connection.State = _connection._npgsqlConnection.Connector?.IsBroken == false ? _resetState : ReplicationConnectionState.Broken;
-        }
-
-        enum ReplicationConnectionState
-        {
-            Closed,
-            Opening,
-            Idle,
-            Executing,
-            Streaming,
-            Disposed,
-            Broken,
+            if (_isDisposed)
+                throw new ObjectDisposedException(GetType().Name);
         }
     }
 }

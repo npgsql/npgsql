@@ -462,14 +462,15 @@ namespace Npgsql
                         ? ConnectionState.Open // When unbound, we only know we're open
                         : Connector.State switch
                         {
-                            ConnectorState.Ready      => ConnectionState.Open,
-                            ConnectorState.Executing  => ConnectionState.Open | ConnectionState.Executing,
-                            ConnectorState.Fetching   => ConnectionState.Open | ConnectionState.Fetching,
-                            ConnectorState.Copy       => ConnectionState.Open | ConnectionState.Fetching,
-                            ConnectorState.Waiting    => ConnectionState.Open | ConnectionState.Fetching,
-                            ConnectorState.Connecting => ConnectionState.Connecting,
-                            ConnectorState.Broken     => ConnectionState.Broken,
-                            ConnectorState.Closed     => throw new InvalidOperationException("Internal Npgsql bug: connection is in state Open but connector is in state Closed"),
+                            ConnectorState.Ready       => ConnectionState.Open,
+                            ConnectorState.Executing   => ConnectionState.Open | ConnectionState.Executing,
+                            ConnectorState.Fetching    => ConnectionState.Open | ConnectionState.Fetching,
+                            ConnectorState.Copy        => ConnectionState.Open | ConnectionState.Fetching,
+                            ConnectorState.Replication => ConnectionState.Open | ConnectionState.Fetching,
+                            ConnectorState.Waiting     => ConnectionState.Open | ConnectionState.Fetching,
+                            ConnectorState.Connecting  => ConnectionState.Connecting,
+                            ConnectorState.Broken      => ConnectionState.Broken,
+                            ConnectorState.Closed      => throw new InvalidOperationException("Internal Npgsql bug: connection is in state Open but connector is in state Closed"),
                             _ => throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {Connector.State} of enum {nameof(ConnectorState)}. Please file a bug.")
                         },
                     _ => _fullState

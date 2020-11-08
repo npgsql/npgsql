@@ -882,6 +882,7 @@ namespace Npgsql
                 break;
             case ConnectorState.Waiting:
             case ConnectorState.Copy:
+            case ConnectorState.Replication:
                 Debug.Fail("Bad connector state when closing reader: " + Connector.State);
                 break;
             default:
