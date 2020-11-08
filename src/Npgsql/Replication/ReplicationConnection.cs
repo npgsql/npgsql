@@ -238,11 +238,8 @@ namespace Npgsql.Replication
             if (currentState == ReplicationConnectionState.Disposed)
                 return;
 
-            // The expected sequence is probably to first cancel the streaming replication and then dispose
-            // the connection, but if DisposeAsync() is called while the connection is streaming, we
-            // do the cancellation ourselves to bring it down in a predictable way.
-            if (currentState == ReplicationConnectionState.Streaming)
-                Connector.CancelRequest();
+            // Note that we do not currently support disposing the connection while replication (or any other operation) is in progress.
+            // Doing that safely would require us to cancel replication and wait until it completes.
 
             Debug.Assert(_sendFeedbackTimer is null);
             Debug.Assert(_requestFeedbackTimer is null);
