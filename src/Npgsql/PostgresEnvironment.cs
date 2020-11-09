@@ -31,26 +31,6 @@ namespace Npgsql
 
         public static string? Options => Environment.GetEnvironmentVariable("PGOPTIONS");
 
-        public static Dictionary<string, string> ParsedOptions => ParseOptions(Options);
-
-        static Dictionary<string, string> ParseOptions(string? options)
-        {
-            var parsedOptions = new Dictionary<string, string>();
-
-            if (options != null)
-            {
-                var pos = 0;
-                while (pos < options.Length)
-                {
-                    var key = NpgsqlConnectionStringBuilder.ParseKey(options, ref pos);
-                    var value = NpgsqlConnectionStringBuilder.ParseValue(options, ref pos);
-                    parsedOptions[key] = value;
-                }
-            }
-
-            return parsedOptions;
-        }
-
         static string? GetDefaultFilePath(string fileName) =>
             Environment.GetEnvironmentVariable(PGUtil.IsWindows ? "APPDATA" : "HOME") is string appData &&
             Path.Combine(appData, "postgresql", fileName) is string filePath &&

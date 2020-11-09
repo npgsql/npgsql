@@ -712,13 +712,11 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        [TestCase("default_transaction_isolation=serializable default_transaction_deferrable=on foo.bar=My\\ Famous\\\\Thing")]
-        [TestCase("-c default_transaction_isolation=serializable -c default_transaction_deferrable=on -c foo.bar=My\\ Famous\\\\Thing")]
-        public async Task SetOptions(string options)
+        public async Task SetOptions()
         {
             using var _ = CreateTempPool(new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                Options = options
+                Options = "-c default_transaction_isolation=serializable -c default_transaction_deferrable=on -c foo.bar=My\\ Famous\\\\Thing"
             }, out var connectionString);
 
             using var conn = await OpenConnectionAsync(connectionString);
@@ -1349,11 +1347,9 @@ CREATE TABLE record ()");
 
         [Test]
         [NonParallelizable]
-        [TestCase("default_transaction_isolation=serializable default_transaction_deferrable=on foo.bar=My\\ Famous\\\\Thing")]
-        [TestCase("-c default_transaction_isolation=serializable -c default_transaction_deferrable=on -c foo.bar=My\\ Famous\\\\Thing")]
-        public async Task Connect_OptionsFromEnvironment_Succeeds(string pgOptions)
+        public async Task Connect_OptionsFromEnvironment_Succeeds()
         {
-            using (SetEnvironmentVariable("PGOPTIONS", pgOptions))
+            using (SetEnvironmentVariable("PGOPTIONS", "-c default_transaction_isolation=serializable -c default_transaction_deferrable=on -c foo.bar=My\\ Famous\\\\Thing"))
             {
                 using var _ = CreateTempPool(ConnectionString, out var connectionString);
                 using var conn = await OpenConnectionAsync(connectionString);
