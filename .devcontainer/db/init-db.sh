@@ -22,3 +22,4 @@ echo "host all all all md5" >> $PGDATA/pg_hba.conf
 # Standard test account for Npgsql
 psql -U postgres -c "CREATE USER npgsql_tests SUPERUSER PASSWORD 'npgsql_tests'"
 psql -U postgres -c "CREATE DATABASE npgsql_tests OWNER npgsql_tests"
+psql -U postgres -c "CREATE EXTENSION ltree"
