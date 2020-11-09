@@ -17,7 +17,7 @@ namespace Npgsql.Tests
         /// Unless the NPGSQL_TEST_DB environment variable is defined, this is used as the connection string for the
         /// test database.
         /// </summary>
-        public const string DefaultConnectionString = "Server=localhost;Username=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;Timeout=0;Command Timeout=0";
+        public const string DefaultConnectionString = "Server=localhost;Username=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests;Timeout=0;Command Timeout=0;Port=5432";
 
         /// <summary>
         /// The connection string that will be used when opening the connection to the tests database.

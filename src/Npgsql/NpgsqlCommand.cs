@@ -480,8 +480,10 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
                 foreach (var statement in _statements)
                 {
-                    Expect<ParseCompleteMessage>(connector.ReadMessageWithoutCancellation(), connector);
-                    var paramTypeOIDs = Expect<ParameterDescriptionMessage>(connector.ReadMessageWithoutCancellation(), connector).TypeOIDs;
+                    Expect<ParseCompleteMessage>(
+                        connector.ReadMessage(async: false, pgCancellation: false).GetAwaiter().GetResult(), connector);
+                    var paramTypeOIDs = Expect<ParameterDescriptionMessage>(
+                        connector.ReadMessage(async: false, pgCancellation: false).GetAwaiter().GetResult(), connector).TypeOIDs;
 
                     if (statement.InputParameters.Count != paramTypeOIDs.Count)
                     {
@@ -515,7 +517,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         }
                     }
 
-                    var msg = connector.ReadMessageWithoutCancellation();
+                    var msg = connector.ReadMessage(async: false, pgCancellation: false).GetAwaiter().GetResult();
                     switch (msg.Code)
                     {
                     case BackendMessageCode.RowDescription:
@@ -526,7 +528,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     }
                 }
 
-                Expect<ReadyForQueryMessage>(connector.ReadMessageWithoutCancellation(), connector);
+                Expect<ReadyForQueryMessage>(connector.ReadMessage(async: false, pgCancellation: false).GetAwaiter().GetResult(), connector);
                 sendTask.GetAwaiter().GetResult();
             }
         }

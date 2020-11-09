@@ -403,22 +403,26 @@ namespace Npgsql.Replication
             CheckDisposed();
             cancellationToken.ThrowIfCancellationRequested();
 
+            var connector = _npgsqlConnection.Connector!;
+
+            // PG versions before 10 ignore cancellations during replication, so we go directly to hard cancellation (by passing the
+            // user cancellation token into operations
+            var pgCancellationSupported = connector.DatabaseInfo.Version >= new Version(10, 0);
+            var (readCancellationToken, cancellationRegistration) = pgCancellationSupported
+                ? (CancellationToken.None, cancellationToken.Register(c => ((ReplicationConnection)c!).Connector.CancelRequest(), this))
+                : (cancellationToken, (CancellationTokenRegistration?)null);
+
+            using var _ = Connector.StartUserAction(ConnectorState.Replication);
+
             var completionSource = new TaskCompletionSource<int>();
             _replicationCompletion = completionSource.Task;
 
             try
             {
-                var connector = _npgsqlConnection.Connector!;
-                using var _ = Connector.StartUserAction(ConnectorState.Replication);
-
-#if !NETSTANDARD2_0
-                await
-#endif
-                using var registration = cancellationToken.Register(c => ((ReplicationConnection)c!).Connector.CancelRequest(), this);
                 await connector.WriteQuery(command, true, cancellationToken);
                 await connector.Flush(true, cancellationToken);
 
-                var msg = await connector.ReadMessage(true, cancellationToken);
+                var msg = await connector.ReadMessage(true, pgCancellation: pgCancellationSupported, readCancellationToken);
                 switch (msg.Code)
                 {
                 case BackendMessageCode.CopyBothResponse:
@@ -441,7 +445,7 @@ namespace Npgsql.Replication
 
                 while (true)
                 {
-                    msg = await Connector.ReadMessage(true, CancellationToken.None);
+                    msg = await Connector.ReadMessage(async: true, pgCancellation: pgCancellationSupported, cancellationToken: readCancellationToken);
                     Expect<CopyDataMessage>(msg, Connector);
 
                     // We received some message so there's no need to forcibly request feedback
@@ -449,13 +453,13 @@ namespace Npgsql.Replication
                     _requestFeedbackTimer.Change(_requestFeedbackInterval, Timeout.InfiniteTimeSpan);
 
                     var messageLength = ((CopyDataMessage)msg).Length;
-                    await buf.Ensure(1, true, CancellationToken.None);
+                    await buf.Ensure(1, true, readCancellationToken);
                     var code = (char)buf.ReadByte();
                     switch (code)
                     {
                     case 'w': // XLogData
                     {
-                        await buf.Ensure(24, true, CancellationToken.None);
+                        await buf.Ensure(24, true, readCancellationToken);
                         var startLsn = buf.ReadUInt64();
                         var endLsn = buf.ReadUInt64();
                         var sendTime = TimestampHandler.FromPostgresTimestamp(buf.ReadInt64()).ToLocalTime();
@@ -476,14 +480,14 @@ namespace Npgsql.Replication
                         // Our consumer may not have read the stream to the end, but it might as well have been us
                         // ourselves bypassing the stream and reading directly from the buffer in StartReplication()
                         if (!columnStream.IsDisposed && columnStream.Position < columnStream.Length && !bypassingStream)
-                            await buf.Skip(columnStream.Length - columnStream.Position, true, CancellationToken.None);
+                            await buf.Skip(columnStream.Length - columnStream.Position, true, readCancellationToken);
 
                         continue;
                     }
 
                     case 'k': // Primary keepalive message
                     {
-                        await buf.Ensure(17, true, CancellationToken.None);
+                        await buf.Ensure(17, true, readCancellationToken);
                         var endLsn = buf.ReadUInt64();
                         var timestamp = buf.ReadInt64();
                         var replyRequested = buf.ReadByte() == 1;
@@ -504,6 +508,8 @@ namespace Npgsql.Replication
             finally
             {
 #if NETSTANDARD2_0
+                cancellationRegistration?.Dispose();
+
                 if (_sendFeedbackTimer != null)
                 {
                     var mre = new ManualResetEvent(false);
@@ -522,6 +528,9 @@ namespace Npgsql.Replication
                         await mre.WaitOneAsync(cancellationToken);
                 }
 #else
+                if (cancellationRegistration is not null)
+                    await cancellationRegistration.Value.DisposeAsync();
+
                 if (_sendFeedbackTimer != null)
                     await _sendFeedbackTimer.DisposeAsync();
                 if (_requestFeedbackTimer != null)

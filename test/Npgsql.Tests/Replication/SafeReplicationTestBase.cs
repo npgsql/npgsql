@@ -57,14 +57,13 @@ namespace Npgsql.Tests.Replication
             }
             catch (Exception e)
             {
-                if (CurrentServerVersion >= Pg10Version)
-                    Assert.That(e, Is.AssignableTo<OperationCanceledException>()
+                Assert.That(e, CurrentServerVersion >= Pg10Version
+                    ? Is.AssignableTo<OperationCanceledException>()
                         .With.InnerException.InstanceOf<PostgresException>()
                         .And.InnerException.Property(nameof(PostgresException.SqlState))
-                        .EqualTo(PostgresErrorCodes.QueryCanceled));
-                else
-                    Assert.That(e, Is.AssignableTo<OperationCanceledException>()
-                        .With.InnerException.InstanceOf<TimeoutException>());
+                        .EqualTo(PostgresErrorCodes.QueryCanceled)
+                    : Is.AssignableTo<OperationCanceledException>()
+                        .With.InnerException.Null);
             }
         }
 
@@ -95,7 +94,7 @@ namespace Npgsql.Tests.Replication
                 {
                     await DropSlot();
                 }
-                catch (PostgresException e) when (e.SqlState == "55006" && e.Message.Contains(slotName))
+                catch (PostgresException e) when (e.SqlState == PostgresErrorCodes.ObjectInUse && e.Message.Contains(slotName))
                 {
                     // The slot is still in use. Probably because we didn't terminate
                     // the streaming replication properly.
@@ -123,7 +122,7 @@ namespace Npgsql.Tests.Replication
                     {
                         await c.ExecuteNonQueryAsync($"SELECT pg_drop_replication_slot('{slotName}')");
                     }
-                    catch (PostgresException ex) when (ex.SqlState == "42704" && ex.Message.Contains(slotName))
+                    catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.UndefinedObject && ex.Message.Contains(slotName))
                     {
                         // Temporary slots might already have been deleted
                         // We don't care as long as it's gone and we don't have to clean it up
