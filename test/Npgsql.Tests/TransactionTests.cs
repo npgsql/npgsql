@@ -102,7 +102,7 @@ namespace Npgsql.Tests
             }
 
             Assert.That(await conn1.ExecuteScalarAsync($"SELECT COUNT(*) FROM {table}"), Is.EqualTo(0));
-            Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
+            Assert.That(() => tx.Connection, Throws.Exception.TypeOf<InvalidOperationException>());
         }
 
         [Test, Description("Intentionally generates an error, putting us in a failed transaction block. Rolls back.")]
@@ -546,7 +546,6 @@ namespace Npgsql.Tests
         {
             var conn = await OpenConnectionAsync();
             var tx = await conn.BeginTransactionAsync();
-            var firstConnID = conn.Connector!.Id;
             await conn.ExecuteNonQueryAsync("SELECT 1", tx);
             if (!inTransactionBlock)
                 await tx.RollbackAsync();
@@ -554,9 +553,6 @@ namespace Npgsql.Tests
 
             conn = await OpenConnectionAsync();
             var tx2 = await conn.BeginTransactionAsync();
-            var secondConnID = conn.Connector!.Id;
-
-            Assert.That(firstConnID, Is.EqualTo(secondConnID));
 
             await tx.DisposeAsync();
 
