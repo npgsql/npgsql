@@ -305,7 +305,6 @@ namespace Npgsql
             Settings = settings;
             ConnectionString = connectionString;
             PostgresParameters = new Dictionary<string, string>();
-            Transaction = new NpgsqlTransaction(this);
 
             CancelLock = new object();
 
