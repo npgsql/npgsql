@@ -143,8 +143,14 @@ jobs:
 
           pgsql/bin/psql -U postgres -c "CREATE ROLE npgsql_tests_scram SUPERUSER LOGIN PASSWORD 'npgsql_tests_scram'"
 
-          # Disable trust authentication, requiring MD5 passwords - some tests must fail if a password isn't provided.
-          echo "host all npgsql_tests_scram all scram-sha-256" > pgsql/PGDATA/pg_hba.conf
+          # Disable trust authentication except for unix domain sockets, requiring MD5
+          # passwords - some tests must fail if a password isn't provided.
+          if [ ${{ matrix.pg_major }} -ge 13 ]; then
+                echo "local all all trust" > pgsql/PGDATA/pg_hba.conf
+                echo "host all npgsql_tests_scram all scram-sha-256" >> pgsql/PGDATA/pg_hba.conf
+          else
+                echo "host all npgsql_tests_scram all scram-sha-256" > pgsql/PGDATA/pg_hba.conf
+          fi
           echo "host all all all md5" >> pgsql/PGDATA/pg_hba.conf
           echo "host replication all all md5" >> pgsql/PGDATA/pg_hba.conf
 
