@@ -56,7 +56,7 @@ namespace Npgsql
             _connector.Flush();
 
             CopyInResponseMessage copyInResponse;
-            var msg = _connector.ReadMessageWithoutCancellation();
+            var msg = _connector.ReadMessage(async: false, pgCancellation: false).GetAwaiter().GetResult();
             switch (msg.Code)
             {
                 case BackendMessageCode.CopyInResponse:
@@ -408,8 +408,8 @@ namespace Npgsql
                 _buf.EndCopyMode();
                 await _connector.WriteCopyDone(async, cancellationToken);
                 await _connector.Flush(async, cancellationToken);
-                var cmdComplete = Expect<CommandCompleteMessage>(await _connector.ReadMessageWithoutCancellation(async, cancellationToken), _connector);
-                Expect<ReadyForQueryMessage>(await _connector.ReadMessageWithoutCancellation(async, cancellationToken), _connector);
+                var cmdComplete = Expect<CommandCompleteMessage>(await _connector.ReadMessage(async, pgCancellation: false, cancellationToken), _connector);
+                Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async, pgCancellation: false, cancellationToken), _connector);
                 _state = ImporterState.Committed;
                 return cmdComplete.Rows;
             }
@@ -447,7 +447,7 @@ namespace Npgsql
             await _connector.Flush(async, cancellationToken);
             try
             {
-                var msg = await _connector.ReadMessageWithoutCancellation(async, cancellationToken);
+                var msg = await _connector.ReadMessage(async, pgCancellation: false, cancellationToken);
                 // The CopyFail should immediately trigger an exception from the read above.
                 throw _connector.Break(
                     new NpgsqlException("Expected ErrorResponse when cancelling COPY but got: " + msg.Code));
