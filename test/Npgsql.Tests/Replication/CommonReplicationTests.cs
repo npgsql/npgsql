@@ -299,7 +299,7 @@ namespace Npgsql.Tests.Replication
                         ApplicationName = "npgsql_test_sync_standby",
                         // We need wal_sender_timeout to be at least twice checkpoint_timeout to avoid getting feedback requests
                         // from the backend in physical replication which makes this test fail, so we disable it for this test.
-                        Options = "wal_sender_timeout=0"
+                        Options = "-c wal_sender_timeout=0"
                     });
                     var info = await rc.IdentifySystem();
 
@@ -321,7 +321,7 @@ namespace Npgsql.Tests.Replication
                     {
                         await using var insertConn = await OpenConnectionAsync(new NpgsqlConnectionStringBuilder(ConnectionString)
                         {
-                            Options = "synchronous_commit=on"
+                            Options = "-c synchronous_commit=on"
                         });
                         await insertConn.ExecuteNonQueryAsync($"INSERT INTO {tableName} (name) VALUES ('{value1String}')");
                     });
@@ -357,7 +357,7 @@ namespace Npgsql.Tests.Replication
                     {
                         await using var insertConn = OpenConnection(new NpgsqlConnectionStringBuilder(ConnectionString)
                         {
-                            Options = "synchronous_commit=remote_apply"
+                            Options = "-c synchronous_commit=remote_apply"
                         });
                         await insertConn.ExecuteNonQueryAsync($"INSERT INTO {tableName} (name) VALUES ('{value2String}')");
                     });
@@ -386,7 +386,7 @@ namespace Npgsql.Tests.Replication
                     {
                         await using var insertConn = OpenConnection(new NpgsqlConnectionStringBuilder(ConnectionString)
                         {
-                            Options = "synchronous_commit=remote_write"
+                            Options = "-c synchronous_commit=remote_write"
                         });
                         await insertConn.ExecuteNonQueryAsync($"INSERT INTO {tableName} (name) VALUES ('{value3String}')");
                     });
