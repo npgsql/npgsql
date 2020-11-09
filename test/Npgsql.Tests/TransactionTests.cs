@@ -540,16 +540,23 @@ namespace Npgsql.Tests
 
         [Test]
         [IssueLink("https://github.com/npgsql/npgsql/issues/3306")]
-        public async Task Bug3306()
+        [TestCase(true)]
+        [TestCase(false)]
+        public async Task Bug3306(bool inTransactionBlock)
         {
             var conn = await OpenConnectionAsync();
             var tx = await conn.BeginTransactionAsync();
+            var firstConnID = conn.Connector!.Id;
             await conn.ExecuteNonQueryAsync("SELECT 1", tx);
-            await tx.RollbackAsync();
+            if (!inTransactionBlock)
+                await tx.RollbackAsync();
             await conn.CloseAsync();
 
             conn = await OpenConnectionAsync();
             var tx2 = await conn.BeginTransactionAsync();
+            var secondConnID = conn.Connector!.Id;
+
+            Assert.That(firstConnID, Is.EqualTo(secondConnID));
 
             await tx.DisposeAsync();
 

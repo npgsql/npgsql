@@ -1820,13 +1820,14 @@ namespace Npgsql
                 _origReadBuffer = null;
             }
 
+            Transaction?.UnbindIfNecessary();
+
             var endBindingScope = false;
 
             // Must rollback transaction before sending DISCARD ALL
             switch (TransactionStatus)
             {
             case TransactionStatus.Idle:
-                Transaction?.UnbindIfNecessary();
                 // There is an undisposed transaction on multiplexing connection
                 endBindingScope = Connection?.ConnectorBindingScope == ConnectorBindingScope.Transaction;
                 break;
