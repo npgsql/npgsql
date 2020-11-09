@@ -1826,6 +1826,7 @@ namespace Npgsql
             switch (TransactionStatus)
             {
             case TransactionStatus.Idle:
+                Transaction?.UnbindIfNecessary();
                 // There is an undisposed transaction on multiplexing connection
                 endBindingScope = Connection?.ConnectorBindingScope == ConnectorBindingScope.Transaction;
                 break;
@@ -1861,10 +1862,6 @@ namespace Npgsql
                     PrependInternalMessage(PregeneratedMessages.DiscardAll, 2);
                 }
             }
-
-            // TODO: there is a bug, when we're forcefuly closing the connection while inside of the transaction block
-            // and after that attempt to dispose the transaction
-            Transaction?.UnbindIfNecessary();
 
             if (endBindingScope)
             {

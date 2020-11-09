@@ -452,7 +452,8 @@ namespace Npgsql
         /// </summary>
         internal void UnbindIfNecessary()
         {
-            // We're closing the connection, but transaction is not yet disposed
+            Debug.Assert(IsCompleted);
+            // We're closing the connection, but transaction is completed and not yet disposed
             // We have to unbind the transaction from the connector, otherwise there could be a concurency issues
             // See #3306
             if (!IsDisposed)
