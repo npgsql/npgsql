@@ -1,6 +1,7 @@
 using System;
 using System.Data;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
@@ -10,28 +11,28 @@ using NpgsqlTypes;
 
 namespace Npgsql.TypeHandlers
 {
-#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+    #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
-    [TypeMapping("lquery", NpgsqlDbType.Lquery)]
-    class LqueryHandlerFactory : NpgsqlTypeHandlerFactory<string>
+    [TypeMapping("ltree", NpgsqlDbType.LTree)]
+    class LTreeHandlerFactory : NpgsqlTypeHandlerFactory<string>
     {
         public override NpgsqlTypeHandler<string> Create(PostgresType postgresType, NpgsqlConnection conn)
-            => new LqueryHandler(postgresType, conn);
+            => new LTreeHandler(postgresType, conn);
     }
 
     /// <summary>
-    /// Lquery binary encoding is a simple UTF8 string, but prepended with a version number.
+    /// Ltree binary encoding is a simple UTF8 string, but prepended with a version number.
     /// </summary>
-    public class LqueryHandler : TextHandler
+    public class LTreeHandler : TextHandler
     {
         /// <summary>
         /// Prepended to the string in the wire encoding
         /// </summary>
-        const byte LqueryProtocolVersion = 1;
+        const byte LtreeProtocolVersion = 1;
 
         internal override bool PreferTextWrite => false;
 
-        protected internal LqueryHandler(PostgresType postgresType, NpgsqlConnection connection)
+        protected internal LTreeHandler(PostgresType postgresType, NpgsqlConnection connection)
             : base(postgresType, connection) {}
 
         #region Write
@@ -69,42 +70,46 @@ namespace Npgsql.TypeHandlers
             return base.ValidateAndGetLength(value, ref lengthCache, parameter) + 1;
         }
 
-        public override async Task Write(string value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        public override async Task Write(string value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             if (buf.WriteSpaceLeft < 1)
-                await buf.Flush(async);
-            buf.WriteByte(LqueryProtocolVersion);
-            await base.Write(value, buf, lengthCache, parameter, async);
+                await buf.Flush(async, cancellationToken);
+
+            buf.WriteByte(LtreeProtocolVersion);
+            await base.Write(value, buf, lengthCache, parameter, async, cancellationToken);
         }
 
-        public override async Task Write(char[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        public override async Task Write(char[] value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             if (buf.WriteSpaceLeft < 1)
-                await buf.Flush(async);
-            buf.WriteByte(LqueryProtocolVersion);
-            await base.Write(value, buf, lengthCache, parameter, async);
+                await buf.Flush(async, cancellationToken);
+
+            buf.WriteByte(LtreeProtocolVersion);
+            await base.Write(value, buf, lengthCache, parameter, async, cancellationToken);
         }
 
-        public override async Task Write(ArraySegment<char> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
+        public override async Task Write(ArraySegment<char> value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
             if (buf.WriteSpaceLeft < 1)
-                await buf.Flush(async);
-            buf.WriteByte(LqueryProtocolVersion);
-            await base.Write(value, buf, lengthCache, parameter, async);
+                await buf.Flush(async, cancellationToken);
+
+            buf.WriteByte(LtreeProtocolVersion);
+            await base.Write(value, buf, lengthCache, parameter, async, cancellationToken);
         }
 
         #endregion
 
         #region Read
 
-        public override async ValueTask<string> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
+        public override async ValueTask<string> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
         {
-            await buf.Ensure(1, async);
-            var version = buf.ReadByte();
-            if (version != LqueryProtocolVersion)
-                throw new NotSupportedException($"Don't know how to decode lquery with wire format {version}, your connection is now broken");
+            await buf.Ensure(1, async, cancellationToken);
 
-            return await base.Read(buf, len - 1, async, fieldDescription);
+            var version = buf.ReadByte();
+            if (version != LtreeProtocolVersion)
+                throw new NotSupportedException($"Don't know how to decode ltree with wire format {version}, your connection is now broken");
+
+            return await base.Read(buf, len - 1, async, fieldDescription, cancellationToken);
         }
 
         #endregion
@@ -112,8 +117,8 @@ namespace Npgsql.TypeHandlers
         public override TextReader GetTextReader(Stream stream)
         {
             var version = stream.ReadByte();
-            if (version != LqueryProtocolVersion)
-                throw new NpgsqlException($"Don't know how to decode lquery with wire format {version}, your connection is now broken");
+            if (version != LtreeProtocolVersion)
+                throw new NpgsqlException($"Don't know how to decode ltree with wire format {version}, your connection is now broken");
 
             return base.GetTextReader(stream);
         }

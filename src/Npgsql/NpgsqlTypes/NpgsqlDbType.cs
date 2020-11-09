@@ -399,7 +399,7 @@ namespace NpgsqlTypes
         /// Corresponds to the PostgreSQL "hstore" type, a dictionary of string key-value pairs.
         /// </summary>
         /// <remarks>See https://www.postgresql.org/docs/current/static/hstore.html</remarks>
-        Hstore = 37,    // Extension type
+        Hstore = 37, // Extension type
 
         #endregion
 
@@ -518,37 +518,36 @@ namespace NpgsqlTypes
         /// <summary>
         /// The geometry type for PostgreSQL spatial extension PostGIS.
         /// </summary>
-        Geometry = 50,     // Extension type
+        Geometry = 50,  // Extension type
 
         /// <summary>
         /// The geography (geodetic) type for PostgreSQL spatial extension PostGIS.
         /// </summary>
-        Geography = 55,    // Extension type
+        Geography = 55, // Extension type
 
         #endregion
 
-        #region Ltree
+        #region Label tree types
 
         /// <summary>
         /// The PostgreSQL ltree type, each value is a label path "a.label.tree.value", forming a tree in a set.
         /// </summary>
         /// <remarks>See http://www.postgresql.org/docs/current/static/ltree.html</remarks>
-        Ltree = 61,    // Extension type
+        LTree = 60, // Extension type
 
         /// <summary>
         /// The PostgreSQL lquery type for PostgreSQL extension ltree
         /// </summary>
         /// <remarks>See http://www.postgresql.org/docs/current/static/ltree.html</remarks>
-        Lquery = 62,    // Extension type
+        LQuery = 61, // Extension type
 
         /// <summary>
         /// The PostgreSQL ltxtquery type for PostgreSQL extension ltree
         /// </summary>
         /// <remarks>See http://www.postgresql.org/docs/current/static/ltree.html</remarks>
-        Ltxtquery = 63,    // Extension type
+        LTxtQuery = 62, // Extension type
 
         #endregion
-
     }
 
     /// <summary>
