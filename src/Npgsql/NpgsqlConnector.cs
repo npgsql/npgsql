@@ -723,7 +723,7 @@ namespace Npgsql
         {
             // Note that there aren't any timeout-able or cancellable DNS methods
             var endpoints = Path.IsPathRooted(Host)
-                ? new EndPoint[] { new UnixEndPoint(Path.Combine(Host, $".s.PGSQL.{Port}")) }
+                ? new EndPoint[] { new UnixDomainSocketEndPoint(Path.Combine(Host, $".s.PGSQL.{Port}")) }
                 : Dns.GetHostAddresses(Host).Select(a => new IPEndPoint(a, Port)).ToArray();
             timeout.Check();
 
@@ -791,7 +791,7 @@ namespace Npgsql
         {
             // Note that there aren't any timeout-able or cancellable DNS methods
             var endpoints = Path.IsPathRooted(Host)
-                ? new EndPoint[] { new UnixEndPoint(Path.Combine(Host, $".s.PGSQL.{Port}")) }
+                ? new EndPoint[] { new UnixDomainSocketEndPoint(Path.Combine(Host, $".s.PGSQL.{Port}")) }
                 : (await Dns.GetHostAddressesAsync(Host).WithCancellationAndTimeout(timeout, cancellationToken))
                 .Select(a => new IPEndPoint(a, Port)).ToArray();
 

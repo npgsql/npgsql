@@ -497,8 +497,6 @@ namespace Npgsql.Tests
                 // right backend version
                 using var versionConnection = await OpenConnectionAsync();
                 MinimumPgVersion(versionConnection, "13.0", "Unix-domain sockets support on Windows was introduced in PostgreSQL 13");
-
-                Assert.Ignore("This test currently fails on Windows against PG13 (#2942)");
             }
 
             var port = new NpgsqlConnectionStringBuilder(ConnectionString).Port;

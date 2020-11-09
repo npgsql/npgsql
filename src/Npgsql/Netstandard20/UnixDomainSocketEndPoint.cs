@@ -1,15 +1,16 @@
-﻿using System.Net.Sockets;
+﻿#if NETSTANDARD2_0
+using System.Net.Sockets;
 using System.Text;
 
 // ReSharper disable once CheckNamespace
 namespace System.Net
 {
     // Copied and adapted from https://github.com/mono/mono/blob/master/mcs/class/Mono.Posix/Mono.Unix/UnixEndPoint.cs
-    class UnixEndPoint : EndPoint
+    class UnixDomainSocketEndPoint : EndPoint
     {
         string _filename;
 
-        public UnixEndPoint (string filename)
+        public UnixDomainSocketEndPoint (string filename)
         {
             if (filename == null)
                 throw new ArgumentNullException(nameof(filename));
@@ -40,7 +41,7 @@ namespace System.Net
             if (socketAddress.Size == 2) {
                 // Empty filename.
                 // Probably from RemoteEndPoint which on linux does not return the file name.
-                return new UnixEndPoint("a") { _filename = "" };
+                return new UnixDomainSocketEndPoint("a") { _filename = "" };
             }
             var size = socketAddress.Size - 2;
             var bytes = new byte[size];
@@ -54,7 +55,7 @@ namespace System.Net
             }
 
             var name = Encoding.UTF8.GetString(bytes, 0, size);
-            return new UnixEndPoint(name);
+            return new UnixDomainSocketEndPoint(name);
         }
 
         public override SocketAddress Serialize()
@@ -77,7 +78,7 @@ namespace System.Net
 
         public override bool Equals(object? o)
         {
-            var other = o as UnixEndPoint;
+            var other = o as UnixDomainSocketEndPoint;
             if (other == null)
                 return false;
 
@@ -85,3 +86,4 @@ namespace System.Net
         }
     }
 }
+#endif
