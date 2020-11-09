@@ -538,6 +538,27 @@ namespace Npgsql.Tests
             Assert.That(conn.Connector, Is.Null);
         }
 
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/3306")]
+        public async Task Bug3306()
+        {
+            var conn = await OpenConnectionAsync();
+            var tx = await conn.BeginTransactionAsync();
+            await conn.ExecuteNonQueryAsync("SELECT 1", tx);
+            await tx.RollbackAsync();
+            await conn.CloseAsync();
+
+            conn = await OpenConnectionAsync();
+            var tx2 = await conn.BeginTransactionAsync();
+
+            await tx.DisposeAsync();
+
+            Assert.That(tx.IsDisposed, Is.True);
+            Assert.That(tx2.IsDisposed, Is.False);
+
+            await conn.DisposeAsync();
+        }
+
         class NoTransactionDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
         {
             public async Task<NpgsqlDatabaseInfo?> Load(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
