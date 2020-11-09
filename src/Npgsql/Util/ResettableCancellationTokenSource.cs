@@ -15,11 +15,16 @@ namespace Npgsql.Util
     /// </remarks>
     class ResettableCancellationTokenSource : IDisposable
     {
+        bool isDisposed;
+
         public TimeSpan Timeout { get; set; }
 
         volatile CancellationTokenSource _cts = new CancellationTokenSource();
         CancellationTokenRegistration _registration;
 
+        /// <summary>
+        /// Used, so we wouldn't concurently use the cts for the cancellation, while it's being disposed
+        /// </summary>
         readonly object lockObject = new object();
 
 #if DEBUG
@@ -135,6 +140,10 @@ namespace Npgsql.Util
         {
             lock (lockObject)
             {
+                // if there was an attempt to cancel while the connector was breaking
+                // we do nothing
+                if (isDisposed)
+                    return;
                 _cts.Cancel();
             }
         }
@@ -146,6 +155,10 @@ namespace Npgsql.Util
         {
             lock (lockObject)
             {
+                // if there was an attempt to cancel while the connector was breaking
+                // we do nothing
+                if (isDisposed)
+                    return;
                 _cts.CancelAfter(delay);
             }
         }
@@ -167,8 +180,15 @@ namespace Npgsql.Util
 
         public void Dispose()
         {
-            _registration.Dispose();
-            _cts.Dispose();
+            Debug.Assert(!isDisposed);
+
+            lock (lockObject)
+            {
+                _registration.Dispose();
+                _cts.Dispose();
+
+                isDisposed = true;
+            }
         }
     }
 }

@@ -1011,6 +1011,7 @@ namespace Npgsql
             {
                 var importer = new NpgsqlBinaryImporter(connector, copyFromCommand);
                 connector.CurrentCopyOperation = importer;
+                connector.ResetCancellation(CancellationToken.None);
                 return importer;
             }
             catch
@@ -1045,6 +1046,7 @@ namespace Npgsql
             {
                 var exporter = new NpgsqlBinaryExporter(connector, copyToCommand);
                 connector.CurrentCopyOperation = exporter;
+                connector.ResetCancellation(CancellationToken.None);
                 return exporter;
             }
             catch
@@ -1082,6 +1084,7 @@ namespace Npgsql
             {
                 var writer = new NpgsqlCopyTextWriter(connector, new NpgsqlRawCopyStream(connector, copyFromCommand));
                 connector.CurrentCopyOperation = writer;
+                connector.ResetCancellation(CancellationToken.None);
                 return writer;
             }
             catch
@@ -1119,6 +1122,7 @@ namespace Npgsql
             {
                 var reader = new NpgsqlCopyTextReader(connector, new NpgsqlRawCopyStream(connector, copyToCommand));
                 connector.CurrentCopyOperation = reader;
+                connector.ResetCancellation(CancellationToken.None);
                 return reader;
             }
             catch
@@ -1162,6 +1166,7 @@ namespace Npgsql
                         "copyToCommand triggered a text transfer, only binary is allowed", nameof(copyCommand)));
                 }
                 connector.CurrentCopyOperation = stream;
+                connector.ResetCancellation(CancellationToken.None);
                 return stream;
             }
             catch

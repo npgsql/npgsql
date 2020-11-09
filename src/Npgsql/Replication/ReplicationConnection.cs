@@ -211,6 +211,8 @@ namespace Npgsql.Replication
             await _npgsqlConnection.OpenAsync(cancellationToken)
                 .ConfigureAwait(false);
 
+            Connector.ResetCancellation(cancellationToken);
+
             SetTimeouts(CommandTimeout, CommandTimeout);
         }
 
