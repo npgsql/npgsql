@@ -821,8 +821,9 @@ namespace Npgsql.Replication
             var connector = Connector;
             connector.UserTimeout = readTimeout > TimeSpan.Zero ? (int)readTimeout.TotalMilliseconds : 0;
 
-            if (connector.WriteBuffer != null)
-                connector.WriteBuffer.Timeout = writeTimeout;
+            var writeBuffer = connector.WriteBuffer;
+            if (writeBuffer != null)
+                writeBuffer.Timeout = writeTimeout;
         }
 
         void CheckDisposed()
