@@ -580,6 +580,8 @@ namespace Npgsql
                 // don't have to start a user action. However, we do this for consistency as if we did (for the checks and exceptions)
                 using var _ = connector.StartUserAction();
 
+                if (connector.Transaction is null)
+                    connector.Transaction = new NpgsqlTransaction(connector);
                 connector.Transaction.Init(level);
                 return connector.Transaction;
             }
@@ -1583,6 +1585,7 @@ namespace Npgsql
             var connector = Connector;
             Connector = null;
             connector.Connection = null;
+            connector.Transaction?.UnbindIfNecessary();
             _pool.Return(connector);
             ConnectorBindingScope = ConnectorBindingScope.None;
         }
