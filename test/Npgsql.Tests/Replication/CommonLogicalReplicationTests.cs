@@ -79,11 +79,10 @@ namespace Npgsql.Tests.Replication
                     {
                         await using var rc = await OpenReplicationConnectionAsync();
                         await rc.CreateLogicalReplicationSlot(slotName, OutputPlugin, slotSnapshotInitMode: mode);
-                    }, Throws.ArgumentException
-                        .With.Property("ParamName").EqualTo("slotSnapshotInitMode")
-                        .And.Message.StartsWith("The EXPORT_SNAPSHOT, USE_SNAPSHOT and NOEXPORT_SNAPSHOT syntax was introduced in PostgreSQL")
+                    }, Throws.InstanceOf<NotSupportedException>()
+                        .With.Message.StartsWith("The EXPORT_SNAPSHOT, USE_SNAPSHOT and NOEXPORT_SNAPSHOT syntax was introduced in PostgreSQL")
                         .And.InnerException.TypeOf<PostgresException>()
-                        .And.InnerException.Property("SqlState").EqualTo("42601"));
+                        .And.InnerException.Property("SqlState").EqualTo(PostgresErrorCodes.SyntaxError));
                 });
 
         [Test(Description = "We can use the exported snapshot to query the database in the very moment the replication slot was created.")]
