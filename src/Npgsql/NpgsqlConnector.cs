@@ -2050,6 +2050,7 @@ namespace Npgsql
         internal async Task<bool> Wait(bool async, int timeout, CancellationToken cancellationToken = default)
         {
             using var _ = StartUserAction(ConnectorState.Waiting);
+            ResetCancellation(cancellationToken);
             // We may have prepended messages in the connection's write buffer - these need to be flushed now.
             await Flush(async, cancellationToken);
 

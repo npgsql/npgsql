@@ -1009,6 +1009,7 @@ namespace Npgsql
             connector.StartUserAction(ConnectorState.Copy);
             try
             {
+                connector.ResetCancellation(CancellationToken.None);
                 var importer = new NpgsqlBinaryImporter(connector, copyFromCommand);
                 connector.CurrentCopyOperation = importer;
                 return importer;
@@ -1043,6 +1044,7 @@ namespace Npgsql
             connector.StartUserAction(ConnectorState.Copy);
             try
             {
+                connector.ResetCancellation(CancellationToken.None);
                 var exporter = new NpgsqlBinaryExporter(connector, copyToCommand);
                 connector.CurrentCopyOperation = exporter;
                 return exporter;
@@ -1080,6 +1082,7 @@ namespace Npgsql
             connector.StartUserAction(ConnectorState.Copy);
             try
             {
+                connector.ResetCancellation(CancellationToken.None);
                 var writer = new NpgsqlCopyTextWriter(connector, new NpgsqlRawCopyStream(connector, copyFromCommand));
                 connector.CurrentCopyOperation = writer;
                 return writer;
@@ -1117,6 +1120,7 @@ namespace Npgsql
             connector.StartUserAction(ConnectorState.Copy);
             try
             {
+                connector.ResetCancellation(CancellationToken.None);
                 var reader = new NpgsqlCopyTextReader(connector, new NpgsqlRawCopyStream(connector, copyToCommand));
                 connector.CurrentCopyOperation = reader;
                 return reader;
@@ -1154,6 +1158,7 @@ namespace Npgsql
             connector.StartUserAction(ConnectorState.Copy);
             try
             {
+                connector.ResetCancellation(CancellationToken.None);
                 var stream = new NpgsqlRawCopyStream(connector, copyCommand);
                 if (!stream.IsBinary)
                 {
