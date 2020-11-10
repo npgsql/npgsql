@@ -55,8 +55,9 @@ jobs:
           sudo apt-get install -qq postgresql-${{ matrix.pg_major }}
           sudo -u postgres psql -c "CREATE USER npgsql_tests SUPERUSER PASSWORD 'npgsql_tests'"
           sudo -u postgres psql -c "CREATE DATABASE npgsql_tests OWNER npgsql_tests"
-          sudo -u postgres psql -c "CREATE EXTENSION hstore" npgsql_tests
           sudo -u postgres psql -c "CREATE EXTENSION citext" npgsql_tests
+          sudo -u postgres psql -c "CREATE EXTENSION hstore" npgsql_tests
+          sudo -u postgres psql -c "CREATE EXTENSION ltree" npgsql_tests
 
           # To disable PostGIS for prereleases (because it usually isn't available until late), surround with the following:
           # if [ -z "${{ matrix.pg_prerelease }}" ]; then
