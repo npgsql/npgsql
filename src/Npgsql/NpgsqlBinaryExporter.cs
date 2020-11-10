@@ -36,6 +36,19 @@ namespace Npgsql
         readonly NpgsqlTypeHandler?[] _typeHandlerCache;
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlBinaryExporter));
 
+        /// <summary>
+        /// Current timeout
+        /// </summary>
+        public TimeSpan Timeout
+        {
+            set
+            {
+                _buf.Timeout = value;
+                // While calling Complete(), we're using the connector, which overwrites the buffer's timeout with it's own
+                _connector.UserTimeout = (int)value.TotalMilliseconds;
+            }
+        }
+
         #endregion
 
         #region Construction / Initialization
