@@ -543,17 +543,14 @@ namespace Npgsql
 
         void WriteStartupMessage(string username)
         {
-            var startupParams = Settings.ParsedOptions.Count > 0
-                ? new Dictionary<string, string>(Settings.ParsedOptions)
-                : new Dictionary<string, string>(PostgresEnvironment.ParsedOptions);
-
-            startupParams["user"] = username;
-            startupParams["client_encoding"] =
-                Settings.ClientEncoding ??
-                PostgresEnvironment.ClientEncoding ??
-                "UTF8";
-
-            startupParams["database"] = Settings.Database!;
+            var startupParams = new Dictionary<string, string>
+            {
+                ["user"] = username,
+                ["client_encoding"] = Settings.ClientEncoding ??
+                                      PostgresEnvironment.ClientEncoding ??
+                                      "UTF8",
+                ["database"] = Settings.Database!
+            };
 
             if (Settings.ApplicationName?.Length > 0)
                 startupParams["application_name"] = Settings.ApplicationName;
@@ -564,6 +561,10 @@ namespace Npgsql
             var timezone = Settings.Timezone ?? PostgresEnvironment.TimeZone;
             if (timezone != null)
                 startupParams["TimeZone"] = timezone;
+
+            var options = Settings.Options ?? PostgresEnvironment.Options;
+            if (options?.Length > 0)
+                startupParams["options"] = options;
 
             switch (Settings.ReplicationMode)
             {

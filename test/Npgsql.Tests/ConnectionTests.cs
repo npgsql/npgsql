@@ -716,7 +716,7 @@ namespace Npgsql.Tests
         {
             using var _ = CreateTempPool(new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                Options = "default_transaction_isolation=serializable  default_transaction_deferrable=on foo.bar=My\\ Famous\\\\Thing"
+                Options = "-c default_transaction_isolation=serializable -c default_transaction_deferrable=on -c foo.bar=My\\ Famous\\\\Thing"
             }, out var connectionString);
 
             using var conn = await OpenConnectionAsync(connectionString);
@@ -865,7 +865,7 @@ namespace Npgsql.Tests
             await using (var conn = await OpenConnectionAsync(new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 // Make sure messages are in English
-                Options = "lc_messages=en_US.UTF-8"
+                Options = "-c lc_messages=en_US.UTF-8"
             }))
             await using (GetTempFunctionName(conn, out var function))
             {
@@ -1349,7 +1349,7 @@ CREATE TABLE record ()");
         [NonParallelizable]
         public async Task Connect_OptionsFromEnvironment_Succeeds()
         {
-            using (SetEnvironmentVariable("PGOPTIONS", "default_transaction_isolation=serializable  default_transaction_deferrable=on foo.bar=My\\ Famous\\\\Thing"))
+            using (SetEnvironmentVariable("PGOPTIONS", "-c default_transaction_isolation=serializable -c default_transaction_deferrable=on -c foo.bar=My\\ Famous\\\\Thing"))
             {
                 using var _ = CreateTempPool(ConnectionString, out var connectionString);
                 using var conn = await OpenConnectionAsync(connectionString);
