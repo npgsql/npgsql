@@ -131,9 +131,10 @@ jobs:
           # Configure test account
           pgsql/bin/psql -U postgres -c "CREATE ROLE npgsql_tests SUPERUSER LOGIN PASSWORD 'npgsql_tests'"
           pgsql/bin/psql -U postgres -c "CREATE DATABASE npgsql_tests OWNER npgsql_tests"
-          pgsql/bin/psql -U postgres -c "CREATE EXTENSION postgis" npgsql_tests
-          pgsql/bin/psql -U postgres -c "CREATE EXTENSION hstore" npgsql_tests
           pgsql/bin/psql -U postgres -c "CREATE EXTENSION citext" npgsql_tests
+          pgsql/bin/psql -U postgres -c "CREATE EXTENSION hstore" npgsql_tests
+          pgsql/bin/psql -U postgres -c "CREATE EXTENSION ltree" npgsql_tests
+          pgsql/bin/psql -U postgres -c "CREATE EXTENSION postgis" npgsql_tests
 
           # user 'npgsql_tests_scram' must be created with password encrypted as scram-sha-256 (which only applies after restart)
           sed -i "s|#password_encryption = md5|password_encryption = scram-sha-256|" pgsql/PGDATA/postgresql.conf
