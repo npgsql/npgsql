@@ -5,7 +5,7 @@ namespace Npgsql.Tests.Types
     public class LTxtQueryTests : TypeHandlerTestBase<string>
     {
         public LTxtQueryTests(MultiplexingMode multiplexingMode)
-            : base(multiplexingMode, "ltxtquery") { }
+            : base(multiplexingMode, "ltxtquery", "13.0") { }
 
         public static IEnumerable TestCases() => new[]
         {
