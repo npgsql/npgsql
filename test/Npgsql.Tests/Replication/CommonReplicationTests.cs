@@ -273,6 +273,7 @@ namespace Npgsql.Tests.Replication
                 });
 
         [Test(Description = "Tests whether synchronous replication works the way it should.")]
+        [Explicit("Test is flaky (on Windows)")]
         public Task SynchronousReplication()
             => SafeReplicationTest(
                 async (slotName, tableName) =>
