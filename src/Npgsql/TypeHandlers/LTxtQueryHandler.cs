@@ -36,38 +36,17 @@ namespace Npgsql.TypeHandlers
 
         #region Write
 
-        public override int ValidateAndGetLength(string value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
-        {
-            if (lengthCache == null)
-                lengthCache = new NpgsqlLengthCache(1);
-            if (lengthCache.IsPopulated)
-                return lengthCache.Get() + 1;
+        public override int ValidateAndGetLength(string value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter) =>
+            base.ValidateAndGetLength(value, ref lengthCache, parameter) + 1;
 
-            // Add one byte for the prepended version number
-            return base.ValidateAndGetLength(value, ref lengthCache, parameter) + 1;
-        }
 
-        public override int ValidateAndGetLength(char[] value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
-        {
-            if (lengthCache == null)
-                lengthCache = new NpgsqlLengthCache(1);
-            if (lengthCache.IsPopulated)
-                return lengthCache.Get() + 1;
+        public override int ValidateAndGetLength(char[] value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter) =>
+            base.ValidateAndGetLength(value, ref lengthCache, parameter) + 1;
 
-            // Add one byte for the prepended version number
-            return base.ValidateAndGetLength(value, ref lengthCache, parameter) + 1;
-        }
 
-        public override int ValidateAndGetLength(ArraySegment<char> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)
-        {
-            if (lengthCache == null)
-                lengthCache = new NpgsqlLengthCache(1);
-            if (lengthCache.IsPopulated)
-                return lengthCache.Get() + 1;
+        public override int ValidateAndGetLength(ArraySegment<char> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter) =>
+            base.ValidateAndGetLength(value, ref lengthCache, parameter) + 1;
 
-            // Add one byte for the prepended version number
-            return base.ValidateAndGetLength(value, ref lengthCache, parameter) + 1;
-        }
 
         public override async Task Write(string value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default)
         {
