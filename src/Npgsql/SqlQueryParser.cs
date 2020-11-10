@@ -3,10 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
 
-#if NETSTANDARD2_0
-using Npgsql.Util;
-#endif
-
 namespace Npgsql
 {
     class SqlQueryParser

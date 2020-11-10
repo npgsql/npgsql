@@ -1,8 +1,7 @@
 #if NETSTANDARD2_0
-using System;
-using System.Text;
 
-namespace Npgsql.Util
+// ReSharper disable once CheckNamespace
+namespace System.Text
 {
     /// <summary>
     /// A set of extension methods to <see cref="StringBuilder"/> to allow runtime compatibility.

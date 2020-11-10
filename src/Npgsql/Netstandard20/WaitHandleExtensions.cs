@@ -1,10 +1,8 @@
 #if NETSTANDARD2_0
-
-using System;
-using System.Threading;
 using System.Threading.Tasks;
 
-namespace Npgsql.Util
+// ReSharper disable once CheckNamespace
+namespace System.Threading
 {
     // https://thomaslevesque.com/2015/06/04/async-and-cancellation-support-for-wait-handles/
     static class WaitHandleExtensions

@@ -14,10 +14,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using static Npgsql.Util.Statics;
 
-#if NETSTANDARD2_0
-using Npgsql.Util;
-#endif
-
 namespace Npgsql.Replication
 {
     /// <summary>

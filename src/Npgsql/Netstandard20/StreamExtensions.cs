@@ -1,15 +1,14 @@
-﻿using System;
+﻿#if NETSTANDARD2_0
 using System.Buffers;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Npgsql.Util
+// ReSharper disable once CheckNamespace
+namespace System.IO
 {
     // Helpers to read/write Span/Memory<byte> to Stream before netstandard 2.1
     static class StreamExtensions
     {
-#if NETSTANDARD2_0
         public static int Read(this Stream stream, Span<byte> buffer)
         {
             var sharedBuffer = ArrayPool<byte>.Shared.Rent(buffer.Length);
@@ -67,6 +66,6 @@ namespace Npgsql.Util
                 ArrayPool<byte>.Shared.Return(sharedBuffer);
             }
         }
-#endif
     }
 }
+#endif

@@ -1,5 +1,7 @@
 #if NETSTANDARD2_0
+
 #pragma warning disable 1591
+
 using System.Data.Common;
 
 // ReSharper disable once CheckNamespace
