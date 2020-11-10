@@ -69,13 +69,13 @@ namespace Npgsql.Replication.PgOutput
 
             await foreach (var xLogData in stream.WithCancellation(cancellationToken))
             {
-                await buf.EnsureAsync(1, cancellationToken);
+                await buf.EnsureAsync(1);
                 var messageCode = (BackendReplicationMessageCode)buf.ReadByte();
                 switch (messageCode)
                 {
                 case BackendReplicationMessageCode.Begin:
                 {
-                    await buf.EnsureAsync(20, cancellationToken);
+                    await buf.EnsureAsync(20);
                     yield return _beginMessage.Populate(
                         xLogData.WalStart,
                         xLogData.WalEnd,
@@ -88,7 +88,7 @@ namespace Npgsql.Replication.PgOutput
                 }
                 case BackendReplicationMessageCode.Commit:
                 {
-                    await buf.EnsureAsync(25, cancellationToken);
+                    await buf.EnsureAsync(25);
                     yield return _commitMessage.Populate(
                         xLogData.WalStart,
                         xLogData.WalEnd,
@@ -102,7 +102,7 @@ namespace Npgsql.Replication.PgOutput
                 }
                 case BackendReplicationMessageCode.Origin:
                 {
-                    await buf.EnsureAsync(9, cancellationToken);
+                    await buf.EnsureAsync(9);
                     yield return _originMessage.Populate(
                         xLogData.WalStart,
                         xLogData.WalEnd,
@@ -113,21 +113,21 @@ namespace Npgsql.Replication.PgOutput
                 }
                 case BackendReplicationMessageCode.Relation:
                 {
-                    await buf.EnsureAsync(6, cancellationToken);
+                    await buf.EnsureAsync(6);
                     var relationId = buf.ReadUInt32();
                     var ns = await buf.ReadNullTerminatedString(async: true, cancellationToken);
                     var relationName = await buf.ReadNullTerminatedString(async: true, cancellationToken);
-                    await buf.EnsureAsync(3, cancellationToken);
+                    await buf.EnsureAsync(3);
                     var relationReplicaIdentitySetting = (char)buf.ReadByte();
                     var numColumns = buf.ReadUInt16();
                     if (numColumns > _relationalMessageColumns.Length)
                         _relationalMessageColumns = new RelationMessage.Column[numColumns];
                     for (var i = 0; i < numColumns; i++)
                     {
-                        await buf.EnsureAsync(2, cancellationToken);
+                        await buf.EnsureAsync(2);
                         var flags = buf.ReadByte();
                         var columnName = await buf.ReadNullTerminatedString(async: true, cancellationToken);
-                        await buf.EnsureAsync(8, cancellationToken);
+                        await buf.EnsureAsync(8);
                         var dateTypeId = buf.ReadUInt32();
                         var typeModifier = buf.ReadInt32();
                         _relationalMessageColumns[i] = new RelationMessage.Column(flags, columnName, dateTypeId, typeModifier);
@@ -148,7 +148,7 @@ namespace Npgsql.Replication.PgOutput
                 }
                 case BackendReplicationMessageCode.Type:
                 {
-                    await buf.EnsureAsync(5, cancellationToken);
+                    await buf.EnsureAsync(5);
                     var typeId = buf.ReadUInt32();
                     var ns = await buf.ReadNullTerminatedString(async: true, cancellationToken);
                     var name = await buf.ReadNullTerminatedString(async: true, cancellationToken);
@@ -158,7 +158,7 @@ namespace Npgsql.Replication.PgOutput
                 }
                 case BackendReplicationMessageCode.Insert:
                 {
-                    await buf.EnsureAsync(7, cancellationToken);
+                    await buf.EnsureAsync(7);
                     var relationId = buf.ReadUInt32();
                     var tupleDataType = (TupleType)buf.ReadByte();
                     Debug.Assert(tupleDataType == TupleType.NewTuple);
@@ -170,7 +170,7 @@ namespace Npgsql.Replication.PgOutput
                 }
                 case BackendReplicationMessageCode.Update:
                 {
-                    await buf.EnsureAsync(7, cancellationToken);
+                    await buf.EnsureAsync(7);
                     var relationId = buf.ReadUInt32();
                     var tupleType = (TupleType)buf.ReadByte();
                     var numColumns = buf.ReadUInt16();
@@ -178,7 +178,7 @@ namespace Npgsql.Replication.PgOutput
                     {
                     case TupleType.Key:
                         var keyRow = await ReadTupleDataAsync(ref _tupleDataArray1, numColumns);
-                        await buf.EnsureAsync(3, cancellationToken);
+                        await buf.EnsureAsync(3);
                         tupleType = (TupleType)buf.ReadByte();
                         Debug.Assert(tupleType == TupleType.NewTuple);
                         numColumns = buf.ReadUInt16();
@@ -188,7 +188,7 @@ namespace Npgsql.Replication.PgOutput
                         continue;
                     case TupleType.OldTuple:
                         var oldRow = await ReadTupleDataAsync(ref _tupleDataArray1, numColumns);
-                        await buf.EnsureAsync(3, cancellationToken);
+                        await buf.EnsureAsync(3);
                         tupleType = (TupleType)buf.ReadByte();
                         Debug.Assert(tupleType == TupleType.NewTuple);
                         numColumns = buf.ReadUInt16();
@@ -207,7 +207,7 @@ namespace Npgsql.Replication.PgOutput
                 }
                 case BackendReplicationMessageCode.Delete:
                 {
-                    await buf.EnsureAsync(7, cancellationToken);
+                    await buf.EnsureAsync(7);
                     var relationId = buf.ReadUInt32();
                     var tupleDataType = (TupleType)buf.ReadByte();
                     var numColumns = buf.ReadUInt16();
@@ -227,12 +227,12 @@ namespace Npgsql.Replication.PgOutput
                 }
                 case BackendReplicationMessageCode.Truncate:
                 {
-                    await buf.EnsureAsync(9, cancellationToken);
+                    await buf.EnsureAsync(9);
                     // Don't dare to truncate more than 2147483647 tables at once!
                     var numRels = checked((int)buf.ReadUInt32());
                     var truncateOptions = (TruncateOptions)buf.ReadByte();
                     var relationIds = new uint[numRels];
-                    await buf.EnsureAsync(checked(numRels * 4), cancellationToken);
+                    await buf.EnsureAsync(checked(numRels * 4));
 
                     for (var i = 0; i < numRels; i++)
                         relationIds[i] = buf.ReadUInt32();
@@ -260,7 +260,7 @@ namespace Npgsql.Replication.PgOutput
                 {
                     for (var i = 0; i < numberOfColumns; i++)
                     {
-                        await buf.EnsureAsync(1, cancellationToken);
+                        await buf.EnsureAsync(1);
                         var subMessageKind = (TupleDataKind)buf.ReadByte();
                         switch (subMessageKind)
                         {
@@ -269,9 +269,9 @@ namespace Npgsql.Replication.PgOutput
                             nonRefArray[i] = new TupleData(subMessageKind);
                             continue;
                         case TupleDataKind.TextValue:
-                            await buf.EnsureAsync(4, cancellationToken);
+                            await buf.EnsureAsync(4);
                             var len = buf.ReadInt32();
-                            await buf.EnsureAsync(len, cancellationToken);
+                            await buf.EnsureAsync(len);
                             nonRefArray![i] = new TupleData(buf.ReadString(len));
                             continue;
                         default:

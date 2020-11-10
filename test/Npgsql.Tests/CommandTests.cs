@@ -271,22 +271,21 @@ namespace Npgsql.Tests
             if (IsMultiplexing)
                 return;
 
-            using (var conn = await OpenConnectionAsync())
+            using var conn = await OpenConnectionAsync();
+            using var cmd = CreateSleepCommand(conn, 5);
+
+            var cancelTask = Task.Run(() =>
             {
-                using (var cmd = CreateSleepCommand(conn, 5))
-                {
-                    _ = Task.Factory.StartNew(() =>
-                    {
-                        Thread.Sleep(300);
-                        cmd.Cancel();
-                    });
-                    Assert.That(() => cmd.ExecuteNonQuery(), Throws
-                        .TypeOf<OperationCanceledException>()
-                        .With.InnerException.TypeOf<PostgresException>()
-                        .With.InnerException.Property(nameof(PostgresException.SqlState)).EqualTo("57014")
-                    );
-                }
-            }
+                Thread.Sleep(300);
+                cmd.Cancel();
+            });
+            Assert.That(() => cmd.ExecuteNonQuery(), Throws
+                .TypeOf<OperationCanceledException>()
+                .With.InnerException.TypeOf<PostgresException>()
+                .With.InnerException.Property(nameof(PostgresException.SqlState)).EqualTo("57014")
+            );
+
+            await cancelTask;
         }
 
         [Test, Description("Cancels an async query with the cancellation token, with successful PG cancellation")]

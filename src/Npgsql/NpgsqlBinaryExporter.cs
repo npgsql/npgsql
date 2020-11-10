@@ -34,6 +34,7 @@ namespace Npgsql
         internal int NumColumns { get; }
 
         readonly NpgsqlTypeHandler?[] _typeHandlerCache;
+
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlBinaryExporter));
 
         /// <summary>
@@ -64,8 +65,10 @@ namespace Npgsql
             _connector.WriteQuery(copyToCommand);
             _connector.Flush();
 
+            using var registration = _connector.StartNestedCancellableOperation(attemptPgCancellation: false);
+
             CopyOutResponseMessage copyOutResponse;
-            var msg = _connector.ReadMessage(async: false, pgCancellation: false).GetAwaiter().GetResult();
+            var msg = _connector.ReadMessage(async: false).GetAwaiter().GetResult();
             switch (msg.Code)
             {
             case BackendMessageCode.CopyOutResponse:
@@ -130,8 +133,6 @@ namespace Npgsql
         /// </returns>
         public ValueTask<int> StartRowAsync(CancellationToken cancellationToken = default)
         {
-            if (cancellationToken.IsCancellationRequested)
-                return new ValueTask<int>(Task.FromCanceled<int>(cancellationToken));
             using (NoSynchronizationContextScope.Enter())
                 return StartRow(true, cancellationToken);
         }
@@ -142,24 +143,26 @@ namespace Npgsql
             if (_isConsumed)
                 return -1;
 
+            using var registration = _connector.StartNestedCancellableOperation(cancellationToken);
+
             // The very first row (i.e. _column == -1) is included in the header's CopyData message.
             // Otherwise we need to read in a new CopyData row (the docs specify that there's a CopyData
             // message per row).
             if (_column == NumColumns)
-                _leftToReadInDataMsg = Expect<CopyDataMessage>(await _connector.ReadMessage(async, cancellationToken), _connector).Length;
+                _leftToReadInDataMsg = Expect<CopyDataMessage>(await _connector.ReadMessage(async), _connector).Length;
             else if (_column != -1)
                 throw new InvalidOperationException("Already in the middle of a row");
 
-            await _buf.Ensure(2, async, cancellationToken);
+            await _buf.Ensure(2, async);
             _leftToReadInDataMsg -= 2;
 
             var numColumns = _buf.ReadInt16();
             if (numColumns == -1)
             {
                 Debug.Assert(_leftToReadInDataMsg == 0);
-                Expect<CopyDoneMessage>(await _connector.ReadMessage(async, pgCancellation: false, cancellationToken), _connector);
-                Expect<CommandCompleteMessage>(await _connector.ReadMessage(async, pgCancellation: false, cancellationToken), _connector);
-                Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async, pgCancellation: false, cancellationToken), _connector);
+                Expect<CopyDoneMessage>(await _connector.ReadMessage(async), _connector);
+                Expect<CommandCompleteMessage>(await _connector.ReadMessage(async), _connector);
+                Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async), _connector);
                 _column = -1;
                 _isConsumed = true;
                 return -1;
@@ -195,8 +198,6 @@ namespace Npgsql
         /// <returns>The value of the column</returns>
         public ValueTask<T> ReadAsync<T>(CancellationToken cancellationToken = default)
         {
-            if (cancellationToken.IsCancellationRequested)
-                return new ValueTask<T>(Task.FromCanceled<T>(cancellationToken));
             using (NoSynchronizationContextScope.Enter())
                 return Read<T>(true, cancellationToken);
         }
@@ -204,6 +205,7 @@ namespace Npgsql
         ValueTask<T> Read<T>(bool async, CancellationToken cancellationToken = default)
         {
             CheckDisposed();
+
             if (_column == -1 || _column == NumColumns)
                 throw new InvalidOperationException("Not reading a row");
 
@@ -246,8 +248,6 @@ namespace Npgsql
         /// <returns>The value of the column</returns>
         public ValueTask<T> ReadAsync<T>(NpgsqlDbType type, CancellationToken cancellationToken = default)
         {
-            if (cancellationToken.IsCancellationRequested)
-                return new ValueTask<T>(Task.FromCanceled<T>(cancellationToken));
             using (NoSynchronizationContextScope.Enter())
                 return Read<T>(type, true, cancellationToken);
         }
@@ -269,7 +269,9 @@ namespace Npgsql
         {
             try
             {
-                await ReadColumnLenIfNeeded(async, cancellationToken);
+                using var registration = _connector.StartNestedCancellableOperation(cancellationToken);
+
+                await ReadColumnLenIfNeeded(async);
 
                 if (_columnLen == -1)
                 {
@@ -285,10 +287,10 @@ namespace Npgsql
                 var result = NullableHandler<T>.Exists
                     ? _columnLen <= _buf.ReadBytesLeft
                         ? NullableHandler<T>.Read(handler, _buf, _columnLen)
-                        : await NullableHandler<T>.ReadAsync(handler, _buf, _columnLen, async, cancellationToken: cancellationToken)
+                        : await NullableHandler<T>.ReadAsync(handler, _buf, _columnLen, async)
                     : _columnLen <= _buf.ReadBytesLeft
                         ? handler.Read<T>(_buf, _columnLen)
-                        : await handler.Read<T>(_buf, _columnLen, async, cancellationToken: cancellationToken);
+                        : await handler.Read<T>(_buf, _columnLen, async);
 
                 _leftToReadInDataMsg -= _columnLen;
                 _columnLen = int.MinValue;   // Mark that the (next) column length hasn't been read yet
@@ -325,17 +327,19 @@ namespace Npgsql
         /// </summary>
         public Task SkipAsync(CancellationToken cancellationToken = default)
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
                 return Skip(true, cancellationToken);
         }
 
         async Task Skip(bool async, CancellationToken cancellationToken = default)
         {
-            await ReadColumnLenIfNeeded(async, cancellationToken);
+            CheckDisposed();
+
+            using var registration = _connector.StartNestedCancellableOperation(cancellationToken);
+
+            await ReadColumnLenIfNeeded(async);
             if (_columnLen != -1)
-                await _buf.Skip(_columnLen, async, cancellationToken);
+                await _buf.Skip(_columnLen, async);
 
             _columnLen = int.MinValue;
             _column++;
@@ -345,11 +349,11 @@ namespace Npgsql
 
         #region Utilities
 
-        async Task ReadColumnLenIfNeeded(bool async, CancellationToken cancellationToken = default)
+        async Task ReadColumnLenIfNeeded(bool async)
         {
             if (_columnLen == int.MinValue)
             {
-                await _buf.Ensure(4, async, cancellationToken);
+                await _buf.Ensure(4, async);
                 _columnLen = _buf.ReadInt32();
                 _leftToReadInDataMsg -= 4;
             }
@@ -368,7 +372,7 @@ namespace Npgsql
         /// <summary>
         /// Cancels an ongoing export.
         /// </summary>
-        public void Cancel() => _connector.CancelRequest();
+        public void Cancel() => _connector.PerformUserCancellation();
 
         /// <summary>
         /// Completes that binary export and sets the connection back to idle state
@@ -392,13 +396,14 @@ namespace Npgsql
 
             if (!_isConsumed)
             {
+                using var registration = _connector.StartNestedCancellableOperation(attemptPgCancellation: false);
                 // Finish the current CopyData message
                 _buf.Skip(_leftToReadInDataMsg);
                 // Read to the end
                 _connector.SkipUntil(BackendMessageCode.CopyDone);
                 // We intentionally do not pass a CancellationToken since we don't want to cancel cleanup
-                Expect<CommandCompleteMessage>(await _connector.ReadMessage(async, pgCancellation: false, cancellationToken: default), _connector);
-                Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async, pgCancellation: false, cancellationToken: default), _connector);
+                Expect<CommandCompleteMessage>(await _connector.ReadMessage(async), _connector);
+                Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async), _connector);
             }
 
             _connector.EndUserAction();

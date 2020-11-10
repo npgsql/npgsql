@@ -200,7 +200,7 @@ namespace Npgsql
                         throw new Exception($"Could not roll back after {MaximumRollbackAttempts} attempts, aborting. Transaction is in an unknown state.");
 
                     Log.Warn($"Connection in use while trying to rollback, will cancel and retry (localid={_txId}", _connector.Id);
-                    _connector.CancelRequest();
+                    _connector.PerformPostgresCancellation();
                     // Cancellations are asynchronous, give it some time
                     Thread.Sleep(500);
                 }

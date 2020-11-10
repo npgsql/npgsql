@@ -169,7 +169,7 @@ namespace Npgsql.Tests
             using (var conn = OpenConnection())
             {
                 Assert.That(async () => await conn.WaitAsync(new CancellationToken(true)),
-                    Throws.Exception.TypeOf<TaskCanceledException>());
+                    Throws.Exception.TypeOf<OperationCanceledException>());
                 Assert.That(conn.ExecuteScalar("SELECT 1"), Is.EqualTo(1));
             }
 

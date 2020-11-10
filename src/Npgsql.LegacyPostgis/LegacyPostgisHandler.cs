@@ -25,39 +25,39 @@ namespace Npgsql.LegacyPostgis
 
         #region Read
 
-        public override async ValueTask<PostgisGeometry> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
+        public override async ValueTask<PostgisGeometry> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
-            await buf.Ensure(5, async, cancellationToken);
+            await buf.Ensure(5, async);
             var le = buf.ReadByte() != 0;
             var id = buf.ReadUInt32(le);
 
             var srid = 0u;
             if ((id & (uint)EwkbModifiers.HasSRID) != 0)
             {
-                await buf.Ensure(4, async, cancellationToken);
+                await buf.Ensure(4, async);
                 srid = buf.ReadUInt32(le);
             }
 
-            var geom = await DoRead(buf, (WkbIdentifier)(id & 7), le, async, cancellationToken);
+            var geom = await DoRead(buf, (WkbIdentifier)(id & 7), le, async);
             geom.SRID = srid;
             return geom;
         }
 
-        async ValueTask<PostgisGeometry> DoRead(NpgsqlReadBuffer buf, WkbIdentifier id, bool le, bool async, CancellationToken cancellationToken = default)
+        async ValueTask<PostgisGeometry> DoRead(NpgsqlReadBuffer buf, WkbIdentifier id, bool le, bool async)
         {
             switch (id)
             {
             case WkbIdentifier.Point:
-                await buf.Ensure(16, async, cancellationToken);
+                await buf.Ensure(16, async);
                 return new PostgisPoint(buf.ReadDouble(le), buf.ReadDouble(le));
 
             case WkbIdentifier.LineString:
             {
-                await buf.Ensure(4, async, cancellationToken);
+                await buf.Ensure(4, async);
                 var points = new Coordinate2D[buf.ReadInt32(le)];
                 for (var ipts = 0; ipts < points.Length; ipts++)
                 {
-                    await buf.Ensure(16, async, cancellationToken);
+                    await buf.Ensure(16, async);
                     points[ipts] = new Coordinate2D(buf.ReadDouble(le), buf.ReadDouble(le));
                 }
                 return new PostgisLineString(points);
@@ -65,16 +65,16 @@ namespace Npgsql.LegacyPostgis
 
             case WkbIdentifier.Polygon:
             {
-                await buf.Ensure(4, async, cancellationToken);
+                await buf.Ensure(4, async);
                 var rings = new Coordinate2D[buf.ReadInt32(le)][];
 
                 for (var irng = 0; irng < rings.Length; irng++)
                 {
-                    await buf.Ensure(4, async, cancellationToken);
+                    await buf.Ensure(4, async);
                     rings[irng] = new Coordinate2D[buf.ReadInt32(le)];
                     for (var ipts = 0; ipts < rings[irng].Length; ipts++)
                     {
-                        await buf.Ensure(16, async, cancellationToken);
+                        await buf.Ensure(16, async);
                         rings[irng][ipts] = new Coordinate2D(buf.ReadDouble(le), buf.ReadDouble(le));
                     }
                 }
@@ -83,12 +83,12 @@ namespace Npgsql.LegacyPostgis
 
             case WkbIdentifier.MultiPoint:
             {
-                await buf.Ensure(4, async, cancellationToken);
+                await buf.Ensure(4, async);
                 var points = new Coordinate2D[buf.ReadInt32(le)];
                 for (var ipts = 0; ipts < points.Length; ipts++)
                 {
-                    await buf.Ensure(21, async, cancellationToken);
-                    await buf.Skip(5, async, cancellationToken);
+                    await buf.Ensure(21, async);
+                    await buf.Skip(5, async);
                     points[ipts] = new Coordinate2D(buf.ReadDouble(le), buf.ReadDouble(le));
                 }
                 return new PostgisMultiPoint(points);
@@ -96,17 +96,17 @@ namespace Npgsql.LegacyPostgis
 
             case WkbIdentifier.MultiLineString:
             {
-                await buf.Ensure(4, async, cancellationToken);
+                await buf.Ensure(4, async);
                 var rings = new Coordinate2D[buf.ReadInt32(le)][];
 
                 for (var irng = 0; irng < rings.Length; irng++)
                 {
-                    await buf.Ensure(9, async, cancellationToken);
-                    await buf.Skip(5, async, cancellationToken);
+                    await buf.Ensure(9, async);
+                    await buf.Skip(5, async);
                     rings[irng] = new Coordinate2D[buf.ReadInt32(le)];
                     for (var ipts = 0; ipts < rings[irng].Length; ipts++)
                     {
-                        await buf.Ensure(16, async, cancellationToken);
+                        await buf.Ensure(16, async);
                         rings[irng][ipts] = new Coordinate2D(buf.ReadDouble(le), buf.ReadDouble(le));
                     }
                 }
@@ -115,21 +115,21 @@ namespace Npgsql.LegacyPostgis
 
             case WkbIdentifier.MultiPolygon:
             {
-                await buf.Ensure(4, async, cancellationToken);
+                await buf.Ensure(4, async);
                 var pols = new Coordinate2D[buf.ReadInt32(le)][][];
 
                 for (var ipol = 0; ipol < pols.Length; ipol++)
                 {
-                    await buf.Ensure(9, async, cancellationToken);
-                    await buf.Skip(5, async, cancellationToken);
+                    await buf.Ensure(9, async);
+                    await buf.Skip(5, async);
                     pols[ipol] = new Coordinate2D[buf.ReadInt32(le)][];
                     for (var irng = 0; irng < pols[ipol].Length; irng++)
                     {
-                        await buf.Ensure(4, async, cancellationToken);
+                        await buf.Ensure(4, async);
                         pols[ipol][irng] = new Coordinate2D[buf.ReadInt32(le)];
                         for (var ipts = 0; ipts < pols[ipol][irng].Length; ipts++)
                         {
-                            await buf.Ensure(16, async, cancellationToken);
+                            await buf.Ensure(16, async);
                             pols[ipol][irng][ipts] = new Coordinate2D(buf.ReadDouble(le), buf.ReadDouble(le));
                         }
                     }
@@ -139,16 +139,16 @@ namespace Npgsql.LegacyPostgis
 
             case WkbIdentifier.GeometryCollection:
             {
-                await buf.Ensure(4, async, cancellationToken);
+                await buf.Ensure(4, async);
                 var g = new PostgisGeometry[buf.ReadInt32(le)];
 
                 for (var i = 0; i < g.Length; i++)
                 {
-                    await buf.Ensure(5, async, cancellationToken);
+                    await buf.Ensure(5, async);
                     var elemLe = buf.ReadByte() != 0;
                     var elemId = (WkbIdentifier)(buf.ReadUInt32(le) & 7);
 
-                    g[i] = await DoRead(buf, elemId, elemLe, async, cancellationToken);
+                    g[i] = await DoRead(buf, elemId, elemLe, async);
                 }
                 return new PostgisGeometryCollection(g);
             }
@@ -162,20 +162,20 @@ namespace Npgsql.LegacyPostgis
 
         #region Read concrete types
 
-        async ValueTask<PostgisPoint> INpgsqlTypeHandler<PostgisPoint>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
-            => (PostgisPoint)await Read(buf, len, async, fieldDescription, cancellationToken);
-        async ValueTask<PostgisMultiPoint> INpgsqlTypeHandler<PostgisMultiPoint>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
-            => (PostgisMultiPoint)await Read(buf, len, async, fieldDescription, cancellationToken);
-        async ValueTask<PostgisLineString> INpgsqlTypeHandler<PostgisLineString>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
-            => (PostgisLineString)await Read(buf, len, async, fieldDescription, cancellationToken);
-        async ValueTask<PostgisMultiLineString> INpgsqlTypeHandler<PostgisMultiLineString>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
-            => (PostgisMultiLineString)await Read(buf, len, async, fieldDescription, cancellationToken);
-        async ValueTask<PostgisPolygon> INpgsqlTypeHandler<PostgisPolygon>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
-            => (PostgisPolygon)await Read(buf, len, async, fieldDescription, cancellationToken);
-        async ValueTask<PostgisMultiPolygon> INpgsqlTypeHandler<PostgisMultiPolygon>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
-            => (PostgisMultiPolygon)await Read(buf, len, async, fieldDescription, cancellationToken);
-        async ValueTask<PostgisGeometryCollection> INpgsqlTypeHandler<PostgisGeometryCollection>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
-            => (PostgisGeometryCollection)await Read(buf, len, async, fieldDescription, cancellationToken);
+        async ValueTask<PostgisPoint> INpgsqlTypeHandler<PostgisPoint>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
+            => (PostgisPoint)await Read(buf, len, async, fieldDescription);
+        async ValueTask<PostgisMultiPoint> INpgsqlTypeHandler<PostgisMultiPoint>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
+            => (PostgisMultiPoint)await Read(buf, len, async, fieldDescription);
+        async ValueTask<PostgisLineString> INpgsqlTypeHandler<PostgisLineString>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
+            => (PostgisLineString)await Read(buf, len, async, fieldDescription);
+        async ValueTask<PostgisMultiLineString> INpgsqlTypeHandler<PostgisMultiLineString>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
+            => (PostgisMultiLineString)await Read(buf, len, async, fieldDescription);
+        async ValueTask<PostgisPolygon> INpgsqlTypeHandler<PostgisPolygon>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
+            => (PostgisPolygon)await Read(buf, len, async, fieldDescription);
+        async ValueTask<PostgisMultiPolygon> INpgsqlTypeHandler<PostgisMultiPolygon>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
+            => (PostgisMultiPolygon)await Read(buf, len, async, fieldDescription);
+        async ValueTask<PostgisGeometryCollection> INpgsqlTypeHandler<PostgisGeometryCollection>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
+            => (PostgisGeometryCollection)await Read(buf, len, async, fieldDescription);
 
         #endregion
 

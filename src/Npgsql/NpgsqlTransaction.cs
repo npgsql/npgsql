@@ -125,7 +125,7 @@ namespace Npgsql
             if (!_connector.DatabaseInfo.SupportsTransactions)
                 return;
 
-            using (_connector.StartUserAction())
+            using (_connector.StartUserAction(cancellationToken))
             {
                 Log.Debug("Committing transaction", _connector.Id);
                 await _connector.ExecuteInternalCommand(PregeneratedMessages.CommitTransaction, async, cancellationToken);
@@ -142,8 +142,6 @@ namespace Npgsql
         public override Task CommitAsync(CancellationToken cancellationToken = default)
 #endif
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
                 return Commit(true, cancellationToken);
         }
@@ -175,8 +173,6 @@ namespace Npgsql
         public override Task RollbackAsync(CancellationToken cancellationToken = default)
 #endif
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
                 return Rollback(true, cancellationToken);
         }
@@ -248,8 +244,6 @@ namespace Npgsql
         public Task SaveAsync(string name, CancellationToken cancellationToken = default)
 #endif
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled(cancellationToken);
             Save(name);
             return Task.CompletedTask;
         }
@@ -264,7 +258,7 @@ namespace Npgsql
             CheckReady();
             if (!_connector.DatabaseInfo.SupportsTransactions)
                 return;
-            using (_connector.StartUserAction())
+            using (_connector.StartUserAction(cancellationToken))
             {
                 Log.Debug($"Rolling back savepoint {name}", _connector.Id);
 
@@ -297,8 +291,6 @@ namespace Npgsql
         public Task RollbackAsync(string name, CancellationToken cancellationToken = default)
 #endif
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
                 return Rollback(name, true, cancellationToken);
         }
@@ -313,7 +305,7 @@ namespace Npgsql
             CheckReady();
             if (!_connector.DatabaseInfo.SupportsTransactions)
                 return;
-            using (_connector.StartUserAction())
+            using (_connector.StartUserAction(cancellationToken))
             {
                 Log.Debug($"Releasing savepoint {name}", _connector.Id);
 
@@ -345,8 +337,6 @@ namespace Npgsql
         public Task ReleaseAsync(string name, CancellationToken cancellationToken = default)
 #endif
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
                 return Release(name, true, cancellationToken);
         }
@@ -430,7 +420,7 @@ namespace Npgsql
         static bool RequiresQuoting(string identifier)
         {
             Debug.Assert(identifier.Length > 0);
-            
+
             var first = identifier[0];
             if (first != '_' && !char.IsLower(first))
                 return true;

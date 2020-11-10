@@ -19,9 +19,9 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
             Handlers = handlers;
         }
 
-        public virtual async ValueTask<TComposite> Read(NpgsqlReadBuffer buffer, bool async, CancellationToken cancellationToken = default)
+        public virtual async ValueTask<TComposite> Read(NpgsqlReadBuffer buffer, bool async)
         {
-            await buffer.Ensure(sizeof(int), async, cancellationToken);
+            await buffer.Ensure(sizeof(int), async);
 
             var fieldCount = buffer.ReadInt32();
             if (fieldCount != Handlers.Length)
@@ -29,7 +29,7 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
 
             var args = new object?[Handlers.Length];
             foreach (var handler in Handlers)
-                args[handler.ParameterPosition] = await handler.Read(buffer, async, cancellationToken);
+                args[handler.ParameterPosition] = await handler.Read(buffer, async);
 
             return (TComposite)ConstructorInfo.Invoke(args);
         }

@@ -39,20 +39,20 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        public override async ValueTask<object[]> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
+        public override async ValueTask<object[]> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
-            await buf.Ensure(4, async, cancellationToken);
+            await buf.Ensure(4, async);
             var fieldCount = buf.ReadInt32();
             var result = new object[fieldCount];
 
             for (var i = 0; i < fieldCount; i++)
             {
-                await buf.Ensure(8, async, cancellationToken);
+                await buf.Ensure(8, async);
                 var typeOID = buf.ReadUInt32();
                 var fieldLen = buf.ReadInt32();
                 if (fieldLen == -1)  // Null field, simply skip it and leave at default
                     continue;
-                result[i] = await _typeMapper.GetByOID(typeOID).ReadAsObject(buf, fieldLen, async, cancellationToken: cancellationToken);
+                result[i] = await _typeMapper.GetByOID(typeOID).ReadAsObject(buf, fieldLen, async);
             }
 
             return result;

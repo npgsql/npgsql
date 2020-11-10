@@ -27,9 +27,9 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
                 .Compile();
         }
 
-        public override async ValueTask<TComposite> Read(NpgsqlReadBuffer buffer, bool async, CancellationToken cancellationToken = default)
+        public override async ValueTask<TComposite> Read(NpgsqlReadBuffer buffer, bool async)
         {
-            await buffer.Ensure(sizeof(int), async, cancellationToken);
+            await buffer.Ensure(sizeof(int), async);
 
             var fieldCount = buffer.ReadInt32();
             if (fieldCount != Handlers.Length)
@@ -40,14 +40,14 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
             foreach (var handler in Handlers)
                 switch (handler.ParameterPosition)
                 {
-                    case 0: args.Argument1 = await handler.Read<T1>(buffer, async, cancellationToken); break;
-                    case 1: args.Argument2 = await handler.Read<T2>(buffer, async, cancellationToken); break;
-                    case 2: args.Argument3 = await handler.Read<T3>(buffer, async, cancellationToken); break;
-                    case 3: args.Argument4 = await handler.Read<T4>(buffer, async, cancellationToken); break;
-                    case 4: args.Argument5 = await handler.Read<T5>(buffer, async, cancellationToken); break;
-                    case 5: args.Argument6 = await handler.Read<T6>(buffer, async, cancellationToken); break;
-                    case 6: args.Argument7 = await handler.Read<T7>(buffer, async, cancellationToken); break;
-                    case 7: args.Argument8 = await handler.Read<T8>(buffer, async, cancellationToken); break;
+                    case 0: args.Argument1 = await handler.Read<T1>(buffer, async); break;
+                    case 1: args.Argument2 = await handler.Read<T2>(buffer, async); break;
+                    case 2: args.Argument3 = await handler.Read<T3>(buffer, async); break;
+                    case 3: args.Argument4 = await handler.Read<T4>(buffer, async); break;
+                    case 4: args.Argument5 = await handler.Read<T5>(buffer, async); break;
+                    case 5: args.Argument6 = await handler.Read<T6>(buffer, async); break;
+                    case 6: args.Argument7 = await handler.Read<T7>(buffer, async); break;
+                    case 7: args.Argument8 = await handler.Read<T8>(buffer, async); break;
                 }
 
             return _constructor(args);

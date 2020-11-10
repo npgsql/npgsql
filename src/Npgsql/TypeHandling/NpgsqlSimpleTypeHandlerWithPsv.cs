@@ -62,8 +62,8 @@ namespace Npgsql.TypeHandling
         /// Reads a column as the type handler's provider-specific type. If it is not already entirely in
         /// memory, sync or async I/O will be performed as specified by <paramref name="async"/>.
         /// </summary>
-        internal override async ValueTask<object> ReadPsvAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
-            => (await Read<TPsv>(buf, len, async, fieldDescription, cancellationToken))!;
+        internal override async ValueTask<object> ReadPsvAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
+            => (await Read<TPsv>(buf, len, async, fieldDescription))!;
 
         #endregion Read
 

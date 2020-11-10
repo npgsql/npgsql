@@ -127,18 +127,17 @@ namespace Npgsql
             Ensure(count, false).GetAwaiter().GetResult();
         }
 
-        public Task Ensure(int count, bool async, CancellationToken cancellationToken = default)
-            => Ensure(count, async, readingNotifications: false, pgCancellation: false, cancellationToken);
+        public Task Ensure(int count, bool async)
+            => Ensure(count, async, readingNotifications: false);
 
-        public Task EnsureAsync(int count, CancellationToken cancellationToken = default)
-            => Ensure(count, async: true, readingNotifications: false, pgCancellation: false, cancellationToken);
+        public Task EnsureAsync(int count)
+            => Ensure(count, async: true, readingNotifications: false);
 
         /// <summary>
         /// Ensures that <paramref name="count"/> bytes are available in the buffer, and if
         /// not, reads from the socket until enough is available.
         /// </summary>
-        internal Task Ensure(int count, bool async, bool readingNotifications, bool pgCancellation,
-            CancellationToken cancellationToken = default)
+        internal Task Ensure(int count, bool async, bool readingNotifications)
         {
             return count <= ReadBytesLeft ? Task.CompletedTask : EnsureLong();
 
@@ -160,16 +159,12 @@ namespace Npgsql
                     ReadPosition = 0;
                 }
 
-                var finalCt = cancellationToken;
-                if (async)
-                {
-                    finalCt = Timeout > TimeSpan.Zero
-                        ? Cts.Start(cancellationToken)
-                        : Cts.Reset(cancellationToken);
-                }
+                var finalCt = async && Timeout > TimeSpan.Zero
+                    ? Cts.Start()
+                    : Cts.Reset();
 
                 var totalRead = 0;
-                var wasCancellationRequested = false;
+                var performedPgCancellation = false;
                 while (count > 0)
                 {
                     try
@@ -203,10 +198,6 @@ namespace Npgsql
 
                         switch (e)
                         {
-                        // User requested the cancellation (at this moment, it is COPY operations, WaitAsync, Reader's sequential methods, authentication)
-                        case OperationCanceledException _ when cancellationToken.IsCancellationRequested:
-                            throw readingNotifications ? e : Connector.Break(e);
-
                         // Read timeout
                         case OperationCanceledException _:
                         // Note that mono throws SocketException with the wrong error (see #1330)
@@ -215,40 +206,42 @@ namespace Npgsql
                         {
                             Debug.Assert(e is OperationCanceledException ? async : !async);
 
+                            // When reading notifications (Wait), just throw TimeoutException or OperationCanceledException immediately.
+                            // Nothing to cancel, and no breaking of the connection.
                             if (readingNotifications)
-                                throw NpgsqlTimeoutException();
-
-                            // Note that if PG cancellation fails, the exception for that is already logged internally by CancelRequest.
-                            // We simply continue and throw the timeout one.
-                            // TODO: As an optimization, we can still attempt to send a cancellation request, but after that immediately break the connection
-                            if (pgCancellation && !wasCancellationRequested && Connector.CancelRequest(requestedByUser: false))
                             {
-                                // If the cancellation timeout is negative, we break the connection immediately
+                                if (Connector.UserCancellationRequested)
+                                    throw;
+                                throw NpgsqlTimeoutException();
+                            }
+
+                            // If we should attempt PostgreSQL cancellation, do it the first time we get a timeout.
+                            // TODO: As an optimization, we can still attempt to send a cancellation request, but after that immediately break the connection
+                            if (Connector.AttemptPostgresCancellation && !performedPgCancellation && Connector.PerformPostgresCancellation())
+                            {
+                                // Note that if the cancellation timeout is negative, we flow down and break the connection immediately
                                 var cancellationTimeout = Connector.Settings.CancellationTimeout;
                                 if (cancellationTimeout >= 0)
                                 {
-                                    wasCancellationRequested = true;
+                                    performedPgCancellation = true;
 
                                     if (cancellationTimeout > 0)
                                         Timeout = TimeSpan.FromMilliseconds(cancellationTimeout);
 
                                     if (async)
-                                        finalCt = Cts.Start(cancellationToken);
+                                        finalCt = Cts.Start();
 
                                     continue;
                                 }
                             }
 
-                            // There is a case, when we might call a cancellable method (NpgsqlDataReader.NextResult)
-                            // but it times out on a sequential read (NpgsqlDataReader.ConsumeRow)
-                            if (Connector.UserCancellationRequested)
-                            {
-                                // User requested the cancellation and it timed out (or we didn't send it)
-                                throw Connector.Break(new OperationCanceledException("Query was cancelled", TimeoutException(),
-                                    Connector.UserCancellationToken));
-                            }
-
-                            throw Connector.Break(NpgsqlTimeoutException());
+                            // If we're here, the PostgreSQL cancellation either failed or skipped entirely.
+                            // Break the connection, bubbling up the correct exception type (cancellation or timeout)
+                            throw Connector.Break(!Connector.UserCancellationRequested
+                                ? NpgsqlTimeoutException()
+                                : performedPgCancellation
+                                    ? new OperationCanceledException("Query was cancelled", TimeoutException(), Connector.UserCancellationToken)
+                                    : new OperationCanceledException("Query was cancelled", Connector.UserCancellationToken));
                         }
 
                         default:
@@ -268,7 +261,7 @@ namespace Npgsql
 
         internal void ReadMore() => ReadMore(false).GetAwaiter().GetResult();
 
-        internal Task ReadMore(bool async, CancellationToken cancellationToken = default) => Ensure(ReadBytesLeft + 1, async, cancellationToken);
+        internal Task ReadMore(bool async) => Ensure(ReadBytesLeft + 1, async);
 
         internal NpgsqlReadBuffer AllocateOversize(int count)
         {
@@ -294,7 +287,7 @@ namespace Npgsql
         /// <summary>
         /// Skip a given number of bytes.
         /// </summary>
-        public async Task Skip(long len, bool async, CancellationToken cancellationToken = default)
+        public async Task Skip(long len, bool async)
         {
             Debug.Assert(len >= 0);
 
@@ -304,11 +297,11 @@ namespace Npgsql
                 while (len > Size)
                 {
                     Clear();
-                    await Ensure(Size, async, cancellationToken);
+                    await Ensure(Size, async);
                     len -= Size;
                 }
                 Clear();
-                await Ensure((int)len, async, cancellationToken);
+                await Ensure((int)len, async);
             }
 
             ReadPosition += (int)len;
@@ -539,7 +532,7 @@ namespace Npgsql
         public Stream GetStream(int len, bool canSeek)
         {
             if (_columnStream == null)
-                _columnStream = new ColumnStream(this);
+                _columnStream = new ColumnStream(Connector);
 
             _columnStream.Init(len, canSeek);
             return _columnStream;
@@ -595,7 +588,7 @@ namespace Npgsql
                 bool complete;
                 do
                 {
-                    await ReadMore(async, cancellationToken);
+                    await ReadMore(async);
                     complete = ReadFromBuffer(out s);
                     builder.Append(s);
                 }

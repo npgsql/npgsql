@@ -16,9 +16,9 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
             PostgresType = postgresType;
         }
 
-        public abstract ValueTask Read(TComposite composite, NpgsqlReadBuffer buffer, bool async, CancellationToken cancellationToken = default);
+        public abstract ValueTask Read(TComposite composite, NpgsqlReadBuffer buffer, bool async);
 
-        public abstract ValueTask Read(ByReference<TComposite> composite, NpgsqlReadBuffer buffer, bool async, CancellationToken cancellationToken = default);
+        public abstract ValueTask Read(ByReference<TComposite> composite, NpgsqlReadBuffer buffer, bool async);
 
         public abstract Task Write(TComposite composite, NpgsqlWriteBuffer buffer, NpgsqlLengthCache? lengthCache, bool async, CancellationToken cancellationToken = default);
 
