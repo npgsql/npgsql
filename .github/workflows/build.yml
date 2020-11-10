@@ -55,8 +55,9 @@ jobs:
           sudo apt-get install -qq postgresql-${{ matrix.pg_major }}
           sudo -u postgres psql -c "CREATE USER npgsql_tests SUPERUSER PASSWORD 'npgsql_tests'"
           sudo -u postgres psql -c "CREATE DATABASE npgsql_tests OWNER npgsql_tests"
-          sudo -u postgres psql -c "CREATE EXTENSION hstore" npgsql_tests
           sudo -u postgres psql -c "CREATE EXTENSION citext" npgsql_tests
+          sudo -u postgres psql -c "CREATE EXTENSION hstore" npgsql_tests
+          sudo -u postgres psql -c "CREATE EXTENSION ltree" npgsql_tests
 
           # To disable PostGIS for prereleases (because it usually isn't available until late), surround with the following:
           # if [ -z "${{ matrix.pg_prerelease }}" ]; then
@@ -130,9 +131,10 @@ jobs:
           # Configure test account
           pgsql/bin/psql -U postgres -c "CREATE ROLE npgsql_tests SUPERUSER LOGIN PASSWORD 'npgsql_tests'"
           pgsql/bin/psql -U postgres -c "CREATE DATABASE npgsql_tests OWNER npgsql_tests"
-          pgsql/bin/psql -U postgres -c "CREATE EXTENSION postgis" npgsql_tests
-          pgsql/bin/psql -U postgres -c "CREATE EXTENSION hstore" npgsql_tests
           pgsql/bin/psql -U postgres -c "CREATE EXTENSION citext" npgsql_tests
+          pgsql/bin/psql -U postgres -c "CREATE EXTENSION hstore" npgsql_tests
+          pgsql/bin/psql -U postgres -c "CREATE EXTENSION ltree" npgsql_tests
+          pgsql/bin/psql -U postgres -c "CREATE EXTENSION postgis" npgsql_tests
 
           # user 'npgsql_tests_scram' must be created with password encrypted as scram-sha-256 (which only applies after restart)
           sed -i "s|#password_encryption = md5|password_encryption = scram-sha-256|" pgsql/PGDATA/postgresql.conf
