@@ -102,7 +102,7 @@ namespace Npgsql.Tests
             }
 
             Assert.That(await conn1.ExecuteScalarAsync($"SELECT COUNT(*) FROM {table}"), Is.EqualTo(0));
-            Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
+            Assert.That(() => tx.Connection, Throws.Exception.TypeOf<InvalidOperationException>());
         }
 
         [Test, Description("Intentionally generates an error, putting us in a failed transaction block. Rolls back.")]
@@ -536,6 +536,30 @@ namespace Npgsql.Tests
 
             await conn.DisposeAsync();
             Assert.That(conn.Connector, Is.Null);
+        }
+
+        [Test]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/3306")]
+        [TestCase(true)]
+        [TestCase(false)]
+        public async Task Bug3306(bool inTransactionBlock)
+        {
+            var conn = await OpenConnectionAsync();
+            var tx = await conn.BeginTransactionAsync();
+            await conn.ExecuteNonQueryAsync("SELECT 1", tx);
+            if (!inTransactionBlock)
+                await tx.RollbackAsync();
+            await conn.CloseAsync();
+
+            conn = await OpenConnectionAsync();
+            var tx2 = await conn.BeginTransactionAsync();
+
+            await tx.DisposeAsync();
+
+            Assert.That(tx.IsDisposed, Is.True);
+            Assert.That(tx2.IsDisposed, Is.False);
+
+            await conn.DisposeAsync();
         }
 
         class NoTransactionDatabaseInfoFactory : INpgsqlDatabaseInfoFactory

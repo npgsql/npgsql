@@ -108,7 +108,7 @@ namespace Npgsql
         /// this instance is recycled. To check whether a transaction is currently in progress on this connector,
         /// see <see cref="TransactionStatus"/>.
         /// </summary>
-        internal NpgsqlTransaction Transaction { get; }
+        internal NpgsqlTransaction? Transaction { get; set; }
 
         /// <summary>
         /// The NpgsqlConnection that (currently) owns this connector. Null if the connector isn't
@@ -305,7 +305,6 @@ namespace Npgsql
             Settings = settings;
             ConnectionString = connectionString;
             PostgresParameters = new Dictionary<string, string>();
-            Transaction = new NpgsqlTransaction(this);
 
             CancelLock = new object();
 
@@ -1410,7 +1409,7 @@ namespace Npgsql
 
         internal void ClearTransaction()
         {
-            Transaction.DisposeImmediately();
+            Transaction?.DisposeImmediately();
             TransactionStatus = TransactionStatus.Idle;
         }
 
@@ -1815,6 +1814,8 @@ namespace Npgsql
                 ReadBuffer = _origReadBuffer;
                 _origReadBuffer = null;
             }
+
+            Transaction?.UnbindIfNecessary();
 
             var endBindingScope = false;
 

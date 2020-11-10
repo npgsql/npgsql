@@ -31,7 +31,7 @@ namespace Npgsql
 
         // Note that with ambient transactions, it's possible for a transaction to be pending after its connection
         // is already closed. So we capture the connector and perform everything directly on it.
-        readonly NpgsqlConnector _connector;
+        NpgsqlConnector _connector;
 
         /// <summary>
         /// Specifies the <see cref="NpgsqlConnection"/> object associated with the transaction.
@@ -42,7 +42,7 @@ namespace Npgsql
         /// <summary>
         /// If true, the transaction has been committed/rolled back, but not disposed.
         /// </summary>
-        internal bool IsCompleted => _connector.TransactionStatus == TransactionStatus.Idle;
+        internal bool IsCompleted => _connector is null || _connector.TransactionStatus == TransactionStatus.Idle;
 
         internal bool IsDisposed;
 
@@ -372,9 +372,8 @@ namespace Npgsql
                     Rollback();
                 }
 
-                _connector.Connection?.EndBindingScope(ConnectorBindingScope.Transaction);
-
                 IsDisposed = true;
+                _connector?.Connection?.EndBindingScope(ConnectorBindingScope.Transaction);
             }
         }
 
@@ -395,9 +394,8 @@ namespace Npgsql
                         return DisposeAsyncInternal();
                 }
 
-                _connector.Connection?.EndBindingScope(ConnectorBindingScope.Transaction);
-
                 IsDisposed = true;
+                _connector?.Connection?.EndBindingScope(ConnectorBindingScope.Transaction);
             }
             return default;
 
@@ -406,8 +404,8 @@ namespace Npgsql
                 // We're disposing, so no cancellation token
                 await _connector.CloseOngoingOperations(async: true);
                 await Rollback(async: true);
-                _connector.Connection?.EndBindingScope(ConnectorBindingScope.Transaction);
                 IsDisposed = true;
+                _connector?.Connection?.EndBindingScope(ConnectorBindingScope.Transaction);
             }
         }
 
@@ -442,6 +440,26 @@ namespace Npgsql
                     return true;
 
             return false;
+        }
+
+        #endregion
+
+        #region Misc
+
+        /// <summary>
+        /// Unbinds transaction from the connector.
+        /// Should be called before the connector is returned to the pool.
+        /// </summary>
+        internal void UnbindIfNecessary()
+        {
+            // We're closing the connection, but transaction is not yet disposed
+            // We have to unbind the transaction from the connector, otherwise there could be a concurency issues
+            // See #3306
+            if (!IsDisposed)
+            {
+                _connector.Transaction = null;
+                _connector = null!;
+            }
         }
 
         #endregion
