@@ -38,7 +38,11 @@ namespace Npgsql
         public override bool CanRead => _canRead;
 
         public override bool CanTimeout => true;
-        public override int WriteTimeout { get => (int) _writeBuf.Timeout.TotalMilliseconds; set => _writeBuf.Timeout = TimeSpan.FromMilliseconds(value); }
+        public override int WriteTimeout
+        {
+            get => (int) _writeBuf.Timeout.TotalMilliseconds;
+            set => _writeBuf.Timeout = TimeSpan.FromMilliseconds(value);
+        }
         public override int ReadTimeout
         {
             get => (int) _readBuf.Timeout.TotalMilliseconds;

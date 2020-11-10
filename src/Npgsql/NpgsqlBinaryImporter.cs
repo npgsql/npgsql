@@ -43,15 +43,15 @@ namespace Npgsql
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlBinaryImporter));
 
         /// <summary>
-        /// Current timeout in ms
+        /// Current timeout
         /// </summary>
-        public int Timeout
+        public TimeSpan Timeout
         {
             set
             {
-                _buf.Timeout = TimeSpan.FromMilliseconds(value);
+                _buf.Timeout = value;
                 // While calling Complete(), we're using the connector, which overwrites the buffer's timeout with it's own
-                _connector.UserTimeout = value;
+                _connector.UserTimeout = (int)value.TotalMilliseconds;
             }
         }
 
