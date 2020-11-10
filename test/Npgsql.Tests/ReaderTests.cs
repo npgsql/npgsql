@@ -1112,6 +1112,34 @@ LANGUAGE plpgsql VOLATILE";
             }
         }
 
+        [Test]
+        public async Task DisposeSwallowsExceptions([Values(true, false)] bool async)
+        {
+            await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
+            using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
+            await using var conn = await OpenConnectionAsync(connectionString);
+            var pgMock = await postmasterMock.WaitForServerConnection();
+
+            // Write responses for the query, but break the connection before sending CommandComplete/ReadyForQuery
+            await pgMock
+                .WriteParseComplete()
+                .WriteBindComplete()
+                .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Int4))
+                .WriteDataRow(BitConverter.GetBytes(BinaryPrimitives.ReverseEndianness(1)))
+                .FlushAsync();
+
+            using var cmd = new NpgsqlCommand("SELECT 1", conn);
+            using var reader = await cmd.ExecuteReaderAsync();
+            await reader.ReadAsync();
+
+            pgMock.Close();
+
+            if (async)
+                Assert.DoesNotThrow(() => reader.Dispose());
+            else
+                Assert.DoesNotThrowAsync(async () => await reader.DisposeAsync());
+        }
+
         #region GetBytes / GetStream
 
         [Test]
