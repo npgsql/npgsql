@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
 
@@ -21,5 +22,12 @@ namespace Npgsql.Tests.Types
         {
             new object[] { "'Top.Science.Astronomy'::ltree", "Top.Science.Astronomy" }
         };
+
+        [OneTimeSetUp]
+        public async Task SetUp()
+        {
+            using var conn = await OpenConnectionAsync();
+            await TestUtil.EnsureExtensionAsync(conn, "ltree");
+        }
     }
 }
