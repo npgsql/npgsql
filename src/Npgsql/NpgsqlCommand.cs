@@ -481,9 +481,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 foreach (var statement in _statements)
                 {
                     Expect<ParseCompleteMessage>(
-                        connector.ReadMessage(async: false, pgCancellation: false).GetAwaiter().GetResult(), connector);
+                        connector.ReadMessage(async: false).GetAwaiter().GetResult(), connector);
                     var paramTypeOIDs = Expect<ParameterDescriptionMessage>(
-                        connector.ReadMessage(async: false, pgCancellation: false).GetAwaiter().GetResult(), connector).TypeOIDs;
+                        connector.ReadMessage(async: false).GetAwaiter().GetResult(), connector).TypeOIDs;
 
                     if (statement.InputParameters.Count != paramTypeOIDs.Count)
                     {
@@ -517,7 +517,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         }
                     }
 
-                    var msg = connector.ReadMessage(async: false, pgCancellation: false).GetAwaiter().GetResult();
+                    var msg = connector.ReadMessage(async: false).GetAwaiter().GetResult();
                     switch (msg.Code)
                     {
                     case BackendMessageCode.RowDescription:
@@ -528,7 +528,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     }
                 }
 
-                Expect<ReadyForQueryMessage>(connector.ReadMessage(async: false, pgCancellation: false).GetAwaiter().GetResult(), connector);
+                Expect<ReadyForQueryMessage>(connector.ReadMessage(async: false).GetAwaiter().GetResult(), connector);
                 sendTask.GetAwaiter().GetResult();
             }
         }
@@ -554,8 +554,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         public override Task PrepareAsync(CancellationToken cancellationToken = default)
 #endif
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
                 return Prepare(true, cancellationToken);
         }
@@ -592,12 +590,12 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             // It's possible the command was already prepared, or that persistent prepared statements were found for
             // all statements. Nothing to do here, move along.
             return needToPrepare
-                ? PrepareLong(cancellationToken)
+                ? PrepareLong()
                 : Task.CompletedTask;
 
-            async Task PrepareLong(CancellationToken cancellationToken)
+            async Task PrepareLong()
             {
-                using (connector.StartUserAction())
+                using (connector.StartUserAction(cancellationToken))
                 {
                     var sendTask = SendPrepare(connector, async, cancellationToken);
                     if (sendTask.IsFaulted)
@@ -617,14 +615,14 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         {
                             if (pStatement.StatementBeingReplaced != null)
                             {
-                                Expect<CloseCompletedMessage>(await connector.ReadMessage(async, cancellationToken), connector);
+                                Expect<CloseCompletedMessage>(await connector.ReadMessage(async), connector);
                                 pStatement.StatementBeingReplaced.CompleteUnprepare();
                                 pStatement.StatementBeingReplaced = null;
                             }
 
-                            Expect<ParseCompleteMessage>(await connector.ReadMessage(async, cancellationToken), connector);
-                            Expect<ParameterDescriptionMessage>(await connector.ReadMessage(async, cancellationToken), connector);
-                            var msg = await connector.ReadMessage(async, cancellationToken);
+                            Expect<ParseCompleteMessage>(await connector.ReadMessage(async), connector);
+                            Expect<ParameterDescriptionMessage>(await connector.ReadMessage(async), connector);
+                            var msg = await connector.ReadMessage(async);
                             switch (msg.Code)
                             {
                             case BackendMessageCode.RowDescription:
@@ -663,7 +661,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         }
                     }
 
-                    Expect<ReadyForQueryMessage>(await connector.ReadMessage(async, cancellationToken), connector);
+                    Expect<ReadyForQueryMessage>(await connector.ReadMessage(async), connector);
 
                     if (async)
                         await sendTask;
@@ -689,8 +687,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
         public Task UnprepareAsync(CancellationToken cancellationToken = default)
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled<int>(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
                 return Unprepare(true, cancellationToken);
         }
@@ -706,7 +702,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             var connector = connection.Connector!;
 
             Log.Debug("Closing command's prepared statements", connector.Id);
-            using (connector.StartUserAction())
+            using (connector.StartUserAction(cancellationToken))
             {
                 var sendTask = SendClose(connector, async, cancellationToken);
                 if (sendTask.IsFaulted)
@@ -714,11 +710,11 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 foreach (var statement in _statements)
                     if (statement.PreparedStatement?.State == PreparedState.BeingUnprepared)
                     {
-                        Expect<CloseCompletedMessage>(await connector.ReadMessage(async, cancellationToken), connector);
+                        Expect<CloseCompletedMessage>(await connector.ReadMessage(async), connector);
                         statement.PreparedStatement.CompleteUnprepare();
                         statement.PreparedStatement = null;
                     }
-                Expect<ReadyForQueryMessage>(await connector.ReadMessage(async, cancellationToken), connector);
+                Expect<ReadyForQueryMessage>(await connector.ReadMessage(async), connector);
                 if (async)
                     await sendTask;
                 else
@@ -1031,8 +1027,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// <returns>A task representing the asynchronous operation, with the number of rows affected if known; -1 otherwise.</returns>
         public override Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken)
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled<int>(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
                 return ExecuteNonQuery(true, cancellationToken);
         }
@@ -1068,8 +1062,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// first row in the result set, or a null reference if the result set is empty.</returns>
         public override Task<object?> ExecuteScalarAsync(CancellationToken cancellationToken)
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled<object?>(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
                 return ExecuteScalar(true, cancellationToken).AsTask();
         }
@@ -1134,9 +1126,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// <returns>A task representing the asynchronous operation.</returns>
         public new Task<NpgsqlDataReader> ExecuteReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken = default)
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled<NpgsqlDataReader>(cancellationToken);
-
             using (NoSynchronizationContextScope.Enter())
                 return ExecuteReader(behavior, async: true, cancellationToken).AsTask();
         }
@@ -1154,16 +1143,10 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             {
                 if (conn.TryGetBoundConnector(out var connector))
                 {
-                    connector.StartUserAction(this);
-                    connector.ResetCancellation(cancellationToken);
-
-                    CancellationTokenRegistration? registration = null;
+                    connector.StartUserAction(ConnectorState.Executing, this, CancellationToken.None);
 
                     try
                     {
-                        if (cancellationToken.CanBeCanceled)
-                            registration = cancellationToken.Register(cmd => ((NpgsqlCommand)cmd!).Cancel(), this);
-
                         ValidateParameters(connector.TypeMapper);
 
                         switch (IsExplicitlyPrepared)
@@ -1252,7 +1235,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         reader.Init(this, behavior, _statements, sendTask);
                         connector.CurrentReader = reader;
                         if (async)
-                            await reader.NextResultAsync(CancellationToken.None);
+                            await reader.NextResultAsync(cancellationToken);
                         else
                             reader.NextResult();
 
@@ -1263,10 +1246,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         connector.CurrentReader = null;
                         conn.Connector?.EndUserAction();
                         throw;
-                    }
-                    finally
-                    {
-                        registration?.Dispose();
                     }
                 }
                 else
@@ -1350,21 +1329,21 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         #region Cancel
 
         /// <summary>
-        /// Attempts to cancel the execution of a <see cref="NpgsqlCommand">NpgsqlCommand</see>.
+        /// Attempts to cancel the execution of an <see cref="NpgsqlCommand" />.
         /// </summary>
-        /// <remarks>As per the specs, no exception will be thrown by this method in case of failure</remarks>
+        /// <remarks>As per the specs, no exception will be thrown by this method in case of failure.</remarks>
         public override void Cancel()
         {
             if (State != CommandState.InProgress)
                 return;
-            if (!Connection!.IsBound)
+
+            var connection = Connection;
+            if (connection is null)
+                return;
+            if (!connection.IsBound)
                 throw new NotSupportedException("Cancellation not supported with multiplexing");
 
-            var connector = _connection?.Connector;
-            if (connector == null)
-                return;
-
-            connector.CancelRequest();
+            connection.Connector?.PerformUserCancellation();
         }
 
         #endregion Cancel

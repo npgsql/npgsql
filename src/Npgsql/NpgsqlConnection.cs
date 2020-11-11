@@ -576,9 +576,9 @@ namespace Npgsql
 
             try
             {
-                // Note that beginning a transaction doesn't actually send anything to the backend (only prepends), so strictly speaking we
-                // don't have to start a user action. However, we do this for consistency as if we did (for the checks and exceptions)
-                using var _ = connector.StartUserAction();
+                // Note that beginning a transaction doesn't actually send anything to the backend (only prepends).
+                // But we start a user action to check the cancellation token and generate exceptions
+                using var _ = connector.StartUserAction(cancellationToken);
 
                 connector.Transaction ??= new NpgsqlTransaction(connector);
                 connector.Transaction.Init(level);
@@ -615,8 +615,6 @@ namespace Npgsql
         /// </remarks>
         public new ValueTask<NpgsqlTransaction> BeginTransactionAsync(IsolationLevel level, CancellationToken cancellationToken = default)
         {
-            if (cancellationToken.IsCancellationRequested)
-		        return new ValueTask<NpgsqlTransaction>(Task.FromCanceled<NpgsqlTransaction>(cancellationToken));
             using (NoSynchronizationContextScope.Enter())
                 return BeginTransaction(level, async: true, cancellationToken);
         }
@@ -1007,10 +1005,9 @@ namespace Npgsql
             var connector = StartBindingScope(ConnectorBindingScope.Copy);
 
             Log.Debug("Starting binary import", connector.Id);
-            connector.StartUserAction(ConnectorState.Copy);
+            connector.StartUserAction(ConnectorState.Copy, attemptPgCancellation: false);
             try
             {
-                connector.ResetCancellation(CancellationToken.None);
                 var importer = new NpgsqlBinaryImporter(connector, copyFromCommand);
                 connector.CurrentCopyOperation = importer;
                 return importer;
@@ -1042,10 +1039,9 @@ namespace Npgsql
             var connector = StartBindingScope(ConnectorBindingScope.Copy);
 
             Log.Debug("Starting binary export", connector.Id);
-            connector.StartUserAction(ConnectorState.Copy);
+            connector.StartUserAction(ConnectorState.Copy, attemptPgCancellation: false);
             try
             {
-                connector.ResetCancellation(CancellationToken.None);
                 var exporter = new NpgsqlBinaryExporter(connector, copyToCommand);
                 connector.CurrentCopyOperation = exporter;
                 return exporter;
@@ -1080,10 +1076,9 @@ namespace Npgsql
             var connector = StartBindingScope(ConnectorBindingScope.Copy);
 
             Log.Debug("Starting text import", connector.Id);
-            connector.StartUserAction(ConnectorState.Copy);
+            connector.StartUserAction(ConnectorState.Copy, attemptPgCancellation: false);
             try
             {
-                connector.ResetCancellation(CancellationToken.None);
                 var writer = new NpgsqlCopyTextWriter(connector, new NpgsqlRawCopyStream(connector, copyFromCommand));
                 connector.CurrentCopyOperation = writer;
                 return writer;
@@ -1118,10 +1113,9 @@ namespace Npgsql
             var connector = StartBindingScope(ConnectorBindingScope.Copy);
 
             Log.Debug("Starting text export", connector.Id);
-            connector.StartUserAction(ConnectorState.Copy);
+            connector.StartUserAction(ConnectorState.Copy, attemptPgCancellation: false);
             try
             {
-                connector.ResetCancellation(CancellationToken.None);
                 var reader = new NpgsqlCopyTextReader(connector, new NpgsqlRawCopyStream(connector, copyToCommand));
                 connector.CurrentCopyOperation = reader;
                 return reader;
@@ -1156,10 +1150,9 @@ namespace Npgsql
             var connector = StartBindingScope(ConnectorBindingScope.Copy);
 
             Log.Debug("Starting raw COPY operation", connector.Id);
-            connector.StartUserAction(ConnectorState.Copy);
+            connector.StartUserAction(ConnectorState.Copy, attemptPgCancellation: false);
             try
             {
-                connector.ResetCancellation(CancellationToken.None);
                 var stream = new NpgsqlRawCopyStream(connector, copyCommand);
                 if (!stream.IsBinary)
                 {
@@ -1387,8 +1380,6 @@ namespace Npgsql
         /// <returns>true if an asynchronous message was received, false if timed out.</returns>
         public Task<bool> WaitAsync(int timeout, CancellationToken cancellationToken = default)
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled<bool>(cancellationToken);
             if (Settings.Multiplexing)
                 throw new NotSupportedException($"{nameof(Wait)} isn't supported in multiplexing mode");
 
@@ -1664,9 +1655,6 @@ namespace Npgsql
         public Task<DataTable> GetSchemaAsync(string collectionName, string?[]? restrictions, CancellationToken cancellationToken = default)
 #endif
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled<DataTable>(cancellationToken);
-
             using (NoSynchronizationContextScope.Enter())
                 return NpgsqlSchema.GetSchema(this, collectionName, restrictions, async: true, cancellationToken);
         }

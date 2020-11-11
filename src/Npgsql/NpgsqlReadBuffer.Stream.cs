@@ -10,13 +10,19 @@ namespace Npgsql
     {
         internal sealed class ColumnStream : Stream
         {
+            readonly NpgsqlConnector _connector;
             readonly NpgsqlReadBuffer _buf;
             int _start, _len, _read;
             bool _canSeek;
+            bool _startCancellableOperations;
             internal bool IsDisposed { get; private set; }
 
-            internal ColumnStream(NpgsqlReadBuffer buf)
-                => _buf = buf;
+            internal ColumnStream(NpgsqlConnector connector, bool startCancellableOperations = true)
+            {
+                _connector = connector;
+                _buf = connector.ReadBuffer;
+                _startCancellableOperations = startCancellableOperations;
+            }
 
             internal void Init(int len, bool canSeek)
             {
@@ -119,8 +125,7 @@ namespace Npgsql
             public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
             {
                 ValidateArguments(buffer, offset, count);
-                if (cancellationToken.IsCancellationRequested)
-                    return Task.FromCanceled<int>(cancellationToken);
+
                 using (NoSynchronizationContextScope.Enter())
                     return ReadAsync(new Memory<byte>(buffer, offset, count), cancellationToken).AsTask();
             }
@@ -152,9 +157,6 @@ namespace Npgsql
             {
                 CheckDisposed();
 
-                if (cancellationToken.IsCancellationRequested)
-                    return new ValueTask<int>(Task.FromCanceled<int>(cancellationToken));
-
                 var count = Math.Min(buffer.Length, _len - _read);
 
                 if (count == 0)
@@ -165,6 +167,9 @@ namespace Npgsql
 
                 async ValueTask<int> ReadLong(Memory<byte> buffer, CancellationToken cancellationToken = default)
                 {
+                    using var registration = _startCancellableOperations
+                        ? _connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false)
+                        : default;
                     var read = await _buf.ReadAsync(buffer, cancellationToken);
                     _read += read;
                     return read;

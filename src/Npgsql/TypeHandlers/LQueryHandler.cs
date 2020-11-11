@@ -78,15 +78,15 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        public override async ValueTask<string> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
+        public override async ValueTask<string> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
-            await buf.Ensure(1, async, cancellationToken);
+            await buf.Ensure(1, async);
 
             var version = buf.ReadByte();
             if (version != LQueryProtocolVersion)
                 throw new NotSupportedException($"Don't know how to decode lquery with wire format {version}, your connection is now broken");
 
-            return await base.Read(buf, len - 1, async, fieldDescription, cancellationToken);
+            return await base.Read(buf, len - 1, async, fieldDescription);
         }
 
         #endregion

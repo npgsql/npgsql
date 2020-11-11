@@ -78,7 +78,9 @@ namespace Npgsql
             _connector.WriteQuery(copyCommand);
             _connector.Flush();
 
-            var msg = _connector.ReadMessage(async: false, pgCancellation: false).GetAwaiter().GetResult();
+            using var registration = connector.StartNestedCancellableOperation(attemptPgCancellation: false);
+
+            var msg = _connector.ReadMessage(async: false).GetAwaiter().GetResult();
             switch (msg.Code)
             {
             case BackendMessageCode.CopyInResponse:
@@ -280,6 +282,8 @@ namespace Npgsql
             if (_isConsumed)
                 return 0;
 
+            using var registration = _connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
+
             if (_leftToReadInDataMsg == 0)
             {
                 IBackendMessage msg;
@@ -287,7 +291,7 @@ namespace Npgsql
                 {
                     // We've consumed the current DataMessage (or haven't yet received the first),
                     // read the next message
-                    msg = await _connector.ReadMessage(async, pgCancellation: false, cancellationToken);
+                    msg = await _connector.ReadMessage(async);
                 }
                 catch
                 {
@@ -301,8 +305,8 @@ namespace Npgsql
                     _leftToReadInDataMsg = ((CopyDataMessage)msg).Length;
                     break;
                 case BackendMessageCode.CopyDone:
-                    Expect<CommandCompleteMessage>(await _connector.ReadMessage(async, pgCancellation: false, cancellationToken), _connector);
-                    Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async, pgCancellation: false, cancellationToken), _connector);
+                    Expect<CommandCompleteMessage>(await _connector.ReadMessage(async), _connector);
+                    Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async), _connector);
                     _isConsumed = true;
                     return 0;
                 default:
@@ -315,7 +319,7 @@ namespace Npgsql
             // If our buffer is empty, read in more. Otherwise return whatever is there, even if the
             // user asked for more (normal socket behavior)
             if (_readBuf.ReadBytesLeft == 0)
-                await _readBuf.ReadMore(async, cancellationToken);
+                await _readBuf.ReadMore(async);
 
             Debug.Assert(_readBuf.ReadBytesLeft > 0);
 
@@ -357,7 +361,7 @@ namespace Npgsql
                 await _connector.Flush(async);
                 try
                 {
-                    var msg = await _connector.ReadMessage(async, pgCancellation: false, cancellationToken: default);
+                    var msg = await _connector.ReadMessage(async);
                     // The CopyFail should immediately trigger an exception from the read above.
                     throw _connector.Break(
                         new NpgsqlException("Expected ErrorResponse when cancelling COPY but got: " + msg.Code));
@@ -374,7 +378,7 @@ namespace Npgsql
             }
             else
             {
-                _connector.CancelRequest();
+                _connector.PerformPostgresCancellation();
             }
         }
 
@@ -396,8 +400,8 @@ namespace Npgsql
                     _writeBuf.EndCopyMode();
                     await _connector.WriteCopyDone(async);
                     await _connector.Flush(async);
-                    Expect<CommandCompleteMessage>(await _connector.ReadMessage(async, pgCancellation: false, cancellationToken: default), _connector);
-                    Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async, pgCancellation: false, cancellationToken : default), _connector);
+                    Expect<CommandCompleteMessage>(await _connector.ReadMessage(async), _connector);
+                    Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async), _connector);
                 }
                 else
                 {

@@ -45,7 +45,7 @@ $@"SELECT
        SELECT * FROM pg_index
        WHERE pg_index.indrelid = cls.oid AND
              pg_index.indisunique AND
-             pg_index.{(pgVersion >= new Version(11, 0) ? "indnkeyatts" : "indnatts")} = 1 AND 
+             pg_index.{(pgVersion >= new Version(11, 0) ? "indnkeyatts" : "indnatts")} = 1 AND
              attnum = pg_index.indkey[0]
      ) AS isunique
 FROM pg_attribute AS attr
@@ -93,7 +93,7 @@ ORDER BY attnum";
 
         #endregion Column queries
 
-        internal async Task<ReadOnlyCollection<NpgsqlDbColumn>> GetColumnSchemaAsync(bool async, CancellationToken cancellationToken = default)
+        internal async Task<ReadOnlyCollection<NpgsqlDbColumn>> GetColumnSchema(bool async, CancellationToken cancellationToken = default)
         {
             // This is mainly for Amazon Redshift
             var oldQueryMode = _connection.PostgreSqlVersion < new Version(8, 2);
@@ -125,7 +125,7 @@ ORDER BY attnum";
                 using var connection = (NpgsqlConnection)((ICloneable)_connection).Clone();
 
                 await connection.Open(async, cancellationToken);
-                
+
                 using var cmd = new NpgsqlCommand(query, connection);
                 using var reader = await cmd.ExecuteReader(CommandBehavior.Default, async, cancellationToken);
                 while (async ? await reader.ReadAsync(cancellationToken): reader.Read())

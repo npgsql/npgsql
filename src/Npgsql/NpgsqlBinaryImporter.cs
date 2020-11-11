@@ -68,8 +68,10 @@ namespace Npgsql
             _connector.WriteQuery(copyFromCommand);
             _connector.Flush();
 
+            using var registration = _connector.StartNestedCancellableOperation(attemptPgCancellation: false);
+
             CopyInResponseMessage copyInResponse;
-            var msg = _connector.ReadMessage(async: false, pgCancellation: false).GetAwaiter().GetResult();
+            var msg = _connector.ReadMessage(async: false).GetAwaiter().GetResult();
             switch (msg.Code)
             {
                 case BackendMessageCode.CopyInResponse:
@@ -435,6 +437,8 @@ namespace Npgsql
         {
             CheckReady();
 
+            using var registration = _connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
+
             if (InMiddleOfRow)
             {
                 await Cancel(async, cancellationToken);
@@ -448,8 +452,8 @@ namespace Npgsql
                 _buf.EndCopyMode();
                 await _connector.WriteCopyDone(async, cancellationToken);
                 await _connector.Flush(async, cancellationToken);
-                var cmdComplete = Expect<CommandCompleteMessage>(await _connector.ReadMessage(async, pgCancellation: false, cancellationToken), _connector);
-                Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async, pgCancellation: false, cancellationToken), _connector);
+                var cmdComplete = Expect<CommandCompleteMessage>(await _connector.ReadMessage(async), _connector);
+                Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async), _connector);
                 _state = ImporterState.Committed;
                 return cmdComplete.Rows;
             }
@@ -487,7 +491,8 @@ namespace Npgsql
             await _connector.Flush(async, cancellationToken);
             try
             {
-                var msg = await _connector.ReadMessage(async, pgCancellation: false, cancellationToken);
+                using var registration = _connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
+                var msg = await _connector.ReadMessage(async);
                 // The CopyFail should immediately trigger an exception from the read above.
                 throw _connector.Break(
                     new NpgsqlException("Expected ErrorResponse when cancelling COPY but got: " + msg.Code));
