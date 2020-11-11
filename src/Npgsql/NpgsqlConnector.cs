@@ -820,7 +820,10 @@ namespace Npgsql
                     // cancellation and timeout. On older TFMs, we fake-cancel the operation, i.e. stop waiting
                     // and raise the exception, but the actual connection task is left running.
 
-#if NET
+#if NETSTANDARD2_0 || NETSTANDARD2_1 || NETCOREAPP3_1
+                    await socket.ConnectAsync(endpoint)
+                        .WithCancellationAndTimeout(perIpTimeout, cancellationToken);
+#else
                     var finalCt = cancellationToken;
 
                     if (perIpTimeout.IsSet)
@@ -831,9 +834,6 @@ namespace Npgsql
                     }
 
                     await socket.ConnectAsync(endpoint, finalCt);
-#else
-                    await socket.ConnectAsync(endpoint)
-                        .WithCancellationAndTimeout(perIpTimeout, cancellationToken);
 #endif
 
                     SetSocketOptions(socket);
