@@ -3,7 +3,7 @@ name: Build
 on: [push, pull_request]
 
 env:
-  dotnet_sdk_version: '5.0.100-rc.1.20452.10'
+  dotnet_sdk_version: '5.0.100'
   postgis_version: 3
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
 
