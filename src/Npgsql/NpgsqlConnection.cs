@@ -293,7 +293,7 @@ namespace Npgsql
                     // Note that in multiplexing execution, the pool-wide type mapper is used so no
                     // need to update the connector type mapper (this is why this is here).
                     if (connector.TypeMapper.ChangeCounter != TypeMapping.GlobalTypeMapper.Instance.ChangeCounter)
-                        connector.RebindTypeMapper();
+                        await connector.LoadDatabaseInfo(false, timeout, async, cancellationToken);
 
                     CompleteOpen();
                 }

@@ -220,7 +220,9 @@ namespace Npgsql
         {
             if (factory == null)
                 throw new ArgumentNullException(nameof(factory));
+
             Factories.Insert(0, factory);
+            Cache.Clear();
         }
 
         internal static async Task<NpgsqlDatabaseInfo> Load(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
@@ -245,6 +247,7 @@ namespace Npgsql
             Factories.Clear();
             Factories.Add(new PostgresMinimalDatabaseInfoFactory());
             Factories.Add(new PostgresDatabaseInfoFactory());
+            Cache.Clear();
         }
 
         #endregion Factory management

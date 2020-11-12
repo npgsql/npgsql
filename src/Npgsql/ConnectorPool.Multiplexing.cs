@@ -68,7 +68,7 @@ namespace Npgsql
                 // The latter isn't strictly necessary (type mappers should always be usable
                 // concurrently) but just in case.
                 MultiplexingTypeMapper = connector.TypeMapper;
-                connector.RebindTypeMapper();
+                await connector.LoadDatabaseInfo(false, timeout, async, cancellationToken);
 
                 IsBootstrapped = true;
             }
