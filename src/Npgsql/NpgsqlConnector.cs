@@ -529,17 +529,6 @@ namespace Npgsql
             TypeMapper.Bind(DatabaseInfo);
         }
 
-        internal void RebindTypeMapper()
-        {
-            // The type loading below will need to send queries to the database, and that depends on a type mapper
-            // being set up (even if its empty)
-            TypeMapper = new ConnectorTypeMapper(this);
-            var found = NpgsqlDatabaseInfo.Cache.TryGetValue(ConnectionString, out var database);
-            Debug.Assert(found, "Rebinding type mapper but database info not found");
-            DatabaseInfo = database!;
-            TypeMapper.Bind(DatabaseInfo);
-        }
-
         void WriteStartupMessage(string username)
         {
             var startupParams = new Dictionary<string, string>
