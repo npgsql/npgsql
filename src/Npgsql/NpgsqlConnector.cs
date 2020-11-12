@@ -488,7 +488,7 @@ namespace Npgsql
             }
         }
 
-        internal async Task LoadDatabaseInfo(bool forceReload, NpgsqlTimeout timeout, bool async,
+        internal async ValueTask LoadDatabaseInfo(bool forceReload, NpgsqlTimeout timeout, bool async,
             CancellationToken cancellationToken = default)
         {
             // Super hacky stuff...
