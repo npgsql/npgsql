@@ -1838,6 +1838,43 @@ LANGUAGE plpgsql VOLATILE";
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
         }
 
+        [Test, Description("Makes sure that calling ReadAsync with a cancelled token actual cancels the query in PG")]
+        public async Task ReadAsync_cancelled_token_does_pg_cancellation()
+        {
+            await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
+            using var pool = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
+            await using var conn = await OpenConnectionAsync(connectionString);
+
+            // Write responses to the query we're about to send, with a single data row (we'll attempt to read two)
+            var pgMock = await postmasterMock.WaitForServerConnection();
+            await pgMock
+                .WriteParseComplete()
+                .WriteBindComplete()
+                .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Int4))
+                .WriteDataRow(BitConverter.GetBytes(BinaryPrimitives.ReverseEndianness(1)))
+                .FlushAsync();
+
+            using var cmd = new NpgsqlCommand("SELECT some_int FROM some_table", conn);
+            await using var reader = await cmd.ExecuteReaderAsync();
+
+            // Successfully read the first resultset
+            Assert.True(await reader.ReadAsync());
+            Assert.That(reader.GetInt32(0), Is.EqualTo(1));
+
+            // Attempt to read the second row, but with a cancelled token. This should cancel the query at the PG side.
+            var cancellationSource = new CancellationTokenSource();
+            cancellationSource.Cancel();
+            var task = reader.ReadAsync(cancellationSource.Token);
+
+            await postmasterMock.WaitForCancellationRequest();
+            await pgMock
+                .WriteCancellationResponse()
+                .WriteReadyForQuery()
+                .FlushAsync();
+
+            Assert.That(async () => await task, Throws.Exception.TypeOf<OperationCanceledException>());
+        }
+
         #endregion Cancellation
 
         #region Timeout
