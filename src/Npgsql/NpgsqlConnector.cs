@@ -1563,8 +1563,6 @@ namespace Npgsql
             CancellationToken cancellationToken = default,
             bool attemptPgCancellation = true)
         {
-            cancellationToken.ThrowIfCancellationRequested();
-
             UserCancellationToken = cancellationToken;
             AttemptPostgresCancellation = attemptPgCancellation;
 
