@@ -96,60 +96,60 @@ namespace Npgsql
 
         internal Task Ensure(int count, bool async, bool dontBreakOnTimeouts)
         {
-            return count <= ReadBytesLeft ? Task.CompletedTask : EnsureLong();
+            return count <= ReadBytesLeft ? Task.CompletedTask : EnsureLong(count, async, dontBreakOnTimeouts);
+        }
 
-            async Task EnsureLong()
+        async Task EnsureLong(int count, bool async, bool dontBreakOnTimeouts)
+        {
+            Debug.Assert(count <= Size);
+            Debug.Assert(count > ReadBytesLeft);
+            count -= ReadBytesLeft;
+            if (count <= 0) { return; }
+
+            if (ReadPosition == FilledBytes)
             {
-                Debug.Assert(count <= Size);
-                Debug.Assert(count > ReadBytesLeft);
-                count -= ReadBytesLeft;
-                if (count <= 0) { return; }
+                Clear();
+            }
+            else if (count > Size - FilledBytes)
+            {
+                Array.Copy(Buffer, ReadPosition, Buffer, 0, ReadBytesLeft);
+                FilledBytes = ReadBytesLeft;
+                ReadPosition = 0;
+            }
 
-                if (ReadPosition == FilledBytes)
+            try
+            {
+                var totalRead = 0;
+                while (count > 0)
                 {
-                    Clear();
-                }
-                else if (count > Size - FilledBytes)
-                {
-                    Array.Copy(Buffer, ReadPosition, Buffer, 0, ReadBytesLeft);
-                    FilledBytes = ReadBytesLeft;
-                    ReadPosition = 0;
+                    var toRead = Size - FilledBytes;
+                    var read = async
+                        ? await Underlying.ReadAsync(Buffer, FilledBytes, toRead)
+                        : Underlying.Read(Buffer, FilledBytes, toRead);
+
+                    if (read == 0)
+                        throw new EndOfStreamException();
+                    count -= read;
+                    FilledBytes += read;
+                    totalRead += read;
                 }
 
-                try
-                {
-                    var totalRead = 0;
-                    while (count > 0)
-                    {
-                        var toRead = Size - FilledBytes;
-                        var read = async
-                            ? await Underlying.ReadAsync(Buffer, FilledBytes, toRead)
-                            : Underlying.Read(Buffer, FilledBytes, toRead);
-
-                        if (read == 0)
-                            throw new EndOfStreamException();
-                        count -= read;
-                        FilledBytes += read;
-                        totalRead += read;
-                    }
-
-                    NpgsqlEventSource.Log.BytesRead(totalRead);
-                }
-                // We have a special case when reading async notifications - a timeout may be normal
-                // shouldn't be fatal
-                // Note that mono throws SocketException with the wrong error (see #1330)
-                catch (IOException e) when (
-                    dontBreakOnTimeouts && (e.InnerException as SocketException)?.SocketErrorCode ==
-                       (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock)
-                )
-                {
-                    throw new TimeoutException("Timeout while reading from stream");
-                }
-                catch (Exception e)
-                {
-                    Connector.Break();
-                    throw new NpgsqlException("Exception while reading from stream", e);
-                }
+                NpgsqlEventSource.Log.BytesRead(totalRead);
+            }
+            // We have a special case when reading async notifications - a timeout may be normal
+            // shouldn't be fatal
+            // Note that mono throws SocketException with the wrong error (see #1330)
+            catch (IOException e) when (
+                dontBreakOnTimeouts && (e.InnerException as SocketException)?.SocketErrorCode ==
+                   (Type.GetType("Mono.Runtime") == null ? SocketError.TimedOut : SocketError.WouldBlock)
+            )
+            {
+                throw new TimeoutException("Timeout while reading from stream");
+            }
+            catch (Exception e)
+            {
+                Connector.Break();
+                throw new NpgsqlException("Exception while reading from stream", e);
             }
         }
 
