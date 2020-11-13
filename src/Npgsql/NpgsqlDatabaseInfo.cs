@@ -18,7 +18,7 @@ namespace Npgsql
         internal static readonly ConcurrentDictionary<string, NpgsqlDatabaseInfo> Cache
             = new ConcurrentDictionary<string, NpgsqlDatabaseInfo>();
 
-        static volatile List<INpgsqlDatabaseInfoFactory> Factories = new List<INpgsqlDatabaseInfoFactory>
+        static volatile INpgsqlDatabaseInfoFactory[] Factories = new INpgsqlDatabaseInfoFactory[]
         {
             new PostgresMinimalDatabaseInfoFactory(),
             new PostgresDatabaseInfoFactory()
@@ -221,8 +221,9 @@ namespace Npgsql
             if (factory == null)
                 throw new ArgumentNullException(nameof(factory));
 
-            var factories = new List<INpgsqlDatabaseInfoFactory>(Factories);
-            factories.Insert(0, factory);
+            var factories = new INpgsqlDatabaseInfoFactory[Factories.Length + 1];
+            factories[0] = factory;
+            Array.Copy(Factories, 0, factories, 1, Factories.Length);
             Factories = factories;
 
             Cache.Clear();
@@ -230,8 +231,7 @@ namespace Npgsql
 
         internal static async Task<NpgsqlDatabaseInfo> Load(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
         {
-            var factories = Factories;
-            foreach (var factory in factories)
+            foreach (var factory in Factories)
             {
                 var dbInfo = await factory.Load(conn, timeout, async);
                 if (dbInfo != null)
@@ -248,9 +248,11 @@ namespace Npgsql
         // For tests
         internal static void ResetFactories()
         {
-            Factories.Clear();
-            Factories.Add(new PostgresMinimalDatabaseInfoFactory());
-            Factories.Add(new PostgresDatabaseInfoFactory());
+            Factories = new INpgsqlDatabaseInfoFactory[]
+            {
+                new PostgresMinimalDatabaseInfoFactory(),
+                new PostgresDatabaseInfoFactory()
+            };
             Cache.Clear();
         }
 
