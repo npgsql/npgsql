@@ -231,6 +231,7 @@ namespace Npgsql
 
         internal static async Task<NpgsqlDatabaseInfo> Load(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
         {
+            // Foreach for array in translated into for, so we can safely change one array to another
             foreach (var factory in Factories)
             {
                 var dbInfo = await factory.Load(conn, timeout, async);
