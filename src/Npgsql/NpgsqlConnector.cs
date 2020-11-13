@@ -558,7 +558,8 @@ namespace Npgsql
                 ["client_encoding"] = Settings.ClientEncoding ??
                                       PostgresEnvironment.ClientEncoding ??
                                       "UTF8",
-                ["database"] = Settings.Database!
+                ["database"] = Settings.Database!,
+                ["standard_conforming_strings"] = "on"
             };
 
             if (Settings.ApplicationName?.Length > 0)
