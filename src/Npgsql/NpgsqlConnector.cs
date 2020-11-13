@@ -432,11 +432,14 @@ namespace Npgsql
 
             State = ConnectorState.Connecting;
 
-            try {
+            try
+            {
                 await RawOpen(timeout, async, cancellationToken);
+
                 var username = GetUsername();
                 if (Settings.Database == null)
                     Settings.Database = username;
+
                 timeout.CheckAndApply(this);
                 WriteStartupMessage(username);
                 await Flush(async, cancellationToken);
@@ -485,6 +488,18 @@ namespace Npgsql
                             // Note that we *must* observe the exception if the task is faulted.
                             Log.Error("Exception bubbled out of multiplexing read loop", t.Exception!, Id);
                         }, TaskContinuationOptions.OnlyOnFaulted);
+                }
+
+                if (_isKeepAliveEnabled)
+                {
+                    // Start the keep alive mechanism to work by scheduling the timer.
+                    // Otherwise, it doesn't work for cases when no query executed during
+                    // the connection lifetime in case of a new connector.
+                    lock (this)
+                    {
+                        var keepAlive = Settings.KeepAlive * 1000;
+                        _keepAliveTimer!.Change(keepAlive, keepAlive);
+                    }
                 }
             }
             catch (Exception e)
