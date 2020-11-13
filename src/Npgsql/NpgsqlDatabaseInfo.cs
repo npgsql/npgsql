@@ -18,7 +18,7 @@ namespace Npgsql
         internal static readonly ConcurrentDictionary<string, NpgsqlDatabaseInfo> Cache
             = new ConcurrentDictionary<string, NpgsqlDatabaseInfo>();
 
-        static readonly List<INpgsqlDatabaseInfoFactory> Factories = new List<INpgsqlDatabaseInfoFactory>
+        static volatile List<INpgsqlDatabaseInfoFactory> Factories = new List<INpgsqlDatabaseInfoFactory>
         {
             new PostgresMinimalDatabaseInfoFactory(),
             new PostgresDatabaseInfoFactory()
@@ -221,13 +221,17 @@ namespace Npgsql
             if (factory == null)
                 throw new ArgumentNullException(nameof(factory));
 
-            Factories.Insert(0, factory);
+            var factories = new List<INpgsqlDatabaseInfoFactory>(Factories);
+            factories.Insert(0, factory);
+            Factories = factories;
+
             Cache.Clear();
         }
 
         internal static async Task<NpgsqlDatabaseInfo> Load(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
         {
-            foreach (var factory in Factories)
+            var factories = Factories;
+            foreach (var factory in factories)
             {
                 var dbInfo = await factory.Load(conn, timeout, async);
                 if (dbInfo != null)
