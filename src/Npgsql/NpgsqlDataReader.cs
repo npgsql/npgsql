@@ -808,7 +808,17 @@ namespace Npgsql
         /// <summary>
         /// Releases the resources used by the <see cref="NpgsqlDataReader">NpgsqlDataReader</see>.
         /// </summary>
-        protected override void Dispose(bool disposing) => Close();
+        protected override void Dispose(bool disposing)
+        {
+            try
+            {
+                Close();
+            }
+            catch (Exception e)
+            {
+                Log.Error("Exception caught while disposing a reader", e, Connector.Id);
+            }
+        }
 
         /// <summary>
         /// Releases the resources used by the <see cref="NpgsqlDataReader">NpgsqlDataReader</see>.
@@ -820,7 +830,20 @@ namespace Npgsql
 #endif
         {
             using (NoSynchronizationContextScope.Enter())
-                return new ValueTask(Close(connectionClosing: false, async: true));
+                return DisposeAsyncCore();
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            async ValueTask DisposeAsyncCore()
+            {
+                try
+                {
+                    await Close(connectionClosing: false, async: true);
+                }
+                catch (Exception e)
+                {
+                    Log.Error("Exception caught while disposing a reader", e, Connector.Id);
+                }
+            }
         }
 
         /// <summary>
