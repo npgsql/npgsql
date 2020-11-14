@@ -513,22 +513,22 @@ namespace Npgsql
                 return new ValueTask<int>(readFromBuffer);
             }
 
-            return ReadAsyncLong();
+            return ReadAsyncLong(this, output, cancellationToken);
 
-            async ValueTask<int> ReadAsyncLong()
+            static async ValueTask<int> ReadAsyncLong(NpgsqlReadBuffer buffer, Memory<byte> output, CancellationToken cancellationToken)
             {
-                Debug.Assert(ReadBytesLeft == 0);
-                Clear();
+                Debug.Assert(buffer.ReadBytesLeft == 0);
+                buffer.Clear();
                 try
                 {
-                    var read = await Underlying.ReadAsync(output, cancellationToken);
+                    var read = await buffer.Underlying.ReadAsync(output, cancellationToken);
                     if (read == 0)
                         throw new EndOfStreamException();
                     return read;
                 }
                 catch (Exception e)
                 {
-                    throw Connector.Break(new NpgsqlException("Exception while reading from stream", e));
+                    throw buffer.Connector.Break(new NpgsqlException("Exception while reading from stream", e));
                 }
             }
         }
