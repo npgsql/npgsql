@@ -396,14 +396,25 @@ namespace Npgsql
 
             if (!_isConsumed)
             {
-                using var registration = _connector.StartNestedCancellableOperation(attemptPgCancellation: false);
-                // Finish the current CopyData message
-                _buf.Skip(_leftToReadInDataMsg);
-                // Read to the end
-                _connector.SkipUntil(BackendMessageCode.CopyDone);
-                // We intentionally do not pass a CancellationToken since we don't want to cancel cleanup
-                Expect<CommandCompleteMessage>(await _connector.ReadMessage(async), _connector);
-                Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async), _connector);
+                try
+                {
+                    using var registration = _connector.StartNestedCancellableOperation(attemptPgCancellation: false);
+                    // Finish the current CopyData message
+                    _buf.Skip(_leftToReadInDataMsg);
+                    // Read to the end
+                    _connector.SkipUntil(BackendMessageCode.CopyDone);
+                    // We intentionally do not pass a CancellationToken since we don't want to cancel cleanup
+                    Expect<CommandCompleteMessage>(await _connector.ReadMessage(async), _connector);
+                    Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async), _connector);
+                }
+                catch (OperationCanceledException e) when (e.InnerException is PostgresException pg && pg.SqlState == PostgresErrorCodes.QueryCanceled)
+                {
+                    Log.Debug($"Caught an exception while disposing the {nameof(NpgsqlBinaryExporter)}, indicating that it was cancelled.", e, _connector.Id);
+                }
+                catch (Exception e)
+                {
+                    Log.Error($"Caught an exception while disposing the {nameof(NpgsqlBinaryExporter)}.", e, _connector.Id);
+                }
             }
 
             _connector.EndUserAction();
