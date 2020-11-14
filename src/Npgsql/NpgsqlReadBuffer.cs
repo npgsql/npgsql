@@ -139,29 +139,33 @@ namespace Npgsql
         /// </summary>
         internal Task Ensure(int count, bool async, bool readingNotifications)
         {
-            return count <= ReadBytesLeft ? Task.CompletedTask : EnsureLong();
+            return count <= ReadBytesLeft ? Task.CompletedTask : EnsureLong(this, count, async, readingNotifications);
 
-            async Task EnsureLong()
+            static async Task EnsureLong(
+                NpgsqlReadBuffer buffer,
+                int count,
+                bool async,
+                bool readingNotifications)
             {
-                Debug.Assert(count <= Size);
-                Debug.Assert(count > ReadBytesLeft);
-                count -= ReadBytesLeft;
+                Debug.Assert(count <= buffer.Size);
+                Debug.Assert(count > buffer.ReadBytesLeft);
+                count -= buffer.ReadBytesLeft;
                 if (count <= 0) { return; }
 
-                if (ReadPosition == FilledBytes)
+                if (buffer.ReadPosition == buffer.FilledBytes)
                 {
-                    Clear();
+                    buffer.Clear();
                 }
-                else if (count > Size - FilledBytes)
+                else if (count > buffer.Size - buffer.FilledBytes)
                 {
-                    Array.Copy(Buffer, ReadPosition, Buffer, 0, ReadBytesLeft);
-                    FilledBytes = ReadBytesLeft;
-                    ReadPosition = 0;
+                    Array.Copy(buffer.Buffer, buffer.ReadPosition, buffer.Buffer, 0, buffer.ReadBytesLeft);
+                    buffer.FilledBytes = buffer.ReadBytesLeft;
+                    buffer.ReadPosition = 0;
                 }
 
-                var finalCt = async && Timeout > TimeSpan.Zero
-                    ? Cts.Start()
-                    : Cts.Reset();
+                var finalCt = async && buffer.Timeout > TimeSpan.Zero
+                    ? buffer.Cts.Start()
+                    : buffer.Cts.Reset();
 
                 var totalRead = 0;
                 var performedPgCancellation = false;
@@ -169,15 +173,15 @@ namespace Npgsql
                 {
                     try
                     {
-                        var toRead = Size - FilledBytes;
+                        var toRead = buffer.Size - buffer.FilledBytes;
                         var read = async
-                            ? await Underlying.ReadAsync(Buffer, FilledBytes, toRead, finalCt)
-                            : Underlying.Read(Buffer, FilledBytes, toRead);
+                            ? await buffer.Underlying.ReadAsync(buffer.Buffer, buffer.FilledBytes, toRead, finalCt)
+                            : buffer.Underlying.Read(buffer.Buffer, buffer.FilledBytes, toRead);
 
                         if (read == 0)
                             throw new EndOfStreamException();
                         count -= read;
-                        FilledBytes += read;
+                        buffer.FilledBytes += read;
                         totalRead += read;
 
                         // Most of the time, it should be fine to reset cancellation token source, so we can use it again
@@ -186,7 +190,7 @@ namespace Npgsql
                         // Or we consider it not timed out if we have already read everything (count == 0)
                         // In which case we reinitialize it on the next call to EnsureLong()
                         if (async)
-                            Cts.RestartTimeoutWithoutReset();
+                            buffer.Cts.RestartTimeoutWithoutReset();
                     }
                     catch (Exception e)
                     {
@@ -194,7 +198,7 @@ namespace Npgsql
                         // Not stopping will cause an assertion failure in debug mode when we call Start() the next time.
                         // We can't stop in a finally block because Connector.Break() will dispose the buffer and the contained
                         // _timeoutCts
-                        Cts.Stop();
+                        buffer.Cts.Stop();
 
                         switch (e)
                         {
@@ -210,26 +214,26 @@ namespace Npgsql
                             // Nothing to cancel, and no breaking of the connection.
                             if (readingNotifications)
                             {
-                                if (Connector.UserCancellationRequested)
+                                if (buffer.Connector.UserCancellationRequested)
                                     throw;
                                 throw NpgsqlTimeoutException();
                             }
 
                             // If we should attempt PostgreSQL cancellation, do it the first time we get a timeout.
                             // TODO: As an optimization, we can still attempt to send a cancellation request, but after that immediately break the connection
-                            if (Connector.AttemptPostgresCancellation && !performedPgCancellation && Connector.PerformPostgresCancellation())
+                            if (buffer.Connector.AttemptPostgresCancellation && !performedPgCancellation && buffer.Connector.PerformPostgresCancellation())
                             {
                                 // Note that if the cancellation timeout is negative, we flow down and break the connection immediately
-                                var cancellationTimeout = Connector.Settings.CancellationTimeout;
+                                var cancellationTimeout = buffer.Connector.Settings.CancellationTimeout;
                                 if (cancellationTimeout >= 0)
                                 {
                                     performedPgCancellation = true;
 
                                     if (cancellationTimeout > 0)
-                                        Timeout = TimeSpan.FromMilliseconds(cancellationTimeout);
+                                        buffer.Timeout = TimeSpan.FromMilliseconds(cancellationTimeout);
 
                                     if (async)
-                                        finalCt = Cts.Start();
+                                        finalCt = buffer.Cts.Start();
 
                                     continue;
                                 }
@@ -237,20 +241,20 @@ namespace Npgsql
 
                             // If we're here, the PostgreSQL cancellation either failed or skipped entirely.
                             // Break the connection, bubbling up the correct exception type (cancellation or timeout)
-                            throw Connector.Break(!Connector.UserCancellationRequested
+                            throw buffer.Connector.Break(!buffer.Connector.UserCancellationRequested
                                 ? NpgsqlTimeoutException()
                                 : performedPgCancellation
-                                    ? new OperationCanceledException("Query was cancelled", TimeoutException(), Connector.UserCancellationToken)
-                                    : new OperationCanceledException("Query was cancelled", Connector.UserCancellationToken));
+                                    ? new OperationCanceledException("Query was cancelled", TimeoutException(), buffer.Connector.UserCancellationToken)
+                                    : new OperationCanceledException("Query was cancelled", buffer.Connector.UserCancellationToken));
                         }
 
                         default:
-                            throw Connector.Break(new NpgsqlException("Exception while reading from stream", e));
+                            throw buffer.Connector.Break(new NpgsqlException("Exception while reading from stream", e));
                         }
                     }
                 }
 
-                Cts.Stop();
+                buffer.Cts.Stop();
                 NpgsqlEventSource.Log.BytesRead(totalRead);
 
                 static Exception NpgsqlTimeoutException() => new NpgsqlException("Exception while reading from stream", TimeoutException());
