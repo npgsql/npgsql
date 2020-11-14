@@ -259,7 +259,7 @@ namespace Npgsql
                     throw new ArgumentOutOfRangeException();
                 }
 
-                var msg2 = await ReadMessage(async, CancellationToken.None);
+                var msg2 = await ReadMessage(async);
                 ProcessMessage(msg2);
                 return msg2.Code == BackendMessageCode.DataRow;
             }

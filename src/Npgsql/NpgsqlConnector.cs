@@ -1217,8 +1217,8 @@ namespace Npgsql
                 catch (PostgresException e)
                 {
                     // In case if reader is not null, it will do cleanup (and call EndUserAction) while catching the exception
-                    if (CurrentReader is null)
-                        EndUserAction();
+                    if (connector.CurrentReader is null)
+                        connector.EndUserAction();
 
                     if (e.SqlState == PostgresErrorCodes.QueryCanceled && connector.PostgresCancellationPerformed)
                     {
