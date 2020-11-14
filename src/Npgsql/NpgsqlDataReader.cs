@@ -33,7 +33,7 @@ namespace Npgsql
 #pragma warning restore CA1010
     {
         internal NpgsqlCommand Command { get; private set; } = default!;
-        internal NpgsqlConnector Connector { get; private set; }
+        internal NpgsqlConnector Connector { get; }
         NpgsqlConnection _connection = default!;
 
         /// <summary>
@@ -2152,10 +2152,7 @@ namespace Npgsql
             // We have to unbind the reader from the connector, otherwise there could be a concurency issues
             // See #3126 and #3290
             if (!_isDisposed && !Connector.IsBroken)
-            {
                 Connector.DataReader = new NpgsqlDataReader(Connector);
-                Connector = null!;
-            }
         }
 
         #endregion
