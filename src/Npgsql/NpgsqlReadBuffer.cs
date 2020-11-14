@@ -566,34 +566,34 @@ namespace Npgsql
         /// </summary>
         ValueTask<string> ReadNullTerminatedString(Encoding encoding, bool async, CancellationToken cancellationToken = default)
         {
-            return ReadFromBuffer(out var s)
+            return ReadFromBuffer(this, encoding, out var s)
                 ? new ValueTask<string>(s)
-                : ReadLong(s);
+                : ReadLong(this, async, encoding, s);
 
-            bool ReadFromBuffer(out string s)
+            static bool ReadFromBuffer(NpgsqlReadBuffer buffer, Encoding encoding, out string s)
             {
-                var start = ReadPosition;
-                while (ReadPosition < FilledBytes)
+                var start = buffer.ReadPosition;
+                while (buffer.ReadPosition < buffer.FilledBytes)
                 {
-                    if (Buffer[ReadPosition++] == 0)
+                    if (buffer.Buffer[buffer.ReadPosition++] == 0)
                     {
-                        s = encoding.GetString(Buffer, start, ReadPosition - start - 1);
+                        s = encoding.GetString(buffer.Buffer, start, buffer.ReadPosition - start - 1);
                         return true;
                     }
                 }
 
-                s = encoding.GetString(Buffer, start, ReadPosition - start);
+                s = encoding.GetString(buffer.Buffer, start, buffer.ReadPosition - start);
                 return false;
             }
 
-            async ValueTask<string> ReadLong(string s)
+            static async ValueTask<string> ReadLong(NpgsqlReadBuffer buffer, bool async, Encoding encoding, string s)
             {
                 var builder = new StringBuilder(s);
                 bool complete;
                 do
                 {
-                    await ReadMore(async);
-                    complete = ReadFromBuffer(out s);
+                    await buffer.ReadMore(async);
+                    complete = ReadFromBuffer(buffer, encoding, out s);
                     builder.Append(s);
                 }
                 while (!complete);
