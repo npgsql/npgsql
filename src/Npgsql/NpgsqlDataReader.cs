@@ -1211,7 +1211,7 @@ namespace Npgsql
 
             var t = SeekToColumn(ordinal, async, cancellationToken);
             if (!t.IsCompleted)
-                return new ValueTask<Stream>(GetStreamLong(t));
+                return new ValueTask<Stream>(GetStreamLong(this, field, t, cancellationToken));
 
             if (ColumnLen == -1)
                 ThrowHelper.ThrowInvalidCastException_NoValue(field);
@@ -1219,16 +1219,16 @@ namespace Npgsql
             PosInColumn += ColumnLen;
             return new ValueTask<Stream>(_columnStream = (NpgsqlReadBuffer.ColumnStream)Buffer.GetStream(ColumnLen, !_isSequential));
 
-            async Task<Stream> GetStreamLong(Task seekTask)
+            static async Task<Stream> GetStreamLong(NpgsqlDataReader reader, FieldDescription field, Task seekTask, CancellationToken cancellationToken)
             {
-                using var registration = Connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
+                using var registration = reader.Connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
 
                 await seekTask;
-                if (ColumnLen == -1)
+                if (reader.ColumnLen == -1)
                     ThrowHelper.ThrowInvalidCastException_NoValue(field);
 
-                PosInColumn += ColumnLen;
-                return _columnStream = (NpgsqlReadBuffer.ColumnStream)Buffer.GetStream(ColumnLen, !_isSequential);
+                reader.PosInColumn += reader.ColumnLen;
+                return reader._columnStream = (NpgsqlReadBuffer.ColumnStream)reader.Buffer.GetStream(reader.ColumnLen, !reader._isSequential);
             }
         }
 
