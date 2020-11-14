@@ -61,7 +61,7 @@ namespace Npgsql
                     return;
 
                 var connector = await conn.StartBindingScope(ConnectorBindingScope.Connection, timeout, async, cancellationToken);
-                using var _ = Defer(() => conn.EndBindingScope(ConnectorBindingScope.Connection));
+                using var _ = Defer(static conn => conn.EndBindingScope(ConnectorBindingScope.Connection), conn);
 
                 // Somewhat hacky. Extract the connector's type mapper as our pool-wide mapper,
                 // and have the connector rebind to ensure it has a different instance.

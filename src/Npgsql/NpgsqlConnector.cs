@@ -517,7 +517,7 @@ namespace Npgsql
 
             var prevBindingScope = Connection!.ConnectorBindingScope;
             Connection.ConnectorBindingScope = ConnectorBindingScope.PhysicalConnecting;
-            using var _ = Defer(() => Connection.ConnectorBindingScope = prevBindingScope);
+            using var _ = Defer(static (conn, prevScope) => conn.ConnectorBindingScope = prevScope, Connection, prevBindingScope);
 
             // The type loading below will need to send queries to the database, and that depends on a type mapper
             // being set up (even if its empty)
@@ -1075,7 +1075,7 @@ namespace Npgsql
                 readingNotifications ||
                 ReadBuffer.ReadBytesLeft < 5)
             {
-                return ReadMessageLong(dataRowLoadingMode, readingNotifications2: readingNotifications);
+                return ReadMessageLong(this, async, dataRowLoadingMode, readingNotifications: readingNotifications);
             }
 
             var messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
@@ -1086,7 +1086,7 @@ namespace Npgsql
             case BackendMessageCode.ParameterStatus:
             case BackendMessageCode.ErrorResponse:
                 ReadBuffer.ReadPosition--;
-                return ReadMessageLong(dataRowLoadingMode, readingNotifications2: false);
+                return ReadMessageLong(this, async, dataRowLoadingMode, readingNotifications: false);
             case BackendMessageCode.ReadyForQuery:
                 break;
             }
@@ -1096,29 +1096,31 @@ namespace Npgsql
             if (len > ReadBuffer.ReadBytesLeft)
             {
                 ReadBuffer.ReadPosition -= 5;
-                return ReadMessageLong(dataRowLoadingMode, readingNotifications2: false);
+                return ReadMessageLong(this, async, dataRowLoadingMode, readingNotifications: false);
             }
 
             return new ValueTask<IBackendMessage?>(ParseServerMessage(ReadBuffer, messageCode, len, false));
 
-            async ValueTask<IBackendMessage?> ReadMessageLong(
-                DataRowLoadingMode dataRowLoadingMode2,
-                bool readingNotifications2,
+            static async ValueTask<IBackendMessage?> ReadMessageLong(
+                NpgsqlConnector connector,
+                bool async,
+                DataRowLoadingMode dataRowLoadingMode,
+                bool readingNotifications,
                 bool isReadingPrependedMessage = false)
             {
                 // First read the responses of any prepended messages.
-                if (PendingPrependedResponses > 0 && !isReadingPrependedMessage)
+                if (connector.PendingPrependedResponses > 0 && !isReadingPrependedMessage)
                 {
                     try
                     {
                         // TODO: There could be room for optimization here, rather than the async call(s)
-                        ReadBuffer.Timeout = TimeSpan.FromMilliseconds(InternalCommandTimeout);
-                        for (; PendingPrependedResponses > 0; PendingPrependedResponses--)
-                            await ReadMessageLong(DataRowLoadingMode.Skip, readingNotifications2: false, isReadingPrependedMessage: true);
+                        connector.ReadBuffer.Timeout = TimeSpan.FromMilliseconds(connector.InternalCommandTimeout);
+                        for (; connector.PendingPrependedResponses > 0; connector.PendingPrependedResponses--)
+                            await ReadMessageLong(connector, async, DataRowLoadingMode.Skip, readingNotifications: false, isReadingPrependedMessage: true);
                     }
                     catch (PostgresException e)
                     {
-                        throw Break(e);
+                        throw connector.Break(e);
                     }
                 }
 
@@ -1126,43 +1128,43 @@ namespace Npgsql
 
                 try
                 {
-                    ReadBuffer.Timeout = TimeSpan.FromMilliseconds(UserTimeout);
+                    connector.ReadBuffer.Timeout = TimeSpan.FromMilliseconds(connector.UserTimeout);
 
                     while (true)
                     {
-                        await ReadBuffer.Ensure(5, async, readingNotifications2);
-                        messageCode = (BackendMessageCode)ReadBuffer.ReadByte();
+                        await connector.ReadBuffer.Ensure(5, async, readingNotifications);
+                        var messageCode = (BackendMessageCode)connector.ReadBuffer.ReadByte();
                         PGUtil.ValidateBackendMessageCode(messageCode);
-                        len = ReadBuffer.ReadInt32() - 4; // Transmitted length includes itself
+                        var len = connector.ReadBuffer.ReadInt32() - 4; // Transmitted length includes itself
 
                         if ((messageCode == BackendMessageCode.DataRow &&
-                             dataRowLoadingMode2 != DataRowLoadingMode.NonSequential) ||
+                             dataRowLoadingMode != DataRowLoadingMode.NonSequential) ||
                             messageCode == BackendMessageCode.CopyData)
                         {
-                            if (dataRowLoadingMode2 == DataRowLoadingMode.Skip)
+                            if (dataRowLoadingMode == DataRowLoadingMode.Skip)
                             {
-                                await ReadBuffer.Skip(len, async);
+                                await connector.ReadBuffer.Skip(len, async);
                                 continue;
                             }
                         }
-                        else if (len > ReadBuffer.ReadBytesLeft)
+                        else if (len > connector.ReadBuffer.ReadBytesLeft)
                         {
-                            if (len > ReadBuffer.Size)
+                            if (len > connector.ReadBuffer.Size)
                             {
-                                var oversizeBuffer = ReadBuffer.AllocateOversize(len);
+                                var oversizeBuffer = connector.ReadBuffer.AllocateOversize(len);
 
-                                if (_origReadBuffer == null)
-                                    _origReadBuffer = ReadBuffer;
+                                if (connector._origReadBuffer == null)
+                                    connector._origReadBuffer = connector.ReadBuffer;
                                 else
-                                    ReadBuffer.Dispose();
+                                    connector.ReadBuffer.Dispose();
 
-                                ReadBuffer = oversizeBuffer;
+                                connector.ReadBuffer = oversizeBuffer;
                             }
 
-                            await ReadBuffer.Ensure(len, async);
+                            await connector.ReadBuffer.Ensure(len, async);
                         }
 
-                        var msg = ParseServerMessage(ReadBuffer, messageCode, len, isReadingPrependedMessage);
+                        var msg = connector.ParseServerMessage(connector.ReadBuffer, messageCode, len, isReadingPrependedMessage);
 
                         switch (messageCode)
                         {
@@ -1171,9 +1173,9 @@ namespace Npgsql
 
                             // An ErrorResponse is (almost) always followed by a ReadyForQuery. Save the error
                             // and throw it as an exception when the ReadyForQuery is received (next).
-                            error = PostgresException.Load(ReadBuffer, Settings.IncludeErrorDetails);
+                            error = PostgresException.Load(connector.ReadBuffer, connector.Settings.IncludeErrorDetails);
 
-                            if (State == ConnectorState.Connecting)
+                            if (connector.State == ConnectorState.Connecting)
                             {
                                 // During the startup/authentication phase, an ErrorResponse isn't followed by
                                 // an RFQ. Instead, the server closes the connection immediately
@@ -1197,7 +1199,7 @@ namespace Npgsql
                         case BackendMessageCode.NotificationResponse:
                         case BackendMessageCode.ParameterStatus:
                             Debug.Assert(msg == null);
-                            if (!readingNotifications2)
+                            if (!readingNotifications)
                                 continue;
                             return null;
                         }
@@ -1208,23 +1210,23 @@ namespace Npgsql
                 }
                 catch (PostgresException e)
                 {
-                    if (CurrentReader != null)
+                    if (connector.CurrentReader != null)
                     {
                         // The reader cleanup will call EndUserAction
-                        await CurrentReader.Cleanup(async);
+                        await connector.CurrentReader.Cleanup(async);
                     }
                     else
                     {
-                        EndUserAction();
+                        connector.EndUserAction();
                     }
 
-                    if (e.SqlState == PostgresErrorCodes.QueryCanceled && _postgresCancellationPerformed)
+                    if (e.SqlState == PostgresErrorCodes.QueryCanceled && connector._postgresCancellationPerformed)
                     {
                         // The query could be canceled because of a user cancellation or a timeout - raise the proper exception.
                         // If _postgresCancellationPerformed is false, this is an unsolicited cancellation -
                         // just bubble up thePostgresException.
-                        throw UserCancellationRequested
-                            ? new OperationCanceledException("Query was cancelled", e, UserCancellationToken)
+                        throw connector.UserCancellationRequested
+                            ? new OperationCanceledException("Query was cancelled", e, connector.UserCancellationToken)
                             : new NpgsqlException("Exception while reading from stream",
                                 new TimeoutException("Timeout during reading attempt"));
                     }
