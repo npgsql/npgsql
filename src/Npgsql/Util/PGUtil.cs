@@ -22,6 +22,8 @@ namespace Npgsql.Util
         }
 
         internal static DeferDisposable Defer(Action action) => new DeferDisposable(action);
+        internal static DeferDisposable<T> Defer<T>(Action<T> action, T arg) => new DeferDisposable<T>(action, arg);
+        internal static DeferDisposable<T1, T2> Defer<T1, T2>(Action<T1, T2> action, T1 arg1, T2 arg2) => new DeferDisposable<T1, T2>(action, arg1, arg2);
         // internal static AsyncDeferDisposable DeferAsync(Func<ValueTask> func) => new AsyncDeferDisposable(func);
         internal static AsyncDeferDisposable DeferAsync(Func<Task> func) => new AsyncDeferDisposable(func);
 
@@ -30,6 +32,32 @@ namespace Npgsql.Util
             readonly Action _action;
             public DeferDisposable(Action action) => _action = action;
             public void Dispose() => _action();
+        }
+
+        internal readonly struct DeferDisposable<T> : IDisposable
+        {
+            readonly Action<T> _action;
+            readonly T _arg;
+            public DeferDisposable(Action<T> action, T arg)
+            {
+                _action = action;
+                _arg = arg;
+            }
+            public void Dispose() => _action(_arg);
+        }
+
+        internal readonly struct DeferDisposable<T1, T2> : IDisposable
+        {
+            readonly Action<T1, T2> _action;
+            readonly T1 _arg1;
+            readonly T2 _arg2;
+            public DeferDisposable(Action<T1, T2> action, T1 arg1, T2 arg2)
+            {
+                _action = action;
+                _arg1 = arg1;
+                _arg2 = arg2;
+            }
+            public void Dispose() => _action(_arg1, _arg2);
         }
 
         internal readonly struct AsyncDeferDisposable : IAsyncDisposable

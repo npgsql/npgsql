@@ -163,15 +163,15 @@ namespace Npgsql
                     return new ValueTask<int>(0);
 
                 using (NoSynchronizationContextScope.Enter())
-                    return ReadLong(buffer.Slice(0, count), cancellationToken);
+                    return ReadLong(this, buffer.Slice(0, count), cancellationToken);
 
-                async ValueTask<int> ReadLong(Memory<byte> buffer, CancellationToken cancellationToken = default)
+                static async ValueTask<int> ReadLong(ColumnStream stream, Memory<byte> buffer, CancellationToken cancellationToken = default)
                 {
-                    using var registration = _startCancellableOperations
-                        ? _connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false)
+                    using var registration = stream._startCancellableOperations
+                        ? stream._connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false)
                         : default;
-                    var read = await _buf.ReadAsync(buffer, cancellationToken);
-                    _read += read;
+                    var read = await stream._buf.ReadAsync(buffer, cancellationToken);
+                    stream._read += read;
                     return read;
                 }
             }

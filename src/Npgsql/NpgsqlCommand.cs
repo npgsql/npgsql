@@ -590,22 +590,22 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             // It's possible the command was already prepared, or that persistent prepared statements were found for
             // all statements. Nothing to do here, move along.
             return needToPrepare
-                ? PrepareLong()
+                ? PrepareLong(this, async, connector, cancellationToken)
                 : Task.CompletedTask;
 
-            async Task PrepareLong()
+            static async Task PrepareLong(NpgsqlCommand command, bool async, NpgsqlConnector connector, CancellationToken cancellationToken)
             {
                 using (connector.StartUserAction(cancellationToken))
                 {
-                    var sendTask = SendPrepare(connector, async, cancellationToken);
+                    var sendTask = command.SendPrepare(connector, async, cancellationToken);
                     if (sendTask.IsFaulted)
                         sendTask.GetAwaiter().GetResult();
 
                     // Loop over statements, skipping those that are already prepared (because they were persisted)
                     var isFirst = true;
-                    for (var i = 0; i < _statements.Count; i++)
+                    for (var i = 0; i < command._statements.Count; i++)
                     {
-                        var statement = _statements[i];
+                        var statement = command._statements[i];
                         if (!statement.IsPreparing)
                             continue;
 
@@ -629,7 +629,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                                 // Clone the RowDescription for use with the prepared statement (the one we have is reused
                                 // by the connection)
                                 var description = ((RowDescriptionMessage)msg).Clone();
-                                FixupRowDescription(description, isFirst);
+                                command.FixupRowDescription(description, isFirst);
                                 statement.Description = description;
                                 break;
                             case BackendMessageCode.NoData:
@@ -647,9 +647,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         {
                             // The statement wasn't prepared successfully, update the bookkeeping for it and
                             // all following statements
-                            for (; i < _statements.Count; i++)
+                            for (; i < command._statements.Count; i++)
                             {
-                                statement = _statements[i];
+                                statement = command._statements[i];
                                 if (statement.IsPreparing)
                                 {
                                     statement.IsPreparing = false;
