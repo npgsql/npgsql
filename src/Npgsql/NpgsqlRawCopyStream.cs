@@ -407,11 +407,22 @@ namespace Npgsql
                 {
                     if (!_isConsumed)
                     {
-                        if (_leftToReadInDataMsg > 0)
+                        try
                         {
-                            await _readBuf.Skip(_leftToReadInDataMsg, async);
+                            if (_leftToReadInDataMsg > 0)
+                            {
+                                await _readBuf.Skip(_leftToReadInDataMsg, async);
+                            }
+                            _connector.SkipUntil(BackendMessageCode.ReadyForQuery);
                         }
-                        _connector.SkipUntil(BackendMessageCode.ReadyForQuery);
+                        catch (OperationCanceledException e) when (e.InnerException is PostgresException pg && pg.SqlState == PostgresErrorCodes.QueryCanceled)
+                        {
+                            Log.Debug($"Caught an exception while disposing the {nameof(NpgsqlRawCopyStream)}, indicating that it was cancelled.", e, _connector.Id);
+                        }
+                        catch (Exception e)
+                        {
+                            Log.Error($"Caught an exception while disposing the {nameof(NpgsqlRawCopyStream)}.", e, _connector.Id);
+                        }
                     }
                 }
             }
