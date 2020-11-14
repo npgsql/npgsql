@@ -1722,10 +1722,10 @@ LANGUAGE plpgsql VOLATILE";
 
                 var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task);
                 Assert.That(exception.InnerException,
-                    Is.TypeOf<PostgresException>().With.Property(nameof(PostgresException.SqlState)).EqualTo("57014"));
+                    Is.TypeOf<PostgresException>().With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.QueryCanceled));
                 Assert.That(exception.CancellationToken, Is.EqualTo(cancellationSource.Token));
 
-                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open | ConnectionState.Fetching));
             }
 
             await pgMock.WriteScalarResponseAndFlush(1);
@@ -1774,10 +1774,10 @@ LANGUAGE plpgsql VOLATILE";
 
                 var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task);
                 Assert.That(exception.InnerException,
-                    Is.TypeOf<PostgresException>().With.Property(nameof(PostgresException.SqlState)).EqualTo("57014"));
+                    Is.TypeOf<PostgresException>().With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.QueryCanceled));
                 Assert.That(exception.CancellationToken, Is.EqualTo(cancellationSource.Token));
 
-                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open | ConnectionState.Fetching));
             }
 
             await pgMock.WriteScalarResponseAndFlush(1);
