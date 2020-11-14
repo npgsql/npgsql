@@ -1501,7 +1501,7 @@ namespace Npgsql
                     var cancelConnector = new NpgsqlConnector(this);
                     cancelConnector.DoCancelRequest(BackendProcessId, _backendSecretKey);
                 }
-                catch (Exception e) //when ((e.InnerException as SocketException)?.SocketErrorCode != SocketError.ConnectionReset)
+                catch (Exception e)
                 {
                     var socketException = e.InnerException as SocketException;
                     if (socketException == null || socketException.SocketErrorCode != SocketError.ConnectionReset)
@@ -1509,9 +1509,6 @@ namespace Npgsql
                         Log.Debug("Exception caught while attempting to cancel command", e, Id);
                         return false;
                     }
-
-                    // Log.Debug("Exception caught while attempting to cancel command", e, Id);
-                    // return false;
                 }
 
                 return true;
