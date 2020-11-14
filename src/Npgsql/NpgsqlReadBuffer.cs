@@ -41,20 +41,17 @@ namespace Npgsql
             get => Cts.Timeout;
             set
             {
+                if (value == TimeSpan.Zero)
+                    value = InfiniteTimeSpan;
+                else if (value < TimeSpan.Zero)
+                    value = TimeSpan.Zero;
+
                 if (Cts.Timeout != value)
                 {
                     Debug.Assert(_underlyingSocket != null);
 
-                    if (value > TimeSpan.Zero)
-                    {
-                        _underlyingSocket.ReceiveTimeout = (int)value.TotalMilliseconds;
-                        Cts.Timeout = value;
-                    }
-                    else
-                    {
-                        _underlyingSocket.ReceiveTimeout = -1;
-                        Cts.Timeout = InfiniteTimeSpan;
-                    }
+                    _underlyingSocket.ReceiveTimeout = (int)value.TotalMilliseconds;
+                    Cts.Timeout = value;
                 }
             }
         }
@@ -163,7 +160,7 @@ namespace Npgsql
                     buffer.ReadPosition = 0;
                 }
 
-                var finalCt = async && buffer.Timeout > TimeSpan.Zero
+                var finalCt = async && buffer.Timeout >= TimeSpan.Zero
                     ? buffer.Cts.Start()
                     : buffer.Cts.Reset();
 
