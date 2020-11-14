@@ -69,6 +69,7 @@ No Reset On Close          | Improves performance in some cases by not resetting
 
 Parameter                | Description                                                                                          | Default
 ------------------------ | ---------------------------------------------------------------------------------------------------- | ----------
+Options                  | Specifies any valid [PostgreSQL connection options](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNECT-OPTIONS), surrounded by single ticks. Introduced in 5.0. |
 Application Name         | The optional application name parameter to be sent to the backend during connection initiation.      |
 Enlist                   | Whether to enlist in an ambient TransactionScope.                                                    | true
 Search Path              | Sets the schema search path.                                                                         |
