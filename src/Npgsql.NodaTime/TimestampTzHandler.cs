@@ -24,7 +24,8 @@ namespace Npgsql.NodaTime
     }
 
     sealed class TimestampTzHandler : NpgsqlSimpleTypeHandler<Instant>, INpgsqlSimpleTypeHandler<ZonedDateTime>,
-                              INpgsqlSimpleTypeHandler<OffsetDateTime>, INpgsqlSimpleTypeHandler<DateTimeOffset>
+                              INpgsqlSimpleTypeHandler<OffsetDateTime>, INpgsqlSimpleTypeHandler<DateTimeOffset>, 
+                              INpgsqlSimpleTypeHandler<DateTime>
     {
         readonly IDateTimeZoneProvider _dateTimeZoneProvider;
         readonly BclTimestampTzHandler _bclHandler;
@@ -133,6 +134,15 @@ namespace Npgsql.NodaTime
             => _bclHandler.ValidateAndGetLength(value, parameter);
 
         void INpgsqlSimpleTypeHandler<DateTimeOffset>.Write(DateTimeOffset value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
+            => _bclHandler.Write(value, buf, parameter);
+
+        DateTime INpgsqlSimpleTypeHandler<DateTime>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription) 
+            => _bclHandler.Read<DateTime>(buf, len, fieldDescription);
+
+        int INpgsqlSimpleTypeHandler<DateTime>.ValidateAndGetLength(DateTime value, NpgsqlParameter? parameter) 
+            => _bclHandler.ValidateAndGetLength(value, parameter);
+
+        void INpgsqlSimpleTypeHandler<DateTime>.Write(DateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter) 
             => _bclHandler.Write(value, buf, parameter);
     }
 }

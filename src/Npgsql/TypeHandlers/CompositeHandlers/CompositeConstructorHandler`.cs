@@ -37,7 +37,7 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
             var args = default(Arguments);
 
             foreach (var handler in Handlers)
-                switch (handler.Position)
+                switch (handler.ParameterPosition)
                 {
                     case 0: args.Argument1 = await handler.Read<T1>(buffer, async); break;
                     case 1: args.Argument2 = await handler.Read<T2>(buffer, async); break;
