@@ -27,6 +27,9 @@ namespace Npgsql
             obj is NpgsqlDatabaseInfoCacheKey key && key.Equals(this);
 
         public override int GetHashCode() =>
-            HashCode.Combine(Port, Host, Database, CompatibilityMode);
+            Port.GetHashCode() ^
+            Host?.GetHashCode() ?? 0 ^
+            Database?.GetHashCode() ?? 0 ^
+            CompatibilityMode.GetHashCode();
     }
 }
