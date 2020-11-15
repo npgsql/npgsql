@@ -844,20 +844,19 @@ LANGUAGE 'plpgsql';
         [Test, Description("Performs some operations while a reader is still open and checks for exceptions")]
         public async Task ReaderIsStillOpen()
         {
-            using (var conn = await OpenConnectionAsync())
-            using (var cmd1 = new NpgsqlCommand("SELECT 1", conn))
-            using (var reader1 = await cmd1.ExecuteReaderAsync(Behavior))
-            {
-                Assert.That(() => conn.ExecuteNonQuery("SELECT 1"), Throws.Exception.TypeOf<NpgsqlOperationInProgressException>());
-                Assert.That(async () => await conn.ExecuteScalarAsync("SELECT 1"), Throws.Exception.TypeOf<NpgsqlOperationInProgressException>());
+            await using var conn = await OpenConnectionAsync();
+            // We might get the connection, on which the second command was already prepared, so prepare wouldn't start the UserAction
+            if (!IsMultiplexing)
+                conn.UnprepareAll();
+            using var cmd1 = new NpgsqlCommand("SELECT 1", conn);
+            await using var reader1 = await cmd1.ExecuteReaderAsync(Behavior);
+            Assert.That(() => conn.ExecuteNonQuery("SELECT 1"), Throws.Exception.TypeOf<NpgsqlOperationInProgressException>());
+            Assert.That(async () => await conn.ExecuteScalarAsync("SELECT 1"), Throws.Exception.TypeOf<NpgsqlOperationInProgressException>());
 
-                using (var cmd2 = new NpgsqlCommand("SELECT 2", conn))
-                {
-                    Assert.That(() => cmd2.ExecuteReader(Behavior), Throws.Exception.TypeOf<NpgsqlOperationInProgressException>());
-                    if (!IsMultiplexing)
-                        Assert.That(() => cmd2.Prepare(), Throws.Exception.TypeOf<NpgsqlOperationInProgressException>());
-                }
-            }
+            using var cmd2 = new NpgsqlCommand("SELECT 2", conn);
+            Assert.That(() => cmd2.ExecuteReader(Behavior), Throws.Exception.TypeOf<NpgsqlOperationInProgressException>());
+            if (!IsMultiplexing)
+                Assert.That(() => cmd2.Prepare(), Throws.Exception.TypeOf<NpgsqlOperationInProgressException>());
         }
 
         [Test]
