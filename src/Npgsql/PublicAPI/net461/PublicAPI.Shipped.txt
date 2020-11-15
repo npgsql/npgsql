@@ -1763,7 +1763,6 @@ override Npgsql.NpgsqlTransaction.IsolationLevel.get -> System.Data.IsolationLev
 override Npgsql.NpgsqlTransaction.Rollback() -> void
 override Npgsql.PostgresException.GetObjectData(System.Runtime.Serialization.SerializationInfo! info, System.Runtime.Serialization.StreamingContext context) -> void
 override Npgsql.PostgresException.IsTransient.get -> bool
-override Npgsql.PostgresException.Message.get -> string!
 override Npgsql.PostgresException.ToString() -> string!
 override Npgsql.PostgresTypes.PostgresCompositeType.Field.ToString() -> string!
 override Npgsql.PostgresTypes.PostgresType.ToString() -> string!
