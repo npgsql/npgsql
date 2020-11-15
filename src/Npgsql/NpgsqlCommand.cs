@@ -297,7 +297,7 @@ namespace Npgsql
         int _state;
 
         /// <summary>
-        /// Gets the current state of the connector
+        /// The current state of the command
         /// </summary>
         internal CommandState State
         {
@@ -1145,6 +1145,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 {
                     connector.StartUserAction(ConnectorState.Executing, this, CancellationToken.None);
 
+                    Task? sendTask = null;
+
                     try
                     {
                         ValidateParameters(connector.TypeMapper);
@@ -1222,34 +1224,30 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         // to prevents a dependency on the thread pool (which would also trigger deadlocks).
                         // The WriteBuffer notifies this command when the first buffer flush occurs, so that the
                         // send functions can switch to the special async mode when needed.
-                        var sendTask = NonMultiplexingWriteWrapper(connector, async, CancellationToken.None);
+                        sendTask = NonMultiplexingWriteWrapper(connector, async, CancellationToken.None);
 
                         // The following is a hack. It raises an exception if one was thrown in the first phases
                         // of the send (i.e. in parts of the send that executed synchronously). Exceptions may
                         // still happen later and aren't properly handled. See #1323.
                         if (sendTask.IsFaulted)
                             sendTask.GetAwaiter().GetResult();
-
-                        // TODO: DRY the following with multiplexing, but be careful with the cancellation registration...
-                        var reader = connector.DataReader;
-                        reader.Init(this, behavior, _statements, sendTask);
-                        connector.CurrentReader = reader;
-                        if (async)
-                            await reader.NextResultAsync(cancellationToken);
-                        else
-                            reader.NextResult();
-
-                        return reader;
                     }
                     catch
                     {
-                        var reader = connector.CurrentReader;
-                        if (reader != null)
-                            await reader.Cleanup(async);
-
                         conn.Connector?.EndUserAction();
                         throw;
                     }
+
+                    // TODO: DRY the following with multiplexing, but be careful with the cancellation registration...
+                    var reader = connector.DataReader;
+                    reader.Init(this, behavior, _statements, sendTask);
+                    connector.CurrentReader = reader;
+                    if (async)
+                        await reader.NextResultAsync(cancellationToken);
+                    else
+                        reader.NextResult();
+
+                    return reader;
                 }
                 else
                 {
@@ -1263,43 +1261,36 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                             "Synchronous command execution is not supported when multiplexing is on");
                     }
 
-                    try
-                    {
-                        ValidateParameters(conn.Pool!.MultiplexingTypeMapper!);
-                        ProcessRawQuery();
+                    ValidateParameters(conn.Pool!.MultiplexingTypeMapper!);
+                    ProcessRawQuery();
 
-                        State = CommandState.InProgress;
+                    State = CommandState.InProgress;
 
-                        // TODO: Experiment: do we want to wait on *writing* here, or on *reading*?
-                        // Previous behavior was to wait on reading, which throw the exception from ExecuteReader (and not from
-                        // the first read). But waiting on writing would allow us to do sync writing and async reading.
-                        ExecutionCompletion.Reset();
-                        await conn.Pool!.MultiplexCommandWriter!.WriteAsync(this, cancellationToken);
-                        connector = await new ValueTask<NpgsqlConnector>(ExecutionCompletion, ExecutionCompletion.Version);
-                        // TODO: Overload of StartBindingScope?
-                        conn.Connector = connector;
-                        connector.Connection = conn;
-                        conn.ConnectorBindingScope = ConnectorBindingScope.Reader;
+                    // TODO: Experiment: do we want to wait on *writing* here, or on *reading*?
+                    // Previous behavior was to wait on reading, which throw the exception from ExecuteReader (and not from
+                    // the first read). But waiting on writing would allow us to do sync writing and async reading.
+                    ExecutionCompletion.Reset();
+                    await conn.Pool!.MultiplexCommandWriter!.WriteAsync(this, cancellationToken);
+                    connector = await new ValueTask<NpgsqlConnector>(ExecutionCompletion, ExecutionCompletion.Version);
+                    // TODO: Overload of StartBindingScope?
+                    conn.Connector = connector;
+                    connector.Connection = conn;
+                    conn.ConnectorBindingScope = ConnectorBindingScope.Reader;
 
-                        var reader = connector.DataReader;
-                        reader.Init(this, behavior, _statements);
-                        connector.CurrentReader = reader;
-                        await reader.NextResultAsync(cancellationToken);
+                    var reader = connector.DataReader;
+                    reader.Init(this, behavior, _statements);
+                    connector.CurrentReader = reader;
+                    await reader.NextResultAsync(cancellationToken);
 
-                        return reader;
-                    }
-                    catch
-                    {
-                        var reader = connector?.CurrentReader;
-                        if (reader != null)
-                            await reader.Cleanup(async);
-
-                        throw;
-                    }
+                    return reader;
                 }
             }
             catch
             {
+                var reader = conn.Connector?.CurrentReader;
+                if (reader != null)
+                    await reader.Cleanup(async);
+
                 State = CommandState.Idle;
 
                 // Reader disposal contains logic for closing the connection if CommandBehavior.CloseConnection is
