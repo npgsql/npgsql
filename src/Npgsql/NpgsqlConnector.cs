@@ -529,7 +529,7 @@ namespace Npgsql
             // being set up (even if its empty)
             TypeMapper = new ConnectorTypeMapper(this);
 
-            var key = (Host, Port, Database, Settings.ServerCompatibilityMode == ServerCompatibilityMode.NoTypeLoading);
+            var key = new NpgsqlDatabaseInfoCacheKey(Settings);
             if (forceReload || !NpgsqlDatabaseInfo.Cache.TryGetValue(key, out var database))
             {
                 var hasSemaphore = async

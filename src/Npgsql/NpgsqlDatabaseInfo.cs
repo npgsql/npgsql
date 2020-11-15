@@ -15,8 +15,8 @@ namespace Npgsql
     {
         #region Fields
 
-        internal static readonly ConcurrentDictionary<(string Host, int Port, string Database, bool NoTypeLoading), NpgsqlDatabaseInfo> Cache
-            = new ConcurrentDictionary<(string Host, int Port, string Database, bool NoTypeLoading), NpgsqlDatabaseInfo>();
+        internal static readonly ConcurrentDictionary<NpgsqlDatabaseInfoCacheKey, NpgsqlDatabaseInfo> Cache
+            = new ConcurrentDictionary<NpgsqlDatabaseInfoCacheKey, NpgsqlDatabaseInfo>();
 
         static volatile INpgsqlDatabaseInfoFactory[] Factories = new INpgsqlDatabaseInfoFactory[]
         {
