@@ -56,6 +56,8 @@
   href: keepalive.md
 - name: Bulk copy
   href: copy.md
+- name: Replication
+  href: replication.md
 - name: Logging
   href: logging.md
 - name: Visual Studio integration
