@@ -168,7 +168,6 @@ namespace Npgsql
                     : buffer.Cts.Reset();
 
                 var totalRead = 0;
-                var performedPgCancellation = false;
                 while (count > 0)
                 {
                     try
@@ -194,6 +193,8 @@ namespace Npgsql
                     }
                     catch (Exception e)
                     {
+                        var connector = buffer.Connector;
+
                         // Stopping twice (in case the previous Stop() call succeeded) doesn't hurt.
                         // Not stopping will cause an assertion failure in debug mode when we call Start() the next time.
                         // We can't stop in a finally block because Connector.Break() will dispose the buffer and the contained
@@ -214,21 +215,21 @@ namespace Npgsql
                             // Nothing to cancel, and no breaking of the connection.
                             if (readingNotifications)
                             {
-                                if (buffer.Connector.UserCancellationRequested)
+                                if (connector.UserCancellationRequested)
                                     throw;
                                 throw NpgsqlTimeoutException();
                             }
 
                             // If we should attempt PostgreSQL cancellation, do it the first time we get a timeout.
                             // TODO: As an optimization, we can still attempt to send a cancellation request, but after that immediately break the connection
-                            if (buffer.Connector.AttemptPostgresCancellation && !performedPgCancellation && buffer.Connector.PerformPostgresCancellation())
+                            if (connector.AttemptPostgresCancellation &&
+                                !connector.PostgresCancellationPerformed &&
+                                connector.PerformPostgresCancellation())
                             {
                                 // Note that if the cancellation timeout is negative, we flow down and break the connection immediately
-                                var cancellationTimeout = buffer.Connector.Settings.CancellationTimeout;
+                                var cancellationTimeout = connector.Settings.CancellationTimeout;
                                 if (cancellationTimeout >= 0)
                                 {
-                                    performedPgCancellation = true;
-
                                     if (cancellationTimeout > 0)
                                         buffer.Timeout = TimeSpan.FromMilliseconds(cancellationTimeout);
 
@@ -241,15 +242,15 @@ namespace Npgsql
 
                             // If we're here, the PostgreSQL cancellation either failed or skipped entirely.
                             // Break the connection, bubbling up the correct exception type (cancellation or timeout)
-                            throw buffer.Connector.Break(!buffer.Connector.UserCancellationRequested
+                            throw connector.Break(!buffer.Connector.UserCancellationRequested
                                 ? NpgsqlTimeoutException()
-                                : performedPgCancellation
-                                    ? new OperationCanceledException("Query was cancelled", TimeoutException(), buffer.Connector.UserCancellationToken)
-                                    : new OperationCanceledException("Query was cancelled", buffer.Connector.UserCancellationToken));
+                                : connector.PostgresCancellationPerformed
+                                    ? new OperationCanceledException("Query was cancelled", TimeoutException(), connector.UserCancellationToken)
+                                    : new OperationCanceledException("Query was cancelled", connector.UserCancellationToken));
                         }
 
                         default:
-                            throw buffer.Connector.Break(new NpgsqlException("Exception while reading from stream", e));
+                            throw connector.Break(new NpgsqlException("Exception while reading from stream", e));
                         }
                     }
                 }

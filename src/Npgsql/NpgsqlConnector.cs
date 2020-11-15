@@ -229,6 +229,12 @@ namespace Npgsql
         internal int ClearCounter { get; set; }
 
         volatile bool _postgresCancellationPerformed;
+        internal bool PostgresCancellationPerformed
+        {
+            get => _postgresCancellationPerformed;
+            private set => _postgresCancellationPerformed = value;
+        }
+
         volatile bool _userCancellationRequested;
         CancellationTokenRegistration _cancellationTokenRegistration;
         internal bool UserCancellationRequested => _userCancellationRequested;
@@ -1220,7 +1226,7 @@ namespace Npgsql
                         connector.EndUserAction();
                     }
 
-                    if (e.SqlState == PostgresErrorCodes.QueryCanceled && connector._postgresCancellationPerformed)
+                    if (e.SqlState == PostgresErrorCodes.QueryCanceled && connector.PostgresCancellationPerformed)
                     {
                         // The query could be canceled because of a user cancellation or a timeout - raise the proper exception.
                         // If _postgresCancellationPerformed is false, this is an unsolicited cancellation -
@@ -1490,11 +1496,11 @@ namespace Npgsql
 
             lock (CancelLock)
             {
-                if (_postgresCancellationPerformed)
+                if (PostgresCancellationPerformed)
                     return true;
 
                 Log.Debug("Sending cancellation...", Id);
-                _postgresCancellationPerformed = true;
+                PostgresCancellationPerformed = true;
 
                 try
                 {
@@ -1546,7 +1552,7 @@ namespace Npgsql
             CancellationToken cancellationToken = default,
             bool attemptPgCancellation = true)
         {
-            _userCancellationRequested = _postgresCancellationPerformed = false;
+            _userCancellationRequested = PostgresCancellationPerformed = false;
             UserCancellationToken = cancellationToken;
             ReadBuffer.Cts.ResetCts();
 
