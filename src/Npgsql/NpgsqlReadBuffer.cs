@@ -33,6 +33,8 @@ namespace Npgsql
 
         internal ResettableCancellationTokenSource Cts { get; }
 
+        TimeSpan _preTranslatedTimeout = TimeSpan.Zero;
+
         /// <summary>
         /// Timeout for sync and async reads
         /// </summary>
@@ -41,13 +43,15 @@ namespace Npgsql
             get => Cts.Timeout;
             set
             {
-                if (value == TimeSpan.Zero)
-                    value = InfiniteTimeSpan;
-                else if (value < TimeSpan.Zero)
-                    value = TimeSpan.Zero;
-
-                if (Cts.Timeout != value)
+                if (_preTranslatedTimeout != value)
                 {
+                    _preTranslatedTimeout = value;
+
+                    if (value == TimeSpan.Zero)
+                        value = InfiniteTimeSpan;
+                    else if (value < TimeSpan.Zero)
+                        value = TimeSpan.Zero;
+
                     Debug.Assert(_underlyingSocket != null);
 
                     _underlyingSocket.ReceiveTimeout = (int)value.TotalMilliseconds;
