@@ -263,7 +263,7 @@ namespace Npgsql.Tests
                     Assert.That(() => CreateSleepCommand(conn, 5).ExecuteNonQuery(),
                         Throws.Exception.TypeOf<PostgresException>()
                             .With.Property(nameof(PostgresException.SqlState))
-                            .EqualTo("57014"));
+                            .EqualTo(PostgresErrorCodes.QueryCanceled));
 
                 }
             }

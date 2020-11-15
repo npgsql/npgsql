@@ -175,7 +175,7 @@ namespace Npgsql.Tests
                 Assert.That(async () => await cmd.ExecuteNonQueryAsync(cts), Throws.Exception
                     .TypeOf<OperationCanceledException>()
                     .With.InnerException.TypeOf<PostgresException>()
-                    .With.InnerException.Property(nameof(PostgresException.SqlState)).EqualTo("57014"));
+                    .With.InnerException.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.QueryCanceled));
             }
         }
 

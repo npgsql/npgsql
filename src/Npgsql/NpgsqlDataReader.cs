@@ -47,7 +47,7 @@ namespace Npgsql
         /// </summary>
         Task? _sendTask;
 
-        internal ReaderState State;
+        internal ReaderState State = ReaderState.Disposed;
 
         internal NpgsqlReadBuffer Buffer = default!;
 
@@ -158,7 +158,7 @@ namespace Npgsql
         /// </remarks>
         public override bool Read()
         {
-            CheckClosed();
+            CheckClosedOrDisposed();
 
             var fastRead = TryFastRead();
             return fastRead.HasValue
@@ -173,7 +173,7 @@ namespace Npgsql
         /// <returns>A task representing the asynchronous operation.</returns>
         public override Task<bool> ReadAsync(CancellationToken cancellationToken)
         {
-            CheckClosed();
+            CheckClosedOrDisposed();
 
             var fastRead = TryFastRead();
             if (fastRead.HasValue)
@@ -205,6 +205,7 @@ namespace Npgsql
             case ReaderState.BetweenResults:
             case ReaderState.Consumed:
             case ReaderState.Closed:
+            case ReaderState.Disposed:
                 return false;
             }
 
@@ -251,22 +252,20 @@ namespace Npgsql
                 case ReaderState.BetweenResults:
                 case ReaderState.Consumed:
                 case ReaderState.Closed:
+                case ReaderState.Disposed:
                     return false;
                 default:
                     throw new ArgumentOutOfRangeException();
                 }
 
-                try
-                {
-                    var msg2 = await ReadMessage(async);
-                    ProcessMessage(msg2);
-                    return msg2.Code == BackendMessageCode.DataRow;
-                }
-                catch
-                {
-                    State = ReaderState.Consumed;
-                    throw;
-                }
+                var msg2 = await ReadMessage(async);
+                ProcessMessage(msg2);
+                return msg2.Code == BackendMessageCode.DataRow;
+            }
+            catch
+            {
+                State = ReaderState.Consumed;
+                throw;
             }
             finally
             {
@@ -321,7 +320,7 @@ namespace Npgsql
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         async Task<bool> NextResult(bool async, bool isConsuming = false, CancellationToken cancellationToken = default)
         {
-            CheckClosed();
+            CheckClosedOrDisposed();
 
             IBackendMessage msg;
             Debug.Assert(!_isSchemaOnly);
@@ -359,6 +358,7 @@ namespace Npgsql
 
                 case ReaderState.Consumed:
                 case ReaderState.Closed:
+                case ReaderState.Disposed:
                     return false;
                 default:
                     throw new ArgumentOutOfRangeException();
@@ -569,6 +569,7 @@ namespace Npgsql
                     break;
                 case ReaderState.Consumed:
                 case ReaderState.Closed:
+                case ReaderState.Disposed:
                     return false;
                 default:
                     throw new ArgumentOutOfRangeException();
@@ -784,7 +785,7 @@ namespace Npgsql
         {
             get
             {
-                CheckClosed();
+                CheckClosedOrDisposed();
                 return RowDescription?.NumFields ?? 0;
             }
         }
@@ -812,11 +813,15 @@ namespace Npgsql
         {
             try
             {
-                Close();
+                Close(connectionClosing: false, async: false, isDisposing: true).GetAwaiter().GetResult();
             }
             catch (Exception e)
             {
                 Log.Error("Exception caught while disposing a reader", e, Connector.Id);
+            }
+            finally
+            {
+                State = ReaderState.Disposed;
             }
         }
 
@@ -837,11 +842,15 @@ namespace Npgsql
             {
                 try
                 {
-                    await Close(connectionClosing: false, async: true);
+                    await Close(connectionClosing: false, async: true, isDisposing: true);
                 }
                 catch (Exception e)
                 {
                     Log.Error("Exception caught while disposing a reader", e, Connector.Id);
+                }
+                finally
+                {
+                    State = ReaderState.Disposed;
                 }
             }
         }
@@ -849,7 +858,7 @@ namespace Npgsql
         /// <summary>
         /// Closes the <see cref="NpgsqlDataReader"/> reader, allowing a new command to be executed.
         /// </summary>
-        public override void Close() => Close(connectionClosing: false, async: false).GetAwaiter().GetResult();
+        public override void Close() => Close(connectionClosing: false, async: false, isDisposing: false).GetAwaiter().GetResult();
 
         /// <summary>
         /// Closes the <see cref="NpgsqlDataReader"/> reader, allowing a new command to be executed.
@@ -859,11 +868,11 @@ namespace Npgsql
 #else
         public override Task CloseAsync()
 #endif
-            => Close(connectionClosing: false, async: true);
+            => Close(connectionClosing: false, async: true, isDisposing: false);
 
-        internal async Task Close(bool connectionClosing, bool async)
+        internal async Task Close(bool connectionClosing, bool async, bool isDisposing)
         {
-            if (State == ReaderState.Closed)
+            if (State == ReaderState.Closed || State == ReaderState.Disposed)
                 return;
 
             switch (Connector.State)
@@ -887,10 +896,10 @@ namespace Npgsql
                 throw new ArgumentOutOfRangeException();
             }
 
-            await Cleanup(async, connectionClosing);
+            await Cleanup(async, connectionClosing, isDisposing);
         }
 
-        internal async Task Cleanup(bool async, bool connectionClosing=false)
+        internal async Task Cleanup(bool async, bool connectionClosing = false, bool isDisposing = false)
         {
             Log.Trace("Cleaning up reader", Connector.Id);
 
@@ -926,11 +935,19 @@ namespace Npgsql
             Connector.EndUserAction();
             NpgsqlEventSource.Log.CommandStop();
 
+            // The reader shouldn't be unbound, if we're disposing - so the state is set prematurely
+            if (isDisposing)
+                State = ReaderState.Disposed;
+
             if (_connection.ConnectorBindingScope == ConnectorBindingScope.Reader)
             {
+                // We may unbind the current reader, which also sets the connector to null
+                var connector = Connector;
+                UnbindIfNecessary();
+
                 // TODO: Refactor... Use proper scope
                 _connection.Connector = null;
-                Connector.Connection = null;
+                connector.Connection = null;
                 _connection.ConnectorBindingScope = ConnectorBindingScope.None;
 
                 // If the reader is being closed as part of the connection closing, we don't apply
@@ -938,7 +955,7 @@ namespace Npgsql
                 if (_behavior.HasFlag(CommandBehavior.CloseConnection) && !connectionClosing)
                     _connection.Close();
 
-                Connector.ReaderCompleted.SetResult(null);
+                connector.ReaderCompleted.SetResult(null);
             }
             else if (_behavior.HasFlag(CommandBehavior.CloseConnection) && !connectionClosing)
                 _connection.Close();
@@ -2074,6 +2091,8 @@ namespace Npgsql
                 break;
             case ReaderState.Closed:
                 throw new InvalidOperationException("The reader is closed");
+            case ReaderState.Disposed:
+                throw new ObjectDisposedException(nameof(NpgsqlDataReader));
             default:
                 throw new InvalidOperationException("No resultset is currently being traversed");
             }
@@ -2088,6 +2107,8 @@ namespace Npgsql
                 break;
             case ReaderState.Closed:
                 throw new InvalidOperationException("The reader is closed");
+            case ReaderState.Disposed:
+                throw new ObjectDisposedException(nameof(NpgsqlDataReader));
             default:
                 throw new InvalidOperationException("No row is available");
             }
@@ -2123,10 +2144,32 @@ namespace Npgsql
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        void CheckClosed()
+        void CheckClosedOrDisposed()
         {
-            if (State == ReaderState.Closed)
+            switch (State)
+            {
+            case ReaderState.Closed:
                 throw new InvalidOperationException("The reader is closed");
+            case ReaderState.Disposed:
+                throw new ObjectDisposedException(nameof(NpgsqlDataReader));
+            }          
+        }
+
+        #endregion
+
+        #region Misc
+
+        /// <summary>
+        /// Unbinds reader from the connector.
+        /// Should be called before the connector is returned to the pool.
+        /// </summary>
+        internal void UnbindIfNecessary()
+        {
+            // We're closing the connection, but reader is not yet disposed
+            // We have to unbind the reader from the connector, otherwise there could be a concurency issues
+            // See #3126 and #3290
+            if (State != ReaderState.Disposed)
+                Connector.DataReader = new NpgsqlDataReader(Connector);
         }
 
         #endregion
@@ -2139,5 +2182,6 @@ namespace Npgsql
         BetweenResults,
         Consumed,
         Closed,
+        Disposed,
     }
 }

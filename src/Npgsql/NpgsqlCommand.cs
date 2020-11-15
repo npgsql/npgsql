@@ -297,7 +297,7 @@ namespace Npgsql
         int _state;
 
         /// <summary>
-        /// Gets the current state of the connector
+        /// The current state of the command
         /// </summary>
         internal CommandState State
         {
@@ -1037,8 +1037,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             using var reader = await ExecuteReader(CommandBehavior.Default, async, cancellationToken);
             while (async ? await reader.NextResultAsync(cancellationToken) : reader.NextResult()) ;
 
-            reader.Close();
-
             return reader.RecordsAffected;
         }
 
@@ -1145,6 +1143,8 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 {
                     connector.StartUserAction(ConnectorState.Executing, this, CancellationToken.None);
 
+                    Task? sendTask = null;
+
                     try
                     {
                         ValidateParameters(connector.TypeMapper);
@@ -1222,31 +1222,30 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         // to prevents a dependency on the thread pool (which would also trigger deadlocks).
                         // The WriteBuffer notifies this command when the first buffer flush occurs, so that the
                         // send functions can switch to the special async mode when needed.
-                        var sendTask = NonMultiplexingWriteWrapper(connector, async, CancellationToken.None);
+                        sendTask = NonMultiplexingWriteWrapper(connector, async, CancellationToken.None);
 
                         // The following is a hack. It raises an exception if one was thrown in the first phases
                         // of the send (i.e. in parts of the send that executed synchronously). Exceptions may
                         // still happen later and aren't properly handled. See #1323.
                         if (sendTask.IsFaulted)
                             sendTask.GetAwaiter().GetResult();
-
-                        // TODO: DRY the following with multiplexing, but be careful with the cancellation registration...
-                        var reader = connector.DataReader;
-                        reader.Init(this, behavior, _statements, sendTask);
-                        connector.CurrentReader = reader;
-                        if (async)
-                            await reader.NextResultAsync(cancellationToken);
-                        else
-                            reader.NextResult();
-
-                        return reader;
                     }
                     catch
                     {
-                        connector.CurrentReader = null;
                         conn.Connector?.EndUserAction();
                         throw;
                     }
+
+                    // TODO: DRY the following with multiplexing, but be careful with the cancellation registration...
+                    var reader = connector.DataReader;
+                    reader.Init(this, behavior, _statements, sendTask);
+                    connector.CurrentReader = reader;
+                    if (async)
+                        await reader.NextResultAsync(cancellationToken);
+                    else
+                        reader.NextResult();
+
+                    return reader;
                 }
                 else
                 {
@@ -1284,8 +1283,12 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     return reader;
                 }
             }
-            catch
+            catch (Exception e)
             {
+                var reader = conn.Connector?.CurrentReader;
+                if (!(e is NpgsqlOperationInProgressException) && reader != null)
+                    await reader.Cleanup(async);
+
                 State = CommandState.Idle;
 
                 // Reader disposal contains logic for closing the connection if CommandBehavior.CloseConnection is
