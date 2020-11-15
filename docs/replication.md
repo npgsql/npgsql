@@ -19,13 +19,13 @@ The default implementation that is used by PostgreSQL itself to perform logical 
 
 To set up logical replication, follow the [quick setup instructions](https://www.postgresql.org/docs/current/logical-replication-quick-setup.html) in the PostgreSQL docs (note that a SUBSCRIPTION isn't required since the client isn't PostgreSQL):
 
-* Enable logical replication in your `postgresql.conf` file:
+Enable logical replication in your `postgresql.conf` file:
 
 ```ini
 wal_level = logical
 ```
 
-* Set up a replication user in your [`pg_hba.conf`](https://www.postgresql.org/docs/current/auth-pg-hba-conf.html) file:
+Set up a replication user in your [`pg_hba.conf`](https://www.postgresql.org/docs/current/auth-pg-hba-conf.html) file:
 
 ```text
 host     replication     repuser     0.0.0.0/0     md5
@@ -37,13 +37,13 @@ The user `repuser` must exist in your cluster and either be a superuser or have 
 
 The modern, recommended way to perform logical replication was introduced in PostgreSQL 10 - [see the PostgreSQL documentation](https://www.postgresql.org/docs/current/logical-replication.html). This method, using the built-in pgoutput replication plugin, streams efficient, binary messages to represent database updates such as INSERT, UPDATE and DELETE ([see the full list](https://www.postgresql.org/docs/current/protocol-logicalrep-message-formats.html)); Npgsql exposes these messages as an `IAsyncEnumerable` which can easily be enumerated and consumed.
 
-* [Create a publication](https://www.postgresql.org/docs/current/sql-createpublication.html), which defines the group of tables in the database you wish to replicate:
+[Create a publication](https://www.postgresql.org/docs/current/sql-createpublication.html), which defines the group of tables in the database you wish to replicate:
 
 ```sql
 CREATE PUBLICATION blog_pub FOR TABLE blogs;
 ```
 
-* Create a replication slot, which will hold the state of the replication stream:
+Create a replication slot, which will hold the state of the replication stream:
 
 ```sql
 SELECT * FROM pg_create_logical_replication_slot('blog_slot', 'pgoutput');
