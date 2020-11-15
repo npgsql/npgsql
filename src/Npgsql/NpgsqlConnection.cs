@@ -471,7 +471,7 @@ namespace Npgsql
                         },
                     _ => _fullState
                 };
-            set => _fullState = value;
+            internal set => _fullState = value;
         }
 
         /// <summary>
