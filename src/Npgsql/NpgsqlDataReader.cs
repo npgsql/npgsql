@@ -1679,7 +1679,6 @@ namespace Npgsql
         /// <returns><b>true</b> if the specified column value is equivalent to <see cref="DBNull"/> otherwise <b>false</b>.</returns>
         public override Task<bool> IsDBNullAsync(int ordinal, CancellationToken cancellationToken)
         {
-            cancellationToken.ThrowIfCancellationRequested();
             CheckRowAndGetField(ordinal);
 
             if (!_isSequential)

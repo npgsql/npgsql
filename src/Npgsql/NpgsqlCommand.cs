@@ -1210,8 +1210,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         {
                         }
 
-                        connector.UserTimeout = CommandTimeout * 1000;
-
                         // We do not wait for the entire send to complete before proceeding to reading -
                         // the sending continues in parallel with the user's reading. Waiting for the
                         // entire send to complete would trigger a deadlock for multi-statement commands,

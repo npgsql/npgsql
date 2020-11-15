@@ -1784,7 +1784,7 @@ LANGUAGE plpgsql VOLATILE";
         }
 
         [Test, Description("Cancels ReadAsync via the cancellation token, with unsuccessful PG cancellation (socket break)")]
-        public async Task ReadAsync_cancel_hard()
+        public async Task ReadAsync_cancel_hard([Values(true, false)] bool passCancelledToken)
         {
             if (IsMultiplexing)
                 return; // Multiplexing, cancellation
@@ -1803,7 +1803,7 @@ LANGUAGE plpgsql VOLATILE";
                 .FlushAsync();
 
             using var cmd = new NpgsqlCommand("SELECT some_int FROM some_table", conn);
-            await using var reader = await cmd.ExecuteReaderAsync();
+            await using var reader = await cmd.ExecuteReaderAsync(Behavior);
 
             // Successfully read the first row
             Assert.True(await reader.ReadAsync());
@@ -1811,6 +1811,8 @@ LANGUAGE plpgsql VOLATILE";
 
             // Attempt to read the second row - simulate blocking and cancellation
             var cancellationSource = new CancellationTokenSource();
+            if (passCancelledToken)
+                cancellationSource.Cancel();
             var task = reader.ReadAsync(cancellationSource.Token);
             cancellationSource.Cancel();
 
@@ -1826,7 +1828,7 @@ LANGUAGE plpgsql VOLATILE";
         }
 
         [Test, Description("Cancels NextResultAsync via the cancellation token, with unsuccessful PG cancellation (socket break)")]
-        public async Task NextResultAsync_cancel_hard()
+        public async Task NextResultAsync_cancel_hard([Values(true, false)] bool passCancelledToken)
         {
             if (IsMultiplexing)
                 return; // Multiplexing, cancellation
@@ -1846,7 +1848,7 @@ LANGUAGE plpgsql VOLATILE";
                 .FlushAsync();
 
             using var cmd = new NpgsqlCommand("SELECT some_int FROM some_table", conn);
-            await using var reader = await cmd.ExecuteReaderAsync();
+            await using var reader = await cmd.ExecuteReaderAsync(Behavior);
 
             // Successfully read the first resultset
             Assert.True(await reader.ReadAsync());
@@ -1854,49 +1856,8 @@ LANGUAGE plpgsql VOLATILE";
 
             // Attempt to read the second row - simulate blocking and cancellation
             var cancellationSource = new CancellationTokenSource();
-            var task = reader.NextResultAsync(cancellationSource.Token);
-            cancellationSource.Cancel();
-
-            var (processId, _) = await postmasterMock.WaitForCancellationRequest();
-            Assert.That(processId, Is.EqualTo(conn.ProcessID));
-
-            // Send no response from server, wait for the cancellation attempt to time out
-            var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task);
-            Assert.That(exception.InnerException, Is.TypeOf<TimeoutException>());
-            Assert.That(exception.CancellationToken, Is.EqualTo(cancellationSource.Token));
-
-            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
-        }
-
-        [Test, Description("Cancels sequential NextResultAsync via the cancellation token")]
-        public async Task NextResultAsync_sequential_cancel()
-        {
-            if (IsMultiplexing)
-                return; // Multiplexing, cancellation
-
-            if (!IsSequential)
-                return;
-
-            await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
-            using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
-            await using var conn = await OpenConnectionAsync(connectionString);
-
-            // Write responses to the query we're about to send, with a single data row (we'll attempt to read two)
-            var pgMock = await postmasterMock.WaitForServerConnection();
-            await pgMock
-                .WriteParseComplete()
-                .WriteBindComplete()
-                .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Bytea))
-                .WriteDataRowWithFlush(new byte[10000]);
-
-            using var cmd = new NpgsqlCommand("SELECT some_bytea FROM some_table", conn);
-            await using var reader = await cmd.ExecuteReaderAsync(Behavior);
-
-            // Successfully read the first resultset
-            Assert.True(await reader.ReadAsync());
-
-            // Attempt to read the second row - simulate blocking and cancellation
-            var cancellationSource = new CancellationTokenSource();
+            if (passCancelledToken)
+                cancellationSource.Cancel();
             var task = reader.NextResultAsync(cancellationSource.Token);
             cancellationSource.Cancel();
 
@@ -1912,7 +1873,7 @@ LANGUAGE plpgsql VOLATILE";
         }
 
         [Test, Description("Cancels sequential ReadAsGetFieldValueAsync")]
-        public async Task GetFieldValueAsync_sequential_cancel()
+        public async Task GetFieldValueAsync_sequential_cancel([Values(true, false)] bool passCancelledToken)
         {
             if (IsMultiplexing)
                 return; // Multiplexing, cancellation
@@ -1938,6 +1899,8 @@ LANGUAGE plpgsql VOLATILE";
             await reader.ReadAsync();
 
             using var cts = new CancellationTokenSource();
+            if (passCancelledToken)
+                cts.Cancel();
             var task = reader.GetFieldValueAsync<byte[]>(0, cts.Token);
             cts.Cancel();
 
@@ -1948,7 +1911,7 @@ LANGUAGE plpgsql VOLATILE";
         }
 
         [Test, Description("Cancels sequential ReadAsGetFieldValueAsync")]
-        public async Task IsDBNullAsync_sequential_cancel()
+        public async Task IsDBNullAsync_sequential_cancel([Values(true, false)] bool passCancelledToken)
         {
             if (IsMultiplexing)
                 return; // Multiplexing, cancellation
@@ -1974,6 +1937,8 @@ LANGUAGE plpgsql VOLATILE";
             await reader.ReadAsync();
 
             using var cts = new CancellationTokenSource();
+            if (passCancelledToken)
+                cts.Cancel();
             var task = reader.IsDBNullAsync(1, cts.Token);
             cts.Cancel();
 
@@ -1981,43 +1946,6 @@ LANGUAGE plpgsql VOLATILE";
             Assert.That(exception.InnerException, Is.Null);
 
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
-        }
-
-        [Test, Description("Makes sure that calling ReadAsync with a cancelled token actual cancels the query in PG")]
-        public async Task ReadAsync_cancelled_token_does_pg_cancellation()
-        {
-            await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
-            using var pool = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
-            await using var conn = await OpenConnectionAsync(connectionString);
-
-            // Write responses to the query we're about to send, with a single data row (we'll attempt to read two)
-            var pgMock = await postmasterMock.WaitForServerConnection();
-            await pgMock
-                .WriteParseComplete()
-                .WriteBindComplete()
-                .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Int4))
-                .WriteDataRow(BitConverter.GetBytes(BinaryPrimitives.ReverseEndianness(1)))
-                .FlushAsync();
-
-            using var cmd = new NpgsqlCommand("SELECT some_int FROM some_table", conn);
-            await using var reader = await cmd.ExecuteReaderAsync();
-
-            // Successfully read the first resultset
-            Assert.True(await reader.ReadAsync());
-            Assert.That(reader.GetInt32(0), Is.EqualTo(1));
-
-            // Attempt to read the second row, but with a cancelled token. This should cancel the query at the PG side.
-            var cancellationSource = new CancellationTokenSource();
-            cancellationSource.Cancel();
-            var task = reader.ReadAsync(cancellationSource.Token);
-
-            await postmasterMock.WaitForCancellationRequest();
-            await pgMock
-                .WriteCancellationResponse()
-                .WriteReadyForQuery()
-                .FlushAsync();
-
-            Assert.That(async () => await task, Throws.Exception.TypeOf<OperationCanceledException>());
         }
 
         #endregion Cancellation

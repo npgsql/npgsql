@@ -240,6 +240,7 @@ namespace Npgsql
         internal bool UserCancellationRequested => _userCancellationRequested;
         internal CancellationToken UserCancellationToken { get; set; }
         internal bool AttemptPostgresCancellation { get; private set; }
+        static readonly TimeSpan _cancelImmediatelyTimeout = TimeSpan.FromMilliseconds(-1);
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlConnector));
 
@@ -1458,14 +1459,22 @@ namespace Npgsql
 
             if (AttemptPostgresCancellation && SupportsPostgresCancellation)
             {
-                if (PerformPostgresCancellation() && Settings.CancellationTimeout >= 0)
+                var cancellationTimeout = Settings.CancellationTimeout;
+                if (PerformPostgresCancellation() && cancellationTimeout >= 0)
                 {
-                    if (Settings.CancellationTimeout > 0)
-                        ReadBuffer.Cts.CancelAfter(Settings.CancellationTimeout);
+                    if (cancellationTimeout > 0)
+                    {
+                        UserTimeout = cancellationTimeout;
+                        ReadBuffer.Timeout = TimeSpan.FromMilliseconds(cancellationTimeout);
+                        ReadBuffer.Cts.CancelAfter(cancellationTimeout);
+                    }
+                        
                     return;
                 }
             }
 
+            UserTimeout = -1;
+            ReadBuffer.Timeout = _cancelImmediatelyTimeout;
             ReadBuffer.Cts.Cancel();
         }
 
@@ -2003,6 +2012,11 @@ namespace Npgsql
                 _currentCommand = command;
 
                 StartCancellableOperation(cancellationToken, attemptPgCancellation);
+
+                // We reset the UserTimeout for every user action, so it wouldn't leak from the previous query or action
+                // For example, we might have successfully cancelled the previous query (so the connection is not broken)
+                // But the next time, we call the Prepare, which doesn't set it's own timeout
+                UserTimeout = (command?.CommandTimeout ?? Settings.CommandTimeout) * 1000;
 
                 return new UserAction(this);
             }
