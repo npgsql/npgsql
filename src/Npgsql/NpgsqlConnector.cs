@@ -1216,7 +1216,7 @@ namespace Npgsql
                 }
                 catch (PostgresException e)
                 {
-                    // In case if reader is not null, it will do cleanup (and call EndUserAction) while catching the exception
+                    // TODO: move it up the stack, like #3126 did (relevant for non-command-execution scenarios, like COPY)
                     if (connector.CurrentReader is null)
                         connector.EndUserAction();
 

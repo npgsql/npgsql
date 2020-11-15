@@ -958,9 +958,7 @@ namespace Npgsql
                 connector.ReaderCompleted.SetResult(null);
             }
             else if (_behavior.HasFlag(CommandBehavior.CloseConnection) && !connectionClosing)
-            {
                 _connection.Close();
-            }
 
             if (ReaderClosed != null)
             {
@@ -2094,7 +2092,7 @@ namespace Npgsql
             case ReaderState.Closed:
                 throw new InvalidOperationException("The reader is closed");
             case ReaderState.Disposed:
-                throw new InvalidOperationException("The reader is disposed");
+                throw new ObjectDisposedException(nameof(NpgsqlDataReader));
             default:
                 throw new InvalidOperationException("No resultset is currently being traversed");
             }
@@ -2110,7 +2108,7 @@ namespace Npgsql
             case ReaderState.Closed:
                 throw new InvalidOperationException("The reader is closed");
             case ReaderState.Disposed:
-                throw new InvalidOperationException("The reader is disposed");
+                throw new ObjectDisposedException(nameof(NpgsqlDataReader));
             default:
                 throw new InvalidOperationException("No row is available");
             }
@@ -2148,10 +2146,13 @@ namespace Npgsql
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         void CheckClosedOrDisposed()
         {
-            if (State == ReaderState.Closed)
+            switch (State)
+            {
+            case ReaderState.Closed:
                 throw new InvalidOperationException("The reader is closed");
-            if (State == ReaderState.Disposed)
-                throw new InvalidOperationException("The reader is disposed");
+            case ReaderState.Disposed:
+                throw new ObjectDisposedException(nameof(NpgsqlDataReader));
+            }          
         }
 
         #endregion
@@ -2164,10 +2165,10 @@ namespace Npgsql
         /// </summary>
         internal void UnbindIfNecessary()
         {
-            // We're closing the connection, but reader is not yet disposed and the connector isn't broken
+            // We're closing the connection, but reader is not yet disposed
             // We have to unbind the reader from the connector, otherwise there could be a concurency issues
             // See #3126 and #3290
-            if (State != ReaderState.Disposed && !Connector.IsBroken)
+            if (State != ReaderState.Disposed)
                 Connector.DataReader = new NpgsqlDataReader(Connector);
         }
 
