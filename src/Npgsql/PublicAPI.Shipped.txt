@@ -990,6 +990,7 @@ Npgsql.Replication.PhysicalReplicationConnection.PhysicalReplicationConnection(s
 Npgsql.Replication.PhysicalReplicationConnection.StartReplication(Npgsql.Replication.PhysicalReplicationSlot? slot, NpgsqlTypes.NpgsqlLogSequenceNumber walLocation, System.Threading.CancellationToken cancellationToken, uint timeline = 0) -> System.Collections.Generic.IAsyncEnumerable<Npgsql.Replication.XLogDataMessage!>!
 Npgsql.Replication.PhysicalReplicationConnection.StartReplication(NpgsqlTypes.NpgsqlLogSequenceNumber walLocation, System.Threading.CancellationToken cancellationToken, uint timeline = 0) -> System.Collections.Generic.IAsyncEnumerable<Npgsql.Replication.XLogDataMessage!>!
 Npgsql.Replication.PhysicalReplicationSlot
+Npgsql.Replication.PhysicalReplicationSlot.PhysicalReplicationSlot(string! slotName) -> void
 Npgsql.Replication.ReplicationConnection
 Npgsql.Replication.ReplicationConnection.CommandTimeout.get -> System.TimeSpan
 Npgsql.Replication.ReplicationConnection.CommandTimeout.set -> void
