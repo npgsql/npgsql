@@ -396,24 +396,22 @@ namespace Npgsql
 
         #region Authentication
 
-        internal Task WritePassword(byte[] payload, bool async, CancellationToken cancellationToken = default) => WritePassword(payload, 0, payload.Length, async, cancellationToken);
-
-        internal async Task WritePassword(byte[] payload, int offset, int count, bool async, CancellationToken cancellationToken = default)
+        internal async Task WritePassword(ReadOnlyMemory<byte> payload, bool async, CancellationToken cancellationToken = default)
         {
             if (WriteBuffer.WriteSpaceLeft < sizeof(byte) + sizeof(int))
                 await WriteBuffer.Flush(async, cancellationToken);
             WriteBuffer.WriteByte(FrontendMessageCode.Password);
-            WriteBuffer.WriteInt32(sizeof(int) + count);
+            WriteBuffer.WriteInt32(sizeof(int) + payload.Length);
 
-            if (count <= WriteBuffer.WriteSpaceLeft)
+            if (payload.Length <= WriteBuffer.WriteSpaceLeft)
             {
                 // The entire array fits in our WriteBuffer, copy it into the WriteBuffer as usual.
-                WriteBuffer.WriteBytes(payload, offset, count);
+                WriteBuffer.WriteBytes(payload.Span);
                 return;
             }
 
             await WriteBuffer.Flush(async, cancellationToken);
-            await WriteBuffer.DirectWrite(new ReadOnlyMemory<byte>(payload, offset, count), async, cancellationToken);
+            await WriteBuffer.DirectWrite(payload, async, cancellationToken);
         }
 
         internal async Task WriteSASLInitialResponse(string mechanism, byte[] initialResponse, bool async, CancellationToken cancellationToken = default)

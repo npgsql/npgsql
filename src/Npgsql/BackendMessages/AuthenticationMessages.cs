@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Npgsql.Logging;
 using Npgsql.Util;
 
@@ -38,19 +39,13 @@ namespace Npgsql.BackendMessages
     {
         internal override AuthenticationRequestType AuthRequestType => AuthenticationRequestType.AuthenticationMD5Password;
 
-        internal byte[] Salt { get; private set; }
+        internal int Salt { get; }
 
-        internal static AuthenticationMD5PasswordMessage Load(NpgsqlReadBuffer buf)
-        {
-            var salt = new byte[4];
-            buf.ReadBytes(salt, 0, 4);
-            return new AuthenticationMD5PasswordMessage(salt);
-        }
+        internal static AuthenticationMD5PasswordMessage Load(NpgsqlReadBuffer buf) =>
+            new AuthenticationMD5PasswordMessage(buf.ReadInt32(BitConverter.IsLittleEndian));
 
-        AuthenticationMD5PasswordMessage(byte[] salt)
-        {
+        AuthenticationMD5PasswordMessage(int salt) =>
             Salt = salt;
-        }
     }
 
     class AuthenticationSCMCredentialMessage : AuthenticationRequestMessage

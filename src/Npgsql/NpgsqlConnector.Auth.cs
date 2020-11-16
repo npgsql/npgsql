@@ -1,9 +1,11 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Security;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
@@ -59,12 +61,17 @@ namespace Npgsql
             if (passwd == null)
                 throw new NpgsqlException("No password has been provided but the backend requires one (in cleartext)");
 
-            var encoded = new byte[Encoding.UTF8.GetByteCount(passwd) + 1];
-            Encoding.UTF8.GetBytes(passwd, 0, passwd.Length, encoded, 0);
+            var encoding = Encoding.UTF8;
+            var encoded = ArrayPool<byte>.Shared.Rent(encoding.GetByteCount(passwd) + 1);
+
+            encoding.GetBytes(passwd, 0, passwd.Length, encoded, 0);
+            encoded[encoded.Length - 1] = 0;
 
             await WritePassword(encoded, async, cancellationToken);
             await Flush(async, cancellationToken);
             Expect<AuthenticationRequestMessage>(await ReadMessage(async), this);
+
+            ArrayPool<byte>.Shared.Return(encoded, clearArray: true);
         }
 
         async Task AuthenticateSASL(List<string> mechanisms, string username, bool async, CancellationToken cancellationToken = default)
@@ -246,58 +253,76 @@ namespace Npgsql
                 return buffer1;
             }
 
-            static byte[] HMAC(byte[] data, string key)
+            static byte[] HMAC(byte[] key, string data)
             {
-                using var hmacsha256 = new HMACSHA256(data);
-                return hmacsha256.ComputeHash(Encoding.UTF8.GetBytes(key));
+                using var hmacsha256 = new HMACSHA256(key);
+                return hmacsha256.ComputeHash(Encoding.UTF8.GetBytes(data));
             }
         }
 
-        async Task AuthenticateMD5(string username, byte[] salt, bool async, CancellationToken cancellationToken = default)
+        async Task AuthenticateMD5(string username, int salt, bool async, CancellationToken cancellationToken = default)
         {
             var passwd = GetPassword(username);
             if (passwd == null)
                 throw new NpgsqlException("No password has been provided but the backend requires one (in MD5)");
 
-            byte[] result;
+            const int HexHashSize = 2 * 128 / 8;
+
+            var hashLength = HexHashSize + 3 + 1;
+            var hash = ArrayPool<byte>.Shared.Rent(hashLength);
+
             using (var md5 = MD5.Create())
             {
                 // First phase
-                var passwordBytes = PGUtil.UTF8Encoding.GetBytes(passwd);
-                var usernameBytes = PGUtil.UTF8Encoding.GetBytes(username);
-                var cryptBuf = new byte[passwordBytes.Length + usernameBytes.Length];
-                passwordBytes.CopyTo(cryptBuf, 0);
-                usernameBytes.CopyTo(cryptBuf, passwordBytes.Length);
+                var passwdLength = PGUtil.UTF8Encoding.GetByteCount(passwd);
+                var usernameLength = PGUtil.UTF8Encoding.GetByteCount(username);
 
-                var sb = new StringBuilder();
-                var hashResult = md5.ComputeHash(cryptBuf);
-                foreach (var b in hashResult)
-                    sb.Append(b.ToString("x2"));
+                var credentialsLength = passwdLength + usernameLength;
+                var credentials = ArrayPool<byte>.Shared.Rent(credentialsLength);
 
-                var prehash = sb.ToString();
+                var preHashLength = HexHashSize + 4;
+                var preHash = ArrayPool<byte>.Shared.Rent(preHashLength);
 
-                var prehashbytes = PGUtil.UTF8Encoding.GetBytes(prehash);
-                cryptBuf = new byte[prehashbytes.Length + 4];
+                PGUtil.UTF8Encoding.GetBytes(passwd, 0, passwdLength, credentials, 0);
+                PGUtil.UTF8Encoding.GetBytes(username, 0, usernameLength, credentials, passwdLength);
 
-                Array.Copy(salt, 0, cryptBuf, prehashbytes.Length, 4);
+                HexHash(preHash, credentials, credentialsLength);
+                Unsafe.WriteUnaligned(ref preHash[HexHashSize], salt);
 
-                // 2.
-                prehashbytes.CopyTo(cryptBuf, 0);
+                // Second phase
+                hash[0] = (byte)'m';
+                hash[1] = (byte)'d';
+                hash[2] = (byte)'5';
+                hash[hashLength - 1] = 0;
 
-                sb = new StringBuilder("md5");
-                hashResult = md5.ComputeHash(cryptBuf);
-                foreach (var b in hashResult)
-                    sb.Append(b.ToString("x2"));
+                HexHash(hash.AsSpan(3, HexHashSize), preHash, preHashLength);
 
-                var resultString = sb.ToString();
-                result = new byte[Encoding.UTF8.GetByteCount(resultString) + 1];
-                Encoding.UTF8.GetBytes(resultString, 0, resultString.Length, result, 0);
-                result[result.Length - 1] = 0;
+                ArrayPool<byte>.Shared.Return(credentials, clearArray: true);
+                ArrayPool<byte>.Shared.Return(preHash, clearArray: true);
+
+                void HexHash(Span<byte> result, byte[] data, int length)
+                {
+                    var hash = md5.ComputeHash(data, 0, length);
+                    var index = 0;
+
+                    foreach (var b in hash)
+                    {
+                        result[index++] = HexChar(b >> 4);
+                        result[index++] = HexChar(b & 15);
+
+                        static byte HexChar(int value) =>
+                            value > 9
+                            ? (byte)('a' + value - 10)
+                            : (byte)('0' + value);
+                    }
+                }
             }
 
-            await WritePassword(result, async, cancellationToken);
+            await WritePassword(hash.AsMemory(0, hashLength), async, cancellationToken);
             await Flush(async, cancellationToken);
             Expect<AuthenticationRequestMessage>(await ReadMessage(async), this);
+
+            ArrayPool<byte>.Shared.Return(hash, clearArray: true);
         }
 
         async Task AuthenticateGSS(bool async)
@@ -378,7 +403,7 @@ namespace Npgsql
 
                 if (count > _leftToWrite)
                     throw new NpgsqlException($"NegotiateStream trying to write {count} bytes but according to frame header we only have {_leftToWrite} left!");
-                await _connector.WritePassword(buffer, offset, count, async, cancellationToken);
+                await _connector.WritePassword(buffer.AsMemory(offset, count), async, cancellationToken);
                 await _connector.Flush(async, cancellationToken);
                 _leftToWrite -= count;
             }
