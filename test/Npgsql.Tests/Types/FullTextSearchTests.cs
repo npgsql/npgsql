@@ -7,6 +7,9 @@ namespace Npgsql.Tests.Types
 {
     public class FullTextSearchTests : MultiplexingTestBase
     {
+        public FullTextSearchTests(MultiplexingMode multiplexingMode)
+            : base(multiplexingMode) { }
+
         [Test]
         public async Task TsVector()
         {
@@ -25,20 +28,27 @@ namespace Npgsql.Tests.Types
         [Test]
         public async Task TsQuery()
         {
-            using (var conn = await OpenConnectionAsync())
-            using (var cmd = conn.CreateCommand())
+            using var conn = await OpenConnectionAsync();
+            var queryString = conn.PostgreSqlVersion < new Version(9, 6)
+                ? "'a' & !( 'c' | 'd' ) & !!'a' & 'b' | 'ä' | 'f'"
+                : "'a' & !( 'c' | 'd' ) & !!'a' & 'b' | 'ä' | 'x' <-> 'y' | 'x' <10> 'y' | 'd' <0> 'e' | 'f'";
+            var query = NpgsqlTsQuery.Parse(queryString);
+
+            using var cmd = new NpgsqlCommand("SELECT @s::tsquery, @q, @q::text", conn)
             {
-                var query = conn.PostgreSqlVersion < new Version(9, 6)
-                    ? NpgsqlTsQuery.Parse("(a & !(c | d)) & (!!a&b) | ä | f")
-                    : NpgsqlTsQuery.Parse("(a & !(c | d)) & (!!a&b) | ä | x <-> y | x <10> y | d <0> e | f");
+                Parameters =
+                {
+                    new NpgsqlParameter("s", queryString),
+                    new NpgsqlParameter("q", query),
+                }
+            };
 
-                cmd.CommandText = "Select :p";
-                cmd.Parameters.AddWithValue("p", query);
-                var output = await cmd.ExecuteScalarAsync();
-                Assert.AreEqual(query.ToString(), output!.ToString());
-            }
+            using var reader = await cmd.ExecuteReaderAsync();
+            await reader.ReadAsync();
+
+            Assert.AreEqual(query.ToString(), reader.GetFieldValue<NpgsqlTsQuery>(0).ToString());
+            Assert.AreEqual(query.ToString(), reader.GetFieldValue<NpgsqlTsQuery>(1).ToString());
+            Assert.AreEqual(queryString, reader.GetFieldValue<string>(2));
         }
-
-        public FullTextSearchTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
     }
 }
