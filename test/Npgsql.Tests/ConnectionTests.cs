@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using Npgsql.Util;
 using NUnit.Framework;
 using NUnit.Framework.Internal;
+using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests
 {
@@ -196,15 +197,17 @@ namespace Npgsql.Tests
                 return;
             }
 
+
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 Pooling = false
             };
+
+            var getPasswordDelegateWasCalled = false;
             var goodPassword = connString.Password;
             connString.Password = null;
 
-            bool getPasswordDelegateWasCalled = false;
-
+            using (SetEnvironmentVariable("PGPASSFILE", "Must Not Exist"))
             using (var conn = new NpgsqlConnection(connString.ToString()) { ProvidePasswordCallback = ProvidePasswordCallback })
             {
                 conn.Open();
@@ -252,6 +255,7 @@ namespace Npgsql.Tests
                 Password = null
             };
 
+            using (SetEnvironmentVariable("PGPASSFILE", "Must Not Exist"))
             using (var conn = new NpgsqlConnection(connString.ToString()) { ProvidePasswordCallback = ProvidePasswordCallback })
             {
                 Assert.That(() => conn.Open(), Throws.Exception
@@ -284,6 +288,7 @@ namespace Npgsql.Tests
             string? receivedDatabase = null;
             string? receivedUsername = null;
 
+            using (SetEnvironmentVariable("PGPASSFILE", "Must Not Exist"))
             using (var conn = new NpgsqlConnection(connString.ToString()) { ProvidePasswordCallback = ProvidePasswordCallback })
             {
                 conn.Open();
