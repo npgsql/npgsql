@@ -42,7 +42,7 @@ namespace Npgsql
         /// <summary>
         /// If true, the transaction has been committed/rolled back, but not disposed.
         /// </summary>
-        internal bool IsCompleted => _connector is null || _connector.TransactionStatus == TransactionStatus.Idle;
+        public bool IsCompleted => _connector is null || _connector.TransactionStatus == TransactionStatus.Idle;
 
         internal bool IsDisposed;
 
