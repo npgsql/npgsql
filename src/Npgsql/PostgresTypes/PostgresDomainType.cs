@@ -1,6 +1,4 @@
-﻿using JetBrains.Annotations;
-
-namespace Npgsql.PostgresTypes
+﻿namespace Npgsql.PostgresTypes
 {
     /// <summary>
     /// Represents a PostgreSQL domain type.

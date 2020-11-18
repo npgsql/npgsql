@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using JetBrains.Annotations;
 using Npgsql.NameTranslation;
 using NpgsqlTypes;
 
@@ -19,28 +18,24 @@ namespace Npgsql.TypeMapping
         /// <summary>
         /// The default name translator to convert CLR type names and member names.
         /// </summary>
-        [NotNull]
         INpgsqlNameTranslator DefaultNameTranslator { get; }
 
         /// <summary>
         /// Enumerates all mappings currently set up on this type mapper.
         /// </summary>
-        [NotNull]
-        [ItemNotNull]
         IEnumerable<NpgsqlTypeMapping> Mappings { get; }
 
         /// <summary>
         /// Adds a new type mapping to this mapper, overwriting any existing mapping in the process.
         /// </summary>
-        [NotNull]
-        INpgsqlTypeMapper AddMapping([NotNull] NpgsqlTypeMapping mapping);
+        INpgsqlTypeMapper AddMapping(NpgsqlTypeMapping mapping);
 
         /// <summary>
         /// Removes an existing mapping from this mapper. Attempts to read or write this type
         /// after removal will result in an exception.
         /// </summary>
         /// <param name="pgTypeName">A PostgreSQL type name for the type in the database.</param>
-        bool RemoveMapping([NotNull] string pgTypeName);
+        bool RemoveMapping(string pgTypeName);
 
         /// <summary>
         /// Maps a CLR enum to a PostgreSQL enum type.
@@ -62,7 +57,6 @@ namespace Npgsql.TypeMapping
         /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
         /// <typeparam name="TEnum">The .NET enum type to be mapped</typeparam>
-        [NotNull]
         INpgsqlTypeMapper MapEnum<TEnum>(
             string? pgName = null,
             INpgsqlNameTranslator? nameTranslator = null)
@@ -104,7 +98,6 @@ namespace Npgsql.TypeMapping
         /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
         /// <typeparam name="T">The .NET type to be mapped</typeparam>
-        [NotNull]
         INpgsqlTypeMapper MapComposite<T>(
             string? pgName = null,
             INpgsqlNameTranslator? nameTranslator = null);
@@ -143,7 +136,6 @@ namespace Npgsql.TypeMapping
         /// A component which will be used to translate CLR names (e.g. SomeClass) into database names (e.g. some_class).
         /// Defaults to <see cref="NpgsqlSnakeCaseNameTranslator"/>
         /// </param>
-        [NotNull]
         INpgsqlTypeMapper MapComposite(
             Type clrType,
             string? pgName = null,

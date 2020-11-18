@@ -1,6 +1,5 @@
-﻿using JetBrains.Annotations;
+﻿using System;
 using NpgsqlTypes;
-using System;
 
 namespace Npgsql.Replication
 {

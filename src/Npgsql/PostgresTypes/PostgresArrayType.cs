@@ -1,5 +1,4 @@
 ﻿using System.Diagnostics;
-using JetBrains.Annotations;
 
 namespace Npgsql.PostgresTypes
 {
