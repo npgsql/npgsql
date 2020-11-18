@@ -24,18 +24,27 @@ namespace Npgsql.Tests.Types
         [Test]
         public void TsQuery()
         {
-            using (var conn = OpenConnection())
-            using (var cmd = conn.CreateCommand())
-            {
-                var query = conn.PostgreSqlVersion < new Version(9, 6)
-                    ? NpgsqlTsQuery.Parse("(a & !(c | d)) & (!!a&b) | ä | f")
-                    : NpgsqlTsQuery.Parse("(a & !(c | d)) & (!!a&b) | ä | x <-> y | x <10> y | d <0> e | f");
+            using var conn = OpenConnection();
+            var queryString = conn.PostgreSqlVersion < new Version(9, 6)
+                ? "'a' & !( 'c' | 'd' ) & !!'a' & 'b' | 'ä' | 'f'"
+                : "'a' & !( 'c' | 'd' ) & !!'a' & 'b' | 'ä' | 'x' <-> 'y' | 'x' <10> 'y' | 'd' <0> 'e' | 'f'";
+            var query = NpgsqlTsQuery.Parse(queryString);
 
-                cmd.CommandText = "Select :p";
-                cmd.Parameters.AddWithValue("p", query);
-                var output = cmd.ExecuteScalar();
-                Assert.AreEqual(query.ToString(), output.ToString());
-            }
+            using var cmd = new NpgsqlCommand("SELECT @s::tsquery, @q, @q::text", conn)
+            {
+                Parameters =
+                {
+                    new NpgsqlParameter("s", queryString),
+                    new NpgsqlParameter("q", query),
+                }
+            };
+
+            using var reader = cmd.ExecuteReader();
+            reader.ReadAsync();
+
+            Assert.AreEqual(query.ToString(), reader.GetFieldValue<NpgsqlTsQuery>(0).ToString());
+            Assert.AreEqual(query.ToString(), reader.GetFieldValue<NpgsqlTsQuery>(1).ToString());
+            Assert.AreEqual(queryString, reader.GetFieldValue<string>(2));
         }
     }
 }
