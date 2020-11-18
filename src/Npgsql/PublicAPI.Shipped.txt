@@ -750,6 +750,7 @@ Npgsql.NpgsqlStatement.SQL.set -> void
 Npgsql.NpgsqlStatement.StatementType.get -> Npgsql.StatementType
 Npgsql.NpgsqlTransaction
 Npgsql.NpgsqlTransaction.Connection.get -> Npgsql.NpgsqlConnection?
+Npgsql.NpgsqlTransaction.IsCompleted.get -> bool
 Npgsql.NpgsqlWriteBuffer
 Npgsql.NpgsqlWriteBuffer.Dispose() -> void
 Npgsql.NpgsqlWriteBuffer.Flush(bool async, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
