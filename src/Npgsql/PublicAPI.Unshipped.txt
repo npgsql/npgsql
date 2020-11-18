@@ -1,1 +1,19 @@
 ﻿#nullable enable
+
+abstract NpgsqlTypes.NpgsqlTsQuery.Equals(NpgsqlTypes.NpgsqlTsQuery? other) -> bool
+override NpgsqlTypes.NpgsqlTsQuery.Equals(object? obj) -> bool
+override NpgsqlTypes.NpgsqlTsQuery.GetHashCode() -> int
+static NpgsqlTypes.NpgsqlTsQuery.operator ==(NpgsqlTypes.NpgsqlTsQuery? left, NpgsqlTypes.NpgsqlTsQuery? right) -> bool
+static NpgsqlTypes.NpgsqlTsQuery.operator !=(NpgsqlTypes.NpgsqlTsQuery? left, NpgsqlTypes.NpgsqlTsQuery? right) -> bool
+override NpgsqlTypes.NpgsqlTsQueryEmpty.Equals(NpgsqlTypes.NpgsqlTsQuery? other) -> bool
+override NpgsqlTypes.NpgsqlTsQueryEmpty.GetHashCode() -> int
+override NpgsqlTypes.NpgsqlTsQueryLexeme.Equals(NpgsqlTypes.NpgsqlTsQuery? other) -> bool
+override NpgsqlTypes.NpgsqlTsQueryLexeme.GetHashCode() -> int
+override NpgsqlTypes.NpgsqlTsQueryNot.Equals(NpgsqlTypes.NpgsqlTsQuery? other) -> bool
+override NpgsqlTypes.NpgsqlTsQueryNot.GetHashCode() -> int
+override NpgsqlTypes.NpgsqlTsQueryOr.Equals(NpgsqlTypes.NpgsqlTsQuery? other) -> bool
+override NpgsqlTypes.NpgsqlTsQueryOr.GetHashCode() -> int
+override NpgsqlTypes.NpgsqlTsQueryAnd.Equals(NpgsqlTypes.NpgsqlTsQuery? other) -> bool
+override NpgsqlTypes.NpgsqlTsQueryAnd.GetHashCode() -> int
+override NpgsqlTypes.NpgsqlTsQueryFollowedBy.Equals(NpgsqlTypes.NpgsqlTsQuery? other) -> bool
+override NpgsqlTypes.NpgsqlTsQueryFollowedBy.GetHashCode() -> int
