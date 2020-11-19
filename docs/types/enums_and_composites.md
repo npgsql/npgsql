@@ -53,7 +53,7 @@ using (var reader = cmd.ExecuteReader()) {
 
 Note that your PostgreSQL enum and composites types (`some_enum_type` and `some_composite_type` in the sample above) must be defined in your database before the first connection is created (see `CREATE TYPE`). If you're creating PostgreSQL types within your program, call `NpgsqlConnection.ReloadTypes()` to make sure Npgsql becomes properly aware of them.
 
-## Name Translation
+## Name translation
 
 CLR type and field names are usually camel case (e.g. `SomeType`), whereas in PostgreSQL they are snake case (e.g. `some_type`). To help make the mapping for enums and composites seamless, pluggable name translators are used translate all names. The default translation scheme is `NpgsqlSnakeCaseNameTranslator`, which maps names like `SomeType` to `some_type`, but you can specify others. The default name translator can be set for all your connections via `NpgsqlConnection.GlobalTypeMapper.DefaultNameTranslator`, or for a specific connection for `NpgsqlConnection.TypeMapper.DefaultNameTranslator`. You also have the option of specifying a name translator when setting up a mapping:
 
@@ -74,11 +74,11 @@ enum SomeEnum {
 }
 ```
 
-## Reading and Writing Dynamically (without CLR types)
+## Reading and writing unmapped enums
 
-In some cases, it may be desirable to interact with PostgreSQL enums and composites without a pre-existing CLR type - this is useful mainly if your program doesn't know the database schema and types in advance, and needs to interact with any enum/composite type. Note that using CLR types is safer and faster (for composites), and should be preferred when possible.
+In some cases, it may be desirable to interact with PostgreSQL enums without a pre-existing CLR enum type - this is useful mainly if your program doesn't know the database schema and types in advance, and needs to interact with any enum/composite type.
 
-Enums can be read and written as simple strings:
+Npgsql allows reading and writing enums as simple strings:
 
 ```c#
 // Writing enum as string
@@ -100,33 +100,3 @@ using (var reader = cmd.ExecuteReader()) {
     var enumValue = reader.GetFieldValue<string>(0);
 }
 ```
-
-Composites can be read and written as C# dynamic ExpandoObjects:
-
-```c#
-// Writing composite as ExpandoObject
-using (var cmd = new NpgsqlCommand("INSERT INTO some_table (some_composite_column) VALUES (@p1)", Conn))
-{
-    var someComposite = new ExpandoObject();
-    some_composite.Foo = 8;
-    some_composite.Bar = "hello";
-    cmd.Parameters.Add(new NpgsqlParameter
-    {
-        ParameterName = "p1",
-        Value = someComposite,
-        DataTypeName = "some_composite_type"
-    });
-    cmd.ExecuteNonQuery();
-}
-
-// Reading composite as ExpandoObject
-using (var cmd = new NpgsqlCommand("SELECT some_composite_column FROM some_table", conn))
-using (var reader = cmd.ExecuteReader()) {
-    reader.Read();
-    var compositeValue = (dynamic)reader.GetValue(0);
-    Console.WriteLine(compositeValue.Foo);
-    Console.WriteLine(compositeValue.Bar);
-}
-```
-
-As long as your CLR types `SomeEnum` and `SomeType` contain fields/properties which correspond to the PostgreSQL type being read/written, everything will work as expected. Note that the default name translator is used (see the section about name translation).
