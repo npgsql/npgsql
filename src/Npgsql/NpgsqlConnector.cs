@@ -760,7 +760,11 @@ namespace Npgsql
             {
                 var endpoint = endpoints[i];
                 Log.Trace($"Attempting to connect to {endpoint}");
-                var protocolType = endpoint.AddressFamily == AddressFamily.InterNetwork ? ProtocolType.Tcp : ProtocolType.IP;
+                var protocolType =
+                    endpoint.AddressFamily == AddressFamily.InterNetwork ||
+                    endpoint.AddressFamily == AddressFamily.InterNetworkV6
+                    ? ProtocolType.Tcp
+                    : ProtocolType.IP;
                 var socket = new Socket(endpoint.AddressFamily, SocketType.Stream, protocolType)
                 {
                     Blocking = false
