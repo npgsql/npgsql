@@ -80,7 +80,7 @@ namespace Npgsql.Replication.PgOutput
                         xLogData.WalEnd,
                         xLogData.ServerClock,
                         new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
-                        TimestampHandler.FromPostgresTimestamp(buf.ReadInt64()),
+                        NpgsqlDateTime.ToDateTime(buf.ReadInt64()),
                         buf.ReadUInt32()
                     );
                     continue;
@@ -95,7 +95,7 @@ namespace Npgsql.Replication.PgOutput
                         buf.ReadByte(),
                         new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
                         new NpgsqlLogSequenceNumber(buf.ReadUInt64()),
-                        TimestampHandler.FromPostgresTimestamp(buf.ReadInt64())
+                        NpgsqlDateTime.ToDateTime(buf.ReadInt64())
                     );
                     continue;
                 }

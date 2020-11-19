@@ -18,10 +18,10 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    public class TimestampTzHandlerFactory : NpgsqlTypeHandlerFactory<DateTime>
+    public class TimestampTzHandlerFactory : NpgsqlTypeHandlerFactory<DateTimeOffset>
     {
         /// <inheritdoc />
-        public override NpgsqlTypeHandler<DateTime> Create(PostgresType postgresType, NpgsqlConnection conn)
+        public override NpgsqlTypeHandler<DateTimeOffset> Create(PostgresType postgresType, NpgsqlConnection conn)
             => conn.HasIntegerDateTimes  // Check for the legacy floating point timestamps feature
                 ? new TimestampTzHandler(postgresType, conn.Connector!.ConvertInfinityDateTime)
                 : throw new NotSupportedException($"The deprecated floating-point date/time format is not supported by {nameof(Npgsql)}.");
@@ -37,99 +37,50 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    public partial class TimestampTzHandler : TimestampHandler, INpgsqlSimpleTypeHandler<DateTimeOffset>
+    public partial class TimestampTzHandler : NpgsqlSimpleTypeHandlerWithPsv<DateTimeOffset, NpgsqlTimestamptz>
     {
+        readonly bool _convertInfinityDateTime;
+
         /// <summary>
-        /// Constructs an <see cref="TimestampTzHandler"/>.
+        /// Constructs a <see cref="TimestampHandler"/>.
         /// </summary>
         public TimestampTzHandler(PostgresType postgresType, bool convertInfinityDateTime)
-            : base(postgresType, convertInfinityDateTime) {}
+            : base(postgresType) => _convertInfinityDateTime = convertInfinityDateTime;
 
         /// <inheritdoc />
-        public override IRangeHandler CreateRangeHandler(PostgresType rangeBackendType)
-            => new RangeHandler<DateTime, DateTimeOffset>(rangeBackendType, this);
-
-        #region Read
-
-        /// <inheritdoc />
-        public override DateTime Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-            => base.Read(buf, len, fieldDescription).ToLocalTime();
-
-        /// <inheritdoc />
-        protected override NpgsqlDateTime ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
+        public override DateTimeOffset Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
         {
-            var ts = ReadTimeStamp(buf, len, fieldDescription);
-            return new NpgsqlDateTime(ts.Date, ts.Time, DateTimeKind.Utc).ToLocalTime();
-        }
-
-        DateTimeOffset INpgsqlSimpleTypeHandler<DateTimeOffset>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
-        {
-            var postgresTimestamp = buf.ReadInt64();
-            if (postgresTimestamp == long.MaxValue)
-                return ConvertInfinityDateTime
+            var value = ReadPsv(buf, len, fieldDescription);
+            return _convertInfinityDateTime && NpgsqlTimestamptz.IsInfinity(value)
+                ? value == NpgsqlTimestamptz.PositiveInfinity
                     ? DateTimeOffset.MaxValue
-                    : throw new InvalidCastException(InfinityExceptionMessage);
-            if (postgresTimestamp == long.MinValue)
-                return ConvertInfinityDateTime
-                    ? DateTimeOffset.MinValue
-                    : throw new InvalidCastException(InfinityExceptionMessage);
-            try
-            {
-                return FromPostgresTimestamp(postgresTimestamp).ToLocalTime();
-            }
-            catch (ArgumentOutOfRangeException e)
-            {
-                throw new InvalidCastException(OutOfRangeExceptionMessage, e);
-            }
-        }
-
-        #endregion Read
-
-        #region Write
-
-        /// <inheritdoc />
-        public int ValidateAndGetLength(DateTimeOffset value, NpgsqlParameter? parameter) => 8;
-
-        /// <inheritdoc />
-        public override void Write(NpgsqlDateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
-        {
-            switch (value.Kind)
-            {
-            case DateTimeKind.Unspecified:
-            case DateTimeKind.Utc:
-                break;
-            case DateTimeKind.Local:
-                value = value.ToUniversalTime();
-                break;
-            default:
-                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {value.Kind} of enum {nameof(DateTimeKind)}. Please file a bug.");
-            }
-
-            base.Write(value, buf, parameter);
+                    : DateTimeOffset.MinValue
+                : (DateTimeOffset)value;
         }
 
         /// <inheritdoc />
-        public override void Write(DateTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
-        {
-            switch (value.Kind)
-            {
-            case DateTimeKind.Unspecified:
-            case DateTimeKind.Utc:
-                break;
-            case DateTimeKind.Local:
-                value = value.ToUniversalTime();
-                break;
-            default:
-                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {value.Kind} of enum {nameof(DateTimeKind)}. Please file a bug.");
-            }
-
-            base.Write(value, buf, parameter);
-        }
+        protected override NpgsqlTimestamptz ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null) =>
+            new NpgsqlTimestamptz(buf.ReadInt64());
 
         /// <inheritdoc />
-        public void Write(DateTimeOffset value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
-            => base.Write(value.ToUniversalTime().DateTime, buf, parameter);
+        public override int ValidateAndGetLength(DateTimeOffset value, NpgsqlParameter? parameter) => 8;
 
-        #endregion Write
+        /// <inheritdoc />
+        public override int ValidateAndGetLength(NpgsqlTimestamptz value, NpgsqlParameter? parameter) => 8;
+
+        /// <inheritdoc />
+        public override void Write(DateTimeOffset value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter) =>
+            Write(
+                _convertInfinityDateTime
+                    ? value == DateTimeOffset.MinValue ? NpgsqlTimestamptz.NegativeInfinity
+                    : value == DateTimeOffset.MaxValue ? NpgsqlTimestamptz.PositiveInfinity
+                    : (NpgsqlTimestamptz)value
+                    : (NpgsqlTimestamptz)value,
+                buf,
+                parameter);
+
+        /// <inheritdoc />
+        public override void Write(NpgsqlTimestamptz value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter) =>
+            buf.WriteInt64(value.Microseconds);
     }
 }

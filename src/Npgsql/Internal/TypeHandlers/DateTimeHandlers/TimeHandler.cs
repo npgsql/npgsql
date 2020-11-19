@@ -37,24 +37,34 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    public partial class TimeHandler : NpgsqlSimpleTypeHandler<TimeSpan>
+    public partial class TimeHandler : NpgsqlSimpleTypeHandlerWithPsv<TimeSpan, NpgsqlTime>
     {
         /// <summary>
-        /// Constructs a <see cref="TimeHandler"/>.
+        /// Constructs a <see cref="DateHandler"/>
         /// </summary>
-        public TimeHandler(PostgresType postgresType) : base(postgresType) {}
-
-        // PostgreSQL time resolution == 1 microsecond == 10 ticks
-        /// <inheritdoc />
-        public override TimeSpan Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-            => new(buf.ReadInt64() * 10);
+        public TimeHandler(PostgresType postgresType)
+            : base(postgresType) { }
 
         /// <inheritdoc />
-        public override int ValidateAndGetLength(TimeSpan value, NpgsqlParameter? parameter)
-            => 8;
+        public override TimeSpan Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null) =>
+            new TimeSpan(NpgsqlDateTime.ToTicks(buf.ReadInt64()));
 
         /// <inheritdoc />
-        public override void Write(TimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
-            => buf.WriteInt64(value.Ticks / 10);
+        protected override NpgsqlTime ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null) =>
+            new NpgsqlTime(buf.ReadInt32());
+
+        /// <inheritdoc />
+        public override int ValidateAndGetLength(TimeSpan value, NpgsqlParameter? parameter) => 8;
+
+        /// <inheritdoc />
+        public override int ValidateAndGetLength(NpgsqlTime value, NpgsqlParameter? parameter) => 8;
+
+        /// <inheritdoc />
+        public override void Write(TimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter) =>
+            buf.WriteInt64(NpgsqlDateTime.ToMicroseconds(value.Ticks));
+
+        /// <inheritdoc />
+        public override void Write(NpgsqlTime value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter) =>
+            buf.WriteInt64(value.Microseconds);
     }
 }

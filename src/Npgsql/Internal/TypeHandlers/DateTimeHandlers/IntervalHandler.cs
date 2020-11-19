@@ -36,7 +36,7 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    public partial class IntervalHandler : NpgsqlSimpleTypeHandlerWithPsv<TimeSpan, NpgsqlTimeSpan>
+    public partial class IntervalHandler : NpgsqlSimpleTypeHandlerWithPsv<TimeSpan, NpgsqlInterval>
     {
         /// <summary>
         /// Constructs an <see cref="IntervalHandler"/>
@@ -45,27 +45,22 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
 
         /// <inheritdoc />
         public override TimeSpan Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-            => (TimeSpan)((INpgsqlSimpleTypeHandler<NpgsqlTimeSpan>)this).Read(buf, len, fieldDescription);
+            => (TimeSpan)ReadPsv(buf, len, fieldDescription);
 
         /// <inheritdoc />
-        protected override NpgsqlTimeSpan ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-        {
-            var ticks = buf.ReadInt64();
-            var day = buf.ReadInt32();
-            var month = buf.ReadInt32();
-            return new NpgsqlTimeSpan(month, day, ticks * 10);
-        }
+        protected override NpgsqlInterval ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
+            => new NpgsqlInterval(microseconds: buf.ReadInt64(), days: buf.ReadInt32(), months: buf.ReadInt32());
 
         /// <inheritdoc />
         public override int ValidateAndGetLength(TimeSpan value, NpgsqlParameter? parameter) => 16;
 
         /// <inheritdoc />
-        public override int ValidateAndGetLength(NpgsqlTimeSpan value, NpgsqlParameter? parameter) => 16;
+        public override int ValidateAndGetLength(NpgsqlInterval value, NpgsqlParameter? parameter) => 16;
 
         /// <inheritdoc />
-        public override void Write(NpgsqlTimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
+        public override void Write(NpgsqlInterval value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
-            buf.WriteInt64(value.Ticks / 10); // TODO: round?
+            buf.WriteInt64(value.Microseconds);
             buf.WriteInt32(value.Days);
             buf.WriteInt32(value.Months);
         }
@@ -73,6 +68,6 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
         // TODO: Can write directly from TimeSpan
         /// <inheritdoc />
         public override void Write(TimeSpan value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
-            => Write(value, buf, parameter);
+            => Write((NpgsqlInterval)value, buf, parameter);
     }
 }

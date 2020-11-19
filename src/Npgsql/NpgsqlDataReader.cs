@@ -1155,7 +1155,7 @@ namespace Npgsql
         public TimeSpan GetTimeSpan(int ordinal) => GetFieldValue<TimeSpan>(ordinal);
 
         /// <summary>
-        /// Gets the value of the specified column as an <see cref="NpgsqlTimeSpan"/>,
+        /// Gets the value of the specified column as an <see cref="NpgsqlInterval"/>,
         /// Npgsql's provider-specific type for time spans.
         /// </summary>
         /// <remarks>
@@ -1169,10 +1169,10 @@ namespace Npgsql
         /// </remarks>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public NpgsqlTimeSpan GetInterval(int ordinal) => GetFieldValue<NpgsqlTimeSpan>(ordinal);
+        public NpgsqlInterval GetInterval(int ordinal) => GetFieldValue<NpgsqlInterval>(ordinal);
 
         /// <summary>
-        /// Gets the value of the specified column as an <see cref="NpgsqlDateTime"/>,
+        /// Gets the value of the specified column as an <see cref="NpgsqlTimestamp"/>,
         /// Npgsql's provider-specific type for date/time timestamps. Note that this type covers
         /// both PostgreSQL's "timestamp with time zone" and "timestamp without time zone" types,
         /// which differ only in how they are converted upon input/output.
@@ -1186,7 +1186,7 @@ namespace Npgsql
         /// </remarks>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
-        public NpgsqlDateTime GetTimeStamp(int ordinal) => GetFieldValue<NpgsqlDateTime>(ordinal);
+        public NpgsqlTimestamp GetTimeStamp(int ordinal) => GetFieldValue<NpgsqlTimestamp>(ordinal);
 
         #endregion
 

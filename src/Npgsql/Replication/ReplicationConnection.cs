@@ -458,7 +458,7 @@ namespace Npgsql.Replication
                         await buf.EnsureAsync(24);
                         var startLsn = buf.ReadUInt64();
                         var endLsn = buf.ReadUInt64();
-                        var sendTime = TimestampHandler.FromPostgresTimestamp(buf.ReadInt64()).ToLocalTime();
+                        var sendTime = NpgsqlDateTime.ToDateTime(buf.ReadInt64()).ToLocalTime();
 
                         if (unchecked((ulong)Interlocked.Read(ref _lastReceivedLsn)) < startLsn)
                             Interlocked.Exchange(ref _lastReceivedLsn, unchecked((long)startLsn));
@@ -587,7 +587,7 @@ namespace Npgsql.Replication
                 buf.WriteInt64(Interlocked.Read(ref _lastReceivedLsn));
                 buf.WriteInt64(Interlocked.Read(ref _lastFlushedLsn));
                 buf.WriteInt64(Interlocked.Read(ref _lastAppliedLsn));
-                buf.WriteInt64(TimestampHandler.ToPostgresTimestamp(DateTime.Now));
+                buf.WriteInt64(new NpgsqlTimestamp(default).Microseconds);
                 buf.WriteByte(requestReply ? (byte)1 : (byte)0);
 
                 await connector.Flush(async: true, cancellationToken);

@@ -36,7 +36,7 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
     /// should be considered somewhat unstable, and  may change in breaking ways, including in non-major releases.
     /// Use it at your own risk.
     /// </remarks>
-    public partial class TimeTzHandler : NpgsqlSimpleTypeHandler<DateTimeOffset>, INpgsqlSimpleTypeHandler<DateTime>, INpgsqlSimpleTypeHandler<TimeSpan>
+    public partial class TimeTzHandler : NpgsqlSimpleTypeHandlerWithPsv<DateTimeOffset, NpgsqlTimetz>, INpgsqlSimpleTypeHandler<DateTime>, INpgsqlSimpleTypeHandler<TimeSpan>
     {
         // Binary Format: int64 expressing microseconds, int32 expressing timezone in seconds, negative
 
@@ -48,19 +48,18 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
         #region Read
 
         /// <inheritdoc />
-        public override DateTimeOffset Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-        {
-            // Adjust from 1 microsecond to 100ns. Time zone (in seconds) is inverted.
-            var ticks = buf.ReadInt64() * 10;
-            var offset = new TimeSpan(0, 0, -buf.ReadInt32());
-            return new DateTimeOffset(ticks + TimeSpan.TicksPerDay, offset);
-        }
+        protected override NpgsqlTimetz ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null) =>
+            new NpgsqlTimetz(buf.ReadInt64(), buf.ReadInt32());
 
-        DateTime INpgsqlSimpleTypeHandler<DateTime>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
-            => Read(buf, len, fieldDescription).LocalDateTime;
+        /// <inheritdoc />
+        public override DateTimeOffset Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null) =>
+            default;
 
-        TimeSpan INpgsqlSimpleTypeHandler<TimeSpan>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
-            => Read(buf, len, fieldDescription).LocalDateTime.TimeOfDay;
+        DateTime INpgsqlSimpleTypeHandler<DateTime>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription) =>
+            Read(buf, len, fieldDescription).LocalDateTime;
+
+        TimeSpan INpgsqlSimpleTypeHandler<TimeSpan>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription) =>
+            Read(buf, len, fieldDescription).LocalDateTime.TimeOfDay;
 
         #endregion Read
 
@@ -72,6 +71,9 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
         public int ValidateAndGetLength(TimeSpan value, NpgsqlParameter? parameter)                => 12;
         /// <inheritdoc />
         public int ValidateAndGetLength(DateTime value, NpgsqlParameter? parameter)                => 12;
+
+        /// <inheritdoc />
+        public override int ValidateAndGetLength(NpgsqlTimetz value, NpgsqlParameter? parameter)   => 12;
 
         /// <inheritdoc />
         public override void Write(DateTimeOffset value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
@@ -105,6 +107,13 @@ namespace Npgsql.Internal.TypeHandlers.DateTimeHandlers
         {
             buf.WriteInt64(value.Ticks / 10);
             buf.WriteInt32(-(int)(TimeZoneInfo.Local.BaseUtcOffset.Ticks / TimeSpan.TicksPerSecond));
+        }
+
+        /// <inheritdoc />
+        public override void Write(NpgsqlTimetz value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
+        {
+            buf.WriteInt64(value.Microseconds);
+            buf.WriteInt32(value.TimeZoneSeconds);
         }
 
         #endregion Write

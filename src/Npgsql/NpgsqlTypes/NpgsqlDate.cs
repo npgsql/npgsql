@@ -1,452 +1,235 @@
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Text;
+﻿using System;
 
-#pragma warning disable 1591
-
-// ReSharper disable once CheckNamespace
 namespace NpgsqlTypes
 {
-    [Serializable]
-    public readonly struct NpgsqlDate : IEquatable<NpgsqlDate>, IComparable<NpgsqlDate>, IComparable,
-        IComparer<NpgsqlDate>, IComparer
+    /// <summary>
+    /// Represents a date.
+    /// </summary>
+    public readonly struct NpgsqlDate : IEquatable<NpgsqlDate>, IComparable<NpgsqlDate>
     {
-        //Number of days since January 1st CE (January 1st EV). 1 Jan 1 CE = 0, 2 Jan 1 CE = 1, 31 Dec 1 BCE = -1, etc.
-        readonly int _daysSinceEra;
-        readonly InternalType _type;
-
-        #region Constants
-
-        static readonly int[] CommonYearDays = { 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365 };
-        static readonly int[] LeapYearDays = { 0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366 };
-        static readonly int[] CommonYearMaxes = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
-        static readonly int[] LeapYearMaxes = { 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+        readonly int _days;
 
         /// <summary>
-        /// Represents the date 1970-01-01
+        /// Initializes a new instance of the <see cref="NpgsqlDate"/>
+        /// structure to a specified number of days since PostgreSQL epoch.
         /// </summary>
-        public static readonly NpgsqlDate Epoch = new(1970, 1, 1);
+        /// <param name="days">
+        /// A date expressed in number of days since PostgreSQL epoch.
+        /// </param>
+        /// <seealso cref="Days"/>
+        /// <seealso cref="PostgreSqlEpoch"/>
+        public NpgsqlDate(int days) => _days =
+            days >= NpgsqlDateTime.DaysMinValue &&
+            days <= NpgsqlDateTime.DaysMaxValue ||
+            days == NpgsqlDateTime.DaysNegativeInfinity ||
+            days == NpgsqlDateTime.DaysPositiveInfinity
+            ? days : throw new ArgumentOutOfRangeException(nameof(days));
 
         /// <summary>
-        /// Represents the date 0001-01-01
+        /// Initializes a new instance of the <see cref="NpgsqlDate"/>
+        /// structure to the specified year, month, and day.
         /// </summary>
-        public static readonly NpgsqlDate Era = new(0);
-
-        public const int MaxYear = 5874897;
-        public const int MinYear = -4714;
-        public static readonly NpgsqlDate MaxCalculableValue = new(MaxYear, 12, 31);
-        public static readonly NpgsqlDate MinCalculableValue = new(MinYear, 11, 24);
-
-        public static readonly NpgsqlDate Infinity = new(InternalType.Infinity);
-        public static readonly NpgsqlDate NegativeInfinity = new(InternalType.NegativeInfinity);
-
-        const int DaysInYear = 365; //Common years
-        const int DaysIn4Years = 4 * DaysInYear + 1; //Leap year every 4 years.
-        const int DaysInCentury = 25 * DaysIn4Years - 1; //Except no leap year every 100.
-        const int DaysIn4Centuries = 4 * DaysInCentury + 1; //Except leap year every 400.
-
-        #endregion
-
-        #region Constructors
-
-        NpgsqlDate(InternalType type)
-        {
-            _type = type;
-            _daysSinceEra = 0;
-        }
-
-        internal NpgsqlDate(int days)
-        {
-            _type = InternalType.Finite;
-            _daysSinceEra = days;
-        }
-
-        public NpgsqlDate(DateTime dateTime) : this((int)(dateTime.Ticks / TimeSpan.TicksPerDay)) {}
-
-        public NpgsqlDate(NpgsqlDate copyFrom) : this(copyFrom._daysSinceEra) {}
-
-        public NpgsqlDate(int year, int month, int day)
-        {
-            _type = InternalType.Finite;
-            if (year == 0 || year < MinYear || year > MaxYear || month < 1 || month > 12 || day < 1 ||
-                (day > (IsLeap(year) ? 366 : 365)))
-            {
-                throw new ArgumentOutOfRangeException();
-            }
-
-            _daysSinceEra = DaysForYears(year) + (IsLeap(year) ? LeapYearDays : CommonYearDays)[month - 1] + day - 1;
-        }
-
-        #endregion
-
-        #region String Conversions
-
-        public override string ToString()
-            => _type switch
-            {
-                InternalType.Infinity         => "infinity",
-                InternalType.NegativeInfinity => "-infinity",
-                //Format of yyyy-MM-dd with " BC" for BCE and optional " AD" for CE which we omit here.
-                _ => new StringBuilder(Math.Abs(Year).ToString("D4"))
-                    .Append('-').Append(Month.ToString("D2"))
-                    .Append('-').Append(Day.ToString("D2"))
-                    .Append(_daysSinceEra < 0 ? " BC" : "").ToString()
-            };
-
-        public static NpgsqlDate Parse(string str)
-        {
-
-            if (str == null) {
-                throw new ArgumentNullException(nameof(str));
-            }
-
-            if (str == "infinity")
-                return Infinity;
-
-            if (str == "-infinity")
-                return NegativeInfinity;
-
-            str = str.Trim();
-            try {
-                var idx = str.IndexOf('-');
-                if (idx == -1) {
-                    throw new FormatException();
-                }
-                var year = int.Parse(str.Substring(0, idx));
-                var idxLast = idx + 1;
-                if ((idx = str.IndexOf('-', idxLast)) == -1) {
-                    throw new FormatException();
-                }
-                var month = int.Parse(str.Substring(idxLast, idx - idxLast));
-                idxLast = idx + 1;
-                if ((idx = str.IndexOf(' ', idxLast)) == -1) {
-                    idx = str.Length;
-                }
-                var day = int.Parse(str.Substring(idxLast, idx - idxLast));
-                if (str.Contains("BC")) {
-                    year = -year;
-                }
-                return new NpgsqlDate(year, month, day);
-            } catch (OverflowException) {
-                throw;
-            } catch (Exception) {
-                throw new FormatException();
-            }
-        }
-
-        public static bool TryParse(string str, out NpgsqlDate date)
-        {
-            try {
-                date = Parse(str);
-                return true;
-            } catch {
-                date = Era;
-                return false;
-            }
-        }
-
-        #endregion
-
-        #region Public Properties
-
-        public static NpgsqlDate Now => new(DateTime.Now);
-        public static NpgsqlDate Today => Now;
-        public static NpgsqlDate Yesterday => Now.AddDays(-1);
-        public static NpgsqlDate Tomorrow => Now.AddDays(1);
-
-        public int DayOfYear => _daysSinceEra - DaysForYears(Year) + 1;
-
-        public int Year
-        {
-            get
-            {
-                var guess = (int)Math.Round(_daysSinceEra/365.2425);
-                var test = guess - 1;
-                while (DaysForYears(++test) <= _daysSinceEra) {}
-                return test - 1;
-            }
-        }
-
-        public int Month
-        {
-            get
-            {
-                var i = 1;
-                var target = DayOfYear;
-                var array = IsLeapYear ? LeapYearDays : CommonYearDays;
-                while (target > array[i])
-                {
-                    ++i;
-                }
-                return i;
-            }
-        }
-
-        public int Day => DayOfYear - (IsLeapYear ? LeapYearDays : CommonYearDays)[Month - 1];
-
-        public DayOfWeek DayOfWeek => (DayOfWeek) ((_daysSinceEra + 1)%7);
-
-        internal int DaysSinceEra => _daysSinceEra;
-
-        public bool IsLeapYear => IsLeap(Year);
-
-        public bool IsInfinity => _type == InternalType.Infinity;
-        public bool IsNegativeInfinity => _type == InternalType.NegativeInfinity;
-
-        public bool IsFinite
-            => _type switch {
-                InternalType.Finite           => true,
-                InternalType.Infinity         => false,
-                InternalType.NegativeInfinity => false,
-                _ => throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {_type} of enum {nameof(NpgsqlDate)}.{nameof(InternalType)}. Please file a bug.")
-            };
-
-        #endregion
-
-        #region Internals
-
-        static int DaysForYears(int years)
-        {
-            //Number of years after 1CE (0 for 1CE, -1 for 1BCE, 1 for 2CE).
-            var calcYear = years < 1 ? years : years - 1;
-
-            return calcYear / 400 * DaysIn4Centuries //Blocks of 400 years with their leap and common years
-                   + calcYear % 400 / 100 * DaysInCentury //Remaining blocks of 100 years with their leap and common years
-                   + calcYear % 100 / 4 * DaysIn4Years //Remaining blocks of 4 years with their leap and common years
-                   + calcYear % 4 * DaysInYear //Remaining years, all common
-                   + (calcYear < 0 ? -1 : 0); //And 1BCE is leap.
-        }
-
-        static bool IsLeap(int year)
-        {
-            //Every 4 years is a leap year
-            //Except every 100 years isn't a leap year.
-            //Except every 400 years is.
-            if (year < 1)
-            {
-                year = year + 1;
-            }
-            return (year%4 == 0) && ((year%100 != 0) || (year%400 == 0));
-        }
-
-        #endregion
-
-        #region Arithmetic
-
-        public NpgsqlDate AddDays(int days)
-            => _type switch
-        {
-            InternalType.Infinity         => Infinity,
-            InternalType.NegativeInfinity => NegativeInfinity,
-            InternalType.Finite           => new NpgsqlDate(_daysSinceEra + days),
-            _ => throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {_type} of enum {nameof(NpgsqlDate)}.{nameof(InternalType)}. Please file a bug.")
-        };
-
-        public NpgsqlDate AddYears(int years)
-        {
-            switch (_type) {
-            case InternalType.Infinity:
-                return Infinity;
-            case InternalType.NegativeInfinity:
-                return NegativeInfinity;
-            case InternalType.Finite:
-                break;
-            default:
-                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {_type} of enum {nameof(NpgsqlDate)}.{nameof(InternalType)}. Please file a bug.");
-            }
-
-            var newYear = Year + years;
-            if (newYear >= 0 && _daysSinceEra < 0) //cross 1CE/1BCE divide going up
-            {
-                ++newYear;
-            }
-            else if (newYear <= 0 && _daysSinceEra >= 0) //cross 1CE/1BCE divide going down
-            {
-                --newYear;
-            }
-            return new NpgsqlDate(newYear, Month, Day);
-        }
-
-        public NpgsqlDate AddMonths(int months)
-        {
-            switch (_type) {
-            case InternalType.Infinity:
-                return Infinity;
-            case InternalType.NegativeInfinity:
-                return NegativeInfinity;
-            case InternalType.Finite:
-                break;
-            default:
-                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {_type} of enum {nameof(NpgsqlDate)}.{nameof(InternalType)}. Please file a bug.");
-            }
-
-            var newYear = Year;
-            var newMonth = Month + months;
-
-            while (newMonth > 12)
-            {
-                newMonth -= 12;
-                newYear += 1;
-            }
-            while (newMonth < 1)
-            {
-                newMonth += 12;
-                newYear -= 1;
-            }
-            var maxDay = (IsLeap(newYear) ? LeapYearMaxes : CommonYearMaxes)[newMonth - 1];
-            var newDay = Day > maxDay ? maxDay : Day;
-            return new NpgsqlDate(newYear, newMonth, newDay);
-
-        }
-
-        public NpgsqlDate Add(in NpgsqlTimeSpan interval)
-        {
-            switch (_type) {
-            case InternalType.Infinity:
-                return Infinity;
-            case InternalType.NegativeInfinity:
-                return NegativeInfinity;
-            case InternalType.Finite:
-                break;
-            default:
-                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {_type} of enum {nameof(NpgsqlDate)}.{nameof(InternalType)}. Please file a bug.");
-            }
-
-            return AddMonths(interval.Months).AddDays(interval.Days);
-        }
-
-        internal NpgsqlDate Add(in NpgsqlTimeSpan interval, int carriedOverflow)
-        {
-            switch (_type) {
-            case InternalType.Infinity:
-                return Infinity;
-            case InternalType.NegativeInfinity:
-                return NegativeInfinity;
-            case InternalType.Finite:
-                break;
-            default:
-                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {_type} of enum {nameof(NpgsqlDate)}.{nameof(InternalType)}. Please file a bug.");
-            }
-
-            return AddMonths(interval.Months).AddDays(interval.Days + carriedOverflow);
-        }
-
-        #endregion
-
-        #region Comparison
-
-        public int Compare(NpgsqlDate x, NpgsqlDate y) => x.CompareTo(y);
-
-        public int Compare(object? x, object? y)
-        {
-            if (x == null)
-            {
-                return y == null ? 0 : -1;
-            }
-            if (y == null)
-            {
-                return 1;
-            }
-            if (!(x is IComparable) || !(y is IComparable))
-            {
-                throw new ArgumentException();
-            }
-            return ((IComparable) x).CompareTo(y);
-        }
-
-        public bool Equals(NpgsqlDate other)
-            => _type switch
-            {
-                InternalType.Infinity         => other._type == InternalType.Infinity,
-                InternalType.NegativeInfinity => other._type == InternalType.NegativeInfinity,
-                InternalType.Finite           => other._type == InternalType.Finite && _daysSinceEra == other._daysSinceEra,
-                _ => false
-            };
-
-        public override bool Equals(object? obj) => obj is NpgsqlDate date && Equals(date);
-
-        public int CompareTo(NpgsqlDate other)
-            => _type switch
-            {
-                InternalType.Infinity         => other._type == InternalType.Infinity ? 0 : 1,
-                InternalType.NegativeInfinity => other._type == InternalType.NegativeInfinity ? 0 : -1,
-                _ => other._type switch
-                {
-                    InternalType.Infinity         => -1,
-                    InternalType.NegativeInfinity => 1,
-                    _                             => _daysSinceEra.CompareTo(other._daysSinceEra)
-                }
-            };
-
-        public int CompareTo(object? o)
-            => o == null
-                ? 1
-                : o is NpgsqlDate npgsqlDate
-                    ? CompareTo(npgsqlDate)
-                    : throw new ArgumentException();
-
-        public override int GetHashCode() => _daysSinceEra;
-
-        #endregion
-
-        #region Operators
-
-        public static bool operator ==(NpgsqlDate x, NpgsqlDate y) => x.Equals(y);
-        public static bool operator !=(NpgsqlDate x, NpgsqlDate y) => !(x == y);
-        public static bool operator <(NpgsqlDate x, NpgsqlDate y)  => x.CompareTo(y) < 0;
-        public static bool operator >(NpgsqlDate x, NpgsqlDate y)  => x.CompareTo(y) > 0;
-        public static bool operator <=(NpgsqlDate x, NpgsqlDate y) => x.CompareTo(y) <= 0;
-        public static bool operator >=(NpgsqlDate x, NpgsqlDate y) => x.CompareTo(y) >= 0;
-
-        public static DateTime ToDateTime(NpgsqlDate date)
-        {
-            switch (date._type)
-            {
-            case InternalType.Infinity:
-            case InternalType.NegativeInfinity:
-                throw new InvalidCastException("Infinity values can't be cast to DateTime");
-            case InternalType.Finite:
-                try { return new DateTime(date._daysSinceEra * NpgsqlTimeSpan.TicksPerDay); }
-                catch { throw new InvalidCastException(); }
-            default:
-                throw new InvalidOperationException($"Internal Npgsql bug: unexpected value {date._type} of enum {nameof(NpgsqlDate)}.{nameof(InternalType)}. Please file a bug.");
-            }
-        }
-
-        public static explicit operator DateTime(NpgsqlDate date) => ToDateTime(date);
-
-        public static NpgsqlDate ToNpgsqlDate(DateTime date)
-            => new((int)(date.Ticks / NpgsqlTimeSpan.TicksPerDay));
-
-        public static explicit operator NpgsqlDate(DateTime date) => ToNpgsqlDate(date);
-
-        public static NpgsqlDate operator +(NpgsqlDate date, NpgsqlTimeSpan interval)
-            => date.Add(interval);
-
-        public static NpgsqlDate operator +(NpgsqlTimeSpan interval, NpgsqlDate date)
-            => date.Add(interval);
-
-        public static NpgsqlDate operator -(NpgsqlDate date, NpgsqlTimeSpan interval)
-            => date.Subtract(interval);
-
-        public NpgsqlDate Subtract(in NpgsqlTimeSpan interval) => Add(-interval);
-
-        public static NpgsqlTimeSpan operator -(NpgsqlDate dateX, NpgsqlDate dateY)
-        {
-            if (dateX._type != InternalType.Finite || dateY._type != InternalType.Finite)
-                throw new ArgumentException("Can't subtract infinity date values");
-
-            return new NpgsqlTimeSpan(0, dateX._daysSinceEra - dateY._daysSinceEra, 0);
-        }
-
-        #endregion
-
-        enum InternalType
-        {
-            Finite,
-            Infinity,
-            NegativeInfinity
-        }
+        /// <param name="year">The year (4713 BC through 5874897 AD).</param>
+        /// <param name="month">The month (1 through 12).</param>
+        /// <param name="day">The day (1 through the number of days in <paramref name="month"/>).</param>
+        public NpgsqlDate(int year, int month, int day) => _days = NpgsqlDateTime.ToDays(year, month, day);
+
+        /// <summary>Represents the largest possible value of <see cref="NpgsqlDate"/>.</summary>
+        /// <value>The largest possible value of <see cref="NpgsqlDate"/>.</value>
+        public static NpgsqlDate MaxValue => new NpgsqlDate(NpgsqlDateTime.DaysMaxValue);
+
+        /// <summary>Represents the smallest possible value of <see cref="NpgsqlDate"/>.</summary>
+        /// <value>The smallest possible value of <see cref="NpgsqlDate"/>.</value>
+        public static NpgsqlDate MinValue => new NpgsqlDate(NpgsqlDateTime.DaysMinValue);
+
+        /// <summary>Represents negative infinity.</summary>
+        /// <value>Negative infinity.</value>
+        public static NpgsqlDate NegativeInfinity => new NpgsqlDate(NpgsqlDateTime.DaysNegativeInfinity);
+
+        /// <summary>Represents positive infinity.</summary>
+        /// <value>Positive infinity.</value>
+        public static NpgsqlDate PositiveInfinity => new NpgsqlDate(NpgsqlDateTime.DaysPositiveInfinity);
+
+        /// <summary>
+        /// The value of this constant is equivalent to January 1, 2000, in the Gregorian calendar.
+        /// <see cref="PostgreSqlEpoch"/> defines the point in time when PostgreSQL time is equal to 0.
+        /// </summary>
+        public static NpgsqlDate PostgreSqlEpoch => new NpgsqlDate(0);
+
+        /// <summary>
+        /// The value of this constant is equivalent to January 1, 1970, in the Gregorian calendar.
+        /// <see cref="UnixEpoch"/> defines the point in time when Unix time is equal to 0.
+        /// </summary>
+        public static NpgsqlDate UnixEpoch => new NpgsqlDate(-10957);
+
+        /// <summary>Gets the year component of the date represented by this instance.</summary>
+        /// <value>The year component.</value>
+        public int Year => NpgsqlDateTime.GetDatePart(Days, NpgsqlDateTimePart.Year);
+
+        /// <summary>Gets the month component of the date represented by this instance.</summary>
+        /// <value>The month component, expressed as a value between 1 and 12.</value>
+        public int Month => NpgsqlDateTime.GetDatePart(Days, NpgsqlDateTimePart.Month);
+
+        /// <summary>Gets the day component of the date represented by this instance.</summary>
+        /// <value>The day component, expressed as a value between 1 and 31.</value>
+        public int Day => NpgsqlDateTime.GetDatePart(Days, NpgsqlDateTimePart.Day);
+
+        /// <summary>Gets the number of days since PostgreSQL epoch.</summary>
+        /// <value>The number of days since PostgreSQL epoch.</value>
+        /// <seealso cref="PostgreSqlEpoch"/>
+        public int Days => _days;
+
+        /// <summary>
+        /// Determines whether the specified value is finite.
+        /// </summary>
+        /// <param name="value">A date.</param>
+        /// <returns>
+        /// <see langword="true"/> if the specified value is finite;
+        /// otherwise, <see langword="false"/>.
+        /// </returns>
+        public static bool IsFinity(NpgsqlDate value) =>
+            value != NegativeInfinity &&
+            value != PositiveInfinity;
+
+        /// <summary>
+        /// Determines whether the specified value is infinite.
+        /// </summary>
+        /// <param name="value">A date.</param>
+        /// <returns>
+        /// <see langword="true"/> if the specified value is infinite;
+        /// otherwise, <see langword="false"/>.
+        /// </returns>
+        public static bool IsInfinity(NpgsqlDate value) =>
+            value == NegativeInfinity ||
+            value == PositiveInfinity;
+
+        /// <summary>
+        /// Converts the value of the current <see cref="NpgsqlDate"/> object to its equivalent
+        /// string representation using the specified format and the formatting conventions of the current culture.
+        /// </summary>
+        /// <returns></returns>
+        public override string ToString() =>
+            this == PositiveInfinity ? "infinity" :
+            this == NegativeInfinity ? "-infinity" :
+            $"{Year:D4}-{Month:D2}-{Day:D2}";
+
+        /// <summary>
+        /// Compares the value of this instance to a specified <see cref="NpgsqlDate"/> value
+        /// and returns an integer that indicates whether this instance is earlier than,
+        /// the same as, or later than the specified <see cref="NpgsqlDate"/> value.
+        /// </summary>
+        /// <param name="other">The instance to compare to the current instance.</param>
+        /// <returns>A signed number indicating the relative values of this instance and the value parameter.</returns>
+        public int CompareTo(NpgsqlDate other) =>
+            this == other ? 0 : this < other ? -1 : 1;
+
+        /// <summary>
+        /// Returns a value indicating whether the value of this instance is equal
+        /// to the value of the specified <see cref="NpgsqlDate"/> instance.
+        /// </summary>
+        /// <param name="other">The instance to compare to the current instance.</param>
+        /// <returns>
+        /// <see langword="true"/> if the <paramref name="other"/> parameter equals
+        /// the value of this instance; otherwise, <see langword="false"/>.
+        /// </returns>
+        public bool Equals(NpgsqlDate other) =>
+            this == other;
+
+        /// <inheritdoc/>
+        public override bool Equals(object? obj) =>
+            obj is NpgsqlDate other && Equals(other);
+
+        /// <inheritdoc/>
+        public override int GetHashCode() =>
+            Days.GetHashCode();
+
+        /// <summary>
+        /// Determines whether two specified instances of
+        /// <see cref="NpgsqlDate"/> are equal.</summary>
+        /// <param name="left">The first instance to compare.</param>
+        /// <param name="right">The second instance to compare.</param>
+        /// <returns>
+        /// <see langword="true"/> if <paramref name="left"/> and <paramref name="right"/>
+        /// represent the same date; otherwise, <see langword="false"/>.
+        /// </returns>
+        public static bool operator ==(NpgsqlDate left, NpgsqlDate right) => left.Days == right.Days;
+
+        /// <summary>
+        /// Determines whether two specified instances of
+        /// <see cref="NpgsqlDate"/> are not equal.
+        /// </summary>
+        /// <param name="left">The first instance to compare.</param>
+        /// <param name="right">The second instance to compare.</param>
+        /// <returns>
+        /// <see langword="true"/> if <paramref name="left"/> and <paramref name="right"/>
+        /// do not represent the same date; otherwise, <see langword="false"/>.
+        /// </returns>
+        public static bool operator !=(NpgsqlDate left, NpgsqlDate right) => left.Days != right.Days;
+
+        /// <summary>
+        /// Determines whether one specified <see cref="NpgsqlDate"/>
+        /// is earlier than another specified <see cref="NpgsqlDate"/>.
+        /// </summary>
+        /// <param name="left">The first instance to compare.</param>
+        /// <param name="right">The second instance to compare.</param>
+        /// <returns>
+        /// <see langword="true"/> if <paramref name="left"/> is earlier
+        /// than <paramref name="right"/>; otherwise, <see langword="false"/>.
+        /// </returns>
+        public static bool operator <(NpgsqlDate left, NpgsqlDate right) => left.Days < right.Days;
+
+        /// <summary>
+        /// Determines whether one specified <see cref="NpgsqlDate"/>
+        /// represents a date and time that is the same as or earlier
+        /// than another specified <see cref="NpgsqlDate"/>.
+        /// </summary>
+        /// <param name="left">The first instance to compare.</param>
+        /// <param name="right">The second instance to compare.</param>
+        /// <returns>
+        /// <see langword="true"/> if <paramref name="left"/> is the same as
+        /// or earlier than <paramref name="right"/>; otherwise, <see langword="false"/>.
+        /// </returns>
+        public static bool operator <=(NpgsqlDate left, NpgsqlDate right) => left.Days <= right.Days;
+
+        /// <summary>
+        /// Determines whether one specified <see cref="NpgsqlDate"/>
+        /// is later than another specified <see cref="NpgsqlDate"/>.
+        /// </summary>
+        /// <param name="left">The first instance to compare.</param>
+        /// <param name="right">The second instance to compare.</param>
+        /// <returns>
+        /// <see langword="true"/> if <paramref name="left"/> is later
+        /// than <paramref name="right"/>; otherwise, <see langword="false"/>.
+        /// </returns>
+        public static bool operator >(NpgsqlDate left, NpgsqlDate right) => left.Days > right.Days;
+
+        /// <summary>
+        /// Determines whether one specified <see cref="NpgsqlDate"/>
+        /// represents a date and time that is the same as or later
+        /// than another specified <see cref="NpgsqlDate"/>.
+        /// </summary>
+        /// <param name="left">The first instance to compare.</param>
+        /// <param name="right">The second instance to compare.</param>
+        /// <returns>
+        /// <see langword="true"/> if <paramref name="left"/> is the same as
+        /// or later than <paramref name="right"/>; otherwise, <see langword="false"/>.
+        /// </returns>
+        public static bool operator >=(NpgsqlDate left, NpgsqlDate right) => left.Days >= right.Days;
+
+        /// <summary>
+        /// An explicit operator to convert a <see cref="NpgsqlDate"/> value to a <see cref="DateTime"/>.
+        /// </summary>
+        /// <param name="value">The date to convert to <see cref="DateTime"/>.</param>
+        /// <returns>The <see cref="DateTime"/> representation of the specified date.</returns>
+        public static explicit operator DateTime(NpgsqlDate value) =>
+            new DateTime(NpgsqlDateTime.ToTicks(value.Days));
+
+        /// <summary>
+        /// An explicit operator to convert a <see cref="DateTime"/> value to a <see cref="NpgsqlDate"/>
+        /// </summary>
+        /// <param name="value">The date and time to convert to <see cref="NpgsqlDate"/>.</param>
+        /// <returns>The <see cref="NpgsqlDate"/> representation of the specified date.</returns>
+        public static explicit operator NpgsqlDate(DateTime value) =>
+            new NpgsqlDate(NpgsqlDateTime.ToDays(value.Ticks));
     }
 }
