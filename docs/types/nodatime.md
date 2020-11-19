@@ -60,7 +60,7 @@ timestamp with time zone        | Instant               | ZonedDateTime, OffsetD
 date                            | LocalDate             |                               | A simple date with no timezone or offset information.
 time without time zone          | LocalTime             |                               | A simple time-of-day, with no timezone or offset information.
 time with time zone             | OffsetTime            |                               | This is a PostgreSQL type that stores a time and an offset.
-interval                        | Period                |                               | This is a human interval which does not have a fixed absolute length ("two months" can vary depending on the months in question), and so it is mapped to NodaTime's Period (and not Duration or TimeSpan).
+interval                        | Period                | Duration                      | Represents an interval of time, from sub-second units to years. NodaTime `Duration` is supported for intervals with days and smaller, but not with years or months (as these have no absolute duration). `Period` can be used with any interval unit.
 
 ## Additional Notes
 
