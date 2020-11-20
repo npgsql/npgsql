@@ -274,15 +274,15 @@ namespace Npgsql
 
         ValueTask<IBackendMessage> ReadMessage(bool async)
         {
-            return _isSequential ? ReadMessageSequential(async) : Connector.ReadMessage(async);
+            return _isSequential ? ReadMessageSequential(Connector, async) : Connector.ReadMessage(async);
 
-            async ValueTask<IBackendMessage> ReadMessageSequential(bool async2)
+            static async ValueTask<IBackendMessage> ReadMessageSequential(NpgsqlConnector connector, bool async2)
             {
-                var msg = await Connector.ReadMessage(async2, DataRowLoadingMode.Sequential);
+                var msg = await connector.ReadMessage(async2, DataRowLoadingMode.Sequential);
                 if (msg.Code == BackendMessageCode.DataRow)
                 {
                     // Make sure that the datarow's column count is already buffered
-                    await Connector.ReadBuffer.Ensure(2, async);
+                    await connector.ReadBuffer.Ensure(2, async2);
                     return msg;
                 }
                 return msg;
