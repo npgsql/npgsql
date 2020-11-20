@@ -738,7 +738,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 parser.ParseRawQuery(CommandText, _parameters, _statements, deriveParameters);
 
                 if (_statements.Count > 1 && _parameters.HasOutputParameters)
-                    throw new NotSupportedException("Commands with multipl e queries cannot have out parameters");
+                    throw new NotSupportedException("Commands with multiple queries cannot have out parameters");
                 break;
 
             case CommandType.TableDirect:
