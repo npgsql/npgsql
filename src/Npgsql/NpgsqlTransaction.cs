@@ -2,7 +2,6 @@ using System;
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Logging;
@@ -447,7 +446,13 @@ namespace Npgsql
             // See #3306
             if (!IsDisposed)
             {
-                _connector.Transaction = null;
+                var previousTransaction = _connector.UnboundTransaction;
+                if (previousTransaction is not null && previousTransaction.IsDisposed)
+                    _connector.Transaction = previousTransaction;
+                else
+                    _connector.Transaction = null;
+
+                _connector.UnboundTransaction = this;
                 _connector = null!;
             }
         }

@@ -2167,7 +2167,14 @@ namespace Npgsql
             // We have to unbind the reader from the connector, otherwise there could be a concurency issues
             // See #3126 and #3290
             if (State != ReaderState.Disposed)
-                Connector.DataReader = new NpgsqlDataReader(Connector);
+            {
+                var previousReader = Connector.UnboundDataReader;
+                if (previousReader is not null && previousReader.State == ReaderState.Disposed)
+                    Connector.DataReader = previousReader;
+                else
+                    Connector.DataReader = new NpgsqlDataReader(Connector);
+                Connector.UnboundDataReader = this;
+            }
         }
 
         #endregion
