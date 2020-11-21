@@ -448,7 +448,10 @@ namespace Npgsql
             {
                 var previousTransaction = _connector.UnboundTransaction;
                 if (previousTransaction is not null && previousTransaction.IsDisposed)
+                {
+                    previousTransaction._connector = _connector;
                     _connector.Transaction = previousTransaction;
+                }
                 else
                     _connector.Transaction = null;
 
