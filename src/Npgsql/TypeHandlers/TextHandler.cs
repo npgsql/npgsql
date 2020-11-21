@@ -82,9 +82,9 @@ namespace Npgsql.TypeHandlers
         {
             return buf.ReadBytesLeft >= byteLen
                 ? new ValueTask<string>(buf.ReadString(byteLen))
-                : ReadLong();
+                : ReadLong(buf, byteLen, async);
 
-            async ValueTask<string> ReadLong()
+            static async ValueTask<string> ReadLong(NpgsqlReadBuffer buf, int byteLen, bool async)
             {
                 if (byteLen <= buf.Size)
                 {
