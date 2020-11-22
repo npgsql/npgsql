@@ -1228,6 +1228,58 @@ LANGUAGE plpgsql VOLATILE";
             Assert.That(reader1, Is.SameAs(reader2));
             await reader2.DisposeAsync();
         }
+
+        [Test]
+        public async Task UnboundReaderReuse()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                MinPoolSize = 1,
+                MaxPoolSize = 1,
+            };
+            using var _ = CreateTempPool(csb.ToString(), out var connectionString);
+
+            await using var conn1 = await OpenConnectionAsync(connectionString);
+            using var cmd1 = conn1.CreateCommand();
+            cmd1.CommandText = "SELECT 1";
+            var reader1 = await cmd1.ExecuteReaderAsync(Behavior);
+            await using (var __ = reader1)
+            {
+                Assert.That(async () => await reader1.ReadAsync(), Is.EqualTo(true));
+                Assert.That(() => reader1.GetInt32(0), Is.EqualTo(1));
+
+                await reader1.CloseAsync();
+                await conn1.CloseAsync();
+            } 
+
+            await using var conn2 = await OpenConnectionAsync(connectionString);
+            using var cmd2 = conn2.CreateCommand();
+            cmd2.CommandText = "SELECT 2";
+            var reader2 = await cmd2.ExecuteReaderAsync(Behavior);
+            await using (var __ = reader2)
+            {
+                Assert.That(async () => await reader2.ReadAsync(), Is.EqualTo(true));
+                Assert.That(() => reader2.GetInt32(0), Is.EqualTo(2));
+                Assert.That(reader1, Is.Not.SameAs(reader2));
+
+                await reader2.CloseAsync();
+                await conn2.CloseAsync();
+            }
+
+            await using var conn3 = await OpenConnectionAsync(connectionString);
+            using var cmd3 = conn3.CreateCommand();
+            cmd3.CommandText = "SELECT 3";
+            var reader3 = await cmd3.ExecuteReaderAsync(Behavior);
+            await using (var __ = reader3)
+            {
+                Assert.That(async () => await reader3.ReadAsync(), Is.EqualTo(true));
+                Assert.That(() => reader3.GetInt32(0), Is.EqualTo(3));
+                Assert.That(reader1, Is.SameAs(reader3));
+
+                await reader3.CloseAsync();
+                await conn3.CloseAsync();
+            }
+        }
         
         [Test]
         public async Task DisposeSwallowsExceptions([Values(true, false)] bool async)

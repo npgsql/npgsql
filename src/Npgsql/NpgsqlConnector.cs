@@ -112,6 +112,8 @@ namespace Npgsql
         /// </summary>
         internal NpgsqlTransaction? Transaction { get; set; }
 
+        internal NpgsqlTransaction? UnboundTransaction { get; set; }
+
         /// <summary>
         /// The NpgsqlConnection that (currently) owns this connector. Null if the connector isn't
         /// owned (i.e. idle in the pool)
@@ -280,6 +282,8 @@ namespace Npgsql
         #endregion
 
         internal NpgsqlDataReader DataReader { get; set; }
+
+        internal NpgsqlDataReader? UnboundDataReader { get; set; }
 
         #region Constructors
 

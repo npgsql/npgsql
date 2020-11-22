@@ -1,8 +1,6 @@
 ﻿using System;
-using System.Buffers.Binary;
 using System.Data;
 using System.Threading.Tasks;
-using Npgsql.BackendMessages;
 using Npgsql.Tests.Support;
 using Npgsql.Util;
 using NUnit.Framework;
@@ -560,6 +558,73 @@ namespace Npgsql.Tests
             Assert.That(tx2.IsDisposed, Is.False);
 
             await conn.DisposeAsync();
+        }
+
+        [Test]
+        public async Task UnboundTransactionReuse()
+        {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                MinPoolSize = 1,
+                MaxPoolSize = 1,
+            };
+            using var __ = CreateTempPool(csb.ToString(), out var connectionString);
+
+            await using var conn = await OpenConnectionAsync();
+            await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
+
+            await using var conn1 = await OpenConnectionAsync(connectionString);
+            var tx1 = conn1.BeginTransaction();
+            await using (var ___ = tx1)
+            {
+                using var cmd1 = conn1.CreateCommand();
+                cmd1.CommandText = $"INSERT INTO {table} (name) VALUES ('X'); SELECT 1";
+                await using (var reader1 = await cmd1.ExecuteReaderAsync())
+                {
+                    Assert.That(async () => await reader1.ReadAsync(), Is.EqualTo(true));
+                    Assert.That(() => reader1.GetInt32(0), Is.EqualTo(1));
+                    Assert.That(reader1.RecordsAffected, Is.EqualTo(1));
+                }
+                await tx1.CommitAsync();
+                Assert.That(await conn1.ExecuteScalarAsync($"SELECT COUNT(*) FROM {table}"), Is.EqualTo(1));
+                await conn1.CloseAsync();
+            }
+
+            await using var conn2 = await OpenConnectionAsync(connectionString);
+            var tx2 = conn2.BeginTransaction();
+            await using (var ___ = tx2)
+            {
+                Assert.That(tx2, Is.Not.SameAs(tx1));
+                using var cmd2 = conn2.CreateCommand();
+                cmd2.CommandText = $"INSERT INTO {table} (name) VALUES ('Y'); SELECT 2";
+                await using (var reader2 = await cmd2.ExecuteReaderAsync())
+                {
+                    Assert.That(async () => await reader2.ReadAsync(), Is.EqualTo(true));
+                    Assert.That(() => reader2.GetInt32(0), Is.EqualTo(2));
+                    Assert.That(reader2.RecordsAffected, Is.EqualTo(1));
+                }
+                await tx2.CommitAsync();
+                Assert.That(await conn2.ExecuteScalarAsync($"SELECT COUNT(*) FROM {table}"), Is.EqualTo(2));
+                await conn2.CloseAsync();
+            }
+
+            await using var conn3 = await OpenConnectionAsync(connectionString);
+            var tx3 = conn3.BeginTransaction();
+            await using (var ___ = tx3)
+            {
+                Assert.That(tx3, Is.SameAs(tx1));
+                using var cmd3 = conn3.CreateCommand();
+                cmd3.CommandText = $"INSERT INTO {table} (name) VALUES ('Z'); SELECT 3";
+                await using (var reader3 = await cmd3.ExecuteReaderAsync())
+                {
+                    Assert.That(async () => await reader3.ReadAsync(), Is.EqualTo(true));
+                    Assert.That(() => reader3.GetInt32(0), Is.EqualTo(3));
+                    Assert.That(reader3.RecordsAffected, Is.EqualTo(1));
+                }
+                await tx3.CommitAsync();
+                Assert.That(await conn3.ExecuteScalarAsync($"SELECT COUNT(*) FROM {table}"), Is.EqualTo(3));
+                await conn3.CloseAsync();
+            }
         }
 
         class NoTransactionDatabaseInfoFactory : INpgsqlDatabaseInfoFactory
