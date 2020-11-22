@@ -301,7 +301,9 @@ namespace Npgsql.Tests
             using var cmd = conn.CreateCommand();
             cmd.CommandText = "SELECT 1";
 
-            Assert.ThrowsAsync<OperationCanceledException>(async () => await cmd.ExecuteScalarAsync(cts.Token));
+            var t = cmd.ExecuteScalarAsync(cts.Token);
+            Assert.That(t.IsCompleted, Is.EqualTo(true)); // checks, if a query has completed synchronously
+            Assert.ThrowsAsync<OperationCanceledException>(async () => await t);
 
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
             Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
