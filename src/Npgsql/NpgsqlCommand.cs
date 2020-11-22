@@ -1141,6 +1141,10 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             {
                 if (conn.TryGetBoundConnector(out var connector))
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    // We cannot pass a token here, as we'll cancel a non-send query
+                    // Also, we don't pass the cancellation token to StartUserAction, since that would make it scope to the entire action (command execution)
+                    // whereas it should only be scoped to the Execute method.
                     connector.StartUserAction(ConnectorState.Executing, this, CancellationToken.None);
 
                     Task? sendTask = null;
