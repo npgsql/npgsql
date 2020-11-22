@@ -293,7 +293,7 @@ $$ LANGUAGE 'plpgsql';");
             Assert.That(expected.Routine, Is.EqualTo(actual.Routine));
         }
 
-        SerializationInfo CreateSerializationInfo() => new SerializationInfo(typeof(PostgresException), new FormatterConverter());
+        SerializationInfo CreateSerializationInfo() => new(typeof(PostgresException), new FormatterConverter());
 #pragma warning restore 618
 #pragma warning restore SYSLIB0011
 

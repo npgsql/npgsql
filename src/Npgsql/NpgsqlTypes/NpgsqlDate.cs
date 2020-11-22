@@ -26,20 +26,20 @@ namespace NpgsqlTypes
         /// <summary>
         /// Represents the date 1970-01-01
         /// </summary>
-        public static readonly NpgsqlDate Epoch = new NpgsqlDate(1970, 1, 1);
+        public static readonly NpgsqlDate Epoch = new(1970, 1, 1);
 
         /// <summary>
         /// Represents the date 0001-01-01
         /// </summary>
-        public static readonly NpgsqlDate Era = new NpgsqlDate(0);
+        public static readonly NpgsqlDate Era = new(0);
 
         public const int MaxYear = 5874897;
         public const int MinYear = -4714;
-        public static readonly NpgsqlDate MaxCalculableValue = new NpgsqlDate(MaxYear, 12, 31);
-        public static readonly NpgsqlDate MinCalculableValue = new NpgsqlDate(MinYear, 11, 24);
+        public static readonly NpgsqlDate MaxCalculableValue = new(MaxYear, 12, 31);
+        public static readonly NpgsqlDate MinCalculableValue = new(MinYear, 11, 24);
 
-        public static readonly NpgsqlDate Infinity = new NpgsqlDate(InternalType.Infinity);
-        public static readonly NpgsqlDate NegativeInfinity = new NpgsqlDate(InternalType.NegativeInfinity);
+        public static readonly NpgsqlDate Infinity = new(InternalType.Infinity);
+        public static readonly NpgsqlDate NegativeInfinity = new(InternalType.NegativeInfinity);
 
         const int DaysInYear = 365; //Common years
         const int DaysIn4Years = 4 * DaysInYear + 1; //Leap year every 4 years.
@@ -150,7 +150,7 @@ namespace NpgsqlTypes
 
         #region Public Properties
 
-        public static NpgsqlDate Now => new NpgsqlDate(DateTime.Now);
+        public static NpgsqlDate Now => new(DateTime.Now);
         public static NpgsqlDate Today => Now;
         public static NpgsqlDate Yesterday => Now.AddDays(-1);
         public static NpgsqlDate Tomorrow => Now.AddDays(1);
@@ -417,7 +417,7 @@ namespace NpgsqlTypes
         public static explicit operator DateTime(NpgsqlDate date) => ToDateTime(date);
 
         public static NpgsqlDate ToNpgsqlDate(DateTime date)
-            => new NpgsqlDate((int)(date.Ticks / NpgsqlTimeSpan.TicksPerDay));
+            => new((int)(date.Ticks / NpgsqlTimeSpan.TicksPerDay));
 
         public static explicit operator NpgsqlDate(DateTime date) => ToNpgsqlDate(date);
 

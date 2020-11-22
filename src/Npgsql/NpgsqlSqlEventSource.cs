@@ -5,7 +5,7 @@ namespace Npgsql
 {
     sealed class NpgsqlSqlEventSource : EventSource
     {
-        public static readonly NpgsqlSqlEventSource Log = new NpgsqlSqlEventSource();
+        public static readonly NpgsqlSqlEventSource Log = new();
 
         const string EventSourceName = "Npgsql.Sql";
 

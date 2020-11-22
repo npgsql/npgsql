@@ -90,7 +90,7 @@ namespace NpgsqlTypes
         /// <summary>
         /// Represents the empty range. This field is read-only.
         /// </summary>
-        public static readonly NpgsqlRange<T> Empty = new NpgsqlRange<T>(default, default, RangeFlags.Empty);
+        public static readonly NpgsqlRange<T> Empty = new(default, default, RangeFlags.Empty);
 
         /// <summary>
         /// The lower bound of the range. Only valid when <see cref="LowerBoundInfinite"/> is false.

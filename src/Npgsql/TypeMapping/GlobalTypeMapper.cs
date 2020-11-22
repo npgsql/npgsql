@@ -22,7 +22,7 @@ namespace Npgsql.TypeMapping
         internal int ChangeCounter => _changeCounter;
 
         internal ReaderWriterLockSlim Lock { get; }
-            = new ReaderWriterLockSlim(LockRecursionPolicy.SupportsRecursion);
+            = new(LockRecursionPolicy.SupportsRecursion);
 
         int _changeCounter;
 
@@ -105,10 +105,10 @@ namespace Npgsql.TypeMapping
 
         #region NpgsqlDbType/DbType inference for NpgsqlParameter
 
-        readonly Dictionary<NpgsqlDbType, DbType> _npgsqlDbTypeToDbType = new Dictionary<NpgsqlDbType, DbType>();
-        readonly Dictionary<DbType, NpgsqlDbType> _dbTypeToNpgsqlDbType = new Dictionary<DbType, NpgsqlDbType>();
-        readonly Dictionary<Type, NpgsqlDbType> _typeToNpgsqlDbType = new Dictionary<Type, NpgsqlDbType>();
-        readonly Dictionary<Type, DbType> _typeToDbType = new Dictionary<Type, DbType>();
+        readonly Dictionary<NpgsqlDbType, DbType> _npgsqlDbTypeToDbType = new();
+        readonly Dictionary<DbType, NpgsqlDbType> _dbTypeToNpgsqlDbType = new();
+        readonly Dictionary<Type, NpgsqlDbType> _typeToNpgsqlDbType = new();
+        readonly Dictionary<Type, DbType> _typeToDbType = new();
 
         internal DbType ToDbType(NpgsqlDbType npgsqlDbType)
             => _npgsqlDbTypeToDbType.TryGetValue(npgsqlDbType, out var dbType) ? dbType : DbType.Object;

@@ -87,7 +87,7 @@ namespace Npgsql.TypeHandlers
         /// </summary>
         const byte JsonbProtocolVersion = 1;
 
-        static readonly JsonSerializerOptions DefaultSerializerOptions = new JsonSerializerOptions();
+        static readonly JsonSerializerOptions DefaultSerializerOptions = new();
 
         /// <inheritdoc />
         protected internal JsonHandler(PostgresType postgresType, NpgsqlConnection connection, bool isJsonb, JsonSerializerOptions? serializerOptions = null)

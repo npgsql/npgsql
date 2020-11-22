@@ -44,7 +44,7 @@ namespace Npgsql.Tests
 
         TestEventListener _listener = null!;
 
-        readonly List<EventWrittenEventArgs> _events = new List<EventWrittenEventArgs>();
+        readonly List<EventWrittenEventArgs> _events = new();
 
         class TestEventListener : EventListener
         {

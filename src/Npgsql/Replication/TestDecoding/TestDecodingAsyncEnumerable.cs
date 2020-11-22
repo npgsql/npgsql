@@ -15,7 +15,7 @@ namespace Npgsql.Replication.TestDecoding
         readonly CancellationToken _baseCancellationToken;
         readonly NpgsqlLogSequenceNumber? _walLocation;
 
-        readonly TestDecodingData _cachedMessage = new TestDecodingData();
+        readonly TestDecodingData _cachedMessage = new();
 
         internal TestDecodingAsyncEnumerable(
             LogicalReplicationConnection connection,
@@ -31,8 +31,7 @@ namespace Npgsql.Replication.TestDecoding
             _walLocation = walLocation;
         }
 
-        public IAsyncEnumerator<TestDecodingData> GetAsyncEnumerator(
-            CancellationToken cancellationToken = new CancellationToken())
+        public IAsyncEnumerator<TestDecodingData> GetAsyncEnumerator(CancellationToken cancellationToken = default)
         {
             using (NoSynchronizationContextScope.Enter())
                 return StartReplicationInternal(

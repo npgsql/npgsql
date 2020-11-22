@@ -104,7 +104,7 @@ namespace Npgsql.Tests
 
             public MockStream() => Writer = new MockStreamWriter(this);
 
-            TaskCompletionSource _tcs = new TaskCompletionSource();
+            TaskCompletionSource _tcs = new();
             readonly byte[] _data = new byte[Size];
             int _filled;
 

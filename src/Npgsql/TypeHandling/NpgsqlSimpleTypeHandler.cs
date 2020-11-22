@@ -32,7 +32,7 @@ namespace Npgsql.TypeHandling
         readonly NonGenericWriteWithLength _nonGenericWriteWithLength;
 
         static readonly ConcurrentDictionary<Type, (NonGenericValidateAndGetLength, NonGenericWriteWithLength)>
-            NonGenericDelegateCache = new ConcurrentDictionary<Type, (NonGenericValidateAndGetLength, NonGenericWriteWithLength)>();
+            NonGenericDelegateCache = new();
 
         /// <summary>
         /// Constructs an <see cref="NpgsqlSimpleTypeHandler{TDefault}"/>.

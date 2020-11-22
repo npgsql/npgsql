@@ -37,7 +37,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
         // 1 (type) + 1 (weight) + 1 (is prefix search) + 2046 (max str len) + 1 (null terminator)
         const int MaxSingleTokenBytes = 2050;
 
-        readonly Stack<NpgsqlTsQuery> _stack = new Stack<NpgsqlTsQuery>();
+        readonly Stack<NpgsqlTsQuery> _stack = new();
 
         /// <inheritdoc />
         public TsQueryHandler(PostgresType postgresType) : base(postgresType) {}

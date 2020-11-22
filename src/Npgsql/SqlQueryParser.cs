@@ -7,8 +7,8 @@ namespace Npgsql
 {
     class SqlQueryParser
     {
-        readonly Dictionary<string, int> _paramIndexMap = new Dictionary<string, int>();
-        readonly StringBuilder _rewrittenSql = new StringBuilder();
+        readonly Dictionary<string, int> _paramIndexMap = new();
+        readonly StringBuilder _rewrittenSql = new();
 
         /// <summary>
         /// Receives a raw SQL query as passed in by the user, and performs some processing necessary

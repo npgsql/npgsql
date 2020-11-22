@@ -65,7 +65,7 @@ namespace Npgsql
         }
 
         internal static PreparedStatement CreateAutoPrepareCandidate(PreparedStatementManager manager, string sql)
-            => new PreparedStatement(manager, sql, false);
+            => new(manager, sql, false);
 
         PreparedStatement(PreparedStatementManager manager, string sql, bool isExplicit)
         {

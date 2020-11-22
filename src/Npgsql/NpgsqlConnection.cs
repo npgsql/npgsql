@@ -60,7 +60,7 @@ namespace Npgsql
         /// </summary>
         internal NpgsqlConnectionStringBuilder Settings { get; private set; } = DefaultSettings;
 
-        static readonly NpgsqlConnectionStringBuilder DefaultSettings = new NpgsqlConnectionStringBuilder();
+        static readonly NpgsqlConnectionStringBuilder DefaultSettings = new();
 
         ConnectorPool? _pool;
         internal ConnectorPool? Pool => _pool;
@@ -112,8 +112,8 @@ namespace Npgsql
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlConnection));
 
-        static readonly StateChangeEventArgs ClosedToOpenEventArgs = new StateChangeEventArgs(ConnectionState.Closed, ConnectionState.Open);
-        static readonly StateChangeEventArgs OpenToClosedEventArgs = new StateChangeEventArgs(ConnectionState.Open, ConnectionState.Closed);
+        static readonly StateChangeEventArgs ClosedToOpenEventArgs = new(ConnectionState.Closed, ConnectionState.Open);
+        static readonly StateChangeEventArgs OpenToClosedEventArgs = new(ConnectionState.Open, ConnectionState.Closed);
 
         #endregion Fields
 

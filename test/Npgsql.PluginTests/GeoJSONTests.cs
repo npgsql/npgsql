@@ -23,13 +23,15 @@ namespace Npgsql.PluginTests
 
         public static readonly TestData[] Tests =
         {
-            new TestData {
+            new()
+            {
                 Geometry = new Point(
                     new Position(longitude: 1d, latitude: 2d))
                 { BoundingBoxes = new[] { 1d, 2d, 1d, 2d } },
                 CommandText = "st_makepoint(1,2)"
             },
-            new TestData {
+            new()
+            {
                 Geometry = new LineString(new[] {
                     new Position(longitude: 1d, latitude: 1d),
                     new Position(longitude: 1d, latitude: 2d)
@@ -37,7 +39,8 @@ namespace Npgsql.PluginTests
                 { BoundingBoxes = new[] { 1d, 1d, 1d, 2d } },
                 CommandText = "st_makeline(st_makepoint(1,1), st_makepoint(1,2))"
             },
-            new TestData {
+            new()
+            {
                 Geometry = new Polygon(new[] {
                     new LineString(new[] {
                         new Position(longitude: 1d, latitude: 1d),
@@ -49,14 +52,16 @@ namespace Npgsql.PluginTests
                 { BoundingBoxes = new[] { 1d, 1d, 3d, 3d } },
                 CommandText = "st_makepolygon(st_makeline(ARRAY[st_makepoint(1,1), st_makepoint(2,2), st_makepoint(3,3), st_makepoint(1,1)]))"
             },
-            new TestData {
+            new()
+            {
                 Geometry = new MultiPoint(new[] {
                     new Point(new Position(longitude: 1d, latitude: 1d))
                 })
                 { BoundingBoxes = new[] { 1d, 1d, 1d, 1d } },
                 CommandText = "st_multi(st_makepoint(1, 1))"
             },
-            new TestData {
+            new()
+            {
                 Geometry = new MultiLineString(new[] {
                     new LineString(new[] {
                         new Position(longitude: 1d, latitude: 1d),
@@ -66,7 +71,8 @@ namespace Npgsql.PluginTests
                 { BoundingBoxes = new[] { 1d, 1d, 1d, 2d } },
                 CommandText = "st_multi(st_makeline(st_makepoint(1,1), st_makepoint(1,2)))"
             },
-            new TestData {
+            new()
+            {
                 Geometry = new MultiPolygon(new[] {
                     new Polygon(new[] {
                         new LineString(new[] {
@@ -80,7 +86,8 @@ namespace Npgsql.PluginTests
                 { BoundingBoxes = new[] { 1d, 1d, 3d, 3d } },
                 CommandText = "st_multi(st_makepolygon(st_makeline(ARRAY[st_makepoint(1,1), st_makepoint(2,2), st_makepoint(3,3), st_makepoint(1,1)])))"
             },
-            new TestData {
+            new()
+            {
                 Geometry = new GeometryCollection(new IGeometryObject[] {
                     new Point(new Position(longitude: 1d, latitude: 1d)),
                     new MultiPolygon(new[] {
@@ -137,13 +144,15 @@ namespace Npgsql.PluginTests
 
         public static readonly TestData[] NotAllZSpecifiedTests =
         {
-            new TestData {
+            new()
+            {
                 Geometry = new LineString(new[] {
                     new Position(1d, 1d, 0d),
                     new Position(2d, 2d)
                 })
             },
-            new TestData {
+            new()
+            {
                 Geometry =  new LineString(new[] {
                     new Position(1d, 1d, 0d),
                     new Position(2d, 2d),

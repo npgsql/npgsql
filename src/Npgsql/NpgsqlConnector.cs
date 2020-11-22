@@ -142,7 +142,7 @@ namespace Npgsql
         /// <summary>
         /// Holds all run-time parameters in raw, binary format for efficient handling without allocations.
         /// </summary>
-        readonly List<(byte[] Name, byte[] Value)> _rawParameters = new List<(byte[], byte[])>();
+        readonly List<(byte[] Name, byte[] Value)> _rawParameters = new();
 
         /// <summary>
         /// If this connector was broken, this contains the exception that caused the break.
@@ -152,7 +152,7 @@ namespace Npgsql
         /// <summary>
         /// Semaphore, used to synchronize DatabaseInfo between multiple connections, so it wouldn't be loaded in parallel.
         /// </summary>
-        static readonly SemaphoreSlim DatabaseInfoSemaphore = new SemaphoreSlim(1);
+        static readonly SemaphoreSlim DatabaseInfoSemaphore = new(1);
 
         /// <summary>
         /// <para>
@@ -244,7 +244,7 @@ namespace Npgsql
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlConnector));
 
-        internal readonly Stopwatch QueryLogStopWatch = new Stopwatch();
+        internal readonly Stopwatch QueryLogStopWatch = new();
 
         #endregion
 
@@ -265,11 +265,11 @@ namespace Npgsql
         int _resetWithoutDeallocateResponseCount;
 
         // Backend
-        readonly CommandCompleteMessage      _commandCompleteMessage      = new CommandCompleteMessage();
-        readonly ReadyForQueryMessage        _readyForQueryMessage        = new ReadyForQueryMessage();
-        readonly ParameterDescriptionMessage _parameterDescriptionMessage = new ParameterDescriptionMessage();
-        readonly DataRowMessage              _dataRowMessage              = new DataRowMessage();
-        readonly RowDescriptionMessage       _rowDescriptionMessage       = new RowDescriptionMessage();
+        readonly CommandCompleteMessage      _commandCompleteMessage      = new();
+        readonly ReadyForQueryMessage        _readyForQueryMessage        = new();
+        readonly ParameterDescriptionMessage _parameterDescriptionMessage = new();
+        readonly DataRowMessage              _dataRowMessage              = new();
+        readonly RowDescriptionMessage       _rowDescriptionMessage       = new();
 
         // Since COPY is rarely used, allocate these lazily
         CopyInResponseMessage?  _copyInResponseMessage;
@@ -954,7 +954,7 @@ namespace Npgsql
         internal volatile int CommandsInFlightCount;
 
         internal ManualResetValueTaskSource<object?> ReaderCompleted { get; } =
-            new ManualResetValueTaskSource<object?> { RunContinuationsAsynchronously = true };
+            new() { RunContinuationsAsynchronously = true };
 
         async Task MultiplexingReadLoop()
         {

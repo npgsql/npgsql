@@ -155,7 +155,7 @@ namespace Npgsql.TypeHandlers
 
         ValueTask<IDictionary<string, string?>> INpgsqlTypeHandler<IDictionary<string, string?>>.Read(
             NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
-            => new ValueTask<IDictionary<string, string?>>(Read(buf, len, async, fieldDescription).Result);
+            => new(Read(buf, len, async, fieldDescription).Result);
 
         #endregion
 

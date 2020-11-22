@@ -7,7 +7,7 @@ namespace Npgsql
 {
     sealed class SingleThreadSynchronizationContext : SynchronizationContext, IDisposable
     {
-        readonly BlockingCollection<CallbackAndState> _tasks = new BlockingCollection<CallbackAndState>();
+        readonly BlockingCollection<CallbackAndState> _tasks = new();
         Thread? _thread;
 
         const int ThreadStayAliveMs = 10000;
@@ -18,7 +18,7 @@ namespace Npgsql
         internal SingleThreadSynchronizationContext(string threadName)
             => _threadName = threadName;
 
-        internal Disposable Enter() => new Disposable(this);
+        internal Disposable Enter() => new(this);
 
         public override void Post(SendOrPostCallback callback, object? state)
         {

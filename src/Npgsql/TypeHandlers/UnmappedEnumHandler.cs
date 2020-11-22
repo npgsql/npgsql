@@ -16,8 +16,8 @@ namespace Npgsql.TypeHandlers
     {
         readonly INpgsqlNameTranslator _nameTranslator;
 
-        readonly Dictionary<Enum, string> _enumToLabel = new Dictionary<Enum, string>();
-        readonly Dictionary<string, Enum> _labelToEnum = new Dictionary<string, Enum>();
+        readonly Dictionary<Enum, string> _enumToLabel = new();
+        readonly Dictionary<string, Enum> _labelToEnum = new();
 
         Type? _resolvedType;
 

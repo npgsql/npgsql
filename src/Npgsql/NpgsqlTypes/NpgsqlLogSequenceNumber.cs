@@ -181,7 +181,7 @@ namespace NpgsqlTypes
         /// <param name="value">A 64-bit unsigned integer.</param>
         /// <returns>A new instance of <see cref="NpgsqlLogSequenceNumber"/> initialized to <paramref name="value" />.</returns>
         public static explicit operator NpgsqlLogSequenceNumber(ulong value)
-            => new NpgsqlLogSequenceNumber(value);
+            => new(value);
 
         /// <summary>
         /// Converts the value of a <see cref="NpgsqlLogSequenceNumber"/> instance to a 64-bit unsigned integer value.

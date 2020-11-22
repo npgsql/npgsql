@@ -77,9 +77,9 @@ namespace Npgsql
         // Note that while the dictionary is protected by locking, we assume that the lists it contains don't need to be
         // (i.e. access to connectors of a specific transaction won't be concurrent)
         readonly Dictionary<Transaction, List<NpgsqlConnector>> _pendingEnlistedConnectors
-            = new Dictionary<Transaction, List<NpgsqlConnector>>();
+            = new();
 
-        static readonly SingleThreadSynchronizationContext SingleThreadSynchronizationContext = new SingleThreadSynchronizationContext("NpgsqlRemainingAsyncSendWorker");
+        static readonly SingleThreadSynchronizationContext SingleThreadSynchronizationContext = new("NpgsqlRemainingAsyncSendWorker");
 
         // TODO: Make this configurable
         const int MultiexingCommandChannelBound = 4096;

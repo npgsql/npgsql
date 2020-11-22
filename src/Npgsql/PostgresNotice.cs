@@ -192,7 +192,7 @@ namespace Npgsql
                 msg.ConstraintName, msg.File, msg.Line, msg.Routine) {}
 
         internal static PostgresNotice Load(NpgsqlReadBuffer buf, bool includeDetail)
-            => new PostgresNotice(ErrorOrNoticeMessage.Load(buf, includeDetail));
+            => new(ErrorOrNoticeMessage.Load(buf, includeDetail));
     }
 
     /// <summary>

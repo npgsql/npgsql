@@ -379,7 +379,7 @@ namespace NpgsqlTypes
             FollowedByDistance = followedByDistance;
         }
 
-        public static implicit operator NpgsqlTsQueryOperator(char c) => new NpgsqlTsQueryOperator(c, 0);
+        public static implicit operator NpgsqlTsQueryOperator(char c) => new(c, 0);
         public static implicit operator char(NpgsqlTsQueryOperator o) => o.Char;
     }
 

@@ -88,7 +88,7 @@ namespace Npgsql.BackendMessages
     class CopyDoneMessage : IBackendMessage
     {
         public BackendMessageCode Code => BackendMessageCode.CopyDone;
-        internal static readonly CopyDoneMessage Instance = new CopyDoneMessage();
+        internal static readonly CopyDoneMessage Instance = new();
         CopyDoneMessage() { }
     }
 }

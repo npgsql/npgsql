@@ -15,7 +15,7 @@ namespace Npgsql
     /// </summary>
     public sealed class NpgsqlParameterCollection : DbParameterCollection, IList<NpgsqlParameter>
     {
-        readonly List<NpgsqlParameter> _internalList = new List<NpgsqlParameter>(5);
+        readonly List<NpgsqlParameter> _internalList = new(5);
 
         // Dictionary lookups for GetValue to improve performance
         Dictionary<string, int>? _lookup;

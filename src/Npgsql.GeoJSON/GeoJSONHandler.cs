@@ -30,7 +30,7 @@ namespace Npgsql.GeoJSON
         public GeoJSONHandlerFactory(GeoJSONOptions options = GeoJSONOptions.None)
             => _options = options;
 
-        static readonly ConcurrentDictionary<string, CrsMap> s_crsMaps = new ConcurrentDictionary<string, CrsMap>();
+        static readonly ConcurrentDictionary<string, CrsMap> s_crsMaps = new();
 
         public override NpgsqlTypeHandler<GeoJSONObject> Create(PostgresType postgresType, NpgsqlConnection conn)
         {

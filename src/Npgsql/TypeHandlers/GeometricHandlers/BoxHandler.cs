@@ -24,7 +24,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
 
         /// <inheritdoc />
         public override NpgsqlBox Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-            => new NpgsqlBox(
+            => new(
                 new NpgsqlPoint(buf.ReadDouble(), buf.ReadDouble()),
                 new NpgsqlPoint(buf.ReadDouble(), buf.ReadDouble())
             );

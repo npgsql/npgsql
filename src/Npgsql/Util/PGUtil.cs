@@ -21,11 +21,11 @@ namespace Npgsql.Util
                                     "Please file a bug."));
         }
 
-        internal static DeferDisposable Defer(Action action) => new DeferDisposable(action);
-        internal static DeferDisposable<T> Defer<T>(Action<T> action, T arg) => new DeferDisposable<T>(action, arg);
-        internal static DeferDisposable<T1, T2> Defer<T1, T2>(Action<T1, T2> action, T1 arg1, T2 arg2) => new DeferDisposable<T1, T2>(action, arg1, arg2);
+        internal static DeferDisposable Defer(Action action) => new(action);
+        internal static DeferDisposable<T> Defer<T>(Action<T> action, T arg) => new(action, arg);
+        internal static DeferDisposable<T1, T2> Defer<T1, T2>(Action<T1, T2> action, T1 arg1, T2 arg2) => new(action, arg1, arg2);
         // internal static AsyncDeferDisposable DeferAsync(Func<ValueTask> func) => new AsyncDeferDisposable(func);
-        internal static AsyncDeferDisposable DeferAsync(Func<Task> func) => new AsyncDeferDisposable(func);
+        internal static AsyncDeferDisposable DeferAsync(Func<Task> func) => new(func);
 
         internal readonly struct DeferDisposable : IDisposable
         {
@@ -71,8 +71,8 @@ namespace Npgsql.Util
     // ReSharper disable once InconsistentNaming
     static class PGUtil
     {
-        internal static readonly UTF8Encoding UTF8Encoding = new UTF8Encoding(false, true);
-        internal static readonly UTF8Encoding RelaxedUTF8Encoding = new UTF8Encoding(false, false);
+        internal static readonly UTF8Encoding UTF8Encoding = new(false, true);
+        internal static readonly UTF8Encoding RelaxedUTF8Encoding = new(false, false);
 
         internal const int BitsInInt = sizeof(int) * 8;
 
@@ -152,7 +152,7 @@ namespace Npgsql.Util
         readonly DateTime _expiration;
         internal DateTime Expiration => _expiration;
 
-        internal static NpgsqlTimeout Infinite = new NpgsqlTimeout(TimeSpan.Zero);
+        internal static NpgsqlTimeout Infinite = new(TimeSpan.Zero);
 
         internal NpgsqlTimeout(TimeSpan expiration)
             => _expiration = expiration == TimeSpan.Zero ? DateTime.MaxValue : DateTime.UtcNow + expiration;

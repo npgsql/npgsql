@@ -14,10 +14,10 @@ namespace Npgsql.Benchmarks
         const string SqlClientConnectionString = @"Data Source=(localdb)\mssqllocaldb";
 
         [Benchmark]
-        public NpgsqlConnection Npgsql() => new NpgsqlConnection(NpgsqlConnectionString);
+        public NpgsqlConnection Npgsql() => new(NpgsqlConnectionString);
 
         [Benchmark]
-        public SqlConnection SqlClient() => new SqlConnection(SqlClientConnectionString);
+        public SqlConnection SqlClient() => new(SqlClientConnectionString);
 
         class Config : ManualConfig
         {

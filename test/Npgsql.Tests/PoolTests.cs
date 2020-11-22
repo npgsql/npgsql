@@ -557,7 +557,7 @@ namespace Npgsql.Tests
             return conn;
         }
 
-        readonly List<NpgsqlConnection> _cleanup = new List<NpgsqlConnection>();
+        readonly List<NpgsqlConnection> _cleanup = new();
 
         [TearDown]
         public void Cleanup()

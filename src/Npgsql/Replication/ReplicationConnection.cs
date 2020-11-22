@@ -25,11 +25,11 @@ namespace Npgsql.Replication
     {
         #region Fields
 
-        static readonly Version FirstVersionWithoutDropSlotDoubleCommandCompleteMessage = new Version(13, 0);
-        static readonly Version FirstVersionWithTemporarySlotsAndSlotSnapshotInitMode = new Version(10, 0);
+        static readonly Version FirstVersionWithoutDropSlotDoubleCommandCompleteMessage = new(13, 0);
+        static readonly Version FirstVersionWithTemporarySlotsAndSlotSnapshotInitMode = new(10, 0);
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(ReplicationConnection));
         readonly NpgsqlConnection _npgsqlConnection;
-        readonly SemaphoreSlim _feedbackSemaphore = new SemaphoreSlim(1, 1);
+        readonly SemaphoreSlim _feedbackSemaphore = new(1, 1);
         string? _userFacingConnectionString;
         TimeSpan? _commandTimeout;
         TimeSpan _walReceiverTimeout = TimeSpan.FromSeconds(60d);
@@ -49,7 +49,7 @@ namespace Npgsql.Replication
         long _lastFlushedLsn;
         long _lastAppliedLsn;
 
-        readonly XLogDataMessage _cachedXLogDataMessage = new XLogDataMessage();
+        readonly XLogDataMessage _cachedXLogDataMessage = new();
 
         #endregion Fields
 

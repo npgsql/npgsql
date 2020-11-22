@@ -1508,7 +1508,7 @@ namespace Npgsql
             return clone.ToString();
         }
 
-        internal NpgsqlConnectionStringBuilder Clone() => new NpgsqlConnectionStringBuilder(ConnectionString);
+        internal NpgsqlConnectionStringBuilder Clone() => new(ConnectionString);
 
         /// <summary>
         /// Determines whether the specified object is equal to the current object.

@@ -57,9 +57,9 @@ namespace Npgsql
 
         bool IsExplicitlyPrepared => _connectorPreparedOn != null;
 
-        static readonly List<NpgsqlParameter> EmptyParameters = new List<NpgsqlParameter>();
+        static readonly List<NpgsqlParameter> EmptyParameters = new();
 
-        static readonly SingleThreadSynchronizationContext SingleThreadSynchronizationContext = new SingleThreadSynchronizationContext("NpgsqlRemainingAsyncSendWorker");
+        static readonly SingleThreadSynchronizationContext SingleThreadSynchronizationContext = new("NpgsqlRemainingAsyncSendWorker");
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlCommand));
 
@@ -332,7 +332,7 @@ namespace Npgsql
         /// <returns>A <see cref="NpgsqlParameter">NpgsqlParameter</see> object.</returns>
         public new NpgsqlParameter CreateParameter()
         {
-            return new NpgsqlParameter();
+            return new();
         }
 
         /// <summary>
@@ -1130,7 +1130,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         // TODO: Maybe pool these?
         internal ManualResetValueTaskSource<NpgsqlConnector> ExecutionCompletion { get; }
-            = new ManualResetValueTaskSource<NpgsqlConnector>();
+            = new();
 
         internal async ValueTask<NpgsqlDataReader> ExecuteReader(CommandBehavior behavior, bool async, CancellationToken cancellationToken)
         {
