@@ -1237,9 +1237,9 @@ LANGUAGE plpgsql VOLATILE";
                 MinPoolSize = 1,
                 MaxPoolSize = 1,
             };
+            using var _ = CreateTempPool(csb.ToString(), out var connectionString);
 
-
-            await using var conn1 = await OpenConnectionAsync(csb.ToString());
+            await using var conn1 = await OpenConnectionAsync(connectionString);
             using var cmd1 = conn1.CreateCommand();
             cmd1.CommandText = "SELECT 1";
             var reader1 = await cmd1.ExecuteReaderAsync(Behavior);
@@ -1252,8 +1252,7 @@ LANGUAGE plpgsql VOLATILE";
             await conn1.CloseAsync();
             await reader1.DisposeAsync();
 
-
-            await using var conn2 = await OpenConnectionAsync(csb.ToString());
+            await using var conn2 = await OpenConnectionAsync(connectionString);
             using var cmd2 = conn2.CreateCommand();
             cmd2.CommandText = "SELECT 2";
             var reader2 = await cmd2.ExecuteReaderAsync(Behavior);
@@ -1268,8 +1267,7 @@ LANGUAGE plpgsql VOLATILE";
             await conn2.CloseAsync();
             await reader2.DisposeAsync();
 
-
-            await using var conn3 = await OpenConnectionAsync(csb.ToString());
+            await using var conn3 = await OpenConnectionAsync(connectionString);
             using var cmd3 = conn3.CreateCommand();
             cmd3.CommandText = "SELECT 3";
             var reader3 = await cmd3.ExecuteReaderAsync(Behavior);

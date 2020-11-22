@@ -568,11 +568,12 @@ namespace Npgsql.Tests
                 MinPoolSize = 1,
                 MaxPoolSize = 1,
             };
+            using var __ = CreateTempPool(csb.ToString(), out var connectionString);
 
             await using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
 
-            await using var conn1 = await OpenConnectionAsync(csb.ToString());
+            await using var conn1 = await OpenConnectionAsync(connectionString);
             var tx1 = conn1.BeginTransaction();
             using var cmd1 = conn1.CreateCommand();
             cmd1.CommandText = $"INSERT INTO {table} (name) VALUES ('X'); SELECT 1";
@@ -587,7 +588,7 @@ namespace Npgsql.Tests
             await conn1.CloseAsync();
             await tx1.DisposeAsync();
 
-            await using var conn2 = await OpenConnectionAsync(csb.ToString());
+            await using var conn2 = await OpenConnectionAsync(connectionString);
             var tx2 = conn2.BeginTransaction();
             Assert.That(tx2, Is.Not.SameAs(tx1));
             using var cmd2 = conn2.CreateCommand();
@@ -604,7 +605,7 @@ namespace Npgsql.Tests
             await conn2.CloseAsync();
             await tx2.DisposeAsync();
 
-            await using var conn3 = await OpenConnectionAsync(csb.ToString());
+            await using var conn3 = await OpenConnectionAsync(connectionString);
             var tx3 = conn3.BeginTransaction();
             Assert.That(tx3, Is.SameAs(tx1));
             using var cmd3 = conn3.CreateCommand();
