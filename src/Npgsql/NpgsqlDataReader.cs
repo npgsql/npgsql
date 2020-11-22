@@ -2168,11 +2168,9 @@ namespace Npgsql
             // See #3126 and #3290
             if (State != ReaderState.Disposed)
             {
-                var previousReader = Connector.UnboundDataReader;
-                if (previousReader is not null && previousReader.State == ReaderState.Disposed)
-                    Connector.DataReader = previousReader;
-                else
-                    Connector.DataReader = new NpgsqlDataReader(Connector);
+                Connector.DataReader = Connector.UnboundDataReader is { State: ReaderState.Disposed } previousReader
+                    ? previousReader
+                    : new NpgsqlDataReader(Connector);
                 Connector.UnboundDataReader = this;
             }
         }

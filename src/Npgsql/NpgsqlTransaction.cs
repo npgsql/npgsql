@@ -446,8 +446,7 @@ namespace Npgsql
             // See #3306
             if (!IsDisposed)
             {
-                var previousTransaction = _connector.UnboundTransaction;
-                if (previousTransaction is not null && previousTransaction.IsDisposed)
+                if (_connector.UnboundTransaction is { IsDisposed: true } previousTransaction)
                 {
                     previousTransaction._connector = _connector;
                     _connector.Transaction = previousTransaction;
