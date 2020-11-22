@@ -17,21 +17,29 @@ namespace Npgsql
         /// up by semicolons if needed (SELECT 1; SELECT 2)
         /// </summary>
         /// <param name="sql">Raw user-provided query.</param>
-        /// <param name="parameters">The parameters configured on the <see cref="NpgsqlCommand"/> of this query
-        /// or an empty <see cref="NpgsqlParameterCollection"/> if deriveParameters is set to true.</param>
-        /// <param name="statements">An empty list to be populated with the statements parsed by this method</param>
-        /// <param name="deriveParameters">A bool indicating whether parameters contains a list of preconfigured parameters or an empty list to be filled with derived parameters.</param>
+        /// <param name="parameters">
+        /// The parameters configured on the <see cref="NpgsqlCommand"/> of this query or an empty <see cref="NpgsqlParameterCollection"/>
+        /// if deriveParameters is set to true.
+        /// </param>
+        /// <param name="statements">An empty list to be populated with the statements parsed by this method.</param>
+        /// <param name="standardConformingStrings">Whether PostgreSQL standards-conforming are used.</param>
+        /// <param name="deriveParameters">
+        /// A bool indicating whether parameters contains a list of preconfigured parameters or an empty list to be filled with derived
+        /// parameters.
+        /// </param>
         internal void ParseRawQuery(
             string sql,
             NpgsqlParameterCollection parameters,
             List<NpgsqlStatement> statements,
+            bool standardConformingStrings,
             bool deriveParameters = false)
-            => ParseRawQuery(sql.AsSpan(), parameters, statements, deriveParameters);
+            => ParseRawQuery(sql.AsSpan(), parameters, statements, standardConformingStrings, deriveParameters);
 
         void ParseRawQuery(
             ReadOnlySpan<char> sql,
             NpgsqlParameterCollection parameters,
             List<NpgsqlStatement> statements,
+            bool standardConformingStrings,
             bool deriveParameters)
         {
             Debug.Assert(deriveParameters == false || parameters.Count == 0);
@@ -64,7 +72,10 @@ namespace Npgsql
                 case '-':
                     goto LineCommentBegin;
                 case '\'':
-                    goto Quoted;
+                    if (standardConformingStrings)
+                        goto Quoted;
+                    else
+                        goto Escaped;
                 case '$':
                     if (!IsIdentifier(lastChar))
                         goto DollarQuotedStart;
