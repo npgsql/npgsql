@@ -1243,44 +1243,42 @@ LANGUAGE plpgsql VOLATILE";
             using var cmd1 = conn1.CreateCommand();
             cmd1.CommandText = "SELECT 1";
             var reader1 = await cmd1.ExecuteReaderAsync(Behavior);
-            Assert.That(async () => await reader1.ReadAsync(), Is.EqualTo(true));
-            Assert.That(() => reader1.GetInt32(0), Is.EqualTo(1));
+            await using (var __ = reader1)
+            {
+                Assert.That(async () => await reader1.ReadAsync(), Is.EqualTo(true));
+                Assert.That(() => reader1.GetInt32(0), Is.EqualTo(1));
 
-            var conn1ID = conn1.ProcessID;
-
-            await reader1.CloseAsync();
-            await conn1.CloseAsync();
-            await reader1.DisposeAsync();
+                await reader1.CloseAsync();
+                await conn1.CloseAsync();
+            } 
 
             await using var conn2 = await OpenConnectionAsync(connectionString);
             using var cmd2 = conn2.CreateCommand();
             cmd2.CommandText = "SELECT 2";
             var reader2 = await cmd2.ExecuteReaderAsync(Behavior);
-            Assert.That(async () => await reader2.ReadAsync(), Is.EqualTo(true));
-            Assert.That(() => reader2.GetInt32(0), Is.EqualTo(2));
-            Assert.That(reader1, Is.Not.SameAs(reader2));
+            await using (var __ = reader2)
+            {
+                Assert.That(async () => await reader2.ReadAsync(), Is.EqualTo(true));
+                Assert.That(() => reader2.GetInt32(0), Is.EqualTo(2));
+                Assert.That(reader1, Is.Not.SameAs(reader2));
 
-            var conn2ID = conn2.ProcessID;
-            Assert.That(conn1ID, Is.EqualTo(conn2ID));
-
-            await reader2.CloseAsync();
-            await conn2.CloseAsync();
-            await reader2.DisposeAsync();
+                await reader2.CloseAsync();
+                await conn2.CloseAsync();
+            }
 
             await using var conn3 = await OpenConnectionAsync(connectionString);
             using var cmd3 = conn3.CreateCommand();
             cmd3.CommandText = "SELECT 3";
             var reader3 = await cmd3.ExecuteReaderAsync(Behavior);
-            Assert.That(async () => await reader3.ReadAsync(), Is.EqualTo(true));
-            Assert.That(() => reader3.GetInt32(0), Is.EqualTo(3));
-            Assert.That(reader1, Is.SameAs(reader3));
+            await using (var __ = reader3)
+            {
+                Assert.That(async () => await reader3.ReadAsync(), Is.EqualTo(true));
+                Assert.That(() => reader3.GetInt32(0), Is.EqualTo(3));
+                Assert.That(reader1, Is.SameAs(reader3));
 
-            var conn3ID = conn3.ProcessID;
-            Assert.That(conn2ID, Is.EqualTo(conn3ID));
-
-            await reader3.CloseAsync();
-            await conn3.CloseAsync();
-            await reader3.DisposeAsync();
+                await reader3.CloseAsync();
+                await conn3.CloseAsync();
+            }
         }
         
         [Test]
