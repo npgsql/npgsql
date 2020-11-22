@@ -649,12 +649,21 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task NonStandardsConformingStrings_NotSupported()
+        public async Task NonStandardsConformingStrings()
         {
             using var conn = await OpenConnectionAsync();
 
-            Assert.That(() => conn.ExecuteNonQueryAsync("set standard_conforming_strings=off"),
-                Throws.Exception.TypeOf<NotSupportedException>());
+            if (IsMultiplexing)
+            {
+                Assert.That(() => conn.ExecuteNonQueryAsync("set standard_conforming_strings=off"),
+                    Throws.Exception.TypeOf<NotSupportedException>());
+            }
+            else
+            {
+                await conn.ExecuteNonQueryAsync("set standard_conforming_strings=off");
+                Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
+                await conn.ExecuteNonQueryAsync("set standard_conforming_strings=on");
+            }
         }
 
         [Test]
