@@ -1141,7 +1141,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             {
                 if (conn.TryGetBoundConnector(out var connector))
                 {
-                    connector.StartUserAction(ConnectorState.Executing, this, CancellationToken.None);
+                    connector.StartUserAction(ConnectorState.Executing, this, cancellationToken);
 
                     Task? sendTask = null;
 
