@@ -69,7 +69,7 @@ namespace Npgsql
         /// Records, for each column, its starting offset and length in the current row.
         /// Used only in non-sequential mode.
         /// </summary>
-        readonly List<(int Offset, int Length)> _columns = new List<(int Offset, int Length)>();
+        readonly List<(int Offset, int Length)> _columns = new();
 
         /// <summary>
         /// The index of the column that we're on, i.e. that has already been parsed, is
@@ -1794,7 +1794,7 @@ namespace Npgsql
             => GetColumnSchema(async: false).GetAwaiter().GetResult();
 
         ReadOnlyCollection<DbColumn> IDbColumnSchemaGenerator.GetColumnSchema()
-            => new ReadOnlyCollection<DbColumn>(GetColumnSchema().Select(c => (DbColumn)c).ToList());
+            => new(GetColumnSchema().Select(c => (DbColumn)c).ToList());
 
         /// <summary>
         /// Asynchronously returns schema information for the columns in the current resultset.

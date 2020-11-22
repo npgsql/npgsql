@@ -5,7 +5,7 @@ namespace Npgsql.PostgresTypes
 {
     readonly struct PostgresFacets : IEquatable<PostgresFacets>
     {
-        internal static readonly PostgresFacets None = new PostgresFacets(null, null, null);
+        internal static readonly PostgresFacets None = new(null, null, null);
 
         internal PostgresFacets(int? size, int? precision, int? scale)
         {

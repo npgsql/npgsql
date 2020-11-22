@@ -27,14 +27,14 @@ namespace NpgsqlTypes
 
         #region Constants
 
-        public static readonly NpgsqlDateTime Epoch = new NpgsqlDateTime(NpgsqlDate.Epoch);
-        public static readonly NpgsqlDateTime Era = new NpgsqlDateTime(NpgsqlDate.Era);
+        public static readonly NpgsqlDateTime Epoch = new(NpgsqlDate.Epoch);
+        public static readonly NpgsqlDateTime Era = new(NpgsqlDate.Era);
 
         public static readonly NpgsqlDateTime Infinity =
-            new NpgsqlDateTime(InternalType.Infinity, NpgsqlDate.Era, TimeSpan.Zero);
+            new(InternalType.Infinity, NpgsqlDate.Era, TimeSpan.Zero);
 
         public static readonly NpgsqlDateTime NegativeInfinity =
-            new NpgsqlDateTime(InternalType.NegativeInfinity, NpgsqlDate.Era, TimeSpan.Zero);
+            new(InternalType.NegativeInfinity, NpgsqlDate.Era, TimeSpan.Zero);
 
         // 9999-12-31
         const int MaxDateTimeDay = 3652058;
@@ -195,7 +195,7 @@ namespace NpgsqlTypes
             }
         }
 
-        public static NpgsqlDateTime Now => new NpgsqlDateTime(DateTime.Now);
+        public static NpgsqlDateTime Now => new(DateTime.Now);
 
         #endregion
 
@@ -443,7 +443,7 @@ namespace NpgsqlTypes
         /// <param name="dateTime">A <see cref="DateTime"/></param>
         /// <returns>An equivalent <see cref="NpgsqlDateTime"/>.</returns>
         public static implicit operator NpgsqlDateTime(DateTime dateTime) => ToNpgsqlDateTime(dateTime);
-        public static NpgsqlDateTime ToNpgsqlDateTime(DateTime dateTime) => new NpgsqlDateTime(dateTime);
+        public static NpgsqlDateTime ToNpgsqlDateTime(DateTime dateTime) => new(dateTime);
 
         /// <summary>
         /// Explicit cast of an <see cref="NpgsqlDateTime"/> to a <see cref="DateTime"/>.

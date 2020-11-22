@@ -17,7 +17,7 @@ namespace Npgsql.Tests
         #region Utilities for use by tests
 
         protected virtual NpgsqlConnection CreateConnection(string? connectionString = null)
-            => new NpgsqlConnection(connectionString ?? ConnectionString);
+            => new(connectionString ?? ConnectionString);
 
         protected virtual NpgsqlConnection CreateConnection(Action<NpgsqlConnectionStringBuilder> builderAction)
         {
@@ -79,7 +79,7 @@ namespace Npgsql.Tests
         // In PG under 9.1 you can't do SELECT pg_sleep(2) in binary because that function returns void and PG doesn't know
         // how to transfer that. So cast to text server-side.
         protected static NpgsqlCommand CreateSleepCommand(NpgsqlConnection conn, int seconds = 1000)
-            => new NpgsqlCommand($"SELECT pg_sleep({seconds}){(conn.PostgreSqlVersion < new Version(9, 1, 0) ? "::TEXT" : "")}", conn);
+            => new($"SELECT pg_sleep({seconds}){(conn.PostgreSqlVersion < new Version(9, 1, 0) ? "::TEXT" : "")}", conn);
 
         protected bool IsRedshift => new NpgsqlConnectionStringBuilder(ConnectionString).ServerCompatibilityMode == ServerCompatibilityMode.Redshift;
 

@@ -30,20 +30,20 @@ namespace Npgsql.TypeMapping
 
         internal NpgsqlTypeHandler UnrecognizedTypeHandler { get; }
 
-        readonly Dictionary<uint, NpgsqlTypeHandler> _byOID = new Dictionary<uint, NpgsqlTypeHandler>();
-        readonly Dictionary<NpgsqlDbType, NpgsqlTypeHandler> _byNpgsqlDbType = new Dictionary<NpgsqlDbType, NpgsqlTypeHandler>();
-        readonly Dictionary<DbType, NpgsqlTypeHandler> _byDbType = new Dictionary<DbType, NpgsqlTypeHandler>();
-        readonly Dictionary<string, NpgsqlTypeHandler> _byTypeName = new Dictionary<string, NpgsqlTypeHandler>();
+        readonly Dictionary<uint, NpgsqlTypeHandler> _byOID = new();
+        readonly Dictionary<NpgsqlDbType, NpgsqlTypeHandler> _byNpgsqlDbType = new();
+        readonly Dictionary<DbType, NpgsqlTypeHandler> _byDbType = new();
+        readonly Dictionary<string, NpgsqlTypeHandler> _byTypeName = new();
 
         /// <summary>
         /// Maps CLR types to their type handlers.
         /// </summary>
-        readonly Dictionary<Type, NpgsqlTypeHandler> _byClrType= new Dictionary<Type, NpgsqlTypeHandler>();
+        readonly Dictionary<Type, NpgsqlTypeHandler> _byClrType= new();
 
         /// <summary>
         /// Maps CLR types to their array handlers.
         /// </summary>
-        readonly Dictionary<Type, NpgsqlTypeHandler> _arrayHandlerByClrType = new Dictionary<Type, NpgsqlTypeHandler>();
+        readonly Dictionary<Type, NpgsqlTypeHandler> _arrayHandlerByClrType = new();
 
         /// <summary>
         /// Copy of <see cref="GlobalTypeMapper.ChangeCounter"/> at the time when this

@@ -20,18 +20,18 @@ namespace Npgsql.Replication.PgOutput
 
         #region Cached messages
 
-        readonly BeginMessage _beginMessage = new BeginMessage();
-        readonly CommitMessage _commitMessage = new CommitMessage();
-        readonly FullDeleteMessage _fullDeleteMessage = new FullDeleteMessage();
-        readonly FullUpdateMessage _fullUpdateMessage = new FullUpdateMessage();
-        readonly IndexUpdateMessage _indexUpdateMessage = new IndexUpdateMessage();
-        readonly InsertMessage _insertMessage = new InsertMessage();
-        readonly KeyDeleteMessage _keyDeleteMessage = new KeyDeleteMessage();
-        readonly OriginMessage _originMessage = new OriginMessage();
-        readonly RelationMessage _relationMessage = new RelationMessage();
-        readonly TruncateMessage _truncateMessage = new TruncateMessage();
-        readonly TypeMessage _typeMessage = new TypeMessage();
-        readonly UpdateMessage _updateMessage = new UpdateMessage();
+        readonly BeginMessage _beginMessage = new();
+        readonly CommitMessage _commitMessage = new();
+        readonly FullDeleteMessage _fullDeleteMessage = new();
+        readonly FullUpdateMessage _fullUpdateMessage = new();
+        readonly IndexUpdateMessage _indexUpdateMessage = new();
+        readonly InsertMessage _insertMessage = new();
+        readonly KeyDeleteMessage _keyDeleteMessage = new();
+        readonly OriginMessage _originMessage = new();
+        readonly RelationMessage _relationMessage = new();
+        readonly TruncateMessage _truncateMessage = new();
+        readonly TypeMessage _typeMessage = new();
+        readonly UpdateMessage _updateMessage = new();
 
         TupleData[] _tupleDataArray1 = Array.Empty<TupleData>();
         TupleData[] _tupleDataArray2 = Array.Empty<TupleData>();
@@ -53,8 +53,7 @@ namespace Npgsql.Replication.PgOutput
             _walLocation = walLocation;
         }
 
-        public IAsyncEnumerator<PgOutputReplicationMessage> GetAsyncEnumerator(
-            CancellationToken cancellationToken = new CancellationToken())
+        public IAsyncEnumerator<PgOutputReplicationMessage> GetAsyncEnumerator(CancellationToken cancellationToken = default)
         {
             using (NoSynchronizationContextScope.Enter())
                 return StartReplicationInternal(

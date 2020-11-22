@@ -70,7 +70,7 @@ namespace Npgsql.Tests
             }
         }
 
-        static readonly Version MinCreateExtensionVersion = new Version(9, 1);
+        static readonly Version MinCreateExtensionVersion = new(9, 1);
 
         public static bool IsPgPrerelease(NpgsqlConnection conn)
             => ((string)conn.ExecuteScalar("SELECT version()")!).Contains("beta");

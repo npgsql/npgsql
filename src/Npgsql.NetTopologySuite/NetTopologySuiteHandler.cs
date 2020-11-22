@@ -23,7 +23,7 @@ namespace Npgsql.NetTopologySuite
     {
         readonly PostGisReader _reader;
         readonly PostGisWriter _writer;
-        readonly LengthStream _lengthStream = new LengthStream();
+        readonly LengthStream _lengthStream = new();
 
         internal NetTopologySuiteHandler(PostgresType postgresType, PostGisReader reader, PostGisWriter writer)
             : base(postgresType)
@@ -60,7 +60,7 @@ namespace Npgsql.NetTopologySuite
 
         ValueTask<T> ReadCore<T>(NpgsqlReadBuffer buf, int len)
             where T : Geometry
-            => new ValueTask<T>((T)_reader.Read(buf.GetStream(len, false)));
+            => new((T)_reader.Read(buf.GetStream(len, false)));
 
         #endregion
 

@@ -24,7 +24,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
 
         /// <inheritdoc />
         public override NpgsqlCircle Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-            => new NpgsqlCircle(buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble());
+            => new(buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble());
 
         /// <inheritdoc />
         public override int ValidateAndGetLength(NpgsqlCircle value, NpgsqlParameter? parameter)

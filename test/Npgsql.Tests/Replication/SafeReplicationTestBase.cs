@@ -73,7 +73,7 @@ namespace Npgsql.Tests.Replication
         private protected Task SafeReplicationTest(Func<string, string, string, Task> testAction, [CallerMemberName] string memberName = "")
             => SafeReplicationTestCore(testAction, memberName);
 
-        static readonly Version Pg10Version = new Version(10, 0);
+        static readonly Version Pg10Version = new(10, 0);
 
         async Task SafeReplicationTestCore(Func<string, string, string, Task> testAction, string memberName)
         {

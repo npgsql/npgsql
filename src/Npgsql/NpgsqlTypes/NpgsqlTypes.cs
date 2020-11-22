@@ -22,7 +22,7 @@ namespace NpgsqlTypes
     /// </remarks>
     public struct NpgsqlPoint : IEquatable<NpgsqlPoint>
     {
-        static readonly Regex Regex = new Regex(@"\((-?\d+.?\d*),(-?\d+.?\d*)\)");
+        static readonly Regex Regex = new(@"\((-?\d+.?\d*),(-?\d+.?\d*)\)");
 
         public double X { get; set; }
         public double Y { get; set; }
@@ -70,7 +70,7 @@ namespace NpgsqlTypes
     /// </remarks>
     public struct NpgsqlLine : IEquatable<NpgsqlLine>
     {
-        static readonly Regex Regex = new Regex(@"\{(-?\d+.?\d*),(-?\d+.?\d*),(-?\d+.?\d*)\}");
+        static readonly Regex Regex = new(@"\{(-?\d+.?\d*),(-?\d+.?\d*),(-?\d+.?\d*)\}");
 
         public double A { get; set; }
         public double B { get; set; }
@@ -115,7 +115,7 @@ namespace NpgsqlTypes
     /// </summary>
     public struct NpgsqlLSeg : IEquatable<NpgsqlLSeg>
     {
-        static readonly Regex Regex = new Regex(@"\[\((-?\d+.?\d*),(-?\d+.?\d*)\),\((-?\d+.?\d*),(-?\d+.?\d*)\)\]");
+        static readonly Regex Regex = new(@"\[\((-?\d+.?\d*),(-?\d+.?\d*)\),\((-?\d+.?\d*),(-?\d+.?\d*)\)\]");
 
         public NpgsqlPoint Start { get; set; }
         public NpgsqlPoint End { get; set; }
@@ -174,7 +174,7 @@ namespace NpgsqlTypes
     /// </remarks>
     public struct NpgsqlBox : IEquatable<NpgsqlBox>
     {
-        static readonly Regex Regex = new Regex(@"\((-?\d+.?\d*),(-?\d+.?\d*)\),\((-?\d+.?\d*),(-?\d+.?\d*)\)");
+        static readonly Regex Regex = new(@"\((-?\d+.?\d*),(-?\d+.?\d*)\),\((-?\d+.?\d*),(-?\d+.?\d*)\)");
 
         public NpgsqlPoint UpperRight { get; set; }
         public NpgsqlPoint LowerLeft { get; set; }
@@ -456,7 +456,7 @@ namespace NpgsqlTypes
     /// </summary>
     public struct NpgsqlCircle : IEquatable<NpgsqlCircle>
     {
-        static readonly Regex Regex = new Regex(@"<\((-?\d+.?\d*),(-?\d+.?\d*)\),(\d+.?\d*)>");
+        static readonly Regex Regex = new(@"<\((-?\d+.?\d*),(-?\d+.?\d*)\),(\d+.?\d*)>");
 
         public double X { get; set; }
         public double Y { get; set; }
@@ -479,7 +479,7 @@ namespace NpgsqlTypes
 
         public NpgsqlPoint Center
         {
-            get => new NpgsqlPoint(X, Y);
+            get => new(X, Y);
             set
             {
                 X = value.X;

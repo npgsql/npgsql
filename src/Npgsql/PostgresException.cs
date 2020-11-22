@@ -95,7 +95,7 @@ namespace Npgsql
                 msg.ConstraintName, msg.File, msg.Line, msg.Routine) {}
 
         internal static PostgresException Load(NpgsqlReadBuffer buf, bool includeDetail)
-            => new PostgresException(ErrorOrNoticeMessage.Load(buf, includeDetail));
+            => new(ErrorOrNoticeMessage.Load(buf, includeDetail));
 
         internal PostgresException(SerializationInfo info, StreamingContext context)
             : base(info, context)

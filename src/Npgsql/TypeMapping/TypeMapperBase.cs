@@ -10,7 +10,7 @@ namespace Npgsql.TypeMapping
 {
     abstract class TypeMapperBase : INpgsqlTypeMapper
     {
-        internal Dictionary<string, NpgsqlTypeMapping> Mappings { get; } = new Dictionary<string, NpgsqlTypeMapping>();
+        internal Dictionary<string, NpgsqlTypeMapping> Mappings { get; } = new();
 
         public INpgsqlNameTranslator DefaultNameTranslator { get; }
 

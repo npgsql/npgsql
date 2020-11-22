@@ -12,7 +12,7 @@ namespace Npgsql.Tests
         protected MultiplexingMode MultiplexingMode { get; }
 
         readonly ConcurrentDictionary<(string ConnString, bool IsMultiplexing), string> _connStringCache
-            = new ConcurrentDictionary<(string ConnString, bool IsMultiplexing), string>();
+            = new();
 
         public override string ConnectionString { get; }
 

@@ -53,7 +53,7 @@ namespace Npgsql
         /// <summary>
         /// The input parameters sent with this statement.
         /// </summary>
-        public List<NpgsqlParameter> InputParameters { get; } = new List<NpgsqlParameter>();
+        public List<NpgsqlParameter> InputParameters { get; } = new();
 
         /// <summary>
         /// The RowDescription message for this query. If null, the query does not return rows (e.g. INSERT)

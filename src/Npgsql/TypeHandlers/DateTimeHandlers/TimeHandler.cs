@@ -48,7 +48,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
         // PostgreSQL time resolution == 1 microsecond == 10 ticks
         /// <inheritdoc />
         public override TimeSpan Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-            => new TimeSpan(buf.ReadInt64() * 10);
+            => new(buf.ReadInt64() * 10);
 
         /// <inheritdoc />
         public override int ValidateAndGetLength(TimeSpan value, NpgsqlParameter? parameter)

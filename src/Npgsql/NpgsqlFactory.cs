@@ -15,7 +15,7 @@ namespace Npgsql
         /// Gets an instance of the <see cref="NpgsqlFactory"/>.
         /// This can be used to retrieve strongly typed data objects.
         /// </summary>
-        public static readonly NpgsqlFactory Instance = new NpgsqlFactory();
+        public static readonly NpgsqlFactory Instance = new();
 
         NpgsqlFactory() {}
 

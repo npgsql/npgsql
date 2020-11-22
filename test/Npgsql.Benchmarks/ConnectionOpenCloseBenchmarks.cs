@@ -17,8 +17,8 @@ namespace Npgsql.Benchmarks
         NpgsqlCommand _noOpenCloseCmd;
 
         readonly string _openCloseConnString = new NpgsqlConnectionStringBuilder(BenchmarkEnvironment.ConnectionString) { ApplicationName = nameof(OpenClose) }.ToString();
-        readonly NpgsqlCommand _openCloseCmd = new NpgsqlCommand("SET lock_timeout = 1000");
-        readonly SqlCommand _sqlOpenCloseCmd = new SqlCommand("SET LOCK_TIMEOUT 1000");
+        readonly NpgsqlCommand _openCloseCmd = new("SET lock_timeout = 1000");
+        readonly SqlCommand _sqlOpenCloseCmd = new("SET LOCK_TIMEOUT 1000");
 
         NpgsqlConnection _openCloseSameConn;
         NpgsqlCommand _openCloseSameCmd;

@@ -197,6 +197,6 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static DateTime FromPostgresTimestamp(long value)
-            => new DateTime(value * 10 + PostgresTimestampOffsetTicks);
+            => new(value * 10 + PostgresTimestampOffsetTicks);
     }
 }

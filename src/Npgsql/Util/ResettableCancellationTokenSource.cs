@@ -19,13 +19,13 @@ namespace Npgsql.Util
 
         public TimeSpan Timeout { get; set; }
 
-        volatile CancellationTokenSource _cts = new CancellationTokenSource();
+        volatile CancellationTokenSource _cts = new();
         CancellationTokenRegistration _registration;
 
         /// <summary>
         /// Used, so we wouldn't concurently use the cts for the cancellation, while it's being disposed
         /// </summary>
-        readonly object lockObject = new object();
+        readonly object lockObject = new();
 
 #if DEBUG
         bool _isRunning;

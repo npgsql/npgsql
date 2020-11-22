@@ -28,7 +28,7 @@ namespace Npgsql.NodaTime
 
         // Adjust from 1 microsecond to 100ns. Time zone (in seconds) is inverted.
         public override OffsetTime Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-            => new OffsetTime(
+            => new(
                 LocalTime.FromTicksSinceMidnight(buf.ReadInt64() * 10),
                 Offset.FromSeconds(-buf.ReadInt32()));
 

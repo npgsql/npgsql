@@ -181,7 +181,7 @@ namespace Npgsql.TypeHandlers
             public static readonly bool IsNonNullable =
                 typeof(TElement).IsValueType && Nullable.GetUnderlyingType(typeof(TElement)) is null;
 
-            public static readonly List<TElement> EmptyList = new List<TElement>(0);
+            public static readonly List<TElement> EmptyList = new(0);
         }
 
         internal static class ArrayTypeInfo<TArrayOrList>
@@ -275,8 +275,8 @@ namespace Npgsql.TypeHandlers
         #region Write
 
         static Exception MixedTypesOrJaggedArrayException(Exception innerException)
-            => new Exception("While trying to write an array, one of its elements failed validation. " +
-                             "You may be trying to mix types in a non-generic IList, or to write a jagged array.", innerException);
+            => new("While trying to write an array, one of its elements failed validation. " +
+                   "You may be trying to mix types in a non-generic IList, or to write a jagged array.", innerException);
 
         static Exception CantWriteTypeException(Type type)
             => new InvalidCastException($"Can't write type {type} as an array of {typeof(TElement)}");

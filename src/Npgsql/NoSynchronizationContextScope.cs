@@ -17,7 +17,7 @@ namespace Npgsql
     /// </remarks>
     static class NoSynchronizationContextScope
     {
-        internal static Disposable Enter() => new Disposable(SynchronizationContext.Current);
+        internal static Disposable Enter() => new(SynchronizationContext.Current);
 
         internal struct Disposable : IDisposable
         {

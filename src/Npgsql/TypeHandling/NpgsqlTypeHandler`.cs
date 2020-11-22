@@ -34,7 +34,7 @@ namespace Npgsql.TypeHandling
 
 #pragma warning disable CA1823
         static readonly ConcurrentDictionary<Type, (NonGenericValidateAndGetLength, NonGenericWriteWithLength)>
-            NonGenericDelegateCache = new ConcurrentDictionary<Type, (NonGenericValidateAndGetLength, NonGenericWriteWithLength)>();
+            NonGenericDelegateCache = new();
 #pragma warning restore CA1823
 
         /// <summary>

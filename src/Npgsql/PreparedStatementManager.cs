@@ -10,7 +10,7 @@ namespace Npgsql
         internal int MaxAutoPrepared { get; }
         internal int UsagesBeforePrepare { get; }
 
-        internal Dictionary<string, PreparedStatement> BySql { get; } = new Dictionary<string, PreparedStatement>();
+        internal Dictionary<string, PreparedStatement> BySql { get; } = new();
         readonly PreparedStatement[] _autoPrepared;
         int _numAutoPrepared;
 

@@ -12,7 +12,7 @@ namespace Npgsql.Benchmarks
         /// </summary>
         const string DefaultConnectionString = "Server=localhost;User ID=npgsql_tests;Password=npgsql_tests;Database=npgsql_tests";
 
-        internal static NpgsqlConnection GetConnection() => new NpgsqlConnection(ConnectionString);
+        internal static NpgsqlConnection GetConnection() => new(ConnectionString);
 
         internal static NpgsqlConnection OpenConnection()
         {

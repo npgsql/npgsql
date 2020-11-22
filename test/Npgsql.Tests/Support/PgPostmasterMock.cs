@@ -21,7 +21,7 @@ namespace Npgsql.Tests.Support
         static readonly Encoding RelaxedEncoding = PGUtil.RelaxedUTF8Encoding;
 
         readonly Socket _socket;
-        readonly List<PgServerMock> _allServers = new List<PgServerMock>();
+        readonly List<PgServerMock> _allServers = new();
         bool _acceptingClients;
         Task? _acceptClientsTask;
         int _processIdCounter;
