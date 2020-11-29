@@ -19,13 +19,10 @@ namespace Npgsql.Tests
             await using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
 
-            var tx = conn.BeginTransaction();
+            await using var tx = await conn.BeginTransactionAsync();
             await conn.ExecuteNonQueryAsync($"INSERT INTO {table} (name) VALUES ('X')", tx: tx);
             await tx.CommitAsync();
             Assert.That(await conn.ExecuteScalarAsync($"SELECT COUNT(*) FROM {table}"), Is.EqualTo(1));
-            Assert.That(() => tx.Connection, Throws.Exception.TypeOf<InvalidOperationException>());
-            await tx.DisposeAsync();
-            Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
         }
 
         [Test, Description("Basic insert within a rolled back transaction")]
@@ -37,7 +34,7 @@ namespace Npgsql.Tests
             await using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
 
-            var tx = conn.BeginTransaction();
+            await using var tx = await conn.BeginTransactionAsync();
             var cmd = new NpgsqlCommand($"INSERT INTO {table} (name) VALUES ('X')", conn, tx);
             if (prepare == PrepareOrNot.Prepared)
                 cmd.Prepare();
@@ -46,9 +43,6 @@ namespace Npgsql.Tests
             tx.Rollback();
             Assert.That(tx.IsCompleted);
             Assert.That(await conn.ExecuteScalarAsync($"SELECT COUNT(*) FROM {table}"), Is.EqualTo(0));
-            Assert.That(() => tx.Connection, Throws.Exception.TypeOf<InvalidOperationException>());
-            await tx.DisposeAsync();
-            Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
         }
 
         [Test, Description("Basic insert within a rolled back transaction")]
@@ -60,18 +54,15 @@ namespace Npgsql.Tests
             await using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
 
-            var tx = conn.BeginTransaction();
+            await using var tx = await conn.BeginTransactionAsync();
             var cmd = new NpgsqlCommand($"INSERT INTO {table} (name) VALUES ('X')", conn, tx);
             if (prepare == PrepareOrNot.Prepared)
                 cmd.Prepare();
-            cmd.ExecuteNonQuery();
+            await cmd.ExecuteNonQueryAsync();
             Assert.That(conn.ExecuteScalar($"SELECT COUNT(*) FROM {table}"), Is.EqualTo(1));
             await tx.RollbackAsync();
             Assert.That(tx.IsCompleted);
             Assert.That(await conn.ExecuteScalarAsync($"SELECT COUNT(*) FROM {table}"), Is.EqualTo(0));
-            Assert.That(() => tx.Connection, Throws.Exception.TypeOf<InvalidOperationException>());
-            await tx.DisposeAsync();
-            Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
         }
 
         [Test, Description("Dispose a transaction in progress, should roll back")]
@@ -80,9 +71,10 @@ namespace Npgsql.Tests
             await using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
 
-            var tx = conn.BeginTransaction();
-            await conn.ExecuteNonQueryAsync($"INSERT INTO {table} (name) VALUES ('X')", tx: tx);
-            await tx.DisposeAsync();
+            await using (var tx = await conn.BeginTransactionAsync())
+            {
+                await conn.ExecuteNonQueryAsync($"INSERT INTO {table} (name) VALUES ('X')", tx: tx);
+            }
             Assert.That(await conn.ExecuteScalarAsync($"SELECT COUNT(*) FROM {table}"), Is.EqualTo(0));
         }
 
@@ -92,15 +84,13 @@ namespace Npgsql.Tests
             await using var conn1 = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn1, "name TEXT", out var table);
 
-            NpgsqlTransaction tx;
             using (var conn2 = await OpenConnectionAsync())
             {
-                tx = conn2.BeginTransaction();
+                var tx = await conn2.BeginTransactionAsync();
                 await conn2.ExecuteNonQueryAsync($"INSERT INTO {table} (name) VALUES ('X')", tx);
             }
 
             Assert.That(await conn1.ExecuteScalarAsync($"SELECT COUNT(*) FROM {table}"), Is.EqualTo(0));
-            Assert.That(() => tx.Connection, Throws.Exception.TypeOf<InvalidOperationException>());
         }
 
         [Test, Description("Intentionally generates an error, putting us in a failed transaction block. Rolls back.")]
@@ -109,7 +99,7 @@ namespace Npgsql.Tests
             await using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
 
-            var tx = conn.BeginTransaction();
+            await using var tx = await conn.BeginTransactionAsync();
             await conn.ExecuteNonQueryAsync($"INSERT INTO {table} (name) VALUES ('X')", tx: tx);
             Assert.That(async () => await conn.ExecuteNonQueryAsync("BAD QUERY"), Throws.Exception.TypeOf<PostgresException>());
             tx.Rollback();
@@ -558,6 +548,15 @@ namespace Npgsql.Tests
             Assert.That(tx2.IsDisposed, Is.False);
 
             await conn.DisposeAsync();
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/efcore.pg/issues/1593")]
+        public async Task AccessConnectionOnCompletedTransaction()
+        {
+            using var conn = await OpenConnectionAsync();
+            using var tx = await conn.BeginTransactionAsync();
+            tx.Commit();
+            Assert.That(tx.Connection, Is.SameAs(conn));
         }
 
         [Test]

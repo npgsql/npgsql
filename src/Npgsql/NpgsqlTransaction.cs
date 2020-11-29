@@ -19,14 +19,7 @@ namespace Npgsql
         /// Specifies the <see cref="NpgsqlConnection"/> object associated with the transaction.
         /// </summary>
         /// <value>The <see cref="NpgsqlConnection"/> object associated with the transaction.</value>
-        public new NpgsqlConnection? Connection
-        {
-            get
-            {
-                CheckReady();
-                return _connector.Connection;
-            }
-        }
+        public new NpgsqlConnection? Connection => _connector?.Connection;
 
         // Note that with ambient transactions, it's possible for a transaction to be pending after its connection
         // is already closed. So we capture the connector and perform everything directly on it.
