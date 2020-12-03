@@ -55,8 +55,8 @@ namespace Npgsql.TypeHandlers
         }
 
         /// <inheritdoc />
-        public override ArrayHandler CreateArrayHandler(PostgresArrayType arrayBackendType)
-            => new ArrayHandler<NpgsqlRange<TElement>>(arrayBackendType, this);
+        public override ArrayHandler CreateArrayHandler(PostgresArrayType arrayBackendType, ValueTypeArrayNullability valueTypeArrayNullability)
+            => new ArrayHandler<NpgsqlRange<TElement>>(arrayBackendType, this, valueTypeArrayNullability);
 
         internal override Type GetFieldType(FieldDescription? fieldDescription = null) => typeof(NpgsqlRange<TElement>);
         internal override Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null) => typeof(NpgsqlRange<TElement>);
