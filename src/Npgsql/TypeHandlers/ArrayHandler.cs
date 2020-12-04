@@ -101,9 +101,11 @@ namespace Npgsql.TypeHandlers
                     : typeof(TRequestedElement);
 
             if (dimensions == 0)
-                return expectedDimensions > 1 || returnType != typeof(TRequestedElement)
+                return expectedDimensions > 1
                     ? Array.CreateInstance(returnType, new int[expectedDimensions])
-                    : Array.Empty<TRequestedElement>();
+                    : returnType == typeof(TRequestedElement)
+                        ? Array.Empty<TRequestedElement>()
+                        : Array.CreateInstance(returnType, 0);
 
             if (expectedDimensions > 0 && dimensions != expectedDimensions)
                 throw new InvalidOperationException($"Cannot read an array with {expectedDimensions} dimension(s) from an array with {dimensions} dimension(s)");
