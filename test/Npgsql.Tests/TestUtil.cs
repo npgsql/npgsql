@@ -217,7 +217,7 @@ namespace Npgsql.Tests
         static volatile int _tempSchemaCounter;
         static volatile int _tempTypeCounter;
 
-        readonly struct DatabaseObjectDropper : IAsyncDisposable
+        sealed class DatabaseObjectDropper : IAsyncDisposable
         {
             readonly NpgsqlConnection _conn;
             readonly string _type;

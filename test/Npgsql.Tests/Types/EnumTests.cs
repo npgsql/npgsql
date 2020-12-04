@@ -13,7 +13,10 @@ namespace Npgsql.Tests.Types
     [NonParallelizable]
     public class EnumTests : TestBase
     {
-        enum Mood { Sad, Ok, Happy };
+        enum Mood { Sad, Ok, Happy }
+
+        [PgName("mood_unmapped")]
+        enum MoodUnmapped { Sad, Ok, Happy };
 
         [Test]
         public async Task UnmappedEnum()
@@ -382,6 +385,26 @@ CREATE TABLE {table} (id SERIAL, value1 {type}, value2 {type});");
                     cmd.ExecuteNonQuery();
                 }
             }
+        }
+
+        [Test]
+        public async Task WriteUnmappedEnum()
+        {
+            await using var conn = await OpenConnectionAsync();
+            await using var _ = DeferAsync(() => conn.ExecuteNonQueryAsync("DROP TYPE IF EXISTS mood_unmapped"));
+            await conn.ExecuteNonQueryAsync($"CREATE TYPE mood_unmapped AS ENUM ('sad', 'ok', 'happy')");
+
+            conn.ReloadTypes();
+
+            await using var cmd = new NpgsqlCommand($"SELECT @p", conn)
+            {
+                Parameters = { new("p", MoodUnmapped.Happy) }
+            };
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+            await reader.ReadAsync();
+
+            Assert.AreEqual(MoodUnmapped.Happy, reader.GetFieldValue<MoodUnmapped>(0));
         }
 
         [Test, Description("Tests that a a C# enum an be written to an enum backend when passed as dbUnknown")]
