@@ -8,6 +8,7 @@ abstract Npgsql.TypeHandling.NpgsqlSimpleTypeHandler<TDefault>.Write(TDefault va
 abstract Npgsql.TypeHandling.NpgsqlSimpleTypeHandlerWithPsv<TDefault, TPsv>.ReadPsv(Npgsql.NpgsqlReadBuffer! buf, int len, Npgsql.BackendMessages.FieldDescription? fieldDescription = null) -> TPsv
 abstract Npgsql.TypeHandling.NpgsqlSimpleTypeHandlerWithPsv<TDefault, TPsv>.ValidateAndGetLength(TPsv value, Npgsql.NpgsqlParameter? parameter) -> int
 abstract Npgsql.TypeHandling.NpgsqlSimpleTypeHandlerWithPsv<TDefault, TPsv>.Write(TPsv value, Npgsql.NpgsqlWriteBuffer! buf, Npgsql.NpgsqlParameter? parameter) -> void
+abstract Npgsql.TypeHandling.NpgsqlTypeHandler.CreateArrayHandler(Npgsql.PostgresTypes.PostgresArrayType! arrayBackendType) -> Npgsql.TypeHandlers.ArrayHandler!
 abstract Npgsql.TypeHandling.NpgsqlTypeHandler.CreateRangeHandler(Npgsql.PostgresTypes.PostgresType! rangeBackendType) -> Npgsql.TypeHandlers.IRangeHandler!
 abstract Npgsql.TypeHandling.NpgsqlTypeHandler.Read<TAny>(Npgsql.NpgsqlReadBuffer! buf, int len, bool async, Npgsql.BackendMessages.FieldDescription? fieldDescription = null) -> System.Threading.Tasks.ValueTask<TAny>
 abstract Npgsql.TypeHandling.NpgsqlTypeHandler.Read<TAny>(Npgsql.NpgsqlReadBuffer! buf, int len, Npgsql.BackendMessages.FieldDescription? fieldDescription = null) -> TAny
@@ -1124,9 +1125,13 @@ Npgsql.StatementType.Select = 1 -> Npgsql.StatementType
 Npgsql.StatementType.Unknown = 0 -> Npgsql.StatementType
 Npgsql.StatementType.Update = 4 -> Npgsql.StatementType
 Npgsql.TypeHandlers.ArrayHandler
+Npgsql.TypeHandlers.ArrayHandler.ArrayHandler(Npgsql.PostgresTypes.PostgresType! arrayPostgresType, Npgsql.TypeHandling.NpgsqlTypeHandler! elementHandler, int lowerBound = 1) -> void
+Npgsql.TypeHandlers.ArrayHandler.ReadArray<TRequestedElement>(Npgsql.NpgsqlReadBuffer! buf, bool async, int expectedDimensions = 0) -> System.Threading.Tasks.ValueTask<System.Array!>
 Npgsql.TypeHandlers.ArrayHandler.ReadList<TRequestedElement>(Npgsql.NpgsqlReadBuffer! buf, bool async) -> System.Threading.Tasks.ValueTask<System.Collections.Generic.List<TRequestedElement>!>
 Npgsql.TypeHandlers.ArrayHandler<TElement>
+Npgsql.TypeHandlers.ArrayHandler<TElement>.ArrayHandler(Npgsql.PostgresTypes.PostgresType! arrayPostgresType, Npgsql.TypeHandling.NpgsqlTypeHandler! elementHandler, int lowerBound = 1) -> void
 Npgsql.TypeHandlers.BitStringArrayHandler
+Npgsql.TypeHandlers.BitStringArrayHandler.BitStringArrayHandler(Npgsql.PostgresTypes.PostgresType! postgresType, Npgsql.TypeHandlers.BitStringHandler! elementHandler) -> void
 Npgsql.TypeHandlers.BitStringHandler
 Npgsql.TypeHandlers.BitStringHandler.BitStringHandler(Npgsql.PostgresTypes.PostgresType! postgresType) -> void
 Npgsql.TypeHandlers.BitStringHandler.ValidateAndGetLength(bool value, ref Npgsql.NpgsqlLengthCache? lengthCache, Npgsql.NpgsqlParameter? parameter) -> int
@@ -1983,6 +1988,7 @@ override Npgsql.Replication.TestDecoding.TestDecodingData.ToString() -> string!
 override Npgsql.Replication.TestDecoding.TestDecodingOptions.Equals(object? obj) -> bool
 override Npgsql.Replication.TestDecoding.TestDecodingOptions.GetHashCode() -> int
 override Npgsql.Schema.NpgsqlDbColumn.this[string! propertyName].get -> object?
+override Npgsql.TypeHandlers.ArrayHandler.CreateArrayHandler(Npgsql.PostgresTypes.PostgresArrayType! arrayBackendType) -> Npgsql.TypeHandlers.ArrayHandler!
 override Npgsql.TypeHandlers.ArrayHandler.CreateRangeHandler(Npgsql.PostgresTypes.PostgresType! rangeBackendType) -> Npgsql.TypeHandlers.IRangeHandler!
 override Npgsql.TypeHandlers.ArrayHandler.Read<TRequestedArray>(Npgsql.NpgsqlReadBuffer! buf, int len, bool async, Npgsql.BackendMessages.FieldDescription? fieldDescription = null) -> System.Threading.Tasks.ValueTask<TRequestedArray>
 override Npgsql.TypeHandlers.ArrayHandler.Read<TRequestedArray>(Npgsql.NpgsqlReadBuffer! buf, int len, Npgsql.BackendMessages.FieldDescription? fieldDescription = null) -> TRequestedArray
@@ -1990,6 +1996,7 @@ override Npgsql.TypeHandlers.ArrayHandler<TElement>.ValidateAndGetLength<TAny>(T
 override Npgsql.TypeHandlers.ArrayHandler<TElement>.ValidateObjectAndGetLength(object! value, ref Npgsql.NpgsqlLengthCache? lengthCache, Npgsql.NpgsqlParameter? parameter) -> int
 override Npgsql.TypeHandlers.ArrayHandler<TElement>.WriteObjectWithLength(object! value, Npgsql.NpgsqlWriteBuffer! buf, Npgsql.NpgsqlLengthCache? lengthCache, Npgsql.NpgsqlParameter? parameter, bool async, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 override Npgsql.TypeHandlers.BitStringArrayHandler.Read<TRequestedArray>(Npgsql.NpgsqlReadBuffer! buf, int len, bool async, Npgsql.BackendMessages.FieldDescription? fieldDescription = null) -> System.Threading.Tasks.ValueTask<TRequestedArray>
+override Npgsql.TypeHandlers.BitStringHandler.CreateArrayHandler(Npgsql.PostgresTypes.PostgresArrayType! backendType) -> Npgsql.TypeHandlers.ArrayHandler!
 override Npgsql.TypeHandlers.BitStringHandler.Read(Npgsql.NpgsqlReadBuffer! buf, int len, bool async, Npgsql.BackendMessages.FieldDescription? fieldDescription = null) -> System.Threading.Tasks.ValueTask<System.Collections.BitArray!>
 override Npgsql.TypeHandlers.BitStringHandler.ValidateAndGetLength(System.Collections.BitArray! value, ref Npgsql.NpgsqlLengthCache? lengthCache, Npgsql.NpgsqlParameter? parameter) -> int
 override Npgsql.TypeHandlers.BitStringHandler.Write(System.Collections.BitArray! value, Npgsql.NpgsqlWriteBuffer! buf, Npgsql.NpgsqlLengthCache? lengthCache, Npgsql.NpgsqlParameter? parameter, bool async, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
@@ -2141,6 +2148,7 @@ override Npgsql.TypeHandlers.NumericHandlers.SingleHandler.Write(float value, Np
 override Npgsql.TypeHandlers.NumericHandlers.UInt32Handler.Read(Npgsql.NpgsqlReadBuffer! buf, int len, Npgsql.BackendMessages.FieldDescription? fieldDescription = null) -> uint
 override Npgsql.TypeHandlers.NumericHandlers.UInt32Handler.ValidateAndGetLength(uint value, Npgsql.NpgsqlParameter? parameter) -> int
 override Npgsql.TypeHandlers.NumericHandlers.UInt32Handler.Write(uint value, Npgsql.NpgsqlWriteBuffer! buf, Npgsql.NpgsqlParameter? parameter) -> void
+override Npgsql.TypeHandlers.RangeHandler<TElement>.CreateArrayHandler(Npgsql.PostgresTypes.PostgresArrayType! arrayBackendType) -> Npgsql.TypeHandlers.ArrayHandler!
 override Npgsql.TypeHandlers.RangeHandler<TElement>.CreateRangeHandler(Npgsql.PostgresTypes.PostgresType! rangeBackendType) -> Npgsql.TypeHandlers.IRangeHandler!
 override Npgsql.TypeHandlers.RangeHandler<TElement>.Read(Npgsql.NpgsqlReadBuffer! buf, int len, bool async, Npgsql.BackendMessages.FieldDescription? fieldDescription = null) -> System.Threading.Tasks.ValueTask<NpgsqlTypes.NpgsqlRange<TElement>>
 override Npgsql.TypeHandlers.RangeHandler<TElement>.Read<TAny>(Npgsql.NpgsqlReadBuffer! buf, int len, Npgsql.BackendMessages.FieldDescription? fieldDescription = null) -> TAny
@@ -2157,6 +2165,8 @@ override Npgsql.TypeHandling.NpgsqlSimpleTypeHandler<TDefault>.Read<TAny>(Npgsql
 override Npgsql.TypeHandling.NpgsqlSimpleTypeHandler<TDefault>.ValidateAndGetLength<TAny>(TAny value, ref Npgsql.NpgsqlLengthCache? lengthCache, Npgsql.NpgsqlParameter? parameter) -> int
 override Npgsql.TypeHandling.NpgsqlSimpleTypeHandler<TDefault>.ValidateObjectAndGetLength(object! value, ref Npgsql.NpgsqlLengthCache? lengthCache, Npgsql.NpgsqlParameter? parameter) -> int
 override Npgsql.TypeHandling.NpgsqlSimpleTypeHandler<TDefault>.WriteObjectWithLength(object! value, Npgsql.NpgsqlWriteBuffer! buf, Npgsql.NpgsqlLengthCache? lengthCache, Npgsql.NpgsqlParameter? parameter, bool async, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+override Npgsql.TypeHandling.NpgsqlSimpleTypeHandlerWithPsv<TDefault, TPsv>.CreateArrayHandler(Npgsql.PostgresTypes.PostgresArrayType! arrayBackendType) -> Npgsql.TypeHandlers.ArrayHandler!
+override Npgsql.TypeHandling.NpgsqlTypeHandler<TDefault>.CreateArrayHandler(Npgsql.PostgresTypes.PostgresArrayType! arrayBackendType) -> Npgsql.TypeHandlers.ArrayHandler!
 override Npgsql.TypeHandling.NpgsqlTypeHandler<TDefault>.CreateRangeHandler(Npgsql.PostgresTypes.PostgresType! rangeBackendType) -> Npgsql.TypeHandlers.IRangeHandler!
 override Npgsql.TypeHandling.NpgsqlTypeHandler<TDefault>.Read<TAny>(Npgsql.NpgsqlReadBuffer! buf, int len, bool async, Npgsql.BackendMessages.FieldDescription? fieldDescription = null) -> System.Threading.Tasks.ValueTask<TAny>
 override Npgsql.TypeHandling.NpgsqlTypeHandler<TDefault>.Read<TAny>(Npgsql.NpgsqlReadBuffer! buf, int len, Npgsql.BackendMessages.FieldDescription? fieldDescription = null) -> TAny

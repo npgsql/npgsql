@@ -43,8 +43,8 @@ namespace Npgsql.TypeHandlers
 
         // BitString requires a special array handler which returns bool or BitArray
         /// <inheritdoc />
-        public override ArrayHandler CreateArrayHandler(PostgresArrayType backendType, ValueTypeArrayNullability valueTypeArrayNullability)
-            => new BitStringArrayHandler(backendType, this, valueTypeArrayNullability);
+        public override ArrayHandler CreateArrayHandler(PostgresArrayType backendType, ArrayNullabilityMode arrayNullabilityMode)
+            => new BitStringArrayHandler(backendType, this, arrayNullabilityMode);
 
         #region Read
 
@@ -274,8 +274,8 @@ namespace Npgsql.TypeHandlers
     public class BitStringArrayHandler : ArrayHandler<BitArray>
     {
         /// <inheritdoc />
-        public BitStringArrayHandler(PostgresType postgresType, BitStringHandler elementHandler, ValueTypeArrayNullability valueTypeArrayNullability)
-            : base(postgresType, elementHandler, valueTypeArrayNullability) {}
+        public BitStringArrayHandler(PostgresType postgresType, BitStringHandler elementHandler, ArrayNullabilityMode arrayNullabilityMode)
+            : base(postgresType, elementHandler, arrayNullabilityMode) {}
 
         /// <inheritdoc />
         protected internal override async ValueTask<TRequestedArray> Read<TRequestedArray>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)

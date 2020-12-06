@@ -1300,19 +1300,19 @@ namespace Npgsql
         /// </summary>
         [Category("Advanced")]
         [Description("Configure the way arrays of value types are returned when requested as object instances.")]
-        [DisplayName("ValueTypeArrayNullability")]
+        [DisplayName("ArrayNullabilityMode")]
         [NpgsqlConnectionStringProperty]
-        public ValueTypeArrayNullability ValueTypeArrayNullability
+        public ArrayNullabilityMode ArrayNullabilityMode
         {
-            get => _valueTypeArrayNullability;
+            get => _arrayNullabilityMode;
             set
             {
-                _valueTypeArrayNullability = value;
-                SetValue(nameof(ValueTypeArrayNullability), value);
+                _arrayNullabilityMode = value;
+                SetValue(nameof(ArrayNullabilityMode), value);
             }
         }
 
-        ValueTypeArrayNullability _valueTypeArrayNullability;
+        ArrayNullabilityMode _arrayNullabilityMode;
 
         #endregion
 
@@ -1687,22 +1687,22 @@ namespace Npgsql
     /// <a href="https://docs.microsoft.com/dotnet/csharp/language-reference/builtin-types/value-types">value types</a>
     /// behaves with respect to nullability when they are requested via an API returning an <see cref="object"/>.
     /// </summary>
-    public enum ValueTypeArrayNullability
+    public enum ArrayNullabilityMode
     {
         /// <summary>
-        /// Arrays of value types are always returned as non-nullable arrays (e. g. int[]).
+        /// Arrays of value types are always returned as non-nullable arrays (e.g. <c>int[]</c>).
         /// If the PostgreSQL array contains a NULL value an exception is thrown.
         /// </summary>
         Never,
         /// <summary>
-        /// Arrays of value types are always returned as nullable arrays (e. g. int?[]).
+        /// Arrays of value types are always returned as nullable arrays (e.g. <c>int?[]</c>).
         /// </summary>
         Always,
         /// <summary>
         /// The type of array that gets returned is determined at runtime.
-        /// Arrays of value types are returned as non-nullable arrays (e. g. int[])
+        /// Arrays of value types are returned as non-nullable arrays (e.g. <c>int[]</c>)
         /// if the actual instance that gets returned doesn't contain null values
-        /// and as nullable arrays (e. g. int?[]) if it does.
+        /// and as nullable arrays (e.g. <c>int?[]</c>) if it does.
         /// </summary>
         /// <remarks>When using this setting, make sure that your code is prepared to the fact
         /// that the actual type of array instances returned from APIs like <see cref="NpgsqlDataReader.GetValue"/>

@@ -28,25 +28,25 @@ namespace Npgsql.TypeHandlers
     {
         private protected int LowerBound { get; } // The lower bound value sent to the backend when writing arrays. Normally 1 (the PG default) but is 0 for OIDVector.
         private protected NpgsqlTypeHandler ElementHandler { get; }
-        private protected ValueTypeArrayNullability ValueTypeArrayNullability { get; }
+        private protected ArrayNullabilityMode ArrayNullabilityMode { get; }
 
         static readonly MethodInfo ReadArrayMethod = typeof(ArrayHandler).GetMethod(nameof(ReadArray), BindingFlags.NonPublic | BindingFlags.Instance)!;
         static readonly MethodInfo ReadListMethod = typeof(ArrayHandler).GetMethod(nameof(ReadList), BindingFlags.NonPublic | BindingFlags.Instance)!;
 
         /// <inheritdoc />
-        protected ArrayHandler(PostgresType arrayPostgresType, NpgsqlTypeHandler elementHandler, ValueTypeArrayNullability valueTypeArrayNullability, int lowerBound = 1)
+        protected ArrayHandler(PostgresType arrayPostgresType, NpgsqlTypeHandler elementHandler, ArrayNullabilityMode arrayNullabilityMode, int lowerBound = 1)
             : base(arrayPostgresType)
         {
             LowerBound = lowerBound;
             ElementHandler = elementHandler;
-            ValueTypeArrayNullability = valueTypeArrayNullability;
+            ArrayNullabilityMode = arrayNullabilityMode;
         }
 
         internal override Type GetFieldType(FieldDescription? fieldDescription = null) => typeof(Array);
         internal override Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null) => typeof(Array);
 
         /// <inheritdoc />
-        public override ArrayHandler CreateArrayHandler(PostgresArrayType arrayBackendType, ValueTypeArrayNullability valueTypeArrayNullability)
+        public override ArrayHandler CreateArrayHandler(PostgresArrayType arrayBackendType, ArrayNullabilityMode arrayNullabilityMode)
             => throw new NotSupportedException();
 
         /// <inheritdoc />
@@ -84,15 +84,15 @@ namespace Npgsql.TypeHandlers
             var containsNulls = buf.ReadInt32() == 1;
             buf.ReadUInt32(); // Element OID. Ignored.
 
-            var returnType = readAsObject && typeof(TRequestedElement).IsValueType
-                ? ValueTypeArrayNullability switch
+            var returnType = readAsObject
+                ? ArrayNullabilityMode switch
                 {
-                    ValueTypeArrayNullability.Never => containsNulls
+                    ArrayNullabilityMode.Never => ElementTypeInfo<TRequestedElement>.IsNonNullable && containsNulls
                         ? throw new InvalidOperationException(ReadNonNullableCollectionWithNullsExceptionMessage)
                         : typeof(TRequestedElement),
-                    ValueTypeArrayNullability.Always => typeof(Nullable<>).MakeGenericType(typeof(TRequestedElement)),
-                    ValueTypeArrayNullability.PerInstance => containsNulls
-                        ? typeof(Nullable<>).MakeGenericType(typeof(TRequestedElement))
+                    ArrayNullabilityMode.Always => ElementTypeInfo<TRequestedElement>.NullableElementType,
+                    ArrayNullabilityMode.PerInstance => ElementTypeInfo<TRequestedElement>.IsNonNullable && containsNulls
+                        ? ElementTypeInfo<TRequestedElement>.NullableElementType
                         : typeof(TRequestedElement),
                     _ => throw new ArgumentOutOfRangeException()
                 }
@@ -201,6 +201,8 @@ namespace Npgsql.TypeHandlers
                 typeof(TElement).IsValueType && Nullable.GetUnderlyingType(typeof(TElement)) is null;
 
             public static readonly List<TElement> EmptyList = new(0);
+
+            public static readonly Type NullableElementType = typeof(Nullable<>).MakeGenericType(typeof(TElement));
         }
 
         internal static class ArrayTypeInfo<TArrayOrList>
@@ -278,8 +280,8 @@ namespace Npgsql.TypeHandlers
     public class ArrayHandler<TElement> : ArrayHandler
     {
         /// <inheritdoc />
-        public ArrayHandler(PostgresType arrayPostgresType, NpgsqlTypeHandler elementHandler, ValueTypeArrayNullability valueTypeArrayNullability, int lowerBound = 1)
-            : base(arrayPostgresType, elementHandler, valueTypeArrayNullability, lowerBound) {}
+        public ArrayHandler(PostgresType arrayPostgresType, NpgsqlTypeHandler elementHandler, ArrayNullabilityMode arrayNullabilityMode, int lowerBound = 1)
+            : base(arrayPostgresType, elementHandler, arrayNullabilityMode, lowerBound) {}
 
         #region Read
 
@@ -503,8 +505,8 @@ namespace Npgsql.TypeHandlers
     /// <typeparam name="TElementPsv">The .NET provider-specific type contained as an element within this array</typeparam>
     class ArrayHandlerWithPsv<TElement, TElementPsv> : ArrayHandler<TElement>
     {
-        public ArrayHandlerWithPsv(PostgresType arrayPostgresType, NpgsqlTypeHandler elementHandler, ValueTypeArrayNullability valueTypeArrayNullability)
-            : base(arrayPostgresType, elementHandler, valueTypeArrayNullability) { }
+        public ArrayHandlerWithPsv(PostgresType arrayPostgresType, NpgsqlTypeHandler elementHandler, ArrayNullabilityMode arrayNullabilityMode)
+            : base(arrayPostgresType, elementHandler, arrayNullabilityMode) { }
 
         protected internal override async ValueTask<TRequestedArray> Read<TRequestedArray>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {

@@ -1,15 +1,25 @@
 ﻿#nullable enable
-abstract Npgsql.TypeHandling.NpgsqlTypeHandler.CreateArrayHandler(Npgsql.PostgresTypes.PostgresArrayType! arrayBackendType, Npgsql.ValueTypeArrayNullability valueTypeArrayNullability) -> Npgsql.TypeHandlers.ArrayHandler!
+*REMOVED*abstract Npgsql.TypeHandling.NpgsqlTypeHandler.CreateArrayHandler(Npgsql.PostgresTypes.PostgresArrayType! arrayBackendType) -> Npgsql.TypeHandlers.ArrayHandler!
+abstract Npgsql.TypeHandling.NpgsqlTypeHandler.CreateArrayHandler(Npgsql.PostgresTypes.PostgresArrayType! arrayBackendType, Npgsql.ArrayNullabilityMode arrayNullabilityMode) -> Npgsql.TypeHandlers.ArrayHandler!
 abstract NpgsqlTypes.NpgsqlTsQuery.Equals(NpgsqlTypes.NpgsqlTsQuery? other) -> bool
-Npgsql.TypeHandlers.ArrayHandler.ArrayHandler(Npgsql.PostgresTypes.PostgresType! arrayPostgresType, Npgsql.TypeHandling.NpgsqlTypeHandler! elementHandler, Npgsql.ValueTypeArrayNullability valueTypeArrayNullability, int lowerBound = 1) -> void
+*REMOVED*Npgsql.TypeHandlers.ArrayHandler.ArrayHandler(Npgsql.PostgresTypes.PostgresType! arrayPostgresType, Npgsql.TypeHandling.NpgsqlTypeHandler! elementHandler, int lowerBound = 1) -> void
+Npgsql.TypeHandlers.ArrayHandler.ArrayHandler(Npgsql.PostgresTypes.PostgresType! arrayPostgresType, Npgsql.TypeHandling.NpgsqlTypeHandler! elementHandler, Npgsql.ArrayNullabilityMode arrayNullabilityMode, int lowerBound = 1) -> void
+*REMOVED*Npgsql.TypeHandlers.ArrayHandler.ReadArray<TRequestedElement>(Npgsql.NpgsqlReadBuffer! buf, bool async, int expectedDimensions = 0) -> System.Threading.Tasks.ValueTask<System.Array!>
 Npgsql.TypeHandlers.ArrayHandler.ReadArray<TRequestedElement>(Npgsql.NpgsqlReadBuffer! buf, bool async, int expectedDimensions = 0, bool readAsObject = false) -> System.Threading.Tasks.ValueTask<System.Array!>
-Npgsql.TypeHandlers.ArrayHandler<TElement>.ArrayHandler(Npgsql.PostgresTypes.PostgresType! arrayPostgresType, Npgsql.TypeHandling.NpgsqlTypeHandler! elementHandler, Npgsql.ValueTypeArrayNullability valueTypeArrayNullability, int lowerBound = 1) -> void
-Npgsql.TypeHandlers.BitStringArrayHandler.BitStringArrayHandler(Npgsql.PostgresTypes.PostgresType! postgresType, Npgsql.TypeHandlers.BitStringHandler! elementHandler, Npgsql.ValueTypeArrayNullability valueTypeArrayNullability) -> void
-override Npgsql.TypeHandlers.ArrayHandler.CreateArrayHandler(Npgsql.PostgresTypes.PostgresArrayType! arrayBackendType, Npgsql.ValueTypeArrayNullability valueTypeArrayNullability) -> Npgsql.TypeHandlers.ArrayHandler!
-override Npgsql.TypeHandlers.BitStringHandler.CreateArrayHandler(Npgsql.PostgresTypes.PostgresArrayType! backendType, Npgsql.ValueTypeArrayNullability valueTypeArrayNullability) -> Npgsql.TypeHandlers.ArrayHandler!
-override Npgsql.TypeHandlers.RangeHandler<TElement>.CreateArrayHandler(Npgsql.PostgresTypes.PostgresArrayType! arrayBackendType, Npgsql.ValueTypeArrayNullability valueTypeArrayNullability) -> Npgsql.TypeHandlers.ArrayHandler!
-override Npgsql.TypeHandling.NpgsqlSimpleTypeHandlerWithPsv<TDefault, TPsv>.CreateArrayHandler(Npgsql.PostgresTypes.PostgresArrayType! arrayBackendType, Npgsql.ValueTypeArrayNullability valueTypeArrayNullability) -> Npgsql.TypeHandlers.ArrayHandler!
-override Npgsql.TypeHandling.NpgsqlTypeHandler<TDefault>.CreateArrayHandler(Npgsql.PostgresTypes.PostgresArrayType! arrayBackendType, Npgsql.ValueTypeArrayNullability valueTypeArrayNullability) -> Npgsql.TypeHandlers.ArrayHandler!
+*REMOVED*Npgsql.TypeHandlers.ArrayHandler<TElement>.ArrayHandler(Npgsql.PostgresTypes.PostgresType! arrayPostgresType, Npgsql.TypeHandling.NpgsqlTypeHandler! elementHandler, int lowerBound = 1) -> void
+Npgsql.TypeHandlers.ArrayHandler<TElement>.ArrayHandler(Npgsql.PostgresTypes.PostgresType! arrayPostgresType, Npgsql.TypeHandling.NpgsqlTypeHandler! elementHandler, Npgsql.ArrayNullabilityMode arrayNullabilityMode, int lowerBound = 1) -> void
+*REMOVED*Npgsql.TypeHandlers.BitStringArrayHandler.BitStringArrayHandler(Npgsql.PostgresTypes.PostgresType! postgresType, Npgsql.TypeHandlers.BitStringHandler! elementHandler) -> void
+Npgsql.TypeHandlers.BitStringArrayHandler.BitStringArrayHandler(Npgsql.PostgresTypes.PostgresType! postgresType, Npgsql.TypeHandlers.BitStringHandler! elementHandler, Npgsql.ArrayNullabilityMode arrayNullabilityMode) -> void
+*REMOVED*override Npgsql.TypeHandlers.ArrayHandler.CreateArrayHandler(Npgsql.PostgresTypes.PostgresArrayType! arrayBackendType) -> Npgsql.TypeHandlers.ArrayHandler!
+override Npgsql.TypeHandlers.ArrayHandler.CreateArrayHandler(Npgsql.PostgresTypes.PostgresArrayType! arrayBackendType, Npgsql.ArrayNullabilityMode arrayNullabilityMode) -> Npgsql.TypeHandlers.ArrayHandler!
+*REMOVED*override Npgsql.TypeHandlers.BitStringHandler.CreateArrayHandler(Npgsql.PostgresTypes.PostgresArrayType! backendType) -> Npgsql.TypeHandlers.ArrayHandler!
+override Npgsql.TypeHandlers.BitStringHandler.CreateArrayHandler(Npgsql.PostgresTypes.PostgresArrayType! backendType, Npgsql.ArrayNullabilityMode arrayNullabilityMode) -> Npgsql.TypeHandlers.ArrayHandler!
+*REMOVED*override Npgsql.TypeHandlers.RangeHandler<TElement>.CreateArrayHandler(Npgsql.PostgresTypes.PostgresArrayType! arrayBackendType) -> Npgsql.TypeHandlers.ArrayHandler!
+override Npgsql.TypeHandlers.RangeHandler<TElement>.CreateArrayHandler(Npgsql.PostgresTypes.PostgresArrayType! arrayBackendType, Npgsql.ArrayNullabilityMode arrayNullabilityMode) -> Npgsql.TypeHandlers.ArrayHandler!
+*REMOVED*override Npgsql.TypeHandling.NpgsqlSimpleTypeHandlerWithPsv<TDefault, TPsv>.CreateArrayHandler(Npgsql.PostgresTypes.PostgresArrayType! arrayBackendType) -> Npgsql.TypeHandlers.ArrayHandler!
+override Npgsql.TypeHandling.NpgsqlSimpleTypeHandlerWithPsv<TDefault, TPsv>.CreateArrayHandler(Npgsql.PostgresTypes.PostgresArrayType! arrayBackendType, Npgsql.ArrayNullabilityMode arrayNullabilityMode) -> Npgsql.TypeHandlers.ArrayHandler!
+*REMOVED*override Npgsql.TypeHandling.NpgsqlTypeHandler<TDefault>.CreateArrayHandler(Npgsql.PostgresTypes.PostgresArrayType! arrayBackendType) -> Npgsql.TypeHandlers.ArrayHandler!
+override Npgsql.TypeHandling.NpgsqlTypeHandler<TDefault>.CreateArrayHandler(Npgsql.PostgresTypes.PostgresArrayType! arrayBackendType, Npgsql.ArrayNullabilityMode arrayNullabilityMode) -> Npgsql.TypeHandlers.ArrayHandler!
 override NpgsqlTypes.NpgsqlTsQuery.Equals(object? obj) -> bool
 override NpgsqlTypes.NpgsqlTsQuery.GetHashCode() -> int
 static NpgsqlTypes.NpgsqlTsQuery.operator ==(NpgsqlTypes.NpgsqlTsQuery? left, NpgsqlTypes.NpgsqlTsQuery? right) -> bool
@@ -26,9 +36,9 @@ override NpgsqlTypes.NpgsqlTsQueryAnd.Equals(NpgsqlTypes.NpgsqlTsQuery? other) -
 override NpgsqlTypes.NpgsqlTsQueryAnd.GetHashCode() -> int
 override NpgsqlTypes.NpgsqlTsQueryFollowedBy.Equals(NpgsqlTypes.NpgsqlTsQuery? other) -> bool
 override NpgsqlTypes.NpgsqlTsQueryFollowedBy.GetHashCode() -> int
-Npgsql.NpgsqlConnectionStringBuilder.ValueTypeArrayNullability.get -> Npgsql.ValueTypeArrayNullability
-Npgsql.NpgsqlConnectionStringBuilder.ValueTypeArrayNullability.set -> void
-Npgsql.ValueTypeArrayNullability
-Npgsql.ValueTypeArrayNullability.Never = 0 -> Npgsql.ValueTypeArrayNullability
-Npgsql.ValueTypeArrayNullability.Always = 1 -> Npgsql.ValueTypeArrayNullability
-Npgsql.ValueTypeArrayNullability.PerInstance = 2 -> Npgsql.ValueTypeArrayNullability
+Npgsql.NpgsqlConnectionStringBuilder.ArrayNullabilityMode.get -> Npgsql.ArrayNullabilityMode
+Npgsql.NpgsqlConnectionStringBuilder.ArrayNullabilityMode.set -> void
+Npgsql.ArrayNullabilityMode
+Npgsql.ArrayNullabilityMode.Never = 0 -> Npgsql.ArrayNullabilityMode
+Npgsql.ArrayNullabilityMode.Always = 1 -> Npgsql.ArrayNullabilityMode
+Npgsql.ArrayNullabilityMode.PerInstance = 2 -> Npgsql.ArrayNullabilityMode

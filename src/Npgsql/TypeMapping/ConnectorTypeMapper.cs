@@ -243,7 +243,7 @@ namespace Npgsql.TypeMapping
                 {
                     _byOID[domain.OID] = baseTypeHandler;
                     if (domain.Array != null)
-                        BindType(baseTypeHandler.CreateArrayHandler(domain.Array, _connector.Settings.ValueTypeArrayNullability), domain.Array);
+                        BindType(baseTypeHandler.CreateArrayHandler(domain.Array, _connector.Settings.ArrayNullabilityMode), domain.Array);
                 }
         }
 
@@ -302,7 +302,7 @@ namespace Npgsql.TypeMapping
                 {
                     _byOID[domain.OID] = handler;
                     if (domain.Array != null)
-                        BindType(handler.CreateArrayHandler(domain.Array, _connector.Settings.ValueTypeArrayNullability), domain.Array);
+                        BindType(handler.CreateArrayHandler(domain.Array, _connector.Settings.ArrayNullabilityMode), domain.Array);
                 }
         }
 
@@ -349,7 +349,7 @@ namespace Npgsql.TypeMapping
 
         void BindArrayType(NpgsqlTypeHandler elementHandler, PostgresArrayType pgArrayType, NpgsqlDbType? elementNpgsqlDbType, Type[]? elementClrTypes)
         {
-            var arrayHandler = elementHandler.CreateArrayHandler(pgArrayType, _connector.Settings.ValueTypeArrayNullability);
+            var arrayHandler = elementHandler.CreateArrayHandler(pgArrayType, _connector.Settings.ArrayNullabilityMode);
 
             var arrayNpgsqlDbType = elementNpgsqlDbType.HasValue
                 ? NpgsqlDbType.Array | elementNpgsqlDbType.Value
