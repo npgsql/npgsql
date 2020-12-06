@@ -91,7 +91,7 @@ namespace Npgsql.TypeHandlers
                         ? throw new InvalidOperationException(ReadNonNullableCollectionWithNullsExceptionMessage)
                         : typeof(TRequestedElement),
                     ArrayNullabilityMode.Always => ElementTypeInfo<TRequestedElement>.NullableElementType,
-                    ArrayNullabilityMode.PerInstance => ElementTypeInfo<TRequestedElement>.IsNonNullable && containsNulls
+                    ArrayNullabilityMode.PerInstance => containsNulls
                         ? ElementTypeInfo<TRequestedElement>.NullableElementType
                         : typeof(TRequestedElement),
                     _ => throw new ArgumentOutOfRangeException()
