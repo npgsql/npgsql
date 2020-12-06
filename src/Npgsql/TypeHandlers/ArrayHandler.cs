@@ -202,7 +202,9 @@ namespace Npgsql.TypeHandlers
 
             public static readonly List<TElement> EmptyList = new(0);
 
-            public static readonly Type NullableElementType = typeof(Nullable<>).MakeGenericType(typeof(TElement));
+            public static readonly Type NullableElementType = IsNonNullable
+                ? typeof(Nullable<>).MakeGenericType(typeof(TElement))
+                : typeof(TElement);
         }
 
         internal static class ArrayTypeInfo<TArrayOrList>
