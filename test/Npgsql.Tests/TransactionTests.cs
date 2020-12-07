@@ -44,6 +44,7 @@ namespace Npgsql.Tests
                 Assert.That(conn.ExecuteScalar($"SELECT COUNT(*) FROM {table}"), Is.EqualTo(1));
                 tx.Rollback();
                 Assert.That(tx.IsCompleted);
+                Assert.That(() => tx.Connection, Throws.Nothing);
                 Assert.That(await conn.ExecuteScalarAsync($"SELECT COUNT(*) FROM {table}"), Is.EqualTo(0));
             }
 
@@ -69,6 +70,7 @@ namespace Npgsql.Tests
                 Assert.That(conn.ExecuteScalar($"SELECT COUNT(*) FROM {table}"), Is.EqualTo(1));
                 await tx.RollbackAsync();
                 Assert.That(tx.IsCompleted);
+                Assert.That(() => tx.Connection, Throws.Nothing);
                 Assert.That(await conn.ExecuteScalarAsync($"SELECT COUNT(*) FROM {table}"), Is.EqualTo(0));
             }
 

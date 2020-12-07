@@ -25,7 +25,7 @@ namespace Npgsql
             {
                 CheckDisposed();
                 return _connector?.Connection;
-            } 
+            }
         }
 
         // Note that with ambient transactions, it's possible for a transaction to be pending after its connection
