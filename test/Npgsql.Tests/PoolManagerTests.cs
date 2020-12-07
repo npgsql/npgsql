@@ -23,7 +23,7 @@ namespace Npgsql.Tests
         [Test]
         public void ManyPools()
         {
-            PoolManager.ClearAll();
+            PoolManager.ClearAll(reset: true);
             for (var i = 0; i < PoolManager.InitialPoolsSize + 1; i++)
             {
                 var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
@@ -33,7 +33,7 @@ namespace Npgsql.Tests
                 using (var conn = new NpgsqlConnection(connString))
                     conn.Open();
             }
-            PoolManager.ClearAll();
+            PoolManager.ClearAll(reset: true);
         }
 #endif
 
@@ -69,9 +69,9 @@ namespace Npgsql.Tests
         }
 
         [SetUp]
-        public void Setup() => PoolManager.ClearAll();
+        public void Setup() => PoolManager.ClearAll(reset: true);
 
         [TearDown]
-        public void Teardown() => PoolManager.ClearAll();
+        public void Teardown() => PoolManager.ClearAll(reset: true);
     }
 }

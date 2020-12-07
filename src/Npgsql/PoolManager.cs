@@ -91,7 +91,7 @@ namespace Npgsql
                 pool.Clear();
         }
 
-        internal static void ClearAll()
+        internal static void ClearAll(bool reset = false)
         {
             lock (Lock)
             {
@@ -104,8 +104,11 @@ namespace Npgsql
                     cp.Pool?.Clear();
                 }
 
-                _pools = new (string, ConnectorPool)[InitialPoolsSize];
-                _nextSlot = 0;
+                if (reset)
+                {
+                    _pools = new (string, ConnectorPool)[InitialPoolsSize];
+                    _nextSlot = 0;
+                }
             }
         }
 
