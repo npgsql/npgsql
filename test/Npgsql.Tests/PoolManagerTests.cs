@@ -51,7 +51,7 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void ClearAllWithBusy()
+        public void ClearAllWithBusy([Values(true, false)] bool reset)
         {
             ConnectorPool? pool;
             using (OpenConnection())
@@ -59,8 +59,11 @@ namespace Npgsql.Tests
                 using (OpenConnection()) { }
                 // We have one idle, one busy
 
-                NpgsqlConnection.ClearAllPools();
-                Assert.That(PoolManager.TryGetValue(ConnectionString, out pool), Is.True);
+                NpgsqlConnection.ClearAllPools(reset);
+                Assert.That(PoolManager.TryGetValue(ConnectionString, out pool), Is.EqualTo(!reset));
+                if (reset)
+                    return;
+
                 Assert.That(pool!.Statistics.Idle, Is.Zero);
                 Assert.That(pool.Statistics.Total, Is.EqualTo(1));
             }
