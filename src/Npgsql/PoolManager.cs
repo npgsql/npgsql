@@ -36,7 +36,7 @@ namespace Npgsql
                 if (ReferenceEquals(cp.Key, key))
                 {
                     // It's possible that this pool entry is currently being written: the connection string
-                    // component has already been writte, but the pool component is just about to be. So we
+                    // component has already been written, but the pool component is just about to be. So we
                     // loop on the pool until it's non-null
                     while (Volatile.Read(ref cp.Pool) == null)
                         sw.SpinOnce();
@@ -103,6 +103,9 @@ namespace Npgsql
                         return;
                     cp.Pool?.Clear();
                 }
+
+                _pools = new (string, ConnectorPool)[InitialPoolsSize];
+                _nextSlot = 0;
             }
         }
 
@@ -112,20 +115,6 @@ namespace Npgsql
             // close idle connectors to prevent errors in PostgreSQL logs (#491).
             AppDomain.CurrentDomain.DomainUnload += (sender, args) => ClearAll();
             AppDomain.CurrentDomain.ProcessExit += (sender, args) => ClearAll();
-        }
-
-        /// <summary>
-        /// Resets the pool manager to its initial state, for test purposes only.
-        /// Assumes that no other threads are accessing the pool.
-        /// </summary>
-        internal static void Reset()
-        {
-            lock (Lock)
-            {
-                ClearAll();
-                _pools = new (string, ConnectorPool)[InitialPoolsSize];
-                _nextSlot = 0;
-            }
         }
     }
 }
