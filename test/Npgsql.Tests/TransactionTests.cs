@@ -13,16 +13,56 @@ namespace Npgsql.Tests
 {
     public class TransactionTests : MultiplexingTestBase
     {
-        [Test]
-        public async Task Commit()
+        [Test, Description("Basic insert within a commited transaction")]
+        public async Task Commit([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
         {
+            if (prepare == PrepareOrNot.Prepared && IsMultiplexing)
+                return;
+
             await using var conn = await OpenConnectionAsync();
             await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
 
-            await using var tx = await conn.BeginTransactionAsync();
-            await conn.ExecuteNonQueryAsync($"INSERT INTO {table} (name) VALUES ('X')", tx: tx);
-            await tx.CommitAsync();
-            Assert.That(await conn.ExecuteScalarAsync($"SELECT COUNT(*) FROM {table}"), Is.EqualTo(1));
+            var tx = await conn.BeginTransactionAsync();
+            await using (tx)
+            {
+                var cmd = new NpgsqlCommand($"INSERT INTO {table} (name) VALUES ('X')", conn, tx);
+                if (prepare == PrepareOrNot.Prepared)
+                    cmd.Prepare();
+                cmd.ExecuteNonQuery();
+                Assert.That(conn.ExecuteScalar($"SELECT COUNT(*) FROM {table}"), Is.EqualTo(1));
+                tx.Commit();
+                Assert.That(tx.IsCompleted);
+                Assert.That(() => tx.Connection, Throws.Nothing);
+                Assert.That(await conn.ExecuteScalarAsync($"SELECT COUNT(*) FROM {table}"), Is.EqualTo(1));
+            }
+
+            Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
+        }
+
+        [Test, Description("Basic insert within a commited transaction")]
+        public async Task CommitAsync([Values(PrepareOrNot.NotPrepared, PrepareOrNot.Prepared)] PrepareOrNot prepare)
+        {
+            if (prepare == PrepareOrNot.Prepared && IsMultiplexing)
+                return;
+
+            await using var conn = await OpenConnectionAsync();
+            await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
+
+            var tx = await conn.BeginTransactionAsync();
+            await using (tx)
+            {
+                var cmd = new NpgsqlCommand($"INSERT INTO {table} (name) VALUES ('X')", conn, tx);
+                if (prepare == PrepareOrNot.Prepared)
+                    cmd.Prepare();
+                await cmd.ExecuteNonQueryAsync();
+                Assert.That(conn.ExecuteScalar($"SELECT COUNT(*) FROM {table}"), Is.EqualTo(1));
+                await tx.CommitAsync();
+                Assert.That(tx.IsCompleted);
+                Assert.That(() => tx.Connection, Throws.Nothing);
+                Assert.That(await conn.ExecuteScalarAsync($"SELECT COUNT(*) FROM {table}"), Is.EqualTo(1));
+            }
+
+            Assert.That(() => tx.Connection, Throws.Exception.TypeOf<ObjectDisposedException>());
         }
 
         [Test, Description("Basic insert within a rolled back transaction")]
@@ -35,7 +75,7 @@ namespace Npgsql.Tests
             await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
 
             var tx = await conn.BeginTransactionAsync();
-            await using (var disposedTx = tx)
+            await using (tx)
             {
                 var cmd = new NpgsqlCommand($"INSERT INTO {table} (name) VALUES ('X')", conn, tx);
                 if (prepare == PrepareOrNot.Prepared)
@@ -61,7 +101,7 @@ namespace Npgsql.Tests
             await using var _ = await CreateTempTable(conn, "name TEXT", out var table);
 
             var tx = await conn.BeginTransactionAsync();
-            await using (var disposedTx = tx)
+            await using (tx)
             {
                 var cmd = new NpgsqlCommand($"INSERT INTO {table} (name) VALUES ('X')", conn, tx);
                 if (prepare == PrepareOrNot.Prepared)
