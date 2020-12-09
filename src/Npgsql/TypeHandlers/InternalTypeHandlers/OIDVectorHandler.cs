@@ -24,9 +24,9 @@ namespace Npgsql.TypeHandlers.InternalTypeHandlers
     class OIDVectorHandler : ArrayHandler<uint>
     {
         public OIDVectorHandler(PostgresType oidvectorType, PostgresType oidType)
-            : base(oidvectorType, new UInt32Handler(oidType), 0) { }
+            : base(oidvectorType, new UInt32Handler(oidType), ArrayNullabilityMode.Never, 0) { }
 
-        public override ArrayHandler CreateArrayHandler(PostgresArrayType arrayBackendType)
-            => new ArrayHandler<ArrayHandler<uint>>(arrayBackendType, this);
+        public override ArrayHandler CreateArrayHandler(PostgresArrayType arrayBackendType, ArrayNullabilityMode arrayNullabilityMode)
+            => new ArrayHandler<ArrayHandler<uint>>(arrayBackendType, this, arrayNullabilityMode);
     }
 }
