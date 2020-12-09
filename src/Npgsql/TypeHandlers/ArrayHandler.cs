@@ -28,23 +28,25 @@ namespace Npgsql.TypeHandlers
     {
         private protected int LowerBound { get; } // The lower bound value sent to the backend when writing arrays. Normally 1 (the PG default) but is 0 for OIDVector.
         private protected NpgsqlTypeHandler ElementHandler { get; }
+        private protected ArrayNullabilityMode ArrayNullabilityMode { get; }
 
         static readonly MethodInfo ReadArrayMethod = typeof(ArrayHandler).GetMethod(nameof(ReadArray), BindingFlags.NonPublic | BindingFlags.Instance)!;
         static readonly MethodInfo ReadListMethod = typeof(ArrayHandler).GetMethod(nameof(ReadList), BindingFlags.NonPublic | BindingFlags.Instance)!;
 
         /// <inheritdoc />
-        protected ArrayHandler(PostgresType arrayPostgresType, NpgsqlTypeHandler elementHandler, int lowerBound = 1)
+        protected ArrayHandler(PostgresType arrayPostgresType, NpgsqlTypeHandler elementHandler, ArrayNullabilityMode arrayNullabilityMode, int lowerBound = 1)
             : base(arrayPostgresType)
         {
             LowerBound = lowerBound;
             ElementHandler = elementHandler;
+            ArrayNullabilityMode = arrayNullabilityMode;
         }
 
         internal override Type GetFieldType(FieldDescription? fieldDescription = null) => typeof(Array);
         internal override Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null) => typeof(Array);
 
         /// <inheritdoc />
-        public override ArrayHandler CreateArrayHandler(PostgresArrayType arrayBackendType)
+        public override ArrayHandler CreateArrayHandler(PostgresArrayType arrayBackendType, ArrayNullabilityMode arrayNullabilityMode)
             => throw new NotSupportedException();
 
         /// <inheritdoc />
@@ -75,23 +77,40 @@ namespace Npgsql.TypeHandlers
         /// <summary>
         /// Reads an array of element type <typeparamref name="TRequestedElement"/> from the given buffer <paramref name="buf"/>.
         /// </summary>
-        protected async ValueTask<Array> ReadArray<TRequestedElement>(NpgsqlReadBuffer buf, bool async, int expectedDimensions = 0)
+        protected async ValueTask<Array> ReadArray<TRequestedElement>(NpgsqlReadBuffer buf, bool async, int expectedDimensions = 0, bool readAsObject = false)
         {
             await buf.Ensure(12, async);
             var dimensions = buf.ReadInt32();
             var containsNulls = buf.ReadInt32() == 1;
             buf.ReadUInt32(); // Element OID. Ignored.
 
-            if (ElementTypeInfo<TRequestedElement>.IsNonNullable && containsNulls)
-                throw new InvalidOperationException(ReadNonNullableCollectionWithNullsExceptionMessage);
+            var returnType = readAsObject
+                ? ArrayNullabilityMode switch
+                {
+                    ArrayNullabilityMode.Never => ElementTypeInfo<TRequestedElement>.IsNonNullable && containsNulls
+                        ? throw new InvalidOperationException(ReadNonNullableCollectionWithNullsExceptionMessage)
+                        : typeof(TRequestedElement),
+                    ArrayNullabilityMode.Always => ElementTypeInfo<TRequestedElement>.NullableElementType,
+                    ArrayNullabilityMode.PerInstance => containsNulls
+                        ? ElementTypeInfo<TRequestedElement>.NullableElementType
+                        : typeof(TRequestedElement),
+                    _ => throw new ArgumentOutOfRangeException()
+                }
+                : ElementTypeInfo<TRequestedElement>.IsNonNullable && containsNulls
+                    ? throw new InvalidOperationException(ReadNonNullableCollectionWithNullsExceptionMessage)
+                    : typeof(TRequestedElement);
 
             if (dimensions == 0)
-                return expectedDimensions > 1 ? Array.CreateInstance(typeof(TRequestedElement), new int[expectedDimensions]) : Array.Empty<TRequestedElement>();
+                return expectedDimensions > 1
+                    ? Array.CreateInstance(returnType, new int[expectedDimensions])
+                    : returnType == typeof(TRequestedElement)
+                        ? Array.Empty<TRequestedElement>()
+                        : Array.CreateInstance(returnType, 0);
 
             if (expectedDimensions > 0 && dimensions != expectedDimensions)
                 throw new InvalidOperationException($"Cannot read an array with {expectedDimensions} dimension(s) from an array with {dimensions} dimension(s)");
 
-            if (dimensions == 1)
+            if (dimensions == 1 && returnType == typeof(TRequestedElement))
             {
                 await buf.Ensure(8, async);
                 var arrayLength = buf.ReadInt32();
@@ -114,14 +133,21 @@ namespace Npgsql.TypeHandlers
                 buf.ReadInt32(); // Lower bound
             }
 
-            var result = Array.CreateInstance(typeof(TRequestedElement), dimLengths);
+            var result = Array.CreateInstance(returnType, dimLengths);
 
-            // Multidimensional arrays
+            // Either multidimensional arrays or arrays of nullable value types requested as object
             // We can't avoid boxing here
             var indices = new int[dimensions];
             while (true)
             {
-                var element = await ElementHandler.ReadWithLength<TRequestedElement>(buf, async);
+                await buf.Ensure(4, async);
+                var len = buf.ReadInt32();
+                var element = len == -1
+                    ? (object?)null
+                    : NullableHandler<TRequestedElement>.Exists
+                        ? await NullableHandler<TRequestedElement>.ReadAsync!(ElementHandler, buf, len, async)
+                        : await ElementHandler.Read<TRequestedElement>(buf, len, async);
+
                 result.SetValue(element, indices);
 
                 // TODO: Overly complicated/inefficient...
@@ -182,6 +208,10 @@ namespace Npgsql.TypeHandlers
                 typeof(TElement).IsValueType && Nullable.GetUnderlyingType(typeof(TElement)) is null;
 
             public static readonly List<TElement> EmptyList = new(0);
+
+            public static readonly Type NullableElementType = IsNonNullable
+                ? typeof(Nullable<>).MakeGenericType(typeof(TElement))
+                : typeof(TElement);
         }
 
         internal static class ArrayTypeInfo<TArrayOrList>
@@ -224,7 +254,7 @@ namespace Npgsql.TypeHandlers
                             Expression.Call(
                                 arrayHandlerParam,
                                 ReadArrayMethod.MakeGenericMethod(ElementType),
-                                bufferParam, asyncParam, Expression.Constant(type.GetArrayRank())),
+                                bufferParam, asyncParam, Expression.Constant(type.GetArrayRank()), Expression.Constant(false, typeof(bool))),
                             arrayHandlerParam, bufferParam, asyncParam)
                         .Compile();
                 }
@@ -259,16 +289,16 @@ namespace Npgsql.TypeHandlers
     public class ArrayHandler<TElement> : ArrayHandler
     {
         /// <inheritdoc />
-        public ArrayHandler(PostgresType arrayPostgresType, NpgsqlTypeHandler elementHandler, int lowerBound = 1)
-            : base(arrayPostgresType, elementHandler, lowerBound) {}
+        public ArrayHandler(PostgresType arrayPostgresType, NpgsqlTypeHandler elementHandler, ArrayNullabilityMode arrayNullabilityMode, int lowerBound = 1)
+            : base(arrayPostgresType, elementHandler, arrayNullabilityMode, lowerBound) {}
 
         #region Read
 
         internal override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
-            =>  await ReadArray<TElement>(buf, async);
+            =>  await ReadArray<TElement>(buf, async, readAsObject: true);
 
         internal override object ReadAsObject(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-            => ReadArray<TElement>(buf, false).GetAwaiter().GetResult();
+            => ReadArray<TElement>(buf, false, readAsObject: true).GetAwaiter().GetResult();
 
         #endregion
 
@@ -484,8 +514,8 @@ namespace Npgsql.TypeHandlers
     /// <typeparam name="TElementPsv">The .NET provider-specific type contained as an element within this array</typeparam>
     class ArrayHandlerWithPsv<TElement, TElementPsv> : ArrayHandler<TElement>
     {
-        public ArrayHandlerWithPsv(PostgresType arrayPostgresType, NpgsqlTypeHandler elementHandler)
-            : base(arrayPostgresType, elementHandler) { }
+        public ArrayHandlerWithPsv(PostgresType arrayPostgresType, NpgsqlTypeHandler elementHandler, ArrayNullabilityMode arrayNullabilityMode)
+            : base(arrayPostgresType, elementHandler, arrayNullabilityMode) { }
 
         protected internal override async ValueTask<TRequestedArray> Read<TRequestedArray>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
@@ -504,6 +534,6 @@ namespace Npgsql.TypeHandlers
             => ReadPsvAsObject(buf, len, false, fieldDescription).GetAwaiter().GetResult();
 
         internal override async ValueTask<object> ReadPsvAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
-            => await ReadArray<TElementPsv>(buf, async);
+            => await ReadArray<TElementPsv>(buf, async, readAsObject: true);
     }
 }

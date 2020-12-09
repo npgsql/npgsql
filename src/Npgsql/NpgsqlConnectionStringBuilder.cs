@@ -1263,7 +1263,6 @@ namespace Npgsql
         /// <see cref="PhysicalReplicationConnection"/>
         /// and <see cref="LogicalReplicationConnection"/>.
         /// </remarks>
-
         [NpgsqlConnectionStringProperty]
         [DisplayName("Replication Mode")]
         internal ReplicationMode ReplicationMode
@@ -1295,6 +1294,25 @@ namespace Npgsql
         }
 
         string? _options;
+
+        /// <summary>
+        /// Configure the way arrays of value types are returned when requested as object instances.
+        /// </summary>
+        [Category("Advanced")]
+        [Description("Configure the way arrays of value types are returned when requested as object instances.")]
+        [DisplayName("ArrayNullabilityMode")]
+        [NpgsqlConnectionStringProperty]
+        public ArrayNullabilityMode ArrayNullabilityMode
+        {
+            get => _arrayNullabilityMode;
+            set
+            {
+                _arrayNullabilityMode = value;
+                SetValue(nameof(ArrayNullabilityMode), value);
+            }
+        }
+
+        ArrayNullabilityMode _arrayNullabilityMode;
 
         #endregion
 
@@ -1662,6 +1680,34 @@ namespace Npgsql
         /// Fail the connection if the server doesn't support SSL.
         /// </summary>
         Require,
+    }
+
+    /// <summary>
+    /// Specifies how the mapping of arrays of
+    /// <a href="https://docs.microsoft.com/dotnet/csharp/language-reference/builtin-types/value-types">value types</a>
+    /// behaves with respect to nullability when they are requested via an API returning an <see cref="object"/>.
+    /// </summary>
+    public enum ArrayNullabilityMode
+    {
+        /// <summary>
+        /// Arrays of value types are always returned as non-nullable arrays (e.g. <c>int[]</c>).
+        /// If the PostgreSQL array contains a NULL value, an exception is thrown. This is the default mode.
+        /// </summary>
+        Never,
+        /// <summary>
+        /// Arrays of value types are always returned as nullable arrays (e.g. <c>int?[]</c>).
+        /// </summary>
+        Always,
+        /// <summary>
+        /// The type of array that gets returned is determined at runtime.
+        /// Arrays of value types are returned as non-nullable arrays (e.g. <c>int[]</c>)
+        /// if the actual instance that gets returned doesn't contain null values
+        /// and as nullable arrays (e.g. <c>int?[]</c>) if it does.
+        /// </summary>
+        /// <remarks>When using this setting, make sure that your code is prepared to the fact
+        /// that the actual type of array instances returned from APIs like <see cref="NpgsqlDataReader.GetValue"/>
+        /// may change on a row by row base.</remarks>
+        PerInstance,
     }
 
     /// <summary>
