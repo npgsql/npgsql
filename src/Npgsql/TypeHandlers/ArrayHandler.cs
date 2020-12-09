@@ -135,12 +135,19 @@ namespace Npgsql.TypeHandlers
 
             var result = Array.CreateInstance(returnType, dimLengths);
 
-            // Multidimensional or nullable arrays
+            // Either multidimensional arrays or arrays of nullable value types requested as object
             // We can't avoid boxing here
             var indices = new int[dimensions];
             while (true)
             {
-                var element = await ElementHandler.ReadNullableWithLength<TRequestedElement>(buf, async);
+                await buf.Ensure(4, async);
+                var len = buf.ReadInt32();
+                var element = len == -1
+                    ? (object?)null
+                    : NullableHandler<TRequestedElement>.Exists
+                        ? await NullableHandler<TRequestedElement>.ReadAsync!(ElementHandler, buf, len, async)
+                        : await ElementHandler.Read<TRequestedElement>(buf, len, async);
+
                 result.SetValue(element, indices);
 
                 // TODO: Overly complicated/inefficient...

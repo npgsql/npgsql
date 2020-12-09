@@ -96,21 +96,6 @@ namespace Npgsql.TypeHandling
                    : await Read<TAny>(buf, len, async, fieldDescription);
         }
 
-        /// <summary>
-        /// Reads a value from the buffer, assuming our read position is at the value's preceding length.
-        /// If the length is -1 (null), this method will return <see langword="null"/>.
-        /// </summary>
-        internal async ValueTask<object?> ReadNullableWithLength<TAny>(NpgsqlReadBuffer buf, bool async, FieldDescription? fieldDescription = null)
-        {
-            await buf.Ensure(4, async);
-            var len = buf.ReadInt32();
-            return len == -1
-               ? (object?)null
-               : NullableHandler<TAny>.Exists
-                   ? await NullableHandler<TAny>.ReadAsync(this, buf, len, async, fieldDescription)
-                   : await Read<TAny>(buf, len, async, fieldDescription);
-        }
-
         #endregion
 
         #region Write

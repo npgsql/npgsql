@@ -1691,7 +1691,7 @@ namespace Npgsql
     {
         /// <summary>
         /// Arrays of value types are always returned as non-nullable arrays (e.g. <c>int[]</c>).
-        /// If the PostgreSQL array contains a NULL value an exception is thrown.
+        /// If the PostgreSQL array contains a NULL value, an exception is thrown. This is the default mode.
         /// </summary>
         Never,
         /// <summary>
