@@ -15,7 +15,7 @@ namespace Npgsql.Tests.Types
     {
         enum Mood { Sad, Ok, Happy }
 
-        [PgName("mood_unmapped")]
+        [PgName("explicitly_named_mood")]
         enum MoodUnmapped { Sad, Ok, Happy };
 
         [Test]
@@ -391,12 +391,12 @@ CREATE TABLE {table} (id SERIAL, value1 {type}, value2 {type});");
         public async Task WriteUnmappedEnum()
         {
             await using var conn = await OpenConnectionAsync();
-            await using var _ = DeferAsync(() => conn.ExecuteNonQueryAsync("DROP TYPE IF EXISTS mood_unmapped"));
-            await conn.ExecuteNonQueryAsync($"CREATE TYPE mood_unmapped AS ENUM ('sad', 'ok', 'happy')");
+            await using var _ = DeferAsync(() => conn.ExecuteNonQueryAsync("DROP TYPE IF EXISTS explicitly_named_mood"));
+            await conn.ExecuteNonQueryAsync($"CREATE TYPE explicitly_named_mood AS ENUM ('sad', 'ok', 'happy')");
 
             conn.ReloadTypes();
 
-            await using var cmd = new NpgsqlCommand($"SELECT @p", conn)
+            await using var cmd = new NpgsqlCommand($"SELECT @p::text", conn)
             {
                 Parameters = { new("p", MoodUnmapped.Happy) }
             };
@@ -404,7 +404,7 @@ CREATE TABLE {table} (id SERIAL, value1 {type}, value2 {type});");
             await using var reader = await cmd.ExecuteReaderAsync();
             await reader.ReadAsync();
 
-            Assert.AreEqual(MoodUnmapped.Happy, reader.GetFieldValue<MoodUnmapped>(0));
+            Assert.AreEqual("happy", reader.GetFieldValue<string>(0));
         }
 
         [Test, Description("Tests that a a C# enum an be written to an enum backend when passed as dbUnknown")]
