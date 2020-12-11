@@ -1,0 +1,20 @@
+# Public API Analyzers
+
+root = false
+
+[*.cs]
+
+# Constructor make noninheritable base class inheritable
+dotnet_diagnostic.RS0022.severity = none
+
+# Do not add multiple public overloads with optional parameters
+dotnet_diagnostic.RS0026.severity = none
+
+# Public API with optional parameter(s) should have the most parameters amongst its public overloads.
+dotnet_diagnostic.RS0027.severity = none
+
+# Public members should not use oblivious types
+# Temporary: 4.1 has oblivious surface types because System.Data itself was not yet annotated.
+# 5.0 should be fully annotated.
+dotnet_diagnostic.RS0041.severity = none
+

@@ -9,7 +9,7 @@ using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
-// TODO: Need to work on the nullbility here
+// TODO: Need to work on the nullability here
 #nullable disable
 #pragma warning disable CS8632
 
@@ -83,8 +83,8 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
 
                         InsertInTree(node, nodes, ref value);
 
-                        nodes.Push(new Tuple<NpgsqlTsQuery, int>(node, 2));
                         nodes.Push(new Tuple<NpgsqlTsQuery, int>(node, 1));
+                        nodes.Push(new Tuple<NpgsqlTsQuery, int>(node, 2));
                     }
                 }
                 else
@@ -207,8 +207,8 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
                         if (node.Kind == NpgsqlTsQuery.NodeKind.Phrase)
                             buf.WriteInt16(((NpgsqlTsQueryFollowedBy)node).Distance);
 
-                        _stack.Push(((NpgsqlTsQueryBinOp)node).Right);
                         _stack.Push(((NpgsqlTsQueryBinOp)node).Left);
+                        _stack.Push(((NpgsqlTsQueryBinOp)node).Right);
                     }
                 }
                 else

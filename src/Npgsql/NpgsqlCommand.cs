@@ -472,7 +472,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             using (connector.StartUserAction())
             {
                 Log.Debug($"Deriving Parameters for query: {CommandText}", connector.Id);
-                ProcessRawQuery(true);
+                ProcessRawQuery(connector.UseConformingStrings, deriveParameters: true);
 
                 var sendTask = SendDeriveParameters(connector, false);
                 if (sendTask.IsFaulted)
@@ -568,7 +568,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             for (var i = 0; i < Parameters.Count; i++)
                 Parameters[i].Bind(connector.TypeMapper);
 
-            ProcessRawQuery();
+            ProcessRawQuery(connector.UseConformingStrings, deriveParameters: false);
             Log.Debug($"Preparing: {CommandText}", connector.Id);
 
             var needToPrepare = false;
@@ -726,7 +726,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         #region Query analysis
 
-        internal void ProcessRawQuery(bool deriveParameters = false)
+        internal void ProcessRawQuery(bool standardConformingStrings, bool deriveParameters)
         {
             if (string.IsNullOrEmpty(CommandText))
                 throw new InvalidOperationException("CommandText property has not been initialized");
@@ -735,7 +735,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             switch (CommandType) {
             case CommandType.Text:
                 var parser = new SqlQueryParser();
-                parser.ParseRawQuery(CommandText, _parameters, _statements, deriveParameters);
+                parser.ParseRawQuery(CommandText, _parameters, _statements, standardConformingStrings, deriveParameters);
 
                 if (_statements.Count > 1 && _parameters.HasOutputParameters)
                     throw new NotSupportedException("Commands with multipl e queries cannot have out parameters");
@@ -1141,6 +1141,10 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             {
                 if (conn.TryGetBoundConnector(out var connector))
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    // We cannot pass a token here, as we'll cancel a non-send query
+                    // Also, we don't pass the cancellation token to StartUserAction, since that would make it scope to the entire action (command execution)
+                    // whereas it should only be scoped to the Execute method.
                     connector.StartUserAction(ConnectorState.Executing, this, CancellationToken.None);
 
                     Task? sendTask = null;
@@ -1166,7 +1170,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                             break;
 
                         case false:
-                            ProcessRawQuery();
+                            ProcessRawQuery(connector.UseConformingStrings, deriveParameters: false);
 
                             if (connector.Settings.MaxAutoPrepare > 0)
                             {
@@ -1258,7 +1262,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     }
 
                     ValidateParameters(conn.Pool!.MultiplexingTypeMapper!);
-                    ProcessRawQuery();
+                    ProcessRawQuery(standardConformingStrings: true, deriveParameters: false);
 
                     State = CommandState.InProgress;
 

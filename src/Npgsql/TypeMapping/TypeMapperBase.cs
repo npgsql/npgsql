@@ -124,7 +124,7 @@ namespace Npgsql.TypeMapping
 
         // TODO: why does ReSharper think `GetCustomAttribute<T>` is non-nullable?
         // ReSharper disable once ConstantConditionalAccessQualifier ConstantNullCoalescingCondition
-        static string GetPgName(Type clrType, INpgsqlNameTranslator nameTranslator)
+        private protected static string GetPgName(Type clrType, INpgsqlNameTranslator nameTranslator)
             => clrType.GetCustomAttribute<PgNameAttribute>()?.PgName
                ?? nameTranslator.TranslateTypeName(clrType.Name);
 

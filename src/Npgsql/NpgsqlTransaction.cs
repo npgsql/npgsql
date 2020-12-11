@@ -24,8 +24,8 @@ namespace Npgsql
         {
             get
             {
-                CheckReady();
-                return _connector.Connection;
+                CheckDisposed();
+                return _connector?.Connection;
             }
         }
 
@@ -411,10 +411,15 @@ namespace Npgsql
 
         void CheckReady()
         {
-            if (IsDisposed)
-                throw new ObjectDisposedException(typeof(NpgsqlTransaction).Name);
+            CheckDisposed();
             if (IsCompleted)
                 throw new InvalidOperationException("This NpgsqlTransaction has completed; it is no longer usable.");
+        }
+
+        void CheckDisposed()
+        {
+            if (IsDisposed)
+                throw new ObjectDisposedException(typeof(NpgsqlTransaction).Name);
         }
 
         static bool RequiresQuoting(string identifier)
