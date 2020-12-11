@@ -23,7 +23,7 @@ namespace Npgsql.Tests
         [Test]
         public void ManyPools()
         {
-            PoolManager.Reset();
+            PoolManager.ClearAll();
             for (var i = 0; i < PoolManager.InitialPoolsSize + 1; i++)
             {
                 var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
@@ -33,7 +33,7 @@ namespace Npgsql.Tests
                 using (var conn = new NpgsqlConnection(connString))
                     conn.Open();
             }
-            PoolManager.Reset();
+            PoolManager.ClearAll();
         }
 #endif
 
@@ -53,25 +53,20 @@ namespace Npgsql.Tests
         [Test]
         public void ClearAllWithBusy()
         {
-            ConnectorPool? pool;
             using (OpenConnection())
             {
                 using (OpenConnection()) { }
                 // We have one idle, one busy
 
                 NpgsqlConnection.ClearAllPools();
-                Assert.That(PoolManager.TryGetValue(ConnectionString, out pool), Is.True);
-                Assert.That(pool!.Statistics.Idle, Is.Zero);
-                Assert.That(pool.Statistics.Total, Is.EqualTo(1));
+                Assert.That(PoolManager.TryGetValue(ConnectionString, out var pool), Is.False);
             }
-            Assert.That(pool.Statistics.Idle, Is.Zero);
-            Assert.That(pool.Statistics.Total, Is.Zero);
         }
 
         [SetUp]
-        public void Setup() => PoolManager.Reset();
+        public void Setup() => PoolManager.ClearAll();
 
         [TearDown]
-        public void Teardown() => PoolManager.Reset();
+        public void Teardown() => PoolManager.ClearAll();
     }
 }
