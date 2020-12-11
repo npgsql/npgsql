@@ -2253,7 +2253,7 @@ static Npgsql.Logging.NpgsqlLogManager.Provider.get -> Npgsql.Logging.INpgsqlLog
 static Npgsql.Logging.NpgsqlLogManager.Provider.set -> void
 static Npgsql.NameTranslation.NpgsqlSnakeCaseNameTranslator.ConvertToSnakeCase(string! name) -> string!
 static Npgsql.NpgsqlCommandBuilder.DeriveParameters(Npgsql.NpgsqlCommand! command) -> void
-static Npgsql.NpgsqlConnection.ClearAllPools(bool reset = false) -> void
+static Npgsql.NpgsqlConnection.ClearAllPools() -> void
 static Npgsql.NpgsqlConnection.ClearPool(Npgsql.NpgsqlConnection! connection) -> void
 static Npgsql.NpgsqlConnection.GlobalTypeMapper.get -> Npgsql.TypeMapping.INpgsqlTypeMapper!
 static Npgsql.NpgsqlConnection.MapCompositeGlobally<T>(string? pgName = null, Npgsql.INpgsqlNameTranslator? nameTranslator = null) -> void

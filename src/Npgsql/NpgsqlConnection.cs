@@ -1738,10 +1738,7 @@ namespace Npgsql
         /// connections which were opened before <see cref="ClearAllPools"/> was called will be closed when returned
         /// to their pool.
         /// </summary>
-        /// <param name="reset">
-        /// Determines, if the pools are also deleted.
-        /// </param>
-        public static void ClearAllPools(bool reset = false) => PoolManager.ClearAll(reset);
+        public static void ClearAllPools() => PoolManager.ClearAll();
 
         /// <summary>
         /// Unprepares all prepared statements on this connection.
