@@ -46,6 +46,7 @@ namespace Npgsql.Tests
             Assert.That(pool!.Statistics.Idle, Is.EqualTo(1));
 
             NpgsqlConnection.ClearAllPools();
+            Assert.That(PoolManager.TryGetValue(ConnectionString, out var _), Is.False);
             Assert.That(pool.Statistics.Idle, Is.Zero);
             Assert.That(pool.Statistics.Total, Is.Zero);
         }

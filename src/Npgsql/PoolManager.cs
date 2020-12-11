@@ -8,8 +8,8 @@ namespace Npgsql
     /// Provides lookup for a pool based on a connection string.
     /// </summary>
     /// <remarks>
-    /// <see cref="TryGetValue"/> is lock-free, to avoid contention, but the same isn't
-    /// true of <see cref="GetOrAdd"/>, which acquires a lock. The calling code always tries
+    /// <see cref="TryGetValue"/> is lock-free to avoid contention, but the same isn't
+    /// true of <see cref="GetOrAdd"/>, which acquires a lock. The calling code should always try
     /// <see cref="TryGetValue"/> before trying to <see cref="GetOrAdd"/>.
     /// </remarks>
     static class PoolManager
@@ -24,10 +24,13 @@ namespace Npgsql
 
         internal static bool TryGetValue(string key, [NotNullWhen(true)] out ConnectorPool? pool)
         {
-            // Note that pools never get removed. _pools is strictly append-only.
             var nextSlot = _nextSlot;
             var pools = _pools;
-            var sw = new SpinWait();
+            // There is a race condition between TryGetValue and ClearAll.
+            // When the nextSlot has already been read as a non-zero value, but the pools have already been reset.
+            // And in this case, we will iterate beyond the size of the array.
+            // As a safeguard, we take a min length between the array and the nextSlot.
+            var minNextSlot = Math.Min(nextSlot, pools.Length);
 
             // First scan the pools and do reference equality on the connection strings
             for (var i = 0; i < nextSlot; i++)
@@ -35,11 +38,6 @@ namespace Npgsql
                 var cp = pools[i];
                 if (ReferenceEquals(cp.Key, key))
                 {
-                    // It's possible that this pool entry is currently being written: the connection string
-                    // component has already been writte, but the pool component is just about to be. So we
-                    // loop on the pool until it's non-null
-                    while (Volatile.Read(ref cp.Pool) == null)
-                        sw.SpinOnce();
                     pool = cp.Pool;
                     return true;
                 }
@@ -51,9 +49,6 @@ namespace Npgsql
                 var cp = pools[i];
                 if (cp.Key == key)
                 {
-                    // See comment above
-                    while (Volatile.Read(ref cp.Pool) == null)
-                        sw.SpinOnce();
                     pool = cp.Pool;
                     return true;
                 }
@@ -83,6 +78,39 @@ namespace Npgsql
                 Interlocked.Increment(ref _nextSlot);
                 return pool;
             }
+        }
+
+        internal static void Delete(ConnectorPool pool)
+        {
+            lock (Lock)
+            {
+                var poolIndex = -1;
+                for (var i = 0; i < _nextSlot; i++)
+                {
+                    var cp = _pools[i];
+                    if (cp.Pool == pool)
+                    {
+                        poolIndex = i;
+                        break;
+                    }
+                }
+
+                // There was a connection, which was using an already deleted pool. Nothing else to do here.
+                if (poolIndex == -1)
+                    return;
+
+                var newPools = new (string Key, ConnectorPool Pool)[_pools.Length];
+                Array.Copy(_pools, newPools, _pools.Length);
+
+                for (var i = poolIndex; i < _nextSlot; i++)
+                {
+                    var nextCp = i + 1 < _nextSlot ? newPools[i + 1] : (null!, null!);
+                    newPools[i] = nextCp;
+                }
+
+                Interlocked.Decrement(ref _nextSlot);
+                _pools = newPools;
+            }    
         }
 
         internal static void Clear(string connString)

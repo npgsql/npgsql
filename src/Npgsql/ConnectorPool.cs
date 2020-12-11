@@ -199,7 +199,7 @@ namespace Npgsql
                         if (async)
                         {
                             connector = await _idleConnectorReader.ReadAsync(finalToken);
-                            if (CheckIdleConnector(connector))
+                            if (CheckIdleConnector(connector, canDelete: false))
                                 return AssignConnection(conn, connector);
                         }
                         else
@@ -257,7 +257,7 @@ namespace Npgsql
         {
             while (_idleConnectorReader.TryRead(out var nullableConnector))
             {
-                if (CheckIdleConnector(nullableConnector))
+                if (CheckIdleConnector(nullableConnector, canDelete: false))
                 {
                     connector = nullableConnector;
                     return true;
@@ -269,7 +269,7 @@ namespace Npgsql
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        bool CheckIdleConnector([NotNullWhen(true)] NpgsqlConnector? connector)
+        bool CheckIdleConnector([NotNullWhen(true)] NpgsqlConnector? connector, bool canDelete = true)
         {
             if (connector is null)
                 return false;
@@ -283,14 +283,14 @@ namespace Npgsql
             // if keepalive isn't turned on.
             if (connector.IsBroken)
             {
-                CloseConnector(connector);
+                CloseConnector(connector, canDelete);
                 return false;
             }
 
             if (_connectionLifetime != TimeSpan.Zero && DateTime.UtcNow > connector.OpenTimestamp + _connectionLifetime)
             {
                 Log.Debug("Connection has exceeded its maximum lifetime and will be closed.", connector.Id);
-                CloseConnector(connector);
+                CloseConnector(connector, canDelete);
                 return false;
             }
 
@@ -380,15 +380,15 @@ namespace Npgsql
             var count = _idleCount;
             while (count > 0 && _idleConnectorReader.TryRead(out var connector))
             {
-                if (CheckIdleConnector(connector))
+                if (CheckIdleConnector(connector, canDelete: false))
                 {
-                    CloseConnector(connector);
+                    CloseConnector(connector, canDelete: false);
                     count--;
                 }
             }
         }
 
-        void CloseConnector(NpgsqlConnector connector)
+        void CloseConnector(NpgsqlConnector connector, bool canDelete = true)
         {
             try
             {
@@ -417,6 +417,8 @@ namespace Npgsql
             // Only turn off the timer one time, when it was this Close that brought Open back to _min.
             if (numConnectors == _min)
                 DisablePruning();
+            if (canDelete && _min == 0 && numConnectors == 0)
+                PoolManager.Delete(this);
         }
 
         #region Pending Enlisted Connections
