@@ -1417,6 +1417,7 @@ LANGUAGE plpgsql VOLATILE";
 
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p, @p", conn) { Parameters = { new NpgsqlParameter("p", value.Generic) } };
+            cmd.CommandTimeout = 5;
             using var reader = await cmd.ExecuteReaderAsync(Behavior);
 
             await reader.ReadAsync();
@@ -1427,7 +1428,12 @@ LANGUAGE plpgsql VOLATILE";
 
             var position = 0;
             while (position < actual.Length)
-                position += await stream.ReadAsync(actual, position, actual.Length - position);
+            {
+                if (isAsync)
+                    position += await stream.ReadAsync(actual, position, actual.Length - position);
+                else
+                    position += stream.Read(actual, position, actual.Length - position);
+            }
 
             Assert.That(actual, Is.EqualTo(expected));
         }
