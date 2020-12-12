@@ -100,7 +100,7 @@ jobs:
         uses: actions/checkout@v1
 
       - name: Setup MSBuild
-        uses: warrenbuckley/Setup-MSBuild@v1
+        uses: microsoft/setup-msbuild@v1
 
       - name: NuGet Cache
         uses: actions/cache@v1
