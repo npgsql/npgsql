@@ -143,10 +143,10 @@ namespace Npgsql
                 if (count == 0)
                     return 0;
 
-                _buf.Read(span.Slice(0, count));
-                _read += count;
+                var read = _buf.Read(span.Slice(0, count));
+                _read += read;
 
-                return count;
+                return read;
             }
 
 #if NETSTANDARD2_0

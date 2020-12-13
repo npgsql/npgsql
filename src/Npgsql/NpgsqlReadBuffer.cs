@@ -487,7 +487,7 @@ namespace Npgsql
             if (output.Length == 0)
                 return 0;
 
-            Debug.Assert(ReadPosition == 0);
+            Debug.Assert(ReadBytesLeft == 0);
             Clear();
             try
             {
