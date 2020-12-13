@@ -1417,7 +1417,6 @@ LANGUAGE plpgsql VOLATILE";
 
             using var conn = await OpenConnectionAsync();
             using var cmd = new NpgsqlCommand("SELECT @p, @p", conn) { Parameters = { new NpgsqlParameter("p", value.Generic) } };
-            cmd.CommandTimeout = 5;
             using var reader = await cmd.ExecuteReaderAsync(Behavior);
 
             await reader.ReadAsync();
