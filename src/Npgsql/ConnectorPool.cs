@@ -43,6 +43,8 @@ namespace Npgsql
 
         volatile int _idleCount;
 
+        volatile int _concurrentPruningCounter;
+
         /// <summary>
         /// Tracks all connectors currently managed by this pool, whether idle or busy.
         /// Only updated rarely - when physical connections are opened/closed - but is read in perf-sensitive contexts.
@@ -468,6 +470,14 @@ namespace Npgsql
         {
             lock (_pruningTimer)
             {
+                if (_concurrentPruningCounter != 0 || _pruningTimerEnabled)
+                {
+                    // Worst case scenario - we're concurently trying to enable and disable pruning.
+                    // We increment the counter, and wait for a pair (DisablePruning) to be called.
+                    _concurrentPruningCounter++;
+                    return;
+                }
+
                 _pruningTimerEnabled = true;
                 _pruningTimer.Change(_pruningSamplingInterval, Timeout.InfiniteTimeSpan);
             }
@@ -477,6 +487,14 @@ namespace Npgsql
         {
             lock (_pruningTimer)
             {
+                if (_concurrentPruningCounter != 0 || !_pruningTimerEnabled)
+                {
+                    // Worst case scenario - we're concurently trying to enable and disable pruning.
+                    // We decrement the counter, and wait for a pair (EnablePruning) to be called.
+                    _concurrentPruningCounter--;
+                    return;
+                }
+
                 _pruningTimer.Change(Timeout.Infinite, Timeout.Infinite);
                 _pruningSampleIndex = 0;
                 _pruningTimerEnabled = false;
