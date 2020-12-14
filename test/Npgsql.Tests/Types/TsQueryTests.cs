@@ -19,11 +19,39 @@ namespace Npgsql.Tests.Types
 
         public static IEnumerable TestCases() => new[]
         {
-            new object[] {
+            new object[]
+            {
+                "$$'a'$$::tsquery",
+                new NpgsqlTsQueryLexeme("a")
+            },
+            new object[]
+            {
+                "$$!'a'$$::tsquery",
+                new NpgsqlTsQueryNot(
+                    new NpgsqlTsQueryLexeme("a"))
+            },
+            new object[]
+            {
+                "$$'a' | 'b'$$::tsquery",
+                new NpgsqlTsQueryOr(
+                    new NpgsqlTsQueryLexeme("a"),
+                    new NpgsqlTsQueryLexeme("b"))
+            },
+            new object[]
+            {
+                "$$'a' & 'b'$$::tsquery",
+                new NpgsqlTsQueryAnd(
+                    new NpgsqlTsQueryLexeme("a"),
+                    new NpgsqlTsQueryLexeme("b"))
+            },
+            new object[]
+            {
                 "$$'a' <-> 'b'$$::tsquery",
                 new NpgsqlTsQueryFollowedBy(
-                    new NpgsqlTsQueryLexeme("a"), 1, new NpgsqlTsQueryLexeme("b")) },
-            new object[]{
+                    new NpgsqlTsQueryLexeme("a"), 1, new NpgsqlTsQueryLexeme("b"))
+            },
+            new object[]
+            {
                 "$$('a' & !('c' | 'd')) & (!!'a' & 'b') | 'ä' | 'x' <-> 'y' | 'x' <10> 'y' | 'd' <0> 'e' | 'f'$$::tsquery",
                 new NpgsqlTsQueryOr(
                     new NpgsqlTsQueryOr(
