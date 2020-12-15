@@ -435,7 +435,7 @@ CREATE UNIQUE INDEX idx_unique ON data (f1, f2);
                 Assert.That(index["index_name"], Is.EqualTo("idx_unique"));
                 Assert.That(index["type_desc"], Is.EqualTo(""));
 
-                string[] indexColumnRestrictions = { null!, null!, "data" };
+                string[] indexColumnRestrictions = { null!, null!, "data", "idx_unique" };
                 var dataTable2 = await GetSchema(conn, "INDEXCOLUMNS", indexColumnRestrictions);
                 var columns = dataTable2.Rows.Cast<DataRow>().ToList();
 

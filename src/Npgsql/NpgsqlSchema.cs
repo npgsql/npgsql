@@ -361,7 +361,7 @@ WHERE
     a.attnum = ANY(ix.indkey) AND
     t.relkind = 'r'");
 
-            using var command = BuildCommand(conn, getIndexColumns, restrictions, false, "current_database()", "n.nspname", "t.relname", "i.relname", "a.attname");
+            using var command = BuildCommand(conn, getIndexColumns, restrictions, false, "current_database()", "n.nspname", "t.relname", "ix_cls.relname", "a.attname");
             using var adapter = new NpgsqlDataAdapter(command);
             await adapter.Fill(indexColumns, async, cancellationToken);
 
