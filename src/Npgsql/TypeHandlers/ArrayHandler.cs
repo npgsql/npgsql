@@ -178,7 +178,7 @@ namespace Npgsql.TypeHandlers
             buf.ReadUInt32(); // Element OID. Ignored.
 
             if (dimensions == 0)
-                return ElementTypeInfo<TRequestedElement>.EmptyList;
+                return new List<TRequestedElement>();
             if (dimensions > 1)
                 throw new NotSupportedException($"Can't read multidimensional array as List<{typeof(TRequestedElement).Name}>");
             if (ElementTypeInfo<TRequestedElement>.IsNonNullable && containsNulls)
@@ -206,8 +206,6 @@ namespace Npgsql.TypeHandlers
         {
             public static readonly bool IsNonNullable =
                 typeof(TElement).IsValueType && Nullable.GetUnderlyingType(typeof(TElement)) is null;
-
-            public static readonly List<TElement> EmptyList = new(0);
 
             public static readonly Type NullableElementType = IsNonNullable
                 ? typeof(Nullable<>).MakeGenericType(typeof(TElement))
