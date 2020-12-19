@@ -229,7 +229,7 @@ namespace Npgsql.Replication
                 if (_isDisposed)
                     return;
 
-                if (Connector.State == ConnectorState.Replication)
+                if (_npgsqlConnection.Connector?.State == ConnectorState.Replication)
                 {
                     Connector.PerformPostgresCancellation();
                     await _replicationCompletion;
