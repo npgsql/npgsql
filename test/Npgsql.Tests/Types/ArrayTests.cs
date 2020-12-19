@@ -654,6 +654,18 @@ namespace Npgsql.Tests.Types
             }
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3417")]
+        public async Task ReadTwoEmptyArrays()
+        {
+            using var conn = await OpenConnectionAsync();
+            using var cmd = new NpgsqlCommand("SELECT '{}'::INT[], '{}'::INT[]", conn);
+            using var reader = await cmd.ExecuteReaderAsync();
+            await reader.ReadAsync();
+            Assert.AreSame(reader.GetFieldValue<int[]>(0), reader.GetFieldValue<int[]>(1));
+            // Unlike T[], List<T> is mutable so we should not return the same instance
+            Assert.AreNotSame(reader.GetFieldValue<List<int>>(0), reader.GetFieldValue<List<int>>(1));
+        }
+
         async Task AssertIListRoundtrips<TElement>(NpgsqlConnection conn, IEnumerable<TElement> value)
         {
             using (var cmd = new NpgsqlCommand("SELECT @p", conn))
