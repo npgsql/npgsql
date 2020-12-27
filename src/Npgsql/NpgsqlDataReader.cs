@@ -88,9 +88,16 @@ namespace Npgsql
 
         /// <summary>
         /// The position in the buffer at which the current data row message ends.
-        /// Used only in non-sequential mode.
+        /// Used only when the row is consumed non-sequentially. 
         /// </summary>
         int _dataMsgEnd;
+
+        /// <summary>
+        /// Determines, if we can consume the row non-sequentially.
+        /// Mostly useful for a sequential mode, when the row is already in the buffer.
+        /// Should always be true for the non-sequential mode.
+        /// </summary>
+        bool CanConsumeRowNonSequential => _dataMsgEnd - Buffer.ReadPosition <= Buffer.ReadBytesLeft;
 
         int _charPos;
 
@@ -197,8 +204,13 @@ namespace Npgsql
                 State = ReaderState.InResult;
                 return true;
             case ReaderState.InResult:
-                if (_isSequential)
+                if (!CanConsumeRowNonSequential)
+                {
+                    // We should get here only if we're in a sequential mode
+                    Debug.Assert(_isSequential);
                     return null;
+                }
+                // We get here, if we're in a non-sequential mode (or the row is already in the buffer)
                 ConsumeRowNonSequential();
                 break;
             case ReaderState.BetweenResults:
@@ -697,10 +709,10 @@ namespace Npgsql
             Debug.Assert(_numColumns == RowDescription!.NumFields,
                 $"Row's number of columns ({_numColumns}) differs from the row description's ({RowDescription.NumFields})");
 
+            _dataMsgEnd = Buffer.ReadPosition + msg.Length - 2;
+
             if (!_isSequential)
             {
-                _dataMsgEnd = Buffer.ReadPosition + msg.Length - 2;
-
                 // Initialize our columns array with the offset and length of the first column
                 _columns.Clear();
                 var len = Buffer.ReadInt32();
@@ -2028,8 +2040,14 @@ namespace Npgsql
         {
             Debug.Assert(State == ReaderState.InResult || State == ReaderState.BeforeResult);
 
-            if (_isSequential)
+            if (!CanConsumeRowNonSequential)
+            {
+                // We should get here only if we're in a sequential mode
+                Debug.Assert(_isSequential);
                 return ConsumeRowSequential(async);
+            }
+
+            // We get here, if we're in a non-sequential mode (or the row is already in the buffer)
             ConsumeRowNonSequential();
             return Task.CompletedTask;
 
