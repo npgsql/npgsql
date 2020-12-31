@@ -42,3 +42,9 @@ Npgsql.ArrayNullabilityMode
 Npgsql.ArrayNullabilityMode.Never = 0 -> Npgsql.ArrayNullabilityMode
 Npgsql.ArrayNullabilityMode.Always = 1 -> Npgsql.ArrayNullabilityMode
 Npgsql.ArrayNullabilityMode.PerInstance = 2 -> Npgsql.ArrayNullabilityMode
+Npgsql.TargetServerType
+Npgsql.TargetServerType.Any = 0 -> Npgsql.TargetServerType
+Npgsql.TargetServerType.Primary = 1 -> Npgsql.TargetServerType
+Npgsql.TargetServerType.Secondary = 2 -> Npgsql.TargetServerType
+Npgsql.NpgsqlConnectionStringBuilder.TargetServerType.get -> Npgsql.TargetServerType
+Npgsql.NpgsqlConnectionStringBuilder.TargetServerType.set -> void
