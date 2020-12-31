@@ -744,11 +744,18 @@ namespace Npgsql
 
         void Connect(NpgsqlTimeout timeout)
         {
+            var hosts = Host.Split(',');
+            var endpoints = new List<EndPoint>();
+
             // Note that there aren't any timeout-able or cancellable DNS methods
-            var endpoints = Path.IsPathRooted(Host)
-                ? new EndPoint[] { new UnixDomainSocketEndPoint(Path.Combine(Host, $".s.PGSQL.{Port}")) }
-                : Dns.GetHostAddresses(Host).Select(a => new IPEndPoint(a, Port)).ToArray();
-            timeout.Check();
+            foreach (var host in hosts)
+            {
+                var endpointsFromRecord = Path.IsPathRooted(host)
+                ? new EndPoint[] { new UnixDomainSocketEndPoint(Path.Combine(host, $".s.PGSQL.{Port}")) }
+                : Dns.GetHostAddresses(host).Select(a => new IPEndPoint(a, Port)).ToArray();
+                endpoints.AddRange(endpointsFromRecord);
+                timeout.Check();
+            }
 
             // Give each endpoint an equal share of the remaining time
             var perEndpointTimeout = -1;  // Default to infinity
@@ -757,10 +764,10 @@ namespace Npgsql
                 var timeoutTicks = timeout.TimeLeft.Ticks;
                 if (timeoutTicks <= 0)
                     throw new TimeoutException();
-                perEndpointTimeout = (int)(timeoutTicks / endpoints.Length / 10);
+                perEndpointTimeout = (int)(timeoutTicks / endpoints.Count / 10);
             }
 
-            for (var i = 0; i < endpoints.Length; i++)
+            for (var i = 0; i < endpoints.Count; i++)
             {
                 var endpoint = endpoints[i];
                 Log.Trace($"Attempting to connect to {endpoint}");
@@ -808,7 +815,7 @@ namespace Npgsql
 
                     Log.Trace($"Failed to connect to {endpoint}", e);
 
-                    if (i == endpoints.Length - 1)
+                    if (i == endpoints.Count - 1)
                         throw new NpgsqlException("Exception while connecting", e);
                 }
             }
@@ -816,11 +823,19 @@ namespace Npgsql
 
         async Task ConnectAsync(NpgsqlTimeout timeout, CancellationToken cancellationToken)
         {
+            var hosts = Host.Split(',');
+            var endpoints = new List<EndPoint>();
+            foreach(var host in hosts)
+            {
+                var endpointsFromRecord = Path.IsPathRooted(host)
+                    ? new EndPoint[] { new UnixDomainSocketEndPoint(Path.Combine(host, $".s.PGSQL.{Port}")) }
+                    : (await Dns.GetHostAddressesAsync(host).WithCancellationAndTimeout(timeout, cancellationToken))
+                        .Select(a => new IPEndPoint(a, Port)).ToArray();
+
+                endpoints.AddRange(endpointsFromRecord);
+            }
             // Note that there aren't any timeout-able or cancellable DNS methods
-            var endpoints = Path.IsPathRooted(Host)
-                ? new EndPoint[] { new UnixDomainSocketEndPoint(Path.Combine(Host, $".s.PGSQL.{Port}")) }
-                : (await Dns.GetHostAddressesAsync(Host).WithCancellationAndTimeout(timeout, cancellationToken))
-                .Select(a => new IPEndPoint(a, Port)).ToArray();
+            
 
             // Give each IP an equal share of the remaining time
             var perIpTimespan = default(TimeSpan);
@@ -830,11 +845,11 @@ namespace Npgsql
                 var timeoutTicks = timeout.TimeLeft.Ticks;
                 if (timeoutTicks <= 0)
                     throw new TimeoutException();
-                perIpTimespan = new TimeSpan(timeoutTicks / endpoints.Length);
+                perIpTimespan = new TimeSpan(timeoutTicks / endpoints.Count);
                 perIpTimeout = new NpgsqlTimeout(perIpTimespan);
             }
 
-            for (var i = 0; i < endpoints.Length; i++)
+            for (var i = 0; i < endpoints.Count; i++)
             {
                 var endpoint = endpoints[i];
                 Log.Trace($"Attempting to connect to {endpoint}");
@@ -889,7 +904,7 @@ namespace Npgsql
 
                     Log.Trace($"Failed to connect to {endpoint}", e);
 
-                    if (i == endpoints.Length - 1)
+                    if (i == endpoints.Count - 1)
                     {
                         throw new NpgsqlException("Exception while connecting", e);
                     }
