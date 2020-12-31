@@ -246,6 +246,7 @@ namespace Npgsql
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlConnector));
 
+        private string? ConnectedHost;
         private TargetServerType ConnectedServerType;
 
         internal readonly Stopwatch QueryLogStopWatch = new();
@@ -448,73 +449,102 @@ namespace Npgsql
 
             try
             {
-                await RawOpen(timeout, async, cancellationToken);
-
-                var username = GetUsername();
-                if (Settings.Database == null)
-                    Settings.Database = username;
-
-                timeout.CheckAndApply(this);
-                WriteStartupMessage(username);
-                await Flush(async, cancellationToken);
-
-                using (StartCancellableOperation(cancellationToken, attemptPgCancellation: false))
+                var potentialHosts = Settings.Host!.Split(',');
+                var hostIndex = 0;
+                while(ConnectedHost == null && hostIndex < potentialHosts.Length)
                 {
-                    await Authenticate(username, timeout, async, cancellationToken);
-
-                    // We treat BackendKeyData as optional because some PostgreSQL-like database
-                    // don't send it (CockroachDB, CrateDB)
-                    var msg = await ReadMessage(async);
-                    if (msg.Code == BackendMessageCode.BackendKeyData)
+                    var potentialHost = potentialHosts[hostIndex];
+                    try
                     {
-                        var keyDataMsg = (BackendKeyDataMessage)msg;
-                        BackendProcessId = keyDataMsg.BackendProcessId;
-                        _backendSecretKey = keyDataMsg.BackendSecretKey;
-                        msg = await ReadMessage(async);
-                    }
+                        await RawOpen(potentialHost, timeout, async, cancellationToken);
 
-                    if (msg.Code != BackendMessageCode.ReadyForQuery)
-                        throw new NpgsqlException($"Received backend message {msg.Code} while expecting ReadyForQuery. Please file a bug.");
+                        var username = GetUsername();
+                        if (Settings.Database == null)
+                            Settings.Database = username;
 
-                    State = ConnectorState.Ready;
-                }
+                        timeout.CheckAndApply(this);
+                        WriteStartupMessage(username);
+                        await Flush(async, cancellationToken);
 
-                await LoadDatabaseInfo(forceReload: false, timeout, async, cancellationToken);
-                UpdateServerPrimaryStatus();
-
-                if (Settings.Pooling && !Settings.Multiplexing && !Settings.NoResetOnClose && DatabaseInfo.SupportsDiscard)
-                {
-                    _sendResetOnClose = true;
-                    GenerateResetMessage();
-                }
-
-                OpenTimestamp = DateTime.UtcNow;
-                Log.Trace($"Opened connection to {Host}:{Port} as {ConnectedServerType}");
-
-                if (Settings.Multiplexing)
-                {
-                    // Start an infinite async loop, which processes incoming multiplexing traffic.
-                    // It is intentionally not awaited and will run as long as the connector is alive.
-                    // The CommandsInFlightWriter channel is completed in Cleanup, which should cause this task
-                    // to complete.
-                    _ = Task.Run(MultiplexingReadLoop, CancellationToken.None)
-                        .ContinueWith(t =>
+                        using (StartCancellableOperation(cancellationToken, attemptPgCancellation: false))
                         {
+                            await Authenticate(username, timeout, async, cancellationToken);
+
+                            // We treat BackendKeyData as optional because some PostgreSQL-like database
+                            // don't send it (CockroachDB, CrateDB)
+                            var msg = await ReadMessage(async);
+                            if (msg.Code == BackendMessageCode.BackendKeyData)
+                            {
+                                var keyDataMsg = (BackendKeyDataMessage)msg;
+                                BackendProcessId = keyDataMsg.BackendProcessId;
+                                _backendSecretKey = keyDataMsg.BackendSecretKey;
+                                msg = await ReadMessage(async);
+                            }
+
+                            if (msg.Code != BackendMessageCode.ReadyForQuery)
+                                throw new NpgsqlException($"Received backend message {msg.Code} while expecting ReadyForQuery. Please file a bug.");
+
+                            State = ConnectorState.Ready;
+                        }
+
+                        await LoadDatabaseInfo(forceReload: false, timeout, async, cancellationToken);
+                        UpdateServerPrimaryStatus();
+
+                        if (IsAppropriateFor(Settings.TargetServerType) == false)
+                        {
+                            throw new NpgsqlException($"Connected Server was of type {ConnectedServerType} however we wanted {Settings.TargetServerType} and it is not appropriate for this connection");
+                        }
+
+                        if (Settings.Pooling && !Settings.Multiplexing && !Settings.NoResetOnClose && DatabaseInfo.SupportsDiscard)
+                        {
+                            _sendResetOnClose = true;
+                            GenerateResetMessage();
+                        }
+
+                        OpenTimestamp = DateTime.UtcNow;
+                        ConnectedHost = potentialHost;
+
+                        Log.Trace($"Opened connection to {Host}:{Port} as {ConnectedHost}:{Port} with type: {ConnectedServerType}");
+
+                        if (Settings.Multiplexing)
+                        {
+                            // Start an infinite async loop, which processes incoming multiplexing traffic.
+                            // It is intentionally not awaited and will run as long as the connector is alive.
+                            // The CommandsInFlightWriter channel is completed in Cleanup, which should cause this task
+                            // to complete.
+                            _ = Task.Run(MultiplexingReadLoop, CancellationToken.None)
+                                .ContinueWith(t =>
+                                {
                             // Note that we *must* observe the exception if the task is faulted.
                             Log.Error("Exception bubbled out of multiplexing read loop", t.Exception!, Id);
-                        }, TaskContinuationOptions.OnlyOnFaulted);
-                }
+                                }, TaskContinuationOptions.OnlyOnFaulted);
+                        }
 
-                if (_isKeepAliveEnabled)
-                {
-                    // Start the keep alive mechanism to work by scheduling the timer.
-                    // Otherwise, it doesn't work for cases when no query executed during
-                    // the connection lifetime in case of a new connector.
-                    lock (this)
-                    {
-                        var keepAlive = Settings.KeepAlive * 1000;
-                        _keepAliveTimer!.Change(keepAlive, keepAlive);
+                        if (_isKeepAliveEnabled)
+                        {
+                            // Start the keep alive mechanism to work by scheduling the timer.
+                            // Otherwise, it doesn't work for cases when no query executed during
+                            // the connection lifetime in case of a new connector.
+                            lock (this)
+                            {
+                                var keepAlive = Settings.KeepAlive * 1000;
+                                _keepAliveTimer!.Change(keepAlive, keepAlive);
+                            }
+                        }
                     }
+                    catch (SocketException)
+                    {
+                        if (hostIndex == potentialHosts.Length - 1)
+                            throw;
+                        SoftCleanup();
+                    }
+                    catch (NpgsqlException)
+                    {
+                        if (hostIndex == potentialHosts.Length - 1)
+                            throw;
+                        SoftCleanup();
+                    }
+                    hostIndex++;
                 }
             }
             catch (Exception e)
@@ -588,6 +618,13 @@ namespace Npgsql
             EndUserAction();
         }
 
+        internal bool IsAppropriateFor(TargetServerType requestedServerType)
+        {
+            if (requestedServerType == TargetServerType.Any)
+                return true;
+            return ConnectedServerType == requestedServerType;
+        }
+
 
         void WriteStartupMessage(string username)
         {
@@ -651,15 +688,15 @@ namespace Npgsql
             throw new NpgsqlException("No username could be found, please specify one explicitly");
         }
 
-        async Task RawOpen(NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
+        async Task RawOpen(string host, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
         {
             var cert = default(X509Certificate2?);
             try
             {
                 if (async)
-                    await ConnectAsync(timeout, cancellationToken);
+                    await ConnectAsync(host, timeout, cancellationToken);
                 else
-                    Connect(timeout);
+                    Connect(host, timeout);
 
                 _baseStream = new NetworkStream(_socket, true);
                 _stream = _baseStream;
@@ -749,7 +786,7 @@ namespace Npgsql
                     }
                 }
 
-                Log.Trace($"Socket connected to {Host}:{Port}");
+                Log.Trace($"Socket connected to {ConnectedHost}:{Port}");
             }
             catch
             {
@@ -768,20 +805,12 @@ namespace Npgsql
             }
         }
 
-        void Connect(NpgsqlTimeout timeout)
+        void Connect(string host, NpgsqlTimeout timeout)
         {
-            var hosts = Host.Split(',');
-            var endpoints = new List<EndPoint>();
-
-            // Note that there aren't any timeout-able or cancellable DNS methods
-            foreach (var host in hosts)
-            {
-                var endpointsFromRecord = Path.IsPathRooted(host)
+            var endpoints = Path.IsPathRooted(host)
                 ? new EndPoint[] { new UnixDomainSocketEndPoint(Path.Combine(host, $".s.PGSQL.{Port}")) }
                 : Dns.GetHostAddresses(host).Select(a => new IPEndPoint(a, Port)).ToArray();
-                endpoints.AddRange(endpointsFromRecord);
-                timeout.Check();
-            }
+            timeout.Check();
 
             // Give each endpoint an equal share of the remaining time
             var perEndpointTimeout = -1;  // Default to infinity
@@ -790,10 +819,10 @@ namespace Npgsql
                 var timeoutTicks = timeout.TimeLeft.Ticks;
                 if (timeoutTicks <= 0)
                     throw new TimeoutException();
-                perEndpointTimeout = (int)(timeoutTicks / endpoints.Count / 10);
+                perEndpointTimeout = (int)(timeoutTicks / endpoints.Length / 10);
             }
 
-            for (var i = 0; i < endpoints.Count; i++)
+            for (var i = 0; i < endpoints.Length; i++)
             {
                 var endpoint = endpoints[i];
                 Log.Trace($"Attempting to connect to {endpoint}");
@@ -841,27 +870,19 @@ namespace Npgsql
 
                     Log.Trace($"Failed to connect to {endpoint}", e);
 
-                    if (i == endpoints.Count - 1)
+                    if (i == endpoints.Length - 1)
                         throw new NpgsqlException("Exception while connecting", e);
                 }
             }
         }
 
-        async Task ConnectAsync(NpgsqlTimeout timeout, CancellationToken cancellationToken)
+        async Task ConnectAsync(string host, NpgsqlTimeout timeout, CancellationToken cancellationToken)
         {
-            var hosts = Host.Split(',');
-            var endpoints = new List<EndPoint>();
-            foreach(var host in hosts)
-            {
-                var endpointsFromRecord = Path.IsPathRooted(host)
-                    ? new EndPoint[] { new UnixDomainSocketEndPoint(Path.Combine(host, $".s.PGSQL.{Port}")) }
-                    : (await Dns.GetHostAddressesAsync(host).WithCancellationAndTimeout(timeout, cancellationToken))
-                        .Select(a => new IPEndPoint(a, Port)).ToArray();
-
-                endpoints.AddRange(endpointsFromRecord);
-            }
+            var endpoints = Path.IsPathRooted(host)
+                ? new EndPoint[] { new UnixDomainSocketEndPoint(Path.Combine(host, $".s.PGSQL.{Port}")) }
+                : (await Dns.GetHostAddressesAsync(host).WithCancellationAndTimeout(timeout, cancellationToken))
+                    .Select(a => new IPEndPoint(a, Port)).ToArray();
             // Note that there aren't any timeout-able or cancellable DNS methods
-            
 
             // Give each IP an equal share of the remaining time
             var perIpTimespan = default(TimeSpan);
@@ -871,11 +892,11 @@ namespace Npgsql
                 var timeoutTicks = timeout.TimeLeft.Ticks;
                 if (timeoutTicks <= 0)
                     throw new TimeoutException();
-                perIpTimespan = new TimeSpan(timeoutTicks / endpoints.Count);
+                perIpTimespan = new TimeSpan(timeoutTicks / endpoints.Length);
                 perIpTimeout = new NpgsqlTimeout(perIpTimespan);
             }
 
-            for (var i = 0; i < endpoints.Count; i++)
+            for (var i = 0; i < endpoints.Length; i++)
             {
                 var endpoint = endpoints[i];
                 Log.Trace($"Attempting to connect to {endpoint}");
@@ -930,7 +951,7 @@ namespace Npgsql
 
                     Log.Trace($"Failed to connect to {endpoint}", e);
 
-                    if (i == endpoints.Count - 1)
+                    if (i == endpoints.Length - 1)
                     {
                         throw new NpgsqlException("Exception while connecting", e);
                     }
@@ -1583,7 +1604,10 @@ namespace Npgsql
 
             try
             {
-                RawOpen(new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout)), false, CancellationToken.None)
+                if (ConnectedHost == null)
+                    return;
+
+                RawOpen(ConnectedHost, new NpgsqlTimeout(TimeSpan.FromSeconds(ConnectionTimeout)), false, CancellationToken.None)
                     .GetAwaiter().GetResult();
                 WriteCancelRequest(backendProcessId, backendSecretKey);
                 Flush();
@@ -1840,6 +1864,18 @@ namespace Npgsql
             }
 #pragma warning restore CS8625
         }
+
+        private void SoftCleanup()
+        {
+            // TODO: There needs to be some sort of soft cleanup here, this.Close() is too much and this.Break() is too little.
+            // I think just closing the socket is enough as all the buffers etc aren't used until a connection is allocated?
+
+            ConnectedHost = null;
+
+            if (_socket != null && _socket.Connected)
+                _socket.Close();
+        }
+
 
         void GenerateResetMessage()
         {
