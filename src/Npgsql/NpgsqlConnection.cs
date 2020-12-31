@@ -1005,13 +1005,13 @@ namespace Npgsql
         /// <remarks>
         /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
         /// </remarks>
-        public Task<NpgsqlBinaryImporter> BeginBinaryImportAsync(string copyFromCommand, CancellationToken cancellationToken = default)
+        public ValueTask<NpgsqlBinaryImporter> BeginBinaryImportAsync(string copyFromCommand, CancellationToken cancellationToken = default)
         {
             using (NoSynchronizationContextScope.Enter())
                 return BeginBinaryImport(copyFromCommand, async: true, cancellationToken);
         }
 
-        async Task<NpgsqlBinaryImporter> BeginBinaryImport(string copyFromCommand, bool async, CancellationToken cancellationToken = default)
+        async ValueTask<NpgsqlBinaryImporter> BeginBinaryImport(string copyFromCommand, bool async, CancellationToken cancellationToken = default)
         {
             if (copyFromCommand == null)
                 throw new ArgumentNullException(nameof(copyFromCommand));
@@ -1058,13 +1058,13 @@ namespace Npgsql
         /// <remarks>
         /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
         /// </remarks>
-        public Task<NpgsqlBinaryExporter> BeginBinaryExportAsync(string copyToCommand, CancellationToken cancellationToken = default)
+        public ValueTask<NpgsqlBinaryExporter> BeginBinaryExportAsync(string copyToCommand, CancellationToken cancellationToken = default)
         {
             using (NoSynchronizationContextScope.Enter())
                 return BeginBinaryExport(copyToCommand, async: true, cancellationToken);
         } 
 
-        async Task<NpgsqlBinaryExporter> BeginBinaryExport(string copyToCommand, bool async, CancellationToken cancellationToken = default)
+        async ValueTask<NpgsqlBinaryExporter> BeginBinaryExport(string copyToCommand, bool async, CancellationToken cancellationToken = default)
         {
             if (copyToCommand == null)
                 throw new ArgumentNullException(nameof(copyToCommand));
@@ -1117,13 +1117,13 @@ namespace Npgsql
         /// <remarks>
         /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
         /// </remarks>
-        public Task<TextWriter> BeginTextImportAsync(string copyFromCommand, CancellationToken cancellationToken = default)
+        public ValueTask<TextWriter> BeginTextImportAsync(string copyFromCommand, CancellationToken cancellationToken = default)
         {
             using (NoSynchronizationContextScope.Enter())
                 return BeginTextImport(copyFromCommand, async: true, cancellationToken);
         }
 
-        async Task<TextWriter> BeginTextImport(string copyFromCommand, bool async, CancellationToken cancellationToken = default)
+        async ValueTask<TextWriter> BeginTextImport(string copyFromCommand, bool async, CancellationToken cancellationToken = default)
         {
             if (copyFromCommand == null)
                 throw new ArgumentNullException(nameof(copyFromCommand));
@@ -1177,13 +1177,13 @@ namespace Npgsql
         /// <remarks>
         /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
         /// </remarks>
-        public Task<TextReader> BeginTextExportAsync(string copyToCommand, CancellationToken cancellationToken = default)
+        public ValueTask<TextReader> BeginTextExportAsync(string copyToCommand, CancellationToken cancellationToken = default)
         {
             using (NoSynchronizationContextScope.Enter())
                 return BeginTextExport(copyToCommand, async: true, cancellationToken);
         }
 
-        async Task<TextReader> BeginTextExport(string copyToCommand, bool async, CancellationToken cancellationToken = default)
+        async ValueTask<TextReader> BeginTextExport(string copyToCommand, bool async, CancellationToken cancellationToken = default)
         {
             if (copyToCommand == null)
                 throw new ArgumentNullException(nameof(copyToCommand));
@@ -1237,13 +1237,13 @@ namespace Npgsql
         /// <remarks>
         /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
         /// </remarks>
-        public Task<NpgsqlRawCopyStream> BeginRawBinaryCopyAsync(string copyCommand, CancellationToken cancellationToken = default)
+        public ValueTask<NpgsqlRawCopyStream> BeginRawBinaryCopyAsync(string copyCommand, CancellationToken cancellationToken = default)
         {
             using (NoSynchronizationContextScope.Enter())
                 return BeginRawBinaryCopy(copyCommand, async: true, cancellationToken);
         }
 
-        async Task<NpgsqlRawCopyStream> BeginRawBinaryCopy(string copyCommand, bool async, CancellationToken cancellationToken = default)
+        async ValueTask<NpgsqlRawCopyStream> BeginRawBinaryCopy(string copyCommand, bool async, CancellationToken cancellationToken = default)
         {
             if (copyCommand == null)
                 throw new ArgumentNullException(nameof(copyCommand));
