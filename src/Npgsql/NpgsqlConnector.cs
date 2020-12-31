@@ -246,6 +246,8 @@ namespace Npgsql
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlConnector));
 
+        private TargetServerType ConnectedServerType;
+
         internal readonly Stopwatch QueryLogStopWatch = new();
 
         #endregion
@@ -478,6 +480,7 @@ namespace Npgsql
                 }
 
                 await LoadDatabaseInfo(forceReload: false, timeout, async, cancellationToken);
+                UpdateServerPrimaryStatus();
 
                 if (Settings.Pooling && !Settings.Multiplexing && !Settings.NoResetOnClose && DatabaseInfo.SupportsDiscard)
                 {
@@ -486,7 +489,7 @@ namespace Npgsql
                 }
 
                 OpenTimestamp = DateTime.UtcNow;
-                Log.Trace($"Opened connection to {Host}:{Port}");
+                Log.Trace($"Opened connection to {Host}:{Port} as {ConnectedServerType}");
 
                 if (Settings.Multiplexing)
                 {
@@ -562,6 +565,29 @@ namespace Npgsql
             DatabaseInfo = database!;
             TypeMapper.Bind(DatabaseInfo);
         }
+
+
+        internal void UpdateServerPrimaryStatus()
+        {
+            StartUserAction();
+            WritePregenerated(PregeneratedMessages.ServerIsSecondary);
+            Flush();
+
+            var columnsMsg = ReadMessage();
+            var rowMsg = Expect<DataRowMessage>(ReadMessage(), this);
+
+            var columnCount = ReadBuffer.ReadInt16();
+            var lengthOfBooleanColumn = ReadBuffer.ReadInt32();
+            var resultSetBuffer = new byte[lengthOfBooleanColumn];
+            ReadBuffer.ReadBytes(resultSetBuffer, 0, lengthOfBooleanColumn);
+
+            var serverIsPrimary = resultSetBuffer[0] == 'f';
+            ConnectedServerType = serverIsPrimary ? TargetServerType.Primary : TargetServerType.Secondary;
+
+            SkipUntil(BackendMessageCode.ReadyForQuery);
+            EndUserAction();
+        }
+
 
         void WriteStartupMessage(string username)
         {
