@@ -1525,12 +1525,62 @@ CREATE TABLE record ()");
                 TargetServerType = TargetServerType.Secondary
             };
 
+
+        public ConnectionTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}
+
+        #region HostFailover
+        [Test]
+        public void ConnectionToAPrimaryServerWorks()
+        {
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Pooling = false,
+                Multiplexing = false,
+                IntegratedSecurity = false,
+                TargetServerType = TargetServerType.Primary
+            };
+
             using (TestUtil.SetEnvironmentVariable("PGPASSWORD", builder.Password))
             {
                 builder.Password = null;
-                Assert.That(OpenConnection(builder), Throws.Exception.AssignableTo<NpgsqlException>());
+                using (var connection = OpenConnection(builder)) {
+                    var isInrecovery = connection.ExecuteScalar("SELECT pg_is_in_recovery();");
+                }
             }
         }
+
+        [Test]
+        public void ConnectionToAServerOfTypeAnyWorks()
+        {
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Pooling = false,
+                Multiplexing = false,
+                IntegratedSecurity = false,
+                TargetServerType = TargetServerType.Any
+            };
+
+            using (TestUtil.SetEnvironmentVariable("PGPASSWORD", builder.Password))
+            {
+                builder.Password = null;
+                using (var connection = OpenConnection(builder)) {
+                    var isInrecovery = connection.ExecuteScalar("SELECT pg_is_in_recovery();");
+
+                }
+            }
+        }
+
+        [Test]
+        public void ConnectionToASecondaryIfThereIsntOneShouldFail()
+        {
+            //TODO fix this test
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Pooling = false,
+                Multiplexing = false,
+                IntegratedSecurity = false,
+                TargetServerType = TargetServerType.Secondary
+            };
 
         [Test]
         public void FailoverFromANonExistantHostToPrimaryWorksWithinTheTimeout()

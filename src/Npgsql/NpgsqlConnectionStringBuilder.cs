@@ -1756,6 +1756,7 @@ namespace Npgsql
         Logical
     }
 
+    /// <summary>
     /// Specifies server type preference.
     /// </summary>
     public enum TargetServerType
