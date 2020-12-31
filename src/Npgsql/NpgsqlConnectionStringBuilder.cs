@@ -485,6 +485,25 @@ namespace Npgsql
         string _encoding = "UTF8";
 
         /// <summary>
+        /// Gets or sets the PostgreSQL target server.
+        /// </summary>
+        [Category("Connection")]
+        [Description("Gets or sets the PostgreSQL target server.")]
+        [DisplayName("TargetServerType")]
+        [DefaultValue(TargetServerType.Any)]
+        [NpgsqlConnectionStringProperty]
+        public TargetServerType TargetServerType
+        {
+            get => _targetservertype;
+            set
+            {
+                _targetservertype = value;
+                SetValue(nameof(TargetServerType), value);
+            }
+        }
+        TargetServerType _targetservertype;
+
+        /// <summary>
         /// Gets or sets the PostgreSQL session timezone, in Olson/IANA database format.
         /// </summary>
         [Category("Connection")]
@@ -1708,6 +1727,25 @@ namespace Npgsql
         /// that the actual type of array instances returned from APIs like <see cref="NpgsqlDataReader.GetValue"/>
         /// may change on a row by row base.</remarks>
         PerInstance,
+    }
+
+    /// <summary>
+    /// Specifies server type preference.
+    /// </summary>
+    public enum TargetServerType
+    {
+        /// <summary>
+        ///  Try to connect every server in order.
+        /// </summary>
+        Any,
+        /// <summary>
+        ///  Primary (writable) server is selected for the connection.
+        /// </summary>
+        Primary,
+        /// <summary>
+        ///  Secondary (readonly) server is selected for the connection.
+        /// </summary>
+        Secondary,
     }
 
     /// <summary>
