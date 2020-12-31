@@ -993,7 +993,25 @@ namespace Npgsql
         /// <remarks>
         /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
         /// </remarks>
-        public NpgsqlBinaryImporter BeginBinaryImport(string copyFromCommand)
+        public NpgsqlBinaryImporter BeginBinaryImport(string copyFromCommand) =>
+            BeginBinaryImport(copyFromCommand, async: false, CancellationToken.None).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Begins a binary COPY FROM STDIN operation, a high-performance data import mechanism to a PostgreSQL table.
+        /// </summary>
+        /// <param name="copyFromCommand">A COPY FROM STDIN SQL command</param>
+        /// <param name="cancellationToken">An optional token to cancel the asynchronous operation. The default value is None.</param>
+        /// <returns>A <see cref="NpgsqlBinaryImporter"/> which can be used to write rows and columns</returns>
+        /// <remarks>
+        /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
+        /// </remarks>
+        public Task<NpgsqlBinaryImporter> BeginBinaryImportAsync(string copyFromCommand, CancellationToken cancellationToken = default)
+        {
+            using (NoSynchronizationContextScope.Enter())
+                return BeginBinaryImport(copyFromCommand, async: true, cancellationToken);
+        }
+
+        async Task<NpgsqlBinaryImporter> BeginBinaryImport(string copyFromCommand, bool async, CancellationToken cancellationToken = default)
         {
             if (copyFromCommand == null)
                 throw new ArgumentNullException(nameof(copyFromCommand));
@@ -1007,7 +1025,8 @@ namespace Npgsql
             connector.StartUserAction(ConnectorState.Copy, attemptPgCancellation: false);
             try
             {
-                var importer = new NpgsqlBinaryImporter(connector, copyFromCommand);
+                var importer = new NpgsqlBinaryImporter(connector);
+                await importer.Init(copyFromCommand, async, cancellationToken);
                 connector.CurrentCopyOperation = importer;
                 return importer;
             }
@@ -1027,7 +1046,25 @@ namespace Npgsql
         /// <remarks>
         /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
         /// </remarks>
-        public NpgsqlBinaryExporter BeginBinaryExport(string copyToCommand)
+        public NpgsqlBinaryExporter BeginBinaryExport(string copyToCommand) =>
+            BeginBinaryExport(copyToCommand, async: false, CancellationToken.None).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Begins a binary COPY TO STDOUT operation, a high-performance data export mechanism from a PostgreSQL table.
+        /// </summary>
+        /// <param name="copyToCommand">A COPY TO STDOUT SQL command</param>
+        /// <param name="cancellationToken">An optional token to cancel the asynchronous operation. The default value is None.</param>
+        /// <returns>A <see cref="NpgsqlBinaryExporter"/> which can be used to read rows and columns</returns>
+        /// <remarks>
+        /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
+        /// </remarks>
+        public Task<NpgsqlBinaryExporter> BeginBinaryExportAsync(string copyToCommand, CancellationToken cancellationToken = default)
+        {
+            using (NoSynchronizationContextScope.Enter())
+                return BeginBinaryExport(copyToCommand, async: true, cancellationToken);
+        } 
+
+        async Task<NpgsqlBinaryExporter> BeginBinaryExport(string copyToCommand, bool async, CancellationToken cancellationToken = default)
         {
             if (copyToCommand == null)
                 throw new ArgumentNullException(nameof(copyToCommand));
@@ -1041,7 +1078,8 @@ namespace Npgsql
             connector.StartUserAction(ConnectorState.Copy, attemptPgCancellation: false);
             try
             {
-                var exporter = new NpgsqlBinaryExporter(connector, copyToCommand);
+                var exporter = new NpgsqlBinaryExporter(connector);
+                await exporter.Init(copyToCommand, async, cancellationToken);
                 connector.CurrentCopyOperation = exporter;
                 return exporter;
             }
@@ -1064,7 +1102,28 @@ namespace Npgsql
         /// <remarks>
         /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
         /// </remarks>
-        public TextWriter BeginTextImport(string copyFromCommand)
+        public TextWriter BeginTextImport(string copyFromCommand) =>
+            BeginTextImport(copyFromCommand, async: false, CancellationToken.None).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Begins a textual COPY FROM STDIN operation, a data import mechanism to a PostgreSQL table.
+        /// It is the user's responsibility to send the textual input according to the format specified
+        /// in <paramref name="copyFromCommand"/>.
+        /// </summary>
+        /// <param name="copyFromCommand">A COPY FROM STDIN SQL command</param>
+        /// <param name="cancellationToken">An optional token to cancel the asynchronous operation. The default value is None.</param>
+        /// <returns>
+        /// A TextWriter that can be used to send textual data.</returns>
+        /// <remarks>
+        /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
+        /// </remarks>
+        public Task<TextWriter> BeginTextImportAsync(string copyFromCommand, CancellationToken cancellationToken = default)
+        {
+            using (NoSynchronizationContextScope.Enter())
+                return BeginTextImport(copyFromCommand, async: true, cancellationToken);
+        }
+
+        async Task<TextWriter> BeginTextImport(string copyFromCommand, bool async, CancellationToken cancellationToken = default)
         {
             if (copyFromCommand == null)
                 throw new ArgumentNullException(nameof(copyFromCommand));
@@ -1078,7 +1137,9 @@ namespace Npgsql
             connector.StartUserAction(ConnectorState.Copy, attemptPgCancellation: false);
             try
             {
-                var writer = new NpgsqlCopyTextWriter(connector, new NpgsqlRawCopyStream(connector, copyFromCommand));
+                var copyStream = new NpgsqlRawCopyStream(connector);
+                await copyStream.Init(copyFromCommand, async, cancellationToken);
+                var writer = new NpgsqlCopyTextWriter(connector, copyStream);
                 connector.CurrentCopyOperation = writer;
                 return writer;
             }
@@ -1102,6 +1163,27 @@ namespace Npgsql
         /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
         /// </remarks>
         public TextReader BeginTextExport(string copyToCommand)
+            => BeginTextExport(copyToCommand, async: false, CancellationToken.None).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Begins a textual COPY TO STDOUT operation, a data export mechanism from a PostgreSQL table.
+        /// It is the user's responsibility to parse the textual input according to the format specified
+        /// in <paramref name="copyToCommand"/>.
+        /// </summary>
+        /// <param name="copyToCommand">A COPY TO STDOUT SQL command</param>
+        /// <param name="cancellationToken">An optional token to cancel the asynchronous operation. The default value is None.</param>
+        /// <returns>
+        /// A TextReader that can be used to read textual data.</returns>
+        /// <remarks>
+        /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
+        /// </remarks>
+        public Task<TextReader> BeginTextExportAsync(string copyToCommand, CancellationToken cancellationToken = default)
+        {
+            using (NoSynchronizationContextScope.Enter())
+                return BeginTextExport(copyToCommand, async: true, cancellationToken);
+        }
+
+        async Task<TextReader> BeginTextExport(string copyToCommand, bool async, CancellationToken cancellationToken = default)
         {
             if (copyToCommand == null)
                 throw new ArgumentNullException(nameof(copyToCommand));
@@ -1115,7 +1197,9 @@ namespace Npgsql
             connector.StartUserAction(ConnectorState.Copy, attemptPgCancellation: false);
             try
             {
-                var reader = new NpgsqlCopyTextReader(connector, new NpgsqlRawCopyStream(connector, copyToCommand));
+                var copyStream = new NpgsqlRawCopyStream(connector);
+                await copyStream.Init(copyToCommand, async, cancellationToken);
+                var reader = new NpgsqlCopyTextReader(connector, copyStream);
                 connector.CurrentCopyOperation = reader;
                 return reader;
             }
@@ -1129,7 +1213,7 @@ namespace Npgsql
 
         /// <summary>
         /// Begins a raw binary COPY operation (TO STDOUT or FROM STDIN), a high-performance data export/import mechanism to a PostgreSQL table.
-        /// Note that unlike the other COPY API methods, <see cref="BeginRawBinaryCopy"/> doesn't implement any encoding/decoding
+        /// Note that unlike the other COPY API methods, <see cref="BeginRawBinaryCopy(string)"/> doesn't implement any encoding/decoding
         /// and is unsuitable for structured import/export operation. It is useful mainly for exporting a table as an opaque
         /// blob, for the purpose of importing it back later.
         /// </summary>
@@ -1139,6 +1223,27 @@ namespace Npgsql
         /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
         /// </remarks>
         public NpgsqlRawCopyStream BeginRawBinaryCopy(string copyCommand)
+            => BeginRawBinaryCopy(copyCommand, async: false, CancellationToken.None).GetAwaiter().GetResult();
+
+        /// <summary>
+        /// Begins a raw binary COPY operation (TO STDOUT or FROM STDIN), a high-performance data export/import mechanism to a PostgreSQL table.
+        /// Note that unlike the other COPY API methods, <see cref="BeginRawBinaryCopyAsync(string, CancellationToken)"/> doesn't implement any encoding/decoding
+        /// and is unsuitable for structured import/export operation. It is useful mainly for exporting a table as an opaque
+        /// blob, for the purpose of importing it back later.
+        /// </summary>
+        /// <param name="copyCommand">A COPY TO STDOUT or COPY FROM STDIN SQL command</param>
+        /// <param name="cancellationToken">An optional token to cancel the asynchronous operation. The default value is None.</param>
+        /// <returns>A <see cref="NpgsqlRawCopyStream"/> that can be used to read or write raw binary data.</returns>
+        /// <remarks>
+        /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
+        /// </remarks>
+        public Task<NpgsqlRawCopyStream> BeginRawBinaryCopyAsync(string copyCommand, CancellationToken cancellationToken = default)
+        {
+            using (NoSynchronizationContextScope.Enter())
+                return BeginRawBinaryCopy(copyCommand, async: true, cancellationToken);
+        }
+
+        async Task<NpgsqlRawCopyStream> BeginRawBinaryCopy(string copyCommand, bool async, CancellationToken cancellationToken = default)
         {
             if (copyCommand == null)
                 throw new ArgumentNullException(nameof(copyCommand));
@@ -1152,7 +1257,8 @@ namespace Npgsql
             connector.StartUserAction(ConnectorState.Copy, attemptPgCancellation: false);
             try
             {
-                var stream = new NpgsqlRawCopyStream(connector, copyCommand);
+                var stream = new NpgsqlRawCopyStream(connector);
+                await stream.Init(copyCommand, async, cancellationToken);
                 if (!stream.IsBinary)
                 {
                     // TODO: Stop the COPY operation gracefully, no breaking

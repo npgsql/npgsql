@@ -11,7 +11,7 @@ namespace Npgsql
 {
     /// <summary>
     /// Provides an API for a binary COPY FROM operation, a high-performance data import mechanism to
-    /// a PostgreSQL table. Initiated by <see cref="NpgsqlConnection.BeginBinaryImport"/>
+    /// a PostgreSQL table. Initiated by <see cref="NpgsqlConnection.BeginBinaryImport(string)"/>
     /// </summary>
     /// <remarks>
     /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
@@ -33,11 +33,11 @@ namespace Npgsql
         /// <summary>
         /// The number of columns, as returned from the backend in the CopyInResponse.
         /// </summary>
-        internal int NumColumns { get; }
+        internal int NumColumns { get; private set; }
 
         bool InMiddleOfRow => _column != -1 && _column != NumColumns;
 
-        readonly NpgsqlParameter?[] _params;
+        NpgsqlParameter?[] _params;
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlBinaryImporter));
 
@@ -58,37 +58,42 @@ namespace Npgsql
 
         #region Construction / Initialization
 
-        internal NpgsqlBinaryImporter(NpgsqlConnector connector, string copyFromCommand)
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+        internal NpgsqlBinaryImporter(NpgsqlConnector connector)
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _connector = connector;
             _buf = connector.WriteBuffer;
             _column = -1;
+        }
 
-            _connector.WriteQuery(copyFromCommand);
-            _connector.Flush();
+        internal async Task Init(string copyFromCommand, bool async, CancellationToken cancellationToken = default)
+        {
+            await _connector.WriteQuery(copyFromCommand, async, cancellationToken);
+            await _connector.Flush(async, cancellationToken);
 
-            using var registration = _connector.StartNestedCancellableOperation(attemptPgCancellation: false);
+            using var registration = _connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
 
             CopyInResponseMessage copyInResponse;
-            var msg = _connector.ReadMessage(async: false).GetAwaiter().GetResult();
+            var msg = await _connector.ReadMessage(async);
             switch (msg.Code)
             {
-                case BackendMessageCode.CopyInResponse:
-                    copyInResponse = (CopyInResponseMessage)msg;
-                    if (!copyInResponse.IsBinary)
-                    {
-                        throw _connector.Break(
-                            new ArgumentException("copyFromCommand triggered a text transfer, only binary is allowed",
-                                nameof(copyFromCommand)));
-                    }
-                    break;
-                case BackendMessageCode.CommandComplete:
-                    throw new InvalidOperationException(
-                        "This API only supports import/export from the client, i.e. COPY commands containing TO/FROM STDIN. " +
-                        "To import/export with files on your PostgreSQL machine, simply execute the command with ExecuteNonQuery. " +
-                        "Note that your data has been successfully imported/exported.");
-                default:
-                    throw _connector.UnexpectedMessageReceived(msg.Code);
+            case BackendMessageCode.CopyInResponse:
+                copyInResponse = (CopyInResponseMessage) msg;
+                if (!copyInResponse.IsBinary)
+                {
+                    throw _connector.Break(
+                        new ArgumentException("copyFromCommand triggered a text transfer, only binary is allowed",
+                            nameof(copyFromCommand)));
+                }
+                break;
+            case BackendMessageCode.CommandComplete:
+                throw new InvalidOperationException(
+                    "This API only supports import/export from the client, i.e. COPY commands containing TO/FROM STDIN. " +
+                    "To import/export with files on your PostgreSQL machine, simply execute the command with ExecuteNonQuery. " +
+                    "Note that your data has been successfully imported/exported.");
+            default:
+                throw _connector.UnexpectedMessageReceived(msg.Code);
             }
 
             NumColumns = copyInResponse.NumColumns;

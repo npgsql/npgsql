@@ -14,7 +14,7 @@ namespace Npgsql
 {
     /// <summary>
     /// Provides an API for a binary COPY TO operation, a high-performance data export mechanism from
-    /// a PostgreSQL table. Initiated by <see cref="NpgsqlConnection.BeginBinaryExport"/>
+    /// a PostgreSQL table. Initiated by <see cref="NpgsqlConnection.BeginBinaryExport(string)"/>
     /// </summary>
     public sealed class NpgsqlBinaryExporter : ICancelable, IAsyncDisposable
     {
@@ -31,9 +31,9 @@ namespace Npgsql
         /// <summary>
         /// The number of columns, as returned from the backend in the CopyInResponse.
         /// </summary>
-        internal int NumColumns { get; }
+        internal int NumColumns { get; private set; }
 
-        readonly NpgsqlTypeHandler?[] _typeHandlerCache;
+        NpgsqlTypeHandler?[] _typeHandlerCache;
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlBinaryExporter));
 
@@ -54,25 +54,30 @@ namespace Npgsql
 
         #region Construction / Initialization
 
-        internal NpgsqlBinaryExporter(NpgsqlConnector connector, string copyToCommand)
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
+        internal NpgsqlBinaryExporter(NpgsqlConnector connector)
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _connector = connector;
             _buf = connector.ReadBuffer;
             _typeMapper = connector.TypeMapper;
             _columnLen = int.MinValue;   // Mark that the (first) column length hasn't been read yet
             _column = -1;
+        }
 
-            _connector.WriteQuery(copyToCommand);
-            _connector.Flush();
+        internal async Task Init(string copyToCommand, bool async, CancellationToken cancellationToken = default)
+        {
+            await _connector.WriteQuery(copyToCommand, async, cancellationToken);
+            await _connector.Flush(async, cancellationToken);
 
-            using var registration = _connector.StartNestedCancellableOperation(attemptPgCancellation: false);
+            using var registration = _connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
 
             CopyOutResponseMessage copyOutResponse;
-            var msg = _connector.ReadMessage(async: false).GetAwaiter().GetResult();
+            var msg = await _connector.ReadMessage(async);
             switch (msg.Code)
             {
             case BackendMessageCode.CopyOutResponse:
-                copyOutResponse = (CopyOutResponseMessage)msg;
+                copyOutResponse = (CopyOutResponseMessage) msg;
                 if (!copyOutResponse.IsBinary)
                 {
                     throw _connector.Break(
@@ -91,14 +96,14 @@ namespace Npgsql
 
             NumColumns = copyOutResponse.NumColumns;
             _typeHandlerCache = new NpgsqlTypeHandler[NumColumns];
-            ReadHeader();
+            await ReadHeader(async);
         }
 
-        void ReadHeader()
+        async Task ReadHeader(bool async)
         {
-            _leftToReadInDataMsg = Expect<CopyDataMessage>(_connector.ReadMessage(), _connector).Length;
+            _leftToReadInDataMsg = Expect<CopyDataMessage>(await _connector.ReadMessage(async), _connector).Length;
             var headerLen = NpgsqlRawCopyStream.BinarySignature.Length + 4 + 4;
-            _buf.Ensure(headerLen);
+            await _buf.Ensure(headerLen, async);
 
             if (NpgsqlRawCopyStream.BinarySignature.Any(t => _buf.ReadByte() != t))
                 throw new NpgsqlException("Invalid COPY binary signature at beginning!");
