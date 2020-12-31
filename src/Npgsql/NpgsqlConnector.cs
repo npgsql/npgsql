@@ -2139,9 +2139,7 @@ namespace Npgsql
                     return;
 
                 Log.Trace("Performed keepalive", Id);
-                WritePregenerated(PregeneratedMessages.KeepAlive);
-                Flush();
-                SkipUntil(BackendMessageCode.ReadyForQuery);
+                UpdateServerPrimaryStatus();
             }
             catch (Exception e)
             {
