@@ -2176,6 +2176,10 @@ namespace Npgsql
 
                 Log.Trace("Performed keepalive", Id);
                 UpdateServerPrimaryStatus();
+                if(IsAppropriateFor(Settings.TargetServerType) == false)
+                {
+                    throw new NpgsqlException($"Server {ConnectedHost} is now {ConnectedServerType} and is no longer appropriate for this connection (requested: {Settings.TargetServerType})");
+                }
             }
             catch (Exception e)
             {
