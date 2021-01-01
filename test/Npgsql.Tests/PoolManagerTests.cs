@@ -42,7 +42,7 @@ namespace Npgsql.Tests
         {
             using (OpenConnection()) {}
             // Now have one connection in the pool
-            Assert.That(PoolManager.TryGetValue(new PoolKey(ConnectionString), out var pool), Is.True);
+            Assert.That(PoolManager.TryGetValue(ConnectionString, out var pool), Is.True);
             Assert.That(pool!.Statistics.Idle, Is.EqualTo(1));
 
             NpgsqlConnection.ClearAllPools();
@@ -60,7 +60,7 @@ namespace Npgsql.Tests
                 // We have one idle, one busy
 
                 NpgsqlConnection.ClearAllPools();
-                Assert.That(PoolManager.TryGetValue(new PoolKey(ConnectionString), out pool), Is.True);
+                Assert.That(PoolManager.TryGetValue(ConnectionString, out pool), Is.True);
                 Assert.That(pool!.Statistics.Idle, Is.Zero);
                 Assert.That(pool.Statistics.Total, Is.EqualTo(1));
             }

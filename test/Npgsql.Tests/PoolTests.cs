@@ -160,7 +160,7 @@ namespace Npgsql.Tests
             {
                 await conn1.OpenAsync();
 
-                Assert.True(PoolManager.TryGetValue(new PoolKey(connString), out var pool));
+                Assert.True(PoolManager.TryGetValue(connString, out var pool));
                 AssertPoolState(pool, open: 1, idle: 0);
 
                 // Pool is exhausted
@@ -253,7 +253,7 @@ namespace Npgsql.Tests
             using (var conn2 = OpenConnection(connString))
             using (var conn3 = OpenConnection(connString))
             {
-                Assert.True(PoolManager.TryGetValue(new PoolKey(connString), out var pool));
+                Assert.True(PoolManager.TryGetValue(connString, out var pool));
 
                 conn1.Close();
                 conn2.Close();
@@ -293,7 +293,7 @@ namespace Npgsql.Tests
             {
                 conn1.Open();   // Pool is now exhausted
 
-                Assert.True(PoolManager.TryGetValue(new PoolKey(connString), out var pool));
+                Assert.True(PoolManager.TryGetValue(connString, out var pool));
                 AssertPoolState(pool, open: 1, idle: 0);
 
                 Func<Task<int>> asyncOpener = async () =>
@@ -373,7 +373,7 @@ namespace Npgsql.Tests
             {
                 using (conn = OpenConnection(connString)) { }
                 // Now have one connection in the pool
-                Assert.True(PoolManager.TryGetValue(new PoolKey(connString), out var pool));
+                Assert.True(PoolManager.TryGetValue(connString, out var pool));
                 AssertPoolState(pool, open: 1, idle: 1);
 
                 NpgsqlConnection.ClearPool(conn);
@@ -395,7 +395,7 @@ namespace Npgsql.Tests
                 NpgsqlConnection.ClearPool(conn);
                 // conn is still busy but should get closed when returned to the pool
 
-                Assert.True(PoolManager.TryGetValue(new PoolKey(connString), out pool));
+                Assert.True(PoolManager.TryGetValue(connString, out pool));
                 AssertPoolState(pool, open: 1, idle: 0);
             }
             AssertPoolState(pool, open: 0, idle: 0);
@@ -427,7 +427,7 @@ namespace Npgsql.Tests
                     Assert.That(() => conn.Open(), Throws.Exception
                         .TypeOf<NpgsqlException>()
                         .With.InnerException.TypeOf<SocketException>());
-                Assert.True(PoolManager.TryGetValue(new PoolKey(connString), out var pool));
+                Assert.True(PoolManager.TryGetValue(connString, out var pool));
                 AssertPoolState(pool, open: 0, idle: 0);
             }
         }
@@ -485,33 +485,6 @@ namespace Npgsql.Tests
             await conn.OpenAsync();
             Assert.That(conn.ProcessID, Is.Not.EqualTo(processId));
         }
-
-        #region PoolKey
-
-        [Test]
-        public void KeysWithIdenticalConnectionStringShouldBeIdentical()
-        {
-            var FirstKey = new PoolKey(ConnectionString);
-            var SecondKey = new PoolKey(ConnectionString);
-
-            Assert.That(FirstKey, Is.EqualTo(SecondKey));
-            Assert.That(FirstKey.Equals(SecondKey), Is.True);
-            Assert.That(FirstKey == SecondKey, Is.True);
-        }
-
-        [Test]
-        public void IdenticalReferencesShouldBeEqual()
-        {
-            var FirstKey = new PoolKey(ConnectionString);
-            var SecondKey = FirstKey;
-
-            Assert.That(FirstKey, Is.EqualTo(SecondKey));
-            Assert.That(FirstKey.Equals(SecondKey), Is.True);
-            Assert.That(FirstKey == SecondKey, Is.True);
-        }
-
-
-        #endregion
 
         #region Support
 
