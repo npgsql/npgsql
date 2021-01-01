@@ -247,7 +247,7 @@ namespace Npgsql
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlConnector));
 
         private string? ConnectedHost;
-        private TargetServerType ConnectedServerType;
+        internal TargetServerType ConnectedServerType;
 
         internal readonly Stopwatch QueryLogStopWatch = new();
 
