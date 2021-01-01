@@ -99,8 +99,6 @@ namespace Npgsql
                 for (var i = 0; i < _nextSlot; i++)
                 {
                     var cp = pools[i];
-                    if (cp.Key == null)
-                        return;
                     cp.Pool?.Clear();
                 }
             }
