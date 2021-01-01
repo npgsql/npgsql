@@ -486,6 +486,33 @@ namespace Npgsql.Tests
             Assert.That(conn.ProcessID, Is.Not.EqualTo(processId));
         }
 
+        #region PoolKey
+
+        [Test]
+        public void KeysWithIdenticalConnectionStringShouldBeIdentical()
+        {
+            var FirstKey = new PoolKey(ConnectionString);
+            var SecondKey = new PoolKey(ConnectionString);
+
+            Assert.That(FirstKey, Is.EqualTo(SecondKey));
+            Assert.That(FirstKey.Equals(SecondKey), Is.True);
+            Assert.That(FirstKey == SecondKey, Is.True);
+        }
+
+        [Test]
+        public void IdenticalReferencesShouldBeEqual()
+        {
+            var FirstKey = new PoolKey(ConnectionString);
+            var SecondKey = FirstKey;
+
+            Assert.That(FirstKey, Is.EqualTo(SecondKey));
+            Assert.That(FirstKey.Equals(SecondKey), Is.True);
+            Assert.That(FirstKey == SecondKey, Is.True);
+        }
+
+
+        #endregion
+
         #region Support
 
         volatile int StopFlag;
