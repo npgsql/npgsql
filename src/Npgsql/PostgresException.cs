@@ -4,8 +4,6 @@ using System.Runtime.Serialization;
 using System.Text;
 using Npgsql.BackendMessages;
 
-#pragma warning disable CA1032
-
 namespace Npgsql
 {
     /// <summary>
@@ -39,7 +37,7 @@ namespace Npgsql
             string? internalQuery = null, string? where = null, string? schemaName = null, string? tableName = null,
             string? columnName = null, string? dataTypeName = null, string? constraintName = null, string? file = null,
             string? line = null, string? routine = null)
-            : base(sqlState + ": " + messageText)
+            : base(GetMessage(sqlState, messageText, position, detail))
         {
             MessageText = messageText;
             Severity = severity;
@@ -86,6 +84,13 @@ namespace Npgsql
                     Data.Add(key, value);
             }
         }
+
+        static string GetMessage(string sqlState, string messageText, int position, string? detail) =>
+            "ERROR " + sqlState + ": " + messageText +
+            TryAddString("POSITION", position == 0 ? null : position.ToString()) +
+            TryAddString("DETAIL", detail);
+
+        static string TryAddString(string text, string? value) => !string.IsNullOrWhiteSpace(value) ? $"{Environment.NewLine}{text}: {value}" : string.Empty;
 
         PostgresException(ErrorOrNoticeMessage msg)
             : this(

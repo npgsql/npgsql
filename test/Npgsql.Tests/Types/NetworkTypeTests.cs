@@ -253,7 +253,7 @@ namespace Npgsql.Tests.Types
                     cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.MacAddr) { Value = send8 });
 
                     var exception = Assert.ThrowsAsync<PostgresException>(() => cmd.ExecuteReaderAsync());
-                    Assert.That(exception.Message, Does.StartWith("22P03:").And.Contain("1"));
+                    Assert.That(exception.Message, Does.StartWith("ERROR 22P03:").And.Contain("1"));
                 }
             }
         }
