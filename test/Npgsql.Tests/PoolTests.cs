@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net.Sockets;
 using System.Threading;
@@ -37,6 +38,97 @@ namespace Npgsql.Tests
             }.ToString();
 
             Assert.That(() => CreateConnection(connString), Throws.Exception.TypeOf<ArgumentException>());
+        }
+
+        [Test]
+        [TestCase(true)]
+        [TestCase(false)]
+        public async Task DoesClearPoolWhenDetectingNetworkOrFatalBackendError(bool terminateBackendInsteadOfRecoverableError)
+        {
+            // Arrange
+            // Create two separate connection strings in order to have multiple pools for testing
+            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ApplicationName = nameof(DoesClearPoolWhenDetectingNetworkOrFatalBackendError)
+            }.ToString();
+
+            var secondConnString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                ApplicationName = $"{nameof(DoesClearPoolWhenDetectingNetworkOrFatalBackendError)}:2"
+            }.ToString();
+
+            // Act
+            using (var conn = CreateConnection(connString))
+            using (var conn2 = CreateConnection(connString))
+            {
+                // Open Two connections, noting the Backend Ids
+                conn.Open();
+                conn2.Open();
+
+                // Note connector backend Ids
+                var backendIds = new[]
+                {
+                    conn.Connector!.BackendProcessId,
+                    conn2.Connector!.BackendProcessId
+                };
+
+                // Issue a (syntactically invalid) query in order to invoke a reader exception that is not fatal
+                // This is to ensure we do not clear the pool upon regular errors (that is not desirable)
+                foreach(var c in new[] { conn, conn2})
+                    Assert.ThrowsAsync<PostgresException>(async () => await c.ExecuteScalarAsync("this_query_is_invalid_on_purpose"));
+
+                // Return connectors to pool
+                await conn.CloseAsync();
+                await conn2.CloseAsync();
+
+                // Terminate the underlying backend processes to break the Connector connections from our pool
+                if (terminateBackendInsteadOfRecoverableError) {
+                    using (var conn3 = CreateConnection(secondConnString)) {
+                        conn3.Open();
+
+                        foreach (var backendId in backendIds)
+                            await conn3.ExecuteNonQueryAsync($"SELECT pg_terminate_backend({backendId})");
+                    }
+
+                    // Wait for backends to be terminated
+                    await Task.Delay(1000);
+                }
+
+                // Assert
+                // Now attempt to open a new connection again, it would be fetched from the pool, but should be found to have been closed when we attempt to use it
+                conn.Open();
+
+                // Perform a query to test the connection is valid
+                if (terminateBackendInsteadOfRecoverableError) {
+                    // The exception thrown could be of two types:
+                    // * NpgsqlException: Exception while writing to stream; InnerException of IOException: Unable to write data to the transport connection: An existing connection was forcibly closed by the remote host
+                    // * PostgresException: Backend error with code PostgresErrorCodes.AdminShutdown
+                    // The different exceptions could appear because you are running a test against a local versus remote server (eg RDS)
+                    try {
+                        // Perform a simple query, this (unlike Open(), which just retrieves a Connector from the pool) will test the liveness of the connector
+                        await conn.ExecuteScalarAsync("SELECT 1");
+                    } catch (PostgresException ex) {
+                        // We expect this query to have failed, potentially with AdminShutdown error state (backend termination)
+                        Assert.AreEqual(PostgresErrorCodes.AdminShutdown, ex.SqlState);
+                    } catch (NpgsqlException ex) {
+                        // We expect this query to have failed, potentially with an IOException (network failure due to disconnected socket) as part of backend termination
+                        Assert.IsTrue(ex.InnerException is IOException);
+                    }
+                }
+
+                // Our second connection opening attempt should instantiate a new, non-pooled Connector
+                // as the connector pool should have been cleared upon discovering the other pooled connection being faulty (if terminateBackendInsteadOfRecoverableError)
+                conn2.Open();
+
+                // Assert we didn't re-use a known pooled connection that should have been evicted, if appropriate for this test case
+                if (terminateBackendInsteadOfRecoverableError)
+                    Assert.That(!backendIds.Contains(conn2.Connector.BackendProcessId), "Connector was used that was in the pool of a previous connection that had a fatal error -- the pool should have been cleared after this discovery");
+                else
+                    Assert.That(backendIds.Contains(conn2.Connector.BackendProcessId), "Expected a pooled Connector to be re-used, as there was no backend termination that would have caused this to happen");
+
+                // Should succeed without error
+                await conn2.ExecuteScalarAsync("SELECT 1");
+            }
         }
 
         [Test]

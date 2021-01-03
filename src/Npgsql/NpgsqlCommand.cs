@@ -18,6 +18,7 @@ using NpgsqlTypes;
 using static Npgsql.Util.Statics;
 using System.Collections;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 
 namespace Npgsql
 {
@@ -1287,6 +1288,12 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             }
             catch (Exception e)
             {
+                // If we have encountered an error that appears to be due to a network error, or backend shutdown error
+                // Then clear the connection pool in case other connections have also been affected, as to not return (likely) faulted connections to callers
+                // The errors may differ depending on whether the connection was severed due to network issues or an explicit backend termination
+                if (e is NpgsqlException && e.InnerException is IOException || e is PostgresException { SqlState: PostgresErrorCodes.AdminShutdown })
+                    conn.Pool?.Clear();
+
                 var reader = conn.Connector?.CurrentReader;
                 if (!(e is NpgsqlOperationInProgressException) && reader != null)
                     await reader.Cleanup(async);
