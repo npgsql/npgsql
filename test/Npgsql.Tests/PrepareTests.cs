@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
@@ -51,6 +52,28 @@ namespace Npgsql.Tests
                 AssertNumPreparedStatements(conn, 1);
                 conn.UnprepareAll();
             }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3443")]
+        public void Bug3443()
+        {
+            using var conn = OpenConnectionAndUnprepare();
+            using var cmd = new NpgsqlCommand("SELECT 1", conn);
+            AssertNumPreparedStatements(conn, 0);
+            Assert.That(cmd.ExecuteScalar(), Is.EqualTo(1));
+            Assert.That(cmd.IsPrepared, Is.False);
+
+            using var cts = new CancellationTokenSource();
+            cts.Cancel();
+            Assert.ThrowsAsync<OperationCanceledException>(() => cmd.PrepareAsync(cts.Token));
+            AssertNumPreparedStatements(conn, 0);
+            Assert.That(cmd.IsPrepared, Is.False);
+
+            using var cmd2 = new NpgsqlCommand("SELECT 1", conn);
+            cmd2.Prepare();
+            Assert.That(cmd2.ExecuteScalar(), Is.EqualTo(1));
+            AssertNumPreparedStatements(conn, 1);
+            Assert.That(cmd2.IsPrepared, Is.True);
         }
 
         [Test]
