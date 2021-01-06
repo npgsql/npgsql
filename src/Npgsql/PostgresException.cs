@@ -85,10 +85,16 @@ namespace Npgsql
             }
         }
 
-        static string GetMessage(string sqlState, string messageText, int position, string? detail) =>
-            "ERROR " + sqlState + ": " + messageText +
-            TryAddString("POSITION", position == 0 ? null : position.ToString()) +
-            TryAddString("DETAIL", detail);
+        static string GetMessage(string sqlState, string messageText, int position, string? detail)
+        {
+            var baseMessage = sqlState + ": " + messageText;
+            var additionalMessage =
+                TryAddString("POSITION", position == 0 ? null : position.ToString()) +
+                TryAddString("DETAIL", detail);
+            return string.IsNullOrEmpty(additionalMessage)
+                ? baseMessage
+                : baseMessage + Environment.NewLine + additionalMessage;
+        }
 
         static string TryAddString(string text, string? value) => !string.IsNullOrWhiteSpace(value) ? $"{Environment.NewLine}{text}: {value}" : string.Empty;
 

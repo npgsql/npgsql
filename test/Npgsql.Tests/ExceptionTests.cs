@@ -43,7 +43,7 @@ namespace Npgsql.Tests
             Assert.That(ex.InvariantSeverity, Is.EqualTo("ERROR"));
             Assert.That(ex.SqlState, Is.EqualTo("12345"));
             Assert.That(ex.Position, Is.EqualTo(0));
-            Assert.That(ex.Message, Does.StartWith("ERROR 12345: testexception"));
+            Assert.That(ex.Message, Is.EqualTo("12345: testexception"));
 
             var data = ex.Data;
             Assert.That(data[nameof(PostgresException.Severity)], Is.EqualTo("ERROR"));
@@ -51,7 +51,7 @@ namespace Npgsql.Tests
             Assert.That(data.Contains(nameof(PostgresException.Position)), Is.False);
 
             var exString = ex.ToString();
-            Assert.That(exString, Does.StartWith("Npgsql.PostgresException (0x80004005): ERROR 12345: testexception"));
+            Assert.That(exString, Does.StartWith("Npgsql.PostgresException (0x80004005): 12345: testexception"));
             Assert.That(exString, Contains.Substring(nameof(PostgresException.Severity) + ": ERROR"));
             Assert.That(exString, Contains.Substring(nameof(PostgresException.SqlState) + ": 12345"));
 
@@ -122,6 +122,15 @@ $$ LANGUAGE 'plpgsql';");
             conn.Notice += (____, a) => notice = a.Notice;
             await conn.ExecuteNonQueryAsync($"SELECT * FROM {raiseNoticeFunc}()");
             Assert.That(notice!.Detail, Does.Contain("secret"));
+        }
+
+        [Test]
+        public async Task ErrorPosition()
+        {
+            await using var conn = await OpenConnectionAsync();
+
+            var ex = Assert.ThrowsAsync<PostgresException>(() => conn.ExecuteNonQueryAsync("SELECT 1; SELECT * FROM \"NonExistingTable\""));
+            Assert.That(ex.Message, Does.Contain("POSITION: 15"));
         }
 
         [Test]
