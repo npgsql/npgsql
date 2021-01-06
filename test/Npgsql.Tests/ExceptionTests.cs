@@ -43,7 +43,7 @@ namespace Npgsql.Tests
             Assert.That(ex.InvariantSeverity, Is.EqualTo("ERROR"));
             Assert.That(ex.SqlState, Is.EqualTo("12345"));
             Assert.That(ex.Position, Is.EqualTo(0));
-            Assert.That(ex.Message, Is.EqualTo("12345: testexception"));
+            Assert.That(ex.Message, Does.StartWith("12345: testexception"));
 
             var data = ex.Data;
             Assert.That(data[nameof(PostgresException.Severity)], Is.EqualTo("ERROR"));
