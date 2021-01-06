@@ -55,7 +55,7 @@ namespace Npgsql.NodaTime
 
         public override void Write(Period value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
-            // be mindful, what the end result must be long
+            // Note that the end result must be long
             // see #3438
             var microsecondsInDay =
                 (((value.Hours * NodaConstants.MinutesPerHour + value.Minutes) * NodaConstants.SecondsPerMinute + value.Seconds) * NodaConstants.MillisecondsPerSecond + value.Milliseconds) * 1000 +
@@ -84,7 +84,7 @@ namespace Npgsql.NodaTime
         {
             const long microsecondsPerSecond = 1_000_000;
 
-            // be mindful, what the end result must be long
+            // Note that the end result must be long
             // see #3438
             var microsecondsInDay =
                 (((value.Hours * NodaConstants.MinutesPerHour + value.Minutes) * NodaConstants.SecondsPerMinute + value.Seconds) *
