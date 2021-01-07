@@ -102,11 +102,7 @@ namespace Npgsql
             get
             {
                 var result = _dataMsgEnd - Buffer.ReadPosition <= Buffer.ReadBytesLeft;
-                if (!result)
-                {
-                    // We should get here only if we're in a sequential mode
-                    Debug.Assert(_isSequential);
-                }
+                Debug.Assert(result || _isSequential);
                 return result;
             }
         }
