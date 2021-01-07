@@ -97,7 +97,19 @@ namespace Npgsql
         /// Mostly useful for a sequential mode, when the row is already in the buffer.
         /// Should always be true for the non-sequential mode.
         /// </summary>
-        bool CanConsumeRowNonSequential => _dataMsgEnd - Buffer.ReadPosition <= Buffer.ReadBytesLeft;
+        bool CanConsumeRowNonSequentially
+        {
+            get
+            {
+                var result = _dataMsgEnd - Buffer.ReadPosition <= Buffer.ReadBytesLeft;
+                if (!result)
+                {
+                    // We should get here only if we're in a sequential mode
+                    Debug.Assert(_isSequential);
+                }
+                return result;
+            }
+        }
 
         int _charPos;
 
@@ -204,12 +216,8 @@ namespace Npgsql
                 State = ReaderState.InResult;
                 return true;
             case ReaderState.InResult:
-                if (!CanConsumeRowNonSequential)
-                {
-                    // We should get here only if we're in a sequential mode
-                    Debug.Assert(_isSequential);
+                if (!CanConsumeRowNonSequentially)
                     return null;
-                }
                 // We get here, if we're in a non-sequential mode (or the row is already in the buffer)
                 ConsumeRowNonSequential();
                 break;
@@ -2040,12 +2048,8 @@ namespace Npgsql
         {
             Debug.Assert(State == ReaderState.InResult || State == ReaderState.BeforeResult);
 
-            if (!CanConsumeRowNonSequential)
-            {
-                // We should get here only if we're in a sequential mode
-                Debug.Assert(_isSequential);
+            if (!CanConsumeRowNonSequentially)
                 return ConsumeRowSequential(async);
-            }
 
             // We get here, if we're in a non-sequential mode (or the row is already in the buffer)
             ConsumeRowNonSequential();
