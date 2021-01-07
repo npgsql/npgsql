@@ -20,21 +20,21 @@ namespace Npgsql
     {
         #region Fields and Properties
 
-        byte _precision;
-        byte _scale;
-        int _size;
+        private protected byte _precision;
+        private protected byte _scale;
+        private protected int _size;
 
         // ReSharper disable InconsistentNaming
         private protected NpgsqlDbType? _npgsqlDbType;
         private protected string? _dataTypeName;
         // ReSharper restore InconsistentNaming
 
-        DbType? _cachedDbType;
-        string _name = string.Empty;
-        object? _value;
-        string _sourceColumn;
+        private protected  DbType? _cachedDbType;
+        private protected  string _name = string.Empty;
+        private protected  object? _value;
+        private protected  string _sourceColumn;
 
-        internal string TrimmedName { get; private set; } = string.Empty;
+        internal string TrimmedName { get; private protected set; } = string.Empty;
 
         /// <summary>
         /// Can be used to communicate a value from the validation phase to the writing phase.
@@ -536,17 +536,19 @@ namespace Npgsql
         /// is a copy of the current instance.
         /// </summary>
         /// <returns>A new <see cref="NpgsqlParameter">NpgsqlParameter</see> that is a copy of this instance.</returns>
-        public NpgsqlParameter Clone()
-        {
+        public NpgsqlParameter Clone() => CloneCore();
+
+        private protected virtual NpgsqlParameter CloneCore() =>
             // use fields instead of properties
             // to avoid auto-initializing something like type_info
-            var clone = new NpgsqlParameter
+            new NpgsqlParameter
             {
                 _precision = _precision,
                 _scale = _scale,
                 _size = _size,
                 _cachedDbType = _cachedDbType,
                 _npgsqlDbType = _npgsqlDbType,
+                _dataTypeName = _dataTypeName,
                 Direction = Direction,
                 IsNullable = IsNullable,
                 _name = _name,
@@ -556,8 +558,6 @@ namespace Npgsql
                 _value = _value,
                 SourceColumnNullMapping = SourceColumnNullMapping,
             };
-            return clone;
-        }
 
         object ICloneable.Clone() => Clone();
 
