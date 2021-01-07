@@ -43,7 +43,7 @@ namespace Npgsql.Tests
             Assert.That(ex.InvariantSeverity, Is.EqualTo("ERROR"));
             Assert.That(ex.SqlState, Is.EqualTo("12345"));
             Assert.That(ex.Position, Is.EqualTo(0));
-            Assert.That(ex.Message, Is.EqualTo("12345: testexception"));
+            Assert.That(ex.Message, Does.StartWith("12345: testexception"));
 
             var data = ex.Data;
             Assert.That(data[nameof(PostgresException.Severity)], Is.EqualTo("ERROR"));
@@ -80,6 +80,7 @@ $$ LANGUAGE 'plpgsql';");
 
             var ex = Assert.ThrowsAsync<PostgresException>(() => conn.ExecuteNonQueryAsync($"SELECT * FROM {raiseExceptionFunc}()"));
             Assert.That(ex.Detail, Does.Not.Contain("secret"));
+            Assert.That(ex.Message, Does.Not.Contain("secret"));
             Assert.That(ex.Data[nameof(PostgresException.Detail)], Does.Not.Contain("secret"));
             Assert.That(ex.ToString(), Does.Not.Contain("secret"));
 
@@ -113,6 +114,7 @@ $$ LANGUAGE 'plpgsql';");
 
             var ex = Assert.ThrowsAsync<PostgresException>(() => conn.ExecuteNonQueryAsync($"SELECT * FROM {raiseExceptionFunc}()"));
             Assert.That(ex.Detail, Does.Contain("secret"));
+            Assert.That(ex.Message, Does.Contain("secret"));
             Assert.That(ex.Data[nameof(PostgresException.Detail)], Does.Contain("secret"));
             Assert.That(ex.ToString(), Does.Contain("secret"));
 
@@ -120,6 +122,15 @@ $$ LANGUAGE 'plpgsql';");
             conn.Notice += (____, a) => notice = a.Notice;
             await conn.ExecuteNonQueryAsync($"SELECT * FROM {raiseNoticeFunc}()");
             Assert.That(notice!.Detail, Does.Contain("secret"));
+        }
+
+        [Test]
+        public async Task ErrorPosition()
+        {
+            await using var conn = await OpenConnectionAsync();
+
+            var ex = Assert.ThrowsAsync<PostgresException>(() => conn.ExecuteNonQueryAsync("SELECT 1; SELECT * FROM \"NonExistingTable\""));
+            Assert.That(ex.Message, Does.Contain("POSITION: 15"));
         }
 
         [Test]
