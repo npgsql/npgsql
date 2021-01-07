@@ -98,5 +98,26 @@ namespace Npgsql
 
         internal override Task WriteWithLength(NpgsqlWriteBuffer buf, bool async)
             => Handler!.WriteWithLengthInternal(TypedValue, buf, LengthCache, this, async);
+
+        private protected override NpgsqlParameter CloneCore() =>
+            // use fields instead of properties
+            // to avoid auto-initializing something like type_info
+            new NpgsqlParameter<T>
+            {
+                _precision = _precision,
+                _scale = _scale,
+                _size = _size,
+                _cachedDbType = _cachedDbType,
+                _npgsqlDbType = _npgsqlDbType,
+                _dataTypeName = _dataTypeName,
+                Direction = Direction,
+                IsNullable = IsNullable,
+                _name = _name,
+                TrimmedName = TrimmedName,
+                SourceColumn = SourceColumn,
+                SourceVersion = SourceVersion,
+                TypedValue = TypedValue,
+                SourceColumnNullMapping = SourceColumnNullMapping,
+            };
     }
 }
