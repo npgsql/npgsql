@@ -993,8 +993,8 @@ namespace Npgsql
         /// <remarks>
         /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
         /// </remarks>
-        public NpgsqlBinaryImporter BeginBinaryImport(string copyFromCommand) =>
-            BeginBinaryImport(copyFromCommand, async: false, CancellationToken.None).GetAwaiter().GetResult();
+        public NpgsqlBinaryImporter BeginBinaryImport(string copyFromCommand)
+            => BeginBinaryImport(copyFromCommand, async: false, CancellationToken.None).GetAwaiter().GetResult();
 
         /// <summary>
         /// Begins a binary COPY FROM STDIN operation, a high-performance data import mechanism to a PostgreSQL table.
@@ -1005,13 +1005,13 @@ namespace Npgsql
         /// <remarks>
         /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
         /// </remarks>
-        public ValueTask<NpgsqlBinaryImporter> BeginBinaryImportAsync(string copyFromCommand, CancellationToken cancellationToken = default)
+        public Task<NpgsqlBinaryImporter> BeginBinaryImportAsync(string copyFromCommand, CancellationToken cancellationToken = default)
         {
             using (NoSynchronizationContextScope.Enter())
                 return BeginBinaryImport(copyFromCommand, async: true, cancellationToken);
         }
 
-        async ValueTask<NpgsqlBinaryImporter> BeginBinaryImport(string copyFromCommand, bool async, CancellationToken cancellationToken = default)
+        async Task<NpgsqlBinaryImporter> BeginBinaryImport(string copyFromCommand, bool async, CancellationToken cancellationToken = default)
         {
             if (copyFromCommand == null)
                 throw new ArgumentNullException(nameof(copyFromCommand));
@@ -1022,6 +1022,7 @@ namespace Npgsql
             var connector = StartBindingScope(ConnectorBindingScope.Copy);
 
             Log.Debug("Starting binary import", connector.Id);
+            // no point in passing a cancellationToken here, as we register the cancellation in the Init method
             connector.StartUserAction(ConnectorState.Copy, attemptPgCancellation: false);
             try
             {
@@ -1046,8 +1047,8 @@ namespace Npgsql
         /// <remarks>
         /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
         /// </remarks>
-        public NpgsqlBinaryExporter BeginBinaryExport(string copyToCommand) =>
-            BeginBinaryExport(copyToCommand, async: false, CancellationToken.None).GetAwaiter().GetResult();
+        public NpgsqlBinaryExporter BeginBinaryExport(string copyToCommand)
+            => BeginBinaryExport(copyToCommand, async: false, CancellationToken.None).GetAwaiter().GetResult();
 
         /// <summary>
         /// Begins a binary COPY TO STDOUT operation, a high-performance data export mechanism from a PostgreSQL table.
@@ -1058,13 +1059,13 @@ namespace Npgsql
         /// <remarks>
         /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
         /// </remarks>
-        public ValueTask<NpgsqlBinaryExporter> BeginBinaryExportAsync(string copyToCommand, CancellationToken cancellationToken = default)
+        public Task<NpgsqlBinaryExporter> BeginBinaryExportAsync(string copyToCommand, CancellationToken cancellationToken = default)
         {
             using (NoSynchronizationContextScope.Enter())
                 return BeginBinaryExport(copyToCommand, async: true, cancellationToken);
         } 
 
-        async ValueTask<NpgsqlBinaryExporter> BeginBinaryExport(string copyToCommand, bool async, CancellationToken cancellationToken = default)
+        async Task<NpgsqlBinaryExporter> BeginBinaryExport(string copyToCommand, bool async, CancellationToken cancellationToken = default)
         {
             if (copyToCommand == null)
                 throw new ArgumentNullException(nameof(copyToCommand));
@@ -1075,6 +1076,7 @@ namespace Npgsql
             var connector = StartBindingScope(ConnectorBindingScope.Copy);
 
             Log.Debug("Starting binary export", connector.Id);
+            // no point in passing a cancellationToken here, as we register the cancellation in the Init method
             connector.StartUserAction(ConnectorState.Copy, attemptPgCancellation: false);
             try
             {
@@ -1102,8 +1104,8 @@ namespace Npgsql
         /// <remarks>
         /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
         /// </remarks>
-        public TextWriter BeginTextImport(string copyFromCommand) =>
-            BeginTextImport(copyFromCommand, async: false, CancellationToken.None).GetAwaiter().GetResult();
+        public TextWriter BeginTextImport(string copyFromCommand)
+            => BeginTextImport(copyFromCommand, async: false, CancellationToken.None).GetAwaiter().GetResult();
 
         /// <summary>
         /// Begins a textual COPY FROM STDIN operation, a data import mechanism to a PostgreSQL table.
@@ -1117,13 +1119,13 @@ namespace Npgsql
         /// <remarks>
         /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
         /// </remarks>
-        public ValueTask<TextWriter> BeginTextImportAsync(string copyFromCommand, CancellationToken cancellationToken = default)
+        public Task<TextWriter> BeginTextImportAsync(string copyFromCommand, CancellationToken cancellationToken = default)
         {
             using (NoSynchronizationContextScope.Enter())
                 return BeginTextImport(copyFromCommand, async: true, cancellationToken);
         }
 
-        async ValueTask<TextWriter> BeginTextImport(string copyFromCommand, bool async, CancellationToken cancellationToken = default)
+        async Task<TextWriter> BeginTextImport(string copyFromCommand, bool async, CancellationToken cancellationToken = default)
         {
             if (copyFromCommand == null)
                 throw new ArgumentNullException(nameof(copyFromCommand));
@@ -1134,6 +1136,7 @@ namespace Npgsql
             var connector = StartBindingScope(ConnectorBindingScope.Copy);
 
             Log.Debug("Starting text import", connector.Id);
+            // no point in passing a cancellationToken here, as we register the cancellation in the Init method
             connector.StartUserAction(ConnectorState.Copy, attemptPgCancellation: false);
             try
             {
@@ -1177,13 +1180,13 @@ namespace Npgsql
         /// <remarks>
         /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
         /// </remarks>
-        public ValueTask<TextReader> BeginTextExportAsync(string copyToCommand, CancellationToken cancellationToken = default)
+        public Task<TextReader> BeginTextExportAsync(string copyToCommand, CancellationToken cancellationToken = default)
         {
             using (NoSynchronizationContextScope.Enter())
                 return BeginTextExport(copyToCommand, async: true, cancellationToken);
         }
 
-        async ValueTask<TextReader> BeginTextExport(string copyToCommand, bool async, CancellationToken cancellationToken = default)
+        async Task<TextReader> BeginTextExport(string copyToCommand, bool async, CancellationToken cancellationToken = default)
         {
             if (copyToCommand == null)
                 throw new ArgumentNullException(nameof(copyToCommand));
@@ -1194,6 +1197,7 @@ namespace Npgsql
             var connector = StartBindingScope(ConnectorBindingScope.Copy);
 
             Log.Debug("Starting text export", connector.Id);
+            // no point in passing a cancellationToken here, as we register the cancellation in the Init method
             connector.StartUserAction(ConnectorState.Copy, attemptPgCancellation: false);
             try
             {
@@ -1237,13 +1241,13 @@ namespace Npgsql
         /// <remarks>
         /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
         /// </remarks>
-        public ValueTask<NpgsqlRawCopyStream> BeginRawBinaryCopyAsync(string copyCommand, CancellationToken cancellationToken = default)
+        public Task<NpgsqlRawCopyStream> BeginRawBinaryCopyAsync(string copyCommand, CancellationToken cancellationToken = default)
         {
             using (NoSynchronizationContextScope.Enter())
                 return BeginRawBinaryCopy(copyCommand, async: true, cancellationToken);
         }
 
-        async ValueTask<NpgsqlRawCopyStream> BeginRawBinaryCopy(string copyCommand, bool async, CancellationToken cancellationToken = default)
+        async Task<NpgsqlRawCopyStream> BeginRawBinaryCopy(string copyCommand, bool async, CancellationToken cancellationToken = default)
         {
             if (copyCommand == null)
                 throw new ArgumentNullException(nameof(copyCommand));
@@ -1254,6 +1258,7 @@ namespace Npgsql
             var connector = StartBindingScope(ConnectorBindingScope.Copy);
 
             Log.Debug("Starting raw COPY operation", connector.Id);
+            // no point in passing a cancellationToken here, as we register the cancellation in the Init method
             connector.StartUserAction(ConnectorState.Copy, attemptPgCancellation: false);
             try
             {

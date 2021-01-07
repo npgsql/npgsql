@@ -58,13 +58,12 @@ namespace Npgsql
 
         #region Construction / Initialization
 
-#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         internal NpgsqlBinaryImporter(NpgsqlConnector connector)
-#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             _connector = connector;
             _buf = connector.WriteBuffer;
             _column = -1;
+            _params = null!;
         }
 
         internal async Task Init(string copyFromCommand, bool async, CancellationToken cancellationToken = default)
