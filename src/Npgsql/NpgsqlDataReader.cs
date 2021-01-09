@@ -817,9 +817,6 @@ namespace Npgsql
             catch (Exception e)
             {
                 Log.Error("Exception caught while disposing a reader", e, Connector.Id);
-            }
-            finally
-            {
                 State = ReaderState.Disposed;
             }
         }
@@ -846,9 +843,6 @@ namespace Npgsql
                 catch (Exception e)
                 {
                     Log.Error("Exception caught while disposing a reader", e, Connector.Id);
-                }
-                finally
-                {
                     State = ReaderState.Disposed;
                 }
             }
@@ -872,7 +866,11 @@ namespace Npgsql
         internal async Task Close(bool connectionClosing, bool async, bool isDisposing)
         {
             if (State == ReaderState.Closed || State == ReaderState.Disposed)
+            {
+                if (isDisposing)
+                    State = ReaderState.Disposed;
                 return;
+            }
 
             switch (Connector.State)
             {
@@ -881,7 +879,21 @@ namespace Npgsql
             case ConnectorState.Executing:
             case ConnectorState.Connecting:
                 if (State != ReaderState.Consumed)
-                    await Consume(async);
+                {
+                    try
+                    {
+                        await Consume(async);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        // nothing to do here
+                    }
+                    catch
+                    {
+                        Debug.Assert(Connector.IsBroken);
+                        throw;
+                    }
+                }
                 break;
             case ConnectorState.Closed:
             case ConnectorState.Broken:

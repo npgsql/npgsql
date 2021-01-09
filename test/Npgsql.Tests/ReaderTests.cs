@@ -2087,6 +2087,39 @@ LANGUAGE plpgsql VOLATILE";
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3446")]
+        public async Task Bug3446()
+        {
+            if (IsMultiplexing)
+                return; // Multiplexing, cancellation
+
+            await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
+            using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
+            await using var conn = await OpenConnectionAsync(connectionString);
+
+            var pgMock = await postmasterMock.WaitForServerConnection();
+            await pgMock
+                .WriteParseComplete()
+                .WriteBindComplete()
+                .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Int4))
+                .WriteDataRow(new byte[4])
+                .FlushAsync();
+
+            using var cmd = new NpgsqlCommand("SELECT some_int FROM some_table", conn);
+            await using (var reader = await cmd.ExecuteReaderAsync(Behavior))
+            {
+                await reader.ReadAsync();
+                cmd.Cancel();
+                await postmasterMock.WaitForCancellationRequest();
+                await pgMock
+                        .WriteErrorResponse(PostgresErrorCodes.QueryCanceled)
+                        .WriteReadyForQuery()
+                        .FlushAsync();
+            }
+
+            Assert.That(conn.Connector!.State, Is.EqualTo(ConnectorState.Ready));
+        }
+
         #endregion
 
         #region Initialization / setup / teardown
