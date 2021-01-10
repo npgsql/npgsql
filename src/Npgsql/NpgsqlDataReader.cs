@@ -885,8 +885,8 @@ namespace Npgsql
                         await Consume(async);
                     }
                     catch (Exception ex) when (
-                        ex is TimeoutException ||
-                        ex is OperationCanceledException)
+                        ex is OperationCanceledException ||
+                        ex is NpgsqlException && ex.InnerException is TimeoutException)
                     {
                         // nothing to do here
                     }
