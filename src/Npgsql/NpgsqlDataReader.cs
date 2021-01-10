@@ -884,11 +884,9 @@ namespace Npgsql
                     {
                         await Consume(async);
                     }
-                    catch (TimeoutException)
-                    {
-                        // nothing to do here
-                    }
-                    catch (OperationCanceledException)
+                    catch (Exception ex) when (
+                        ex is TimeoutException ||
+                        ex is OperationCanceledException)
                     {
                         // nothing to do here
                     }
