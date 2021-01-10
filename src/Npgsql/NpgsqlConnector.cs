@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
@@ -1778,6 +1779,8 @@ namespace Npgsql
             ClearTransaction();
 #pragma warning disable CS8625
 
+            var connection = Connection;
+
             _stream = null;
             _baseStream = null;
             _origReadBuffer?.Dispose();
@@ -1797,6 +1800,9 @@ namespace Npgsql
                 _keepAliveTimer!.Change(Timeout.Infinite, Timeout.Infinite);
                 _keepAliveTimer.Dispose();
             }
+
+            if (connection is not null && IsBroken)
+                connection.FullState = ConnectionState.Broken;
 #pragma warning restore CS8625
         }
 
