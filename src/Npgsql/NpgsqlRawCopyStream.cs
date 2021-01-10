@@ -13,7 +13,7 @@ namespace Npgsql
 {
     /// <summary>
     /// Provides an API for a raw binary COPY operation, a high-performance data import/export mechanism to
-    /// a PostgreSQL table. Initiated by <see cref="NpgsqlConnection.BeginRawBinaryCopy"/>
+    /// a PostgreSQL table. Initiated by <see cref="NpgsqlConnection.BeginRawBinaryCopy(string)"/>
     /// </summary>
     /// <remarks>
     /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
@@ -29,8 +29,8 @@ namespace Npgsql
         int _leftToReadInDataMsg;
         bool _isDisposed, _isConsumed;
 
-        readonly bool _canRead;
-        readonly bool _canWrite;
+        bool _canRead;
+        bool _canWrite;
 
         internal bool IsBinary { get; private set; }
 
@@ -67,20 +67,23 @@ namespace Npgsql
 
         #endregion
 
-        #region Constructor
+        #region Constructor / Initializer
 
-        internal NpgsqlRawCopyStream(NpgsqlConnector connector, string copyCommand)
+        internal NpgsqlRawCopyStream(NpgsqlConnector connector)
         {
             _connector = connector;
             _readBuf = connector.ReadBuffer;
             _writeBuf = connector.WriteBuffer;
+        }
 
-            _connector.WriteQuery(copyCommand);
-            _connector.Flush();
+        internal async Task Init(string copyCommand, bool async, CancellationToken cancellationToken = default)
+        {
+            await _connector.WriteQuery(copyCommand, async, cancellationToken);
+            await _connector.Flush(async, cancellationToken);
 
-            using var registration = connector.StartNestedCancellableOperation(attemptPgCancellation: false);
+            using var registration = _connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
 
-            var msg = _connector.ReadMessage(async: false).GetAwaiter().GetResult();
+            var msg = await _connector.ReadMessage(async);
             switch (msg.Code)
             {
             case BackendMessageCode.CopyInResponse:
@@ -495,7 +498,7 @@ namespace Npgsql
     }
 
     /// <summary>
-    /// Writer for a text import, initiated by <see cref="NpgsqlConnection.BeginTextImport"/>.
+    /// Writer for a text import, initiated by <see cref="NpgsqlConnection.BeginTextImport(string)"/>.
     /// </summary>
     /// <remarks>
     /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
@@ -525,7 +528,7 @@ namespace Npgsql
     }
 
     /// <summary>
-    /// Reader for a text export, initiated by <see cref="NpgsqlConnection.BeginTextExport"/>.
+    /// Reader for a text export, initiated by <see cref="NpgsqlConnection.BeginTextExport(string)"/>.
     /// </summary>
     /// <remarks>
     /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
