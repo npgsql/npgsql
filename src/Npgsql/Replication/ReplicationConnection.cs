@@ -253,8 +253,8 @@ namespace Npgsql.Replication
         /// <param name="cancellationToken">
         /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
         /// </param>
-        /// A <see cref="ReplicationSystemIdentification"/> containing information
-        /// about the system we are connected to.
+        /// <returns>
+        /// A <see cref="ReplicationSystemIdentification"/> containing information about the system we are connected to.
         /// </returns>
         public Task<ReplicationSystemIdentification> IdentifySystem(CancellationToken cancellationToken = default)
         {
