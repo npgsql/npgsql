@@ -600,7 +600,7 @@ namespace Npgsql
         /// <param name="cancellationToken">
         /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
         /// </param>
-        /// <returns>A task whose Result property is an object representing the new transaction.</returns>
+        /// <returns>A task whose <see cref="ValueTask{T}.Result"/> property is an object representing the new transaction.</returns>
         /// <remarks>
         /// Nested transactions are not supported.
         /// </remarks>
