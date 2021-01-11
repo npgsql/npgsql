@@ -247,7 +247,9 @@ namespace Npgsql
         /// type, for which <typeparamref name="T"/> will be a simple string but for which
         /// <paramref name="type"/> must be specified as <see cref="NpgsqlDbType.Jsonb"/>.
         /// </param>
-        /// <param name="cancellationToken"></param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <typeparam name="T">The .NET type of the column to be read.</typeparam>
         /// <returns>The value of the column</returns>
         public ValueTask<T> ReadAsync<T>(NpgsqlDbType type, CancellationToken cancellationToken = default)

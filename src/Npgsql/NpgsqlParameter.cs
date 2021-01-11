@@ -53,7 +53,7 @@ namespace Npgsql
         #region Constructors
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="NpgsqlParameter">NpgsqlParameter</see> class.
+        /// Initializes a new instance of the <see cref="NpgsqlParameter"/> class.
         /// </summary>
         public NpgsqlParameter()
         {
@@ -63,18 +63,20 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="NpgsqlParameter">NpgsqlParameter</see>
-        /// class with the parameter name and a value of the new <b>NpgsqlParameter</b>.
+        /// Initializes a new instance of the <see cref="NpgsqlParameter"/> class with the parameter name and a value.
         /// </summary>
         /// <param name="parameterName">The name of the parameter to map.</param>
-        /// <param name="value">An <see cref="System.Object">Object</see> that is the value of the <see cref="NpgsqlParameter">NpgsqlParameter</see>.</param>
+        /// <param name="value">The value of the <see cref="NpgsqlParameter"/>.</param>
         /// <remarks>
-        /// <p>When you specify an <see cref="System.Object">Object</see>
-        /// in the value parameter, the <see cref="System.Data.DbType">DbType</see> is
-        /// inferred from the .NET Framework type of the <b>Object</b>.</p>
-        /// <p>When using this constructor, you must be aware of a possible misuse of the constructor which takes a DbType parameter.
-        /// This happens when calling this constructor passing an int 0 and the compiler thinks you are passing a value of DbType.
-        /// Use <code> Convert.ToInt32(value) </code> for example to have compiler calling the correct constructor.</p>
+        /// <p>
+        /// When you specify an <see cref="System.Object"/> in the value parameter, the <see cref="System.Data.DbType"/> is
+        /// inferred from the .NET Framework type.
+        /// </p>
+        /// <p>
+        /// When using this constructor, you must be aware of a possible misuse of the constructor which takes a <see cref="DbType"/>
+        /// parameter. This happens when calling this constructor passing an int 0 and the compiler thinks you are passing a value of
+        /// <see cref="DbType"/>. Use <see cref="Convert.ToInt32(object)"/> for example to have compiler calling the correct constructor.
+        /// </p>
         /// </remarks>
         public NpgsqlParameter(string? parameterName, object? value)
             : this()
@@ -85,31 +87,30 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="NpgsqlParameter">NpgsqlParameter</see>
-        /// class with the parameter name and the data type.
+        /// Initializes a new instance of the <see cref="NpgsqlParameter"/> class with the parameter name and the data type.
         /// </summary>
         /// <param name="parameterName">The name of the parameter to map.</param>
-        /// <param name="parameterType">One of the <see cref="NpgsqlTypes.NpgsqlDbType">NpgsqlDbType</see> values.</param>
+        /// <param name="parameterType">One of the <see cref="NpgsqlTypes.NpgsqlDbType"/> values.</param>
         public NpgsqlParameter(string? parameterName, NpgsqlDbType parameterType)
             : this(parameterName, parameterType, 0, string.Empty)
         {
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="NpgsqlParameter">NpgsqlParameter</see>.
+        /// Initializes a new instance of the <see cref="NpgsqlParameter"/>.
         /// </summary>
         /// <param name="parameterName">The name of the parameter to map.</param>
-        /// <param name="parameterType">One of the <see cref="System.Data.DbType">DbType</see> values.</param>
+        /// <param name="parameterType">One of the <see cref="System.Data.DbType"/> values.</param>
         public NpgsqlParameter(string? parameterName, DbType parameterType)
             : this(parameterName, parameterType, 0, string.Empty)
         {
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="NpgsqlParameter">NpgsqlParameter</see>.
+        /// Initializes a new instance of the <see cref="NpgsqlParameter"/>.
         /// </summary>
         /// <param name="parameterName">The name of the parameter to map.</param>
-        /// <param name="parameterType">One of the <see cref="NpgsqlTypes.NpgsqlDbType">NpgsqlDbType</see> values.</param>
+        /// <param name="parameterType">One of the <see cref="NpgsqlTypes.NpgsqlDbType"/> values.</param>
         /// <param name="size">The length of the parameter.</param>
         public NpgsqlParameter(string? parameterName, NpgsqlDbType parameterType, int size)
             : this(parameterName, parameterType, size, string.Empty)
@@ -117,10 +118,10 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="NpgsqlParameter">NpgsqlParameter</see>.
+        /// Initializes a new instance of the <see cref="NpgsqlParameter"/>.
         /// </summary>
         /// <param name="parameterName">The name of the parameter to map.</param>
-        /// <param name="parameterType">One of the <see cref="System.Data.DbType">DbType</see> values.</param>
+        /// <param name="parameterType">One of the <see cref="System.Data.DbType"/> values.</param>
         /// <param name="size">The length of the parameter.</param>
         public NpgsqlParameter(string? parameterName, DbType parameterType, int size)
             : this(parameterName, parameterType, size, string.Empty)
@@ -128,10 +129,10 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="NpgsqlParameter">NpgsqlParameter</see>
+        /// Initializes a new instance of the <see cref="NpgsqlParameter"/>
         /// </summary>
         /// <param name="parameterName">The name of the parameter to map.</param>
-        /// <param name="parameterType">One of the <see cref="NpgsqlTypes.NpgsqlDbType">NpgsqlDbType</see> values.</param>
+        /// <param name="parameterType">One of the <see cref="NpgsqlTypes.NpgsqlDbType"/> values.</param>
         /// <param name="size">The length of the parameter.</param>
         /// <param name="sourceColumn">The name of the source column.</param>
         public NpgsqlParameter(string? parameterName, NpgsqlDbType parameterType, int size, string? sourceColumn)
@@ -145,10 +146,10 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="NpgsqlParameter">NpgsqlParameter</see>.
+        /// Initializes a new instance of the <see cref="NpgsqlParameter"/>.
         /// </summary>
         /// <param name="parameterName">The name of the parameter to map.</param>
-        /// <param name="parameterType">One of the <see cref="System.Data.DbType">DbType</see> values.</param>
+        /// <param name="parameterType">One of the <see cref="System.Data.DbType"/> values.</param>
         /// <param name="size">The length of the parameter.</param>
         /// <param name="sourceColumn">The name of the source column.</param>
         public NpgsqlParameter(string? parameterName, DbType parameterType, int size, string? sourceColumn)
@@ -162,21 +163,22 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="NpgsqlParameter">NpgsqlParameter</see>.
+        /// Initializes a new instance of the <see cref="NpgsqlParameter"/>.
         /// </summary>
         /// <param name="parameterName">The name of the parameter to map.</param>
-        /// <param name="parameterType">One of the <see cref="NpgsqlTypes.NpgsqlDbType">NpgsqlDbType</see> values.</param>
+        /// <param name="parameterType">One of the <see cref="NpgsqlTypes.NpgsqlDbType"/> values.</param>
         /// <param name="size">The length of the parameter.</param>
         /// <param name="sourceColumn">The name of the source column.</param>
-        /// <param name="direction">One of the <see cref="System.Data.ParameterDirection">ParameterDirection</see> values.</param>
-        /// <param name="isNullable"><b>true</b> if the value of the field can be null, otherwise <b>false</b>.</param>
-        /// <param name="precision">The total number of digits to the left and right of the decimal point to which
-        /// <see cref="NpgsqlParameter.Value">Value</see> is resolved.</param>
-        /// <param name="scale">The total number of decimal places to which
-        /// <see cref="NpgsqlParameter.Value">Value</see> is resolved.</param>
-        /// <param name="sourceVersion">One of the <see cref="System.Data.DataRowVersion">DataRowVersion</see> values.</param>
-        /// <param name="value">An <see cref="System.Object">Object</see> that is the value
-        /// of the <see cref="NpgsqlParameter">NpgsqlParameter</see>.</param>
+        /// <param name="direction">One of the <see cref="System.Data.ParameterDirection"/> values.</param>
+        /// <param name="isNullable">
+        /// <see langword="true"/> if the value of the field can be <see langword="null"/>, otherwise <see langword="false"/>.
+        /// </param>
+        /// <param name="precision">
+        /// The total number of digits to the left and right of the decimal point to which <see cref="Value"/> is resolved.
+        /// </param>
+        /// <param name="scale">The total number of decimal places to which <see cref="Value"/> is resolved.</param>
+        /// <param name="sourceVersion">One of the <see cref="System.Data.DataRowVersion"/> values.</param>
+        /// <param name="value">An <see cref="System.Object"/> that is the value of the <see cref="NpgsqlParameter"/>.</param>
         public NpgsqlParameter(string parameterName, NpgsqlDbType parameterType, int size, string? sourceColumn,
                                ParameterDirection direction, bool isNullable, byte precision, byte scale,
                                DataRowVersion sourceVersion, object value)
@@ -196,21 +198,22 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="NpgsqlParameter">NpgsqlParameter</see>.
+        /// Initializes a new instance of the <see cref="NpgsqlParameter"/>.
         /// </summary>
         /// <param name="parameterName">The name of the parameter to map.</param>
-        /// <param name="parameterType">One of the <see cref="System.Data.DbType">DbType</see> values.</param>
+        /// <param name="parameterType">One of the <see cref="System.Data.DbType"/> values.</param>
         /// <param name="size">The length of the parameter.</param>
         /// <param name="sourceColumn">The name of the source column.</param>
-        /// <param name="direction">One of the <see cref="System.Data.ParameterDirection">ParameterDirection</see> values.</param>
-        /// <param name="isNullable"><b>true</b> if the value of the field can be null, otherwise <b>false</b>.</param>
-        /// <param name="precision">The total number of digits to the left and right of the decimal point to which
-        /// <see cref="NpgsqlParameter.Value">Value</see> is resolved.</param>
-        /// <param name="scale">The total number of decimal places to which
-        /// <see cref="NpgsqlParameter.Value">Value</see> is resolved.</param>
-        /// <param name="sourceVersion">One of the <see cref="System.Data.DataRowVersion">DataRowVersion</see> values.</param>
-        /// <param name="value">An <see cref="System.Object">Object</see> that is the value
-        /// of the <see cref="NpgsqlParameter">NpgsqlParameter</see>.</param>
+        /// <param name="direction">One of the <see cref="System.Data.ParameterDirection"/> values.</param>
+        /// <param name="isNullable">
+        /// <see langword="true"/> if the value of the field can be <see langword="null"/>, otherwise <see langword="false"/>.
+        /// </param>
+        /// <param name="precision">
+        /// The total number of digits to the left and right of the decimal point to which <see cref="Value"/> is resolved.
+        /// </param>
+        /// <param name="scale">The total number of decimal places to which <see cref="Value"/> is resolved.</param>
+        /// <param name="sourceVersion">One of the <see cref="System.Data.DataRowVersion"/> values.</param>
+        /// <param name="value">An <see cref="System.Object"/> that is the value of the <see cref="NpgsqlParameter"/>.</param>
         public NpgsqlParameter(string parameterName, DbType parameterType, int size, string? sourceColumn,
                                ParameterDirection direction, bool isNullable, byte precision, byte scale,
                                DataRowVersion sourceVersion, object value)
@@ -232,9 +235,9 @@ namespace Npgsql
         #region Name
 
         /// <summary>
-        /// Gets or sets The name of the <see cref="NpgsqlParameter">NpgsqlParameter</see>.
+        /// Gets or sets The name of the <see cref="NpgsqlParameter"/>.
         /// </summary>
-        /// <value>The name of the <see cref="NpgsqlParameter">NpgsqlParameter</see>.
+        /// <value>The name of the <see cref="NpgsqlParameter"/>.
         /// The default is an empty string.</value>
         [AllowNull, DefaultValue("")]
         public sealed override string ParameterName
@@ -292,9 +295,9 @@ namespace Npgsql
         #region Type
 
         /// <summary>
-        /// Gets or sets the <see cref="System.Data.DbType">DbType</see> of the parameter.
+        /// Gets or sets the <see cref="System.Data.DbType"/> of the parameter.
         /// </summary>
-        /// <value>One of the <see cref="System.Data.DbType">DbType</see> values. The default is <b>Object</b>.</value>
+        /// <value>One of the <see cref="System.Data.DbType"/> values. The default is <see cref="Object"/>.</value>
         [DefaultValue(DbType.Object)]
         [Category("Data"), RefreshProperties(RefreshProperties.All)]
         public sealed override DbType DbType
@@ -327,9 +330,9 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Gets or sets the <see cref="NpgsqlTypes.NpgsqlDbType">NpgsqlDbType</see> of the parameter.
+        /// Gets or sets the <see cref="NpgsqlTypes.NpgsqlDbType"/> of the parameter.
         /// </summary>
-        /// <value>One of the <see cref="NpgsqlTypes.NpgsqlDbType">NpgsqlDbType</see> values. The default is <b>Unknown</b>.</value>
+        /// <value>One of the <see cref="NpgsqlTypes.NpgsqlDbType"/> values. The default is <see cref="NpgsqlTypes.NpgsqlDbType"/>.</value>
         [DefaultValue(NpgsqlDbType.Unknown)]
         [Category("Data"), RefreshProperties(RefreshProperties.All)]
         [DbProviderSpecificTypeProperty(true)]
@@ -388,13 +391,11 @@ namespace Npgsql
 
 #pragma warning disable CS0109
         /// <summary>
-        /// Gets or sets the maximum number of digits used to represent the
-        /// <see cref="NpgsqlParameter.Value">Value</see> property.
+        /// Gets or sets the maximum number of digits used to represent the <see cref="Value"/> property.
         /// </summary>
-        /// <value>The maximum number of digits used to represent the
-        /// <see cref="NpgsqlParameter.Value">Value</see> property.
-        /// The default value is 0, which indicates that the data provider
-        /// sets the precision for <b>Value</b>.</value>
+        /// <value>
+        /// The maximum number of digits used to represent the <see cref="Value"/> property.
+        /// The default value is 0, which indicates that the data provider sets the precision for <see cref="Value"/>.</value>
         [DefaultValue((byte)0)]
         [Category("Data")]
         public new byte Precision
@@ -408,11 +409,9 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Gets or sets the number of decimal places to which
-        /// <see cref="NpgsqlParameter.Value">Value</see> is resolved.
+        /// Gets or sets the number of decimal places to which <see cref="Value"/> is resolved.
         /// </summary>
-        /// <value>The number of decimal places to which
-        /// <see cref="NpgsqlParameter.Value">Value</see> is resolved. The default is 0.</value>
+        /// <value>The number of decimal places to which <see cref="Value"/> is resolved. The default is 0.</value>
         [DefaultValue((byte)0)]
         [Category("Data")]
         public new byte Scale
@@ -532,10 +531,9 @@ namespace Npgsql
         #region Clone
 
         /// <summary>
-        /// Creates a new <see cref="NpgsqlParameter">NpgsqlParameter</see> that
-        /// is a copy of the current instance.
+        /// Creates a new <see cref="NpgsqlParameter"/> that is a copy of the current instance.
         /// </summary>
-        /// <returns>A new <see cref="NpgsqlParameter">NpgsqlParameter</see> that is a copy of this instance.</returns>
+        /// <returns>A new <see cref="NpgsqlParameter"/> that is a copy of this instance.</returns>
         public NpgsqlParameter Clone() => CloneCore();
 
         private protected virtual NpgsqlParameter CloneCore() =>

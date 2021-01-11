@@ -50,7 +50,7 @@ namespace Npgsql
         ConnectionState _fullState;
 
         /// <summary>
-        /// The physical connection to the database. This is <c>null</c> when the connection is closed,
+        /// The physical connection to the database. This is <see langword="null"/> when the connection is closed,
         /// and also when it is open in multiplexing mode and unbound (e.g. not in a transaction).
         /// </summary>
         internal NpgsqlConnector? Connector { get; set; }
@@ -120,8 +120,7 @@ namespace Npgsql
         #region Constructors / Init / Open
 
         /// <summary>
-        /// Initializes a new instance of the
-        /// <see cref="NpgsqlConnection">NpgsqlConnection</see> class.
+        /// Initializes a new instance of the <see cref="NpgsqlConnection"/> class.
         /// </summary>
         public NpgsqlConnection()
             => GC.SuppressFinalize(this);
@@ -134,8 +133,7 @@ namespace Npgsql
             => ConnectionString = connectionString;
 
         /// <summary>
-        /// Opens a database connection with the property settings specified by the
-        /// <see cref="ConnectionString">ConnectionString</see>.
+        /// Opens a database connection with the property settings specified by the <see cref="ConnectionString"/>.
         /// </summary>
         public override void Open() => Open(false, CancellationToken.None).GetAwaiter().GetResult();
 
@@ -145,7 +143,9 @@ namespace Npgsql
         /// <remarks>
         /// Do not invoke other methods and properties of the <see cref="NpgsqlConnection"/> object until the returned Task is complete.
         /// </remarks>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>A task representing the asynchronous operation.</returns>
         public override Task OpenAsync(CancellationToken cancellationToken)
         {
@@ -366,8 +366,8 @@ namespace Npgsql
         /// </summary>
         /// <remarks>
         /// This delegate is executed when a new database connection is opened that requires a password.
-        /// <see cref="NpgsqlConnectionStringBuilder.Password">Password</see> and
-        /// <see cref="NpgsqlConnectionStringBuilder.Passfile">Passfile</see> connection string
+        /// The <see cref="NpgsqlConnectionStringBuilder.Password"/> and
+        /// <see cref="NpgsqlConnectionStringBuilder.Passfile"/> connection string
         /// properties have precedence over this delegate. It will not be executed if a password is
         /// specified, or the specified or default Passfile contains a valid entry.
         /// Due to connection pooling this delegate is only executed when a new physical connection
@@ -446,7 +446,7 @@ namespace Npgsql
         /// <summary>
         /// Gets the current state of the connection.
         /// </summary>
-        /// <value>A bitwise combination of the <see cref="System.Data.ConnectionState">ConnectionState</see> values. The default is <b>Closed</b>.</value>
+        /// <value>A bitwise combination of the <see cref="System.Data.ConnectionState"/> values. The default is <b>Closed</b>.</value>
         [Browsable(false)]
         public ConnectionState FullState
         {
@@ -496,20 +496,16 @@ namespace Npgsql
         #region Commands
 
         /// <summary>
-        /// Creates and returns a <see cref="System.Data.Common.DbCommand">DbCommand</see>
-        /// object associated with the <see cref="System.Data.Common.DbConnection">IDbConnection</see>.
+        /// Creates and returns a <see cref="System.Data.Common.DbCommand"/>
+        /// object associated with the <see cref="System.Data.Common.DbConnection"/>.
         /// </summary>
-        /// <returns>A <see cref="System.Data.Common.DbCommand">DbCommand</see> object.</returns>
-        protected override DbCommand CreateDbCommand()
-        {
-            return CreateCommand();
-        }
+        /// <returns>A <see cref="System.Data.Common.DbCommand"/> object.</returns>
+        protected override DbCommand CreateDbCommand() => CreateCommand();
 
         /// <summary>
-        /// Creates and returns a <see cref="NpgsqlCommand">NpgsqlCommand</see>
-        /// object associated with the <see cref="NpgsqlConnection">NpgsqlConnection</see>.
+        /// Creates and returns a <see cref="NpgsqlCommand"/> object associated with the <see cref="NpgsqlConnection"/>.
         /// </summary>
-        /// <returns>A <see cref="NpgsqlCommand">NpgsqlCommand</see> object.</returns>
+        /// <returns>A <see cref="NpgsqlCommand"/> object.</returns>
         public new NpgsqlCommand CreateCommand()
         {
             CheckDisposed();
@@ -523,22 +519,18 @@ namespace Npgsql
         /// <summary>
         /// Begins a database transaction with the specified isolation level.
         /// </summary>
-        /// <param name="isolationLevel">The <see cref="System.Data.IsolationLevel">isolation level</see> under which the transaction should run.</param>
-        /// <returns>An <see cref="System.Data.Common.DbTransaction">DbTransaction</see>
-        /// object representing the new transaction.</returns>
-        /// <remarks>
-        /// Currently the IsolationLevel ReadCommitted and Serializable are supported by the PostgreSQL backend.
-        /// There's no support for nested transactions.
-        /// </remarks>
+        /// <param name="isolationLevel">The isolation level under which the transaction should run.</param>
+        /// <returns>A <see cref="System.Data.Common.DbTransaction"/> object representing the new transaction.</returns>
+        /// <remarks>Nested transactions are not supported.</remarks>
         protected override DbTransaction BeginDbTransaction(IsolationLevel isolationLevel) => BeginTransaction(isolationLevel);
 
         /// <summary>
         /// Begins a database transaction.
         /// </summary>
-        /// <returns>A <see cref="NpgsqlTransaction">NpgsqlTransaction</see>
-        /// object representing the new transaction.</returns>
+        /// <returns>A <see cref="NpgsqlTransaction"/> object representing the new transaction.</returns>
         /// <remarks>
-        /// Currently there's no support for nested transactions. Transactions created by this method will have Read Committed isolation level.
+        /// Nested transactions are not supported.
+        /// Transactions created by this method will have the <see cref="IsolationLevel.ReadCommitted"/> isolation level.
         /// </remarks>
         public new NpgsqlTransaction BeginTransaction()
             => BeginTransaction(IsolationLevel.Unspecified);
@@ -546,13 +538,9 @@ namespace Npgsql
         /// <summary>
         /// Begins a database transaction with the specified isolation level.
         /// </summary>
-        /// <param name="level">The <see cref="System.Data.IsolationLevel">isolation level</see> under which the transaction should run.</param>
-        /// <returns>A <see cref="NpgsqlTransaction">NpgsqlTransaction</see>
-        /// object representing the new transaction.</returns>
-        /// <remarks>
-        /// Currently the IsolationLevel ReadCommitted and Serializable are supported by the PostgreSQL backend.
-        /// There's no support for nested transactions.
-        /// </remarks>
+        /// <param name="level">The isolation level under which the transaction should run.</param>
+        /// <returns>A <see cref="NpgsqlTransaction"/> object representing the new transaction.</returns>
+        /// <remarks>Nested transactions are not supported.</remarks>
         public new NpgsqlTransaction BeginTransaction(IsolationLevel level)
             => BeginTransaction(level, async: false, CancellationToken.None).GetAwaiter().GetResult();
 
@@ -594,10 +582,13 @@ namespace Npgsql
         /// <summary>
         /// Asynchronously begins a database transaction.
         /// </summary>
-        /// <param name="cancellationToken">An optional token to cancel the asynchronous operation. The default value is None.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>A task whose Result property is an object representing the new transaction.</returns>
         /// <remarks>
-        /// Currently there's no support for nested transactions. Transactions created by this method will have Read Committed isolation level.
+        /// Nested transactions are not supported.
+        /// Transactions created by this method will have the <see cref="IsolationLevel.ReadCommitted"/> isolation level.
         /// </remarks>
         public new ValueTask<NpgsqlTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default)
             => BeginTransactionAsync(IsolationLevel.Unspecified, cancellationToken);
@@ -605,12 +596,13 @@ namespace Npgsql
         /// <summary>
         /// Asynchronously begins a database transaction.
         /// </summary>
-        /// <param name="level">The <see cref="System.Data.IsolationLevel">isolation level</see> under which the transaction should run.</param>
-        /// <param name="cancellationToken">An optional token to cancel the asynchronous operation. The default value is None.</param>
+        /// <param name="level">The isolation level under which the transaction should run.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>A task whose Result property is an object representing the new transaction.</returns>
         /// <remarks>
-        /// Currently the IsolationLevel ReadCommitted and Serializable are supported by the PostgreSQL backend.
-        /// There's no support for nested transactions.
+        /// Nested transactions are not supported.
         /// </remarks>
         public new ValueTask<NpgsqlTransaction> BeginTransactionAsync(IsolationLevel level, CancellationToken cancellationToken = default)
         {
@@ -806,10 +798,10 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Releases all resources used by the <see cref="NpgsqlConnection">NpgsqlConnection</see>.
+        /// Releases all resources used by the <see cref="NpgsqlConnection"/>.
         /// </summary>
-        /// <param name="disposing"><b>true</b> when called from Dispose();
-        /// <b>false</b> when being called from the finalizer.</param>
+        /// <param name="disposing"><see langword="true"/> when called from <see cref="Dispose"/>;
+        /// <see langword="false"/> when being called from the finalizer.</param>
         protected override void Dispose(bool disposing)
         {
             if (_disposed)
@@ -820,7 +812,7 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Releases all resources used by the <see cref="NpgsqlConnection">NpgsqlConnection</see>.
+        /// Releases all resources used by the <see cref="NpgsqlConnection"/>.
         /// </summary>
 #if NETSTANDARD2_0
         public async ValueTask DisposeAsync()
@@ -1486,7 +1478,9 @@ namespace Npgsql
         /// The default value is 0, which indicates an infinite time-out period.
         /// Specifying -1 also indicates an infinite time-out period.
         /// </param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>true if an asynchronous message was received, false if timed out.</returns>
         public Task<bool> WaitAsync(int timeout, CancellationToken cancellationToken = default)
         {
@@ -1508,7 +1502,9 @@ namespace Npgsql
         /// <param name="timeout">
         /// The time-out value as <see cref="TimeSpan"/>
         /// </param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>true if an asynchronous message was received, false if timed out.</returns>
         public Task<bool> WaitAsync(TimeSpan timeout, CancellationToken cancellationToken = default) => WaitAsync((int)timeout.TotalMilliseconds, cancellationToken);
 
@@ -1517,7 +1513,9 @@ namespace Npgsql
         /// arrives, and exits immediately. The asynchronous message is delivered via the normal events
         /// (<see cref="Notification"/>, <see cref="Notice"/>).
         /// </summary>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         public Task WaitAsync(CancellationToken cancellationToken = default) => WaitAsync(0, cancellationToken);
 
         #endregion
@@ -1727,7 +1725,9 @@ namespace Npgsql
         /// <summary>
         /// Asynchronously returns the supported collections.
         /// </summary>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is None.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>The collection specified.</returns>
 #if NET
         public override Task<DataTable> GetSchemaAsync(CancellationToken cancellationToken = default)
@@ -1740,7 +1740,9 @@ namespace Npgsql
         /// Asynchronously returns the schema collection specified by the collection name.
         /// </summary>
         /// <param name="collectionName">The collection name.</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is None.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>The collection specified.</returns>
 #if NET
         public override Task<DataTable> GetSchemaAsync(string collectionName, CancellationToken cancellationToken = default)
@@ -1757,7 +1759,9 @@ namespace Npgsql
         /// The restriction values to filter the results.  A description of the restrictions is contained
         /// in the Restrictions collection.
         /// </param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is None.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>The collection specified.</returns>
 #if NET
         public override Task<DataTable> GetSchemaAsync(string collectionName, string?[]? restrictions, CancellationToken cancellationToken = default)
@@ -1952,7 +1956,10 @@ namespace Npgsql
     /// <summary>
     /// Represents the method that allows the application to provide a certificate collection to be used for SSL client authentication
     /// </summary>
-    /// <param name="certificates">A <see cref="System.Security.Cryptography.X509Certificates.X509CertificateCollection">X509CertificateCollection</see> to be filled with one or more client certificates.</param>
+    /// <param name="certificates">
+    /// A <see cref="System.Security.Cryptography.X509Certificates.X509CertificateCollection"/> to be filled with one or more client
+    /// certificates.
+    /// </param>
     public delegate void ProvideClientCertificatesCallback(X509CertificateCollection certificates);
 
     /// <summary>

@@ -195,10 +195,10 @@ namespace Npgsql.Replication
 
         /// <summary>
         /// Opens a database replication connection with the property settings specified by the
-        /// <see cref="ReplicationConnection.ConnectionString">ConnectionString</see>.
+        /// <see cref="ReplicationConnection.ConnectionString"/>.
         /// </summary>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests.
-        /// The default value is <see cref="CancellationToken.None"/>.
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
         /// </param>
         /// <returns>A task representing the asynchronous open operation.</returns>
         public async Task Open(CancellationToken cancellationToken = default)
@@ -250,9 +250,9 @@ namespace Npgsql.Replication
         /// <summary>
         /// Requests the server to identify itself.
         /// </summary>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests.
-        /// The default value is <see cref="CancellationToken.None"/>.</param>
-        /// <returns>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// A <see cref="ReplicationSystemIdentification"/> containing information
         /// about the system we are connected to.
         /// </returns>
@@ -276,8 +276,9 @@ namespace Npgsql.Replication
         /// <param name="parameterName">The name of a run-time parameter.
         /// Available parameters are documented in https://www.postgresql.org/docs/current/runtime-config.html.
         /// </param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests.
-        /// The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>The current setting of the run-time parameter specified in <paramref name="parameterName"/> as <see cref="string"/>.</returns>
         public Task<string> Show(string parameterName, CancellationToken cancellationToken = default)
         {
@@ -295,8 +296,9 @@ namespace Npgsql.Replication
         /// Requests the server to send over the timeline history file for timeline tli.
         /// </summary>
         /// <param name="tli">The timeline for which the history file should be sent.</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests.
-        /// The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>The timeline history file for timeline tli</returns>
         public Task<TimelineHistoryFile> TimelineHistory(uint tli, CancellationToken cancellationToken = default)
         {
@@ -637,8 +639,9 @@ namespace Npgsql.Replication
         /// <see langword="true"/> causes the command to wait until the slot becomes
         /// inactive if it currently is active instead of the default behavior of raising an error.
         /// </param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests.
-        /// The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>A task representing the asynchronous drop operation.</returns>
         public Task DropReplicationSlot(string slotName, bool wait = false, CancellationToken cancellationToken = default)
         {

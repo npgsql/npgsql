@@ -87,7 +87,9 @@ namespace Npgsql
         /// Create an empty large object in the database. If an oid is specified but is already in use, an PostgresException will be thrown.
         /// </summary>
         /// <param name="preferredOid">A preferred oid, or specify 0 if one should be automatically assigned</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>The oid for the large object created</returns>
         /// <exception cref="PostgresException">If an oid is already in use</exception>
         public Task<uint> CreateAsync(uint preferredOid, CancellationToken cancellationToken = default)
@@ -114,7 +116,9 @@ namespace Npgsql
         /// Note that this method, as well as operations on the stream must be wrapped inside a transaction.
         /// </summary>
         /// <param name="oid">Oid of the object</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>An NpgsqlLargeObjectStream</returns>
         public Task<NpgsqlLargeObjectStream> OpenReadAsync(uint oid, CancellationToken cancellationToken = default)
         {
@@ -142,7 +146,9 @@ namespace Npgsql
         /// Note that this method, as well as operations on the stream must be wrapped inside a transaction.
         /// </summary>
         /// <param name="oid">Oid of the object</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>An NpgsqlLargeObjectStream</returns>
         public Task<NpgsqlLargeObjectStream> OpenReadWriteAsync(uint oid, CancellationToken cancellationToken = default)
         {
@@ -167,7 +173,9 @@ namespace Npgsql
         /// Deletes a large object on the backend.
         /// </summary>
         /// <param name="oid">Oid of the object to delete</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         public Task UnlinkAsync(uint oid, CancellationToken cancellationToken = default)
         {
             using (NoSynchronizationContextScope.Enter())
@@ -187,7 +195,9 @@ namespace Npgsql
         /// </summary>
         /// <param name="oid">Oid of the object to export</param>
         /// <param name="path">Path to write the file on the backend</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         public Task ExportRemoteAsync(uint oid, string path, CancellationToken cancellationToken = default)
         {
             using (NoSynchronizationContextScope.Enter())
@@ -207,7 +217,9 @@ namespace Npgsql
         /// </summary>
         /// <param name="path">Path to read the file on the backend</param>
         /// <param name="oid">A preferred oid, or specify 0 if one should be automatically assigned</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         public Task ImportRemoteAsync(string path, uint oid, CancellationToken cancellationToken = default)
         {
             using (NoSynchronizationContextScope.Enter())

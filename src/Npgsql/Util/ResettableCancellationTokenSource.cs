@@ -39,8 +39,9 @@ namespace Npgsql.Util
         /// Set the timeout on the wrapped <see cref="CancellationTokenSource"/>
         /// and make sure that it hasn't been cancelled yet
         /// </summary>
-        /// <param name="cancellationToken">An optional cancellation token that will be linked with the
-        /// contained <see cref="CancellationTokenSource"/></param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>The <see cref="CancellationToken"/> from the wrapped <see cref="CancellationTokenSource"/></returns>
         public CancellationToken Start(CancellationToken cancellationToken = default)
         {
@@ -75,8 +76,9 @@ namespace Npgsql.Util
         /// in order make sure the next call to <see cref="Start"/> will not invalidate
         /// the cancellation token.
         /// </summary>
-        /// <param name="cancellationToken">An optional cancellation token that will be linked with the
-        /// contained <see cref="CancellationTokenSource"/></param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>The <see cref="CancellationToken"/> from the wrapped <see cref="CancellationTokenSource"/></returns>
         public CancellationToken Reset(CancellationToken cancellationToken = default)
         {

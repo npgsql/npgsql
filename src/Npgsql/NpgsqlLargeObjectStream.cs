@@ -53,7 +53,9 @@ namespace Npgsql
         /// <param name="buffer">The buffer where read data should be stored.</param>
         /// <param name="offset">The offset in the buffer where the first byte should be read.</param>
         /// <param name="count">The maximum number of bytes that should be read.</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>How many bytes actually read, or 0 if end of file was already reached.</returns>
         public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
@@ -106,7 +108,9 @@ namespace Npgsql
         /// <param name="buffer">The buffer to write data from.</param>
         /// <param name="offset">The offset in the buffer at which to begin copying bytes.</param>
         /// <param name="count">The number of bytes to write.</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
             using (NoSynchronizationContextScope.Enter())
@@ -185,7 +189,9 @@ namespace Npgsql
         /// <summary>
         /// Gets the length of the large object. This internally seeks to the end of the stream to retrieve the length, and then back again.
         /// </summary>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         public Task<long> GetLengthAsync(CancellationToken cancellationToken = default)
         {
             using (NoSynchronizationContextScope.Enter())
@@ -216,7 +222,9 @@ namespace Npgsql
         /// </summary>
         /// <param name="offset">A byte offset relative to the <i>origin</i> parameter.</param>
         /// <param name="origin">A value of type SeekOrigin indicating the reference point used to obtain the new position.</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         public Task<long> SeekAsync(long offset, SeekOrigin origin, CancellationToken cancellationToken = default)
         {
             using (NoSynchronizationContextScope.Enter())
@@ -255,7 +263,9 @@ namespace Npgsql
         /// For PostgreSQL versions earlier than 9.3, the value must fit in an Int32.
         /// </summary>
         /// <param name="value">Number of bytes to either truncate or enlarge the large object.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         public Task SetLength(long value, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();

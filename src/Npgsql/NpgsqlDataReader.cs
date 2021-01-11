@@ -183,7 +183,9 @@ namespace Npgsql
         /// <summary>
         /// This is the asynchronous version of <see cref="Read()"/>
         /// </summary>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>A task representing the asynchronous operation.</returns>
         public override Task<bool> ReadAsync(CancellationToken cancellationToken)
         {
@@ -319,7 +321,9 @@ namespace Npgsql
         /// <summary>
         /// This is the asynchronous version of NextResult.
         /// </summary>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>A task representing the asynchronous operation.</returns>
         public override Task<bool> NextResultAsync(CancellationToken cancellationToken)
         {
@@ -822,7 +826,7 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Releases the resources used by the <see cref="NpgsqlDataReader">NpgsqlDataReader</see>.
+        /// Releases the resources used by the <see cref="NpgsqlDataReader"/>.
         /// </summary>
         protected override void Dispose(bool disposing)
         {
@@ -841,7 +845,7 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Releases the resources used by the <see cref="NpgsqlDataReader">NpgsqlDataReader</see>.
+        /// Releases the resources used by the <see cref="NpgsqlDataReader"/>.
         /// </summary>
 #if NETSTANDARD2_0
         public ValueTask DisposeAsync()
@@ -1225,7 +1229,9 @@ namespace Npgsql
         /// Retrieves data as a <see cref="Stream"/>.
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>The returned object.</returns>
         public Task<Stream> GetStreamAsync(int ordinal, CancellationToken cancellationToken = default)
         {
@@ -1393,7 +1399,9 @@ namespace Npgsql
         /// Retrieves data as a <see cref="TextReader"/>.
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>The returned object.</returns>
         public Task<TextReader> GetTextReaderAsync(int ordinal, CancellationToken cancellationToken = default)
         {
@@ -1421,7 +1429,9 @@ namespace Npgsql
         /// </summary>
         /// <typeparam name="T">The type of the value to be returned.</typeparam>
         /// <param name="ordinal">The type of the value to be returned.</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns></returns>
         public override Task<T> GetFieldValueAsync<T>(int ordinal, CancellationToken cancellationToken)
         {
@@ -1690,7 +1700,9 @@ namespace Npgsql
         /// The <paramref name="cancellationToken"/> parameter is currently ignored.
         /// </summary>
         /// <param name="ordinal">The zero-based column to be retrieved.</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns><b>true</b> if the specified column value is equivalent to <see cref="DBNull"/> otherwise <b>false</b>.</returns>
         public override Task<bool> IsDBNullAsync(int ordinal, CancellationToken cancellationToken)
         {

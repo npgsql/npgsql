@@ -43,7 +43,7 @@ namespace Npgsql.Replication
         /// WAL is only reserved upon connection from a streaming replication client.
         /// </param>
         /// <param name="cancellationToken">
-        /// The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
         /// </param>
         /// <returns>A <see cref="PhysicalReplicationSlot"/> that wraps the newly-created replication slot.
         /// </returns>

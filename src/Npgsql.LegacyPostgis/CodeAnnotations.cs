@@ -12,8 +12,8 @@ using System;
 namespace JetBrains.Annotations
 {
     /// <summary>
-    /// Indicates that the value of the marked element could be <c>null</c> sometimes,
-    /// so the check for <c>null</c> is necessary before its usage.
+    /// Indicates that the value of the marked element could be <see langword="null"/> sometimes,
+    /// so the check for <see langword="null"/> is necessary before its usage.
     /// </summary>
     /// <example><code>
     /// [CanBeNull] public object Test() { return null; }
@@ -31,7 +31,7 @@ namespace JetBrains.Annotations
     }
 
     /// <summary>
-    /// Indicates that the value of the marked element could never be <c>null</c>.
+    /// Indicates that the value of the marked element could never be <see langword="null"/>.
     /// </summary>
     /// <example><code>
     /// [NotNull] public object Foo() {
