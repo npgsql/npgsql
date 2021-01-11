@@ -74,31 +74,33 @@ namespace Npgsql
         #region Constructors
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="NpgsqlCommand">NpgsqlCommand</see> class.
+        /// Initializes a new instance of the <see cref="NpgsqlCommand"/> class.
         /// </summary>
         public NpgsqlCommand() : this(null, null, null) {}
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="NpgsqlCommand">NpgsqlCommand</see> class with the text of the query.
+        /// Initializes a new instance of the <see cref="NpgsqlCommand"/> class with the text of the query.
         /// </summary>
         /// <param name="cmdText">The text of the query.</param>
         // ReSharper disable once IntroduceOptionalParameters.Global
         public NpgsqlCommand(string? cmdText) : this(cmdText, null, null) {}
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="NpgsqlCommand">NpgsqlCommand</see> class with the text of the query and a <see cref="NpgsqlConnection">NpgsqlConnection</see>.
+        /// Initializes a new instance of the <see cref="NpgsqlCommand"/> class with the text of the query and a
+        /// <see cref="NpgsqlConnection"/>.
         /// </summary>
         /// <param name="cmdText">The text of the query.</param>
-        /// <param name="connection">A <see cref="NpgsqlConnection">NpgsqlConnection</see> that represents the connection to a PostgreSQL server.</param>
+        /// <param name="connection">A <see cref="NpgsqlConnection"/> that represents the connection to a PostgreSQL server.</param>
         // ReSharper disable once IntroduceOptionalParameters.Global
         public NpgsqlCommand(string? cmdText, NpgsqlConnection? connection) : this(cmdText, connection, null) {}
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="NpgsqlCommand">NpgsqlCommand</see> class with the text of the query, a <see cref="NpgsqlConnection">NpgsqlConnection</see>, and the <see cref="NpgsqlTransaction">NpgsqlTransaction</see>.
+        /// Initializes a new instance of the <see cref="NpgsqlCommand"/> class with the text of the query, a
+        /// <see cref="NpgsqlConnection"/>, and the <see cref="NpgsqlTransaction"/>.
         /// </summary>
         /// <param name="cmdText">The text of the query.</param>
-        /// <param name="connection">A <see cref="NpgsqlConnection">NpgsqlConnection</see> that represents the connection to a PostgreSQL server.</param>
-        /// <param name="transaction">The <see cref="NpgsqlTransaction">NpgsqlTransaction</see> in which the <see cref="NpgsqlCommand">NpgsqlCommand</see> executes.</param>
+        /// <param name="connection">A <see cref="NpgsqlConnection"/> that represents the connection to a PostgreSQL server.</param>
+        /// <param name="transaction">The <see cref="NpgsqlTransaction"/> in which the <see cref="NpgsqlCommand"/> executes.</param>
         public NpgsqlCommand(string? cmdText, NpgsqlConnection? connection, NpgsqlTransaction? transaction)
         {
             GC.SuppressFinalize(this);
@@ -153,10 +155,11 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Gets or sets a value indicating how the
-        /// <see cref="NpgsqlCommand.CommandText">CommandText</see> property is to be interpreted.
+        /// Gets or sets a value indicating how the <see cref="NpgsqlCommand.CommandText"/> property is to be interpreted.
         /// </summary>
-        /// <value>One of the <see cref="System.Data.CommandType">CommandType</see> values. The default is <see cref="System.Data.CommandType">CommandType.Text</see>.</value>
+        /// <value>
+        /// One of the <see cref="System.Data.CommandType"/> values. The default is <see cref="System.Data.CommandType.Text"/>.
+        /// </value>
         [DefaultValue(CommandType.Text)]
         [Category("Data")]
         public override CommandType CommandType { get; set; }
@@ -171,10 +174,9 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Gets or sets the <see cref="NpgsqlConnection">NpgsqlConnection</see>
-        /// used by this instance of the <see cref="NpgsqlCommand">NpgsqlCommand</see>.
+        /// Gets or sets the <see cref="NpgsqlConnection"/> used by this instance of the <see cref="NpgsqlCommand"/>.
         /// </summary>
-        /// <value>The connection to a data source. The default value is a null reference.</value>
+        /// <value>The connection to a data source. The default value is <see langword="null"/>.</value>
         [DefaultValue(null)]
         [Category("Behavior")]
         public new NpgsqlConnection? Connection
@@ -202,7 +204,7 @@ namespace Npgsql
         /// Gets or sets how command results are applied to the DataRow when used by the
         /// DbDataAdapter.Update(DataSet) method.
         /// </summary>
-        /// <value>One of the <see cref="System.Data.UpdateRowSource">UpdateRowSource</see> values.</value>
+        /// <value>One of the <see cref="System.Data.UpdateRowSource"/> values.</value>
         [Category("Behavior"), DefaultValue(UpdateRowSource.Both)]
         public override UpdateRowSource UpdatedRowSource
         {
@@ -318,22 +320,16 @@ namespace Npgsql
         #region Parameters
 
         /// <summary>
-        /// Creates a new instance of an <see cref="System.Data.Common.DbParameter">DbParameter</see> object.
+        /// Creates a new instance of an <see cref="System.Data.Common.DbParameter"/> object.
         /// </summary>
-        /// <returns>An <see cref="System.Data.Common.DbParameter">DbParameter</see> object.</returns>
-        protected override DbParameter CreateDbParameter()
-        {
-            return CreateParameter();
-        }
+        /// <returns>A <see cref="System.Data.Common.DbParameter"/> object.</returns>
+        protected override DbParameter CreateDbParameter() => CreateParameter();
 
         /// <summary>
-        /// Creates a new instance of a <see cref="NpgsqlParameter">NpgsqlParameter</see> object.
+        /// Creates a new instance of a <see cref="NpgsqlParameter"/> object.
         /// </summary>
-        /// <returns>A <see cref="NpgsqlParameter">NpgsqlParameter</see> object.</returns>
-        public new NpgsqlParameter CreateParameter()
-        {
-            return new();
-        }
+        /// <returns>An <see cref="NpgsqlParameter"/> object.</returns>
+        public new NpgsqlParameter CreateParameter() => new();
 
         /// <summary>
         /// DB parameter collection.
@@ -341,7 +337,7 @@ namespace Npgsql
         protected override DbParameterCollection DbParameterCollection => Parameters;
 
         /// <summary>
-        /// Gets the <see cref="NpgsqlParameterCollection">NpgsqlParameterCollection</see>.
+        /// Gets the <see cref="NpgsqlParameterCollection"/>.
         /// </summary>
         /// <value>The parameters of the SQL statement or function (stored procedure). The default is an empty collection.</value>
         public new NpgsqlParameterCollection Parameters => _parameters;
@@ -547,7 +543,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// Creates a server-side prepared statement on the PostgreSQL server.
         /// This will make repeated future executions of this command much faster.
         /// </summary>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
 #if NETSTANDARD2_0
         public Task PrepareAsync(CancellationToken cancellationToken = default)
 #else
@@ -682,7 +680,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// Note that this only affects commands explicitly prepared with <see cref="Prepare()"/>, not
         /// automatically prepared statements.
         /// </summary>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         public Task UnprepareAsync(CancellationToken cancellationToken = default)
         {
             using (NoSynchronizationContextScope.Enter())
@@ -1021,7 +1021,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// <summary>
         /// Asynchronous version of <see cref="ExecuteNonQuery()"/>
         /// </summary>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>A task representing the asynchronous operation, with the number of rows affected if known; -1 otherwise.</returns>
         public override Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken)
         {
@@ -1053,7 +1055,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// <summary>
         /// Asynchronous version of <see cref="ExecuteScalar()"/>
         /// </summary>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>A task representing the asynchronous operation, with the first column of the
         /// first row in the result set, or a null reference if the result set is empty.</returns>
         public override Task<object?> ExecuteScalarAsync(CancellationToken cancellationToken)
@@ -1088,7 +1092,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// Executes the command text against the connection.
         /// </summary>
         /// <param name="behavior">An instance of <see cref="CommandBehavior"/>.</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>A task representing the asynchronous operation.</returns>
         protected override async Task<DbDataReader> ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
             => await ExecuteReaderAsync(behavior, cancellationToken);
@@ -1107,7 +1113,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// the <see cref="CommandText"/> against the <see cref="Connection"/>
         /// and returns a <see cref="NpgsqlDataReader"/>.
         /// </summary>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>A task representing the asynchronous operation.</returns>
         public new Task<NpgsqlDataReader> ExecuteReaderAsync(CancellationToken cancellationToken = default)
             => ExecuteReaderAsync(CommandBehavior.Default, cancellationToken);
@@ -1118,7 +1126,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// and returns a <see cref="NpgsqlDataReader"/>.
         /// </summary>
         /// <param name="behavior">One of the enumeration values that specified the command behavior.</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>A task representing the asynchronous operation.</returns>
         public new Task<NpgsqlDataReader> ExecuteReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken = default)
         {
@@ -1354,7 +1364,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         #region Dispose
 
         /// <summary>
-        /// Releases the resources used by the <see cref="NpgsqlCommand">NpgsqlCommand</see>.
+        /// Releases the resources used by the <see cref="NpgsqlCommand"/>.
         /// </summary>
         protected override void Dispose(bool disposing)
         {

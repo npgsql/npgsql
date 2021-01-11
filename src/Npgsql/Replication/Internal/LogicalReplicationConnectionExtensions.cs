@@ -41,8 +41,9 @@ namespace Npgsql.Replication.Internal
         /// executing the command. This option must be used in a transaction, and <see cref="LogicalSlotSnapshotInitMode.Use"/>
         /// must be the first command run in that transaction. Finally, <see cref="LogicalSlotSnapshotInitMode.NoExport"/> will
         /// just use the snapshot for logical decoding as normal but won't do anything else with it.</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests.
-        /// The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>A <see cref="Task{T}"/> representing a <see cref="ReplicationSlotOptions"/> class that
         /// can be used to initialize instances of <see cref="ReplicationSlot"/> subclasses.</returns>
         public static Task<ReplicationSlotOptions> CreateLogicalReplicationSlot(

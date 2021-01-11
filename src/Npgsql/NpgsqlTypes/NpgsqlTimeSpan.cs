@@ -425,7 +425,7 @@ namespace NpgsqlTypes
         /// Adds another interval to this instance and returns the result.
         /// </summary>
         /// <param name="interval">An <see cref="NpgsqlTimeSpan"/> to add to this instance.</param>
-        /// <returns>An <see cref="NpgsqlTimeSpan"></see> whose values are the sums of the two instances.</returns>
+        /// <returns>An <see cref="NpgsqlTimeSpan"/> whose values are the sums of the two instances.</returns>
         public NpgsqlTimeSpan Add(in NpgsqlTimeSpan interval)
             => new(Months + interval.Months, Days + interval.Days, Ticks + interval.Ticks);
 
@@ -433,7 +433,7 @@ namespace NpgsqlTypes
         /// Subtracts another interval from this instance and returns the result.
         /// </summary>
         /// <param name="interval">An <see cref="NpgsqlTimeSpan"/> to subtract from this instance.</param>
-        /// <returns>An <see cref="NpgsqlTimeSpan"></see> whose values are the differences of the two instances.</returns>
+        /// <returns>An <see cref="NpgsqlTimeSpan"/> whose values are the differences of the two instances.</returns>
         public NpgsqlTimeSpan Subtract(in NpgsqlTimeSpan interval)
             => new(Months - interval.Months, Days - interval.Days, Ticks - interval.Ticks);
 

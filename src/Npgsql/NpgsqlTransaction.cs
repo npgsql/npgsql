@@ -46,10 +46,9 @@ namespace Npgsql
         internal bool IsDisposed;
 
         /// <summary>
-        /// Specifies the <see cref="System.Data.IsolationLevel">IsolationLevel</see> for this transaction.
+        /// Specifies the isolation level for this transaction.
         /// </summary>
-        /// <value>The <see cref="System.Data.IsolationLevel">IsolationLevel</see> for this transaction.
-        /// The default is <b>ReadCommitted</b>.</value>
+        /// <value>The isolation level for this transaction. The default is <see cref="System.Data.IsolationLevel.ReadCommitted"/>.</value>
         public override IsolationLevel IsolationLevel
         {
             get
@@ -134,7 +133,9 @@ namespace Npgsql
         /// <summary>
         /// Commits the database transaction.
         /// </summary>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
 #if NETSTANDARD2_0
         public Task CommitAsync(CancellationToken cancellationToken = default)
 #else
@@ -165,7 +166,9 @@ namespace Npgsql
         /// <summary>
         /// Rolls back a transaction from a pending state.
         /// </summary>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
 #if NETSTANDARD2_0
         public Task RollbackAsync(CancellationToken cancellationToken = default)
 #else
@@ -232,7 +235,9 @@ namespace Npgsql
         /// Creates a transaction save point.
         /// </summary>
         /// <param name="name">The name of the savepoint.</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <remarks>
         /// This method does not cause a database roundtrip to be made, and will therefore always complete synchronously.
         /// The savepoint creation statement will instead be sent along with the next command.
@@ -283,7 +288,9 @@ namespace Npgsql
         /// Rolls back a transaction from a pending savepoint state.
         /// </summary>
         /// <param name="name">The name of the savepoint.</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
 #if NET
         public override Task RollbackAsync(string name, CancellationToken cancellationToken = default)
 #else
@@ -329,7 +336,9 @@ namespace Npgsql
         /// Releases a transaction from a pending savepoint state.
         /// </summary>
         /// <param name="name">The name of the savepoint.</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
 #if NET
         public override Task ReleaseAsync(string name, CancellationToken cancellationToken = default)
 #else

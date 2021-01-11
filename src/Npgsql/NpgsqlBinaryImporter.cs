@@ -166,7 +166,9 @@ namespace Npgsql
         /// Writes a single column in the current row.
         /// </summary>
         /// <param name="value">The value to be written</param>
-        /// <param name="cancellationToken"></param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <typeparam name="T">
         /// The type of the column to be written. This must correspond to the actual type or data
         /// corruption will occur. If in doubt, use <see cref="Write{T}(T, NpgsqlDbType)"/> to manually
@@ -220,7 +222,9 @@ namespace Npgsql
         /// the JSONB type, for which <typeparamref name="T"/> will be a simple string but for which
         /// <paramref name="npgsqlDbType"/> must be specified as <see cref="NpgsqlDbType.Jsonb"/>.
         /// </param>
-        /// <param name="cancellationToken"></param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <typeparam name="T">The .NET type of the column to be written.</typeparam>
         public Task WriteAsync<T>([AllowNull] T value, NpgsqlDbType npgsqlDbType, CancellationToken cancellationToken = default)
         {
@@ -270,7 +274,9 @@ namespace Npgsql
         /// In some cases <typeparamref name="T"/> isn't enough to infer the data type to be written to
         /// the database. This parameter and be used to unambiguously specify the type.
         /// </param>
-        /// <param name="cancellationToken"></param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <typeparam name="T">The .NET type of the column to be written.</typeparam>
         public Task WriteAsync<T>([AllowNull] T value, string dataTypeName, CancellationToken cancellationToken = default)
         {
@@ -393,7 +399,9 @@ namespace Npgsql
         /// Equivalent to calling <see cref="StartRow()"/>, followed by multiple <see cref="Write{T}(T)"/>
         /// on each value.
         /// </summary>
-        /// <param name="cancellationToken"></param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <param name="values">An array of column values to be written as a single row</param>
         public Task WriteRowAsync(CancellationToken cancellationToken = default, params object[] values)
         {
