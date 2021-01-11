@@ -70,7 +70,7 @@ namespace Npgsql
         /// <remarks>
         /// <p>
         /// When you specify an <see cref="System.Object"/> in the value parameter, the <see cref="System.Data.DbType"/> is
-        /// inferred from the .NET Framework type.
+        /// inferred from the CLR type.
         /// </p>
         /// <p>
         /// When using this constructor, you must be aware of a possible misuse of the constructor which takes a <see cref="DbType"/>

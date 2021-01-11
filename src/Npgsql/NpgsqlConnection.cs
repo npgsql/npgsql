@@ -365,13 +365,18 @@ namespace Npgsql
         /// Gets or sets the delegate used to generate a password for new database connections.
         /// </summary>
         /// <remarks>
+        /// <p>
         /// This delegate is executed when a new database connection is opened that requires a password.
-        /// The <see cref="NpgsqlConnectionStringBuilder.Password"/> and
-        /// <see cref="NpgsqlConnectionStringBuilder.Passfile"/> connection string
-        /// properties have precedence over this delegate. It will not be executed if a password is
-        /// specified, or the specified or default Passfile contains a valid entry.
-        /// Due to connection pooling this delegate is only executed when a new physical connection
-        /// is opened, not when reusing a connection that was previously opened from the pool.
+        /// </p>
+        /// <p>
+        /// The <see cref="NpgsqlConnectionStringBuilder.Password"/> and <see cref="NpgsqlConnectionStringBuilder.Passfile"/> connection
+        /// string properties have precedence over this delegate: it will not be executed if a password is specified, or if the specified or
+        /// default Passfile contains a valid entry.
+        /// </p>
+        /// <p>
+        /// Due to connection pooling this delegate is only executed when a new physical connection is opened, not when reusing a connection
+        /// that was previously opened from the pool.
+        /// </p>
         /// </remarks>
         public ProvidePasswordCallback? ProvidePasswordCallback { get; set; }
 

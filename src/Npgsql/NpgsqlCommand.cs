@@ -158,8 +158,7 @@ namespace Npgsql
         /// Gets or sets a value indicating how the <see cref="NpgsqlCommand.CommandText"/> property is to be interpreted.
         /// </summary>
         /// <value>
-        /// One of the <see cref="System.Data.CommandType"/> values.
-        /// The default is <see cref="System.Data.CommandType.Text"/>.
+        /// One of the <see cref="System.Data.CommandType"/> values. The default is <see cref="System.Data.CommandType.Text"/>.
         /// </value>
         [DefaultValue(CommandType.Text)]
         [Category("Data")]
