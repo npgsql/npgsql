@@ -477,9 +477,11 @@ namespace Npgsql
 
                 var currentOpen = _fullState.HasFlag(ConnectionState.Open);
                 if (currentOpen != originalOpen)
+                {
                     OnStateChange(currentOpen
                         ? ClosedToOpenEventArgs
                         : OpenToClosedEventArgs);
+                }
             }
         }
 
