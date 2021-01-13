@@ -93,6 +93,7 @@ namespace Npgsql.Tests
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
 
             await conn.OpenAsync();
+            await using var transaction = await conn.BeginTransactionAsync();
 
             Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
