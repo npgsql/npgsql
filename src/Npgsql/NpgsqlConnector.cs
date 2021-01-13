@@ -1717,9 +1717,14 @@ namespace Npgsql
                     // Note that we may be reading and writing from the same connector concurrently, so safely set
                     // the original reason for the break before actually closing the socket etc.
                     Interlocked.CompareExchange(ref _breakReason, reason, null);
-
                     State = ConnectorState.Broken;
+
+                    var connection = Connection;
+
                     Cleanup();
+
+                    if (connection is not null)
+                        connection.FullState = ConnectionState.Broken;
                 }
 
                 return reason;
@@ -1776,9 +1781,8 @@ namespace Npgsql
             }
 
             ClearTransaction();
-#pragma warning disable CS8625
 
-            var connection = Connection;
+#pragma warning disable CS8625
 
             _stream = null;
             _baseStream = null;
@@ -1800,8 +1804,6 @@ namespace Npgsql
                 _keepAliveTimer.Dispose();
             }
 
-            if (connection is not null && IsBroken)
-                connection.FullState = ConnectionState.Broken;
 #pragma warning restore CS8625
         }
 
