@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -1726,9 +1726,14 @@ namespace Npgsql
                     // Note that we may be reading and writing from the same connector concurrently, so safely set
                     // the original reason for the break before actually closing the socket etc.
                     Interlocked.CompareExchange(ref _breakReason, reason, null);
-
                     State = ConnectorState.Broken;
+
+                    var connection = Connection;
+
                     Cleanup();
+
+                    if (connection is not null)
+                        connection.FullState = ConnectionState.Broken;
                 }
 
                 return reason;
@@ -1785,6 +1790,7 @@ namespace Npgsql
             }
 
             ClearTransaction();
+
 #pragma warning disable CS8625
 
             _stream = null;
@@ -1806,6 +1812,7 @@ namespace Npgsql
                 _keepAliveTimer!.Change(Timeout.Infinite, Timeout.Infinite);
                 _keepAliveTimer.Dispose();
             }
+
 #pragma warning restore CS8625
         }
 

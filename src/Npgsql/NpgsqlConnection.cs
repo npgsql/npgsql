@@ -207,8 +207,8 @@ namespace Npgsql
             CheckClosed();
             Debug.Assert(Connector == null);
 
-            Log.Trace("Opening connection...");
             FullState = ConnectionState.Connecting;
+            Log.Trace("Opening connection...");
 
             if (Settings.Multiplexing)
             {
@@ -334,7 +334,6 @@ namespace Npgsql
             {
                 Log.Debug("Connection opened (multiplexing)");
                 FullState = ConnectionState.Open;
-                OnStateChange(ClosedToOpenEventArgs);
             }
         }
 
@@ -471,7 +470,20 @@ namespace Npgsql
                         },
                     _ => _fullState
                 };
-            internal set => _fullState = value;
+            internal set
+            {
+                var originalOpen = _fullState.HasFlag(ConnectionState.Open);
+
+                _fullState = value;
+
+                var currentOpen = _fullState.HasFlag(ConnectionState.Open);
+                if (currentOpen != originalOpen)
+                {
+                    OnStateChange(currentOpen
+                        ? ClosedToOpenEventArgs
+                        : OpenToClosedEventArgs);
+                }
+            }
         }
 
         /// <summary>
@@ -483,11 +495,13 @@ namespace Npgsql
         {
             get
             {
-                var s = FullState;
-                if ((s & ConnectionState.Open) != 0)
-                    return ConnectionState.Open;
-                if ((s & ConnectionState.Connecting) != 0)
+                var fullState = FullState;
+                if (fullState.HasFlag(ConnectionState.Connecting))
                     return ConnectionState.Connecting;
+
+                if (fullState.HasFlag(ConnectionState.Open))
+                    return ConnectionState.Open;
+
                 return ConnectionState.Closed;
             }
         }
@@ -718,10 +732,11 @@ namespace Npgsql
                 // TODO: Consider falling through to the regular reset logic. This adds some unneeded conditions
                 // and assignment but actual perf impact should be negligible (measure).
                 Debug.Assert(Connector == null);
+                Volatile.Write(ref _closing, 0);
+
                 FullState = ConnectionState.Closed;
                 Log.Debug("Connection closed (multiplexing)");
-                OnStateChange(OpenToClosedEventArgs);
-                Volatile.Write(ref _closing, 0);
+
                 return Task.CompletedTask;
             }
 
@@ -802,7 +817,6 @@ namespace Npgsql
                 ConnectorBindingScope = ConnectorBindingScope.None;
                 FullState = ConnectionState.Closed;
                 Log.Debug("Connection closed", connector.Id);
-                OnStateChange(OpenToClosedEventArgs);
             }
         }
 
