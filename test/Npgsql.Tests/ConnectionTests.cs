@@ -70,6 +70,9 @@ namespace Npgsql.Tests
         //[Timeout(5000)]
         public async Task BrokenLifecycle()
         {
+            if (IsMultiplexing)
+                return;
+
             await using var conn = new NpgsqlConnection(ConnectionString);
 
             var eventOpen = false;
