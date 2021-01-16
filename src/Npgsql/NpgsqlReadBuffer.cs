@@ -9,7 +9,9 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Npgsql.Util;
+using static Ben.Collections.Specialized.StringCache;
 using static System.Threading.Timeout;
+using Ben.Collections;
 
 #pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
 
@@ -435,7 +437,8 @@ namespace Npgsql
         public string ReadString(int byteLen)
         {
             Debug.Assert(byteLen <= ReadBytesLeft);
-            var result = TextEncoding.GetString(Buffer, ReadPosition, byteLen);
+            var result = Intern(Buffer.AsSpan(ReadPosition, byteLen), TextEncoding);
+
             ReadPosition += byteLen;
             return result;
         }
@@ -574,18 +577,24 @@ namespace Npgsql
 
             static bool ReadFromBuffer(NpgsqlReadBuffer buffer, Encoding encoding, out string s)
             {
+                var foundTerminator = false;
                 var start = buffer.ReadPosition;
                 while (buffer.ReadPosition < buffer.FilledBytes)
                 {
                     if (buffer.Buffer[buffer.ReadPosition++] == 0)
                     {
-                        s = encoding.GetString(buffer.Buffer, start, buffer.ReadPosition - start - 1);
-                        return true;
+                        foundTerminator = true;
+                        break;
                     }
                 }
 
-                s = encoding.GetString(buffer.Buffer, start, buffer.ReadPosition - start);
-                return false;
+                var length = foundTerminator ?
+                    buffer.ReadPosition - start - 1 :
+                    buffer.ReadPosition - start;
+
+                s = Intern(buffer.Buffer.AsSpan(start, length), encoding);
+
+                return foundTerminator;
             }
 
             static async ValueTask<string> ReadLong(NpgsqlReadBuffer buffer, bool async, Encoding encoding, string s)
@@ -600,7 +609,7 @@ namespace Npgsql
                 }
                 while (!complete);
 
-                return builder.ToString();
+                return builder.Intern();
             }
         }
 

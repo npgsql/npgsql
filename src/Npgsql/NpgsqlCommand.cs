@@ -18,6 +18,7 @@ using NpgsqlTypes;
 using static Npgsql.Util.Statics;
 using System.Collections;
 using System.Diagnostics.CodeAnalysis;
+using Ben.Collections;
 
 namespace Npgsql
 {
@@ -796,7 +797,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     statement.Reset();
                     _statements.Clear();
                 }
-                statement.SQL = sb.ToString();
+                statement.SQL = sb.Intern();
                 statement.InputParameters.AddRange(inputList);
                 _statements.Add(statement);
                 break;

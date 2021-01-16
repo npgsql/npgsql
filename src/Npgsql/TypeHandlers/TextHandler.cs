@@ -9,6 +9,7 @@ using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
+using static Ben.Collections.Specialized.StringCache;
 
 namespace Npgsql.TypeHandlers
 {
@@ -114,7 +115,7 @@ namespace Npgsql.TypeHandlers
                     }
                     break;
                 }
-                return buf.TextEncoding.GetString(tempBuf);
+                return Intern(tempBuf, buf.TextEncoding);
             }
         }
 

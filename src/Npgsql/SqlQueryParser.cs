@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
 
+using Ben.Collections;
+using static Ben.Collections.Specialized.StringCache;
+
 namespace Npgsql
 {
     class SqlQueryParser
@@ -139,7 +142,7 @@ namespace Npgsql
                 lastChar = ch;
                 if (currCharOfs >= end || !IsParamNameChar(ch = sql[currCharOfs]))
                 {
-                    var paramName = sql.Slice(currTokenBeg + 1, currCharOfs - (currTokenBeg + 1)).ToString();
+                    var paramName = Intern(sql.Slice(currTokenBeg + 1, currCharOfs - (currTokenBeg + 1)));
 
                     if (!_paramIndexMap.TryGetValue(paramName, out var index))
                     {
@@ -418,7 +421,7 @@ namespace Npgsql
 
         SemiColon:
             _rewrittenSql.Append(sql.Slice(currTokenBeg, currCharOfs - currTokenBeg - 1));
-            statement.SQL = _rewrittenSql.ToString();
+            statement.SQL = _rewrittenSql.Intern();
             while (currCharOfs < end)
             {
                 ch = sql[currCharOfs];
@@ -440,7 +443,7 @@ namespace Npgsql
 
         Finish:
             _rewrittenSql.Append(sql.Slice(currTokenBeg, end - currTokenBeg));
-            statement.SQL = _rewrittenSql.ToString();
+            statement.SQL = _rewrittenSql.Intern();
             if (statements.Count > statementIndex + 1)
                statements.RemoveRange(statementIndex + 1, statements.Count - (statementIndex + 1));
 

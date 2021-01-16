@@ -26,6 +26,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
+      - name: Clean
+        run: dotnet clean -v m
+        
+      - name: Clear cache
+        run: dotnet nuget locals all --clear
+        
       - name: NuGet Cache
         uses: actions/cache@v2
         with:

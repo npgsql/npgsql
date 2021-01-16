@@ -5,6 +5,9 @@ using System.Globalization;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Ben.Collections;
+
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
 
@@ -143,7 +146,7 @@ namespace Npgsql
                     }
                 }
             }
-            command.CommandText = query.ToString();
+            command.CommandText = query.Intern();
             command.Connection = conn;
 
             return command;

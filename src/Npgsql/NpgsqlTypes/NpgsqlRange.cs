@@ -4,6 +4,8 @@ using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text;
 
+using Ben.Collections;
+
 // ReSharper disable once CheckNamespace
 namespace NpgsqlTypes
 {
@@ -349,7 +351,7 @@ namespace NpgsqlTypes
 
             sb.Append(UpperBoundIsInclusive ? UpperInclusiveBound : UpperExclusiveBound);
 
-            return sb.ToString();
+            return sb.Intern();
         }
 
         // TODO: rewrite this to use ReadOnlySpan<char> for the 4.1 release
