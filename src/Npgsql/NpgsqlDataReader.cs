@@ -817,7 +817,8 @@ namespace Npgsql
             catch (Exception e)
             {
                 Log.Error("Exception caught while disposing a reader", e, Connector.Id);
-                State = ReaderState.Disposed;
+                if (e is not PostgresException)
+                    State = ReaderState.Disposed;
             }
         }
 
@@ -843,7 +844,8 @@ namespace Npgsql
                 catch (Exception e)
                 {
                     Log.Error("Exception caught while disposing a reader", e, Connector.Id);
-                    State = ReaderState.Disposed;
+                    if (e is not PostgresException)
+                        State = ReaderState.Disposed;
                 }
             }
         }
@@ -872,6 +874,8 @@ namespace Npgsql
                 return;
             }
 
+            PostgresException consumeException = null;
+
             switch (Connector.State)
             {
             case ConnectorState.Ready:
@@ -889,6 +893,10 @@ namespace Npgsql
                         ex is NpgsqlException && ex.InnerException is TimeoutException)
                     {
                         // nothing to do here
+                    }
+                    catch (PostgresException ex)
+                    {
+                        consumeException = ex;
                     }
                     catch
                     {
@@ -910,6 +918,9 @@ namespace Npgsql
             }
 
             await Cleanup(async, connectionClosing, isDisposing);
+
+            if (consumeException is not null)
+                throw consumeException;
         }
 
         internal async Task Cleanup(bool async, bool connectionClosing = false, bool isDisposing = false)
