@@ -874,7 +874,7 @@ namespace Npgsql
                 return;
             }
 
-            PostgresException consumeException = null;
+            PostgresException? consumeException = null;
 
             switch (Connector.State)
             {
