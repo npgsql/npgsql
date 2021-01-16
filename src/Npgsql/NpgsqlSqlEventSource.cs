@@ -5,7 +5,7 @@ namespace Npgsql
 {
     sealed class NpgsqlSqlEventSource : EventSource
     {
-        static readonly NpgsqlSqlEventSource Log = new NpgsqlSqlEventSource();
+        public static readonly NpgsqlSqlEventSource Log = new();
 
         const string EventSourceName = "Npgsql.Sql";
 
@@ -22,10 +22,10 @@ namespace Npgsql
         // - A stop event's event id must be next one after its start event.
 
         [Event(CommandStartId, Level = EventLevel.Informational)]
-        public static void CommandStart(string sql) => Log.WriteEvent(CommandStartId, sql);
+        public void CommandStart(string sql) => Log.WriteEvent(CommandStartId, sql);
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         [Event(CommandStopId, Level = EventLevel.Informational)]
-        public static void CommandStop() => Log.WriteEvent(CommandStopId);
+        public void CommandStop() => Log.WriteEvent(CommandStopId);
     }
 }

@@ -33,7 +33,7 @@ namespace Npgsql
         /// <summary>
         /// Execute a function
         /// </summary>
-        internal async Task<T> ExecuteFunction<T>(string function, bool async, params object[] arguments)
+        internal async Task<T> ExecuteFunction<T>(string function, bool async, CancellationToken cancellationToken, params object[] arguments)
         {
             using var command = new NpgsqlCommand(function, Connection)
             {
@@ -44,14 +44,15 @@ namespace Npgsql
             foreach (var argument in arguments)
                 command.Parameters.Add(new NpgsqlParameter { Value = argument });
 
-            return (T)(async ? await command.ExecuteScalarAsync() : command.ExecuteScalar())!;
+            return (T)(async ? await command.ExecuteScalarAsync(cancellationToken) : command.ExecuteScalar())!;
         }
 
         /// <summary>
         /// Execute a function that returns a byte array
         /// </summary>
         /// <returns></returns>
-        internal async Task<int> ExecuteFunctionGetBytes(string function, byte[] buffer, int offset, int len, bool async, params object[] arguments)
+        internal async Task<int> ExecuteFunctionGetBytes(
+            string function, byte[] buffer, int offset, int len, bool async, CancellationToken cancellationToken, params object[] arguments)
         {
             using var command = new NpgsqlCommand(function, Connection)
             {
@@ -62,11 +63,11 @@ namespace Npgsql
                 command.Parameters.Add(new NpgsqlParameter { Value = argument });
 
             using var reader = async
-                ? await command.ExecuteReaderAsync(CommandBehavior.SequentialAccess)
+                ? await command.ExecuteReaderAsync(CommandBehavior.SequentialAccess, cancellationToken)
                 : command.ExecuteReader(CommandBehavior.SequentialAccess);
 
             if (async)
-                await reader.ReadAsync();
+                await reader.ReadAsync(cancellationToken);
             else
                 reader.Read();
 
@@ -86,16 +87,16 @@ namespace Npgsql
         /// Create an empty large object in the database. If an oid is specified but is already in use, an PostgresException will be thrown.
         /// </summary>
         /// <param name="preferredOid">A preferred oid, or specify 0 if one should be automatically assigned</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>The oid for the large object created</returns>
         /// <exception cref="PostgresException">If an oid is already in use</exception>
         public Task<uint> CreateAsync(uint preferredOid, CancellationToken cancellationToken = default)
-            => cancellationToken.IsCancellationRequested
-                ? Task.FromCanceled<uint>(cancellationToken)
-                : Create(preferredOid, true);
+            => Create(preferredOid, true, cancellationToken);
 
-        Task<uint> Create(uint preferredOid, bool async)
-            => ExecuteFunction<uint>("lo_create", async, (int)preferredOid);
+        Task<uint> Create(uint preferredOid, bool async, CancellationToken cancellationToken = default)
+            => ExecuteFunction<uint>("lo_create", async, cancellationToken, (int)preferredOid);
 
         /// <summary>
         /// Opens a large object on the backend, returning a stream controlling this remote object.
@@ -115,19 +116,19 @@ namespace Npgsql
         /// Note that this method, as well as operations on the stream must be wrapped inside a transaction.
         /// </summary>
         /// <param name="oid">Oid of the object</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>An NpgsqlLargeObjectStream</returns>
         public Task<NpgsqlLargeObjectStream> OpenReadAsync(uint oid, CancellationToken cancellationToken = default)
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled<NpgsqlLargeObjectStream>(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
-                return OpenRead(oid, true);
+                return OpenRead(oid, true, cancellationToken);
         }
 
-        async Task<NpgsqlLargeObjectStream> OpenRead(uint oid, bool async)
+        async Task<NpgsqlLargeObjectStream> OpenRead(uint oid, bool async, CancellationToken cancellationToken = default)
         {
-            var fd = await ExecuteFunction<int>("lo_open", async, (int)oid, InvRead);
+            var fd = await ExecuteFunction<int>("lo_open", async, cancellationToken, (int)oid, InvRead);
             return new NpgsqlLargeObjectStream(this, fd, false);
         }
 
@@ -145,19 +146,19 @@ namespace Npgsql
         /// Note that this method, as well as operations on the stream must be wrapped inside a transaction.
         /// </summary>
         /// <param name="oid">Oid of the object</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>An NpgsqlLargeObjectStream</returns>
         public Task<NpgsqlLargeObjectStream> OpenReadWriteAsync(uint oid, CancellationToken cancellationToken = default)
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled<NpgsqlLargeObjectStream>(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
-                return OpenReadWrite(oid, true);
+                return OpenReadWrite(oid, true, cancellationToken);
         }
 
-        async Task<NpgsqlLargeObjectStream> OpenReadWrite(uint oid, bool async)
+        async Task<NpgsqlLargeObjectStream> OpenReadWrite(uint oid, bool async, CancellationToken cancellationToken = default)
         {
-            var fd = await ExecuteFunction<int>("lo_open", async, (int)oid, InvRead | InvWrite);
+            var fd = await ExecuteFunction<int>("lo_open", async, cancellationToken, (int)oid, InvRead | InvWrite);
             return new NpgsqlLargeObjectStream(this, fd, true);
         }
 
@@ -166,19 +167,19 @@ namespace Npgsql
         /// </summary>
         /// <param name="oid">Oid of the object to delete</param>
         public void Unlink(uint oid)
-            => ExecuteFunction<object>("lo_unlink", false, (int)oid).GetAwaiter().GetResult();
+            => ExecuteFunction<object>("lo_unlink", false, CancellationToken.None, (int)oid).GetAwaiter().GetResult();
 
         /// <summary>
         /// Deletes a large object on the backend.
         /// </summary>
         /// <param name="oid">Oid of the object to delete</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         public Task UnlinkAsync(uint oid, CancellationToken cancellationToken = default)
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
-                return ExecuteFunction<object>("lo_unlink", true, (int)oid);
+                return ExecuteFunction<object>("lo_unlink", true, cancellationToken, (int)oid);
         }
 
         /// <summary>
@@ -187,20 +188,20 @@ namespace Npgsql
         /// <param name="oid">Oid of the object to export</param>
         /// <param name="path">Path to write the file on the backend</param>
         public void ExportRemote(uint oid, string path)
-            => ExecuteFunction<object>("lo_export", false, (int)oid, path).GetAwaiter().GetResult();
+            => ExecuteFunction<object>("lo_export", false, CancellationToken.None, (int)oid, path).GetAwaiter().GetResult();
 
         /// <summary>
         /// Exports a large object stored in the database to a file on the backend. This requires superuser permissions.
         /// </summary>
         /// <param name="oid">Oid of the object to export</param>
         /// <param name="path">Path to write the file on the backend</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         public Task ExportRemoteAsync(uint oid, string path, CancellationToken cancellationToken = default)
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
-                return ExecuteFunction<object>("lo_export", true, (int)oid, path);
+                return ExecuteFunction<object>("lo_export", true, cancellationToken, (int)oid, path);
         }
 
         /// <summary>
@@ -209,20 +210,20 @@ namespace Npgsql
         /// <param name="path">Path to read the file on the backend</param>
         /// <param name="oid">A preferred oid, or specify 0 if one should be automatically assigned</param>
         public void ImportRemote(string path, uint oid = 0)
-            => ExecuteFunction<object>("lo_import", false, path, (int)oid).GetAwaiter().GetResult();
+            => ExecuteFunction<object>("lo_import", false, CancellationToken.None, path, (int)oid).GetAwaiter().GetResult();
 
         /// <summary>
         /// Imports a large object to be stored as a large object in the database from a file stored on the backend. This requires superuser permissions.
         /// </summary>
         /// <param name="path">Path to read the file on the backend</param>
         /// <param name="oid">A preferred oid, or specify 0 if one should be automatically assigned</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         public Task ImportRemoteAsync(string path, uint oid, CancellationToken cancellationToken = default)
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
-                return ExecuteFunction<object>("lo_import", true, path, (int)oid);
+                return ExecuteFunction<object>("lo_import", true, cancellationToken, path, (int)oid);
         }
 
         /// <summary>

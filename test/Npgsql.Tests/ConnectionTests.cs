@@ -6,15 +6,13 @@ using System.Linq;
 using System.Net;
 using System.Net.Security;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Npgsql.Tests.Support;
 using NUnit.Framework;
 using static Npgsql.Tests.TestUtil;
 using static Npgsql.Util.Statics;
-
-#if NET461
-using System.Text;
-#endif
 
 namespace Npgsql.Tests
 {
@@ -26,27 +24,34 @@ namespace Npgsql.Tests
         {
             using var conn = new NpgsqlConnection(ConnectionString);
 
-            bool eventOpen = false, eventClosed = false;
+            var eventOpen = false;
+            var eventClosed = false;
+
             conn.StateChange += (s, e) =>
             {
-                if (e.OriginalState == ConnectionState.Closed && e.CurrentState == ConnectionState.Open)
+                if (e.OriginalState == ConnectionState.Closed &&
+                    e.CurrentState == ConnectionState.Open)
                     eventOpen = true;
-                if (e.OriginalState == ConnectionState.Open && e.CurrentState == ConnectionState.Closed)
+
+                if (e.OriginalState == ConnectionState.Open &&
+                    e.CurrentState == ConnectionState.Closed)
                     eventClosed = true;
             };
 
             Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
 
-            conn.Open();
+            await conn.OpenAsync();
+
             Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
             Assert.That(eventOpen, Is.True);
 
-            using (var cmd = new NpgsqlCommand("SELECT 1", conn))
-            using (var reader = await cmd.ExecuteReaderAsync())
+            await using (var cmd = new NpgsqlCommand("SELECT 1", conn))
+            await using (var reader = await cmd.ExecuteReaderAsync())
             {
-                reader.Read();
+                await reader.ReadAsync();
+
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open | ConnectionState.Fetching));
                 Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
             }
@@ -54,7 +59,59 @@ namespace Npgsql.Tests
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
             Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
 
-            conn.Close();
+            await conn.CloseAsync();
+
+            Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
+            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
+            Assert.That(eventClosed, Is.True);
+        }
+
+        [Test, Description("Makes sure the connection goes through the proper state lifecycle")]
+        //[Timeout(5000)]
+        public async Task BrokenLifecycle()
+        {
+            if (IsMultiplexing)
+                return;
+
+            await using var conn = new NpgsqlConnection(ConnectionString);
+
+            var eventOpen = false;
+            var eventClosed = false;
+
+            conn.StateChange += (s, e) =>
+            {
+                if (e.OriginalState == ConnectionState.Closed &&
+                    e.CurrentState == ConnectionState.Open)
+                    eventOpen = true;
+
+                if (e.OriginalState == ConnectionState.Open &&
+                    e.CurrentState == ConnectionState.Closed)
+                    eventClosed = true;
+            };
+
+            Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
+            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
+
+            await conn.OpenAsync();
+            await using var transaction = await conn.BeginTransactionAsync();
+
+            Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
+            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+            Assert.That(eventOpen, Is.True);
+
+            var sleep = conn.ExecuteNonQueryAsync("SELECT pg_sleep(5)");
+
+            await using (var killingConn = await OpenConnectionAsync())
+                killingConn.ExecuteNonQuery($"SELECT pg_terminate_backend({conn.ProcessID})");
+
+            Assert.ThrowsAsync<PostgresException>(() => sleep);
+
+            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+            Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
+            Assert.That(eventClosed, Is.True);
+
+            await conn.CloseAsync();
+
             Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Closed));
             Assert.That(eventClosed, Is.True);
@@ -490,7 +547,7 @@ namespace Npgsql.Tests
         [Test]
         public async Task UnixDomainSocket()
         {
-            if (RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows))
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 if (Environment.OSVersion.Version.Major < 10 || Environment.OSVersion.Version.Build < 17093)
                     Assert.Ignore("Unix-domain sockets support was introduced in Windows build 17093");
@@ -498,8 +555,7 @@ namespace Npgsql.Tests
                 // On Windows we first need a classic IP connection to make sure we're running against the
                 // right backend version
                 using var versionConnection = await OpenConnectionAsync();
-                TestUtil.MinimumPgVersion(versionConnection, "13.0",
-                    "Unix-domain sockets support on Windows was introduced in PostgreSQL 13");
+                MinimumPgVersion(versionConnection, "13.0", "Unix-domain sockets support on Windows was introduced in PostgreSQL 13");
             }
 
             var port = new NpgsqlConnectionStringBuilder(ConnectionString).Port;
@@ -717,7 +773,7 @@ namespace Npgsql.Tests
         {
             using var _ = CreateTempPool(new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                Options = "default_transaction_isolation=serializable  default_transaction_deferrable=on foo.bar=My\\ Famous\\\\Thing"
+                Options = "-c default_transaction_isolation=serializable -c default_transaction_deferrable=on -c foo.bar=My\\ Famous\\\\Thing"
             }, out var connectionString);
 
             using var conn = await OpenConnectionAsync(connectionString);
@@ -866,7 +922,7 @@ namespace Npgsql.Tests
             await using (var conn = await OpenConnectionAsync(new NpgsqlConnectionStringBuilder(ConnectionString)
             {
                 // Make sure messages are in English
-                Options = "lc_messages=en_US.UTF-8"
+                Options = "-c lc_messages=en_US.UTF-8"
             }))
             await using (GetTempFunctionName(conn, out var function))
             {
@@ -1193,6 +1249,7 @@ CREATE TABLE record ()");
             }
         }
 
+// TODO: Port this test to .NET Core somehow
 #if NET461
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/392")]
         public async Task NonUTF8Encoding()
@@ -1349,7 +1406,7 @@ CREATE TABLE record ()");
         [NonParallelizable]
         public async Task Connect_OptionsFromEnvironment_Succeeds()
         {
-            using (SetEnvironmentVariable("PGOPTIONS", "default_transaction_isolation=serializable  default_transaction_deferrable=on foo.bar=My\\ Famous\\\\Thing"))
+            using (SetEnvironmentVariable("PGOPTIONS", "-c default_transaction_isolation=serializable -c default_transaction_deferrable=on -c foo.bar=My\\ Famous\\\\Thing"))
             {
                 using var _ = CreateTempPool(ConnectionString, out var connectionString);
                 using var conn = await OpenConnectionAsync(connectionString);
@@ -1451,6 +1508,24 @@ CREATE TABLE record ()");
                 using var pool = CreateTempPool(builder.ConnectionString, out var connectionString);
                 using var connection = await OpenConnectionAsync(connectionString);
             };
+        }
+
+        [Test, Description("Simulates a timeout during the authentication phase")]
+        [IssueLink("https://github.com/npgsql/npgsql/issues/3227")]
+        [Timeout(10000)]
+        public async Task TimeoutDuringAuthentication()
+        {
+            var builder = new NpgsqlConnectionStringBuilder(ConnectionString) { Timeout = 1 };
+            await using var postmasterMock = new PgPostmasterMock(builder.ConnectionString);
+            using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
+
+            var __ = postmasterMock.AcceptServer();
+
+            // The server will accept a connection from the client, but will not respond to the client's authentication
+            // request. This should trigger a timeout
+            Assert.That(async () => await OpenConnectionAsync(connectionString),
+                Throws.Exception.TypeOf<NpgsqlException>()
+                    .With.InnerException.TypeOf<TimeoutException>());
         }
 
         public ConnectionTests(MultiplexingMode multiplexingMode) : base(multiplexingMode) {}

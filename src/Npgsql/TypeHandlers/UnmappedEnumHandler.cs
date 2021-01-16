@@ -16,8 +16,8 @@ namespace Npgsql.TypeHandlers
     {
         readonly INpgsqlNameTranslator _nameTranslator;
 
-        readonly Dictionary<Enum, string> _enumToLabel = new Dictionary<Enum, string>();
-        readonly Dictionary<string, Enum> _labelToEnum = new Dictionary<string, Enum>();
+        readonly Dictionary<Enum, string> _enumToLabel = new();
+        readonly Dictionary<string, Enum> _labelToEnum = new();
 
         Type? _resolvedType;
 
@@ -29,9 +29,9 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        protected internal override async ValueTask<TAny> Read<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
+        protected internal override async ValueTask<TAny> Read<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
-            var s = await base.Read(buf, len, async, fieldDescription, cancellationToken);
+            var s = await base.Read(buf, len, async, fieldDescription);
             if (typeof(TAny) == typeof(string))
                 return (TAny)(object)s;
 
@@ -45,8 +45,8 @@ namespace Npgsql.TypeHandlers
             return (TAny)(object)value;
         }
 
-        public override ValueTask<string> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
-            => base.Read(buf, len, async, fieldDescription, cancellationToken);
+        public override ValueTask<string> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
+            => base.Read(buf, len, async, fieldDescription);
 
         #endregion
 

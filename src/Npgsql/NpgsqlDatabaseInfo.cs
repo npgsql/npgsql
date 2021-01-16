@@ -15,10 +15,10 @@ namespace Npgsql
     {
         #region Fields
 
-        internal static readonly ConcurrentDictionary<string, NpgsqlDatabaseInfo> Cache
-            = new ConcurrentDictionary<string, NpgsqlDatabaseInfo>();
+        internal static readonly ConcurrentDictionary<NpgsqlDatabaseInfoCacheKey, NpgsqlDatabaseInfo> Cache
+            = new();
 
-        static readonly List<INpgsqlDatabaseInfoFactory> Factories = new List<INpgsqlDatabaseInfoFactory>
+        static volatile INpgsqlDatabaseInfoFactory[] Factories = new INpgsqlDatabaseInfoFactory[]
         {
             new PostgresMinimalDatabaseInfoFactory(),
             new PostgresDatabaseInfoFactory()
@@ -97,12 +97,12 @@ namespace Npgsql
 
         #region Types
 
-        readonly List<PostgresBaseType>      _baseTypesMutable      = new List<PostgresBaseType>();
-        readonly List<PostgresArrayType>     _arrayTypesMutable     = new List<PostgresArrayType>();
-        readonly List<PostgresRangeType>     _rangeTypesMutable     = new List<PostgresRangeType>();
-        readonly List<PostgresEnumType>      _enumTypesMutable      = new List<PostgresEnumType>();
-        readonly List<PostgresCompositeType> _compositeTypesMutable = new List<PostgresCompositeType>();
-        readonly List<PostgresDomainType>    _domainTypesMutable    = new List<PostgresDomainType>();
+        readonly List<PostgresBaseType>      _baseTypesMutable      = new();
+        readonly List<PostgresArrayType>     _arrayTypesMutable     = new();
+        readonly List<PostgresRangeType>     _rangeTypesMutable     = new();
+        readonly List<PostgresEnumType>      _enumTypesMutable      = new();
+        readonly List<PostgresCompositeType> _compositeTypesMutable = new();
+        readonly List<PostgresDomainType>    _domainTypesMutable    = new();
 
         internal IReadOnlyList<PostgresBaseType>      BaseTypes      => _baseTypesMutable;
         internal IReadOnlyList<PostgresArrayType>     ArrayTypes     => _arrayTypesMutable;
@@ -114,13 +114,13 @@ namespace Npgsql
         /// <summary>
         /// Indexes backend types by their type OID.
         /// </summary>
-        internal Dictionary<uint, PostgresType> ByOID { get; } = new Dictionary<uint, PostgresType>();
+        internal Dictionary<uint, PostgresType> ByOID { get; } = new();
 
         /// <summary>
         /// Indexes backend types by their PostgreSQL name, including namespace (e.g. pg_catalog.int4).
         /// Only used for enums and composites.
         /// </summary>
-        internal Dictionary<string, PostgresType> ByFullName { get; } = new Dictionary<string, PostgresType>();
+        internal Dictionary<string, PostgresType> ByFullName { get; } = new();
 
         /// <summary>
         /// Indexes backend types by their PostgreSQL name, not including namespace.
@@ -128,7 +128,7 @@ namespace Npgsql
         /// table will contain an entry with a null value.
         /// Only used for enums and composites.
         /// </summary>
-        internal Dictionary<string, PostgresType?> ByName { get; } = new Dictionary<string, PostgresType?>();
+        internal Dictionary<string, PostgresType?> ByName { get; } = new();
 
         /// <summary>
         /// Initializes the instance of <see cref="NpgsqlDatabaseInfo"/>.
@@ -220,7 +220,13 @@ namespace Npgsql
         {
             if (factory == null)
                 throw new ArgumentNullException(nameof(factory));
-            Factories.Insert(0, factory);
+
+            var factories = new INpgsqlDatabaseInfoFactory[Factories.Length + 1];
+            factories[0] = factory;
+            Array.Copy(Factories, 0, factories, 1, Factories.Length);
+            Factories = factories;
+
+            Cache.Clear();
         }
 
         internal static async Task<NpgsqlDatabaseInfo> Load(NpgsqlConnection conn, NpgsqlTimeout timeout, bool async)
@@ -242,9 +248,12 @@ namespace Npgsql
         // For tests
         internal static void ResetFactories()
         {
-            Factories.Clear();
-            Factories.Add(new PostgresMinimalDatabaseInfoFactory());
-            Factories.Add(new PostgresDatabaseInfoFactory());
+            Factories = new INpgsqlDatabaseInfoFactory[]
+            {
+                new PostgresMinimalDatabaseInfoFactory(),
+                new PostgresDatabaseInfoFactory()
+            };
+            Cache.Clear();
         }
 
         #endregion Factory management

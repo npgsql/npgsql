@@ -55,8 +55,8 @@ namespace Npgsql.TypeHandlers
         }
 
         /// <inheritdoc />
-        public override ArrayHandler CreateArrayHandler(PostgresArrayType arrayBackendType)
-            => new ArrayHandler<NpgsqlRange<TElement>>(arrayBackendType, this);
+        public override ArrayHandler CreateArrayHandler(PostgresArrayType arrayBackendType, ArrayNullabilityMode arrayNullabilityMode)
+            => new ArrayHandler<NpgsqlRange<TElement>>(arrayBackendType, this, arrayNullabilityMode);
 
         internal override Type GetFieldType(FieldDescription? fieldDescription = null) => typeof(NpgsqlRange<TElement>);
         internal override Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null) => typeof(NpgsqlRange<TElement>);
@@ -72,12 +72,12 @@ namespace Npgsql.TypeHandlers
             => Read<TAny>(buf, len, false, fieldDescription).Result;
 
         /// <inheritdoc />
-        public override ValueTask<NpgsqlRange<TElement>> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
-            => DoRead<TElement>(buf, len, async, fieldDescription, cancellationToken);
+        public override ValueTask<NpgsqlRange<TElement>> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
+            => DoRead<TElement>(buf, len, async, fieldDescription);
 
-        private protected async ValueTask<NpgsqlRange<TAny>> DoRead<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken = default)
+        private protected async ValueTask<NpgsqlRange<TAny>> DoRead<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
         {
-            await buf.Ensure(1, async, cancellationToken);
+            await buf.Ensure(1, async);
 
             var flags = (RangeFlags)buf.ReadByte();
             if ((flags & RangeFlags.Empty) != 0)
@@ -87,10 +87,10 @@ namespace Npgsql.TypeHandlers
             var upperBound = default(TAny);
 
             if ((flags & RangeFlags.LowerBoundInfinite) == 0)
-                lowerBound = await _elementHandler.ReadWithLength<TAny>(buf, async, cancellationToken: cancellationToken);
+                lowerBound = await _elementHandler.ReadWithLength<TAny>(buf, async);
 
             if ((flags & RangeFlags.UpperBoundInfinite) == 0)
-                upperBound = await _elementHandler.ReadWithLength<TAny>(buf, async, cancellationToken: cancellationToken);
+                upperBound = await _elementHandler.ReadWithLength<TAny>(buf, async);
 
             return new NpgsqlRange<TAny>(lowerBound, upperBound, flags);
         }
@@ -210,8 +210,8 @@ namespace Npgsql.TypeHandlers
         public RangeHandler(PostgresType rangePostgresType, NpgsqlTypeHandler elementHandler)
             : base(rangePostgresType, elementHandler, new[] { typeof(NpgsqlRange<TElement1>), typeof(NpgsqlRange<TElement2>) }) {}
 
-        ValueTask<NpgsqlRange<TElement2>> INpgsqlTypeHandler<NpgsqlRange<TElement2>>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
-            => DoRead<TElement2>(buf, len, async, fieldDescription, cancellationToken);
+        ValueTask<NpgsqlRange<TElement2>> INpgsqlTypeHandler<NpgsqlRange<TElement2>>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
+            => DoRead<TElement2>(buf, len, async, fieldDescription);
 
         /// <inheritdoc />
         public int ValidateAndGetLength(NpgsqlRange<TElement2> value, ref NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter)

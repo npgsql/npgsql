@@ -9,7 +9,7 @@ using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
-// TODO: Need to work on the nullbility here
+// TODO: Need to work on the nullability here
 #nullable disable
 #pragma warning disable CS8632
 
@@ -37,7 +37,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
         // 1 (type) + 1 (weight) + 1 (is prefix search) + 2046 (max str len) + 1 (null terminator)
         const int MaxSingleTokenBytes = 2050;
 
-        readonly Stack<NpgsqlTsQuery> _stack = new Stack<NpgsqlTsQuery>();
+        readonly Stack<NpgsqlTsQuery> _stack = new();
 
         /// <inheritdoc />
         public TsQueryHandler(PostgresType postgresType) : base(postgresType) {}
@@ -45,9 +45,9 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
         #region Read
 
         /// <inheritdoc />
-        public override async ValueTask<NpgsqlTsQuery> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
+        public override async ValueTask<NpgsqlTsQuery> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
-            await buf.Ensure(4, async, cancellationToken);
+            await buf.Ensure(4, async);
             var numTokens = buf.ReadInt32();
             if (numTokens == 0)
                 return new NpgsqlTsQueryEmpty();
@@ -58,7 +58,7 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
 
             for (var tokenPos = 0; tokenPos < numTokens; tokenPos++)
             {
-                await buf.Ensure(Math.Min(len, MaxSingleTokenBytes), async, cancellationToken);
+                await buf.Ensure(Math.Min(len, MaxSingleTokenBytes), async);
                 var readPos = buf.ReadPosition;
 
                 var isOper = buf.ReadByte() == 2;
@@ -83,8 +83,8 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
 
                         InsertInTree(node, nodes, ref value);
 
-                        nodes.Push(new Tuple<NpgsqlTsQuery, int>(node, 2));
                         nodes.Push(new Tuple<NpgsqlTsQuery, int>(node, 1));
+                        nodes.Push(new Tuple<NpgsqlTsQuery, int>(node, 2));
                     }
                 }
                 else
@@ -120,23 +120,23 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
             }
         }
 
-        async ValueTask<NpgsqlTsQueryEmpty> INpgsqlTypeHandler<NpgsqlTsQueryEmpty>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
-            => (NpgsqlTsQueryEmpty)await Read(buf, len, async, fieldDescription, cancellationToken);
+        async ValueTask<NpgsqlTsQueryEmpty> INpgsqlTypeHandler<NpgsqlTsQueryEmpty>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
+            => (NpgsqlTsQueryEmpty)await Read(buf, len, async, fieldDescription);
 
-        async ValueTask<NpgsqlTsQueryLexeme> INpgsqlTypeHandler<NpgsqlTsQueryLexeme>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
-            => (NpgsqlTsQueryLexeme)await Read(buf, len, async, fieldDescription, cancellationToken);
+        async ValueTask<NpgsqlTsQueryLexeme> INpgsqlTypeHandler<NpgsqlTsQueryLexeme>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
+            => (NpgsqlTsQueryLexeme)await Read(buf, len, async, fieldDescription);
 
-        async ValueTask<NpgsqlTsQueryNot> INpgsqlTypeHandler<NpgsqlTsQueryNot>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
-            => (NpgsqlTsQueryNot)await Read(buf, len, async, fieldDescription, cancellationToken);
+        async ValueTask<NpgsqlTsQueryNot> INpgsqlTypeHandler<NpgsqlTsQueryNot>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
+            => (NpgsqlTsQueryNot)await Read(buf, len, async, fieldDescription);
 
-        async ValueTask<NpgsqlTsQueryAnd> INpgsqlTypeHandler<NpgsqlTsQueryAnd>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
-            => (NpgsqlTsQueryAnd)await Read(buf, len, async, fieldDescription, cancellationToken);
+        async ValueTask<NpgsqlTsQueryAnd> INpgsqlTypeHandler<NpgsqlTsQueryAnd>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
+            => (NpgsqlTsQueryAnd)await Read(buf, len, async, fieldDescription);
 
-        async ValueTask<NpgsqlTsQueryOr> INpgsqlTypeHandler<NpgsqlTsQueryOr>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
-            => (NpgsqlTsQueryOr)await Read(buf, len, async, fieldDescription, cancellationToken);
+        async ValueTask<NpgsqlTsQueryOr> INpgsqlTypeHandler<NpgsqlTsQueryOr>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
+            => (NpgsqlTsQueryOr)await Read(buf, len, async, fieldDescription);
 
-        async ValueTask<NpgsqlTsQueryFollowedBy> INpgsqlTypeHandler<NpgsqlTsQueryFollowedBy>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
-            => (NpgsqlTsQueryFollowedBy)await Read(buf, len, async, fieldDescription, cancellationToken);
+        async ValueTask<NpgsqlTsQueryFollowedBy> INpgsqlTypeHandler<NpgsqlTsQueryFollowedBy>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
+            => (NpgsqlTsQueryFollowedBy)await Read(buf, len, async, fieldDescription);
 
         #endregion Read
 
@@ -207,8 +207,8 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
                         if (node.Kind == NpgsqlTsQuery.NodeKind.Phrase)
                             buf.WriteInt16(((NpgsqlTsQueryFollowedBy)node).Distance);
 
-                        _stack.Push(((NpgsqlTsQueryBinOp)node).Right);
                         _stack.Push(((NpgsqlTsQueryBinOp)node).Left);
+                        _stack.Push(((NpgsqlTsQueryBinOp)node).Right);
                     }
                 }
                 else

@@ -9,7 +9,7 @@ using Npgsql.TypeHandling;
 using Npgsql.TypeMapping;
 using NpgsqlTypes;
 
-#if !NET461 && !NETSTANDARD2_0 && !NETSTANDARD2_1
+#if !NETSTANDARD2_0 && !NETSTANDARD2_1
 using System.Collections.Immutable;
 #endif
 
@@ -30,7 +30,7 @@ namespace Npgsql.TypeHandlers
     {
         typeof(Dictionary<string, string?>),
         typeof(IDictionary<string, string?>),
-#if !NET461 && !NETSTANDARD2_0 && !NETSTANDARD2_1
+#if !NETSTANDARD2_0 && !NETSTANDARD2_1
         typeof(ImmutableDictionary<string, string?>)
 #endif
     })]
@@ -56,7 +56,7 @@ namespace Npgsql.TypeHandlers
     public class HstoreHandler :
         NpgsqlTypeHandler<Dictionary<string, string?>>,
         INpgsqlTypeHandler<IDictionary<string, string?>>
-#if !NET461 && !NETSTANDARD2_0 && !NETSTANDARD2_1
+#if !NETSTANDARD2_0 && !NETSTANDARD2_1
         , INpgsqlTypeHandler<ImmutableDictionary<string, string?>>
 #endif
     {
@@ -124,42 +124,42 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        async ValueTask<T> ReadInto<T>(T dictionary, int numElements, NpgsqlReadBuffer buf, bool async, CancellationToken cancellationToken = default)
+        async ValueTask<T> ReadInto<T>(T dictionary, int numElements, NpgsqlReadBuffer buf, bool async)
             where T : IDictionary<string, string?>
         {
             for (var i = 0; i < numElements; i++)
             {
-                await buf.Ensure(4, async, cancellationToken);
+                await buf.Ensure(4, async);
                 var keyLen = buf.ReadInt32();
                 Debug.Assert(keyLen != -1);
-                var key = await _textHandler.Read(buf, keyLen, async, cancellationToken: cancellationToken);
+                var key = await _textHandler.Read(buf, keyLen, async);
 
-                await buf.Ensure(4, async, cancellationToken);
+                await buf.Ensure(4, async);
                 var valueLen = buf.ReadInt32();
 
                 dictionary[key] = valueLen == -1
                     ? null
-                    : await _textHandler.Read(buf, valueLen, async, cancellationToken: cancellationToken);
+                    : await _textHandler.Read(buf, valueLen, async);
             }
             return dictionary;
         }
 
         /// <inheritdoc />
         public override async ValueTask<Dictionary<string, string?>> Read(NpgsqlReadBuffer buf, int len, bool async,
-            FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
+            FieldDescription? fieldDescription = null)
         {
-            await buf.Ensure(4, async, cancellationToken);
+            await buf.Ensure(4, async);
             var numElements = buf.ReadInt32();
-            return await ReadInto(new Dictionary<string, string?>(numElements), numElements, buf, async, cancellationToken);
+            return await ReadInto(new Dictionary<string, string?>(numElements), numElements, buf, async);
         }
 
         ValueTask<IDictionary<string, string?>> INpgsqlTypeHandler<IDictionary<string, string?>>.Read(
-            NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
-            => new ValueTask<IDictionary<string, string?>>(Read(buf, len, async, fieldDescription, cancellationToken).Result);
+            NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
+            => new(Read(buf, len, async, fieldDescription).Result);
 
         #endregion
 
-#if !NET461 && !NETSTANDARD2_0 && !NETSTANDARD2_1
+#if !NETSTANDARD2_0 && !NETSTANDARD2_1
         #region ImmutableDictionary
 
         /// <inheritdoc />
@@ -173,11 +173,11 @@ namespace Npgsql.TypeHandlers
             => Write((IDictionary<string, string?>)value, buf, lengthCache, parameter, async, cancellationToken);
 
         async ValueTask<ImmutableDictionary<string, string?>> INpgsqlTypeHandler<ImmutableDictionary<string, string?>>.Read(
-            NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
+            NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
         {
-            await buf.Ensure(4, async, cancellationToken);
+            await buf.Ensure(4, async);
             var numElements = buf.ReadInt32();
-            return (await ReadInto(ImmutableDictionary<string, string?>.Empty.ToBuilder(), numElements, buf, async, cancellationToken))
+            return (await ReadInto(ImmutableDictionary<string, string?>.Empty.ToBuilder(), numElements, buf, async))
                 .ToImmutable();
         }
 

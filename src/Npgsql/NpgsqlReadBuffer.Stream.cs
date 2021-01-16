@@ -10,13 +10,19 @@ namespace Npgsql
     {
         internal sealed class ColumnStream : Stream
         {
+            readonly NpgsqlConnector _connector;
             readonly NpgsqlReadBuffer _buf;
             int _start, _len, _read;
             bool _canSeek;
+            bool _startCancellableOperations;
             internal bool IsDisposed { get; private set; }
 
-            internal ColumnStream(NpgsqlReadBuffer buf)
-                => _buf = buf;
+            internal ColumnStream(NpgsqlConnector connector, bool startCancellableOperations = true)
+            {
+                _connector = connector;
+                _buf = connector.ReadBuffer;
+                _startCancellableOperations = startCancellableOperations;
+            }
 
             internal void Init(int len, bool canSeek)
             {
@@ -119,16 +125,15 @@ namespace Npgsql
             public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
             {
                 ValidateArguments(buffer, offset, count);
-                if (cancellationToken.IsCancellationRequested)
-                    return Task.FromCanceled<int>(cancellationToken);
+
                 using (NoSynchronizationContextScope.Enter())
                     return ReadAsync(new Memory<byte>(buffer, offset, count), cancellationToken).AsTask();
             }
 
-#if !NET461 && !NETSTANDARD2_0
-            public override int Read(Span<byte> span)
-#else
+#if NETSTANDARD2_0
             public int Read(Span<byte> span)
+#else
+            public override int Read(Span<byte> span)
 #endif
             {
                 CheckDisposed();
@@ -138,22 +143,19 @@ namespace Npgsql
                 if (count == 0)
                     return 0;
 
-                _buf.Read(span.Slice(0, count));
-                _read += count;
+                var read = _buf.Read(span.Slice(0, count));
+                _read += read;
 
-                return count;
+                return read;
             }
 
-#if !NET461 && !NETSTANDARD2_0
-            public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
-#else
+#if NETSTANDARD2_0
             public ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+#else
+            public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
 #endif
             {
                 CheckDisposed();
-
-                if (cancellationToken.IsCancellationRequested)
-                    return new ValueTask<int>(Task.FromCanceled<int>(cancellationToken));
 
                 var count = Math.Min(buffer.Length, _len - _read);
 
@@ -161,12 +163,15 @@ namespace Npgsql
                     return new ValueTask<int>(0);
 
                 using (NoSynchronizationContextScope.Enter())
-                    return ReadLong(buffer.Slice(0, count), cancellationToken);
+                    return ReadLong(this, buffer.Slice(0, count), cancellationToken);
 
-                async ValueTask<int> ReadLong(Memory<byte> buffer, CancellationToken cancellationToken = default)
+                static async ValueTask<int> ReadLong(ColumnStream stream, Memory<byte> buffer, CancellationToken cancellationToken = default)
                 {
-                    var read = await _buf.ReadAsync(buffer, cancellationToken);
-                    _read += read;
+                    using var registration = stream._startCancellableOperations
+                        ? stream._connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false)
+                        : default;
+                    var read = await stream._buf.ReadAsync(buffer, cancellationToken);
+                    stream._read += read;
                     return read;
                 }
             }
@@ -183,7 +188,7 @@ namespace Npgsql
             protected override void Dispose(bool disposing)
                 => DisposeAsync(disposing, async: false).GetAwaiter().GetResult();
 
-#if !NET461 && !NETSTANDARD2_0
+#if !NETSTANDARD2_0
             public override ValueTask DisposeAsync()
                 => DisposeAsync(disposing: true, async: true);
 #endif

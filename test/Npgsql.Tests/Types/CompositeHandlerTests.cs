@@ -100,7 +100,7 @@ namespace Npgsql.Tests.Types
             }
         }
 
-        public class TypeWithTwoPropertiesInverted : IComposite, IInitializable
+        public class TypeWithTwoPropertiesReversed : IComposite, IInitializable
         {
             public int IntValue { get; set; }
             public string? StringValue { get; set; }
@@ -212,6 +212,30 @@ namespace Npgsql.Tests.Types
 
             public TypeWithOneParameter(int value1) => Value1 = value1;
             public int Value1 { get; }
+        }
+
+        public class TypeWithTwoParameters : IComposite
+        {
+            public string GetAttributes() => "int_value integer, string_value text";
+            public string GetValues() => $"{IntValue}, '{StringValue}'";
+
+            public TypeWithTwoParameters(int intValue, string stringValue) =>
+                (IntValue, StringValue) = (intValue, stringValue);
+
+            public int IntValue { get; }
+            public string? StringValue { get; }
+        }
+
+        public class TypeWithTwoParametersReversed : IComposite
+        {
+            public string GetAttributes() => "int_value integer, string_value text";
+            public string GetValues() => $"{IntValue}, '{StringValue}'";
+
+            public TypeWithTwoParametersReversed(string stringValue, int intValue) =>
+                (StringValue, IntValue) = (stringValue, intValue);
+
+            public int IntValue { get; }
+            public string? StringValue { get; }
         }
 
         public class TypeWithNineParameters : IComposite

@@ -29,7 +29,7 @@ namespace Npgsql
 
         readonly Socket? _underlyingSocket;
 
-        readonly TimeoutCancellationTokenSourceWrapper _timeoutCts;
+        readonly ResettableCancellationTokenSource _timeoutCts;
 
         /// <summary>
         /// Timeout for sync and async writes
@@ -94,7 +94,7 @@ namespace Npgsql
             Connector = connector;
             Underlying = stream;
             _underlyingSocket = socket;
-            _timeoutCts = new TimeoutCancellationTokenSourceWrapper();
+            _timeoutCts = new ResettableCancellationTokenSource();
             Size = size;
             Buffer = ArrayPool<byte>.Shared.Rent(size);
             TextEncoding = textEncoding;
@@ -121,20 +121,9 @@ namespace Npgsql
             } else if (WritePosition == 0)
                 return;
 
-            CancellationTokenSource? combinedCts = null;
-
             var finalCt = cancellationToken;
             if (async && Timeout > TimeSpan.Zero)
-            {
-                _timeoutCts.Start();
-                finalCt = _timeoutCts.Token;
-
-                if (cancellationToken.CanBeCanceled)
-                {
-                    combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _timeoutCts.Token);
-                    finalCt = combinedCts.Token;
-                }
-            }
+                finalCt = _timeoutCts.Start(cancellationToken);
 
             try
             {
@@ -142,17 +131,21 @@ namespace Npgsql
                 {
                     await Underlying.WriteAsync(Buffer, 0, WritePosition, finalCt);
                     await Underlying.FlushAsync(finalCt);
-                    // Resetting cancellation token source, so we can use it again
                     _timeoutCts.Stop();
                 }
                 else
                 {
                     Underlying.Write(Buffer, 0, WritePosition);
                     Underlying.Flush();
-                }  
+                }
             }
             catch (Exception e)
             {
+                // Stopping twice (in case the previous Stop() call succeeded) doesn't hurt.
+                // Not stopping will cause an assertion failure in debug mode when we call Start() the next time.
+                // We can't stop in a finally block because Connector.Break() will dispose the buffer and the contained
+                // _timeoutCts
+                _timeoutCts.Stop();
                 switch (e)
                 {
                 // User requested the cancellation
@@ -169,11 +162,6 @@ namespace Npgsql
 
                 throw Connector.Break(new NpgsqlException("Exception while writing to stream", e));
             }
-            finally
-            {
-                combinedCts?.Dispose();
-            }
-
             NpgsqlEventSource.Log.BytesWritten(WritePosition);
             //NpgsqlEventSource.Log.RequestFailed();
 
@@ -362,27 +350,27 @@ namespace Npgsql
                 WriteString(s, charLen);
                 return Task.CompletedTask;
             }
-            return WriteStringLong();
+            return WriteStringLong(this, async, s, charLen, byteLen, cancellationToken);
 
-            async Task WriteStringLong()
+            static async Task WriteStringLong(NpgsqlWriteBuffer buffer, bool async, string s, int charLen, int byteLen, CancellationToken cancellationToken)
             {
-                Debug.Assert(byteLen > WriteSpaceLeft);
-                if (byteLen <= Size)
+                Debug.Assert(byteLen > buffer.WriteSpaceLeft);
+                if (byteLen <= buffer.Size)
                 {
                     // String can fit entirely in an empty buffer. Flush and retry rather than
                     // going into the partial writing flow below (which requires ToCharArray())
-                    await Flush(async, cancellationToken);
-                    WriteString(s, charLen);
+                    await buffer.Flush(async, cancellationToken);
+                    buffer.WriteString(s, charLen);
                 }
                 else
                 {
                     var charPos = 0;
                     while (true)
                     {
-                        WriteStringChunked(s, charPos, charLen - charPos, true, out var charsUsed, out var completed);
+                        buffer.WriteStringChunked(s, charPos, charLen - charPos, true, out var charsUsed, out var completed);
                         if (completed)
                             break;
-                        await Flush(async, cancellationToken);
+                        await buffer.Flush(async, cancellationToken);
                         charPos += charsUsed;
                     }
                 }
@@ -396,17 +384,17 @@ namespace Npgsql
                 WriteChars(chars, offset, charLen);
                 return Task.CompletedTask;
             }
-            return WriteCharsLong();
+            return WriteCharsLong(this, async, chars, offset, charLen, byteLen, cancellationToken);
 
-            async Task WriteCharsLong()
+            static async Task WriteCharsLong(NpgsqlWriteBuffer buffer, bool async, char[] chars, int offset, int charLen, int byteLen, CancellationToken cancellationToken)
             {
-                Debug.Assert(byteLen > WriteSpaceLeft);
-                if (byteLen <= Size)
+                Debug.Assert(byteLen > buffer.WriteSpaceLeft);
+                if (byteLen <= buffer.Size)
                 {
                     // String can fit entirely in an empty buffer. Flush and retry rather than
                     // going into the partial writing flow below (which requires ToCharArray())
-                    await Flush(async, cancellationToken);
-                    WriteChars(chars, offset, charLen);
+                    await buffer.Flush(async, cancellationToken);
+                    buffer.WriteChars(chars, offset, charLen);
                 }
                 else
                 {
@@ -414,10 +402,10 @@ namespace Npgsql
 
                     while (true)
                     {
-                        WriteStringChunked(chars, charPos + offset, charLen - charPos, true, out var charsUsed, out var completed);
+                        buffer.WriteStringChunked(chars, charPos + offset, charLen - charPos, true, out var charsUsed, out var completed);
                         if (completed)
                             break;
-                        await Flush(async, cancellationToken);
+                        await buffer.Flush(async, cancellationToken);
                         charPos += charsUsed;
                     }
                 }
@@ -454,27 +442,27 @@ namespace Npgsql
                 WriteBytes(bytes);
                 return Task.CompletedTask;
             }
-            return WriteBytesLong();
+            return WriteBytesLong(this, async, bytes, cancellationToken);
 
-            async Task WriteBytesLong()
+            static async Task WriteBytesLong(NpgsqlWriteBuffer buffer, bool async, byte[] bytes, CancellationToken cancellationToken)
             {
-                if (bytes.Length <= Size)
+                if (bytes.Length <= buffer.Size)
                 {
                     // value can fit entirely in an empty buffer. Flush and retry rather than
                     // going into the partial writing flow below
-                    await Flush(async, cancellationToken);
-                    WriteBytes(bytes);
+                    await buffer.Flush(async, cancellationToken);
+                    buffer.WriteBytes(bytes);
                 }
                 else
                 {
                     var remaining = bytes.Length;
                     do
                     {
-                        if (WriteSpaceLeft == 0)
-                            await Flush(async, cancellationToken);
-                        var writeLen = Math.Min(remaining, WriteSpaceLeft);
+                        if (buffer.WriteSpaceLeft == 0)
+                            await buffer.Flush(async, cancellationToken);
+                        var writeLen = Math.Min(remaining, buffer.WriteSpaceLeft);
                         var offset = bytes.Length - remaining;
-                        WriteBytes(bytes, offset, writeLen);
+                        buffer.WriteBytes(bytes, offset, writeLen);
                         remaining -= writeLen;
                     }
                     while (remaining > 0);
@@ -564,7 +552,7 @@ namespace Npgsql
         {
             Debug.Assert(_copyMode);
             Debug.Assert(WritePosition == 0);
-            WriteByte((byte)BackendMessageCode.CopyData);
+            WriteByte(FrontendMessageCode.CopyData);
             // Leave space for the message length
             WriteInt32(0);
         }

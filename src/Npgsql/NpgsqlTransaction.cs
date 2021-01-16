@@ -23,14 +23,14 @@ namespace Npgsql
         {
             get
             {
-                CheckReady();
-                return _connector.Connection;
+                CheckDisposed();
+                return _connector?.Connection;
             }
         }
 
         // Note that with ambient transactions, it's possible for a transaction to be pending after its connection
         // is already closed. So we capture the connector and perform everything directly on it.
-        readonly NpgsqlConnector _connector;
+        NpgsqlConnector _connector;
 
         /// <summary>
         /// Specifies the <see cref="NpgsqlConnection"/> object associated with the transaction.
@@ -41,15 +41,14 @@ namespace Npgsql
         /// <summary>
         /// If true, the transaction has been committed/rolled back, but not disposed.
         /// </summary>
-        internal bool IsCompleted => _connector.TransactionStatus == TransactionStatus.Idle;
+        internal bool IsCompleted => _connector is null || _connector.TransactionStatus == TransactionStatus.Idle;
 
         internal bool IsDisposed;
 
         /// <summary>
-        /// Specifies the <see cref="System.Data.IsolationLevel">IsolationLevel</see> for this transaction.
+        /// Specifies the isolation level for this transaction.
         /// </summary>
-        /// <value>The <see cref="System.Data.IsolationLevel">IsolationLevel</see> for this transaction.
-        /// The default is <b>ReadCommitted</b>.</value>
+        /// <value>The isolation level for this transaction. The default is <see cref="System.Data.IsolationLevel.ReadCommitted"/>.</value>
         public override IsolationLevel IsolationLevel
         {
             get
@@ -124,7 +123,7 @@ namespace Npgsql
             if (!_connector.DatabaseInfo.SupportsTransactions)
                 return;
 
-            using (_connector.StartUserAction())
+            using (_connector.StartUserAction(cancellationToken))
             {
                 Log.Debug("Committing transaction", _connector.Id);
                 await _connector.ExecuteInternalCommand(PregeneratedMessages.CommitTransaction, async, cancellationToken);
@@ -134,15 +133,15 @@ namespace Npgsql
         /// <summary>
         /// Commits the database transaction.
         /// </summary>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
-#if !NET461 && !NETSTANDARD2_0
-        public override Task CommitAsync(CancellationToken cancellationToken = default)
-#else
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
+#if NETSTANDARD2_0
         public Task CommitAsync(CancellationToken cancellationToken = default)
+#else
+        public override Task CommitAsync(CancellationToken cancellationToken = default)
 #endif
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
                 return Commit(true, cancellationToken);
         }
@@ -167,15 +166,15 @@ namespace Npgsql
         /// <summary>
         /// Rolls back a transaction from a pending state.
         /// </summary>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
-#if !NET461 && !NETSTANDARD2_0
-        public override Task RollbackAsync(CancellationToken cancellationToken = default)
-#else
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
+#if NETSTANDARD2_0
         public Task RollbackAsync(CancellationToken cancellationToken = default)
+#else
+        public override Task RollbackAsync(CancellationToken cancellationToken = default)
 #endif
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
                 return Rollback(true, cancellationToken);
         }
@@ -184,50 +183,73 @@ namespace Npgsql
 
         #region Savepoints
 
-        async Task Save(string name, bool async, CancellationToken cancellationToken = default)
+        /// <summary>
+        /// Creates a transaction save point.
+        /// </summary>
+        /// <param name="name">The name of the savepoint.</param>
+        /// <remarks>
+        /// This method does not cause a database roundtrip to be made. The savepoint creation statement will instead be sent along with
+        /// the next command.
+        /// </remarks>
+#if NET
+        public override void Save(string name)
+#else
+        public void Save(string name)
+#endif
         {
             if (name == null)
                 throw new ArgumentNullException(nameof(name));
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentException("name can't be empty", nameof(name));
-            if (name.Contains(";"))
-                throw new ArgumentException("name can't contain a semicolon");
 
             CheckReady();
             if (!_connector.DatabaseInfo.SupportsTransactions)
                 return;
-            using (_connector.StartUserAction())
-            {
-                Log.Debug($"Creating savepoint {name}", _connector.Id);
-                await _connector.ExecuteInternalCommand($"SAVEPOINT {name}", async, cancellationToken);
-            }
+
+            // Note that creating a savepoint doesn't actually send anything to the backend (only prepends), so strictly speaking we don't
+            // have to start a user action. However, we do this for consistency as if we did (for the checks and exceptions)
+            using var _ = _connector.StartUserAction();
+
+            Log.Debug($"Creating savepoint {name}", _connector.Id);
+
+            if (RequiresQuoting(name))
+                name = $"\"{name.Replace("\"", "\"\"")}\"";
+
+            // Note: savepoint names are PostgreSQL identifiers, and so limited by default to 63 characters.
+            // Since we are prepending, we assume below that the statement will always fit in the buffer.
+            _connector.WriteBuffer.WriteByte(FrontendMessageCode.Query);
+            _connector.WriteBuffer.WriteInt32(
+                sizeof(int)  +                               // Message length (including self excluding code)
+                _connector.TextEncoding.GetByteCount("SAVEPOINT ") +
+                _connector.TextEncoding.GetByteCount(name) +
+                sizeof(byte));                               // Null terminator
+
+            _connector.WriteBuffer.WriteString("SAVEPOINT ");
+            _connector.WriteBuffer.WriteString(name);
+            _connector.WriteBuffer.WriteByte(0);
+
+            _connector.PendingPrependedResponses += 2;
         }
 
         /// <summary>
         /// Creates a transaction save point.
         /// </summary>
         /// <param name="name">The name of the savepoint.</param>
-#if NET
-        public override void Save(string name) => Save(name, false).GetAwaiter().GetResult();
-#else
-        public void Save(string name) => Save(name, false).GetAwaiter().GetResult();
-#endif
-
-        /// <summary>
-        /// Creates a transaction save point.
-        /// </summary>
-        /// <param name="name">The name of the savepoint.</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
+        /// <remarks>
+        /// This method does not cause a database roundtrip to be made, and will therefore always complete synchronously.
+        /// The savepoint creation statement will instead be sent along with the next command.
+        /// </remarks>
 #if NET
         public override Task SaveAsync(string name, CancellationToken cancellationToken = default)
 #else
         public Task SaveAsync(string name, CancellationToken cancellationToken = default)
 #endif
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled(cancellationToken);
-            using (NoSynchronizationContextScope.Enter())
-                return Save(name, true, cancellationToken);
+            Save(name);
+            return Task.CompletedTask;
         }
 
         async Task Rollback(string name, bool async, CancellationToken cancellationToken = default)
@@ -236,15 +258,17 @@ namespace Npgsql
                 throw new ArgumentNullException(nameof(name));
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentException("name can't be empty", nameof(name));
-            if (name.Contains(";"))
-                throw new ArgumentException("name can't contain a semicolon");
 
             CheckReady();
             if (!_connector.DatabaseInfo.SupportsTransactions)
                 return;
-            using (_connector.StartUserAction())
+            using (_connector.StartUserAction(cancellationToken))
             {
                 Log.Debug($"Rolling back savepoint {name}", _connector.Id);
+
+                if (RequiresQuoting(name))
+                    name = $"\"{name.Replace("\"", "\"\"")}\"";
+
                 await _connector.ExecuteInternalCommand($"ROLLBACK TO SAVEPOINT {name}", async, cancellationToken);
             }
         }
@@ -264,15 +288,15 @@ namespace Npgsql
         /// Rolls back a transaction from a pending savepoint state.
         /// </summary>
         /// <param name="name">The name of the savepoint.</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
 #if NET
         public override Task RollbackAsync(string name, CancellationToken cancellationToken = default)
 #else
         public Task RollbackAsync(string name, CancellationToken cancellationToken = default)
 #endif
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
                 return Rollback(name, true, cancellationToken);
         }
@@ -283,15 +307,17 @@ namespace Npgsql
                 throw new ArgumentNullException(nameof(name));
             if (string.IsNullOrWhiteSpace(name))
                 throw new ArgumentException("name can't be empty", nameof(name));
-            if (name.Contains(";"))
-                throw new ArgumentException("name can't contain a semicolon");
 
             CheckReady();
             if (!_connector.DatabaseInfo.SupportsTransactions)
                 return;
-            using (_connector.StartUserAction())
+            using (_connector.StartUserAction(cancellationToken))
             {
                 Log.Debug($"Releasing savepoint {name}", _connector.Id);
+
+                if (RequiresQuoting(name))
+                    name = $"\"{name.Replace("\"", "\"\"")}\"";
+
                 await _connector.ExecuteInternalCommand($"RELEASE SAVEPOINT {name}", async, cancellationToken);
             }
         }
@@ -310,15 +336,15 @@ namespace Npgsql
         /// Releases a transaction from a pending savepoint state.
         /// </summary>
         /// <param name="name">The name of the savepoint.</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
 #if NET
         public override Task ReleaseAsync(string name, CancellationToken cancellationToken = default)
 #else
         public Task ReleaseAsync(string name, CancellationToken cancellationToken = default)
 #endif
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
                 return Release(name, true, cancellationToken);
         }
@@ -335,23 +361,27 @@ namespace Npgsql
             if (IsDisposed)
                 return;
 
-            if (disposing && !IsCompleted)
+            if (disposing)
             {
-                // We're disposing, so no cancellation token
-                _connector.CloseOngoingOperations(async: false).GetAwaiter().GetResult();
-                Rollback();
-            }
+                if (!IsCompleted)
+                {
+                    // We're disposing, so no cancellation token
+                    _connector.CloseOngoingOperations(async: false).GetAwaiter().GetResult();
+                    Rollback();
+                }
 
-            IsDisposed = true;
+                IsDisposed = true;
+                _connector?.Connection?.EndBindingScope(ConnectorBindingScope.Transaction);
+            }
         }
 
         /// <summary>
         /// Disposes the transaction, rolling it back if it is still pending.
         /// </summary>
-#if !NET461 && !NETSTANDARD2_0
-        public override ValueTask DisposeAsync()
-#else
+#if NETSTANDARD2_0
         public ValueTask DisposeAsync()
+#else
+        public override ValueTask DisposeAsync()
 #endif
         {
             if (!IsDisposed)
@@ -363,6 +393,7 @@ namespace Npgsql
                 }
 
                 IsDisposed = true;
+                _connector?.Connection?.EndBindingScope(ConnectorBindingScope.Transaction);
             }
             return default;
 
@@ -372,6 +403,7 @@ namespace Npgsql
                 await _connector.CloseOngoingOperations(async: true);
                 await Rollback(async: true);
                 IsDisposed = true;
+                _connector?.Connection?.EndBindingScope(ConnectorBindingScope.Transaction);
             }
         }
 
@@ -387,10 +419,58 @@ namespace Npgsql
 
         void CheckReady()
         {
-            if (IsDisposed)
-                throw new ObjectDisposedException(typeof(NpgsqlTransaction).Name);
+            CheckDisposed();
             if (IsCompleted)
                 throw new InvalidOperationException("This NpgsqlTransaction has completed; it is no longer usable.");
+        }
+
+        void CheckDisposed()
+        {
+            if (IsDisposed)
+                throw new ObjectDisposedException(typeof(NpgsqlTransaction).Name);
+        }
+
+        static bool RequiresQuoting(string identifier)
+        {
+            Debug.Assert(identifier.Length > 0);
+
+            var first = identifier[0];
+            if (first != '_' && !char.IsLower(first))
+                return true;
+
+            foreach (var c in identifier.AsSpan(1))
+                if (c != '_' && c != '$' && !char.IsLower(c) && !char.IsDigit(c))
+                    return true;
+
+            return false;
+        }
+
+        #endregion
+
+        #region Misc
+
+        /// <summary>
+        /// Unbinds transaction from the connector.
+        /// Should be called before the connector is returned to the pool.
+        /// </summary>
+        internal void UnbindIfNecessary()
+        {
+            // We're closing the connection, but transaction is not yet disposed
+            // We have to unbind the transaction from the connector, otherwise there could be a concurency issues
+            // See #3306
+            if (!IsDisposed)
+            {
+                if (_connector.UnboundTransaction is { IsDisposed: true } previousTransaction)
+                {
+                    previousTransaction._connector = _connector;
+                    _connector.Transaction = previousTransaction;
+                }
+                else
+                    _connector.Transaction = null;
+
+                _connector.UnboundTransaction = this;
+                _connector = null!;
+            }
         }
 
         #endregion

@@ -57,9 +57,9 @@ namespace Npgsql
 
         bool IsExplicitlyPrepared => _connectorPreparedOn != null;
 
-        static readonly List<NpgsqlParameter> EmptyParameters = new List<NpgsqlParameter>();
+        static readonly List<NpgsqlParameter> EmptyParameters = new();
 
-        static readonly SingleThreadSynchronizationContext SingleThreadSynchronizationContext = new SingleThreadSynchronizationContext("NpgsqlRemainingAsyncSendWorker");
+        static readonly SingleThreadSynchronizationContext SingleThreadSynchronizationContext = new("NpgsqlRemainingAsyncSendWorker");
 
         static readonly NpgsqlLogger Log = NpgsqlLogManager.CreateLogger(nameof(NpgsqlCommand));
 
@@ -74,31 +74,33 @@ namespace Npgsql
         #region Constructors
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="NpgsqlCommand">NpgsqlCommand</see> class.
+        /// Initializes a new instance of the <see cref="NpgsqlCommand"/> class.
         /// </summary>
         public NpgsqlCommand() : this(null, null, null) {}
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="NpgsqlCommand">NpgsqlCommand</see> class with the text of the query.
+        /// Initializes a new instance of the <see cref="NpgsqlCommand"/> class with the text of the query.
         /// </summary>
         /// <param name="cmdText">The text of the query.</param>
         // ReSharper disable once IntroduceOptionalParameters.Global
         public NpgsqlCommand(string? cmdText) : this(cmdText, null, null) {}
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="NpgsqlCommand">NpgsqlCommand</see> class with the text of the query and a <see cref="NpgsqlConnection">NpgsqlConnection</see>.
+        /// Initializes a new instance of the <see cref="NpgsqlCommand"/> class with the text of the query and a
+        /// <see cref="NpgsqlConnection"/>.
         /// </summary>
         /// <param name="cmdText">The text of the query.</param>
-        /// <param name="connection">A <see cref="NpgsqlConnection">NpgsqlConnection</see> that represents the connection to a PostgreSQL server.</param>
+        /// <param name="connection">A <see cref="NpgsqlConnection"/> that represents the connection to a PostgreSQL server.</param>
         // ReSharper disable once IntroduceOptionalParameters.Global
         public NpgsqlCommand(string? cmdText, NpgsqlConnection? connection) : this(cmdText, connection, null) {}
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="NpgsqlCommand">NpgsqlCommand</see> class with the text of the query, a <see cref="NpgsqlConnection">NpgsqlConnection</see>, and the <see cref="NpgsqlTransaction">NpgsqlTransaction</see>.
+        /// Initializes a new instance of the <see cref="NpgsqlCommand"/> class with the text of the query, a
+        /// <see cref="NpgsqlConnection"/>, and the <see cref="NpgsqlTransaction"/>.
         /// </summary>
         /// <param name="cmdText">The text of the query.</param>
-        /// <param name="connection">A <see cref="NpgsqlConnection">NpgsqlConnection</see> that represents the connection to a PostgreSQL server.</param>
-        /// <param name="transaction">The <see cref="NpgsqlTransaction">NpgsqlTransaction</see> in which the <see cref="NpgsqlCommand">NpgsqlCommand</see> executes.</param>
+        /// <param name="connection">A <see cref="NpgsqlConnection"/> that represents the connection to a PostgreSQL server.</param>
+        /// <param name="transaction">The <see cref="NpgsqlTransaction"/> in which the <see cref="NpgsqlCommand"/> executes.</param>
         public NpgsqlCommand(string? cmdText, NpgsqlConnection? connection, NpgsqlTransaction? transaction)
         {
             GC.SuppressFinalize(this);
@@ -153,10 +155,11 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Gets or sets a value indicating how the
-        /// <see cref="NpgsqlCommand.CommandText">CommandText</see> property is to be interpreted.
+        /// Gets or sets a value indicating how the <see cref="NpgsqlCommand.CommandText"/> property is to be interpreted.
         /// </summary>
-        /// <value>One of the <see cref="System.Data.CommandType">CommandType</see> values. The default is <see cref="System.Data.CommandType">CommandType.Text</see>.</value>
+        /// <value>
+        /// One of the <see cref="System.Data.CommandType"/> values. The default is <see cref="System.Data.CommandType.Text"/>.
+        /// </value>
         [DefaultValue(CommandType.Text)]
         [Category("Data")]
         public override CommandType CommandType { get; set; }
@@ -171,10 +174,9 @@ namespace Npgsql
         }
 
         /// <summary>
-        /// Gets or sets the <see cref="NpgsqlConnection">NpgsqlConnection</see>
-        /// used by this instance of the <see cref="NpgsqlCommand">NpgsqlCommand</see>.
+        /// Gets or sets the <see cref="NpgsqlConnection"/> used by this instance of the <see cref="NpgsqlCommand"/>.
         /// </summary>
-        /// <value>The connection to a data source. The default value is a null reference.</value>
+        /// <value>The connection to a data source. The default value is <see langword="null"/>.</value>
         [DefaultValue(null)]
         [Category("Behavior")]
         public new NpgsqlConnection? Connection
@@ -202,7 +204,7 @@ namespace Npgsql
         /// Gets or sets how command results are applied to the DataRow when used by the
         /// DbDataAdapter.Update(DataSet) method.
         /// </summary>
-        /// <value>One of the <see cref="System.Data.UpdateRowSource">UpdateRowSource</see> values.</value>
+        /// <value>One of the <see cref="System.Data.UpdateRowSource"/> values.</value>
         [Category("Behavior"), DefaultValue(UpdateRowSource.Both)]
         public override UpdateRowSource UpdatedRowSource
         {
@@ -211,15 +213,15 @@ namespace Npgsql
             {
                 switch (value)
                 {
-                    // validate value (required based on base type contract)
-                    case UpdateRowSource.None:
-                    case UpdateRowSource.OutputParameters:
-                    case UpdateRowSource.FirstReturnedRecord:
-                    case UpdateRowSource.Both:
-                        _updateRowSource = value;
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException();
+                // validate value (required based on base type contract)
+                case UpdateRowSource.None:
+                case UpdateRowSource.OutputParameters:
+                case UpdateRowSource.FirstReturnedRecord:
+                case UpdateRowSource.Both:
+                    _updateRowSource = value;
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
                 }
             }
         }
@@ -297,7 +299,7 @@ namespace Npgsql
         int _state;
 
         /// <summary>
-        /// Gets the current state of the connector
+        /// The current state of the command
         /// </summary>
         internal CommandState State
         {
@@ -318,22 +320,16 @@ namespace Npgsql
         #region Parameters
 
         /// <summary>
-        /// Creates a new instance of an <see cref="System.Data.Common.DbParameter">DbParameter</see> object.
+        /// Creates a new instance of an <see cref="System.Data.Common.DbParameter"/> object.
         /// </summary>
-        /// <returns>An <see cref="System.Data.Common.DbParameter">DbParameter</see> object.</returns>
-        protected override DbParameter CreateDbParameter()
-        {
-            return CreateParameter();
-        }
+        /// <returns>A <see cref="System.Data.Common.DbParameter"/> object.</returns>
+        protected override DbParameter CreateDbParameter() => CreateParameter();
 
         /// <summary>
-        /// Creates a new instance of a <see cref="NpgsqlParameter">NpgsqlParameter</see> object.
+        /// Creates a new instance of a <see cref="NpgsqlParameter"/> object.
         /// </summary>
-        /// <returns>A <see cref="NpgsqlParameter">NpgsqlParameter</see> object.</returns>
-        public new NpgsqlParameter CreateParameter()
-        {
-            return new NpgsqlParameter();
-        }
+        /// <returns>An <see cref="NpgsqlParameter"/> object.</returns>
+        public new NpgsqlParameter CreateParameter() => new();
 
         /// <summary>
         /// DB parameter collection.
@@ -341,7 +337,7 @@ namespace Npgsql
         protected override DbParameterCollection DbParameterCollection => Parameters;
 
         /// <summary>
-        /// Gets the <see cref="NpgsqlParameterCollection">NpgsqlParameterCollection</see>.
+        /// Gets the <see cref="NpgsqlParameterCollection"/>.
         /// </summary>
         /// <value>The parameters of the SQL statement or function (stored procedure). The default is an empty collection.</value>
         public new NpgsqlParameterCollection Parameters => _parameters;
@@ -472,14 +468,18 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             using (connector.StartUserAction())
             {
                 Log.Debug($"Deriving Parameters for query: {CommandText}", connector.Id);
-                ProcessRawQuery(true);
+                ProcessRawQuery(connector.UseConformingStrings, deriveParameters: true);
 
                 var sendTask = SendDeriveParameters(connector, false);
+                if (sendTask.IsFaulted)
+                    sendTask.GetAwaiter().GetResult();
 
                 foreach (var statement in _statements)
                 {
-                    Expect<ParseCompleteMessage>(connector.ReadMessage(), connector);
-                    var paramTypeOIDs = Expect<ParameterDescriptionMessage>(connector.ReadMessage(), connector).TypeOIDs;
+                    Expect<ParseCompleteMessage>(
+                        connector.ReadMessage(async: false).GetAwaiter().GetResult(), connector);
+                    var paramTypeOIDs = Expect<ParameterDescriptionMessage>(
+                        connector.ReadMessage(async: false).GetAwaiter().GetResult(), connector).TypeOIDs;
 
                     if (statement.InputParameters.Count != paramTypeOIDs.Count)
                     {
@@ -513,18 +513,18 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         }
                     }
 
-                    var msg = connector.ReadMessage();
+                    var msg = connector.ReadMessage(async: false).GetAwaiter().GetResult();
                     switch (msg.Code)
                     {
-                        case BackendMessageCode.RowDescription:
-                        case BackendMessageCode.NoData:
-                            break;
-                        default:
-                            throw connector.UnexpectedMessageReceived(msg.Code);
+                    case BackendMessageCode.RowDescription:
+                    case BackendMessageCode.NoData:
+                        break;
+                    default:
+                        throw connector.UnexpectedMessageReceived(msg.Code);
                     }
                 }
 
-                Expect<ReadyForQueryMessage>(connector.ReadMessage(), connector);
+                Expect<ReadyForQueryMessage>(connector.ReadMessage(async: false).GetAwaiter().GetResult(), connector);
                 sendTask.GetAwaiter().GetResult();
             }
         }
@@ -543,15 +543,15 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// Creates a server-side prepared statement on the PostgreSQL server.
         /// This will make repeated future executions of this command much faster.
         /// </summary>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
-#if !NET461 && !NETSTANDARD2_0
-        public override Task PrepareAsync(CancellationToken cancellationToken = default)
-#else
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
+#if NETSTANDARD2_0
         public Task PrepareAsync(CancellationToken cancellationToken = default)
+#else
+        public override Task PrepareAsync(CancellationToken cancellationToken = default)
 #endif
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
                 return Prepare(true, cancellationToken);
         }
@@ -566,7 +566,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             for (var i = 0; i < Parameters.Count; i++)
                 Parameters[i].Bind(connector.TypeMapper);
 
-            ProcessRawQuery();
+            ProcessRawQuery(connector.UseConformingStrings, deriveParameters: false);
             Log.Debug($"Preparing: {CommandText}", connector.Id);
 
             var needToPrepare = false;
@@ -588,44 +588,46 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             // It's possible the command was already prepared, or that persistent prepared statements were found for
             // all statements. Nothing to do here, move along.
             return needToPrepare
-                ? PrepareLong(cancellationToken)
+                ? PrepareLong(this, async, connector, cancellationToken)
                 : Task.CompletedTask;
 
-            async Task PrepareLong(CancellationToken cancellationToken)
+            static async Task PrepareLong(NpgsqlCommand command, bool async, NpgsqlConnector connector, CancellationToken cancellationToken)
             {
-                using (connector.StartUserAction())
+                try
                 {
-                    var sendTask = SendPrepare(connector, async, cancellationToken);
-
-                    // Loop over statements, skipping those that are already prepared (because they were persisted)
-                    var isFirst = true;
-                    for (var i = 0; i < _statements.Count; i++)
+                    using (connector.StartUserAction(cancellationToken))
                     {
-                        var statement = _statements[i];
-                        if (!statement.IsPreparing)
-                            continue;
+                        var sendTask = command.SendPrepare(connector, async, cancellationToken);
+                        if (sendTask.IsFaulted)
+                            sendTask.GetAwaiter().GetResult();
 
-                        var pStatement = statement.PreparedStatement!;
-
-                        try
+                        // Loop over statements, skipping those that are already prepared (because they were persisted)
+                        var isFirst = true;
+                        for (var i = 0; i < command._statements.Count; i++)
                         {
+                            var statement = command._statements[i];
+                            if (!statement.IsPreparing)
+                                continue;
+
+                            var pStatement = statement.PreparedStatement!;
+
                             if (pStatement.StatementBeingReplaced != null)
                             {
-                                Expect<CloseCompletedMessage>(await connector.ReadMessage(async, cancellationToken), connector);
+                                Expect<CloseCompletedMessage>(await connector.ReadMessage(async), connector);
                                 pStatement.StatementBeingReplaced.CompleteUnprepare();
                                 pStatement.StatementBeingReplaced = null;
                             }
 
-                            Expect<ParseCompleteMessage>(await connector.ReadMessage(async, cancellationToken), connector);
-                            Expect<ParameterDescriptionMessage>(await connector.ReadMessage(async, cancellationToken), connector);
-                            var msg = await connector.ReadMessage(async, cancellationToken);
+                            Expect<ParseCompleteMessage>(await connector.ReadMessage(async), connector);
+                            Expect<ParameterDescriptionMessage>(await connector.ReadMessage(async), connector);
+                            var msg = await connector.ReadMessage(async);
                             switch (msg.Code)
                             {
                             case BackendMessageCode.RowDescription:
                                 // Clone the RowDescription for use with the prepared statement (the one we have is reused
                                 // by the connection)
                                 var description = ((RowDescriptionMessage)msg).Clone();
-                                FixupRowDescription(description, isFirst);
+                                command.FixupRowDescription(description, isFirst);
                                 statement.Description = description;
                                 break;
                             case BackendMessageCode.NoData:
@@ -639,30 +641,28 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                             pStatement.CompletePrepare();
                             isFirst = false;
                         }
-                        catch
-                        {
-                            // The statement wasn't prepared successfully, update the bookkeeping for it and
-                            // all following statements
-                            for (; i < _statements.Count; i++)
-                            {
-                                statement = _statements[i];
-                                if (statement.IsPreparing)
-                                {
-                                    statement.IsPreparing = false;
-                                    statement.PreparedStatement!.CompleteUnprepare();
-                                }
-                            }
 
-                            throw;
+                        Expect<ReadyForQueryMessage>(await connector.ReadMessage(async), connector);
+
+                        if (async)
+                            await sendTask;
+                        else
+                            sendTask.GetAwaiter().GetResult();
+                    }
+                }
+                catch
+                {
+                    // The statements weren't prepared successfully, update the bookkeeping for them
+                    foreach (var statement in command._statements)
+                    {
+                        if (statement.IsPreparing)
+                        {
+                            statement.IsPreparing = false;
+                            statement.PreparedStatement!.CompleteUnprepare();
                         }
                     }
 
-                    Expect<ReadyForQueryMessage>(await connector.ReadMessage(async, cancellationToken), connector);
-
-                    if (async)
-                        await sendTask;
-                    else
-                        sendTask.GetAwaiter().GetResult();
+                    throw;
                 }
             }
         }
@@ -680,11 +680,11 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// Note that this only affects commands explicitly prepared with <see cref="Prepare()"/>, not
         /// automatically prepared statements.
         /// </summary>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         public Task UnprepareAsync(CancellationToken cancellationToken = default)
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled<int>(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
                 return Unprepare(true, cancellationToken);
         }
@@ -700,17 +700,19 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             var connector = connection.Connector!;
 
             Log.Debug("Closing command's prepared statements", connector.Id);
-            using (connector.StartUserAction())
+            using (connector.StartUserAction(cancellationToken))
             {
                 var sendTask = SendClose(connector, async, cancellationToken);
+                if (sendTask.IsFaulted)
+                    sendTask.GetAwaiter().GetResult();
                 foreach (var statement in _statements)
                     if (statement.PreparedStatement?.State == PreparedState.BeingUnprepared)
                     {
-                        Expect<CloseCompletedMessage>(await connector.ReadMessage(async, cancellationToken), connector);
+                        Expect<CloseCompletedMessage>(await connector.ReadMessage(async), connector);
                         statement.PreparedStatement.CompleteUnprepare();
                         statement.PreparedStatement = null;
                     }
-                Expect<ReadyForQueryMessage>(await connector.ReadMessage(async, cancellationToken), connector);
+                Expect<ReadyForQueryMessage>(await connector.ReadMessage(async), connector);
                 if (async)
                     await sendTask;
                 else
@@ -722,7 +724,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         #region Query analysis
 
-        internal void ProcessRawQuery(bool deriveParameters = false)
+        internal void ProcessRawQuery(bool standardConformingStrings, bool deriveParameters)
         {
             if (string.IsNullOrEmpty(CommandText))
                 throw new InvalidOperationException("CommandText property has not been initialized");
@@ -731,10 +733,10 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             switch (CommandType) {
             case CommandType.Text:
                 var parser = new SqlQueryParser();
-                parser.ParseRawQuery(CommandText, _parameters, _statements, deriveParameters);
+                parser.ParseRawQuery(CommandText, _parameters, _statements, standardConformingStrings, deriveParameters);
 
                 if (_statements.Count > 1 && _parameters.HasOutputParameters)
-                    throw new NotSupportedException("Commands with multipl e queries cannot have out parameters");
+                    throw new NotSupportedException("Commands with multiple queries cannot have out parameters");
                 break;
 
             case CommandType.TableDirect:
@@ -832,9 +834,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
 
         void BeginSend(NpgsqlConnector connector)
         {
-            connector.WriteBuffer.Timeout = CommandTimeout > 0
-                ? TimeSpan.FromSeconds(CommandTimeout)
-                : Timeout.InfiniteTimeSpan;
+            connector.WriteBuffer.Timeout = TimeSpan.FromSeconds(CommandTimeout);
             connector.WriteBuffer.CurrentCommand = this;
             FlushOccurred = false;
         }
@@ -1021,12 +1021,12 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// <summary>
         /// Asynchronous version of <see cref="ExecuteNonQuery()"/>
         /// </summary>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>A task representing the asynchronous operation, with the number of rows affected if known; -1 otherwise.</returns>
         public override Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken)
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled<int>(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
                 return ExecuteNonQuery(true, cancellationToken);
         }
@@ -1036,8 +1036,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         {
             using var reader = await ExecuteReader(CommandBehavior.Default, async, cancellationToken);
             while (async ? await reader.NextResultAsync(cancellationToken) : reader.NextResult()) ;
-
-            reader.Close();
 
             return reader.RecordsAffected;
         }
@@ -1057,13 +1055,13 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// <summary>
         /// Asynchronous version of <see cref="ExecuteScalar()"/>
         /// </summary>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>A task representing the asynchronous operation, with the first column of the
         /// first row in the result set, or a null reference if the result set is empty.</returns>
         public override Task<object?> ExecuteScalarAsync(CancellationToken cancellationToken)
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled<object?>(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
                 return ExecuteScalar(true, cancellationToken).AsTask();
         }
@@ -1094,7 +1092,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// Executes the command text against the connection.
         /// </summary>
         /// <param name="behavior">An instance of <see cref="CommandBehavior"/>.</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>A task representing the asynchronous operation.</returns>
         protected override async Task<DbDataReader> ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
             => await ExecuteReaderAsync(behavior, cancellationToken);
@@ -1113,7 +1113,9 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// the <see cref="CommandText"/> against the <see cref="Connection"/>
         /// and returns a <see cref="NpgsqlDataReader"/>.
         /// </summary>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>A task representing the asynchronous operation.</returns>
         public new Task<NpgsqlDataReader> ExecuteReaderAsync(CancellationToken cancellationToken = default)
             => ExecuteReaderAsync(CommandBehavior.Default, cancellationToken);
@@ -1124,20 +1126,19 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         /// and returns a <see cref="NpgsqlDataReader"/>.
         /// </summary>
         /// <param name="behavior">One of the enumeration values that specified the command behavior.</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>A task representing the asynchronous operation.</returns>
         public new Task<NpgsqlDataReader> ExecuteReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken = default)
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled<NpgsqlDataReader>(cancellationToken);
-
             using (NoSynchronizationContextScope.Enter())
                 return ExecuteReader(behavior, async: true, cancellationToken).AsTask();
         }
 
         // TODO: Maybe pool these?
         internal ManualResetValueTaskSource<NpgsqlConnector> ExecutionCompletion { get; }
-            = new ManualResetValueTaskSource<NpgsqlConnector>();
+            = new();
 
         internal async ValueTask<NpgsqlDataReader> ExecuteReader(CommandBehavior behavior, bool async, CancellationToken cancellationToken)
         {
@@ -1148,42 +1149,16 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
             {
                 if (conn.TryGetBoundConnector(out var connector))
                 {
-                    connector.StartUserAction(this);
+                    cancellationToken.ThrowIfCancellationRequested();
+                    // We cannot pass a token here, as we'll cancel a non-send query
+                    // Also, we don't pass the cancellation token to StartUserAction, since that would make it scope to the entire action (command execution)
+                    // whereas it should only be scoped to the Execute method.
+                    connector.StartUserAction(ConnectorState.Executing, this, CancellationToken.None);
 
-                    CancellationTokenRegistration? registration = null;
+                    Task? sendTask = null;
 
                     try
                     {
-                        var finalCt = CancellationToken.None;
-
-                        if (cancellationToken.CanBeCanceled)
-                        {
-                            if (connector.CommandCts.IsCancellationRequested)
-                            {
-                                connector.CommandCts.Dispose();
-                                connector.CommandCts = new TimeoutCancellationTokenSourceWrapper(TimeSpan.FromSeconds(connector.Settings.CancellationTimeout));
-                            }
-
-                            registration = cancellationToken.Register(o =>
-                            {
-                                var cmd = (NpgsqlCommand)o!;
-                                var cn = cmd.Connection?.Connector;
-                                if (cn is null)
-                                    return;
-
-                                try
-                                {
-                                    cmd.Cancel(true);
-                                    cn.CommandCts.Start();
-                                }
-                                catch
-                                {
-                                    cn.CommandCts.Cancel();
-                                }
-                            }, this);
-                            finalCt = connector.CommandCts.Token;
-                        }
-
                         ValidateParameters(connector.TypeMapper);
 
                         switch (IsExplicitlyPrepared)
@@ -1203,7 +1178,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                             break;
 
                         case false:
-                            ProcessRawQuery();
+                            ProcessRawQuery(connector.UseConformingStrings, deriveParameters: false);
 
                             if (connector.Settings.MaxAutoPrepare > 0)
                             {
@@ -1247,8 +1222,6 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         {
                         }
 
-                        connector.UserTimeout = CommandTimeout * 1000;
-
                         // We do not wait for the entire send to complete before proceeding to reading -
                         // the sending continues in parallel with the user's reading. Waiting for the
                         // entire send to complete would trigger a deadlock for multi-statement commands,
@@ -1259,38 +1232,30 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                         // to prevents a dependency on the thread pool (which would also trigger deadlocks).
                         // The WriteBuffer notifies this command when the first buffer flush occurs, so that the
                         // send functions can switch to the special async mode when needed.
-                        var sendTask = NonMultiplexingWriteWrapper(connector, async, finalCt);
+                        sendTask = NonMultiplexingWriteWrapper(connector, async, CancellationToken.None);
 
                         // The following is a hack. It raises an exception if one was thrown in the first phases
                         // of the send (i.e. in parts of the send that executed synchronously). Exceptions may
                         // still happen later and aren't properly handled. See #1323.
                         if (sendTask.IsFaulted)
                             sendTask.GetAwaiter().GetResult();
-
-                        // TODO: DRY the following with multiplexing, but be careful with the cancellation registration...
-                        var reader = connector.DataReader;
-                        reader.Init(this, behavior, _statements, sendTask);
-                        connector.CurrentReader = reader;
-                        if (async)
-                            await reader.NextResultAsync(finalCt);
-                        else
-                            reader.NextResult();
-                        return reader;
                     }
                     catch
                     {
-                        connector.CurrentReader = null;
                         conn.Connector?.EndUserAction();
                         throw;
                     }
-                    finally
-                    {
-                        if (registration.HasValue)
-                        {
-                            registration.Value.Dispose();
-                            connector.CommandCts.Stop();
-                        }
-                    }
+
+                    // TODO: DRY the following with multiplexing, but be careful with the cancellation registration...
+                    var reader = connector.DataReader;
+                    reader.Init(this, behavior, _statements, sendTask);
+                    connector.CurrentReader = reader;
+                    if (async)
+                        await reader.NextResultAsync(cancellationToken);
+                    else
+                        reader.NextResult();
+
+                    return reader;
                 }
                 else
                 {
@@ -1305,7 +1270,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     }
 
                     ValidateParameters(conn.Pool!.MultiplexingTypeMapper!);
-                    ProcessRawQuery();
+                    ProcessRawQuery(standardConformingStrings: true, deriveParameters: false);
 
                     State = CommandState.InProgress;
 
@@ -1328,8 +1293,12 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                     return reader;
                 }
             }
-            catch
+            catch (Exception e)
             {
+                var reader = conn.Connector?.CurrentReader;
+                if (!(e is NpgsqlOperationInProgressException) && reader != null)
+                    await reader.Cleanup(async);
+
                 State = CommandState.Idle;
 
                 // Reader disposal contains logic for closing the connection if CommandBehavior.CloseConnection is
@@ -1373,23 +1342,21 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         #region Cancel
 
         /// <summary>
-        /// Attempts to cancel the execution of a <see cref="NpgsqlCommand">NpgsqlCommand</see>.
+        /// Attempts to cancel the execution of an <see cref="NpgsqlCommand" />.
         /// </summary>
-        /// <remarks>As per the specs, no exception will be thrown by this method in case of failure</remarks>
-        public override void Cancel() => Cancel(false);
-
-        void Cancel(bool throwExceptions)
+        /// <remarks>As per the specs, no exception will be thrown by this method in case of failure.</remarks>
+        public override void Cancel()
         {
             if (State != CommandState.InProgress)
                 return;
-            if (!Connection!.IsBound)
+
+            var connection = Connection;
+            if (connection is null)
+                return;
+            if (!connection.IsBound)
                 throw new NotSupportedException("Cancellation not supported with multiplexing");
 
-            var connector = _connection?.Connector;
-            if (connector == null)
-                return;
-
-            connector.CancelRequest(throwExceptions);
+            connection.Connector?.PerformUserCancellation();
         }
 
         #endregion Cancel
@@ -1397,7 +1364,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
         #region Dispose
 
         /// <summary>
-        /// Releases the resources used by the <see cref="NpgsqlCommand">NpgsqlCommand</see>.
+        /// Releases the resources used by the <see cref="NpgsqlCommand"/>.
         /// </summary>
         protected override void Dispose(bool disposing)
         {
@@ -1469,6 +1436,7 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 }
             }
             Log.Debug(sb.ToString(), connector.Id);
+            connector.QueryLogStopWatch.Start();
         }
 
         /// <summary>
@@ -1500,13 +1468,13 @@ GROUP BY pg_proc.proargnames, pg_proc.proargtypes, pg_proc.proallargtypes, pg_pr
                 throw new InvalidOperationException("Connection property has not been initialized.");
             switch (_connection.FullState)
             {
-                case ConnectionState.Open:
-                case ConnectionState.Connecting:
-                case ConnectionState.Open | ConnectionState.Executing:
-                case ConnectionState.Open | ConnectionState.Fetching:
-                    return _connection;
-                default:
-                    throw new InvalidOperationException("Connection is not open");
+            case ConnectionState.Open:
+            case ConnectionState.Connecting:
+            case ConnectionState.Open | ConnectionState.Executing:
+            case ConnectionState.Open | ConnectionState.Fetching:
+                return _connection;
+            default:
+                throw new InvalidOperationException("Connection is not open");
             }
         }
 

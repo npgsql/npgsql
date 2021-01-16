@@ -20,7 +20,9 @@ namespace Npgsql.NameTranslation
         /// <summary>
         /// Creates a new <see cref="NpgsqlSnakeCaseNameTranslator"/>.
         /// </summary>
-        /// <param name="legacyMode">Uses the legacy naming convention if <c>true</c>, otherwise it uses the new naming convention.</param>
+        /// <param name="legacyMode">
+        /// Uses the legacy naming convention if <see langword="true"/>, otherwise it uses the new naming convention.
+        /// </param>
         public NpgsqlSnakeCaseNameTranslator(bool legacyMode)
             => LegacyMode = legacyMode;
 

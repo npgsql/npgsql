@@ -46,6 +46,7 @@ namespace Npgsql
         internal const byte Bind =      (byte)'B';
         internal const byte Close =     (byte)'C';
         internal const byte Query =     (byte)'Q';
+        internal const byte CopyData =  (byte)'d';
         internal const byte CopyDone =  (byte)'c';
         internal const byte CopyFail =  (byte)'f';
         internal const byte Terminate = (byte)'X';

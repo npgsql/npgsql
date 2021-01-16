@@ -245,6 +245,91 @@ namespace Npgsql.Tests
             //Assert.AreEqual ("schema", p1.XmlSchemaCollectionOwningSchema, "XmlSchemaCollectionOwningSchema");
         }
 
+        [Test]
+        public void Clone()
+        {
+            var expected = new NpgsqlParameter
+            {
+                Value = 42,
+                ParameterName = "TheAnswer",
+
+                DbType = DbType.Int32,
+                NpgsqlDbType = NpgsqlDbType.Integer,
+                DataTypeName = "integer",
+
+                Direction = ParameterDirection.InputOutput,
+                IsNullable = true,
+                Precision = 1,
+                Scale = 2,
+                Size = 4,
+
+                SourceVersion = DataRowVersion.Proposed,
+                SourceColumn = "source",
+                SourceColumnNullMapping = true,
+            };
+            var actual = expected.Clone();
+
+            Assert.AreEqual(expected.Value, actual.Value);
+            Assert.AreEqual(expected.ParameterName, actual.ParameterName);
+
+            Assert.AreEqual(expected.DbType, actual.DbType);
+            Assert.AreEqual(expected.NpgsqlDbType, actual.NpgsqlDbType);
+            Assert.AreEqual(expected.DataTypeName, actual.DataTypeName);
+
+            Assert.AreEqual(expected.Direction, actual.Direction);
+            Assert.AreEqual(expected.IsNullable, actual.IsNullable);
+            Assert.AreEqual(expected.Precision, actual.Precision);
+            Assert.AreEqual(expected.Scale, actual.Scale);
+            Assert.AreEqual(expected.Size, actual.Size);
+
+            Assert.AreEqual(expected.SourceVersion, actual.SourceVersion);
+            Assert.AreEqual(expected.SourceColumn, actual.SourceColumn);
+            Assert.AreEqual(expected.SourceColumnNullMapping, actual.SourceColumnNullMapping);
+        }
+
+        [Test]
+        public void CloneGeneric()
+        {
+            var expected = new NpgsqlParameter<int>
+            {
+                TypedValue = 42,
+                ParameterName = "TheAnswer",
+
+                DbType = DbType.Int32,
+                NpgsqlDbType = NpgsqlDbType.Integer,
+                DataTypeName = "integer",
+
+                Direction = ParameterDirection.InputOutput,
+                IsNullable = true,
+                Precision = 1,
+                Scale = 2,
+                Size = 4,
+
+                SourceVersion = DataRowVersion.Proposed,
+                SourceColumn ="source",
+                SourceColumnNullMapping = true,
+            };
+            var actual = (NpgsqlParameter<int>)expected.Clone();
+
+            Assert.AreEqual(expected.Value, actual.Value);
+            Assert.AreEqual(expected.TypedValue, actual.TypedValue);
+            Assert.AreEqual(expected.ParameterName, actual.ParameterName);
+
+            Assert.AreEqual(expected.DbType, actual.DbType);
+            Assert.AreEqual(expected.NpgsqlDbType, actual.NpgsqlDbType);
+            Assert.AreEqual(expected.DataTypeName, actual.DataTypeName);
+
+            Assert.AreEqual(expected.Direction, actual.Direction);
+            Assert.AreEqual(expected.IsNullable, actual.IsNullable);
+            Assert.AreEqual(expected.Precision, actual.Precision);
+            Assert.AreEqual(expected.Scale, actual.Scale);
+            Assert.AreEqual(expected.Size, actual.Size);
+
+            Assert.AreEqual(expected.SourceVersion, actual.SourceVersion);
+            Assert.AreEqual(expected.SourceColumn, actual.SourceColumn);
+            Assert.AreEqual(expected.SourceColumnNullMapping, actual.SourceColumnNullMapping);
+        }
+
         #endregion
 
 #if NeedsPorting

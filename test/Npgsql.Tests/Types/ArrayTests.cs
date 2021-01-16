@@ -10,6 +10,7 @@ using Npgsql.TypeHandlers;
 using NpgsqlTypes;
 using NUnit.Framework;
 using NUnit.Framework.Internal;
+using static Npgsql.Tests.TestUtil;
 
 namespace Npgsql.Tests.Types
 {
@@ -137,6 +138,82 @@ namespace Npgsql.Tests.Types
             Assert.That(() => reader.GetValue(0), Throws.Exception.TypeOf<InvalidOperationException>());
         }
 
+        [Test, Description("Checks that PG arrays containing nulls are returned as set via ValueTypeArrayMode.")]
+        [TestCase(ArrayNullabilityMode.Always)]
+        [TestCase(ArrayNullabilityMode.Never)]
+        [TestCase(ArrayNullabilityMode.PerInstance)]
+        public async Task ValueTypeArrayNullabilities(ArrayNullabilityMode mode)
+        {
+            using var pool = CreateTempPool(new NpgsqlConnectionStringBuilder(ConnectionString){ ArrayNullabilityMode = mode}, out var connectionString);
+            await using var conn = await OpenConnectionAsync(connectionString);
+            await using var cmd = new NpgsqlCommand("SELECT onedim, twodim FROM (VALUES" +
+                                                    "('{1, 2, 3, 4}'::int[],'{{1, 2},{3, 4}}'::int[][])," +
+                                                    "('{5, NULL, 6, 7}'::int[],'{{5, NULL},{6, 7}}'::int[][])" +
+                                                    ") AS x(onedim,twodim)", conn);
+            await using var reader = await cmd.ExecuteReaderAsync();
+
+            switch (mode)
+            {
+            case ArrayNullabilityMode.Never:
+                reader.Read();
+                var value = reader.GetValue(0);
+                Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
+                Assert.That(value.GetType(), Is.EqualTo(typeof(int[])));
+                Assert.That(value, Is.EqualTo(new []{1, 2, 3, 4}));
+                Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(Array)));
+                Assert.That(reader.GetValue(1).GetType(), Is.EqualTo(typeof(int[,])));
+                Assert.That(reader.GetValue(1), Is.EqualTo(new [,]{{1, 2}, {3, 4}}));
+                reader.Read();
+                Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
+                Assert.That(() => reader.GetValue(0), Throws.Exception.TypeOf<InvalidOperationException>());
+                Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(Array)));
+                Assert.That(() => reader.GetValue(1), Throws.Exception.TypeOf<InvalidOperationException>());
+                break;
+            case ArrayNullabilityMode.Always:
+                reader.Read();
+                value = reader.GetValue(0);
+                Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
+                Assert.That(value.GetType(), Is.EqualTo(typeof(int?[])));
+                Assert.That(value, Is.EqualTo(new int?[]{1, 2, 3, 4}));
+                value = reader.GetValue(1);
+                Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(Array)));
+                Assert.That(value.GetType(), Is.EqualTo(typeof(int?[,])));
+                Assert.That(value, Is.EqualTo(new int?[,]{{1, 2}, {3, 4}}));
+                reader.Read();
+                value = reader.GetValue(0);
+                Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
+                Assert.That(value.GetType(), Is.EqualTo(typeof(int?[])));
+                Assert.That(value, Is.EqualTo(new int?[]{5, null, 6, 7}));
+                value = reader.GetValue(1);
+                Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(Array)));
+                Assert.That(value.GetType(), Is.EqualTo(typeof(int?[,])));
+                Assert.That(value, Is.EqualTo(new int?[,]{{5, null},{6, 7}}));
+                break;
+            case ArrayNullabilityMode.PerInstance:
+                reader.Read();
+                value = reader.GetValue(0);
+                Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
+                Assert.That(value.GetType(), Is.EqualTo(typeof(int[])));
+                Assert.That(value, Is.EqualTo(new []{1, 2, 3, 4}));
+                value = reader.GetValue(1);
+                Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(Array)));
+                Assert.That(value.GetType(), Is.EqualTo(typeof(int[,])));
+                Assert.That(value, Is.EqualTo(new [,]{{1, 2}, {3, 4}}));
+                reader.Read();
+                value = reader.GetValue(0);
+                Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
+                Assert.That(value.GetType(), Is.EqualTo(typeof(int?[])));
+                Assert.That(value, Is.EqualTo(new int?[]{5, null, 6, 7}));
+                value = reader.GetValue(1);
+                Assert.That(reader.GetFieldType(1), Is.EqualTo(typeof(Array)));
+                Assert.That(value.GetType(), Is.EqualTo(typeof(int?[,])));
+                Assert.That(value, Is.EqualTo(new int?[,]{{5, null},{6, 7}}));
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(mode), mode, null);
+            }
+        }
+
         [Test]
         public async Task EmptyArray()
         {
@@ -148,6 +225,7 @@ namespace Npgsql.Tests.Types
             reader.Read();
 
             Assert.That(reader.GetFieldValue<int[]>(0), Is.SameAs(Array.Empty<int>()));
+            Assert.That(reader.GetFieldValue<int?[]>(0), Is.SameAs(Array.Empty<int?>()));
         }
 
         [Test, Description("Roundtrips an empty multi-dimensional array.")]
@@ -574,6 +652,18 @@ namespace Npgsql.Tests.Types
                     Assert.That(reader.GetProviderSpecificFieldType(1), Is.EqualTo(typeof(Array)));
                 }
             }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3417")]
+        public async Task ReadTwoEmptyArrays()
+        {
+            using var conn = await OpenConnectionAsync();
+            using var cmd = new NpgsqlCommand("SELECT '{}'::INT[], '{}'::INT[]", conn);
+            using var reader = await cmd.ExecuteReaderAsync();
+            await reader.ReadAsync();
+            Assert.AreSame(reader.GetFieldValue<int[]>(0), reader.GetFieldValue<int[]>(1));
+            // Unlike T[], List<T> is mutable so we should not return the same instance
+            Assert.AreNotSame(reader.GetFieldValue<List<int>>(0), reader.GetFieldValue<List<int>>(1));
         }
 
         async Task AssertIListRoundtrips<TElement>(NpgsqlConnection conn, IEnumerable<TElement> value)

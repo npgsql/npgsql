@@ -1,12 +1,8 @@
 ﻿using System;
+using System.Data.Common;
 using System.Runtime.CompilerServices;
-using JetBrains.Annotations;
 using Npgsql.PostgresTypes;
 using NpgsqlTypes;
-
-#if !NET461
-using System.Data.Common;
-#endif
 
 namespace Npgsql.Schema
 {
@@ -187,38 +183,32 @@ namespace Npgsql.Schema
         /// <summary>
         /// The <see cref="PostgresType" /> describing the type of this column.
         /// </summary>
-        [PublicAPI]
         public PostgresType PostgresType { get; internal set; }
 
         /// <summary>
         /// The OID of the type of this column in the PostgreSQL pg_type catalog table.
         /// </summary>
-        [PublicAPI]
         public uint TypeOID { get; internal set; }
 
         /// <summary>
         /// The OID of the PostgreSQL table of this column.
         /// </summary>
-        [PublicAPI]
         public uint TableOID { get; internal set; }
 
         /// <summary>
         /// The column's position within its table. Note that this is different from <see cref="ColumnOrdinal" />,
         /// which is the column's position within the resultset.
         /// </summary>
-        [PublicAPI]
         public short? ColumnAttributeNumber { get; internal set; }
 
         /// <summary>
         /// The default SQL expression for this column.
         /// </summary>
-        [PublicAPI]
         public string? DefaultValue { get; internal set; }
 
         /// <summary>
         /// The <see cref="NpgsqlDbType" /> value for this column's type.
         /// </summary>
-        [PublicAPI]
         public NpgsqlDbType? NpgsqlDbType { get; internal set; }
 
         /// <inheritdoc />

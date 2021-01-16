@@ -34,7 +34,7 @@ namespace Npgsql.TypeHandling
 
 #pragma warning disable CA1823
         static readonly ConcurrentDictionary<Type, (NonGenericValidateAndGetLength, NonGenericWriteWithLength)>
-            NonGenericDelegateCache = new ConcurrentDictionary<Type, (NonGenericValidateAndGetLength, NonGenericWriteWithLength)>();
+            NonGenericDelegateCache = new();
 #pragma warning restore CA1823
 
         /// <summary>
@@ -60,23 +60,21 @@ namespace Npgsql.TypeHandling
         /// <param name="len">The byte length of the value. The buffer might not contain the full length, requiring I/O to be performed.</param>
         /// <param name="async">If I/O is required to read the full length of the value, whether it should be performed synchronously or asynchronously.</param>
         /// <param name="fieldDescription">Additional PostgreSQL information about the type, such as the length in varchar(30).</param>
-        /// <param name="cancellationToken">The <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
         /// <returns>The fully-read value.</returns>
-        public abstract ValueTask<TDefault> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default);
+        public abstract ValueTask<TDefault> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null);
 
         /// <summary>
         /// Reads a value of type <typeparamref name="TDefault"/> with the given length from the provided buffer,
         /// using either sync or async I/O. Type handlers typically don't need to override this -
-        /// override <see cref="Read(NpgsqlReadBuffer, int, bool, FieldDescription, CancellationToken)"/> - but may do
+        /// override <see cref="Read(NpgsqlReadBuffer, int, bool, FieldDescription)"/> - but may do
         /// so in exceptional cases where reading of arbitrary types is required.
         /// </summary>
         /// <param name="buf">The buffer from which to read.</param>
         /// <param name="len">The byte length of the value. The buffer might not contain the full length, requiring I/O to be performed.</param>
         /// <param name="async">If I/O is required to read the full length of the value, whether it should be performed synchronously or asynchronously.</param>
         /// <param name="fieldDescription">Additional PostgreSQL information about the type, such as the length in varchar(30).</param>
-        /// <param name="cancellationToken">The <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
         /// <returns>The fully-read value.</returns>
-        protected internal override ValueTask<TAny> Read<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
+        protected internal override ValueTask<TAny> Read<TAny>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
             var asTypedHandler = this as INpgsqlTypeHandler<TAny>;
             if (asTypedHandler == null)
@@ -85,7 +83,7 @@ namespace Npgsql.TypeHandling
                     : $"Can't cast database type {fieldDescription.Handler.PgDisplayName} to {typeof(TAny).Name}"
                 );
 
-            return asTypedHandler.Read(buf, len, async, fieldDescription, cancellationToken);
+            return asTypedHandler.Read(buf, len, async, fieldDescription);
         }
 
         /// <inheritdoc />
@@ -94,8 +92,8 @@ namespace Npgsql.TypeHandling
 
         // Since TAny isn't constrained to class? or struct (C# doesn't have a non-nullable constraint that doesn't limit us to either struct or class),
         // we must use the bang operator here to tell the compiler that a null value will never returned.
-        internal override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
-            => (await Read<TDefault>(buf, len, async, fieldDescription, cancellationToken: cancellationToken))!;
+        internal override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
+            => (await Read<TDefault>(buf, len, async, fieldDescription))!;
 
         internal override object ReadAsObject(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             => Read<TDefault>(buf, len, fieldDescription)!;
@@ -283,8 +281,8 @@ namespace Npgsql.TypeHandling
         internal override Type GetProviderSpecificFieldType(FieldDescription? fieldDescription = null) => typeof(TDefault);
 
         /// <inheritdoc />
-        public override ArrayHandler CreateArrayHandler(PostgresArrayType arrayBackendType)
-            => new ArrayHandler<TDefault>(arrayBackendType, this);
+        public override ArrayHandler CreateArrayHandler(PostgresArrayType arrayBackendType, ArrayNullabilityMode arrayNullabilityMode)
+            => new ArrayHandler<TDefault>(arrayBackendType, this, arrayNullabilityMode);
 
         /// <inheritdoc />
         public override IRangeHandler CreateRangeHandler(PostgresType rangeBackendType)

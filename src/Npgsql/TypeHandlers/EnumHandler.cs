@@ -89,8 +89,8 @@ namespace Npgsql.TypeHandlers
     class EnumTypeHandlerFactory<TEnum> : NpgsqlTypeHandlerFactory<TEnum>, IEnumTypeHandlerFactory
         where TEnum : struct, Enum
     {
-        readonly Dictionary<TEnum, string> _enumToLabel = new Dictionary<TEnum, string>();
-        readonly Dictionary<string, TEnum> _labelToEnum = new Dictionary<string, TEnum>();
+        readonly Dictionary<TEnum, string> _enumToLabel = new();
+        readonly Dictionary<string, TEnum> _labelToEnum = new();
 
         internal EnumTypeHandlerFactory(INpgsqlNameTranslator nameTranslator)
         {

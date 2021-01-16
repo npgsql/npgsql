@@ -399,7 +399,7 @@ namespace NpgsqlTypes
         /// Corresponds to the PostgreSQL "hstore" type, a dictionary of string key-value pairs.
         /// </summary>
         /// <remarks>See https://www.postgresql.org/docs/current/static/hstore.html</remarks>
-        Hstore = 37,    // Extension type
+        Hstore = 37, // Extension type
 
         #endregion
 
@@ -484,6 +484,17 @@ namespace NpgsqlTypes
         [BuiltInPostgresType("tid", PostgresTypeOIDs.Tid)]
         Tid = 53,
 
+        /// <summary>
+        /// Corresponds to the PostgreSQL "pg_lsn" type, which can be used to store LSN (Log Sequence Number) data which
+        /// is a pointer to a location in the WAL.
+        /// </summary>
+        /// <remarks>
+        /// See: https://www.postgresql.org/docs/current/datatype-pg-lsn.html and
+        /// https://git.postgresql.org/gitweb/?p=postgresql.git;a=commit;h=7d03a83f4d0736ba869fa6f93973f7623a27038a
+        /// </remarks>
+        [BuiltInPostgresType("pg_lsn", 3220)]
+        PgLsn = 59,
+
         #endregion
 
         #region Special
@@ -507,12 +518,34 @@ namespace NpgsqlTypes
         /// <summary>
         /// The geometry type for PostgreSQL spatial extension PostGIS.
         /// </summary>
-        Geometry = 50,     // Extension type
+        Geometry = 50,  // Extension type
 
         /// <summary>
         /// The geography (geodetic) type for PostgreSQL spatial extension PostGIS.
         /// </summary>
-        Geography = 55     // Extension type
+        Geography = 55, // Extension type
+
+        #endregion
+
+        #region Label tree types
+
+        /// <summary>
+        /// The PostgreSQL ltree type, each value is a label path "a.label.tree.value", forming a tree in a set.
+        /// </summary>
+        /// <remarks>See http://www.postgresql.org/docs/current/static/ltree.html</remarks>
+        LTree = 60, // Extension type
+
+        /// <summary>
+        /// The PostgreSQL lquery type for PostgreSQL extension ltree
+        /// </summary>
+        /// <remarks>See http://www.postgresql.org/docs/current/static/ltree.html</remarks>
+        LQuery = 61, // Extension type
+
+        /// <summary>
+        /// The PostgreSQL ltxtquery type for PostgreSQL extension ltree
+        /// </summary>
+        /// <remarks>See http://www.postgresql.org/docs/current/static/ltree.html</remarks>
+        LTxtQuery = 62, // Extension type
 
         #endregion
     }

@@ -8,11 +8,13 @@ namespace Npgsql.Tests
     [NonParallelizable]
     public class NpgsqlEventSourceTests : TestBase
     {
-        [Test, Ignore("Not working, needs investigation")]
+        [Test]
         public void CommandStartStop()
         {
             using (var conn = OpenConnection())
             {
+                // There is a new pool created, which sends a few queries to load pg types
+                ClearEvents();
                 conn.ExecuteScalar("SELECT 1");
             }
 
@@ -27,13 +29,13 @@ namespace Npgsql.Tests
         public void EnableEventSource()
         {
             _listener = new TestEventListener(_events);
-            _listener.EnableEvents(NpgsqlEventSource.Log, EventLevel.Informational);
+            _listener.EnableEvents(NpgsqlSqlEventSource.Log, EventLevel.Informational);
         }
 
         [OneTimeTearDown]
         public void DisableEventSource()
         {
-            _listener.DisableEvents(NpgsqlEventSource.Log);
+            _listener.DisableEvents(NpgsqlSqlEventSource.Log);
             _listener.Dispose();
         }
 
@@ -42,7 +44,7 @@ namespace Npgsql.Tests
 
         TestEventListener _listener = null!;
 
-        readonly List<EventWrittenEventArgs> _events = new List<EventWrittenEventArgs>();
+        readonly List<EventWrittenEventArgs> _events = new();
 
         class TestEventListener : EventListener
         {

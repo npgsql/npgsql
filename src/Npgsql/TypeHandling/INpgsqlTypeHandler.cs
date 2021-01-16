@@ -18,9 +18,8 @@ namespace Npgsql.TypeHandling
         /// <param name="len">The byte length of the value. The buffer might not contain the full length, requiring I/O to be performed.</param>
         /// <param name="async">If I/O is required to read the full length of the value, whether it should be performed synchronously or asynchronously.</param>
         /// <param name="fieldDescription">Additional PostgreSQL information about the type, such as the length in varchar(30).</param>
-        /// <param name="cancellationToken">The <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
         /// <returns>The fully-read value.</returns>
-        ValueTask<T> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default);
+        ValueTask<T> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null);
 
         /// <summary>
         /// Responsible for validating that a value represents a value of the correct and which can be
@@ -49,7 +48,9 @@ namespace Npgsql.TypeHandling
         /// <param name="async">
         /// If I/O will be necessary (i.e. the buffer is full), determines whether it will be done synchronously or asynchronously.
         /// </param>
-        /// <param name="cancellationToken">The <see cref="CancellationToken"/> that can be used to cancel the operation.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         Task Write(T value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async, CancellationToken cancellationToken = default);
     }
 }

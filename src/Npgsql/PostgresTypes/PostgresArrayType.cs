@@ -1,5 +1,4 @@
 ﻿using System.Diagnostics;
-using JetBrains.Annotations;
 
 namespace Npgsql.PostgresTypes
 {
@@ -14,7 +13,6 @@ namespace Npgsql.PostgresTypes
         /// <summary>
         /// The PostgreSQL data type of the element contained within this array.
         /// </summary>
-        [PublicAPI]
         public PostgresType Element { get; }
 
         /// <summary>

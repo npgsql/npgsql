@@ -42,7 +42,7 @@ namespace Npgsql.Tests
         /// <returns>A new running TestMetrics object.</returns>
         public static TestMetrics Start(TimeSpan allowedTime, bool reportOnStop)
         {
-            return new TestMetrics(allowedTime, reportOnStop);
+            return new(allowedTime, reportOnStop);
         }
 
         /// <summary>

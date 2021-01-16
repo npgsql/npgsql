@@ -24,7 +24,7 @@ namespace Npgsql.TypeHandlers.GeometricHandlers
 
         /// <inheritdoc />
         public override NpgsqlLine Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-            => new NpgsqlLine(buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble());
+            => new(buf.ReadDouble(), buf.ReadDouble(), buf.ReadDouble());
 
         /// <inheritdoc />
         public override int ValidateAndGetLength(NpgsqlLine value, NpgsqlParameter? parameter)

@@ -108,14 +108,14 @@ namespace Npgsql.BackendMessages
 
         public BackendMessageCode Code => BackendMessageCode.RowDescription;
 
-        internal RowDescriptionMessage Clone() => new RowDescriptionMessage(this);
+        internal RowDescriptionMessage Clone() => new(this);
 
         /// <summary>
         /// Comparer that's case-insensitive and Kana width-insensitive
         /// </summary>
         sealed class InsensitiveComparer : IEqualityComparer<string>
         {
-            public static readonly InsensitiveComparer Instance = new InsensitiveComparer();
+            public static readonly InsensitiveComparer Instance = new();
             static readonly CompareInfo CompareInfo = CultureInfo.InvariantCulture.CompareInfo;
 
             InsensitiveComparer() {}

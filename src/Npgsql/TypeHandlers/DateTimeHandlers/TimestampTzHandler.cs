@@ -54,18 +54,7 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
 
         /// <inheritdoc />
         public override DateTime Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
-        {
-            // TODO: Convert directly to DateTime without passing through NpgsqlTimeStamp?
-            var ts = ReadTimeStamp(buf, len, fieldDescription);
-
-            if (ts.IsFinite)
-                return ts.ToDateTime().ToLocalTime();
-            if (!ConvertInfinityDateTime)
-                throw new InvalidCastException("Can't convert infinite timestamptz values to DateTime");
-            if (ts.IsInfinity)
-                return DateTime.MaxValue;
-            return DateTime.MinValue;
-        }
+            => base.Read(buf, len, fieldDescription).ToLocalTime();
 
         /// <inheritdoc />
         protected override NpgsqlDateTime ReadPsv(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
@@ -76,16 +65,23 @@ namespace Npgsql.TypeHandlers.DateTimeHandlers
 
         DateTimeOffset INpgsqlSimpleTypeHandler<DateTimeOffset>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
         {
-            // TODO: Convert directly to DateTime without passing through NpgsqlTimeStamp?
-            var ts = ReadTimeStamp(buf, len, fieldDescription);
-            
-            if (ts.IsFinite)
-                return ts.ToDateTime().ToLocalTime();
-            if (!ConvertInfinityDateTime)
-                throw new InvalidCastException("Can't convert infinite timestamptz values to DateTime");
-            if (ts.IsInfinity)
-                return DateTimeOffset.MaxValue;
-            return DateTimeOffset.MinValue;
+            var postgresTimestamp = buf.ReadInt64();
+            if (postgresTimestamp == long.MaxValue)
+                return ConvertInfinityDateTime
+                    ? DateTimeOffset.MaxValue
+                    : throw new InvalidCastException(InfinityExceptionMessage);
+            if (postgresTimestamp == long.MinValue)
+                return ConvertInfinityDateTime
+                    ? DateTimeOffset.MinValue
+                    : throw new InvalidCastException(InfinityExceptionMessage);
+            try
+            {
+                return FromPostgresTimestamp(postgresTimestamp).ToLocalTime();
+            }
+            catch (ArgumentOutOfRangeException e)
+            {
+                throw new InvalidCastException(OutOfRangeExceptionMessage, e);
+            }
         }
 
         #endregion Read

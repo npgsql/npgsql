@@ -6,8 +6,10 @@ using System.Threading;
 using System.Transactions;
 using NUnit.Framework;
 
-// TransactionScope exists in netstandard20, but distributed transactions do not
-#if NET461
+// TransactionScope exists in netstandard20, but distributed transactions do not.
+// We used to support distributed transactions back when we targeted .NET Framework, keeping them here in case
+// they get ported to .NET Core (https://github.com/dotnet/runtime/issues/715)
+#if DISTRIBUTED_TRANSACTIONS
 
 namespace Npgsql.Tests
 {

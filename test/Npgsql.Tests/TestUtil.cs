@@ -70,7 +70,7 @@ namespace Npgsql.Tests
             }
         }
 
-        static readonly Version MinCreateExtensionVersion = new Version(9, 1);
+        static readonly Version MinCreateExtensionVersion = new(9, 1);
 
         public static bool IsPgPrerelease(NpgsqlConnection conn)
             => ((string)conn.ExecuteScalar("SELECT version()")!).Contains("beta");
@@ -217,7 +217,7 @@ namespace Npgsql.Tests
         static volatile int _tempSchemaCounter;
         static volatile int _tempTypeCounter;
 
-        readonly struct DatabaseObjectDropper : IAsyncDisposable
+        sealed class DatabaseObjectDropper : IAsyncDisposable
         {
             readonly NpgsqlConnection _conn;
             readonly string _type;
@@ -465,7 +465,7 @@ namespace Npgsql.Tests
         Unpooled
     }
 
-#if NET461 || NETSTANDARD2_0
+#if NETSTANDARD2_0
     static class QueueExtensions
     {
         public static bool TryDequeue<T>(this Queue<T> queue, out T result)

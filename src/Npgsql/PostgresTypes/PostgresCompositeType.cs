@@ -15,7 +15,7 @@ namespace Npgsql.PostgresTypes
         /// </summary>
         public IReadOnlyList<Field> Fields => MutableFields;
 
-        internal List<Field> MutableFields { get; } = new List<Field>();
+        internal List<Field> MutableFields { get; } = new();
 
         /// <summary>
         /// Constructs a representation of a PostgreSQL array data type.

@@ -33,7 +33,13 @@ namespace Npgsql
         readonly TimeSpan _connectionLifetime;
         volatile int _numConnectors;
 
-        public bool IsBootstrapped { get; set; }
+        public bool IsBootstrapped
+        {
+            get => _isBootstrapped;
+            set => _isBootstrapped = value;
+        }
+
+        volatile bool _isBootstrapped;
 
         volatile int _idleCount;
 
@@ -71,9 +77,9 @@ namespace Npgsql
         // Note that while the dictionary is protected by locking, we assume that the lists it contains don't need to be
         // (i.e. access to connectors of a specific transaction won't be concurrent)
         readonly Dictionary<Transaction, List<NpgsqlConnector>> _pendingEnlistedConnectors
-            = new Dictionary<Transaction, List<NpgsqlConnector>>();
+            = new();
 
-        static readonly SingleThreadSynchronizationContext SingleThreadSynchronizationContext = new SingleThreadSynchronizationContext("NpgsqlRemainingAsyncSendWorker");
+        static readonly SingleThreadSynchronizationContext SingleThreadSynchronizationContext = new("NpgsqlRemainingAsyncSendWorker");
 
         // TODO: Make this configurable
         const int MultiexingCommandChannelBound = 4096;
@@ -137,6 +143,8 @@ namespace Npgsql
             {
                 _multiplexing = true;
 
+                _bootstrapSemaphore = new SemaphoreSlim(1);
+
                 // Translate microseconds to ticks for cancellation token
                 _writeCoalescingDelayTicks = Settings.WriteCoalescingDelayUs * 100;
                 _writeCoalescingBufferThresholdBytes = Settings.WriteCoalescingBufferThresholdBytes;
@@ -166,15 +174,9 @@ namespace Npgsql
         internal ValueTask<NpgsqlConnector> Rent(
             NpgsqlConnection conn, NpgsqlTimeout timeout, bool async, CancellationToken cancellationToken)
         {
-            if (TryGetIdleConnector(out var connector))
-            {
-                connector.Connection = conn;
-                conn.Connector = connector;
-
-                return new ValueTask<NpgsqlConnector>(connector);
-            }
-
-            return RentAsync();
+            return TryGetIdleConnector(out var connector)
+                ? new ValueTask<NpgsqlConnector>(AssignConnection(conn, connector))
+                : RentAsync();
 
             async ValueTask<NpgsqlConnector> RentAsync()
             {
@@ -205,13 +207,13 @@ namespace Npgsql
                             // Channels don't have a sync API. To avoid sync-over-async issues, we use a special single-
                             // thread synchronization context which ensures that callbacks are executed on a dedicated
                             // thread.
-
+                            // Note that AsTask isn't safe here for getting the result, since it still causes some continuation code
+                            // to get executed on the TP (which can cause deadlocks).
                             using (SingleThreadSynchronizationContext.Enter())
+                            using (var mre = new ManualResetEventSlim())
                             {
-                                connector = _idleConnectorReader.ReadAsync(finalToken)
-                                    .AsTask().GetAwaiter().GetResult();
-                                if (CheckIdleConnector(connector))
-                                    return AssignConnection(conn, connector);
+                                _idleConnectorReader.WaitToReadAsync(finalToken).GetAwaiter().OnCompleted(() => mre.Set());
+                                mre.Wait(finalToken);
                             }
                         }
                     }
@@ -229,7 +231,7 @@ namespace Npgsql
                     }
 
                     // If we're here, our waiting attempt on the idle connector channel was released with a null
-                    // (or bad connector). Check again if a new idle connector has appeared since we last checked.
+                    // (or bad connector), or we're in sync mode. Check again if a new idle connector has appeared since we last checked.
                     if (TryGetIdleConnector(out connector))
                         return AssignConnection(conn, connector);
 
@@ -239,13 +241,13 @@ namespace Npgsql
                     if (connector != null)
                         return AssignConnection(conn, connector);
                 }
+            }
 
-                static NpgsqlConnector AssignConnection(NpgsqlConnection connection, NpgsqlConnector connector)
-                {
-                    connector.Connection = connection;
-                    connection.Connector = connector;
-                    return connector;
-                }
+            static NpgsqlConnector AssignConnection(NpgsqlConnection connection, NpgsqlConnector connector)
+            {
+                connector.Connection = connection;
+                connection.Connector = connector;
+                return connector;
             }
         }
 
@@ -321,8 +323,10 @@ namespace Npgsql
                     for (; i < _max; i++)
                         if (Interlocked.CompareExchange(ref _connectors[i], connector, null) == null)
                             break;
+
+                    Debug.Assert(i < _max, $"Could not find free slot in {_connectors} when opening.");
                     if (i == _max)
-                        throw new Exception($"Could not find free slot in {_connectors} when opening. Please report a bug.");
+                        throw new NpgsqlException($"Could not find free slot in {_connectors} when opening. Please report a bug.");
 
                     // Only start pruning if it was this thread that incremented open count past _min.
                     if (numConnectors == _min)
@@ -402,8 +406,10 @@ namespace Npgsql
             for (; i < _max; i++)
                 if (Interlocked.CompareExchange(ref _connectors[i], null, connector) == connector)
                     break;
+
+            Debug.Assert(i < _max, $"Could not find free slot in {_connectors} when closing.");
             if (i == _max)
-                throw new Exception($"Could not find connector in {_connectors} when closing. Please report a bug.");
+                throw new NpgsqlException($"Could not find free slot in {_connectors} when closing. Please report a bug.");
 
             var numConnectors = Interlocked.Decrement(ref _numConnectors);
             Debug.Assert(numConnectors >= 0);

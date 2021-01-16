@@ -23,6 +23,8 @@ namespace Npgsql.Tests.Support
         const int BackendSecret = 12345;
         internal int ProcessId { get; }
 
+        internal NpgsqlReadBuffer ReadBuffer => _readBuffer;
+
         internal PgServerMock(
             NetworkStream stream,
             NpgsqlReadBuffer readBuffer,
@@ -38,10 +40,7 @@ namespace Npgsql.Tests.Support
         internal async Task Startup()
         {
             // Read and skip the startup message
-            await _readBuffer.EnsureAsync(4);
-            var startupMessageLen = _readBuffer.ReadInt32();
-            await _readBuffer.EnsureAsync(startupMessageLen - 4);
-            _readBuffer.Skip(startupMessageLen - 4);
+            await SkipMessage();
 
             WriteAuthenticateOk();
             WriteParameterStatuses(new Dictionary<string, string>
@@ -65,7 +64,15 @@ namespace Npgsql.Tests.Support
             await FlushAsync();
         }
 
-        internal async Task ReadMessageType(byte expectedCode)
+        internal async Task SkipMessage()
+        {
+            await _readBuffer.EnsureAsync(4);
+            var len = _readBuffer.ReadInt32();
+            await _readBuffer.EnsureAsync(len - 4);
+            _readBuffer.Skip(len - 4);
+        }
+
+        internal async Task ExpectMessage(byte expectedCode)
         {
             CheckDisposed();
 
@@ -77,13 +84,39 @@ namespace Npgsql.Tests.Support
             _readBuffer.Skip(len - 4);
         }
 
+        internal Task ExpectExtendedQuery()
+            => ExpectMessages(
+                FrontendMessageCode.Parse,
+                FrontendMessageCode.Bind,
+                FrontendMessageCode.Describe,
+                FrontendMessageCode.Execute,
+                FrontendMessageCode.Sync);
+
+        internal async Task ExpectMessages(params byte[] expectedCodes)
+        {
+            foreach (var expectedCode in expectedCodes)
+                await ExpectMessage(expectedCode);
+        }
+
+        internal async Task ExpectSimpleQuery(string expectedSql)
+        {
+            CheckDisposed();
+
+            await _readBuffer.EnsureAsync(5);
+            var actualCode = _readBuffer.ReadByte();
+            Assert.That(actualCode, Is.EqualTo(FrontendMessageCode.Query), $"Expected message of type Query but got '{(char)actualCode}'");
+            _ = _readBuffer.ReadInt32();
+            var actualSql = _readBuffer.ReadNullTerminatedString();
+            Assert.That(actualSql, Is.EqualTo(expectedSql));
+        }
+
         internal Task FlushAsync()
         {
             CheckDisposed();
             return _writeBuffer.Flush(async: true);
         }
 
-        internal Task WriteScalarResponse(int value)
+        internal Task WriteScalarResponseAndFlush(int value)
             => WriteParseComplete()
                 .WriteBindComplete()
                 .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Int4))
@@ -91,6 +124,8 @@ namespace Npgsql.Tests.Support
                 .WriteCommandComplete()
                 .WriteReadyForQuery()
                 .FlushAsync();
+
+        internal void Close() => _stream.Close();
 
         #region Low-level message writing
 
@@ -149,6 +184,21 @@ namespace Npgsql.Tests.Support
             return this;
         }
 
+        internal async Task WriteDataRowWithFlush(params byte[][] columnValues)
+        {
+            CheckDisposed();
+
+            _writeBuffer.WriteByte((byte) BackendMessageCode.DataRow);
+            _writeBuffer.WriteInt32(4 + 2 + columnValues.Sum(v => 4 + v.Length));
+            _writeBuffer.WriteInt16(columnValues.Length);
+
+            foreach (var field in columnValues)
+            {
+                _writeBuffer.WriteInt32(field.Length);
+                await _writeBuffer.WriteBytesRaw(field, true);
+            }
+        }
+
         internal PgServerMock WriteCommandComplete(string tag = "")
         {
             CheckDisposed();
@@ -203,6 +253,32 @@ namespace Npgsql.Tests.Support
             _writeBuffer.WriteInt32(4 + 4 + 4);
             _writeBuffer.WriteInt32(processId);
             _writeBuffer.WriteInt32(secret);
+            return this;
+        }
+
+        internal PgServerMock WriteCancellationResponse()
+            => WriteErrorResponse(PostgresErrorCodes.QueryCanceled, "Cancellation", "Query cancelled");
+
+        internal PgServerMock WriteErrorResponse(string code)
+            => WriteErrorResponse(code, "ERROR", "MOCK ERROR MESSAGE");
+
+        internal PgServerMock WriteErrorResponse(string code, string severity, string message)
+        {
+            CheckDisposed();
+            _writeBuffer.WriteByte((byte)BackendMessageCode.ErrorResponse);
+            _writeBuffer.WriteInt32(
+                4 +
+                1 + Encoding.GetByteCount(code) +
+                1 + Encoding.GetByteCount(severity) +
+                1 + Encoding.GetByteCount(message) +
+                1);
+            _writeBuffer.WriteByte((byte)ErrorOrNoticeMessage.ErrorFieldTypeCode.Code);
+            _writeBuffer.WriteNullTerminatedString(code);
+            _writeBuffer.WriteByte((byte)ErrorOrNoticeMessage.ErrorFieldTypeCode.Severity);
+            _writeBuffer.WriteNullTerminatedString(severity);
+            _writeBuffer.WriteByte((byte)ErrorOrNoticeMessage.ErrorFieldTypeCode.Message);
+            _writeBuffer.WriteNullTerminatedString(message);
+            _writeBuffer.WriteByte((byte)ErrorOrNoticeMessage.ErrorFieldTypeCode.Done);
             return this;
         }
 

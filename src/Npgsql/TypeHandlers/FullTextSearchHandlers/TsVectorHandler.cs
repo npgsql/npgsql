@@ -35,16 +35,16 @@ namespace Npgsql.TypeHandlers.FullTextSearchHandlers
         #region Read
 
         /// <inheritdoc />
-        public override async ValueTask<NpgsqlTsVector> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
+        public override async ValueTask<NpgsqlTsVector> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
-            await buf.Ensure(4, async, cancellationToken);
+            await buf.Ensure(4, async);
             var numLexemes = buf.ReadInt32();
             len -= 4;
 
             var lexemes = new List<NpgsqlTsVector.Lexeme>();
             for (var lexemePos = 0; lexemePos < numLexemes; lexemePos++)
             {
-                await buf.Ensure(Math.Min(len, MaxSingleLexemeBytes), async, cancellationToken);
+                await buf.Ensure(Math.Min(len, MaxSingleLexemeBytes), async);
                 var posBefore = buf.ReadPosition;
 
                 List<NpgsqlTsVector.Lexeme.WordEntryPos>? positions = null;

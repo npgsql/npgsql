@@ -90,7 +90,7 @@ namespace NpgsqlTypes
         /// <summary>
         /// Represents the empty range. This field is read-only.
         /// </summary>
-        public static readonly NpgsqlRange<T> Empty = new NpgsqlRange<T>(default, default, RangeFlags.Empty);
+        public static readonly NpgsqlRange<T> Empty = new(default, default, RangeFlags.Empty);
 
         /// <summary>
         /// The lower bound of the range. Only valid when <see cref="LowerBoundInfinite"/> is false.
@@ -429,8 +429,8 @@ namespace NpgsqlTypes
                 string.Equals(upperSegment, NullLiteral, StringComparison.OrdinalIgnoreCase) ||
                 string.Equals(upperSegment, UpperInfinityLiteral, StringComparison.OrdinalIgnoreCase);
 
-            T lower = lowerInfinite ? default : (T)BoundConverter.ConvertFromString(lowerSegment);
-            T upper = upperInfinite ? default : (T)BoundConverter.ConvertFromString(upperSegment);
+            var lower = lowerInfinite ? default : (T)BoundConverter.ConvertFromString(lowerSegment);
+            var upper = upperInfinite ? default : (T)BoundConverter.ConvertFromString(upperSegment);
 
             return new NpgsqlRange<T>(lower, lowerInclusive, lowerInfinite, upper, upperInclusive, upperInfinite);
         }

@@ -1,11 +1,8 @@
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
-
-#if !NET461
-using System.Collections.Immutable;
-#endif
 
 namespace Npgsql.Tests.Types
 {
@@ -57,7 +54,6 @@ namespace Npgsql.Tests.Types
             }
         }
 
-#if !NET461
         [Test]
         public async Task ImmutableDictionary()
         {
@@ -82,7 +78,6 @@ namespace Npgsql.Tests.Types
                 Assert.That(reader.GetFieldValue<ImmutableDictionary<string, string?>>(i), Is.EqualTo(expected));
             }
         }
-#endif
 
         [OneTimeSetUp]
         public async Task SetUp()

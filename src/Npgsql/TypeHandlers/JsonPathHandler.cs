@@ -52,15 +52,15 @@ namespace Npgsql.TypeHandlers
             : base(postgresType) => _textHandler = new TextHandler(postgresType, connection);
 
         /// <inheritdoc />
-        public override async ValueTask<string> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
+        public override async ValueTask<string> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
-            await buf.Ensure(1, async, cancellationToken);
+            await buf.Ensure(1, async);
 
             var version = buf.ReadByte();
             if (version != JsonPathVersion)
                 throw new NotSupportedException($"Don't know how to decode JSONPATH with wire format {version}, your connection is now broken");
 
-            return await _textHandler.Read(buf, len - 1, async, fieldDescription, cancellationToken);
+            return await _textHandler.Read(buf, len - 1, async, fieldDescription);
         }
 
         /// <inheritdoc />

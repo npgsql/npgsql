@@ -36,6 +36,8 @@ namespace Npgsql
         /// </summary>
         readonly int _writeCoalescingBufferThresholdBytes;
 
+        readonly SemaphoreSlim? _bootstrapSemaphore;
+
         /// <summary>
         /// Called exactly once per multiplexing pool, when the first connection is opened, with two goals:
         /// 1. Load types and bind the pool-wide type mapper (necessary for binding parameters)
@@ -45,18 +47,35 @@ namespace Npgsql
         {
             Debug.Assert(_multiplexing);
 
-            var connector =
-                await conn.StartBindingScope(ConnectorBindingScope.Connection, timeout, async, cancellationToken);
-            using var _ = Defer(() => conn.EndBindingScope(ConnectorBindingScope.Connection));
+            var hasSemaphore = async
+                ? await _bootstrapSemaphore!.WaitAsync(timeout.TimeLeft, cancellationToken)
+                : _bootstrapSemaphore!.Wait(timeout.TimeLeft, cancellationToken);
 
-            // Somewhat hacky. Extract the connector's type mapper as our pool-wide mapper,
-            // and have the connector rebind to ensure it has a different instance.
-            // The latter isn't strictly necessary (type mappers should always be usable
-            // concurrently) but just in case.
-            MultiplexingTypeMapper = connector.TypeMapper;
-            connector.RebindTypeMapper();
+            // We've timed out - calling Check, to throw the correct exception
+            if (!hasSemaphore)
+                timeout.Check();
 
-            IsBootstrapped = true;
+            try
+            {
+                if (IsBootstrapped)
+                    return;
+
+                var connector = await conn.StartBindingScope(ConnectorBindingScope.Connection, timeout, async, cancellationToken);
+                using var _ = Defer(static conn => conn.EndBindingScope(ConnectorBindingScope.Connection), conn);
+
+                // Somewhat hacky. Extract the connector's type mapper as our pool-wide mapper,
+                // and have the connector rebind to ensure it has a different instance.
+                // The latter isn't strictly necessary (type mappers should always be usable
+                // concurrently) but just in case.
+                MultiplexingTypeMapper = connector.TypeMapper;
+                await connector.LoadDatabaseInfo(false, timeout, async, cancellationToken);
+
+                IsBootstrapped = true;
+            }
+            finally
+            {
+                _bootstrapSemaphore!.Release();
+            }
         }
 
         async Task MultiplexingWriteLoop()
@@ -68,7 +87,7 @@ namespace Npgsql
             Debug.Assert(_multiplexCommandReader != null);
 
             var timeout = _writeCoalescingDelayTicks / 2;
-            var timeoutTokenSource = new TimeoutCancellationTokenSourceWrapper(TimeSpan.FromTicks(timeout));
+            var timeoutTokenSource = new ResettableCancellationTokenSource(TimeSpan.FromTicks(timeout));
             var timeoutToken = timeout == 0 ? CancellationToken.None : timeoutTokenSource.Token;
 
             while (true)

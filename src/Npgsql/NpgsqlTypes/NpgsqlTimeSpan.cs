@@ -92,17 +92,17 @@ namespace NpgsqlTypes
         /// <summary>
         /// Represents the maximum <see cref="NpgsqlTimeSpan"/>. This field is read-only.
         /// </summary>
-        public static readonly NpgsqlTimeSpan MaxValue = new NpgsqlTimeSpan(long.MaxValue);
+        public static readonly NpgsqlTimeSpan MaxValue = new(long.MaxValue);
 
         /// <summary>
         /// Represents the minimum <see cref="NpgsqlTimeSpan"/>. This field is read-only.
         /// </summary>
-        public static readonly NpgsqlTimeSpan MinValue = new NpgsqlTimeSpan(long.MinValue);
+        public static readonly NpgsqlTimeSpan MinValue = new(long.MinValue);
 
         /// <summary>
         /// Represents the zero <see cref="NpgsqlTimeSpan"/>. This field is read-only.
         /// </summary>
-        public static readonly NpgsqlTimeSpan Zero = new NpgsqlTimeSpan(0);
+        public static readonly NpgsqlTimeSpan Zero = new(0);
 
         #endregion
 
@@ -303,7 +303,7 @@ namespace NpgsqlTypes
         /// <remarks>Note that this may have a value beyond the range &#xb1;23:59:59.9999999 unless
         /// <see cref="JustifyDays()"/> has been called to produce this instance.</remarks>
         /// </summary>
-        public TimeSpan Time => new TimeSpan(_ticks);
+        public TimeSpan Time => new(_ticks);
 
         #endregion
 
@@ -425,23 +425,23 @@ namespace NpgsqlTypes
         /// Adds another interval to this instance and returns the result.
         /// </summary>
         /// <param name="interval">An <see cref="NpgsqlTimeSpan"/> to add to this instance.</param>
-        /// <returns>An <see cref="NpgsqlTimeSpan"></see> whose values are the sums of the two instances.</returns>
+        /// <returns>An <see cref="NpgsqlTimeSpan"/> whose values are the sums of the two instances.</returns>
         public NpgsqlTimeSpan Add(in NpgsqlTimeSpan interval)
-            => new NpgsqlTimeSpan(Months + interval.Months, Days + interval.Days, Ticks + interval.Ticks);
+            => new(Months + interval.Months, Days + interval.Days, Ticks + interval.Ticks);
 
         /// <summary>
         /// Subtracts another interval from this instance and returns the result.
         /// </summary>
         /// <param name="interval">An <see cref="NpgsqlTimeSpan"/> to subtract from this instance.</param>
-        /// <returns>An <see cref="NpgsqlTimeSpan"></see> whose values are the differences of the two instances.</returns>
+        /// <returns>An <see cref="NpgsqlTimeSpan"/> whose values are the differences of the two instances.</returns>
         public NpgsqlTimeSpan Subtract(in NpgsqlTimeSpan interval)
-            => new NpgsqlTimeSpan(Months - interval.Months, Days - interval.Days, Ticks - interval.Ticks);
+            => new(Months - interval.Months, Days - interval.Days, Ticks - interval.Ticks);
 
         /// <summary>
         /// Returns an <see cref="NpgsqlTimeSpan"/> whose value is the negated value of this instance.
         /// </summary>
         /// <returns>An <see cref="NpgsqlTimeSpan"/> whose value is the negated value of this instance.</returns>
-        public NpgsqlTimeSpan Negate() => new NpgsqlTimeSpan(-Months, -Days, -Ticks);
+        public NpgsqlTimeSpan Negate() => new(-Months, -Days, -Ticks);
 
         /// <summary>
         /// This absolute value of this instance. In the case of some, but not all, components being negative,
@@ -462,7 +462,7 @@ namespace NpgsqlTypes
         /// converted into days.</returns>
         public NpgsqlTimeSpan JustifyDays()
         {
-            return new NpgsqlTimeSpan(Months, Days + (int)(Ticks / TicksPerDay), Ticks % TicksPerDay);
+            return new(Months, Days + (int)(Ticks / TicksPerDay), Ticks % TicksPerDay);
         }
 
         /// <summary>
@@ -471,7 +471,7 @@ namespace NpgsqlTypes
         /// <returns>An <see cref="NpgsqlTimeSpan"/> based on this one, but with any days converted to multiples of &#xB1;24hours.</returns>
         public NpgsqlTimeSpan UnjustifyDays()
         {
-            return new NpgsqlTimeSpan(Months, 0, Ticks + Days * TicksPerDay);
+            return new(Months, 0, Ticks + Days * TicksPerDay);
         }
 
         /// <summary>
@@ -481,7 +481,7 @@ namespace NpgsqlTypes
         /// converted into months.</returns>
         public NpgsqlTimeSpan JustifyMonths()
         {
-            return new NpgsqlTimeSpan(Months + Days / DaysPerMonth, Days % DaysPerMonth, Ticks);
+            return new(Months + Days / DaysPerMonth, Days % DaysPerMonth, Ticks);
         }
 
         /// <summary>
@@ -490,7 +490,7 @@ namespace NpgsqlTypes
         /// <returns>An <see cref="NpgsqlTimeSpan"/> based on this one, but with any months converted to multiples of &#xB1;30days.</returns>
         public NpgsqlTimeSpan UnjustifyMonths()
         {
-            return new NpgsqlTimeSpan(0, Days + Months * DaysPerMonth, Ticks);
+            return new(0, Days + Months * DaysPerMonth, Ticks);
         }
 
         /// <summary>
@@ -510,7 +510,7 @@ namespace NpgsqlTypes
         /// <returns>An <see cref="NpgsqlTimeSpan"/> based on this one, but with any months converted to multiples of &#xB1;30days and then any days converted to multiples of &#xB1;24hours;</returns>
         public NpgsqlTimeSpan UnjustifyInterval()
         {
-            return new NpgsqlTimeSpan(Ticks + Days * TicksPerDay + Months * DaysPerMonth * TicksPerDay);
+            return new(Ticks + Days * TicksPerDay + Months * DaysPerMonth * TicksPerDay);
         }
 
         /// <summary>
@@ -536,7 +536,7 @@ namespace NpgsqlTypes
         /// converted into days.</returns>
         public NpgsqlTimeSpan Canonicalize()
         {
-            return new NpgsqlTimeSpan(0, Days + Months * DaysPerMonth + (int)(Ticks / TicksPerDay), Ticks % TicksPerDay);
+            return new(0, Days + Months * DaysPerMonth + (int)(Ticks / TicksPerDay), Ticks % TicksPerDay);
         }
 
         #endregion
@@ -567,7 +567,7 @@ namespace NpgsqlTypes
         /// Casts an <see cref="NpgsqlTimeSpan"/> to a <see cref="TimeSpan"/>.
         /// </summary>
         public static TimeSpan ToTimeSpan(in NpgsqlTimeSpan interval)
-            => new TimeSpan(interval.Ticks + interval.Days * TicksPerDay + interval.Months * DaysPerMonth * TicksPerDay);
+            => new(interval.Ticks + interval.Days * TicksPerDay + interval.Months * DaysPerMonth * TicksPerDay);
 
         #endregion
 

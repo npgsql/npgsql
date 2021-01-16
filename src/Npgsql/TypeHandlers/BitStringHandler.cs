@@ -43,15 +43,15 @@ namespace Npgsql.TypeHandlers
 
         // BitString requires a special array handler which returns bool or BitArray
         /// <inheritdoc />
-        public override ArrayHandler CreateArrayHandler(PostgresArrayType backendType)
-            => new BitStringArrayHandler(backendType, this);
+        public override ArrayHandler CreateArrayHandler(PostgresArrayType backendType, ArrayNullabilityMode arrayNullabilityMode)
+            => new BitStringArrayHandler(backendType, this, arrayNullabilityMode);
 
         #region Read
 
         /// <inheritdoc />
-        public override async ValueTask<BitArray> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
+        public override async ValueTask<BitArray> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
-            await buf.Ensure(4, async, cancellationToken);
+            await buf.Ensure(4, async);
             var numBits = buf.ReadInt32();
             var result = new BitArray(numBits);
             var bytesLeft = len - 4;  // Remove leading number of bits
@@ -83,13 +83,13 @@ namespace Npgsql.TypeHandlers
                     break;
 
                 Debug.Assert(buf.ReadBytesLeft == 0);
-                await buf.Ensure(Math.Min(bytesLeft, buf.Size), async, cancellationToken);
+                await buf.Ensure(Math.Min(bytesLeft, buf.Size), async);
             }
 
             if (bitNo < result.Length)
             {
                 var remainder = result.Length - bitNo;
-                await buf.Ensure(1, async, cancellationToken);
+                await buf.Ensure(1, async);
                 var lastChunk = buf.ReadByte();
                 for (var i = 7; i >= 8 - remainder; i--)
                     result[bitNo++] = (lastChunk & (1 << i)) != 0;
@@ -98,12 +98,12 @@ namespace Npgsql.TypeHandlers
             return result;
         }
 
-        async ValueTask<BitVector32> INpgsqlTypeHandler<BitVector32>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
+        async ValueTask<BitVector32> INpgsqlTypeHandler<BitVector32>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
         {
             if (len > 4 + 4)
                 throw new InvalidCastException("Can't read PostgreSQL bitstring with more than 32 bits into BitVector32");
 
-            await buf.Ensure(4 + 4, async, cancellationToken);
+            await buf.Ensure(4 + 4, async);
 
             var numBits = buf.ReadInt32();
             return numBits == 0
@@ -111,9 +111,9 @@ namespace Npgsql.TypeHandlers
                 : new BitVector32(buf.ReadInt32());
         }
 
-        async ValueTask<bool> INpgsqlTypeHandler<bool>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
+        async ValueTask<bool> INpgsqlTypeHandler<bool>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
         {
-            await buf.Ensure(5, async, cancellationToken);
+            await buf.Ensure(5, async);
             var bitLen = buf.ReadInt32();
             if (bitLen != 1)
                 throw new InvalidCastException("Can't convert a BIT(N) type to bool, only BIT(1)");
@@ -121,13 +121,13 @@ namespace Npgsql.TypeHandlers
             return (b & 128) != 0;
         }
 
-        ValueTask<string> INpgsqlTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription, CancellationToken cancellationToken)
+        ValueTask<string> INpgsqlTypeHandler<string>.Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription)
             => throw new NotSupportedException("Only writing string to PostgreSQL bitstring is supported, no reading.");
 
-        internal override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
+        internal override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
             => fieldDescription?.TypeModifier == 1
-                ? (object)await Read<bool>(buf, len, async, fieldDescription, cancellationToken)
-                : await Read<BitArray>(buf, len, async, fieldDescription, cancellationToken);
+                ? (object)await Read<bool>(buf, len, async, fieldDescription)
+                : await Read<BitArray>(buf, len, async, fieldDescription);
 
         internal override object ReadAsObject(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             => fieldDescription?.TypeModifier == 1
@@ -274,39 +274,39 @@ namespace Npgsql.TypeHandlers
     public class BitStringArrayHandler : ArrayHandler<BitArray>
     {
         /// <inheritdoc />
-        public BitStringArrayHandler(PostgresType postgresType, BitStringHandler elementHandler)
-            : base(postgresType, elementHandler) {}
+        public BitStringArrayHandler(PostgresType postgresType, BitStringHandler elementHandler, ArrayNullabilityMode arrayNullabilityMode)
+            : base(postgresType, elementHandler, arrayNullabilityMode) {}
 
         /// <inheritdoc />
-        protected internal override async ValueTask<TRequestedArray> Read<TRequestedArray>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
+        protected internal override async ValueTask<TRequestedArray> Read<TRequestedArray>(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
         {
             if (ArrayTypeInfo<TRequestedArray>.ElementType == typeof(BitArray))
             {
                 if (ArrayTypeInfo<TRequestedArray>.IsArray)
-                    return (TRequestedArray)(object)await ReadArray<BitArray>(buf, async, cancellationToken: cancellationToken);
+                    return (TRequestedArray)(object)await ReadArray<BitArray>(buf, async);
 
                 if (ArrayTypeInfo<TRequestedArray>.IsList)
-                    return (TRequestedArray)(object)await ReadList<BitArray>(buf, async, cancellationToken);
+                    return (TRequestedArray)(object)await ReadList<BitArray>(buf, async);
             }
 
             if (ArrayTypeInfo<TRequestedArray>.ElementType == typeof(bool))
             {
                 if (ArrayTypeInfo<TRequestedArray>.IsArray)
-                    return (TRequestedArray)(object)await ReadArray<bool>(buf, async, cancellationToken: cancellationToken);
+                    return (TRequestedArray)(object)await ReadArray<bool>(buf, async);
 
                 if (ArrayTypeInfo<TRequestedArray>.IsList)
-                    return (TRequestedArray)(object)await ReadList<bool>(buf, async, cancellationToken);
+                    return (TRequestedArray)(object)await ReadList<bool>(buf, async);
             }
 
-            return await base.Read<TRequestedArray>(buf, len, async, fieldDescription, cancellationToken);
+            return await base.Read<TRequestedArray>(buf, len, async, fieldDescription);
         }
 
         internal override object ReadAsObject(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null)
             => ReadAsObject(buf, len, false, fieldDescription).Result;
 
-        internal override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
+        internal override async ValueTask<object> ReadAsObject(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
             => fieldDescription?.TypeModifier == 1
-                ? await ReadArray<bool>(buf, async, cancellationToken: cancellationToken)
-                : await ReadArray<BitArray>(buf, async, cancellationToken: cancellationToken);
+                ? await ReadArray<bool>(buf, async)
+                : await ReadArray<BitArray>(buf, async);
     }
 }

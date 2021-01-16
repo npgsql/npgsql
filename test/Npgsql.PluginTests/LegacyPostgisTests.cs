@@ -20,12 +20,14 @@ namespace Npgsql.PluginTests
 
         static readonly TestAtt[] Tests =
         {
-            new TestAtt { Geom = new PostgisPoint(1D, 2500D), SQL = "st_makepoint(1,2500)" },
-            new TestAtt {
+            new() { Geom = new PostgisPoint(1D, 2500D), SQL = "st_makepoint(1,2500)" },
+            new()
+            {
                 Geom = new PostgisLineString(new[] { new Coordinate2D(1D, 1D), new Coordinate2D(1D, 2500D) }),
                 SQL = "st_makeline(st_makepoint(1,1),st_makepoint(1,2500))"
             },
-            new TestAtt {
+            new()
+            {
                 Geom = new PostgisPolygon(new[] { new[] {
                     new Coordinate2D(1d,1d),
                     new Coordinate2D(2d,2d),
@@ -34,11 +36,13 @@ namespace Npgsql.PluginTests
                 }}),
                 SQL = "st_makepolygon(st_makeline(ARRAY[st_makepoint(1,1),st_makepoint(2,2),st_makepoint(3,3),st_makepoint(1,1)]))"
             },
-            new TestAtt {
+            new()
+            {
                 Geom = new PostgisMultiPoint(new[] { new Coordinate2D(1D, 1D) }),
                 SQL = "st_multi(st_makepoint(1,1))"
             },
-            new TestAtt {
+            new()
+            {
                 Geom = new PostgisMultiLineString(new[] {
                     new PostgisLineString(new[] {
                         new Coordinate2D(1D, 1D),
@@ -47,7 +51,8 @@ namespace Npgsql.PluginTests
                 }),
                 SQL = "st_multi(st_makeline(st_makepoint(1,1),st_makepoint(1,2500)))"
             },
-            new TestAtt {
+            new()
+            {
                 Geom = new PostgisMultiPolygon(new[] {
                     new PostgisPolygon(new[] { new[] {
                         new Coordinate2D(1d,1d),
@@ -58,7 +63,8 @@ namespace Npgsql.PluginTests
                 }),
                 SQL = "st_multi(st_makepolygon(st_makeline(ARRAY[st_makepoint(1,1),st_makepoint(2,2),st_makepoint(3,3),st_makepoint(1,1)])))"
             },
-            new TestAtt {
+            new()
+            {
                 Geom = new PostgisGeometryCollection(new PostgisGeometry[] {
                     new PostgisPoint(1,1),
                     new PostgisMultiPolygon(new[] {
@@ -72,7 +78,8 @@ namespace Npgsql.PluginTests
                 }),
                 SQL = "st_collect(st_makepoint(1,1),st_multi(st_makepolygon(st_makeline(ARRAY[st_makepoint(1,1),st_makepoint(2,2),st_makepoint(3,3),st_makepoint(1,1)]))))"
             },
-            new TestAtt {
+            new()
+            {
                 Geom = new PostgisGeometryCollection(new PostgisGeometry[] {
                     new PostgisPoint(1,1),
                     new PostgisGeometryCollection(new PostgisGeometry[] {
@@ -171,7 +178,7 @@ namespace Npgsql.PluginTests
             using (var conn = OpenConnection())
             using (var cmd = conn.CreateCommand())
             {
-                var p = new PostgisPoint[1] { new PostgisPoint(1d, 1d) };
+                var p = new PostgisPoint[1] { new(1d, 1d) };
                 cmd.Parameters.AddWithValue(":p1", NpgsqlDbType.Array | NpgsqlDbType.Geometry, p);
                 cmd.CommandText = "SELECT :p1 = array(select st_makepoint(1,1))";
                 Assert.IsTrue((bool)cmd.ExecuteScalar()!);
@@ -296,11 +303,11 @@ namespace Npgsql.PluginTests
         public void TestPolygonEnumeration()
         {
             var a = new Coordinate2D[2][] {
-                new Coordinate2D[4] { new Coordinate2D(0D, 0D), new Coordinate2D(0D, 1D),
-                                      new Coordinate2D(1D, 1D), new Coordinate2D(0D, 0D) },
-                new Coordinate2D[5] { new Coordinate2D(0D, 0D), new Coordinate2D(0D, 2D),
-                                      new Coordinate2D(2D, 2D),new Coordinate2D(2D, 0D),
-                                     new Coordinate2D(0D, 0D) } };
+                new Coordinate2D[4] { new(0D, 0D), new(0D, 1D),
+                                      new(1D, 1D), new(0D, 0D) },
+                new Coordinate2D[5] { new(0D, 0D), new(0D, 2D),
+                                      new(2D, 2D),new(2D, 0D),
+                                     new(0D, 0D) } };
             Assert.That(a.SequenceEqual(new PostgisPolygon(a)));
         }
 

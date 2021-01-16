@@ -3,26 +3,25 @@ using System.Data;
 using System.Data.Common;
 using System.Threading;
 using System.Threading.Tasks;
-using JetBrains.Annotations;
 
 namespace Npgsql
 {
     /// <summary>
-    /// Represents the method that handles the <see cref="NpgsqlDataAdapter.RowUpdated">RowUpdated</see> events.
+    /// Represents the method that handles the <see cref="NpgsqlDataAdapter.RowUpdated"/> events.
     /// </summary>
     /// <param name="sender">The source of the event.</param>
-    /// <param name="e">A <see cref="NpgsqlRowUpdatedEventArgs">NpgsqlRowUpdatedEventArgs</see> that contains the event data.</param>
+    /// <param name="e">An <see cref="NpgsqlRowUpdatedEventArgs"/> that contains the event data.</param>
     public delegate void NpgsqlRowUpdatedEventHandler(object sender, NpgsqlRowUpdatedEventArgs e);
 
     /// <summary>
-    /// Represents the method that handles the <see cref="NpgsqlDataAdapter.RowUpdating">RowUpdating</see> events.
+    /// Represents the method that handles the <see cref="NpgsqlDataAdapter.RowUpdating"/> events.
     /// </summary>
     /// <param name="sender">The source of the event.</param>
-    /// <param name="e">A <see cref="NpgsqlRowUpdatingEventArgs">NpgsqlRowUpdatingEventArgs</see> that contains the event data.</param>
+    /// <param name="e">An <see cref="NpgsqlRowUpdatingEventArgs"/> that contains the event data.</param>
     public delegate void NpgsqlRowUpdatingEventHandler(object sender, NpgsqlRowUpdatingEventArgs e);
 
     /// <summary>
-    /// This class represents an adapter from many commands: select, update, insert and delete to fill <see cref="System.Data.DataSet">Datasets.</see>
+    /// This class represents an adapter from many commands: select, update, insert and delete to fill a <see cref="System.Data.DataSet"/>.
     /// </summary>
     [System.ComponentModel.DesignerCategory("")]
     public sealed class NpgsqlDataAdapter : DbDataAdapter
@@ -30,7 +29,6 @@ namespace Npgsql
         /// <summary>
         /// Row updated event.
         /// </summary>
-        [PublicAPI]
         public event NpgsqlRowUpdatedEventHandler? RowUpdated;
 
         /// <summary>
@@ -143,7 +141,7 @@ namespace Npgsql
 
         // Temporary implementation, waiting for official support in System.Data via https://github.com/dotnet/runtime/issues/22109
         internal async Task<int> Fill(DataTable dataTable, bool async, CancellationToken cancellationToken = default)
-        { 
+        {
             var command = SelectCommand;
             var activeConnection = command?.Connection ?? throw new InvalidOperationException("Connection required");
             var originalState = ConnectionState.Closed;

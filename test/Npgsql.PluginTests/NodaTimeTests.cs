@@ -122,8 +122,11 @@ namespace Npgsql.PluginTests
                 }
             }
         }
+
         #endregion Timestamp
+
         #region Timestamp with time zone
+
         [Test]
         public void TimestampTz()
         {
@@ -139,20 +142,23 @@ namespace Npgsql.PluginTests
                 var localZonedDateTime = utcZonedDateTime.WithZone(DateTimeZoneProviders.Tzdb[timezone]);
                 var offsetDateTime = localZonedDateTime.ToOffsetDateTime();
                 var dateTimeOffset = offsetDateTime.ToDateTimeOffset();
+                var dateTime = dateTimeOffset.DateTime;
+                var localDateTime = dateTimeOffset.LocalDateTime;
 
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (d1 TIMESTAMPTZ, d2 TIMESTAMPTZ, d3 TIMESTAMPTZ, d4 TIMESTAMPTZ, d5 TIMESTAMPTZ)");
+                conn.ExecuteNonQuery("CREATE TEMP TABLE data (d1 TIMESTAMPTZ, d2 TIMESTAMPTZ, d3 TIMESTAMPTZ, d4 TIMESTAMPTZ, d5 TIMESTAMPTZ, d6 TIMESTAMPTZ)");
 
-                using (var cmd = new NpgsqlCommand("INSERT INTO data VALUES (@p1, @p2, @p3, @p4, @p5)", conn))
+                using (var cmd = new NpgsqlCommand("INSERT INTO data VALUES (@p1, @p2, @p3, @p4, @p5, @p6)", conn))
                 {
                     cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.TimestampTz) { Value = instant });
                     cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p2", Value = utcZonedDateTime });
                     cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p3", Value = localZonedDateTime });
                     cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p4", Value = offsetDateTime });
                     cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p5", Value = dateTimeOffset });
+                    cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p6", Value = dateTime });
                     cmd.ExecuteNonQuery();
                 }
 
-                using (var cmd = new NpgsqlCommand("SELECT d1::TEXT, d2::TEXT, d3::TEXT, d4::TEXT, d5::TEXT FROM data", conn))
+                using (var cmd = new NpgsqlCommand("SELECT d1::TEXT, d2::TEXT, d3::TEXT, d4::TEXT, d5::TEXT, d6::TEXT FROM data", conn))
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
@@ -178,7 +184,7 @@ namespace Npgsql.PluginTests
                         Assert.That(reader.GetFieldValue<OffsetDateTime>(i), Is.EqualTo(offsetDateTime));
                         Assert.That(reader.GetFieldValue<DateTimeOffset>(i), Is.EqualTo(dateTimeOffset));
                         Assert.That(() => reader.GetFieldValue<LocalDateTime>(i), Throws.TypeOf<InvalidCastException>());
-                        Assert.That(() => reader.GetDateTime(i), Throws.TypeOf<InvalidCastException>());
+                        Assert.That(() => reader.GetDateTime(i), Is.EqualTo(localDateTime));
                         Assert.That(() => reader.GetDate(i), Throws.TypeOf<InvalidCastException>());
                     }
                 }
@@ -186,6 +192,7 @@ namespace Npgsql.PluginTests
         }
 
         #endregion Timestamp with time zone
+
         #region Date
 
         [Test]
@@ -361,10 +368,10 @@ namespace Npgsql.PluginTests
         #region Interval
 
         [Test]
-        public void Interval()
+        public void IntervalAsPeriod()
         {
-            // Note: PG interval has microsecond precision, another under that is lost.
-            var expected = new PeriodBuilder
+            // PG has microsecond precision, so sub-microsecond values are stripped
+            var expectedPeriod = new PeriodBuilder
             {
                 Years = 1,
                 Months = 2,
@@ -376,14 +383,12 @@ namespace Npgsql.PluginTests
                 Milliseconds = 8,
                 Nanoseconds = 9000
             }.Build().Normalize();
-            var timeSpan = new TimeSpan(445, (int)expected.Hours, (int)expected.Minutes, (int)expected.Seconds, (int)expected.Milliseconds).Add(TimeSpan.FromTicks(90));
+
             using var conn = OpenConnection();
-            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4", conn))
+            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn))
             {
-                cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.Interval) { Value = expected });
-                cmd.Parameters.AddWithValue("p2", expected);
-                cmd.Parameters.Add(new NpgsqlParameter("p3", NpgsqlDbType.Interval) { Value = timeSpan });
-                cmd.Parameters.AddWithValue("p4", timeSpan);
+                cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.Interval) { Value = expectedPeriod });
+                cmd.Parameters.AddWithValue("p2", expectedPeriod);
                 using (var reader = cmd.ExecuteReader())
                 {
                     reader.Read();
@@ -391,18 +396,81 @@ namespace Npgsql.PluginTests
                     for (var i = 0; i < 2; i++)
                     {
                         Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(Period)));
-                        Assert.That(reader.GetFieldValue<Period>(i), Is.EqualTo(expected));
-                        Assert.That(reader.GetValue(i), Is.EqualTo(expected));
-                        Assert.That(() => reader.GetTimeSpan(i), Is.EqualTo(timeSpan));
-                        Assert.That(reader.GetFieldValue<TimeSpan>(i), Is.EqualTo(timeSpan));
-                    }
-                    for (var i = 2; i < 4; i++)
-                    {
-                        Assert.That(() => reader.GetTimeSpan(i), Is.EqualTo(timeSpan));
-                        Assert.That(reader.GetFieldValue<TimeSpan>(i), Is.EqualTo(timeSpan));
+                        Assert.That(reader.GetFieldValue<Period>(i), Is.EqualTo(expectedPeriod));
+                        Assert.That(reader.GetValue(i), Is.EqualTo(expectedPeriod));
                     }
                 }
             }
+        }
+
+        [Test]
+        public void IntervalAsDuration()
+        {
+            using var conn = OpenConnection();
+            using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
+
+            // PG has microsecond precision, so sub-microsecond values are stripped
+            var expected = Duration.FromDays(5) + Duration.FromMinutes(4) + Duration.FromSeconds(3) + Duration.FromMilliseconds(2) +
+                           Duration.FromNanoseconds(1500);
+
+            cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.Interval) { Value = expected });
+            cmd.Parameters.AddWithValue("p2", expected);
+            using var reader = cmd.ExecuteReader();
+            reader.Read();
+            for (var i = 0; i < 2; i++)
+            {
+                Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(Period)));
+                Assert.That(reader.GetFieldValue<Duration>(i), Is.EqualTo(expected - Duration.FromNanoseconds(500)));
+            }
+        }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3438")]
+        public void Bug3438()
+        {
+            using var conn = OpenConnection();
+            using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
+
+            var expected = Duration.FromSeconds(2148);
+
+            cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.Interval) { Value = expected });
+            cmd.Parameters.AddWithValue("p2", expected);
+            using var reader = cmd.ExecuteReader();
+            reader.Read();
+            for (var i = 0; i < 2; i++)
+            {
+                Assert.That(reader.GetFieldType(i), Is.EqualTo(typeof(Period)));
+            }
+        }
+
+        [Test]
+        public void IntervalAsTimeSpan()
+        {
+            var expected = new TimeSpan(1, 2, 3, 4, 5);
+            using var conn = OpenConnection();
+            using var cmd = new NpgsqlCommand("SELECT @p1, @p2", conn);
+
+            cmd.Parameters.Add(new NpgsqlParameter("p1", NpgsqlDbType.Interval) { Value = expected });
+            cmd.Parameters.AddWithValue("p2", expected);
+            using var reader = cmd.ExecuteReader();
+            reader.Read();
+
+            for (var i = 0; i < 2; i++)
+            {
+                Assert.That(() => reader.GetTimeSpan(i), Is.EqualTo(expected));
+                Assert.That(reader.GetFieldValue<TimeSpan>(i), Is.EqualTo(expected));
+            }
+        }
+
+        [Test]
+        public void IntervalAsDurationWithMonthsFails()
+        {
+            using var conn = OpenConnection();
+            using var cmd = new NpgsqlCommand("SELECT make_interval(months => 2)", conn);
+            using var reader = cmd.ExecuteReader();
+            reader.Read();
+
+            Assert.That(() => reader.GetFieldValue<Duration>(0), Throws.Exception.TypeOf<NpgsqlException>().With.Message.EqualTo(
+                "Cannot read PostgreSQL interval with non-zero months to NodaTime Duration. Try reading as a NodaTime Period instead."));
         }
 
         #endregion Interval

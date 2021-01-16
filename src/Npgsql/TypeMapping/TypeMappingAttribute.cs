@@ -2,13 +2,11 @@
 using System.Data;
 using System.Linq;
 using System.Text;
-using JetBrains.Annotations;
 using NpgsqlTypes;
 
 namespace Npgsql.TypeMapping
 {
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
-    [MeansImplicitUse]
     class TypeMappingAttribute : Attribute
     {
         /// <summary>

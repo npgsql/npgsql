@@ -15,7 +15,7 @@ namespace Npgsql.PostgresTypes
         /// </summary>
         public IReadOnlyList<string> Labels => MutableLabels;
 
-        internal List<string> MutableLabels { get; } = new List<string>();
+        internal List<string> MutableLabels { get; } = new();
 
         /// <summary>
         /// Constructs a representation of a PostgreSQL enum data type.

@@ -19,7 +19,11 @@ namespace Npgsql.NodaTime
                 : throw new NotSupportedException($"The deprecated floating-point date/time format is not supported by {nameof(Npgsql)}.");
     }
 
-    sealed class IntervalHandler : NpgsqlSimpleTypeHandler<Period>, INpgsqlSimpleTypeHandler<NpgsqlTimeSpan>, INpgsqlSimpleTypeHandler<TimeSpan>
+    sealed class IntervalHandler :
+        NpgsqlSimpleTypeHandler<Period>,
+        INpgsqlSimpleTypeHandler<Duration>,
+        INpgsqlSimpleTypeHandler<NpgsqlTimeSpan>,
+        INpgsqlSimpleTypeHandler<TimeSpan>
     {
         readonly BclIntervalHandler _bclHandler;
 
@@ -32,7 +36,7 @@ namespace Npgsql.NodaTime
             var days = buf.ReadInt32();
             var totalMonths = buf.ReadInt32();
 
-            // Nodatime will normalize most things (i.e. nanoseconds to milliseconds, seconds...)
+            // NodaTime will normalize most things (i.e. nanoseconds to milliseconds, seconds...)
             // but it will not normalize months to years.
             var months = totalMonths % 12;
             var years = totalMonths / 12;
@@ -51,6 +55,8 @@ namespace Npgsql.NodaTime
 
         public override void Write(Period value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
         {
+            // Note that the end result must be long
+            // see #3438
             var microsecondsInDay =
                 (((value.Hours * NodaConstants.MinutesPerHour + value.Minutes) * NodaConstants.SecondsPerMinute + value.Seconds) * NodaConstants.MillisecondsPerSecond + value.Milliseconds) * 1000 +
                 value.Nanoseconds / 1000; // Take the microseconds, discard the nanosecond remainder
@@ -58,6 +64,35 @@ namespace Npgsql.NodaTime
             buf.WriteInt64(microsecondsInDay);
             buf.WriteInt32(value.Weeks * 7 + value.Days); // days
             buf.WriteInt32(value.Years * 12 + value.Months); // months
+        }
+
+        Duration INpgsqlSimpleTypeHandler<Duration>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
+        {
+            var microsecondsInDay = buf.ReadInt64();
+            var days = buf.ReadInt32();
+            var totalMonths = buf.ReadInt32();
+
+            if (totalMonths != 0)
+                throw new NpgsqlException("Cannot read PostgreSQL interval with non-zero months to NodaTime Duration. Try reading as a NodaTime Period instead.");
+
+            return Duration.FromDays(days) + Duration.FromNanoseconds(microsecondsInDay * 1000);
+        }
+
+        public int ValidateAndGetLength(Duration value, NpgsqlParameter? parameter) => 16;
+
+        public void Write(Duration value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
+        {
+            const long microsecondsPerSecond = 1_000_000;
+
+            // Note that the end result must be long
+            // see #3438
+            var microsecondsInDay =
+                (((value.Hours * NodaConstants.MinutesPerHour + value.Minutes) * NodaConstants.SecondsPerMinute + value.Seconds) *
+                    microsecondsPerSecond + value.SubsecondNanoseconds / 1000); // Take the microseconds, discard the nanosecond remainder
+
+            buf.WriteInt64(microsecondsInDay);
+            buf.WriteInt32(value.Days); // days
+            buf.WriteInt32(0); // months
         }
 
         NpgsqlTimeSpan INpgsqlSimpleTypeHandler<NpgsqlTimeSpan>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)

@@ -13,7 +13,7 @@ namespace Npgsql
 {
     /// <summary>
     /// Provides an API for a raw binary COPY operation, a high-performance data import/export mechanism to
-    /// a PostgreSQL table. Initiated by <see cref="NpgsqlConnection.BeginRawBinaryCopy"/>
+    /// a PostgreSQL table. Initiated by <see cref="NpgsqlConnection.BeginRawBinaryCopy(string)"/>
     /// </summary>
     /// <remarks>
     /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
@@ -29,13 +29,30 @@ namespace Npgsql
         int _leftToReadInDataMsg;
         bool _isDisposed, _isConsumed;
 
-        readonly bool _canRead;
-        readonly bool _canWrite;
+        bool _canRead;
+        bool _canWrite;
 
         internal bool IsBinary { get; private set; }
 
         public override bool CanWrite => _canWrite;
         public override bool CanRead => _canRead;
+
+        public override bool CanTimeout => true;
+        public override int WriteTimeout
+        {
+            get => (int) _writeBuf.Timeout.TotalMilliseconds;
+            set => _writeBuf.Timeout = TimeSpan.FromMilliseconds(value);
+        }
+        public override int ReadTimeout
+        {
+            get => (int) _readBuf.Timeout.TotalMilliseconds;
+            set
+            {
+                _readBuf.Timeout = TimeSpan.FromMilliseconds(value);
+                // While calling the connector it will overwrite our read buffer timeout
+                _connector.UserTimeout = value;
+            }
+        }
 
         /// <summary>
         /// The copy binary format header signature
@@ -50,18 +67,23 @@ namespace Npgsql
 
         #endregion
 
-        #region Constructor
+        #region Constructor / Initializer
 
-        internal NpgsqlRawCopyStream(NpgsqlConnector connector, string copyCommand)
+        internal NpgsqlRawCopyStream(NpgsqlConnector connector)
         {
             _connector = connector;
             _readBuf = connector.ReadBuffer;
             _writeBuf = connector.WriteBuffer;
+        }
 
-            _connector.WriteQuery(copyCommand);
-            _connector.Flush();
+        internal async Task Init(string copyCommand, bool async, CancellationToken cancellationToken = default)
+        {
+            await _connector.WriteQuery(copyCommand, async, cancellationToken);
+            await _connector.Flush(async, cancellationToken);
 
-            var msg = _connector.ReadMessage();
+            using var registration = _connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
+
+            var msg = await _connector.ReadMessage(async);
             switch (msg.Code)
             {
             case BackendMessageCode.CopyInResponse:
@@ -101,10 +123,10 @@ namespace Npgsql
             return WriteAsync(new Memory<byte>(buffer, offset, count), cancellationToken).AsTask();
         }
 
-#if !NET461 && !NETSTANDARD2_0
-        public override void Write(ReadOnlySpan<byte> buffer)
-#else
+#if NETSTANDARD2_0
         public void Write(ReadOnlySpan<byte> buffer)
+#else
+        public override void Write(ReadOnlySpan<byte> buffer)
 #endif
         {
             CheckDisposed();
@@ -141,10 +163,10 @@ namespace Npgsql
             }
         }
 
-#if !NET461 && !NETSTANDARD2_0
-        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
-#else
+#if NETSTANDARD2_0
         public ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
+#else
+        public override ValueTask WriteAsync(ReadOnlyMemory<byte> buffer, CancellationToken cancellationToken = default)
 #endif
         {
             CheckDisposed();
@@ -220,10 +242,10 @@ namespace Npgsql
             return ReadAsync(new Memory<byte>(buffer, offset, count), cancellationToken).AsTask();
         }
 
-#if !NET461 && !NETSTANDARD2_0
-        public override int Read(Span<byte> span)
-#else
+#if NETSTANDARD2_0
         public int Read(Span<byte> span)
+#else
+        public override int Read(Span<byte> span)
 #endif
         {
             CheckDisposed();
@@ -236,10 +258,10 @@ namespace Npgsql
             return count;
         }
 
-#if !NET461 && !NETSTANDARD2_0
-        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
-#else
+#if NETSTANDARD2_0
         public ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
+#else
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken)
 #endif
         {
             CheckDisposed();
@@ -263,6 +285,8 @@ namespace Npgsql
             if (_isConsumed)
                 return 0;
 
+            using var registration = _connector.StartNestedCancellableOperation(cancellationToken, attemptPgCancellation: false);
+
             if (_leftToReadInDataMsg == 0)
             {
                 IBackendMessage msg;
@@ -270,7 +294,7 @@ namespace Npgsql
                 {
                     // We've consumed the current DataMessage (or haven't yet received the first),
                     // read the next message
-                    msg = await _connector.ReadMessage(async, cancellationToken);
+                    msg = await _connector.ReadMessage(async);
                 }
                 catch
                 {
@@ -284,8 +308,8 @@ namespace Npgsql
                     _leftToReadInDataMsg = ((CopyDataMessage)msg).Length;
                     break;
                 case BackendMessageCode.CopyDone:
-                    Expect<CommandCompleteMessage>(await _connector.ReadMessage(async, cancellationToken), _connector);
-                    Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async, cancellationToken), _connector);
+                    Expect<CommandCompleteMessage>(await _connector.ReadMessage(async), _connector);
+                    Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async), _connector);
                     _isConsumed = true;
                     return 0;
                 default:
@@ -298,7 +322,7 @@ namespace Npgsql
             // If our buffer is empty, read in more. Otherwise return whatever is there, even if the
             // user asked for more (normal socket behavior)
             if (_readBuf.ReadBytesLeft == 0)
-                await _readBuf.ReadMore(async, cancellationToken);
+                await _readBuf.ReadMore(async);
 
             Debug.Assert(_readBuf.ReadBytesLeft > 0);
 
@@ -340,16 +364,15 @@ namespace Npgsql
                 await _connector.Flush(async);
                 try
                 {
-                    var msg = await _connector.ReadMessage(async, cancellationToken: default);
+                    var msg = await _connector.ReadMessage(async);
                     // The CopyFail should immediately trigger an exception from the read above.
                     throw _connector.Break(
                         new NpgsqlException("Expected ErrorResponse when cancelling COPY but got: " + msg.Code));
                 }
                 catch (PostgresException e)
                 {
-                    var connector = _connector;
+                    _connector.EndUserAction();
                     Cleanup();
-                    connector.EndUserAction();
 
                     if (e.SqlState == PostgresErrorCodes.QueryCanceled)
                         return;
@@ -358,7 +381,7 @@ namespace Npgsql
             }
             else
             {
-                _connector.CancelRequest();
+                _connector.PerformPostgresCancellation();
             }
         }
 
@@ -380,26 +403,36 @@ namespace Npgsql
                     _writeBuf.EndCopyMode();
                     await _connector.WriteCopyDone(async);
                     await _connector.Flush(async);
-                    Expect<CommandCompleteMessage>(await _connector.ReadMessage(async, cancellationToken: default), _connector);
-                    Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async, cancellationToken : default), _connector);
+                    Expect<CommandCompleteMessage>(await _connector.ReadMessage(async), _connector);
+                    Expect<ReadyForQueryMessage>(await _connector.ReadMessage(async), _connector);
                 }
                 else
                 {
                     if (!_isConsumed)
                     {
-                        if (_leftToReadInDataMsg > 0)
+                        try
                         {
-                            await _readBuf.Skip(_leftToReadInDataMsg, async);
+                            if (_leftToReadInDataMsg > 0)
+                            {
+                                await _readBuf.Skip(_leftToReadInDataMsg, async);
+                            }
+                            _connector.SkipUntil(BackendMessageCode.ReadyForQuery);
                         }
-                        _connector.SkipUntil(BackendMessageCode.ReadyForQuery);
+                        catch (OperationCanceledException e) when (e.InnerException is PostgresException pg && pg.SqlState == PostgresErrorCodes.QueryCanceled)
+                        {
+                            Log.Debug($"Caught an exception while disposing the {nameof(NpgsqlRawCopyStream)}, indicating that it was cancelled.", e, _connector.Id);
+                        }
+                        catch (Exception e)
+                        {
+                            Log.Error($"Caught an exception while disposing the {nameof(NpgsqlRawCopyStream)}.", e, _connector.Id);
+                        }
                     }
                 }
             }
             finally
             {
-                var connector = _connector;
+                _connector.EndUserAction();
                 Cleanup();
-                connector.EndUserAction();
             }
         }
 
@@ -465,7 +498,7 @@ namespace Npgsql
     }
 
     /// <summary>
-    /// Writer for a text import, initiated by <see cref="NpgsqlConnection.BeginTextImport"/>.
+    /// Writer for a text import, initiated by <see cref="NpgsqlConnection.BeginTextImport(string)"/>.
     /// </summary>
     /// <remarks>
     /// See https://www.postgresql.org/docs/current/static/sql-copy.html.
@@ -495,7 +528,7 @@ namespace Npgsql
     }
 
     /// <summary>
-    /// Reader for a text export, initiated by <see cref="NpgsqlConnection.BeginTextExport"/>.
+    /// Reader for a text export, initiated by <see cref="NpgsqlConnection.BeginTextExport(string)"/>.
     /// </summary>
     /// <remarks>
     /// See https://www.postgresql.org/docs/current/static/sql-copy.html.

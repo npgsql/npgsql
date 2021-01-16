@@ -1,6 +1,4 @@
-﻿using JetBrains.Annotations;
-
-namespace Npgsql.PostgresTypes
+﻿namespace Npgsql.PostgresTypes
 {
     /// <summary>
     /// Represents a PostgreSQL data type, such as int4 or text, as discovered from pg_type.
@@ -47,13 +45,11 @@ namespace Npgsql.PostgresTypes
         /// <summary>
         /// The data type's OID - a unique id identifying the data type in a given database (in pg_type).
         /// </summary>
-        [PublicAPI]
         public uint OID { get; }
 
         /// <summary>
         /// The data type's namespace (or schema).
         /// </summary>
-        [PublicAPI]
         public string Namespace { get; }
 
         /// <summary>
@@ -63,41 +59,35 @@ namespace Npgsql.PostgresTypes
         /// Note that this is the standard, user-displayable type name (e.g. integer[]) rather than the internal
         /// PostgreSQL name as it is in pg_type (_int4). See <see cref="InternalName"/> for the latter.
         /// </remarks>
-        [PublicAPI]
         public string Name { get; }
 
         /// <summary>
         /// The full name of the backend type, including its namespace.
         /// </summary>
-        [PublicAPI]
         public string FullName { get; }
 
         /// <summary>
         /// A display name for this backend type, including the namespace unless it is pg_catalog (the namespace
         /// for all built-in types).
         /// </summary>
-        [PublicAPI]
         public string DisplayName => Namespace == "pg_catalog" ? Name : FullName;
 
         /// <summary>
         /// The data type's internal PostgreSQL name (e.g. integer[] not _int4).
         /// See <see cref="Name"/> for a more user-friendly name.
         /// </summary>
-        [PublicAPI]
         public string InternalName { get; }
 
         /// <summary>
         /// If a PostgreSQL array type exists for this type, it will be referenced here.
         /// Otherwise null.
         /// </summary>
-        [PublicAPI]
         public PostgresArrayType? Array { get; internal set; }
 
         /// <summary>
         /// If a PostgreSQL range type exists for this type, it will be referenced here.
         /// Otherwise null.
         /// </summary>
-        [PublicAPI]
         public PostgresRangeType? Range { get; internal set; }
 
         #endregion

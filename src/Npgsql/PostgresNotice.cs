@@ -1,5 +1,4 @@
 ﻿using System;
-using JetBrains.Annotations;
 using Npgsql.BackendMessages;
 
 namespace Npgsql
@@ -20,14 +19,12 @@ namespace Npgsql
         /// Severity of the error or notice.
         /// Always present.
         /// </summary>
-        [PublicAPI]
         public string Severity { get; set; }
 
         /// <summary>
         /// Severity of the error or notice, not localized.
         /// Always present since PostgreSQL 9.6.
         /// </summary>
-        [PublicAPI]
         public string InvariantSeverity { get; }
 
         /// <summary>
@@ -37,7 +34,6 @@ namespace Npgsql
         /// Always present.
         /// See https://www.postgresql.org/docs/current/static/errcodes-appendix.html
         /// </remarks>
-        [PublicAPI]
         public string SqlState { get; set; }
 
         /// <summary>
@@ -47,7 +43,7 @@ namespace Npgsql
         /// Always present.
         /// See https://www.postgresql.org/docs/current/static/errcodes-appendix.html
         /// </remarks>
-        [PublicAPI, Obsolete("Use SqlState instead")]
+        [Obsolete("Use SqlState instead")]
         public string Code => SqlState;
 
         /// <summary>
@@ -56,14 +52,12 @@ namespace Npgsql
         /// <remarks>
         /// Always present.
         /// </remarks>
-        [PublicAPI]
         public string MessageText { get; set; }
 
         /// <summary>
         /// An optional secondary error message carrying more detail about the problem.
         /// May run to multiple lines.
         /// </summary>
-        [PublicAPI]
         public string? Detail { get; set; }
 
         /// <summary>
@@ -71,7 +65,6 @@ namespace Npgsql
         /// This is intended to differ from Detail in that it offers advice (potentially inappropriate) rather than hard facts.
         /// May run to multiple lines.
         /// </summary>
-        [PublicAPI]
         public string? Hint { get; set; }
 
         /// <summary>
@@ -79,7 +72,6 @@ namespace Npgsql
         /// The first character has index 1, and positions are measured in characters not bytes.
         /// 0 means not provided.
         /// </summary>
-        [PublicAPI]
         public int Position { get; set; }
 
         /// <summary>
@@ -87,14 +79,12 @@ namespace Npgsql
         /// The <see cref="InternalQuery" /> field will always appear when this field appears.
         /// 0 means not provided.
         /// </summary>
-        [PublicAPI]
         public int InternalPosition { get; set; }
 
         /// <summary>
         /// The text of a failed internally-generated command.
         /// This could be, for example, a SQL query issued by a PL/pgSQL function.
         /// </summary>
-        [PublicAPI]
         public string? InternalQuery { get; set; }
 
         /// <summary>
@@ -102,14 +92,12 @@ namespace Npgsql
         /// Presently this includes a call stack traceback of active PL functions.
         /// The trace is one entry per line, most recent first.
         /// </summary>
-        [PublicAPI]
         public string? Where { get; set; }
 
         /// <summary>
         /// If the error was associated with a specific database object, the name of the schema containing that object, if any.
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
-        [PublicAPI]
         public string? SchemaName { get; set; }
 
         /// <summary>
@@ -117,7 +105,6 @@ namespace Npgsql
         /// (Refer to the schema name field for the name of the table's schema.)
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
-        [PublicAPI]
         public string? TableName { get; set; }
 
         /// <summary>
@@ -125,7 +112,6 @@ namespace Npgsql
         /// (Refer to the schema and table name fields to identify the table.)
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
-        [PublicAPI]
         public string? ColumnName { get; set; }
 
         /// <summary>
@@ -133,7 +119,6 @@ namespace Npgsql
         /// (Refer to the schema name field for the name of the data type's schema.)
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
-        [PublicAPI]
         public string? DataTypeName { get; set; }
 
         /// <summary>
@@ -142,26 +127,22 @@ namespace Npgsql
         /// (For this purpose, indexes are treated as constraints, even if they weren't created with constraint syntax.)
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
-        [PublicAPI]
         public string? ConstraintName { get; set; }
 
         /// <summary>
         /// The file name of the source-code location where the error was reported.
         /// </summary>
         /// <remarks>PostgreSQL 9.3 and up.</remarks>
-        [PublicAPI]
         public string? File { get; set; }
 
         /// <summary>
         /// The line number of the source-code location where the error was reported.
         /// </summary>
-        [PublicAPI]
         public string? Line { get; set; }
 
         /// <summary>
         /// The name of the source-code routine reporting the error.
         /// </summary>
-        [PublicAPI]
         public string? Routine { get; set; }
 
         #endregion
@@ -211,7 +192,7 @@ namespace Npgsql
                 msg.ConstraintName, msg.File, msg.Line, msg.Routine) {}
 
         internal static PostgresNotice Load(NpgsqlReadBuffer buf, bool includeDetail)
-            => new PostgresNotice(ErrorOrNoticeMessage.Load(buf, includeDetail));
+            => new(ErrorOrNoticeMessage.Load(buf, includeDetail));
     }
 
     /// <summary>

@@ -9,7 +9,7 @@ namespace Npgsql.Logging
 
     class NoOpLogger : NpgsqlLogger
     {
-        internal static NoOpLogger Instance = new NoOpLogger();
+        internal static NoOpLogger Instance = new();
 
         NoOpLogger() {}
         public override bool IsEnabled(NpgsqlLogLevel level) => false;

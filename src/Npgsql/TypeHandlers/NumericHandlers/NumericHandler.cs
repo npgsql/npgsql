@@ -54,12 +54,18 @@ namespace Npgsql.TypeHandlers.NumericHandlers
                 DecimalRaw.Negate(ref result);
 
             var scale = buf.ReadInt16();
+            if (scale < 0 is var exponential && exponential)
+                scale = (short)(-scale);
+            else
+                result.Scale = scale;
+
             if (scale > MaxDecimalScale)
                 throw new OverflowException("Numeric value does not fit in a System.Decimal");
 
-            result.Scale = scale;
+            var scaleDifference = exponential
+                ? weight * MaxGroupScale
+                : weight * MaxGroupScale + scale;
 
-            var scaleDifference = scale + weight * MaxGroupScale;
             if (groups == MaxGroupCount)
             {
                 while (groups-- > 1)
@@ -94,6 +100,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
                         scaleDifference -= scaleChunk;
                     }
             }
+
             return result.Value;
         }
 

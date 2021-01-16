@@ -1,6 +1,4 @@
-﻿using JetBrains.Annotations;
-
-namespace Npgsql.PostgresTypes
+﻿namespace Npgsql.PostgresTypes
 {
     /// <summary>
     /// Represents a PostgreSQL range data type.
@@ -13,7 +11,6 @@ namespace Npgsql.PostgresTypes
         /// <summary>
         /// The PostgreSQL data type of the subtype of this range.
         /// </summary>
-        [PublicAPI]
         public PostgresType Subtype { get; }
 
         /// <summary>

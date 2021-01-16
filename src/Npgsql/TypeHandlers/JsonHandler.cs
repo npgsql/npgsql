@@ -87,7 +87,7 @@ namespace Npgsql.TypeHandlers
         /// </summary>
         const byte JsonbProtocolVersion = 1;
 
-        static readonly JsonSerializerOptions DefaultSerializerOptions = new JsonSerializerOptions();
+        static readonly JsonSerializerOptions DefaultSerializerOptions = new();
 
         /// <inheritdoc />
         protected internal JsonHandler(PostgresType postgresType, NpgsqlConnection connection, bool isJsonb, JsonSerializerOptions? serializerOptions = null)
@@ -224,11 +224,11 @@ namespace Npgsql.TypeHandlers
         }
 
         /// <inheritdoc />
-        protected internal override async ValueTask<T> Read<T>(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
+        protected internal override async ValueTask<T> Read<T>(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription? fieldDescription = null)
         {
             if (_isJsonb)
             {
-                await buf.Ensure(1, async, cancellationToken);
+                await buf.Ensure(1, async);
                 var version = buf.ReadByte();
                 if (version != JsonbProtocolVersion)
                     throw new NotSupportedException($"Don't know how to decode JSONB with wire format {version}, your connection is now broken");
@@ -241,20 +241,20 @@ namespace Npgsql.TypeHandlers
                 typeof(T) == typeof(char)               ||
                 typeof(T) == typeof(byte[]))
             {
-                return await _textHandler.Read<T>(buf, byteLen, async, fieldDescription, cancellationToken);
+                return await _textHandler.Read<T>(buf, byteLen, async, fieldDescription);
             }
 
             // See #2818 for possibly returning a JsonDocument directly over our internal buffer, rather
             // than deserializing to string.
-            var s = await _textHandler.Read(buf, byteLen, async, fieldDescription, cancellationToken);
+            var s = await _textHandler.Read(buf, byteLen, async, fieldDescription);
             return typeof(T) == typeof(JsonDocument)
                 ? (T)(object)JsonDocument.Parse(s)
                 : JsonSerializer.Deserialize<T>(s, _serializerOptions)!;
         }
 
         /// <inheritdoc />
-        public override ValueTask<string> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
-            => Read<string>(buf, len, async, fieldDescription, cancellationToken);
+        public override ValueTask<string> Read(NpgsqlReadBuffer buf, int len, bool async, FieldDescription? fieldDescription = null)
+            => Read<string>(buf, len, async, fieldDescription);
 
         /// <inheritdoc />
         public TextReader GetTextReader(Stream stream)

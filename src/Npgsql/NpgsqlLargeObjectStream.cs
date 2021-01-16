@@ -53,17 +53,17 @@ namespace Npgsql
         /// <param name="buffer">The buffer where read data should be stored.</param>
         /// <param name="offset">The offset in the buffer where the first byte should be read.</param>
         /// <param name="count">The maximum number of bytes that should be read.</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         /// <returns>How many bytes actually read, or 0 if end of file was already reached.</returns>
         public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled<int>(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
-                return Read(buffer, offset, count, true);
+                return Read(buffer, offset, count, true, cancellationToken);
         }
 
-        async Task<int> Read(byte[] buffer, int offset, int count, bool async)
+        async Task<int> Read(byte[] buffer, int offset, int count, bool async, CancellationToken cancellationToken = default)
         {
             if (buffer == null)
                 throw new ArgumentNullException(nameof(buffer));
@@ -81,7 +81,8 @@ namespace Npgsql
 
             while (read < count)
             {
-                var bytesRead = await _manager.ExecuteFunctionGetBytes("loread", buffer, offset + read, count - read, async, _fd, chunkCount);
+                var bytesRead = await _manager.ExecuteFunctionGetBytes(
+                    "loread", buffer, offset + read, count - read, async, cancellationToken, _fd, chunkCount);
                 _pos += bytesRead;
                 read += bytesRead;
                 if (bytesRead < chunkCount)
@@ -107,16 +108,16 @@ namespace Npgsql
         /// <param name="buffer">The buffer to write data from.</param>
         /// <param name="offset">The offset in the buffer at which to begin copying bytes.</param>
         /// <param name="count">The number of bytes to write.</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         public override Task WriteAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
-                return Write(buffer, offset, count, true);
+                return Write(buffer, offset, count, true, cancellationToken);
         }
 
-        async Task Write(byte[] buffer, int offset, int count, bool async)
+        async Task Write(byte[] buffer, int offset, int count, bool async, CancellationToken cancellationToken = default)
         {
             if (buffer == null)
                 throw new ArgumentNullException(nameof(buffer));
@@ -137,7 +138,7 @@ namespace Npgsql
             while (totalWritten < count)
             {
                 var chunkSize = Math.Min(count - totalWritten, _manager.MaxTransferBlockSize);
-                var bytesWritten = await _manager.ExecuteFunction<int>("lowrite", async, _fd, new ArraySegment<byte>(buffer, offset + totalWritten, chunkSize));
+                var bytesWritten = await _manager.ExecuteFunction<int>("lowrite", async, cancellationToken, _fd, new ArraySegment<byte>(buffer, offset + totalWritten, chunkSize));
                 totalWritten += bytesWritten;
 
                 if (bytesWritten != chunkSize)
@@ -188,7 +189,9 @@ namespace Npgsql
         /// <summary>
         /// Gets the length of the large object. This internally seeks to the end of the stream to retrieve the length, and then back again.
         /// </summary>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         public Task<long> GetLengthAsync(CancellationToken cancellationToken = default)
         {
             using (NoSynchronizationContextScope.Enter())
@@ -219,16 +222,16 @@ namespace Npgsql
         /// </summary>
         /// <param name="offset">A byte offset relative to the <i>origin</i> parameter.</param>
         /// <param name="origin">A value of type SeekOrigin indicating the reference point used to obtain the new position.</param>
-        /// <param name="cancellationToken">The token to monitor for cancellation requests. The default value is <see cref="CancellationToken.None"/>.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         public Task<long> SeekAsync(long offset, SeekOrigin origin, CancellationToken cancellationToken = default)
         {
-            if (cancellationToken.IsCancellationRequested)
-                return Task.FromCanceled<long>(cancellationToken);
             using (NoSynchronizationContextScope.Enter())
-                return Seek(offset, origin, true);
+                return Seek(offset, origin, true, cancellationToken);
         }
 
-        async Task<long> Seek(long offset, SeekOrigin origin, bool async)
+        async Task<long> Seek(long offset, SeekOrigin origin, bool async, CancellationToken cancellationToken = default)
         {
             if (origin < SeekOrigin.Begin || origin > SeekOrigin.End)
                 throw new ArgumentException("Invalid origin");
@@ -238,8 +241,8 @@ namespace Npgsql
             CheckDisposed();
 
             return _manager.Has64BitSupport
-                ? _pos = await _manager.ExecuteFunction<long>("lo_lseek64", async, _fd, offset, (int)origin)
-                : _pos = await _manager.ExecuteFunction<int>("lo_lseek", async, _fd, (int)offset, (int)origin);
+                ? _pos = await _manager.ExecuteFunction<long>("lo_lseek64", async, cancellationToken, _fd, offset, (int)origin)
+                : _pos = await _manager.ExecuteFunction<int>("lo_lseek", async, cancellationToken, _fd, (int)offset, (int)origin);
         }
 
         /// <summary>
@@ -260,15 +263,17 @@ namespace Npgsql
         /// For PostgreSQL versions earlier than 9.3, the value must fit in an Int32.
         /// </summary>
         /// <param name="value">Number of bytes to either truncate or enlarge the large object.</param>
-        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <param name="cancellationToken">
+        /// An optional token to cancel the asynchronous operation. The default value is <see cref="CancellationToken.None"/>.
+        /// </param>
         public Task SetLength(long value, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
             using (NoSynchronizationContextScope.Enter())
-                return SetLength(value, true);
+                return SetLength(value, true, cancellationToken);
         }
 
-        async Task SetLength(long value, bool async)
+        async Task SetLength(long value, bool async, CancellationToken cancellationToken = default)
         {
             if (value < 0)
                 throw new ArgumentOutOfRangeException(nameof(value));
@@ -281,9 +286,9 @@ namespace Npgsql
                 throw new NotSupportedException("SetLength cannot be called on a stream opened with no write permissions");
 
             if (_manager.Has64BitSupport)
-                await _manager.ExecuteFunction<int>("lo_truncate64", async, _fd, value);
+                await _manager.ExecuteFunction<int>("lo_truncate64", async, cancellationToken, _fd, value);
             else
-                await _manager.ExecuteFunction<int>("lo_truncate", async, _fd, (int)value);
+                await _manager.ExecuteFunction<int>("lo_truncate", async, cancellationToken, _fd, (int)value);
         }
 
         /// <summary>
@@ -293,7 +298,7 @@ namespace Npgsql
         {
             if (!_disposed)
             {
-                _manager.ExecuteFunction<int>("lo_close", false, _fd).GetAwaiter().GetResult();
+                _manager.ExecuteFunction<int>("lo_close", false, CancellationToken.None, _fd).GetAwaiter().GetResult();
                 _disposed = true;
             }
         }

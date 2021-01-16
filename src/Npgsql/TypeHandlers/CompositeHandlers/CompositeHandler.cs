@@ -32,17 +32,17 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
             _nameTranslator = nameTranslator;
         }
 
-        public override ValueTask<T> Read(NpgsqlReadBuffer buffer, int length, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
+        public override ValueTask<T> Read(NpgsqlReadBuffer buffer, int length, bool async, FieldDescription? fieldDescription = null)
         {
             Initialize();
 
             return _constructorHandler is null
                 ? ReadUsingMemberHandlers()
-                : _constructorHandler.Read(buffer, async, cancellationToken);
+                : _constructorHandler.Read(buffer, async);
 
             async ValueTask<T> ReadUsingMemberHandlers()
             {
-                await buffer.Ensure(sizeof(int), async, cancellationToken);
+                await buffer.Ensure(sizeof(int), async);
 
                 var fieldCount = buffer.ReadInt32();
                 if (fieldCount != _memberHandlers.Length)
@@ -52,7 +52,7 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
                 {
                     var composite = new ByReference<T> { Value = _constructor() };
                     foreach (var member in _memberHandlers)
-                        await member.Read(composite, buffer, async, cancellationToken);
+                        await member.Read(composite, buffer, async);
 
                     return composite.Value;
                 }
@@ -60,7 +60,7 @@ namespace Npgsql.TypeHandlers.CompositeHandlers
                 {
                     var composite = _constructor();
                     foreach (var member in _memberHandlers)
-                        await member.Read(composite, buffer, async, cancellationToken);
+                        await member.Read(composite, buffer, async);
 
                     return composite;
                 }

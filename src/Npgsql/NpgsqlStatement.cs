@@ -8,7 +8,7 @@ namespace Npgsql
     ///
     /// Instances aren't constructed directly; users should construct an <see cref="NpgsqlCommand"/>
     /// object and populate its <see cref="NpgsqlCommand.CommandText"/> property as in standard ADO.NET.
-    /// Npgsql will analyze that property and constructed instances of <see cref="NpgsqlStatement"/>
+    /// Npgsql will analyze that property and construct instances of <see cref="NpgsqlStatement"/>
     /// internally.
     ///
     /// Users can retrieve instances from <see cref="NpgsqlDataReader.Statements"/>
@@ -53,7 +53,7 @@ namespace Npgsql
         /// <summary>
         /// The input parameters sent with this statement.
         /// </summary>
-        public List<NpgsqlParameter> InputParameters { get; } = new List<NpgsqlParameter>();
+        public List<NpgsqlParameter> InputParameters { get; } = new();
 
         /// <summary>
         /// The RowDescription message for this query. If null, the query does not return rows (e.g. INSERT)

@@ -9,6 +9,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using Npgsql.Replication;
 
 namespace Npgsql
 {
@@ -89,7 +90,7 @@ namespace Npgsql
         static NpgsqlConnectionStringBuilder()
         {
             var properties = typeof(NpgsqlConnectionStringBuilder)
-                .GetProperties()
+                .GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
                 .Where(p => p.GetCustomAttribute<NpgsqlConnectionStringPropertyAttribute>() != null)
                 .ToArray();
 
@@ -938,14 +939,14 @@ namespace Npgsql
         int _internalCommandTimeout;
 
         /// <summary>
-        /// The time to wait (in seconds) while trying to read a response for a cancellation request for a timed out or cancelled query, before terminating the attempt and generating an error.
-        /// Defaults to 2 seconds.
+        /// The time to wait (in milliseconds) while trying to read a response for a cancellation request for a timed out or cancelled query, before terminating the attempt and generating an error.
+        /// Defaults to 2000 milliseconds.
         /// </summary>
         [Category("Timeouts")]
-        [Description("After Command Timeout is reached (or user supplied cancellation token is cancelled) and command cancellation is attempted, Npgsql waits for this additional timeout (in seconds) before breaking the connection. Defaults to 2, set to zero for infinity.")]
+        [Description("After Command Timeout is reached (or user supplied cancellation token is cancelled) and command cancellation is attempted, Npgsql waits for this additional timeout (in milliseconds) before breaking the connection. Defaults to 2000, set to zero for infinity.")]
         [DisplayName("Cancellation Timeout")]
         [NpgsqlConnectionStringProperty]
-        [DefaultValue(2)]
+        [DefaultValue(2000)]
         public int CancellationTimeout
         {
             get => _cancellationTimeout;
@@ -1253,6 +1254,29 @@ namespace Npgsql
         bool _loadTableComposites;
 
         /// <summary>
+        /// Set the replication mode of the connection
+        /// </summary>
+        /// <remarks>
+        /// This property and its corresponding enum are intentionally kept internal as they
+        /// should not be set by users or even be visible in their connection strings.
+        /// Replication connections are a special kind of connection that is encapsulated in
+        /// <see cref="PhysicalReplicationConnection"/>
+        /// and <see cref="LogicalReplicationConnection"/>.
+        /// </remarks>
+        [NpgsqlConnectionStringProperty]
+        [DisplayName("Replication Mode")]
+        internal ReplicationMode ReplicationMode
+        {
+            get => _replicationMode;
+            set
+            {
+                _replicationMode = value;
+                SetValue(nameof(ReplicationMode), value);
+            }
+        }
+        ReplicationMode _replicationMode;
+
+        /// <summary>
         /// Set PostgreSQL configuration parameter default values for the connection.
         /// </summary>
         [Category("Advanced")]
@@ -1266,69 +1290,29 @@ namespace Npgsql
             {
                 _options = value;
                 SetValue(nameof(Options), value);
-                ParseOptions(value);
             }
         }
 
         string? _options;
 
-        internal Dictionary<string,string> ParsedOptions { get; } = new Dictionary<string, string>();
-
-        void ParseOptions(string? str)
+        /// <summary>
+        /// Configure the way arrays of value types are returned when requested as object instances.
+        /// </summary>
+        [Category("Advanced")]
+        [Description("Configure the way arrays of value types are returned when requested as object instances.")]
+        [DisplayName("ArrayNullabilityMode")]
+        [NpgsqlConnectionStringProperty]
+        public ArrayNullabilityMode ArrayNullabilityMode
         {
-            if (str is null)
+            get => _arrayNullabilityMode;
+            set
             {
-                ParsedOptions.Clear();
-                return;
-            }
-
-            var pos = 0;
-            while (pos < str.Length)
-            {
-                var key = ParseKey(str, ref pos);
-                var value = ParseValue(str, ref pos);
-                ParsedOptions[key] = value;
+                _arrayNullabilityMode = value;
+                SetValue(nameof(ArrayNullabilityMode), value);
             }
         }
 
-        internal static string ParseKey(string str, ref int pos)
-        {
-            var start = pos;
-            for (; pos < str.Length; pos++)
-            {
-                if (str[pos] == '=')
-                {
-                    var key = str.Substring(start, pos - start);
-                    pos++;
-                    return key.Length > 0
-                        ? key
-                        : throw new FormatException(
-                            $"Invalid syntax for connection string parameter '{nameof(Options)}': Missing key.");
-                }
-            }
-
-            throw new FormatException($"Invalid syntax for connection string parameter '{nameof(Options)}': Missing '='.");
-        }
-
-        internal static string ParseValue(string str, ref int pos)
-        {
-            var value = new StringBuilder();
-            for (; pos < str.Length; pos++)
-            {
-                if (str[pos] == ' ')
-                {
-                    pos++;
-                    for (; pos < str.Length && str[pos] == ' '; pos++)
-                    {
-                    }
-
-                    break;
-                }
-                value.Append(str[pos] == '\\' ? str[++pos] : str[pos]);
-            }
-
-            return value.ToString();
-        }
+        ArrayNullabilityMode _arrayNullabilityMode;
 
         #endregion
 
@@ -1542,7 +1526,7 @@ namespace Npgsql
             return clone.ToString();
         }
 
-        internal NpgsqlConnectionStringBuilder Clone() => new NpgsqlConnectionStringBuilder(ConnectionString);
+        internal NpgsqlConnectionStringBuilder Clone() => new(ConnectionString);
 
         /// <summary>
         /// Determines whether the specified object is equal to the current object.
@@ -1698,5 +1682,59 @@ namespace Npgsql
         Require,
     }
 
+    /// <summary>
+    /// Specifies how the mapping of arrays of
+    /// <a href="https://docs.microsoft.com/dotnet/csharp/language-reference/builtin-types/value-types">value types</a>
+    /// behaves with respect to nullability when they are requested via an API returning an <see cref="object"/>.
+    /// </summary>
+    public enum ArrayNullabilityMode
+    {
+        /// <summary>
+        /// Arrays of value types are always returned as non-nullable arrays (e.g. <c>int[]</c>).
+        /// If the PostgreSQL array contains a NULL value, an exception is thrown. This is the default mode.
+        /// </summary>
+        Never,
+        /// <summary>
+        /// Arrays of value types are always returned as nullable arrays (e.g. <c>int?[]</c>).
+        /// </summary>
+        Always,
+        /// <summary>
+        /// The type of array that gets returned is determined at runtime.
+        /// Arrays of value types are returned as non-nullable arrays (e.g. <c>int[]</c>)
+        /// if the actual instance that gets returned doesn't contain null values
+        /// and as nullable arrays (e.g. <c>int?[]</c>) if it does.
+        /// </summary>
+        /// <remarks>When using this setting, make sure that your code is prepared to the fact
+        /// that the actual type of array instances returned from APIs like <see cref="NpgsqlDataReader.GetValue"/>
+        /// may change on a row by row base.</remarks>
+        PerInstance,
+    }
+
+    /// <summary>
+    /// Specifies whether the connection shall be initialized as a physical or
+    /// logical replication connection
+    /// </summary>
+    /// <remarks>
+    /// This enum and its corresponding property are intentionally kept internal as they
+    /// should not be set by users or even be visible in their connection strings.
+    /// Replication connections are a special kind of connection that is encapsulated in
+    /// <see cref="PhysicalReplicationConnection"/>
+    /// and <see cref="LogicalReplicationConnection"/>.
+    /// </remarks>
+    enum ReplicationMode
+    {
+        /// <summary>
+        /// Replication disabled. This is the default
+        /// </summary>
+        Off,
+        /// <summary>
+        /// Physical replication enabled
+        /// </summary>
+        Physical,
+        /// <summary>
+        /// Logical replication enabled
+        /// </summary>
+        Logical
+    }
     #endregion
 }

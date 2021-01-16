@@ -24,7 +24,7 @@ namespace Npgsql.TypeHandlers
 
         #region Read
 
-        public override ValueTask<string> Read(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription? fieldDescription = null, CancellationToken cancellationToken = default)
+        public override ValueTask<string> Read(NpgsqlReadBuffer buf, int byteLen, bool async, FieldDescription? fieldDescription = null)
         {
             if (fieldDescription == null)
                 throw new Exception($"Received an unknown field but {nameof(fieldDescription)} is null (i.e. COPY mode)");
@@ -37,7 +37,7 @@ namespace Npgsql.TypeHandlers
                         : $"The field '{fieldDescription.Name}' has a type currently unknown to Npgsql (OID {fieldDescription.TypeOID}). You can retrieve it as a string by marking it as unknown, please see the FAQ."
                 );
 
-            return base.Read(buf, byteLen, async, fieldDescription, cancellationToken);
+            return base.Read(buf, byteLen, async, fieldDescription);
         }
 
         #endregion Read

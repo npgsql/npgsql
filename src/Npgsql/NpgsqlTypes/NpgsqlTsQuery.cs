@@ -11,7 +11,7 @@ namespace NpgsqlTypes
     /// Represents a PostgreSQL tsquery. This is the base class for the
     /// lexeme, not, or, and, and "followed by" nodes.
     /// </summary>
-    public abstract class NpgsqlTsQuery
+    public abstract class NpgsqlTsQuery : IEquatable<NpgsqlTsQuery>
     {
         /// <summary>
         /// Node kind
@@ -332,6 +332,40 @@ namespace NpgsqlTypes
                 throw new FormatException("Syntax error in tsquery");
             return valStack.Pop();
         }
+
+        /// <inheritdoc/>
+        public override int GetHashCode() =>
+            throw new NotImplementedException();
+
+        /// <inheritdoc/>
+        public override bool Equals(object? obj) =>
+            obj is NpgsqlTsQuery query && query.Equals(this);
+
+        /// <summary>
+        /// Returns a value indicating whether this instance and a specified <see cref="NpgsqlTsQuery"/> object represent the same value.
+        /// </summary>
+        /// <param name="other">An object to compare to this instance.</param>
+        /// <returns><see langword="true"/> if g is equal to this instance; otherwise, <see langword="false"/>.</returns>
+        public abstract bool Equals(NpgsqlTsQuery? other);
+
+        /// <summary>
+        /// Indicates whether the values of two specified <see cref="NpgsqlTsQuery"/> objects are equal.
+        /// </summary>
+        /// <param name="left">The first object to compare.</param>
+        /// <param name="right">The second object to compare.</param>
+        /// <returns><see langword="true"/> if <paramref name="left"/> and <paramref name="right"/> are equal; otherwise, <see langword="false"/>.</returns>
+        public static bool operator ==(NpgsqlTsQuery? left, NpgsqlTsQuery? right) =>
+            left is null ? right is null : left.Equals(right);
+
+
+        /// <summary>
+        /// Indicates whether the values of two specified <see cref="NpgsqlTsQuery"/> objects are not equal.
+        /// </summary>
+        /// <param name="left">The first object to compare.</param>
+        /// <param name="right">The second object to compare.</param>
+        /// <returns><see langword="true"/> if <paramref name="left"/> and <paramref name="right"/> are not equal; otherwise, <see langword="false"/>.</returns>
+        public static bool operator !=(NpgsqlTsQuery? left, NpgsqlTsQuery? right) =>
+            left is null ? right is not null : !left.Equals(right);
     }
 
     readonly struct NpgsqlTsQueryOperator
@@ -345,7 +379,7 @@ namespace NpgsqlTypes
             FollowedByDistance = followedByDistance;
         }
 
-        public static implicit operator NpgsqlTsQueryOperator(char c) => new NpgsqlTsQueryOperator(c, 0);
+        public static implicit operator NpgsqlTsQueryOperator(char c) => new(c, 0);
         public static implicit operator char(NpgsqlTsQueryOperator o) => o.Char;
     }
 
@@ -466,6 +500,17 @@ namespace NpgsqlTypes
             if ((Weights & Weight.D) != Weight.None)
                 sb.Append('D');
         }
+
+        /// <inheritdoc/>
+        public override bool Equals(NpgsqlTsQuery? other) =>
+            other is NpgsqlTsQueryLexeme lexeme &&
+            lexeme.Text == Text &&
+            lexeme.Weights == Weights &&
+            lexeme.IsPrefixSearch == IsPrefixSearch;
+
+        /// <inheritdoc/>
+        public override int GetHashCode() =>
+            HashCode.Combine(Text, Weights, IsPrefixSearch);
     }
 
     /// <summary>
@@ -504,6 +549,15 @@ namespace NpgsqlTypes
                     sb.Append(" )");
             }
         }
+
+        /// <inheritdoc/>
+        public override bool Equals(NpgsqlTsQuery? other) =>
+            other is NpgsqlTsQueryNot not &&
+            not.Child == Child;
+
+        /// <inheritdoc/>
+        public override int GetHashCode() =>
+            Child?.GetHashCode() ?? 0;
     }
 
     /// <summary>
@@ -551,6 +605,16 @@ namespace NpgsqlTypes
             sb.Append(" & ");
             Right.Write(sb);
         }
+
+        /// <inheritdoc/>
+        public override bool Equals(NpgsqlTsQuery? other) =>
+            other is NpgsqlTsQueryAnd and &&
+            and.Left == Left &&
+            and.Right == Right;
+
+        /// <inheritdoc/>
+        public override int GetHashCode() =>
+            HashCode.Combine(Left, Right);
     }
 
     /// <summary>
@@ -579,6 +643,16 @@ namespace NpgsqlTypes
             if (!first)
                 sb.Append(" )");
         }
+
+        /// <inheritdoc/>
+        public override bool Equals(NpgsqlTsQuery? other) =>
+            other is NpgsqlTsQueryOr or &&
+            or.Left == Left &&
+            or.Right == Right;
+
+        /// <inheritdoc/>
+        public override int GetHashCode() =>
+            HashCode.Combine(Left, Right);
     }
 
     /// <summary>
@@ -628,6 +702,17 @@ namespace NpgsqlTypes
             if (!first)
                 sb.Append(" )");
         }
+
+        /// <inheritdoc/>
+        public override bool Equals(NpgsqlTsQuery? other) =>
+            other is NpgsqlTsQueryFollowedBy followedBy &&
+            followedBy.Left == Left &&
+            followedBy.Right == Right &&
+            followedBy.Distance == Distance;
+
+        /// <inheritdoc/>
+        public override int GetHashCode() =>
+            HashCode.Combine(Left, Right, Distance);
     }
 
     /// <summary>
@@ -640,6 +725,14 @@ namespace NpgsqlTypes
         /// </summary>
         public NpgsqlTsQueryEmpty() : base(NodeKind.Empty) {}
 
-        internal override void Write(StringBuilder sb, bool first = false) {}
+        internal override void Write(StringBuilder sb, bool first = false) { }
+
+        /// <inheritdoc/>
+        public override bool Equals(NpgsqlTsQuery? other) =>
+            other is NpgsqlTsQueryEmpty;
+
+        /// <inheritdoc/>
+        public override int GetHashCode() =>
+            Kind.GetHashCode();
     }
 }
