@@ -638,6 +638,42 @@ INSERT INTO {table} (name) VALUES ('Text with '' single quote');");
         }
 
         [Test]
+        public async Task ReaderDisposeStateNotLeaking()
+        {
+            if (IsMultiplexing || Behavior != CommandBehavior.Default)
+                return;
+
+            var startReaderClosedTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var continueReaderClosedTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            using var _ = CreateTempPool(ConnectionString, out var connectionString);
+            await using var conn1 = await OpenConnectionAsync(connectionString);
+            var connID = conn1.Connector!.Id;
+            var readerCloseTask = Task.Run(async () =>
+            {
+                using var cmd = conn1.CreateCommand();
+                cmd.CommandText = "SELECT 1";
+                await using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.CloseConnection);
+                reader.ReaderClosed += (s, e) =>
+                {
+                    startReaderClosedTcs.SetResult();
+                    continueReaderClosedTcs.Task.GetAwaiter().GetResult();
+                };
+            });
+
+            await startReaderClosedTcs.Task;
+            await using var conn2 = await OpenConnectionAsync(connectionString);
+            Assert.That(conn2.Connector!.Id, Is.EqualTo(connID));
+            using var cmd = conn2.CreateCommand();
+            cmd.CommandText = "SELECT 1";
+            await using var reader = await cmd.ExecuteReaderAsync();
+            Assert.That(reader.State, Is.EqualTo(ReaderState.BeforeResult));
+            continueReaderClosedTcs.SetResult();
+            await readerCloseTask;
+            Assert.That(reader.State, Is.EqualTo(ReaderState.BeforeResult));
+        }
+
+        [Test]
         public async Task SingleResult()
         {
             using (var conn = await OpenConnectionAsync())
