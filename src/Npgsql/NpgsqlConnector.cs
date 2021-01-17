@@ -1731,6 +1731,15 @@ namespace Npgsql
             }
         }
 
+        internal void TryThrowBreakReason()
+        {
+            lock (this)
+            {
+                if (_breakReason is not null)
+                    throw _breakReason;
+            }
+        }
+
         /// <summary>
         /// Closes the socket and cleans up client-side resources associated with this connector.
         /// </summary>

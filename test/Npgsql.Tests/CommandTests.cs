@@ -264,9 +264,31 @@ namespace Npgsql.Tests
 
         #region Cancel
 
-        [Test, Description("Basic cancellation scenario")]
+        [Test]
+        public async Task CancelAsyncImmediately()
+        {
+            if (IsMultiplexing)
+                return; // Multiplexing, cancellation
+
+            using var cts = new CancellationTokenSource();
+            cts.Cancel();
+
+            await using var conn = await OpenConnectionAsync();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT 1";
+
+            var t = cmd.ExecuteScalarAsync(cts.Token);
+            Assert.That(t.IsCompleted, Is.True); // checks, if a query has completed synchronously
+            Assert.That(t.Status, Is.EqualTo(TaskStatus.Canceled));
+            Assert.ThrowsAsync<OperationCanceledException>(async () => await t);
+
+            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+            Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
+        }
+
+        [Test, Description("Cancels a sync query with the NpgsqlCommand.Cancel, with successful PG cancellation")]
         [Timeout(6000)]
-        public async Task Cancel()
+        public async Task CancelSoft()
         {
             if (IsMultiplexing)
                 return;
@@ -286,25 +308,6 @@ namespace Npgsql.Tests
             );
 
             await cancelTask;
-        }
-
-        [Test]
-        public async Task CancelAsyncImmediately()
-        {
-            if (IsMultiplexing)
-                return; // Multiplexing, cancellation
-
-            using var cts = new CancellationTokenSource();
-            cts.Cancel();
-
-            await using var conn = await OpenConnectionAsync();
-            using var cmd = conn.CreateCommand();
-            cmd.CommandText = "SELECT 1";
-
-            var t = cmd.ExecuteScalarAsync(cts.Token);
-            Assert.That(t.IsCompleted, Is.True); // checks, if a query has completed synchronously
-            Assert.That(t.Status, Is.EqualTo(TaskStatus.Canceled));
-            Assert.ThrowsAsync<OperationCanceledException>(async () => await t);
 
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
             Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
@@ -329,6 +332,35 @@ namespace Npgsql.Tests
 
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
             Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
+        }
+
+        [Test, Description("Cancels a sync query with the NpgsqlCommand.Cancel, with unsuccessful PG cancellation (socket break)")]
+        public async Task CancelHard()
+        {
+            if (IsMultiplexing)
+                return; // Multiplexing, cancellation
+
+            await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
+            using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
+            await using var conn = await OpenConnectionAsync(connectionString);
+            await postmasterMock.WaitForServerConnection();
+
+            var processId = conn.ProcessID;
+
+            using var cmd = new NpgsqlCommand("SELECT 1", conn);
+            var cancelTask = Task.Run(() =>
+            {
+                Thread.Sleep(300);
+                cmd.Cancel();
+            });
+            var exception = Assert.Throws<OperationCanceledException>(() => cmd.ExecuteScalar())!;
+            Assert.That(exception.InnerException, Is.TypeOf<TimeoutException>());
+
+            await cancelTask;
+
+            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+            Assert.That((await postmasterMock.WaitForCancellationRequest()).ProcessId,
+                Is.EqualTo(processId));
         }
 
         [Test, Description("Cancels an async query with the cancellation token, with unsuccessful PG cancellation (socket break)")]

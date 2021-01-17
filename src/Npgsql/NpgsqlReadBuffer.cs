@@ -164,9 +164,19 @@ namespace Npgsql
                     buffer.ReadPosition = 0;
                 }
 
-                var finalCt = async && buffer.Timeout != TimeSpan.Zero
+                var finalCt = buffer.Timeout != TimeSpan.Zero
                     ? buffer.Cts.Start()
                     : buffer.Cts.Reset();
+
+                CancellationTokenRegistration syncCancellationRegistration = default;
+                if (!async)
+                {
+                    syncCancellationRegistration = finalCt.Register(conn =>
+                    {
+                        var connector = (NpgsqlConnector)conn!;
+                        connector.Break(OperationCancelledException(connector));
+                    }, buffer.Connector);
+                }
 
                 var totalRead = 0;
                 while (count > 0)
@@ -189,8 +199,7 @@ namespace Npgsql
                         // In this case, we consider it as timed out and fail with OperationCancelledException on next ReadAsync
                         // Or we consider it not timed out if we have already read everything (count == 0)
                         // In which case we reinitialize it on the next call to EnsureLong()
-                        if (async)
-                            buffer.Cts.RestartTimeoutWithoutReset();
+                        buffer.Cts.RestartTimeoutWithoutReset();
                     }
                     catch (Exception e)
                     {
@@ -201,6 +210,12 @@ namespace Npgsql
                         // We can't stop in a finally block because Connector.Break() will dispose the buffer and the contained
                         // _timeoutCts
                         buffer.Cts.Stop();
+                        if (!async)
+                        {
+                            syncCancellationRegistration.Dispose();
+                            if (finalCt.IsCancellationRequested)
+                                connector.TryThrowBreakReason();
+                        }
 
                         switch (e)
                         {
@@ -243,11 +258,7 @@ namespace Npgsql
 
                             // If we're here, the PostgreSQL cancellation either failed or skipped entirely.
                             // Break the connection, bubbling up the correct exception type (cancellation or timeout)
-                            throw connector.Break(!buffer.Connector.UserCancellationRequested
-                                ? NpgsqlTimeoutException()
-                                : connector.PostgresCancellationPerformed
-                                    ? new OperationCanceledException("Query was cancelled", TimeoutException(), connector.UserCancellationToken)
-                                    : new OperationCanceledException("Query was cancelled", connector.UserCancellationToken));
+                            throw connector.Break(OperationCancelledException(connector));
                         }
 
                         default:
@@ -257,7 +268,21 @@ namespace Npgsql
                 }
 
                 buffer.Cts.Stop();
+                if (!async)
+                {
+                    syncCancellationRegistration.Dispose();
+                    if (finalCt.IsCancellationRequested)
+                        buffer.Connector.TryThrowBreakReason();
+                }
+
                 NpgsqlEventSource.Log.BytesRead(totalRead);
+
+                static Exception OperationCancelledException(NpgsqlConnector connector)
+                    => !connector.UserCancellationRequested
+                            ? NpgsqlTimeoutException()
+                            : connector.PostgresCancellationPerformed
+                                ? new OperationCanceledException("Query was cancelled", TimeoutException(), connector.UserCancellationToken)
+                                : new OperationCanceledException("Query was cancelled", connector.UserCancellationToken);
 
                 static Exception NpgsqlTimeoutException() => new NpgsqlException("Exception while reading from stream", TimeoutException());
 

@@ -69,7 +69,14 @@ namespace Npgsql.Util
         /// Restart the timeout on the wrapped <see cref="CancellationTokenSource"/> without reinitializing it,
         /// even if <see cref="IsCancellationRequested"/> is already set to <see langword="true"/>
         /// </summary>
-        public void RestartTimeoutWithoutReset() => _cts.CancelAfter(Timeout);
+        public void RestartTimeoutWithoutReset()
+        {
+            lock (lockObject)
+            {
+                if (!isDisposed)
+                    _cts.CancelAfter(Timeout);
+            }
+        }
 
         /// <summary>
         /// Reset the wrapper to contain a unstarted and uncancelled <see cref="CancellationTokenSource"/>
@@ -128,7 +135,12 @@ namespace Npgsql.Util
         /// </remarks>
         public void Stop()
         {
-            _cts.CancelAfter(InfiniteTimeSpan);
+            lock (lockObject)
+            {
+                if (!isDisposed)
+                    _cts.CancelAfter(InfiniteTimeSpan);
+            }
+            
             _registration.Dispose();
 #if DEBUG
             _isRunning = false;
