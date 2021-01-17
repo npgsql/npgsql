@@ -1228,7 +1228,7 @@ LANGUAGE plpgsql VOLATILE";
             Assert.That(reader1, Is.SameAs(reader2));
             await reader2.DisposeAsync();
         }
-        
+
         [Test]
         public async Task DisposeSwallowsExceptions([Values(true, false)] bool async)
         {
@@ -1724,7 +1724,7 @@ LANGUAGE plpgsql VOLATILE";
                     .WriteReadyForQuery()
                     .FlushAsync();
 
-                var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task);
+                var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task)!;
                 Assert.That(exception.InnerException,
                     Is.TypeOf<PostgresException>().With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.QueryCanceled));
                 Assert.That(exception.CancellationToken, Is.EqualTo(cancellationSource.Token));
@@ -1776,7 +1776,7 @@ LANGUAGE plpgsql VOLATILE";
                     .WriteReadyForQuery()
                     .FlushAsync();
 
-                var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task);
+                var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task)!;
                 Assert.That(exception.InnerException,
                     Is.TypeOf<PostgresException>().With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.QueryCanceled));
                 Assert.That(exception.CancellationToken, Is.EqualTo(cancellationSource.Token));
@@ -1825,7 +1825,7 @@ LANGUAGE plpgsql VOLATILE";
             Assert.That(processId, Is.EqualTo(conn.ProcessID));
 
             // Send no response from server, wait for the cancellation attempt to time out
-            var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task);
+            var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task)!;
             Assert.That(exception.InnerException, Is.TypeOf<TimeoutException>());
             Assert.That(exception.CancellationToken, Is.EqualTo(cancellationSource.Token));
 
@@ -1870,7 +1870,7 @@ LANGUAGE plpgsql VOLATILE";
             Assert.That(processId, Is.EqualTo(conn.ProcessID));
 
             // Send no response from server, wait for the cancellation attempt to time out
-            var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task);
+            var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task)!;
             Assert.That(exception.InnerException, Is.TypeOf<TimeoutException>());
             Assert.That(exception.CancellationToken, Is.EqualTo(cancellationSource.Token));
 
@@ -1909,7 +1909,7 @@ LANGUAGE plpgsql VOLATILE";
             var task = reader.GetFieldValueAsync<byte[]>(0, cts.Token);
             cts.Cancel();
 
-            var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task);
+            var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task)!;
             Assert.That(exception.InnerException, Is.Null);
 
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
@@ -1947,7 +1947,7 @@ LANGUAGE plpgsql VOLATILE";
             var task = reader.IsDBNullAsync(1, cts.Token);
             cts.Cancel();
 
-            var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task);
+            var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await task)!;
             Assert.That(exception.InnerException, Is.Null);
 
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
@@ -1990,7 +1990,7 @@ LANGUAGE plpgsql VOLATILE";
 
             var task = reader.GetFieldValueAsync<byte[]>(0);
 
-            var exception = Assert.ThrowsAsync<NpgsqlException>(async () => await task);
+            var exception = Assert.ThrowsAsync<NpgsqlException>(async () => await task)!;
             Assert.That(exception.InnerException, Is.TypeOf<TimeoutException>());
 
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
@@ -2029,7 +2029,7 @@ LANGUAGE plpgsql VOLATILE";
 
             var task = reader.GetFieldValueAsync<byte[]>(0);
 
-            var exception = Assert.ThrowsAsync<NpgsqlException>(async () => await task);
+            var exception = Assert.ThrowsAsync<NpgsqlException>(async () => await task)!;
             Assert.That(exception.InnerException, Is.TypeOf<TimeoutException>());
 
             Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));

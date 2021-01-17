@@ -516,7 +516,7 @@ $$ LANGUAGE SQL;
                     UPDATE {table} SET val = 'changed value' WHERE id = :x::double precision;
                     SELECT val FROM {table} WHERE id = :x::numeric;",
                     conn);
-                var ex = Assert.Throws<NpgsqlException>(() => NpgsqlCommandBuilder.DeriveParameters(cmd));
+                var ex = Assert.Throws<NpgsqlException>(() => NpgsqlCommandBuilder.DeriveParameters(cmd))!;
                 Assert.That(ex.Message, Is.EqualTo("The backend parser inferred different types for parameters with the same name. Please try explicit casting within your SQL statement or batch or use different placeholder names."));
             }
         }
@@ -567,7 +567,7 @@ $$ LANGUAGE SQL;
                     // Derive parameters for the already prepared statement
                     NpgsqlCommandBuilder.DeriveParameters(cmd);
 
-                });
+                })!;
 
                 Assert.That(ex.Message, Is.EqualTo("Deriving parameters isn't supported for commands that are already prepared."));
 

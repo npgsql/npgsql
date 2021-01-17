@@ -45,7 +45,7 @@ namespace Npgsql.Tests
                 }
 
                 writer.Complete();
-            });
+            })!;
             Assert.That(e.InnerException, Is.TypeOf<TimeoutException>());
         }
 
