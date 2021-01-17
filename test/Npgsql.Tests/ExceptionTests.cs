@@ -78,7 +78,7 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql';");
 
-            var ex = Assert.ThrowsAsync<PostgresException>(() => conn.ExecuteNonQueryAsync($"SELECT * FROM {raiseExceptionFunc}()"));
+            var ex = Assert.ThrowsAsync<PostgresException>(() => conn.ExecuteNonQueryAsync($"SELECT * FROM {raiseExceptionFunc}()"))!;
             Assert.That(ex.Detail, Does.Not.Contain("secret"));
             Assert.That(ex.Message, Does.Not.Contain("secret"));
             Assert.That(ex.Data[nameof(PostgresException.Detail)], Does.Not.Contain("secret"));
@@ -112,7 +112,7 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql';");
 
-            var ex = Assert.ThrowsAsync<PostgresException>(() => conn.ExecuteNonQueryAsync($"SELECT * FROM {raiseExceptionFunc}()"));
+            var ex = Assert.ThrowsAsync<PostgresException>(() => conn.ExecuteNonQueryAsync($"SELECT * FROM {raiseExceptionFunc}()"))!;
             Assert.That(ex.Detail, Does.Contain("secret"));
             Assert.That(ex.Message, Does.Contain("secret"));
             Assert.That(ex.Data[nameof(PostgresException.Detail)], Does.Contain("secret"));
@@ -129,7 +129,7 @@ $$ LANGUAGE 'plpgsql';");
         {
             await using var conn = await OpenConnectionAsync();
 
-            var ex = Assert.ThrowsAsync<PostgresException>(() => conn.ExecuteNonQueryAsync("SELECT 1; SELECT * FROM \"NonExistingTable\""));
+            var ex = Assert.ThrowsAsync<PostgresException>(() => conn.ExecuteNonQueryAsync("SELECT 1; SELECT * FROM \"NonExistingTable\""))!;
             Assert.That(ex.Message, Does.Contain("POSITION: 15"));
         }
 

@@ -252,7 +252,7 @@ namespace Npgsql.Tests.Types
             var reader = await cmd.ExecuteReaderAsync();
             reader.Read();
 
-            var ex = Assert.Throws<InvalidOperationException>(() => reader.GetFieldValue<int[]>(0));
+            var ex = Assert.Throws<InvalidOperationException>(() => reader.GetFieldValue<int[]>(0))!;
             Assert.That(ex.Message, Is.EqualTo("Cannot read an array with 1 dimension(s) from an array with 2 dimension(s)"));
         }
 
@@ -513,7 +513,7 @@ namespace Npgsql.Tests.Types
                     var exception = Assert.Throws<NotSupportedException>(() =>
                     {
                         reader.GetFieldValue<List<int>>(0);
-                    });
+                    })!;
                     Assert.That(exception.Message, Is.EqualTo("Can't read multidimensional array as List<Int32>"));
                 }
             }

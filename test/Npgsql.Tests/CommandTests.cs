@@ -322,7 +322,7 @@ namespace Npgsql.Tests
             var t = cmd.ExecuteNonQueryAsync(cancellationSource.Token);
             cancellationSource.Cancel();
 
-            var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await t);
+            var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await t)!;
             Assert.That(exception.InnerException,
                 Is.TypeOf<PostgresException>().With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.QueryCanceled));
             Assert.That(exception.CancellationToken, Is.EqualTo(cancellationSource.Token));
@@ -349,7 +349,7 @@ namespace Npgsql.Tests
             var t = cmd.ExecuteScalarAsync(cancellationSource.Token);
             cancellationSource.Cancel();
 
-            var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await t);
+            var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await t)!;
             Assert.That(exception.InnerException, Is.TypeOf<TimeoutException>());
             Assert.That(exception.CancellationToken, Is.EqualTo(cancellationSource.Token));
 

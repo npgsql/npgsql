@@ -391,50 +391,40 @@ namespace Npgsql.Tests
 
         [Test]
         [Timeout(10000)]
-        public void  ConnectTimeout()
+        public void OpenTimeoutUnknownIp([Values(true, false)] bool async)
         {
             var unknownIp = Environment.GetEnvironmentVariable("NPGSQL_UNKNOWN_IP");
-            if (unknownIp == null)
-                return; // https://github.com/nunit/nunit/issues/3282
-            //Assert.Ignore("NPGSQL_UNKNOWN_IP isn't defined and is required for connection timeout tests");
+            if (unknownIp is null)
+            {
+                Assert.Ignore("NPGSQL_UNKNOWN_IP isn't defined and is required for connection timeout tests");
+                return;
+            }
 
-            var csb = new NpgsqlConnectionStringBuilder(ConnectionString) {
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
                 Host = unknownIp,
-                Pooling = false,
                 Timeout = 2
             };
-            using (var conn = new NpgsqlConnection(csb.ToString()))
-            {
-                var sw = Stopwatch.StartNew();
-                Assert.That(() => conn.Open(), Throws.Exception.TypeOf<TimeoutException>());
-                Assert.That(sw.Elapsed.TotalMilliseconds, Is.GreaterThanOrEqualTo((csb.Timeout * 1000) - 100),
-                    $"Timeout was supposed to happen after {csb.Timeout} seconds, but fired after {sw.Elapsed.TotalSeconds}");
-                Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
-            }
-        }
+            using var _ = CreateTempPool(csb, out var connString);
+            using var conn = new NpgsqlConnection(connString);
 
-        [Test]
-        [Timeout(10000)]
-        public void ConnectTimeoutAsync()
-        {
-            var unknownIp = Environment.GetEnvironmentVariable("NPGSQL_UNKNOWN_IP");
-            if (unknownIp == null)
-                return; // https://github.com/nunit/nunit/issues/3282
-            // Assert.Ignore("NPGSQL_UNKNOWN_IP isn't defined and is required for connection timeout tests");
-
-            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
-            {
-                Host = unknownIp,
-                Pooling = false,
-                Timeout = 2
-            }.ToString();
-            using (var conn = new NpgsqlConnection(connString))
+            var sw = Stopwatch.StartNew();
+            if (async)
             {
                 Assert.That(async () => await conn.OpenAsync(), Throws.Exception
                     .TypeOf<NpgsqlException>()
                     .With.InnerException.TypeOf<TimeoutException>());
-                Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
             }
+            else
+            {
+                Assert.That(() => conn.Open(), Throws.Exception
+                    .TypeOf<NpgsqlException>()
+                    .With.InnerException.TypeOf<TimeoutException>());
+            }
+
+            Assert.That(sw.Elapsed.TotalMilliseconds, Is.GreaterThanOrEqualTo((csb.Timeout * 1000) - 100),
+                $"Timeout was supposed to happen after {csb.Timeout} seconds, but fired after {sw.Elapsed.TotalSeconds}");
+            Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
         }
 
         [Test]
@@ -442,9 +432,11 @@ namespace Npgsql.Tests
         public void ConnectTimeoutCancel()
         {
             var unknownIp = Environment.GetEnvironmentVariable("NPGSQL_UNKNOWN_IP");
-            if (unknownIp == null)
-                return; // https://github.com/nunit/nunit/issues/3282
-            //Assert.Ignore("NPGSQL_UNKNOWN_IP isn't defined and is required for connection cancellation tests");
+            if (unknownIp is null)
+            {
+                Assert.Ignore("NPGSQL_UNKNOWN_IP isn't defined and is required for connection cancellation tests");
+                return;
+            }
 
             var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
