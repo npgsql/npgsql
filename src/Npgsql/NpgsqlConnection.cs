@@ -739,7 +739,7 @@ namespace Npgsql
             return CloseAsync(async, cancellationToken);            
         }
 
-        private async Task CloseAsync(bool async, CancellationToken cancellationToken)
+        async Task CloseAsync(bool async, CancellationToken cancellationToken)
         {
             Debug.Assert(Connector != null);
             try
