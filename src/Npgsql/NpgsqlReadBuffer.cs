@@ -174,7 +174,8 @@ namespace Npgsql
                     syncCancellationRegistration = finalCt.Register(conn =>
                     {
                         var connector = (NpgsqlConnector)conn!;
-                        connector.Break(OperationCancelledException(connector));
+                        if (connector.PostgresCancellationPerformed)
+                            connector.Break(OperationCancelledException(connector));
                     }, buffer.Connector);
                 }
 
@@ -249,8 +250,17 @@ namespace Npgsql
                                     if (cancellationTimeout > 0)
                                         buffer.Timeout = TimeSpan.FromMilliseconds(cancellationTimeout);
 
-                                    if (async)
-                                        finalCt = buffer.Cts.Start();
+                                    finalCt = buffer.Cts.Start();
+
+                                    if (!async)
+                                    {
+                                        syncCancellationRegistration = finalCt.Register(conn =>
+                                        {
+                                            var connector = (NpgsqlConnector)conn!;
+                                            if (connector.PostgresCancellationPerformed)
+                                                connector.Break(OperationCancelledException(connector));
+                                        }, buffer.Connector);
+                                    }
 
                                     continue;
                                 }
