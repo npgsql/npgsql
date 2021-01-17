@@ -874,8 +874,6 @@ namespace Npgsql
                 return;
             }
 
-            PostgresException? consumeException = null;
-
             switch (Connector.State)
             {
             case ConnectorState.Ready:
@@ -892,11 +890,14 @@ namespace Npgsql
                         ex is OperationCanceledException ||
                         ex is NpgsqlException && ex.InnerException is TimeoutException)
                     {
-                        // nothing to do here
+                        // Timeout/cancellation - completely normal, consume has basically completed.
                     }
-                    catch (PostgresException ex)
+                    catch (PostgresException)
                     {
-                        consumeException = ex;
+                        // In the case of a PostgresException, the connection is fine and consume has basically completed.
+                        // Defer throwing the exception until Cleanup is complete.
+                        await Cleanup(async, connectionClosing, isDisposing);
+                        throw;
                     }
                     catch
                     {
@@ -918,9 +919,6 @@ namespace Npgsql
             }
 
             await Cleanup(async, connectionClosing, isDisposing);
-
-            if (consumeException is not null)
-                throw consumeException;
         }
 
         internal async Task Cleanup(bool async, bool connectionClosing = false, bool isDisposing = false)
