@@ -736,17 +736,16 @@ namespace Npgsql
                 return Task.CompletedTask;
             }
 
-            return CloseAsync(cancellationToken);
+            return CloseAsync(async, cancellationToken);            
+        }
 
-            async Task CloseAsync(CancellationToken cancellationToken)
+        private async Task CloseAsync(bool async, CancellationToken cancellationToken)
+        {
+            Debug.Assert(Connector != null);
+            try
             {
-                Debug.Assert(Connector != null);
                 var connector = Connector;
                 Log.Trace("Closing connection...", connector.Id);
-
-#pragma warning disable CS0197
-                using var _ = Defer(static (c) => Volatile.Write(ref c._closing, 0), this);
-#pragma warning restore CS0197
 
                 if (connector.CurrentReader != null || connector.CurrentCopyOperation != null)
                 {
@@ -815,6 +814,10 @@ namespace Npgsql
                 ConnectorBindingScope = ConnectorBindingScope.None;
                 FullState = ConnectionState.Closed;
                 Log.Debug("Connection closed", connector.Id);
+            }
+            finally
+            {
+                Volatile.Write(ref _closing, 0);
             }
         }
 
