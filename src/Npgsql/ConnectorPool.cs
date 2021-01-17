@@ -223,7 +223,8 @@ namespace Npgsql
                         Debug.Assert(finalToken.IsCancellationRequested);
                         throw new NpgsqlException(
                             $"The connection pool has been exhausted, either raise MaxPoolSize (currently {_max}) " +
-                            $"or Timeout (currently {Settings.Timeout} seconds)");
+                            $"or Timeout (currently {Settings.Timeout} seconds)",
+                            new TimeoutException());
                     }
                     catch (ChannelClosedException)
                     {
