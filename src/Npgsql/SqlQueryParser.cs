@@ -7,8 +7,8 @@ namespace Npgsql
 {
     class SqlQueryParser
     {
-        readonly Dictionary<string, int> _paramIndexMap = new();
-        readonly StringBuilder _rewrittenSql = new();
+        [ThreadStatic]
+        static Cache? s_cache;
 
         /// <summary>
         /// Receives a raw SQL query as passed in by the user, and performs some processing necessary
@@ -33,16 +33,25 @@ namespace Npgsql
             List<NpgsqlStatement> statements,
             bool standardConformingStrings,
             bool deriveParameters = false)
-            => ParseRawQuery(sql.AsSpan(), parameters, statements, standardConformingStrings, deriveParameters);
+        {
+            var cache = (s_cache ??= new());
 
-        void ParseRawQuery(
-            ReadOnlySpan<char> sql,
+            ParseRawQuery(parameters, statements, standardConformingStrings, deriveParameters, cache, sql.AsSpan());
+
+            cache.ClearOrDrop();
+        }
+
+        static void ParseRawQuery(
             NpgsqlParameterCollection parameters,
             List<NpgsqlStatement> statements,
             bool standardConformingStrings,
-            bool deriveParameters)
+            bool deriveParameters,
+            Cache cache,
+            ReadOnlySpan<char> sql)
         {
             Debug.Assert(deriveParameters == false || parameters.Count == 0);
+
+            var (rewrittenSql, paramIndexMap) = cache.GetOrCreate();
 
             NpgsqlStatement statement = null!;
             var statementIndex = -1;
@@ -123,7 +132,7 @@ namespace Npgsql
                 if (IsParamNameChar(ch))
                 {
                     if (currCharOfs - 1 > currTokenBeg)
-                        _rewrittenSql.Append(sql.Slice(currTokenBeg, currCharOfs - 1 - currTokenBeg));
+                        rewrittenSql.Append(sql.Slice(currTokenBeg, currCharOfs - 1 - currTokenBeg));
                     currTokenBeg = currCharOfs++ - 1;
                     goto Param;
                 }
@@ -141,7 +150,7 @@ namespace Npgsql
                 {
                     var paramName = sql.Slice(currTokenBeg + 1, currCharOfs - (currTokenBeg + 1)).ToString();
 
-                    if (!_paramIndexMap.TryGetValue(paramName, out var index))
+                    if (!paramIndexMap.TryGetValue(paramName, out var index))
                     {
                         // Parameter hasn't been seen before in this query
                         if (!parameters.TryGetValue(paramName, out var parameter))
@@ -155,7 +164,7 @@ namespace Npgsql
                             {
                                 // Parameter placeholder does not match a parameter on this command.
                                 // Leave the text as it was in the SQL, it may not be a an actual placeholder
-                                _rewrittenSql.Append(sql.Slice(currTokenBeg, currCharOfs - currTokenBeg));
+                                rewrittenSql.Append(sql.Slice(currTokenBeg, currCharOfs - currTokenBeg));
                                 currTokenBeg = currCharOfs;
                                 if (currCharOfs >= end)
                                     goto Finish;
@@ -169,10 +178,10 @@ namespace Npgsql
                             throw new Exception($"Parameter '{paramName}' referenced in SQL but is an out-only parameter");
 
                         statement.InputParameters.Add(parameter);
-                        index = _paramIndexMap[paramName] = statement.InputParameters.Count;
+                        index = paramIndexMap[paramName] = statement.InputParameters.Count;
                     }
-                    _rewrittenSql.Append('$');
-                    _rewrittenSql.Append(index);
+                    rewrittenSql.Append('$');
+                    rewrittenSql.Append(index);
                     currTokenBeg = currCharOfs;
 
                     if (currCharOfs >= end)
@@ -417,8 +426,8 @@ namespace Npgsql
             goto Finish;
 
         SemiColon:
-            _rewrittenSql.Append(sql.Slice(currTokenBeg, currCharOfs - currTokenBeg - 1));
-            statement.SQL = _rewrittenSql.ToString();
+            rewrittenSql.Append(sql.Slice(currTokenBeg, currCharOfs - currTokenBeg - 1));
+            statement.SQL = rewrittenSql.ToString();
             while (currCharOfs < end)
             {
                 ch = sql[currCharOfs];
@@ -430,7 +439,7 @@ namespace Npgsql
                 // TODO: Handle end of line comment? Although psql doesn't seem to handle them...
 
                 currTokenBeg = currCharOfs;
-                if (_rewrittenSql.Length > 0)
+                if (rewrittenSql.Length > 0)
                     MoveToNextStatement();
                 goto None;
             }
@@ -439,8 +448,8 @@ namespace Npgsql
             return;
 
         Finish:
-            _rewrittenSql.Append(sql.Slice(currTokenBeg, end - currTokenBeg));
-            statement.SQL = _rewrittenSql.ToString();
+            rewrittenSql.Append(sql.Slice(currTokenBeg, end - currTokenBeg));
+            statement.SQL = rewrittenSql.ToString();
             if (statements.Count > statementIndex + 1)
                statements.RemoveRange(statementIndex + 1, statements.Count - (statementIndex + 1));
 
@@ -457,8 +466,8 @@ namespace Npgsql
                     statement = new NpgsqlStatement();
                     statements.Add(statement);
                 }
-                _paramIndexMap.Clear();
-                _rewrittenSql.Clear();
+                paramIndexMap.Clear();
+                rewrittenSql.Clear();
             }
         }
 
@@ -476,5 +485,45 @@ namespace Npgsql
 
         static bool IsParamNameChar(char ch)
             => char.IsLetterOrDigit(ch) || ch == '_' || ch == '.';  // why dot??
+
+        class Cache
+        {
+            Dictionary<string, int>? _dict;
+            StringBuilder? _sb;
+
+            public (StringBuilder sb, Dictionary<string, int> dict) GetOrCreate()
+                => (_sb ??= new(), _dict ??= new());
+
+            public void ClearOrDrop()
+            {
+                Dictionary<string, int> dict = _dict!;
+                Debug.Assert(dict != null);
+
+                if (dict.Count <= 32)
+                {
+                    // Clear and keep
+                    dict.Clear();
+                }
+                else
+                {
+                    // Too big drop it from the cache
+                    _dict = null;
+                }
+
+                StringBuilder sb = _sb!;
+                Debug.Assert(sb != null);
+
+                if (sb.Length <= 150)
+                {
+                    // Clear and keep
+                    sb.Clear();
+                }
+                else
+                {
+                    // Too big drop it from the cache
+                    _sb = null;
+                }
+            }
+        }
     }
 }
