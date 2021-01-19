@@ -184,6 +184,9 @@ namespace Npgsql.Tests.Support
             return this;
         }
 
+        /// <summary>
+        /// Writes the bytes to the buffer and flushes <b>only</b> when the buffer is full
+        /// </summary>
         internal async Task WriteDataRowWithFlush(params byte[][] columnValues)
         {
             CheckDisposed();

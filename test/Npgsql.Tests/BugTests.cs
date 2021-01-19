@@ -1317,5 +1317,17 @@ $$;");
             await conn.CloseAsync();
             Assert.That(conn.State, Is.EqualTo(ConnectionState.Closed));
         }
+
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3373")]
+        public async Task Bug3373()
+        {
+            await using var conn = await OpenConnectionAsync();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT repeat('1', 10000); SELECT * from pg_sleep(3)";
+            cmd.CommandTimeout = 0;
+
+            await using var reader = await cmd.ExecuteReaderAsync();
+            Assert.DoesNotThrowAsync(async () => await reader.NextResultAsync());
+        }
     }
 }

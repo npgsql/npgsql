@@ -311,7 +311,7 @@ namespace Npgsql.Tests
 
                 // SQL overloading is a pretty rare/exotic scenario. Handling it properly would involve keying
                 // prepared statements not just by SQL but also by the parameter types, which would pointlessly
-                // increase allocations. Instead, the second execution simply reuns unprepared
+                // increase allocations. Instead, the second execution simply runs unprepared.
                 Assert.That(conn.ExecuteScalar("SELECT COUNT(*) FROM pg_prepared_statements"), Is.EqualTo(1));
                 conn.UnprepareAll();
             }

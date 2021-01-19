@@ -40,7 +40,7 @@ namespace Npgsql
         /// </summary>
         internal TimeSpan Timeout
         {
-            get => Cts.Timeout;
+            get => _preTranslatedTimeout;
             set
             {
                 if (_preTranslatedTimeout != value)
@@ -164,7 +164,7 @@ namespace Npgsql
                     buffer.ReadPosition = 0;
                 }
 
-                var finalCt = async && buffer.Timeout >= TimeSpan.Zero
+                var finalCt = async && buffer.Timeout != TimeSpan.Zero
                     ? buffer.Cts.Start()
                     : buffer.Cts.Reset();
 
@@ -487,7 +487,7 @@ namespace Npgsql
             if (output.Length == 0)
                 return 0;
 
-            Debug.Assert(ReadPosition == 0);
+            Debug.Assert(ReadBytesLeft == 0);
             Clear();
             try
             {

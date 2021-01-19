@@ -1,0 +1,106 @@
+﻿abstract Npgsql.LegacyPostgis.PostgisGeometry.GetLenHelper() -> int
+Npgsql.LegacyPostgis.Coordinate2D
+Npgsql.LegacyPostgis.Coordinate2D.Coordinate2D() -> void
+Npgsql.LegacyPostgis.Coordinate2D.Coordinate2D(double x, double y) -> void
+Npgsql.LegacyPostgis.Coordinate2D.Equals(Npgsql.LegacyPostgis.Coordinate2D c) -> bool
+Npgsql.LegacyPostgis.Coordinate2D.X.get -> double
+Npgsql.LegacyPostgis.Coordinate2D.Y.get -> double
+Npgsql.LegacyPostgis.LegacyPostgisHandlerFactory
+Npgsql.LegacyPostgis.LegacyPostgisHandlerFactory.LegacyPostgisHandlerFactory() -> void
+Npgsql.LegacyPostgis.PostgisGeometry
+Npgsql.LegacyPostgis.PostgisGeometry.PostgisGeometry() -> void
+Npgsql.LegacyPostgis.PostgisGeometry.SRID.get -> uint
+Npgsql.LegacyPostgis.PostgisGeometry.SRID.set -> void
+Npgsql.LegacyPostgis.PostgisGeometryCollection
+Npgsql.LegacyPostgis.PostgisGeometryCollection.Equals(Npgsql.LegacyPostgis.PostgisGeometryCollection? other) -> bool
+Npgsql.LegacyPostgis.PostgisGeometryCollection.GeometryCount.get -> int
+Npgsql.LegacyPostgis.PostgisGeometryCollection.GetEnumerator() -> System.Collections.Generic.IEnumerator<Npgsql.LegacyPostgis.PostgisGeometry!>!
+Npgsql.LegacyPostgis.PostgisGeometryCollection.PostgisGeometryCollection(Npgsql.LegacyPostgis.PostgisGeometry![]! geometries) -> void
+Npgsql.LegacyPostgis.PostgisGeometryCollection.PostgisGeometryCollection(System.Collections.Generic.IEnumerable<Npgsql.LegacyPostgis.PostgisGeometry!>! geometries) -> void
+Npgsql.LegacyPostgis.PostgisGeometryCollection.this[int index].get -> Npgsql.LegacyPostgis.PostgisGeometry!
+Npgsql.LegacyPostgis.PostgisLineString
+Npgsql.LegacyPostgis.PostgisLineString.Equals(Npgsql.LegacyPostgis.PostgisLineString? other) -> bool
+Npgsql.LegacyPostgis.PostgisLineString.GetEnumerator() -> System.Collections.Generic.IEnumerator<Npgsql.LegacyPostgis.Coordinate2D>!
+Npgsql.LegacyPostgis.PostgisLineString.PointCount.get -> int
+Npgsql.LegacyPostgis.PostgisLineString.PostgisLineString(Npgsql.LegacyPostgis.Coordinate2D[]! points) -> void
+Npgsql.LegacyPostgis.PostgisLineString.PostgisLineString(System.Collections.Generic.IEnumerable<Npgsql.LegacyPostgis.Coordinate2D>! points) -> void
+Npgsql.LegacyPostgis.PostgisLineString.this[int index].get -> Npgsql.LegacyPostgis.Coordinate2D
+Npgsql.LegacyPostgis.PostgisMultiLineString
+Npgsql.LegacyPostgis.PostgisMultiLineString.Equals(Npgsql.LegacyPostgis.PostgisMultiLineString? other) -> bool
+Npgsql.LegacyPostgis.PostgisMultiLineString.GetEnumerator() -> System.Collections.Generic.IEnumerator<Npgsql.LegacyPostgis.PostgisLineString!>!
+Npgsql.LegacyPostgis.PostgisMultiLineString.LineCount.get -> int
+Npgsql.LegacyPostgis.PostgisMultiLineString.PostgisMultiLineString(Npgsql.LegacyPostgis.PostgisLineString![]! linestrings) -> void
+Npgsql.LegacyPostgis.PostgisMultiLineString.PostgisMultiLineString(System.Collections.Generic.IEnumerable<Npgsql.LegacyPostgis.PostgisLineString!>! linestrings) -> void
+Npgsql.LegacyPostgis.PostgisMultiLineString.PostgisMultiLineString(System.Collections.Generic.IEnumerable<System.Collections.Generic.IEnumerable<Npgsql.LegacyPostgis.Coordinate2D>!>! pointList) -> void
+Npgsql.LegacyPostgis.PostgisMultiLineString.this[int index].get -> Npgsql.LegacyPostgis.PostgisLineString!
+Npgsql.LegacyPostgis.PostgisMultiPoint
+Npgsql.LegacyPostgis.PostgisMultiPoint.Equals(Npgsql.LegacyPostgis.PostgisMultiPoint? other) -> bool
+Npgsql.LegacyPostgis.PostgisMultiPoint.GetEnumerator() -> System.Collections.Generic.IEnumerator<Npgsql.LegacyPostgis.Coordinate2D>!
+Npgsql.LegacyPostgis.PostgisMultiPoint.PointCount.get -> int
+Npgsql.LegacyPostgis.PostgisMultiPoint.PostgisMultiPoint(Npgsql.LegacyPostgis.Coordinate2D[]! points) -> void
+Npgsql.LegacyPostgis.PostgisMultiPoint.PostgisMultiPoint(System.Collections.Generic.IEnumerable<Npgsql.LegacyPostgis.Coordinate2D>! points) -> void
+Npgsql.LegacyPostgis.PostgisMultiPoint.PostgisMultiPoint(System.Collections.Generic.IEnumerable<Npgsql.LegacyPostgis.PostgisPoint!>! points) -> void
+Npgsql.LegacyPostgis.PostgisMultiPoint.this[int indexer].get -> Npgsql.LegacyPostgis.Coordinate2D
+Npgsql.LegacyPostgis.PostgisMultiPolygon
+Npgsql.LegacyPostgis.PostgisMultiPolygon.Equals(Npgsql.LegacyPostgis.PostgisMultiPolygon? other) -> bool
+Npgsql.LegacyPostgis.PostgisMultiPolygon.GetEnumerator() -> System.Collections.Generic.IEnumerator<Npgsql.LegacyPostgis.PostgisPolygon!>!
+Npgsql.LegacyPostgis.PostgisMultiPolygon.PolygonCount.get -> int
+Npgsql.LegacyPostgis.PostgisMultiPolygon.PostgisMultiPolygon(Npgsql.LegacyPostgis.PostgisPolygon![]! polygons) -> void
+Npgsql.LegacyPostgis.PostgisMultiPolygon.PostgisMultiPolygon(System.Collections.Generic.IEnumerable<Npgsql.LegacyPostgis.PostgisPolygon!>! polygons) -> void
+Npgsql.LegacyPostgis.PostgisMultiPolygon.PostgisMultiPolygon(System.Collections.Generic.IEnumerable<System.Collections.Generic.IEnumerable<System.Collections.Generic.IEnumerable<Npgsql.LegacyPostgis.Coordinate2D>!>!>! ringList) -> void
+Npgsql.LegacyPostgis.PostgisMultiPolygon.this[int index].get -> Npgsql.LegacyPostgis.PostgisPolygon!
+Npgsql.LegacyPostgis.PostgisPoint
+Npgsql.LegacyPostgis.PostgisPoint.Equals(Npgsql.LegacyPostgis.PostgisPoint? other) -> bool
+Npgsql.LegacyPostgis.PostgisPoint.PostgisPoint(double x, double y) -> void
+Npgsql.LegacyPostgis.PostgisPoint.X.get -> double
+Npgsql.LegacyPostgis.PostgisPoint.Y.get -> double
+Npgsql.LegacyPostgis.PostgisPolygon
+Npgsql.LegacyPostgis.PostgisPolygon.Equals(Npgsql.LegacyPostgis.PostgisPolygon? other) -> bool
+Npgsql.LegacyPostgis.PostgisPolygon.GetEnumerator() -> System.Collections.Generic.IEnumerator<System.Collections.Generic.IEnumerable<Npgsql.LegacyPostgis.Coordinate2D>!>!
+Npgsql.LegacyPostgis.PostgisPolygon.PostgisPolygon(Npgsql.LegacyPostgis.Coordinate2D[]![]! rings) -> void
+Npgsql.LegacyPostgis.PostgisPolygon.PostgisPolygon(System.Collections.Generic.IEnumerable<System.Collections.Generic.IEnumerable<Npgsql.LegacyPostgis.Coordinate2D>!>! rings) -> void
+Npgsql.LegacyPostgis.PostgisPolygon.RingCount.get -> int
+Npgsql.LegacyPostgis.PostgisPolygon.this[int ringIndex, int pointIndex].get -> Npgsql.LegacyPostgis.Coordinate2D
+Npgsql.LegacyPostgis.PostgisPolygon.this[int ringIndex].get -> Npgsql.LegacyPostgis.Coordinate2D[]!
+Npgsql.LegacyPostgis.PostgisPolygon.TotalPointCount.get -> int
+Npgsql.NpgsqlLegacyPostgisExtensions
+override Npgsql.LegacyPostgis.Coordinate2D.Equals(object? obj) -> bool
+override Npgsql.LegacyPostgis.Coordinate2D.GetHashCode() -> int
+override Npgsql.LegacyPostgis.LegacyPostgisHandlerFactory.Create(Npgsql.PostgresTypes.PostgresType! postgresType, Npgsql.NpgsqlConnection! conn) -> Npgsql.TypeHandling.NpgsqlTypeHandler<Npgsql.LegacyPostgis.PostgisGeometry!>!
+override Npgsql.LegacyPostgis.PostgisGeometryCollection.Equals(object? obj) -> bool
+override Npgsql.LegacyPostgis.PostgisGeometryCollection.GetHashCode() -> int
+override Npgsql.LegacyPostgis.PostgisGeometryCollection.GetLenHelper() -> int
+override Npgsql.LegacyPostgis.PostgisLineString.Equals(object? obj) -> bool
+override Npgsql.LegacyPostgis.PostgisLineString.GetHashCode() -> int
+override Npgsql.LegacyPostgis.PostgisLineString.GetLenHelper() -> int
+override Npgsql.LegacyPostgis.PostgisMultiLineString.Equals(object? obj) -> bool
+override Npgsql.LegacyPostgis.PostgisMultiLineString.GetHashCode() -> int
+override Npgsql.LegacyPostgis.PostgisMultiPoint.Equals(object? obj) -> bool
+override Npgsql.LegacyPostgis.PostgisMultiPoint.GetHashCode() -> int
+override Npgsql.LegacyPostgis.PostgisMultiPoint.GetLenHelper() -> int
+override Npgsql.LegacyPostgis.PostgisMultiPolygon.Equals(object? obj) -> bool
+override Npgsql.LegacyPostgis.PostgisMultiPolygon.GetHashCode() -> int
+override Npgsql.LegacyPostgis.PostgisMultiPolygon.GetLenHelper() -> int
+override Npgsql.LegacyPostgis.PostgisPoint.Equals(object? obj) -> bool
+override Npgsql.LegacyPostgis.PostgisPoint.GetHashCode() -> int
+override Npgsql.LegacyPostgis.PostgisPoint.GetLenHelper() -> int
+override Npgsql.LegacyPostgis.PostgisPolygon.Equals(object? obj) -> bool
+override Npgsql.LegacyPostgis.PostgisPolygon.GetHashCode() -> int
+override Npgsql.LegacyPostgis.PostgisPolygon.GetLenHelper() -> int
+static Npgsql.LegacyPostgis.Coordinate2D.operator !=(Npgsql.LegacyPostgis.Coordinate2D left, Npgsql.LegacyPostgis.Coordinate2D right) -> bool
+static Npgsql.LegacyPostgis.Coordinate2D.operator ==(Npgsql.LegacyPostgis.Coordinate2D left, Npgsql.LegacyPostgis.Coordinate2D right) -> bool
+static Npgsql.LegacyPostgis.PostgisGeometryCollection.operator !=(Npgsql.LegacyPostgis.PostgisGeometryCollection! x, Npgsql.LegacyPostgis.PostgisGeometryCollection! y) -> bool
+static Npgsql.LegacyPostgis.PostgisGeometryCollection.operator ==(Npgsql.LegacyPostgis.PostgisGeometryCollection! x, Npgsql.LegacyPostgis.PostgisGeometryCollection! y) -> bool
+static Npgsql.LegacyPostgis.PostgisLineString.operator !=(Npgsql.LegacyPostgis.PostgisLineString! x, Npgsql.LegacyPostgis.PostgisLineString! y) -> bool
+static Npgsql.LegacyPostgis.PostgisLineString.operator ==(Npgsql.LegacyPostgis.PostgisLineString! x, Npgsql.LegacyPostgis.PostgisLineString! y) -> bool
+static Npgsql.LegacyPostgis.PostgisMultiLineString.operator !=(Npgsql.LegacyPostgis.PostgisMultiLineString! x, Npgsql.LegacyPostgis.PostgisMultiLineString! y) -> bool
+static Npgsql.LegacyPostgis.PostgisMultiLineString.operator ==(Npgsql.LegacyPostgis.PostgisMultiLineString! x, Npgsql.LegacyPostgis.PostgisMultiLineString! y) -> bool
+static Npgsql.LegacyPostgis.PostgisMultiPoint.operator !=(Npgsql.LegacyPostgis.PostgisMultiPoint! x, Npgsql.LegacyPostgis.PostgisMultiPoint! y) -> bool
+static Npgsql.LegacyPostgis.PostgisMultiPoint.operator ==(Npgsql.LegacyPostgis.PostgisMultiPoint! x, Npgsql.LegacyPostgis.PostgisMultiPoint! y) -> bool
+static Npgsql.LegacyPostgis.PostgisMultiPolygon.operator !=(Npgsql.LegacyPostgis.PostgisMultiPolygon! x, Npgsql.LegacyPostgis.PostgisMultiPolygon! y) -> bool
+static Npgsql.LegacyPostgis.PostgisMultiPolygon.operator ==(Npgsql.LegacyPostgis.PostgisMultiPolygon! x, Npgsql.LegacyPostgis.PostgisMultiPolygon! y) -> bool
+static Npgsql.LegacyPostgis.PostgisPoint.operator !=(Npgsql.LegacyPostgis.PostgisPoint! x, Npgsql.LegacyPostgis.PostgisPoint! y) -> bool
+static Npgsql.LegacyPostgis.PostgisPoint.operator ==(Npgsql.LegacyPostgis.PostgisPoint! x, Npgsql.LegacyPostgis.PostgisPoint! y) -> bool
+static Npgsql.LegacyPostgis.PostgisPolygon.operator !=(Npgsql.LegacyPostgis.PostgisPolygon! x, Npgsql.LegacyPostgis.PostgisPolygon! y) -> bool
+static Npgsql.LegacyPostgis.PostgisPolygon.operator ==(Npgsql.LegacyPostgis.PostgisPolygon! x, Npgsql.LegacyPostgis.PostgisPolygon! y) -> bool
+static Npgsql.NpgsqlLegacyPostgisExtensions.UseLegacyPostgis(this Npgsql.TypeMapping.INpgsqlTypeMapper! mapper) -> Npgsql.TypeMapping.INpgsqlTypeMapper!

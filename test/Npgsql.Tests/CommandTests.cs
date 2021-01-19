@@ -288,6 +288,28 @@ namespace Npgsql.Tests
             await cancelTask;
         }
 
+        [Test]
+        public async Task CancelAsyncImmediately()
+        {
+            if (IsMultiplexing)
+                return; // Multiplexing, cancellation
+
+            using var cts = new CancellationTokenSource();
+            cts.Cancel();
+
+            await using var conn = await OpenConnectionAsync();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT 1";
+
+            var t = cmd.ExecuteScalarAsync(cts.Token);
+            Assert.That(t.IsCompleted, Is.True); // checks, if a query has completed synchronously
+            Assert.That(t.Status, Is.EqualTo(TaskStatus.Canceled));
+            Assert.ThrowsAsync<OperationCanceledException>(async () => await t);
+
+            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+            Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
+        }
+
         [Test, Description("Cancels an async query with the cancellation token, with successful PG cancellation")]
         public async Task CancelAsyncSoft()
         {
@@ -296,11 +318,11 @@ namespace Npgsql.Tests
 
             await using var conn = await OpenConnectionAsync();
             using var cmd = CreateSleepCommand(conn);
-            var cancellationSource = new CancellationTokenSource();
+            using var cancellationSource = new CancellationTokenSource();
             var t = cmd.ExecuteNonQueryAsync(cancellationSource.Token);
             cancellationSource.Cancel();
 
-            var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await t);
+            var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await t)!;
             Assert.That(exception.InnerException,
                 Is.TypeOf<PostgresException>().With.Property(nameof(PostgresException.SqlState)).EqualTo(PostgresErrorCodes.QueryCanceled));
             Assert.That(exception.CancellationToken, Is.EqualTo(cancellationSource.Token));
@@ -322,12 +344,12 @@ namespace Npgsql.Tests
 
             var processId = conn.ProcessID;
 
-            var cancellationSource = new CancellationTokenSource();
+            using var cancellationSource = new CancellationTokenSource();
             using var cmd = new NpgsqlCommand("SELECT 1", conn);
             var t = cmd.ExecuteScalarAsync(cancellationSource.Token);
             cancellationSource.Cancel();
 
-            var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await t);
+            var exception = Assert.ThrowsAsync<OperationCanceledException>(async () => await t)!;
             Assert.That(exception.InnerException, Is.TypeOf<TimeoutException>());
             Assert.That(exception.CancellationToken, Is.EqualTo(cancellationSource.Token));
 
@@ -649,12 +671,21 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public async Task NonStandardsConformingStrings_NotSupported()
+        public async Task NonStandardsConformingStrings()
         {
             using var conn = await OpenConnectionAsync();
 
-            Assert.That(() => conn.ExecuteNonQueryAsync("set standard_conforming_strings=off"),
-                Throws.Exception.TypeOf<NotSupportedException>());
+            if (IsMultiplexing)
+            {
+                Assert.That(() => conn.ExecuteNonQueryAsync("set standard_conforming_strings=off"),
+                    Throws.Exception.TypeOf<NotSupportedException>());
+            }
+            else
+            {
+                await conn.ExecuteNonQueryAsync("set standard_conforming_strings=off");
+                Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
+                await conn.ExecuteNonQueryAsync("set standard_conforming_strings=on");
+            }
         }
 
         [Test]

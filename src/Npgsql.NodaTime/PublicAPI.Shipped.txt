@@ -1,0 +1,21 @@
+﻿#nullable enable
+Npgsql.NodaTime.DateHandlerFactory
+Npgsql.NodaTime.DateHandlerFactory.DateHandlerFactory() -> void
+Npgsql.NodaTime.IntervalHandlerFactory
+Npgsql.NodaTime.IntervalHandlerFactory.IntervalHandlerFactory() -> void
+Npgsql.NodaTime.TimeHandlerFactory
+Npgsql.NodaTime.TimeHandlerFactory.TimeHandlerFactory() -> void
+Npgsql.NodaTime.TimeTzHandlerFactory
+Npgsql.NodaTime.TimeTzHandlerFactory.TimeTzHandlerFactory() -> void
+Npgsql.NodaTime.TimestampHandlerFactory
+Npgsql.NodaTime.TimestampHandlerFactory.TimestampHandlerFactory() -> void
+Npgsql.NodaTime.TimestampTzHandlerFactory
+Npgsql.NodaTime.TimestampTzHandlerFactory.TimestampTzHandlerFactory() -> void
+Npgsql.NpgsqlNodaTimeExtensions
+override Npgsql.NodaTime.DateHandlerFactory.Create(Npgsql.PostgresTypes.PostgresType! postgresType, Npgsql.NpgsqlConnection! conn) -> Npgsql.TypeHandling.NpgsqlTypeHandler<NodaTime.LocalDate>!
+override Npgsql.NodaTime.IntervalHandlerFactory.Create(Npgsql.PostgresTypes.PostgresType! postgresType, Npgsql.NpgsqlConnection! conn) -> Npgsql.TypeHandling.NpgsqlTypeHandler<NodaTime.Period!>!
+override Npgsql.NodaTime.TimeHandlerFactory.Create(Npgsql.PostgresTypes.PostgresType! postgresType, Npgsql.NpgsqlConnection! conn) -> Npgsql.TypeHandling.NpgsqlTypeHandler<NodaTime.LocalTime>!
+override Npgsql.NodaTime.TimeTzHandlerFactory.Create(Npgsql.PostgresTypes.PostgresType! postgresType, Npgsql.NpgsqlConnection! conn) -> Npgsql.TypeHandling.NpgsqlTypeHandler<NodaTime.OffsetTime>!
+override Npgsql.NodaTime.TimestampHandlerFactory.Create(Npgsql.PostgresTypes.PostgresType! postgresType, Npgsql.NpgsqlConnection! conn) -> Npgsql.TypeHandling.NpgsqlTypeHandler<NodaTime.Instant>!
+override Npgsql.NodaTime.TimestampTzHandlerFactory.Create(Npgsql.PostgresTypes.PostgresType! postgresType, Npgsql.NpgsqlConnection! conn) -> Npgsql.TypeHandling.NpgsqlTypeHandler<NodaTime.Instant>!
+static Npgsql.NpgsqlNodaTimeExtensions.UseNodaTime(this Npgsql.TypeMapping.INpgsqlTypeMapper! mapper) -> Npgsql.TypeMapping.INpgsqlTypeMapper!

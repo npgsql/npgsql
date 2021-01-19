@@ -153,7 +153,7 @@ namespace Npgsql.TypeHandling
         /// <summary>
         /// Creates a type handler for arrays of this handler's type.
         /// </summary>
-        public abstract ArrayHandler CreateArrayHandler(PostgresArrayType arrayBackendType);
+        public abstract ArrayHandler CreateArrayHandler(PostgresArrayType arrayBackendType, ArrayNullabilityMode arrayNullabilityMode);
 
         /// <summary>
         /// Creates a type handler for ranges of this handler's type.

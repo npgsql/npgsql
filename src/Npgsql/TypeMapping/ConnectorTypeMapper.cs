@@ -108,15 +108,20 @@ namespace Npgsql.TypeMapping
             var arrayElementType = GetArrayElementType(type);
             if (arrayElementType != null)
             {
-                if (_arrayHandlerByClrType.TryGetValue(arrayElementType, out var elementHandler))
-                    return elementHandler;
+                if (_arrayHandlerByClrType.TryGetValue(arrayElementType, out handler))
+                    return handler;
+
                 throw new NotSupportedException($"The CLR array type {type} isn't supported by Npgsql or your PostgreSQL. " +
                                                 "If you wish to map it to a PostgreSQL composite type array you need to register it before usage, please refer to the documentation.");
             }
 
-            // Nothing worked
-            if (type.GetTypeInfo().IsEnum)
+            if (type.IsEnum)
+            {
+                if (_byTypeName.TryGetValue(GetPgName(type, DefaultNameTranslator), out handler))
+                    return handler;
+
                 throw new NotSupportedException($"The CLR enum type {type.Name} must be registered with Npgsql before usage, please refer to the documentation.");
+            }
 
             if (typeof(IEnumerable).IsAssignableFrom(type))
                 throw new NotSupportedException("Npgsql 3.x removed support for writing a parameter with an IEnumerable value, use .ToList()/.ToArray() instead");
@@ -243,7 +248,7 @@ namespace Npgsql.TypeMapping
                 {
                     _byOID[domain.OID] = baseTypeHandler;
                     if (domain.Array != null)
-                        BindType(baseTypeHandler.CreateArrayHandler(domain.Array), domain.Array);
+                        BindType(baseTypeHandler.CreateArrayHandler(domain.Array, _connector.Settings.ArrayNullabilityMode), domain.Array);
                 }
         }
 
@@ -302,7 +307,7 @@ namespace Npgsql.TypeMapping
                 {
                     _byOID[domain.OID] = handler;
                     if (domain.Array != null)
-                        BindType(handler.CreateArrayHandler(domain.Array), domain.Array);
+                        BindType(handler.CreateArrayHandler(domain.Array, _connector.Settings.ArrayNullabilityMode), domain.Array);
                 }
         }
 
@@ -349,7 +354,7 @@ namespace Npgsql.TypeMapping
 
         void BindArrayType(NpgsqlTypeHandler elementHandler, PostgresArrayType pgArrayType, NpgsqlDbType? elementNpgsqlDbType, Type[]? elementClrTypes)
         {
-            var arrayHandler = elementHandler.CreateArrayHandler(pgArrayType);
+            var arrayHandler = elementHandler.CreateArrayHandler(pgArrayType, _connector.Settings.ArrayNullabilityMode);
 
             var arrayNpgsqlDbType = elementNpgsqlDbType.HasValue
                 ? NpgsqlDbType.Array | elementNpgsqlDbType.Value

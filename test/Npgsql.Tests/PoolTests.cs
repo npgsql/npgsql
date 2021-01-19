@@ -102,22 +102,28 @@ namespace Npgsql.Tests
         }
 
         [Test]
-        public void TimeoutGettingConnectorFromExhaustedPool()
+        public async Task TimeoutGettingConnectorFromExhaustedPool([Values(true, false)] bool async)
         {
-            var connString = new NpgsqlConnectionStringBuilder(ConnectionString)
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
             {
-                ApplicationName = nameof(TimeoutGettingConnectorFromExhaustedPool),
                 MaxPoolSize = 1,
                 Timeout = 2
-            }.ToString();
+            };
 
+            using var _ = CreateTempPool(csb, out var connString);
             using (var conn1 = CreateConnection(connString))
             {
-                conn1.Open();
-                // Pool is exhausted
-                using (var conn2 = CreateConnection(connString))
-                    Assert.That(() => conn2.Open(), Throws.Exception.TypeOf<NpgsqlException>());
+                await conn1.OpenAsync();
+                // Pool is now exhausted
+
+                await using var conn2 = CreateConnection(connString);
+                var e = async
+                    ? Assert.ThrowsAsync<NpgsqlException>(async () => await conn2.OpenAsync())!
+                    : Assert.Throws<NpgsqlException>(() => conn2.Open())!;
+
+                Assert.That(e.InnerException, Is.TypeOf<TimeoutException>());
             }
+
             // conn1 should now be back in the pool as idle
             using (var conn3 = CreateConnection(connString))
                 conn3.Open();
