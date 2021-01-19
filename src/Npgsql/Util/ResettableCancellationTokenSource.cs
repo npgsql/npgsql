@@ -15,7 +15,7 @@ namespace Npgsql.Util
     /// </remarks>
     class ResettableCancellationTokenSource : IDisposable
     {
-        bool isDisposed;
+        bool _isDisposed;
 
         public TimeSpan Timeout { get; set; }
 
@@ -25,7 +25,7 @@ namespace Npgsql.Util
         /// <summary>
         /// Used, so we wouldn't concurently use the cts for the cancellation, while it's being disposed
         /// </summary>
-        readonly object lockObject = new();
+        readonly object _lockObject = new();
 
 #if DEBUG
         bool _isRunning;
@@ -51,7 +51,7 @@ namespace Npgsql.Util
             _cts.CancelAfter(Timeout);
             if (_cts.IsCancellationRequested)
             {
-                lock (lockObject)
+                lock (_lockObject)
                 {
                     _cts.Dispose();
                     _cts = new CancellationTokenSource(Timeout);
@@ -71,9 +71,9 @@ namespace Npgsql.Util
         /// </summary>
         public void RestartTimeoutWithoutReset()
         {
-            lock (lockObject)
+            lock (_lockObject)
             {
-                if (!isDisposed)
+                if (!_isDisposed)
                     _cts.CancelAfter(Timeout);
             }
         }
@@ -93,7 +93,7 @@ namespace Npgsql.Util
             _cts.CancelAfter(InfiniteTimeSpan);
             if (_cts.IsCancellationRequested)
             {
-                lock (lockObject)
+                lock (_lockObject)
                 {
                     _cts.Dispose();
                     _cts = new CancellationTokenSource();
@@ -135,9 +135,9 @@ namespace Npgsql.Util
         /// </remarks>
         public void Stop()
         {
-            lock (lockObject)
+            lock (_lockObject)
             {
-                if (!isDisposed)
+                if (!_isDisposed)
                     _cts.CancelAfter(InfiniteTimeSpan);
             }
             
@@ -152,11 +152,11 @@ namespace Npgsql.Util
         /// </summary>
         public void Cancel()
         {
-            lock (lockObject)
+            lock (_lockObject)
             {
                 // if there was an attempt to cancel while the connector was breaking
                 // we do nothing
-                if (isDisposed)
+                if (_isDisposed)
                     return;
                 _cts.Cancel();
             }
@@ -167,11 +167,11 @@ namespace Npgsql.Util
         /// </summary>
         public void CancelAfter(int delay)
         {
-            lock (lockObject)
+            lock (_lockObject)
             {
                 // if there was an attempt to cancel while the connector was breaking
                 // we do nothing
-                if (isDisposed)
+                if (_isDisposed)
                     return;
                 _cts.CancelAfter(delay);
             }
@@ -194,14 +194,14 @@ namespace Npgsql.Util
 
         public void Dispose()
         {
-            Debug.Assert(!isDisposed);
+            Debug.Assert(!_isDisposed);
 
-            lock (lockObject)
+            lock (_lockObject)
             {
                 _registration.Dispose();
                 _cts.Dispose();
 
-                isDisposed = true;
+                _isDisposed = true;
             }
         }
     }

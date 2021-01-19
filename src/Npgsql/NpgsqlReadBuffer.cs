@@ -171,6 +171,7 @@ namespace Npgsql
                 CancellationTokenRegistration syncCancellationRegistration = default;
                 if (!async)
                 {
+                    // In sync I/O, the token isn't passed to the read, so we use a registration to forcefully break the connector.
                     syncCancellationRegistration = finalCt.Register(conn =>
                     {
                         var connector = (NpgsqlConnector)conn!;
@@ -250,10 +251,13 @@ namespace Npgsql
                                     if (cancellationTimeout > 0)
                                         buffer.Timeout = TimeSpan.FromMilliseconds(cancellationTimeout);
 
+                                    // TODO: somehow merge this with above (see #3463)
                                     finalCt = buffer.Cts.Start();
 
                                     if (!async)
                                     {
+                                        // A new cancellation token may have been created in Start above,
+                                        // so we need to re-register the callback.
                                         syncCancellationRegistration = finalCt.Register(conn =>
                                         {
                                             var connector = (NpgsqlConnector)conn!;
