@@ -31,6 +31,10 @@ namespace Npgsql.Tests.Support
 
         internal string ConnectionString { get; }
 
+        internal bool WaitToBreakOnCancel { get; set; }
+
+        internal TaskCompletionSource WaitToBreakTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
         internal static PgPostmasterMock Start(string? connectionString = null)
         {
             var mock = new PgPostmasterMock(connectionString);
@@ -100,6 +104,9 @@ namespace Npgsql.Tests.Support
 
             if (readBuffer.ReadInt32() == CancelRequestCode)
             {
+                if (WaitToBreakOnCancel)
+                    await WaitToBreakTcs.Task;
+
                 readBuffer.Dispose();
                 writeBuffer.Dispose();
                 stream.Dispose();

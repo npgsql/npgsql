@@ -1467,27 +1467,43 @@ namespace Npgsql
 
         internal void PerformUserCancellation()
         {
-            _userCancellationRequested = true;
-
-            if (AttemptPostgresCancellation && SupportsPostgresCancellation)
+            lock (CancelLock)
             {
-                var cancellationTimeout = Settings.CancellationTimeout;
-                if (PerformPostgresCancellation() && cancellationTimeout >= 0)
-                {
-                    if (cancellationTimeout > 0)
-                    {
-                        UserTimeout = cancellationTimeout;
-                        ReadBuffer.Timeout = TimeSpan.FromMilliseconds(cancellationTimeout);
-                        ReadBuffer.Cts.CancelAfter(cancellationTimeout);
-                    }
-                        
+                if (IsBroken)
                     return;
+
+                _userCancellationRequested = true;
+
+                if (AttemptPostgresCancellation && SupportsPostgresCancellation)
+                {
+                    var cancellationTimeout = Settings.CancellationTimeout;
+                    if (PerformPostgresCancellation() && cancellationTimeout >= 0)
+                    {
+                        if (cancellationTimeout > 0)
+                        {
+                            lock (this)
+                            {
+                                if (IsBroken)
+                                    return;
+                                UserTimeout = cancellationTimeout;
+                                ReadBuffer.Timeout = TimeSpan.FromMilliseconds(cancellationTimeout);
+                                ReadBuffer.Cts.CancelAfter(cancellationTimeout);
+                            }
+                        }
+
+                        return;
+                    }
+                }
+
+                lock (this)
+                {
+                    if (IsBroken)
+                        return;
+                    UserTimeout = -1;
+                    ReadBuffer.Timeout = _cancelImmediatelyTimeout;
+                    ReadBuffer.Cts.Cancel();
                 }
             }
-
-            UserTimeout = -1;
-            ReadBuffer.Timeout = _cancelImmediatelyTimeout;
-            ReadBuffer.Cts.Cancel();
         }
 
         /// <summary>

@@ -358,6 +358,35 @@ namespace Npgsql.Tests
                 Is.EqualTo(processId));
         }
 
+        [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3466")]
+        public async Task Bug3466()
+        {
+            if (IsMultiplexing)
+                return; // Multiplexing, cancellation
+
+            await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
+            postmasterMock.WaitToBreakOnCancel = true;
+            using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
+            await using var conn = await OpenConnectionAsync(connectionString);
+            var serverMock = await postmasterMock.WaitForServerConnection();
+
+            var processId = conn.ProcessID;
+
+            using var cancellationSource = new CancellationTokenSource();
+            using var cmd = new NpgsqlCommand("SELECT 1", conn)
+            {
+                CommandTimeout = 3
+            };
+            var t = Task.Run(() => cmd.ExecuteScalar());
+            Thread.Sleep(300);
+            var cancelTask = Task.Run(() => cmd.Cancel());
+
+            Assert.ThrowsAsync<OperationCanceledException>(async () => await t);
+            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+            postmasterMock.WaitToBreakTcs.SetResult();
+            Assert.DoesNotThrowAsync(async () => await cancelTask);
+        }
+
         [Test, Description("Check that cancel only affects the command on which its was invoked")]
         [Explicit("Timing-sensitive")]
         [Timeout(3000)]
