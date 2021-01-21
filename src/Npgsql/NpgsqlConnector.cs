@@ -1469,9 +1469,6 @@ namespace Npgsql
         {
             lock (CancelLock)
             {
-                if (IsBroken)
-                    return;
-
                 _userCancellationRequested = true;
 
                 if (AttemptPostgresCancellation && SupportsPostgresCancellation)
@@ -1483,7 +1480,7 @@ namespace Npgsql
                         {
                             lock (this)
                             {
-                                if (IsBroken)
+                                if (!IsConnected)
                                     return;
                                 UserTimeout = cancellationTimeout;
                                 ReadBuffer.Timeout = TimeSpan.FromMilliseconds(cancellationTimeout);
@@ -1497,7 +1494,7 @@ namespace Npgsql
 
                 lock (this)
                 {
-                    if (IsBroken)
+                    if (!IsConnected)
                         return;
                     UserTimeout = -1;
                     ReadBuffer.Timeout = _cancelImmediatelyTimeout;

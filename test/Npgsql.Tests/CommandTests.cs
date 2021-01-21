@@ -1,4 +1,5 @@
 using System;
+using System.Buffers.Binary;
 using System.Data;
 using System.IO;
 using System.Linq;
@@ -6,6 +7,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Npgsql.BackendMessages;
 using Npgsql.Tests.Support;
 using NpgsqlTypes;
 using NUnit.Framework;
@@ -359,12 +361,16 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3466")]
-        public async Task Bug3466()
+        public async Task Bug3466([Values(false, true)] bool isBroken)
         {
             if (IsMultiplexing)
                 return; // Multiplexing, cancellation
 
-            await using var postmasterMock = PgPostmasterMock.Start(ConnectionString);
+            var csb = new NpgsqlConnectionStringBuilder(ConnectionString)
+            {
+                Pooling = false,
+            };
+            await using var postmasterMock = PgPostmasterMock.Start(csb.ToString());
             postmasterMock.WaitToBreakOnCancel = true;
             using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
             await using var conn = await OpenConnectionAsync(connectionString);
@@ -381,8 +387,26 @@ namespace Npgsql.Tests
             Thread.Sleep(300);
             var cancelTask = Task.Run(() => cmd.Cancel());
 
-            Assert.ThrowsAsync<OperationCanceledException>(async () => await t);
-            Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+            if (isBroken)
+            {
+                Assert.ThrowsAsync<OperationCanceledException>(async () => await t);
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Broken));
+            }
+            else
+            {
+                await serverMock
+                    .WriteParseComplete()
+                    .WriteBindComplete()
+                    .WriteRowDescription(new FieldDescription(PostgresTypeOIDs.Int4))
+                    .WriteDataRow(BitConverter.GetBytes(BinaryPrimitives.ReverseEndianness(1)))
+                    .WriteCommandComplete()
+                    .WriteReadyForQuery()
+                    .FlushAsync();
+                Assert.DoesNotThrowAsync(async () => await t);
+                Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
+                await conn.CloseAsync();
+            }
+            
             postmasterMock.WaitToBreakTcs.SetResult();
             Assert.DoesNotThrowAsync(async () => await cancelTask);
         }
