@@ -400,7 +400,7 @@ Exception {2}",
             using (var cmd = new NpgsqlCommand("SELECT COUNT(*) FROM pg_prepared_xacts WHERE database = @database", conn))
             {
                 cmd.Parameters.Add(new NpgsqlParameter("database", conn.Database));
-                return (int)(long)cmd.ExecuteScalar();
+                return (int)(long)cmd.ExecuteScalar()!;
             }
         }
 
@@ -461,11 +461,11 @@ Start formatting event queue, going to sleep a bit for late events
                 var name = $"{(durable ? "Durable" : "Volatile")} resource {Counter}";
                 var resource = new EnlistResource(shouldRollBack, name, eventQueue);
                 if (durable)
-                    Transaction.Current.EnlistDurable(Guid.NewGuid(), resource, EnlistmentOptions.None);
+                    Transaction.Current!.EnlistDurable(Guid.NewGuid(), resource, EnlistmentOptions.None);
                 else
-                    Transaction.Current.EnlistVolatile(resource, EnlistmentOptions.None);
+                    Transaction.Current!.EnlistVolatile(resource, EnlistmentOptions.None);
 
-                Transaction.Current.TransactionCompleted += resource.Current_TransactionCompleted;
+                Transaction.Current.TransactionCompleted += resource.Current_TransactionCompleted!;
 
                 eventQueue?.Enqueue(new TransactionEvent(name + ": enlisted"));
             }
@@ -557,7 +557,7 @@ Start formatting event queue, going to sleep a bit for late events
             {
                 try
                 {
-                    Transaction.Current.EnlistPromotableSinglePhase(new FakePromotableSinglePhaseNotification());
+                    Transaction.Current!.EnlistPromotableSinglePhase(new FakePromotableSinglePhaseNotification());
                 }
                 catch (NotImplementedException)
                 {
@@ -568,7 +568,7 @@ Start formatting event queue, going to sleep a bit for late events
             _controlConn = OpenConnection();
 
             // Make sure prepared transactions are enabled in postgresql.conf (disabled by default)
-            if (int.Parse((string)_controlConn.ExecuteScalar("SHOW max_prepared_transactions")) == 0)
+            if (int.Parse((string)_controlConn.ExecuteScalar("SHOW max_prepared_transactions")!) == 0)
             {
                 TestUtil.IgnoreExceptOnBuildServer("max_prepared_transactions is set to 0 in your postgresql.conf");
                 _controlConn.Close();
@@ -578,7 +578,7 @@ Start formatting event queue, going to sleep a bit for late events
             var lingeringTrqnsqctions = new List<string>();
             using (var cmd = new NpgsqlCommand("SELECT gid FROM pg_prepared_xacts WHERE database=@database", _controlConn))
             {
-                cmd.Parameters.AddWithValue("database", new NpgsqlConnectionStringBuilder(ConnectionString).Database);
+                cmd.Parameters.AddWithValue("database", new NpgsqlConnectionStringBuilder(ConnectionString).Database!);
                 using (var reader = cmd.ExecuteReader())
                 {
                     while (reader.Read())
