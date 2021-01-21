@@ -84,7 +84,7 @@ namespace Npgsql
 
             var saslContinueMsg = Expect<AuthenticationSASLContinueMessage>(await ReadMessage(async), this);
             if (saslContinueMsg.AuthRequestType != AuthenticationRequestType.AuthenticationSASLContinue)
-                throw new NpgsqlException("[SASL] AuthenticationSASLFinal message expected");
+                throw new NpgsqlException("[SASL] AuthenticationSASLContinue message expected");
             var firstServerMsg = AuthenticationSCRAMServerFirstMessage.Load(saslContinueMsg.Payload);
             if (!firstServerMsg.Nonce.StartsWith(clientNonce))
                 throw new InvalidOperationException("[SCRAM] Malformed SCRAMServerFirst message: server nonce doesn't start with client nonce");
