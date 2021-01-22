@@ -25,67 +25,61 @@ namespace Npgsql.Tests.Types
                 Pooling = false
             };
 
-            using (var conn = await OpenConnectionAsync(csb))
+            using var conn = await OpenConnectionAsync(csb);
+            // Resolve type by NpgsqlDbType
+            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
             {
-                // Resolve type by NpgsqlDbType
-                using (var cmd = new NpgsqlCommand("SELECT @p", conn))
-                {
-                    cmd.Parameters.AddWithValue("p", NpgsqlDbType.Range | NpgsqlDbType.Integer, DBNull.Value);
-                    using (var reader = await cmd.ExecuteReaderAsync())
-                    {
-                        reader.Read();
-                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4range"));
-                    }
-                }
-
-                // Resolve type by ClrType (type inference)
-                conn.ReloadTypes();
-                using (var cmd = new NpgsqlCommand("SELECT @p", conn))
-                {
-                    cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Value = new NpgsqlRange<int>(3, 5) });
-                    using (var reader = await cmd.ExecuteReaderAsync())
-                    {
-                        reader.Read();
-                        Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4range"));
-                    }
-                }
-
-                // Resolve type by OID (read)
-                conn.ReloadTypes();
-                using (var cmd = new NpgsqlCommand("SELECT int4range(3, 5)", conn))
+                cmd.Parameters.AddWithValue("p", NpgsqlDbType.Range | NpgsqlDbType.Integer, DBNull.Value);
                 using (var reader = await cmd.ExecuteReaderAsync())
                 {
                     reader.Read();
                     Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4range"));
                 }
             }
+
+            // Resolve type by ClrType (type inference)
+            conn.ReloadTypes();
+            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+            {
+                cmd.Parameters.Add(new NpgsqlParameter { ParameterName = "p", Value = new NpgsqlRange<int>(3, 5) });
+                using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    reader.Read();
+                    Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4range"));
+                }
+            }
+
+            // Resolve type by OID (read)
+            conn.ReloadTypes();
+            using (var cmd = new NpgsqlCommand("SELECT int4range(3, 5)", conn))
+            using (var reader = await cmd.ExecuteReaderAsync())
+            {
+                reader.Read();
+                Assert.That(reader.GetDataTypeName(0), Is.EqualTo("int4range"));
+            }
         }
 
         [Test]
         public async Task Range()
         {
-            using (var conn = await OpenConnectionAsync())
-            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4", conn))
-            {
-                var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Range | NpgsqlDbType.Integer) { Value = NpgsqlRange<int>.Empty };
-                var p2 = new NpgsqlParameter { ParameterName = "p2", Value = new NpgsqlRange<int>(1, 10) };
-                var p3 = new NpgsqlParameter { ParameterName = "p3", Value = new NpgsqlRange<int>(1, false, 10, false) };
-                var p4 = new NpgsqlParameter { ParameterName = "p4", Value = new NpgsqlRange<int>(0, false, true, 10, false, false) };
-                Assert.That(p2.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Range | NpgsqlDbType.Integer));
-                cmd.Parameters.Add(p1);
-                cmd.Parameters.Add(p2);
-                cmd.Parameters.Add(p3);
-                cmd.Parameters.Add(p4);
-                using (var reader = await cmd.ExecuteReaderAsync())
-                {
-                    reader.Read();
+            using var conn = await OpenConnectionAsync();
+            using var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4", conn);
+            var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Range | NpgsqlDbType.Integer) { Value = NpgsqlRange<int>.Empty };
+            var p2 = new NpgsqlParameter { ParameterName = "p2", Value = new NpgsqlRange<int>(1, 10) };
+            var p3 = new NpgsqlParameter { ParameterName = "p3", Value = new NpgsqlRange<int>(1, false, 10, false) };
+            var p4 = new NpgsqlParameter { ParameterName = "p4", Value = new NpgsqlRange<int>(0, false, true, 10, false, false) };
+            Assert.That(p2.NpgsqlDbType, Is.EqualTo(NpgsqlDbType.Range | NpgsqlDbType.Integer));
+            cmd.Parameters.Add(p1);
+            cmd.Parameters.Add(p2);
+            cmd.Parameters.Add(p3);
+            cmd.Parameters.Add(p4);
+            using var reader = await cmd.ExecuteReaderAsync();
+            reader.Read();
 
-                    Assert.That(reader[0].ToString(), Is.EqualTo("empty"));
-                    Assert.That(reader[1].ToString(), Is.EqualTo("[1,11)"));
-                    Assert.That(reader[2].ToString(), Is.EqualTo("[2,10)"));
-                    Assert.That(reader[3].ToString(), Is.EqualTo("(,10)"));
-                }
-            }
+            Assert.That(reader[0].ToString(), Is.EqualTo("empty"));
+            Assert.That(reader[1].ToString(), Is.EqualTo("[1,11)"));
+            Assert.That(reader[2].ToString(), Is.EqualTo("[2,10)"));
+            Assert.That(reader[3].ToString(), Is.EqualTo("(,10)"));
         }
 
         [Test]
@@ -94,28 +88,22 @@ namespace Npgsql.Tests.Types
             if (IsMultiplexing)
                 Assert.Ignore("Multiplexing, ReloadTypes");
 
-            using (var conn = await OpenConnectionAsync())
-            {
-                await conn.ExecuteNonQueryAsync("CREATE TYPE pg_temp.textrange AS RANGE(subtype=text)");
-                conn.ReloadTypes();
-                Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
+            using var conn = await OpenConnectionAsync();
+            await conn.ExecuteNonQueryAsync("CREATE TYPE pg_temp.textrange AS RANGE(subtype=text)");
+            conn.ReloadTypes();
+            Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
 
-                var value = new NpgsqlRange<string>(
-                    new string('a', conn.Settings.WriteBufferSize + 10),
-                    new string('z', conn.Settings.WriteBufferSize + 10)
-                );
+            var value = new NpgsqlRange<string>(
+                new string('a', conn.Settings.WriteBufferSize + 10),
+                new string('z', conn.Settings.WriteBufferSize + 10)
+            );
 
-                //var value = new NpgsqlRange<string>("bar", "foo");
-                using (var cmd = new NpgsqlCommand("SELECT @p", conn))
-                {
-                    cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Range | NpgsqlDbType.Text) { Value = value });
-                    using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess))
-                    {
-                        reader.Read();
-                        Assert.That(reader[0], Is.EqualTo(value));
-                    }
-                }
-            }
+            //var value = new NpgsqlRange<string>("bar", "foo");
+            using var cmd = new NpgsqlCommand("SELECT @p", conn);
+            cmd.Parameters.Add(new NpgsqlParameter("p", NpgsqlDbType.Range | NpgsqlDbType.Text) { Value = value });
+            using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
+            reader.Read();
+            Assert.That(reader[0], Is.EqualTo(value));
         }
 
         [Test]
@@ -219,8 +207,8 @@ namespace Npgsql.Tests.Types
         [OneTimeSetUp]
         public async Task OneTimeSetUp()
         {
-            using (var conn = await OpenConnectionAsync())
-                TestUtil.MinimumPgVersion(conn, "9.2.0");
+            using var conn = await OpenConnectionAsync();
+            TestUtil.MinimumPgVersion(conn, "9.2.0");
         }
 
         #region ParseTests

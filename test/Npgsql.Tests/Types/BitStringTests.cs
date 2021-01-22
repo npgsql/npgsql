@@ -30,43 +30,37 @@ namespace Npgsql.Tests.Types
             for (var i = 0; i < bits.Length; i++)
                 expected[i] = bits[i] == '1';
 
-            using (var conn = await OpenConnectionAsync())
-            using (var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4", conn))
-            {
-                var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Varbit);
-                var p2 = new NpgsqlParameter("p2", NpgsqlDbType.Bit);
-                var p3 = new NpgsqlParameter("p3", NpgsqlDbType.Varbit) {Value = bits};
-                var p4 = new NpgsqlParameter {ParameterName = "p4", Value = expected};
-                cmd.Parameters.Add(p1);
-                cmd.Parameters.Add(p2);
-                cmd.Parameters.Add(p3);
-                cmd.Parameters.Add(p4);
-                p1.Value = p2.Value = expected;
-                using (var reader = await cmd.ExecuteReaderAsync())
-                {
-                    reader.Read();
+            using var conn = await OpenConnectionAsync();
+            using var cmd = new NpgsqlCommand("SELECT @p1, @p2, @p3, @p4", conn);
+            var p1 = new NpgsqlParameter("p1", NpgsqlDbType.Varbit);
+            var p2 = new NpgsqlParameter("p2", NpgsqlDbType.Bit);
+            var p3 = new NpgsqlParameter("p3", NpgsqlDbType.Varbit) {Value = bits};
+            var p4 = new NpgsqlParameter {ParameterName = "p4", Value = expected};
+            cmd.Parameters.Add(p1);
+            cmd.Parameters.Add(p2);
+            cmd.Parameters.Add(p3);
+            cmd.Parameters.Add(p4);
+            p1.Value = p2.Value = expected;
+            using var reader = await cmd.ExecuteReaderAsync();
+            reader.Read();
 
-                    for (var i = 0; i < cmd.Parameters.Count; i++)
-                    {
-                        Assert.That(reader.GetFieldValue<BitArray>(i), Is.EqualTo(expected));
-                        Assert.That(reader.GetValue(i), Is.EqualTo(expected));
-                        Assert.That(() => reader.GetFieldValue<bool>(i), Throws.Exception.TypeOf<InvalidCastException>());
-                    }
-                }
+            for (var i = 0; i < cmd.Parameters.Count; i++)
+            {
+                Assert.That(reader.GetFieldValue<BitArray>(i), Is.EqualTo(expected));
+                Assert.That(reader.GetValue(i), Is.EqualTo(expected));
+                Assert.That(() => reader.GetFieldValue<bool>(i), Throws.Exception.TypeOf<InvalidCastException>());
             }
         }
 
         [Test]
         public async Task Long()
         {
-            using (var conn = await OpenConnectionAsync())
-            {
-                var bitLen = (conn.Settings.WriteBufferSize + 10) * 8;
-                var chars = new char[bitLen];
-                for (var i = 0; i < bitLen; i++)
-                    chars[i] = i % 2 == 0 ? '0' : '1';
-                await RoundtripBitArray(new string(chars));
-            }
+            using var conn = await OpenConnectionAsync();
+            var bitLen = (conn.Settings.WriteBufferSize + 10) * 8;
+            var chars = new char[bitLen];
+            for (var i = 0; i < bitLen; i++)
+                chars[i] = i % 2 == 0 ? '0' : '1';
+            await RoundtripBitArray(new string(chars));
         }
 
         [Test]
@@ -74,129 +68,107 @@ namespace Npgsql.Tests.Types
         {
             var expected = new BitVector32(bits);
 
-            using (var conn = await OpenConnectionAsync())
-            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
-            {
-                cmd.Parameters.AddWithValue("p", expected);
-                using (var reader = await cmd.ExecuteReaderAsync())
-                {
-                    reader.Read();
-                    Assert.That(reader.GetFieldValue<BitVector32>(0), Is.EqualTo(expected));
-                }
-            }
+            using var conn = await OpenConnectionAsync();
+            using var cmd = new NpgsqlCommand("SELECT @p", conn);
+            cmd.Parameters.AddWithValue("p", expected);
+            using var reader = await cmd.ExecuteReaderAsync();
+            reader.Read();
+            Assert.That(reader.GetFieldValue<BitVector32>(0), Is.EqualTo(expected));
         }
 
         [Test]
         public async Task BitVector32TooLong()
         {
-            using (var conn = await OpenConnectionAsync())
+            using var conn = await OpenConnectionAsync();
+            using (var cmd = new NpgsqlCommand($"SELECT B'{new string('0', 34)}'", conn))
+            using (var reader = await cmd.ExecuteReaderAsync())
             {
-                using (var cmd = new NpgsqlCommand($"SELECT B'{new string('0', 34)}'", conn))
-                using (var reader = await cmd.ExecuteReaderAsync())
-                {
-                    reader.Read();
-                    Assert.That(() => reader.GetFieldValue<BitVector32>(0), Throws.Exception.TypeOf<InvalidCastException>());
-                }
-                Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
+                reader.Read();
+                Assert.That(() => reader.GetFieldValue<BitVector32>(0), Throws.Exception.TypeOf<InvalidCastException>());
             }
+            Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
         }
 
         [Test, Description("Roundtrips a single bit")]
         public async Task SingleBit()
         {
-            using (var conn = await OpenConnectionAsync())
-            using (var cmd = new NpgsqlCommand("SELECT @p::BIT(1), B'01'::BIT(2)", conn))
-            {
-                const bool expected = true;
-                var p = new NpgsqlParameter("p", NpgsqlDbType.Bit);
-                // Type inference? But bool is mapped to PG bool
-                cmd.Parameters.Add(p);
-                p.Value = expected;
-                using (var reader = await cmd.ExecuteReaderAsync())
-                {
-                    reader.Read();
+            using var conn = await OpenConnectionAsync();
+            using var cmd = new NpgsqlCommand("SELECT @p::BIT(1), B'01'::BIT(2)", conn);
+            const bool expected = true;
+            var p = new NpgsqlParameter("p", NpgsqlDbType.Bit);
+            // Type inference? But bool is mapped to PG bool
+            cmd.Parameters.Add(p);
+            p.Value = expected;
+            using var reader = await cmd.ExecuteReaderAsync();
+            reader.Read();
 
-                    Assert.That(reader.GetBoolean(0), Is.EqualTo(true));
-                    Assert.That(reader.GetValue(0), Is.EqualTo(true));
-                    Assert.That(reader.GetFieldValue<bool>(0), Is.EqualTo(true));
-                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(bool)));
-                }
-            }
+            Assert.That(reader.GetBoolean(0), Is.EqualTo(true));
+            Assert.That(reader.GetValue(0), Is.EqualTo(true));
+            Assert.That(reader.GetFieldValue<bool>(0), Is.EqualTo(true));
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(bool)));
         }
 
         [Test, Description("BIT(N) shouldn't be accessible as bool")]
         public async Task BitstringAsSingleBit()
         {
-            using (var conn = await OpenConnectionAsync())
+            using var conn = await OpenConnectionAsync();
+            using (var cmd = new NpgsqlCommand("SELECT B'01'::BIT(2)", conn))
+            using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess))
             {
-                using (var cmd = new NpgsqlCommand("SELECT B'01'::BIT(2)", conn))
-                using (var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess))
-                {
-                    reader.Read();
-                    Assert.That(() => reader.GetBoolean(0), Throws.Exception.TypeOf<InvalidCastException>());
+                reader.Read();
+                Assert.That(() => reader.GetBoolean(0), Throws.Exception.TypeOf<InvalidCastException>());
 
-                }
-                // Connection should still be OK
-                Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
             }
+            // Connection should still be OK
+            Assert.That(await conn.ExecuteScalarAsync("SELECT 1"), Is.EqualTo(1));
         }
 
         [Test]
         public async Task Array()
         {
-            using (var conn = await OpenConnectionAsync())
-            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
-            {
-                var expected = new[] { new BitArray(new[] { true, false, true }), new BitArray(new[] { false }) };
-                var p = new NpgsqlParameter("p", NpgsqlDbType.Array | NpgsqlDbType.Varbit) { Value = expected };
-                cmd.Parameters.Add(p);
-                p.Value = expected;
-                using (var reader = await cmd.ExecuteReaderAsync())
-                {
-                    reader.Read();
+            using var conn = await OpenConnectionAsync();
+            using var cmd = new NpgsqlCommand("SELECT @p", conn);
+            var expected = new[] { new BitArray(new[] { true, false, true }), new BitArray(new[] { false }) };
+            var p = new NpgsqlParameter("p", NpgsqlDbType.Array | NpgsqlDbType.Varbit) { Value = expected };
+            cmd.Parameters.Add(p);
+            p.Value = expected;
+            using var reader = await cmd.ExecuteReaderAsync();
+            reader.Read();
 
-                    Assert.That(reader.GetValue(0), Is.EqualTo(expected));
-                    Assert.That(reader.GetFieldValue<BitArray[]>(0), Is.EqualTo(expected));
-                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
-                }
-            }
+            Assert.That(reader.GetValue(0), Is.EqualTo(expected));
+            Assert.That(reader.GetFieldValue<BitArray[]>(0), Is.EqualTo(expected));
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
         }
 
         [Test]
         public async Task SingleBitArray()
         {
-            using (var conn = await OpenConnectionAsync())
-            using (var cmd = new NpgsqlCommand("SELECT @p::BIT(1)[]", conn))
-            {
-                var expected = new[] { true, false };
-                var p = new NpgsqlParameter("p", NpgsqlDbType.Array | NpgsqlDbType.Bit) {Value = expected};
-                cmd.Parameters.Add(p);
-                p.Value = expected;
-                using (var reader = await cmd.ExecuteReaderAsync())
-                {
-                    reader.Read();
-                    var x = reader.GetValue(0);
-                    Assert.That(reader.GetValue(0), Is.EqualTo(expected));
-                    Assert.That(reader.GetFieldValue<bool[]>(0), Is.EqualTo(expected));
-                    Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
-                }
-            }
+            using var conn = await OpenConnectionAsync();
+            using var cmd = new NpgsqlCommand("SELECT @p::BIT(1)[]", conn);
+            var expected = new[] { true, false };
+            var p = new NpgsqlParameter("p", NpgsqlDbType.Array | NpgsqlDbType.Bit) {Value = expected};
+            cmd.Parameters.Add(p);
+            p.Value = expected;
+            using var reader = await cmd.ExecuteReaderAsync();
+            reader.Read();
+            var x = reader.GetValue(0);
+            Assert.That(reader.GetValue(0), Is.EqualTo(expected));
+            Assert.That(reader.GetFieldValue<bool[]>(0), Is.EqualTo(expected));
+            Assert.That(reader.GetFieldType(0), Is.EqualTo(typeof(Array)));
         }
 
         [Test]
         public async Task Validation()
         {
-            using (var conn = await OpenConnectionAsync())
-            using (var cmd = new NpgsqlCommand("SELECT @p1::BIT VARYING", conn))
-            {
-                var p = new NpgsqlParameter("p1", NpgsqlDbType.Bit);
-                cmd.Parameters.Add(p);
-                p.Value = "001q0";
-                Assert.That(async () => await cmd.ExecuteReaderAsync(), Throws.Exception.TypeOf<FormatException>());
+            using var conn = await OpenConnectionAsync();
+            using var cmd = new NpgsqlCommand("SELECT @p1::BIT VARYING", conn);
+            var p = new NpgsqlParameter("p1", NpgsqlDbType.Bit);
+            cmd.Parameters.Add(p);
+            p.Value = "001q0";
+            Assert.That(async () => await cmd.ExecuteReaderAsync(), Throws.Exception.TypeOf<FormatException>());
 
-                // Make sure the connection state is OK
-                Assert.That(await conn.ExecuteScalarAsync("SELECT 8"), Is.EqualTo(8));
-            }
+            // Make sure the connection state is OK
+            Assert.That(await conn.ExecuteScalarAsync("SELECT 8"), Is.EqualTo(8));
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/2766")]

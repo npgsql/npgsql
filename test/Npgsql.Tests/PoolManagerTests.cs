@@ -30,8 +30,8 @@ namespace Npgsql.Tests
                 {
                     ApplicationName = "App" + i
                 }.ToString();
-                using (var conn = new NpgsqlConnection(connString))
-                    conn.Open();
+                using var conn = new NpgsqlConnection(connString);
+                conn.Open();
             }
             PoolManager.Reset();
         }
