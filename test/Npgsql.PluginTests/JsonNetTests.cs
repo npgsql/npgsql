@@ -218,6 +218,25 @@ namespace Npgsql.PluginTests
         [Test]
         public void RoundtripJsonCustomSerializerSettings() => RoundtripCustomSerializerSettings(asJsonb : false);
 
+        [Test]
+        public void Bug3464()
+        {
+            var expected = new Bug3464Class { SomeString = new string('5', 8174) };
+            using var conn = base.OpenConnection();
+            using var cmd = new NpgsqlCommand(@"SELECT @p1, @p2", conn);
+
+            conn.TypeMapper.UseJsonNet(new[] { typeof(Bug3464Class) });
+            cmd.Parameters.AddWithValue("p1", expected).NpgsqlDbType = _npgsqlDbType;
+            cmd.Parameters.AddWithValue("p2", expected).NpgsqlDbType = _npgsqlDbType;
+
+            using var reader = cmd.ExecuteReader();
+        }
+
+        public class Bug3464Class
+        {
+            public string? SomeString { get; set; }
+        }
+
         protected override NpgsqlConnection OpenConnection(string? connectionString = null)
         {
             var conn = base.OpenConnection(connectionString);

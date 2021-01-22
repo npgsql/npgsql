@@ -134,14 +134,15 @@ namespace Npgsql.TypeHandlers
         /// <inheritdoc />
         protected override async Task WriteWithLength<TAny>(TAny value, NpgsqlWriteBuffer buf, NpgsqlLengthCache? lengthCache, NpgsqlParameter? parameter, bool async)
         {
+            var spaceRequired = _isJsonb ? 5 : 4;
+
+            if (buf.WriteSpaceLeft < spaceRequired)
+                await buf.Flush(async);
+
             buf.WriteInt32(ValidateAndGetLength(value, ref lengthCache, parameter));
 
             if (_isJsonb)
-            {
-                if (buf.WriteSpaceLeft < 1)
-                    await buf.Flush(async);
                 buf.WriteByte(JsonbProtocolVersion);
-            }
 
             if (typeof(TAny) == typeof(string))
                 await _textHandler.Write((string)(object)value!, buf, lengthCache, parameter, async);
