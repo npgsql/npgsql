@@ -1307,12 +1307,14 @@ Npgsql.TypeHandlers.NumericHandlers.NumericHandler.ValidateAndGetLength(float va
 Npgsql.TypeHandlers.NumericHandlers.NumericHandler.ValidateAndGetLength(int value, Npgsql.NpgsqlParameter? parameter) -> int
 Npgsql.TypeHandlers.NumericHandlers.NumericHandler.ValidateAndGetLength(long value, Npgsql.NpgsqlParameter? parameter) -> int
 Npgsql.TypeHandlers.NumericHandlers.NumericHandler.ValidateAndGetLength(short value, Npgsql.NpgsqlParameter? parameter) -> int
+Npgsql.TypeHandlers.NumericHandlers.NumericHandler.ValidateAndGetLength(System.Data.SqlTypes.SqlDecimal value, Npgsql.NpgsqlParameter? parameter) -> int
 Npgsql.TypeHandlers.NumericHandlers.NumericHandler.Write(byte value, Npgsql.NpgsqlWriteBuffer! buf, Npgsql.NpgsqlParameter? parameter) -> void
 Npgsql.TypeHandlers.NumericHandlers.NumericHandler.Write(double value, Npgsql.NpgsqlWriteBuffer! buf, Npgsql.NpgsqlParameter? parameter) -> void
 Npgsql.TypeHandlers.NumericHandlers.NumericHandler.Write(float value, Npgsql.NpgsqlWriteBuffer! buf, Npgsql.NpgsqlParameter? parameter) -> void
 Npgsql.TypeHandlers.NumericHandlers.NumericHandler.Write(int value, Npgsql.NpgsqlWriteBuffer! buf, Npgsql.NpgsqlParameter? parameter) -> void
 Npgsql.TypeHandlers.NumericHandlers.NumericHandler.Write(long value, Npgsql.NpgsqlWriteBuffer! buf, Npgsql.NpgsqlParameter? parameter) -> void
 Npgsql.TypeHandlers.NumericHandlers.NumericHandler.Write(short value, Npgsql.NpgsqlWriteBuffer! buf, Npgsql.NpgsqlParameter? parameter) -> void
+Npgsql.TypeHandlers.NumericHandlers.NumericHandler.Write(System.Data.SqlTypes.SqlDecimal value, Npgsql.NpgsqlWriteBuffer! buf, Npgsql.NpgsqlParameter? parameter) -> void
 Npgsql.TypeHandlers.NumericHandlers.SingleHandler
 Npgsql.TypeHandlers.NumericHandlers.SingleHandler.SingleHandler(Npgsql.PostgresTypes.PostgresType! postgresType) -> void
 Npgsql.TypeHandlers.NumericHandlers.SingleHandler.ValidateAndGetLength(double value, Npgsql.NpgsqlParameter? parameter) -> int
@@ -1846,6 +1848,7 @@ override Npgsql.NpgsqlDataReader.GetChars(int ordinal, long dataOffset, char[]? 
 override Npgsql.NpgsqlDataReader.GetDataTypeName(int ordinal) -> string!
 override Npgsql.NpgsqlDataReader.GetDateTime(int ordinal) -> System.DateTime
 override Npgsql.NpgsqlDataReader.GetDecimal(int ordinal) -> decimal
+Npgsql.NpgsqlDataReader.GetSqlDecimal(int ordinal) -> System.Data.SqlTypes.SqlDecimal
 override Npgsql.NpgsqlDataReader.GetDouble(int ordinal) -> double
 override Npgsql.NpgsqlDataReader.GetEnumerator() -> System.Collections.IEnumerator!
 override Npgsql.NpgsqlDataReader.GetFieldType(int ordinal) -> System.Type!
@@ -2140,6 +2143,7 @@ override Npgsql.TypeHandlers.NumericHandlers.MoneyHandler.Read(Npgsql.NpgsqlRead
 override Npgsql.TypeHandlers.NumericHandlers.MoneyHandler.ValidateAndGetLength(decimal value, Npgsql.NpgsqlParameter? parameter) -> int
 override Npgsql.TypeHandlers.NumericHandlers.MoneyHandler.Write(decimal value, Npgsql.NpgsqlWriteBuffer! buf, Npgsql.NpgsqlParameter? parameter) -> void
 override Npgsql.TypeHandlers.NumericHandlers.NumericHandler.Read(Npgsql.NpgsqlReadBuffer! buf, int len, Npgsql.BackendMessages.FieldDescription? fieldDescription = null) -> decimal
+Npgsql.TypeHandlers.NumericHandlers.NumericHandler.ReadSqlDecimal(Npgsql.NpgsqlReadBuffer! buf, int len, Npgsql.BackendMessages.FieldDescription? fieldDescription = null) -> System.Data.SqlTypes.SqlDecimal
 override Npgsql.TypeHandlers.NumericHandlers.NumericHandler.ValidateAndGetLength(decimal value, Npgsql.NpgsqlParameter? parameter) -> int
 override Npgsql.TypeHandlers.NumericHandlers.NumericHandler.Write(decimal value, Npgsql.NpgsqlWriteBuffer! buf, Npgsql.NpgsqlParameter? parameter) -> void
 override Npgsql.TypeHandlers.NumericHandlers.SingleHandler.Read(Npgsql.NpgsqlReadBuffer! buf, int len, Npgsql.BackendMessages.FieldDescription? fieldDescription = null) -> float

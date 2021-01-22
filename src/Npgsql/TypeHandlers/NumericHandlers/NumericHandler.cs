@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Data;
+using System.Data.SqlTypes;
 using Npgsql.BackendMessages;
 using Npgsql.PostgresTypes;
 using Npgsql.TypeHandling;
@@ -21,8 +22,7 @@ namespace Npgsql.TypeHandlers.NumericHandlers
     [TypeMapping("numeric", NpgsqlDbType.Numeric, new[] { DbType.Decimal, DbType.VarNumeric }, typeof(decimal), DbType.Decimal)]
     public class NumericHandler : NpgsqlSimpleTypeHandler<decimal>,
         INpgsqlSimpleTypeHandler<byte>, INpgsqlSimpleTypeHandler<short>, INpgsqlSimpleTypeHandler<int>, INpgsqlSimpleTypeHandler<long>,
-        INpgsqlSimpleTypeHandler<float>, INpgsqlSimpleTypeHandler<double>
-    {
+        INpgsqlSimpleTypeHandler<float>, INpgsqlSimpleTypeHandler<double>, INpgsqlSimpleTypeHandler<SqlDecimal> {
         /// <inheritdoc />
         public NumericHandler(PostgresType postgresType) : base(postgresType) {}
 
@@ -104,6 +104,78 @@ namespace Npgsql.TypeHandlers.NumericHandlers
             return result.Value;
         }
 
+        /// <summary>
+        /// Reads a value of type <see cref="SqlDecimal"/> with the given length from the provided buffer,
+        /// with the assumption that it is entirely present in the provided memory buffer and no I/O will be
+        /// required.
+        /// </summary>
+        /// <param name="buf">The buffer from which to read.</param>
+        /// <param name="len">The byte length of the value. The buffer might not contain the full length, requiring I/O to be performed.</param>
+        /// <param name="fieldDescription">Additional PostgreSQL information about the type, such as the length in varchar(30).</param>
+        /// <returns>The fully-read value.</returns>
+        public SqlDecimal ReadSqlDecimal(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription = null) {
+            var groups = buf.ReadInt16();
+            var totalGroups = groups;
+            var realWeight = buf.ReadInt16();
+            var weight = realWeight - groups + 1;
+            var sign = buf.ReadUInt16();
+
+            if (sign == SignNan)
+                throw new InvalidCastException("Numeric NaN not supported by System.Decimal");
+
+            var scale = (int)buf.ReadInt16();
+            var scaleDifference = scale + weight * MaxGroupScale;
+
+            var sqlDecimal = new SqlDecimal((int)0);
+
+            var firstGroupDigits = 0;
+            var precisionWithoutScale = 0;
+            var i = 0;
+            var cutDigits = 0;
+
+            for (; groups-- > 0; i++) {
+                var group = buf.ReadUInt16();
+
+                ulong multiplier = DecimalRaw.Powers10[MaxGroupScale];
+
+                if (groups == 0 && scaleDifference < 0) {
+                    multiplier = DecimalRaw.Powers10[(int)Math.Floor(Math.Log10(group) + 1) + scaleDifference];
+                    cutDigits = -scaleDifference;
+                    group = (ushort)(group / (ushort)DecimalRaw.Powers10[(uint)-scaleDifference]);
+                }
+
+                if (i == 0) {
+                    firstGroupDigits = (int)Math.Floor(Math.Log10(group) + 1);
+                    precisionWithoutScale = (totalGroups * MaxGroupScale + scaleDifference - (4 - firstGroupDigits) - scale);
+                    if (firstGroupDigits > precisionWithoutScale) {
+                        var currentDigits = firstGroupDigits;
+                        sqlDecimal = new SqlDecimal((byte)(currentDigits - precisionWithoutScale - cutDigits), (byte)(currentDigits - precisionWithoutScale - cutDigits), true, new int[] { (int)group, 0, 0, 0 });
+                    } else sqlDecimal = new SqlDecimal(group);
+                } else {
+                    if ((i * 4 + firstGroupDigits) > precisionWithoutScale) {
+                        var currentDigits = (i * 4 + firstGroupDigits);
+
+                        sqlDecimal = sqlDecimal + new SqlDecimal((byte)(currentDigits - precisionWithoutScale - cutDigits), (byte)(currentDigits - precisionWithoutScale - cutDigits), true, new int[] { (int)group, 0, 0, 0 });
+                        sqlDecimal = SqlDecimal.ConvertToPrecScale(sqlDecimal, currentDigits - cutDigits + (precisionWithoutScale < 0 ? -precisionWithoutScale : 0), (byte)(currentDigits - precisionWithoutScale - cutDigits));
+                    } else {
+                        sqlDecimal = sqlDecimal * multiplier + group;
+                        sqlDecimal = new SqlDecimal((byte)(i * 4 + firstGroupDigits), (byte)0, true, sqlDecimal.Data);
+                    }
+                }
+            }
+
+            var scaleChunkAcc = 0;
+            while (scaleDifference > 0) {
+                var scaleChunk = Math.Min(DecimalRaw.MaxUInt32Scale, scaleDifference);
+                sqlDecimal = sqlDecimal * DecimalRaw.Powers10[scaleChunk];
+                scaleChunkAcc += scaleChunk;
+                sqlDecimal = new SqlDecimal((byte)((i - 1) * 4 + firstGroupDigits + scaleChunkAcc), (byte)sqlDecimal.Scale, sign != SignNegative, sqlDecimal.Data);
+                scaleDifference -= scaleChunk;
+            }
+
+            return new SqlDecimal((byte)((precisionWithoutScale < 0 ? 0 : precisionWithoutScale) + scale), (byte)scale, sign != SignNegative, sqlDecimal.Data);
+        }
+
         byte INpgsqlSimpleTypeHandler<byte>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
             => (byte)Read(buf, len, fieldDescription);
 
@@ -121,6 +193,9 @@ namespace Npgsql.TypeHandlers.NumericHandlers
 
         double INpgsqlSimpleTypeHandler<double>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
             => (double)Read(buf, len, fieldDescription);
+
+        SqlDecimal INpgsqlSimpleTypeHandler<SqlDecimal>.Read(NpgsqlReadBuffer buf, int len, FieldDescription? fieldDescription)
+           => (SqlDecimal)ReadSqlDecimal(buf, len, fieldDescription);
 
         #endregion
 
@@ -169,6 +244,8 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         public int ValidateAndGetLength(double value, NpgsqlParameter? parameter) => ValidateAndGetLength((decimal)value, parameter);
         /// <inheritdoc />
         public int ValidateAndGetLength(byte value, NpgsqlParameter? parameter)   => ValidateAndGetLength((decimal)value, parameter);
+        /// <inheritdoc />
+        public int ValidateAndGetLength(SqlDecimal value, NpgsqlParameter? parameter) => ValidateAndGetLength((decimal)value, parameter);
 
         /// <inheritdoc />
         public override void Write(decimal value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)
@@ -229,6 +306,8 @@ namespace Npgsql.TypeHandlers.NumericHandlers
         public void Write(float value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter)  => Write((decimal)value, buf, parameter);
         /// <inheritdoc />
         public void Write(double value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter) => Write((decimal)value, buf, parameter);
+        /// <inheritdoc />
+        public void Write(SqlDecimal value, NpgsqlWriteBuffer buf, NpgsqlParameter? parameter) => Write((decimal)value, buf, parameter);
 
         #endregion
     }

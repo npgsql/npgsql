@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Data;
 using System.Data.Common;
+using System.Data.SqlTypes;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -1075,6 +1076,13 @@ namespace Npgsql
         /// <param name="ordinal">The zero-based column ordinal.</param>
         /// <returns>The value of the specified column.</returns>
         public override decimal GetDecimal(int ordinal) => GetFieldValue<decimal>(ordinal);
+
+        /// <summary>
+        /// Gets the value of the specified column as a <see cref="SqlDecimal"/> object.
+        /// </summary>
+        /// <param name="ordinal">The zero-based column ordinal.</param>
+        /// <returns>The value of the specified column.</returns>
+        public SqlDecimal GetSqlDecimal(int ordinal) => GetFieldValue<SqlDecimal>(ordinal);
 
         /// <summary>
         /// Gets the value of the specified column as a double-precision floating point number.

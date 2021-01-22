@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Data;
+using System.Data.SqlTypes;
 using System.Threading.Tasks;
 using NpgsqlTypes;
 using NUnit.Framework;
@@ -158,6 +159,53 @@ namespace Npgsql.Tests.Types
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open | ConnectionState.Fetching));
                 Assert.That(conn.State, Is.EqualTo(ConnectionState.Open));
                 Assert.That(reader.State, Is.EqualTo(ReaderState.InResult));
+            }
+        }
+
+        [Test, Description("Tests the GetSqlDecimal for the Read cases")]
+        [TestCaseSource(nameof(ReadWriteCases))]
+        public async Task ReadSqlDecimal(string query, decimal expected) {
+            using (var conn = await OpenConnectionAsync())
+            using (var cmd = new NpgsqlCommand("SELECT " + query, conn)) {
+                using var reader = await cmd.ExecuteReaderAsync();
+                reader.Read();
+
+                var result = reader.GetSqlDecimal(0);
+                Assert.That(
+                    decimal.GetBits(result.Value),
+                    Is.EqualTo(decimal.GetBits(expected)));
+            }
+        }
+
+        [Test, Description("Tests when GetSqlDecimal for Numeric values that don't fit in a System.Decimal and they have decimal digits which can be rounded to fit")]
+        public async Task ReadSqlDecimalOverflow() {
+
+            using (var conn = OpenConnection()) {
+                using (var cmd = new NpgsqlCommand()) {
+                    cmd.Connection = conn;
+
+                    var readCases = new[] {
+                                            new object[]{ "1000000000000000000000.123456448", 1000000000000000000000.123456448m , 29, 7 },
+                                            new object[]{ "1000000000000000000000.123456448", 1000000000000000000000.123456448m , 29, 7 },
+                                            new object[]{ "1000000000000000000000.123456789", 1000000000000000000000.123456789m , 29, 7 },
+                                            new object[]{ "9000000000000000000000.123456789", 9000000000000000000000.123456789m , 28, 6 },
+                                            new object[]{ "-9000000000000000000000000001.0002", -9000000000000000000000000001.0002m , 28, 0 },
+                                            new object[]{ "-10000000000000000000000000000.0002", -10000000000000000000000000000.0002m, 29, 0 }
+                                         };
+
+                    for (var i = 0; i < readCases.Length; i++) {
+                        var sb = string.Format("SELECT {0}::numeric as Val ", readCases[i][0]);
+                        cmd.CommandText = sb.ToString();
+
+                        using var reader = await cmd.ExecuteReaderAsync(CommandBehavior.SequentialAccess);
+                        reader.Read();
+
+                        var result = reader.GetSqlDecimal(0);
+                        result = SqlDecimal.ConvertToPrecScale(result, (int)readCases[i][2], (int)readCases[i][3]).Value; 
+
+                        Assert.That(decimal.GetBits(result.Value), Is.EqualTo(decimal.GetBits((decimal)readCases[i][1])));
+                    }
+                }
             }
         }
 
