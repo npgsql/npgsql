@@ -20,33 +20,31 @@ namespace Npgsql.Tests
         public void GlobalMapping()
         {
             var myFactory = MapMyIntGlobally();
-            using (var pool = CreateTempPool(ConnectionString, out var connectionString))
-            using (var conn = OpenConnection(connectionString))
-            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+            using var pool = CreateTempPool(ConnectionString, out var connectionString);
+            using var conn = OpenConnection(connectionString);
+            using var cmd = new NpgsqlCommand("SELECT @p", conn);
+            var range = new NpgsqlRange<int>(8, true, false, 0, false, true);
+            var parameters = new[]
             {
-                var range = new NpgsqlRange<int>(8, true, false, 0, false, true);
-                var parameters = new[]
-                {
-                    // Base
-                    new NpgsqlParameter("p", NpgsqlDbType.Integer) { Value = 8 },
-                    new NpgsqlParameter("p", DbType.Int32) { Value = 8 },
-                    new NpgsqlParameter { ParameterName = "p", Value = 8 },
-                    // Array
-                    new NpgsqlParameter { ParameterName = "p", Value = new[] { 8 } },
-                    new NpgsqlParameter("p", NpgsqlDbType.Array | NpgsqlDbType.Integer) { Value = new[] { 8 } },
-                    // Range
-                    new NpgsqlParameter { ParameterName = "p", Value = range },
-                    new NpgsqlParameter("p", NpgsqlDbType.Range | NpgsqlDbType.Integer) { Value = range },
-                };
+                // Base
+                new NpgsqlParameter("p", NpgsqlDbType.Integer) { Value = 8 },
+                new NpgsqlParameter("p", DbType.Int32) { Value = 8 },
+                new NpgsqlParameter { ParameterName = "p", Value = 8 },
+                // Array
+                new NpgsqlParameter { ParameterName = "p", Value = new[] { 8 } },
+                new NpgsqlParameter("p", NpgsqlDbType.Array | NpgsqlDbType.Integer) { Value = new[] { 8 } },
+                // Range
+                new NpgsqlParameter { ParameterName = "p", Value = range },
+                new NpgsqlParameter("p", NpgsqlDbType.Range | NpgsqlDbType.Integer) { Value = range },
+            };
 
-                for (var i = 0; i < parameters.Length; i++)
-                {
-                    cmd.Parameters.Add(parameters[i]);
-                    cmd.ExecuteScalar();
-                    Assert.That(myFactory.Reads, Is.EqualTo(i+1));
-                    Assert.That(myFactory.Writes, Is.EqualTo(i+1));
-                    cmd.Parameters.Clear();
-                }
+            for (var i = 0; i < parameters.Length; i++)
+            {
+                cmd.Parameters.Add(parameters[i]);
+                cmd.ExecuteScalar();
+                Assert.That(myFactory.Reads, Is.EqualTo(i+1));
+                Assert.That(myFactory.Writes, Is.EqualTo(i+1));
+                cmd.Parameters.Clear();
             }
         }
 
