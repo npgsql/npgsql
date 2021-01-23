@@ -101,88 +101,76 @@ namespace Npgsql.PluginTests
         [Test,TestCaseSource(nameof(Tests))]
         public void PostgisTestRead(TestAtt att)
         {
-            using (var conn = OpenConnection())
-            using (var cmd = conn.CreateCommand())
-            {
-                var a = att;
-                cmd.CommandText = "Select " + a.SQL;
-                var p = cmd.ExecuteScalar()!;
-                Assert.IsTrue(p.Equals(a.Geom));
-            }
+            using var conn = OpenConnection();
+            using var cmd = conn.CreateCommand();
+            var a = att;
+            cmd.CommandText = "Select " + a.SQL;
+            var p = cmd.ExecuteScalar()!;
+            Assert.IsTrue(p.Equals(a.Geom));
         }
 
         [Test, TestCaseSource(nameof(Tests))]
         public void PostgisTestWrite(TestAtt a)
         {
-            using (var conn = OpenConnection())
-            using (var cmd = conn.CreateCommand())
-            {
-                cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Geometry,a.Geom);
-                a.Geom.SRID = 0;
-                cmd.CommandText = "Select st_asewkb(:p1) = st_asewkb(" + a.SQL + ")";
-                bool areEqual;
-                try {
-                    areEqual = (bool)cmd.ExecuteScalar()!;
-                }
-                catch (Exception e)
-                {
-                    throw new Exception("Exception caught on " + a.Geom, e);
-                }
-                Assert.IsTrue(areEqual, "Error on comparison of " + a.Geom);
+            using var conn = OpenConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Geometry,a.Geom);
+            a.Geom.SRID = 0;
+            cmd.CommandText = "Select st_asewkb(:p1) = st_asewkb(" + a.SQL + ")";
+            bool areEqual;
+            try {
+                areEqual = (bool)cmd.ExecuteScalar()!;
             }
+            catch (Exception e)
+            {
+                throw new Exception("Exception caught on " + a.Geom, e);
+            }
+            Assert.IsTrue(areEqual, "Error on comparison of " + a.Geom);
         }
 
         [Test, TestCaseSource(nameof(Tests))]
         public void PostgisTestWriteSrid(TestAtt a)
         {
-            using (var conn = OpenConnection())
-            using (var cmd = conn.CreateCommand())
-            {
-                cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Geometry, a.Geom);
-                a.Geom.SRID = 3942;
-                cmd.CommandText = "Select st_asewkb(:p1) = st_asewkb(st_setsrid("+ a.SQL + ",3942))";
-                var p = (bool)cmd.ExecuteScalar()!;
-                Assert.IsTrue(p);
-            }
+            using var conn = OpenConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.Parameters.AddWithValue("p1", NpgsqlDbType.Geometry, a.Geom);
+            a.Geom.SRID = 3942;
+            cmd.CommandText = "Select st_asewkb(:p1) = st_asewkb(st_setsrid("+ a.SQL + ",3942))";
+            var p = (bool)cmd.ExecuteScalar()!;
+            Assert.IsTrue(p);
         }
 
         [Test, TestCaseSource(nameof(Tests))]
         public void PostgisTestReadSrid(TestAtt a)
         {
-            using (var conn = OpenConnection())
-            using (var cmd = conn.CreateCommand())
-            {
-                cmd.CommandText = "Select st_setsrid(" + a.SQL + ",3942)";
-                var p = cmd.ExecuteScalar()!;
-                Assert.IsTrue(p.Equals(a.Geom));
-                Assert.IsTrue(((PostgisGeometry)p).SRID == 3942);
-            }
+            using var conn = OpenConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "Select st_setsrid(" + a.SQL + ",3942)";
+            var p = cmd.ExecuteScalar()!;
+            Assert.IsTrue(p.Equals(a.Geom));
+            Assert.IsTrue(((PostgisGeometry)p).SRID == 3942);
         }
 
         [Test]
         public void PostgisTestArrayRead()
         {
-            using (var conn = OpenConnection())
-            using (var cmd = conn.CreateCommand())
-            {
-                cmd.CommandText = "Select ARRAY(select st_makepoint(1,1))";
-                var p = cmd.ExecuteScalar() as PostgisGeometry[];
-                var p2 = new PostgisPoint(1d, 1d);
-                Assert.IsTrue(p?[0] is PostgisPoint && p2 == (PostgisPoint)p[0]);
-            }
+            using var conn = OpenConnection();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = "Select ARRAY(select st_makepoint(1,1))";
+            var p = cmd.ExecuteScalar() as PostgisGeometry[];
+            var p2 = new PostgisPoint(1d, 1d);
+            Assert.IsTrue(p?[0] is PostgisPoint && p2 == (PostgisPoint)p[0]);
         }
 
         [Test]
         public void PostgisTestArrayWrite()
         {
-            using (var conn = OpenConnection())
-            using (var cmd = conn.CreateCommand())
-            {
-                var p = new PostgisPoint[1] { new(1d, 1d) };
-                cmd.Parameters.AddWithValue(":p1", NpgsqlDbType.Array | NpgsqlDbType.Geometry, p);
-                cmd.CommandText = "SELECT :p1 = array(select st_makepoint(1,1))";
-                Assert.IsTrue((bool)cmd.ExecuteScalar()!);
-            }
+            using var conn = OpenConnection();
+            using var cmd = conn.CreateCommand();
+            var p = new PostgisPoint[1] { new(1d, 1d) };
+            cmd.Parameters.AddWithValue(":p1", NpgsqlDbType.Array | NpgsqlDbType.Geometry, p);
+            cmd.CommandText = "SELECT :p1 = array(select st_makepoint(1,1))";
+            Assert.IsTrue((bool)cmd.ExecuteScalar()!);
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1022")]
@@ -211,91 +199,79 @@ namespace Npgsql.PluginTests
                     }
                 })
             }) { SRID = 4326 };
-            using (var conn = OpenConnection())
-            using (var command = conn.CreateCommand())
-            {
-                command.Parameters.AddWithValue("p1", geom2);
-                command.CommandText = "Select :p1";
-                command.ExecuteScalar();
-            }
+            using var conn = OpenConnection();
+            using var command = conn.CreateCommand();
+            command.Parameters.AddWithValue("p1", geom2);
+            command.CommandText = "Select :p1";
+            command.ExecuteScalar();
         }
 
         [Test, TestCaseSource(nameof(Tests)), IssueLink("https://github.com/npgsql/npgsql/issues/1260")]
         public void CopyBinary(TestAtt a)
         {
-            using (var c = OpenConnection())
+            using var c = OpenConnection();
+            using (var cmd = new NpgsqlCommand("CREATE TEMPORARY TABLE testcopybin (g geometry)", c))
+                cmd.ExecuteNonQuery();
+
+            try
             {
-                using (var cmd = new NpgsqlCommand("CREATE TEMPORARY TABLE testcopybin (g geometry)", c))
-                    cmd.ExecuteNonQuery();
+                using var writer = c.BeginBinaryImport($"COPY testcopybin (g) FROM STDIN (FORMAT BINARY)");
+                for (var i = 0; i < 1000; i++)
+                    writer.WriteRow(a.Geom);
+                writer.Complete();
+            }
+            catch (Exception e)
+            {
+                Assert.Fail($"Copy from stdin failed with {e} at geometry {a.Geom}.");
+            }
 
-                try
+            try
+            {
+                using var rdr = c.BeginBinaryExport($"COPY testcopybin (g) TO STDOUT (FORMAT BINARY) ");
+                for (var i =0; i < 1000; i++)
                 {
-                    using (var writer = c.BeginBinaryImport($"COPY testcopybin (g) FROM STDIN (FORMAT BINARY)"))
-                    {
-                        for (var i = 0; i < 1000; i++)
-                            writer.WriteRow(a.Geom);
-                        writer.Complete();
-                    }
+                    rdr.StartRow();
+                    Assert.IsTrue(a.Geom.Equals(rdr.Read<PostgisGeometry>()));
                 }
-                catch (Exception e)
-                {
-                    Assert.Fail($"Copy from stdin failed with {e} at geometry {a.Geom}.");
-                }
-
-                try
-                {
-                    using (var rdr = c.BeginBinaryExport($"COPY testcopybin (g) TO STDOUT (FORMAT BINARY) "))
-                    {
-                        for (var i =0; i < 1000; i++)
-                        {
-                            rdr.StartRow();
-                            Assert.IsTrue(a.Geom.Equals(rdr.Read<PostgisGeometry>()));
-                        }
-                    }
-                }
-                catch(Exception e)
-                {
-                    Assert.Fail($"Copy from stdout failed with {e} at geometry {a.Geom}.");
-                }
+            }
+            catch(Exception e)
+            {
+                Assert.Fail($"Copy from stdout failed with {e} at geometry {a.Geom}.");
             }
         }
 
         [Test, TestCaseSource(nameof(Tests)), IssueLink("https://github.com/npgsql/npgsql/issues/1260")]
         public void CopyBinaryArray(TestAtt a)
         {
-            using (var c = OpenConnection())
+            using var c = OpenConnection();
+            using (var cmd = new NpgsqlCommand("CREATE TEMPORARY TABLE testcopybinarray (g geometry[3])", c))
+                cmd.ExecuteNonQuery();
+
+            var t = new PostgisGeometry[3] { a.Geom, a.Geom, a.Geom };
+            try
             {
-                using (var cmd = new NpgsqlCommand("CREATE TEMPORARY TABLE testcopybinarray (g geometry[3])", c))
-                    cmd.ExecuteNonQuery();
+                using var writer = c.BeginBinaryImport("COPY testcopybinarray (g) FROM STDIN (FORMAT BINARY)");
+                for (var i = 0; i < 1000; i++)
+                    writer.WriteRow(new[] { t });
+                writer.Complete();
+            }
+            catch(Exception e)
+            {
+                Assert.Fail($"Copy from stdin failed with {e} at geometry {a.Geom}.");
+            }
 
-                var t = new PostgisGeometry[3] { a.Geom, a.Geom, a.Geom };
-                try
+            try
+            {
+                using var rdr = c.BeginBinaryExport("COPY testcopybinarray (g) TO STDOUT (FORMAT BINARY)");
+                for (var i = 0; i < 1000; i++)
                 {
-                    using (var writer = c.BeginBinaryImport("COPY testcopybinarray (g) FROM STDIN (FORMAT BINARY)"))
-                    {
-                        for (var i = 0; i < 1000; i++)
-                            writer.WriteRow(new[] { t });
-                        writer.Complete();
-                    }
+                    rdr.StartRow();
+                    Assert.IsTrue(t.SequenceEqual(rdr.Read<PostgisGeometry[]>()));
                 }
-                catch(Exception e)
-                {
-                    Assert.Fail($"Copy from stdin failed with {e} at geometry {a.Geom}.");
-                }
-
-                try
-                {
-                    using (var rdr = c.BeginBinaryExport("COPY testcopybinarray (g) TO STDOUT (FORMAT BINARY)"))
-                        for (var i = 0; i < 1000; i++)
-                        {
-                            rdr.StartRow();
-                            Assert.IsTrue(t.SequenceEqual(rdr.Read<PostgisGeometry[]>()));
-                        }
-                }
-                catch(Exception e)
-                {
-                    Assert.Fail($"Copy to stdout failed with {e} at geometry {a.Geom}.");
-                }
+            }
+            catch(Exception e)
+            {
+                Assert.Fail($"Copy to stdout failed with {e} at geometry {a.Geom}.");
             }
         }
 
@@ -314,41 +290,37 @@ namespace Npgsql.PluginTests
         [Test]
         public void ReadAsConcreteType()
         {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT st_makepoint(1, 1)", conn))
-            using (var reader = cmd.ExecuteReader())
-            {
-                reader.Read();
-                Assert.That(reader.GetFieldValue<PostgisPoint>(0), Is.EqualTo(new PostgisPoint(1, 1)));
-                Assert.That(() => reader.GetFieldValue<PostgisPolygon>(0), Throws.Exception.TypeOf<InvalidCastException>());
-            }
+            using var conn = OpenConnection();
+            using var cmd = new NpgsqlCommand("SELECT st_makepoint(1, 1)", conn);
+            using var reader = cmd.ExecuteReader();
+            reader.Read();
+            Assert.That(reader.GetFieldValue<PostgisPoint>(0), Is.EqualTo(new PostgisPoint(1, 1)));
+            Assert.That((TestDelegate)(() => reader.GetFieldValue<PostgisPolygon>(0)), Throws.Exception.TypeOf<InvalidCastException>());
         }
 
         [Test]
         public void Bug1381()
         {
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT @p", conn))
+            using var conn = OpenConnection();
+            using var cmd = new NpgsqlCommand("SELECT @p", conn);
+            cmd.Parameters.Add("p", NpgsqlTypes.NpgsqlDbType.Geometry).Value = new PostgisMultiPolygon(new[]
             {
-                cmd.Parameters.Add("p", NpgsqlTypes.NpgsqlDbType.Geometry).Value = new PostgisMultiPolygon(new[]
-                {
-                    new PostgisPolygon(new[]
+                new PostgisPolygon(new[]
+                    {
+                        new[]
                         {
-                            new[]
-                            {
-                                new Coordinate2D(-0.555701, 46.42473701),
-                                new Coordinate2D(-0.549486, 46.42707801),
-                                new Coordinate2D(-0.549843, 46.42749901),
-                                new Coordinate2D(-0.555524, 46.42533901),
-                                new Coordinate2D(-0.555701, 46.42473701)
-                            }
-                        })
-                        // This is the problem:
-                        { SRID = 4326 }
-                }) { SRID = 4326 };
+                            new Coordinate2D(-0.555701, 46.42473701),
+                            new Coordinate2D(-0.549486, 46.42707801),
+                            new Coordinate2D(-0.549843, 46.42749901),
+                            new Coordinate2D(-0.555524, 46.42533901),
+                            new Coordinate2D(-0.555701, 46.42473701)
+                        }
+                    })
+                    // This is the problem:
+                    { SRID = 4326 }
+            }) { SRID = 4326 };
 
-                cmd.ExecuteNonQuery();
-            }
+            cmd.ExecuteNonQuery();
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/1557")]
@@ -374,34 +346,30 @@ namespace Npgsql.PluginTests
                 SRID = 4326
             };
 
-            using (var conn = OpenConnection())
-            using (var cmd = new NpgsqlCommand("SELECT :p", conn))
-            {
-                cmd.Parameters.AddWithValue("p", collection);
-                cmd.ExecuteNonQuery();
-            }
+            using var conn = OpenConnection();
+            using var cmd = new NpgsqlCommand("SELECT :p", conn);
+            cmd.Parameters.AddWithValue("p", collection);
+            cmd.ExecuteNonQuery();
         }
 
         [Test]
         public void RoundtripGeometryGeography()
         {
             var point = new PostgisPoint(1d, 1d);
-            using (var conn = OpenConnection())
+            using var conn = OpenConnection();
+            conn.ExecuteNonQuery("CREATE TEMP TABLE data (geom GEOMETRY, geog GEOGRAPHY)");
+            using (var cmd = new NpgsqlCommand("INSERT INTO data (geom, geog) VALUES (@p, @p)", conn))
             {
-                conn.ExecuteNonQuery("CREATE TEMP TABLE data (geom GEOMETRY, geog GEOGRAPHY)");
-                using (var cmd = new NpgsqlCommand("INSERT INTO data (geom, geog) VALUES (@p, @p)", conn))
-                {
-                    cmd.Parameters.AddWithValue("@p", point);
-                    cmd.ExecuteNonQuery();
-                }
+                cmd.Parameters.AddWithValue("@p", point);
+                cmd.ExecuteNonQuery();
+            }
 
-                using (var cmd = new NpgsqlCommand("SELECT geom, geog FROM data", conn))
-                using (var reader = cmd.ExecuteReader())
-                {
-                    reader.Read();
-                    Assert.That(reader[0], Is.EqualTo(point));
-                    Assert.That(reader[1], Is.EqualTo(point));
-                }
+            using (var cmd = new NpgsqlCommand("SELECT geom, geog FROM data", conn))
+            using (var reader = cmd.ExecuteReader())
+            {
+                reader.Read();
+                Assert.That(reader[0], Is.EqualTo(point));
+                Assert.That(reader[1], Is.EqualTo(point));
             }
         }
 
