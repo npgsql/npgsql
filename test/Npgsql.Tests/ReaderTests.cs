@@ -1752,7 +1752,7 @@ LANGUAGE plpgsql VOLATILE";
                 var task = reader.ReadAsync(cancellationSource.Token);
                 cancellationSource.Cancel();
 
-                var (processId, _) = await postmasterMock.WaitForCancellationRequest();
+                var processId = (await postmasterMock.WaitForCancellationRequest()).ProcessId;
                 Assert.That(processId, Is.EqualTo(conn.ProcessID));
 
                 await pgMock
@@ -1804,7 +1804,7 @@ LANGUAGE plpgsql VOLATILE";
                 var task = reader.NextResultAsync(cancellationSource.Token);
                 cancellationSource.Cancel();
 
-                var (processId, _) = await postmasterMock.WaitForCancellationRequest();
+                var processId = (await postmasterMock.WaitForCancellationRequest()).ProcessId;
                 Assert.That(processId, Is.EqualTo(conn.ProcessID));
 
                 await pgMock
@@ -1857,7 +1857,7 @@ LANGUAGE plpgsql VOLATILE";
             var task = reader.ReadAsync(cancellationSource.Token);
             cancellationSource.Cancel();
 
-            var (processId, _) = await postmasterMock.WaitForCancellationRequest();
+            var processId = (await postmasterMock.WaitForCancellationRequest()).ProcessId;
             Assert.That(processId, Is.EqualTo(conn.ProcessID));
 
             // Send no response from server, wait for the cancellation attempt to time out
@@ -1902,7 +1902,7 @@ LANGUAGE plpgsql VOLATILE";
             var task = reader.NextResultAsync(cancellationSource.Token);
             cancellationSource.Cancel();
 
-            var (processId, _) = await postmasterMock.WaitForCancellationRequest();
+            var processId = (await postmasterMock.WaitForCancellationRequest()).ProcessId;
             Assert.That(processId, Is.EqualTo(conn.ProcessID));
 
             // Send no response from server, wait for the cancellation attempt to time out
