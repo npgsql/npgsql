@@ -1,13 +1,11 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 using Npgsql.Util;
-using NUnit.Framework.Constraints;
 
 namespace Npgsql.Tests.Support
 {
@@ -31,14 +29,10 @@ namespace Npgsql.Tests.Support
 
         internal string ConnectionString { get; }
 
-        internal bool WaitToBreakOnCancel { get; set; }
-
-        internal TaskCompletionSource WaitToBreakTcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-
-        internal static PgPostmasterMock Start(string? connectionString = null)
+        internal static PgPostmasterMock Start(string? connectionString = null, bool completeCancellationImmediately = true)
         {
             var mock = new PgPostmasterMock(connectionString);
-            mock.AcceptClients();
+            mock.AcceptClients(completeCancellationImmediately);
             return mock;
         }
 
@@ -63,7 +57,7 @@ namespace Npgsql.Tests.Support
             _socket.Listen(5);
         }
 
-        void AcceptClients()
+        void AcceptClients(bool acceptCancellationImmediately)
         {
             _acceptingClients = true;
             _acceptClientsTask = DoAcceptClients();
@@ -72,7 +66,7 @@ namespace Npgsql.Tests.Support
             {
                 while (true)
                 {
-                    var serverOrCancellationRequest = await Accept();
+                    var serverOrCancellationRequest = await Accept(acceptCancellationImmediately);
                     if (serverOrCancellationRequest.Server is { } server)
                     {
                         // Hand off the new server to the client test only once startup is complete, to avoid reading/writing in parallel
@@ -89,7 +83,7 @@ namespace Npgsql.Tests.Support
             }
         }
 
-        internal async Task<ServerOrCancellationRequest> Accept()
+        async Task<ServerOrCancellationRequest> Accept(bool completeCancellationImmediately)
         {
             var clientSocket = await _socket.AcceptAsync();
 
@@ -104,13 +98,13 @@ namespace Npgsql.Tests.Support
 
             if (readBuffer.ReadInt32() == CancelRequestCode)
             {
-                if (WaitToBreakOnCancel)
-                    await WaitToBreakTcs.Task;
-
-                readBuffer.Dispose();
-                writeBuffer.Dispose();
-                stream.Dispose();
-                return new ServerOrCancellationRequest((readBuffer.ReadInt32(), readBuffer.ReadInt32()));
+                var cancellationRequest = new PgCancellationRequest(readBuffer, writeBuffer, stream, readBuffer.ReadInt32(), readBuffer.ReadInt32());
+                if (completeCancellationImmediately)
+                {
+                    cancellationRequest.Complete();
+                }
+                
+                return new ServerOrCancellationRequest(cancellationRequest);
             }
 
             // This is not a cancellation, "spawn" a new server
@@ -120,24 +114,24 @@ namespace Npgsql.Tests.Support
             return new ServerOrCancellationRequest(server);
         }
 
-        internal async Task<PgServerMock> AcceptServer()
+        internal async Task<PgServerMock> AcceptServer(bool completeCancellationImmediately = true)
         {
             if (_acceptingClients)
                 throw new InvalidOperationException($"Already accepting clients via {nameof(AcceptClients)}");
-            var serverOrCancellationRequest = await Accept();
+            var serverOrCancellationRequest = await Accept(completeCancellationImmediately);
             if (serverOrCancellationRequest.Server is null)
                 throw new InvalidOperationException("Expected a server connection but got a cancellation request instead");
             return serverOrCancellationRequest.Server;
         }
 
-        internal async Task<(int ProcessId, int Secret)> AcceptCancellationRequest()
+        internal async Task<PgCancellationRequest> AcceptCancellationRequest()
         {
             if (_acceptingClients)
                 throw new InvalidOperationException($"Already accepting clients via {nameof(AcceptClients)}");
-            var serverOrCancellationRequest = await Accept();
+            var serverOrCancellationRequest = await Accept(completeCancellationImmediately: true);
             if (serverOrCancellationRequest.CancellationRequest is null)
                 throw new InvalidOperationException("Expected a cancellation request but got a server connection instead");
-            return serverOrCancellationRequest.CancellationRequest.Value;
+            return serverOrCancellationRequest.CancellationRequest;
         }
 
         internal async ValueTask<PgServerMock> WaitForServerConnection()
@@ -148,12 +142,12 @@ namespace Npgsql.Tests.Support
             return serverOrCancellationRequest.Server;
         }
 
-        internal async ValueTask<(int ProcessId, int Secret)> WaitForCancellationRequest()
+        internal async ValueTask<PgCancellationRequest> WaitForCancellationRequest()
         {
             var serverOrCancellationRequest = await PendingRequestsReader.ReadAsync();
             if (serverOrCancellationRequest.CancellationRequest is null)
                 throw new InvalidOperationException("Expected cancellation request but got a server connection instead");
-            return serverOrCancellationRequest.CancellationRequest.Value;
+            return serverOrCancellationRequest.CancellationRequest;
         }
 
         public async ValueTask DisposeAsync()
@@ -184,14 +178,14 @@ namespace Npgsql.Tests.Support
                 CancellationRequest = null;
             }
 
-            public ServerOrCancellationRequest((int ProcessId, int Secret) cancellationRequest)
+            public ServerOrCancellationRequest(PgCancellationRequest cancellationRequest)
             {
                 Server = null;
                 CancellationRequest = cancellationRequest;
             }
 
             internal PgServerMock? Server { get; }
-            internal (int ProcessId, int Secret)? CancellationRequest { get; }
+            internal PgCancellationRequest? CancellationRequest { get; }
         }
     }
 }

@@ -370,8 +370,7 @@ namespace Npgsql.Tests
             {
                 Pooling = false,
             };
-            await using var postmasterMock = PgPostmasterMock.Start(csb.ToString());
-            postmasterMock.WaitToBreakOnCancel = true;
+            await using var postmasterMock = PgPostmasterMock.Start(csb.ToString(), completeCancellationImmediately: false);
             using var _ = CreateTempPool(postmasterMock.ConnectionString, out var connectionString);
             await using var conn = await OpenConnectionAsync(connectionString);
             var serverMock = await postmasterMock.WaitForServerConnection();
@@ -406,8 +405,9 @@ namespace Npgsql.Tests
                 Assert.That(conn.FullState, Is.EqualTo(ConnectionState.Open));
                 await conn.CloseAsync();
             }
-            
-            postmasterMock.WaitToBreakTcs.SetResult();
+
+            var cancellationRequest = await postmasterMock.WaitForCancellationRequest();
+            cancellationRequest.Complete();
             Assert.DoesNotThrowAsync(async () => await cancelTask);
         }
 
