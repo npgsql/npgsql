@@ -387,6 +387,9 @@ namespace Npgsql.Tests
             Thread.Sleep(300);
             // Perform cancellation, which will block on the server side
             var cancelTask = Task.Run(() => cmd.Cancel());
+            // Note what we have to wait for the cancellation request, otherwise the connection might be closed concurrently
+            // and the cancellation request is never send
+            var cancellationRequest = await postmasterMock.WaitForCancellationRequest();
 
             if (isBroken)
             {
@@ -408,7 +411,6 @@ namespace Npgsql.Tests
                 await conn.CloseAsync();
             }
 
-            var cancellationRequest = await postmasterMock.WaitForCancellationRequest();
             // Release the cancellation at the server side, and make sure it completes without an exception
             cancellationRequest.Complete();
             Assert.DoesNotThrowAsync(async () => await cancelTask);
