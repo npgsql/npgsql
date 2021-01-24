@@ -361,6 +361,7 @@ namespace Npgsql.Tests
         }
 
         [Test, IssueLink("https://github.com/npgsql/npgsql/issues/3466")]
+        [Timeout(6000)]
         public async Task Bug3466([Values(false, true)] bool isBroken)
         {
             if (IsMultiplexing)
@@ -384,6 +385,7 @@ namespace Npgsql.Tests
             };
             var t = Task.Run(() => cmd.ExecuteScalar());
             Thread.Sleep(300);
+            // Perform cancellation, which will block on the server side
             var cancelTask = Task.Run(() => cmd.Cancel());
 
             if (isBroken)
@@ -407,6 +409,7 @@ namespace Npgsql.Tests
             }
 
             var cancellationRequest = await postmasterMock.WaitForCancellationRequest();
+            // Release the cancellation at the server side, and make sure it completes without an exception
             cancellationRequest.Complete();
             Assert.DoesNotThrowAsync(async () => await cancelTask);
         }
