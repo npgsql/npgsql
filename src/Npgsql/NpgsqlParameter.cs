@@ -371,7 +371,15 @@ namespace Npgsql
                 if (_npgsqlDbType.HasValue)
                 {
                     var primitiveNpgsqlType = _npgsqlDbType.Value & ~NpgsqlDbType.Array & ~NpgsqlDbType.Range;
-                    return GlobalTypeMapper.Instance.ToPgTypeName(primitiveNpgsqlType);
+                    var primitiveTypeName = GlobalTypeMapper.Instance.ToPgTypeName(primitiveNpgsqlType);
+
+                    if ((_npgsqlDbType.Value & NpgsqlDbType.Array) != 0 ||
+                        (_npgsqlDbType.Value & NpgsqlDbType.Range) != 0)
+                    {
+                        primitiveTypeName += "[]";
+                    }
+
+                    return primitiveTypeName;
                 }
                 if (_value != null)   // Infer from value
                     return GlobalTypeMapper.Instance.ToPgTypeName(_value.GetType());

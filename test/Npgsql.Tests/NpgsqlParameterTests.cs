@@ -84,14 +84,14 @@ namespace Npgsql.Tests
         public void GivenArrayNpgsqlDbTypeParameter_ShouldReturnDataTypeName()
         {
             var p = new NpgsqlParameter("int_array", NpgsqlDbType.Array | NpgsqlDbType.Integer);
-            Assert.That(p.DataTypeName, Is.EqualTo("integer"));
+            Assert.That(p.DataTypeName, Is.EqualTo("integer[]"));
         }
 
         [Test]
         public void GivenRangeNpgsqlDbTypeParameter_ShouldReturnDataTypeName()
         {
             var p = new NpgsqlParameter("numeric_range", NpgsqlDbType.Range | NpgsqlDbType.Numeric);
-            Assert.That(p.DataTypeName, Is.EqualTo("numeric"));
+            Assert.That(p.DataTypeName, Is.EqualTo("numeric[]"));
         }
 
         [Test]
