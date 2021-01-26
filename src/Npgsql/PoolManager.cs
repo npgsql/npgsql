@@ -17,7 +17,7 @@ namespace Npgsql
         internal const int InitialPoolsSize = 10;
 
         static readonly object Lock = new();
-        static volatile (string Key, ConnectorPool Pool)[] _poolsAliases = new (string, ConnectorPool)[InitialPoolsSize];
+        static volatile (string Key, ConnectorPool Pool)[] _poolsByKey = new (string, ConnectorPool)[InitialPoolsSize];
         static volatile ConnectorPool?[] _pools = new ConnectorPool[InitialPoolsSize];
         static volatile int _nextSlot;
 
