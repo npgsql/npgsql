@@ -130,11 +130,11 @@ namespace Npgsql.TypeMapping
         internal DbType ToDbType(Type type)
             => _typeToDbType.TryGetValue(type, out var dbType) ? dbType : DbType.Object;
 
-        internal string ToPgTypeName(NpgsqlDbType npgsqlDbType)
-            => _npgsqlDbTypeToPgTypeName.TryGetValue(npgsqlDbType, out var pgTypeName) ? pgTypeName : "";
+        internal string? ToPgTypeName(NpgsqlDbType npgsqlDbType)
+            => _npgsqlDbTypeToPgTypeName.TryGetValue(npgsqlDbType, out var pgTypeName) ? pgTypeName : null;
 
-        internal string ToPgTypeName(Type type)
-            => _typeToPgTypeName.TryGetValue(type, out var pgTypeName) ? pgTypeName : "";
+        internal string? ToPgTypeName(Type type)
+            => _typeToPgTypeName.TryGetValue(type, out var pgTypeName) ? pgTypeName : null;
 
         internal NpgsqlDbType ToNpgsqlDbType(Type type)
         {
