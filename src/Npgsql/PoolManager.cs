@@ -20,6 +20,7 @@ namespace Npgsql
         static volatile (string Key, ConnectorPool Pool)[] _poolsByKey = new (string, ConnectorPool)[InitialPoolsSize];
         static volatile ConnectorPool?[] _pools = new ConnectorPool[InitialPoolsSize];
         static volatile int _nextSlot;
+        static volatile int _nextPoolsSlot;
 
         internal static ConnectorPool?[] Pools => _pools;
 
@@ -64,7 +65,7 @@ namespace Npgsql
             return false;
         }
 
-        internal static ConnectorPool GetOrAdd(string key, ConnectorPool pool)
+        internal static ConnectorPool GetOrAdd(string key, ConnectorPool pool, bool newPool = false)
         {
             lock (Lock)
             {
@@ -83,24 +84,18 @@ namespace Npgsql
                 _poolsByKey[_nextSlot].Pool = pool;
                 Interlocked.Increment(ref _nextSlot);
 
-                var idx = 0;
-                ConnectorPool? existsPool = null;
-                for (; idx < _pools.Length; idx++)
+                if (newPool)
                 {
-                    existsPool = _pools[idx];
-                    if (existsPool == null || existsPool == pool)
-                        break;
-                }
+                    if (_nextPoolsSlot == _pools.Length)
+                    {
+                        var newPools = new ConnectorPool[_pools.Length * 2];
+                        Array.Copy(_pools, newPools, _pools.Length);
+                        _pools = newPools;
+                    }
 
-                if (idx == _pools.Length)
-                {
-                    var newPools = new ConnectorPool[_pools.Length * 2];
-                    Array.Copy(_pools, newPools, _pools.Length);
-                    _pools = newPools;
+                    _pools[_nextPoolsSlot] = pool;
+                    Interlocked.Increment(ref _nextPoolsSlot);
                 }
-
-                if (existsPool == null)
-                    _pools[idx] = pool;
 
                 return pool;
             }
@@ -145,8 +140,9 @@ namespace Npgsql
             {
                 ClearAll();
                 _poolsByKey = new (string, ConnectorPool)[InitialPoolsSize];
-                _pools = new ConnectorPool?[InitialPoolsSize];
                 _nextSlot = 0;
+                _pools = new ConnectorPool?[InitialPoolsSize];
+                _nextPoolsSlot = 0;
             }
         }
     }
