@@ -25,9 +25,9 @@ namespace Npgsql
 
         internal static bool TryGetValue(string key, [NotNullWhen(true)] out ConnectorPool? pool)
         {
-            // Note that pools never get removed. _poolsAliases is strictly append-only.
+            // Note that pools never get removed. _poolsByKey is strictly append-only.
             var nextSlot = _nextSlot;
-            var pools = _poolsAliases;
+            var pools = _poolsByKey;
             var sw = new SpinWait();
 
             // First scan the pools and do reference equality on the connection strings
@@ -72,15 +72,15 @@ namespace Npgsql
                     return result;
 
                 // May need to grow the array.
-                if (_nextSlot == _poolsAliases.Length)
+                if (_nextSlot == _poolsByKey.Length)
                 {
-                    var newPools = new (string, ConnectorPool)[_poolsAliases.Length * 2];
-                    Array.Copy(_poolsAliases, newPools, _poolsAliases.Length);
-                    _poolsAliases = newPools;
+                    var newPools = new (string, ConnectorPool)[_poolsByKey.Length * 2];
+                    Array.Copy(_poolsByKey, newPools, _poolsByKey.Length);
+                    _poolsByKey = newPools;
                 }
 
-                _poolsAliases[_nextSlot].Key = key;
-                _poolsAliases[_nextSlot].Pool = pool;
+                _poolsByKey[_nextSlot].Key = key;
+                _poolsByKey[_nextSlot].Pool = pool;
                 Interlocked.Increment(ref _nextSlot);
 
                 var idx = 0;
@@ -98,8 +98,8 @@ namespace Npgsql
                     Array.Copy(_pools, newPools, _pools.Length);
                     _pools = newPools;
                 }
-                
-                if(existsPool == null)
+
+                if (existsPool == null)
                     _pools[idx] = pool;
 
                 return pool;
@@ -144,7 +144,7 @@ namespace Npgsql
             lock (Lock)
             {
                 ClearAll();
-                _poolsAliases = new (string, ConnectorPool)[InitialPoolsSize];
+                _poolsByKey = new (string, ConnectorPool)[InitialPoolsSize];
                 _pools = new ConnectorPool?[InitialPoolsSize];
                 _nextSlot = 0;
             }
